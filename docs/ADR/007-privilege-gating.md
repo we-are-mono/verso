@@ -5,8 +5,8 @@
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-001 (single static binary; supersedes its "runs as root,
   acts freely" spike posture for the privileged surface), ADR-003 (the `Backend`
-  seam, where this swap lands), ADR-006 (plugin contract; adds a manifest ACL
-  declaration). Closes the privilege-gating gap
+  seam, where this swap lands), ADR-006 (plugin contract; adds manifest ACL
+  declarations and a read-snapshot channel). Closes the privilege-gating gap
   from the prototype security review: the session is authenticated but never used
   to authorize anything.
 
@@ -60,12 +60,17 @@ broken socket.**
    bounded by the operator's ACL rather than by root. This supersedes ADR-001's
    spike posture for the privileged surface.
 
-4. **Plugins present credentials too (extends ADR-006).** A plugin declares the
-   ACL scopes it needs in its `manifest.json` (the Verso analog of LuCI's
-   per-plugin `acl.d`). The shell, which holds the sid, brokers privileged
-   operations through rpcd on the plugin's behalf and refuses anything outside the
-   plugin's declared, session-authorized scopes. Plugins gain a *declared*
-   privilege surface instead of ambient root.
+4. **Plugins present credentials too, for reads and writes (extends ADR-006).** A
+   plugin holds no session and touches config in neither direction directly. It
+   declares the ACL scopes it needs in its `manifest.json` (the Verso analog of
+   LuCI's per-plugin `acl.d`) — `acl.read` for the configs it renders, `acl.write`
+   for the configs it changes. The shell, which holds the sid, brokers **both**
+   directions through rpcd on the plugin's behalf: it **reads** each declared
+   config with the sid and hands the plugin a snapshot to render from, and it
+   **writes** the plugin's declarative `commit` intent — refusing anything outside
+   the plugin's declared, session-authorized scopes. Plugins gain a *declared*
+   privilege surface instead of ambient root, and never read `/etc/config` or hold
+   a write path.
 
 5. **Staged, not big-bang.** This is the target architecture, implemented
    incrementally behind the `Backend` seam and the manifest — not in one cut. The
@@ -87,9 +92,10 @@ broken socket.**
   plugins**.
 
 ### Costs / negatives (honest)
-- go-uci's direct read/write/commit is **dropped for the gated surface**; uci
-  operations are re-expressed as rpcd ubus calls, and rpcd becomes a hard runtime
-  dependency for writes (it already is for login).
+- go-uci is **dropped entirely** — from the shell's read/write/commit and from the
+  plugins' reads (its last use). Every uci operation is re-expressed as an rpcd ubus
+  call carrying the sid, and rpcd becomes a hard runtime dependency for reads and
+  writes (it already is for login).
 - A per-operation authorization/execution **round-trip** (cacheable per sid
   within its lifetime).
 - The native-ubus investment (`internal/ubus`) is **not** wasted — it is exactly
@@ -101,8 +107,10 @@ broken socket.**
 ### Neutral
 - The `Backend` interface gains session-awareness; this is behind the seam and
   invisible to the widget renderer.
-- Governs privilege only; the visual contract (ADR-005) and the mechanical plugin
-  contract (ADR-006) are unchanged except for the added manifest ACL field.
+- Governs privilege only; the visual contract (ADR-005) is unchanged. The
+  mechanical plugin contract (ADR-006) gains two things: the manifest
+  `acl.read`/`acl.write` declarations, and a read channel — the shell injects the
+  uci snapshot into the plugin request (the `X-Verso-UCI` header).
 
 ## Alternatives considered
 
@@ -137,10 +145,19 @@ ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubu
   (to bind :80/:443) and `no_new_privs`.
 
 Plugins are confined the same way: a plugin runs as the same non-root `verso`
-user, never writes config, and holds no session. It returns a declarative
-`commit` intent (ADR-006) and the shell executes the write through rpcd, refusing
-any op outside the plugin's declared configs and with rpcd re-checking the
-operator's sid. A compromised plugin therefore cannot write `/etc/config`, cannot
-broker a write outside what it declared, and cannot exceed the operator's ACL.
-Sharing the shell's uid does not isolate a plugin from the shell process itself
-(same-uid signal/ptrace).
+user, holds no session, and touches config in **neither** direction directly. For
+**reads**, the shell reads each config the plugin declares in `acl.read` through
+rpcd's `uci get` carrying the operator's sid — one whole-config call — and injects
+the result into the plugin's request as the `X-Verso-UCI` header (JSON); the plugin
+renders from that snapshot and links no uci library. For **writes**, the plugin
+returns a declarative `commit` intent (ADR-006) and the shell executes it through
+rpcd, refusing any op outside the plugin's declared configs. The two gates are
+deliberately shaped by rpcd: a write is probe-and-refused up front
+(`session.access` per declared scope → 403 before the plugin runs), while a read is
+simply sid-scoped at the `uci get` — an operator who may not read a config gets an
+empty snapshot, not an error, so `acl.read` names *what* the shell fetches rather
+than adding a second gate. rpcd re-checks the operator's sid on every call. A
+compromised plugin therefore cannot read a config the operator can't, cannot write
+`/etc/config`, cannot act outside what it declared, and cannot exceed the operator's
+ACL. Sharing the shell's uid does not isolate a plugin from the shell process
+itself (same-uid signal/ptrace).
