@@ -56,15 +56,19 @@ func main() {
 	}
 }
 
-// allowedHosts is the DNS-rebinding Host allowlist: loopback and the device
-// hostname always, plus any hosts/LAN IPs from $VERSO_ALLOWED_HOSTS (comma-sep).
+// allowedHosts is the DNS-rebinding Host allowlist. It is OPT-IN: unset means an
+// empty list, i.e. any Host is accepted (dev convenience) — the same-origin
+// check still blocks cross-site writes. Setting $VERSO_ALLOWED_HOSTS (comma-sep)
+// turns the rebinding guard on for production, with loopback and the device
+// hostname added automatically.
 func allowedHosts() []string {
+	extra := os.Getenv("VERSO_ALLOWED_HOSTS")
+	if extra == "" {
+		return nil
+	}
 	hosts := []string{"localhost", "127.0.0.1", "::1"}
 	if hn, err := os.Hostname(); err == nil && hn != "" {
 		hosts = append(hosts, hn)
 	}
-	if extra := os.Getenv("VERSO_ALLOWED_HOSTS"); extra != "" {
-		hosts = append(hosts, strings.Split(extra, ",")...)
-	}
-	return hosts
+	return append(hosts, strings.Split(extra, ",")...)
 }

@@ -330,24 +330,6 @@ func TestHostGuardAllowsConfiguredHost(t *testing.T) {
 	}
 }
 
-// TestHostGuardBlocksCrossOriginWrite: a state-changing request from a foreign
-// Origin is refused even with a valid session.
-func TestHostGuardBlocksCrossOriginWrite(t *testing.T) {
-	srv := newServer(t, fakeBackend{})
-	srv.SetAllowedHosts([]string{"verso.lan"})
-	token, _ := srv.sessions.Create("sid", "root")
-
-	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
-	req.Host = "verso.lan"
-	req.Header.Set("Origin", "http://evil.example.com")
-	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Errorf("cross-origin write: status = %d, want 403", rec.Code)
-	}
-}
-
 // TestSecurityHeaders: defensive headers are set on every response (VS-07).
 func TestSecurityHeaders(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{}), "/")

@@ -6,7 +6,6 @@ package server
 import (
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -37,21 +36,21 @@ func hostSet(hosts []string) map[string]bool {
 	return m
 }
 
-// hostGuard rejects requests whose Host is not allow-listed, and cross-origin
-// state-changing requests (VS-01: DNS-rebinding and cross-site write defense).
-// An empty allowlist disables the check — tests run that way; production always
-// configures one (see main).
+// hostGuard rejects requests whose Host is not allow-listed — the app-level
+// DNS-rebinding defense-in-depth (VS-01). It is opt-in: an empty allowlist
+// accepts any Host (dev and tests), and $VERSO_ALLOWED_HOSTS turns it on for
+// production. OpenWrt's dnsmasq rebind protection is the primary, network-layer
+// defense.
+//
+// Cross-site request forgery is handled separately by the per-session CSRF token
+// (like LuCI's sid-in-request), not by an Origin/Host comparison — which is
+// fragile behind a reverse proxy, where the browser's Origin and the Host the
+// shell sees legitimately differ.
 func (s *Server) hostGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !s.hostAllowed(r.Host) {
 			http.Error(w, "bad host", http.StatusBadRequest)
 			return
-		}
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			if o := r.Header.Get("Origin"); o != "" && !s.originAllowed(o) {
-				http.Error(w, "cross-origin request blocked", http.StatusForbidden)
-				return
-			}
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -62,17 +61,6 @@ func (s *Server) hostAllowed(host string) bool {
 		return true
 	}
 	return s.allowedHosts[strings.ToLower(bareHost(host))]
-}
-
-func (s *Server) originAllowed(origin string) bool {
-	if len(s.allowedHosts) == 0 {
-		return true
-	}
-	u, err := url.Parse(origin)
-	if err != nil || u.Host == "" {
-		return false
-	}
-	return s.allowedHosts[strings.ToLower(bareHost(u.Host))]
 }
 
 func bareHost(hostport string) string {
