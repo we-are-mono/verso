@@ -5,6 +5,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"log"
@@ -49,6 +50,22 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		return s.notice("Plugin needs a newer Verso", fmt.Sprintf(
 			"%s speaks schema version %d; this shell supports version %d.",
 			m.Name, m.SchemaVersion, supportedSchemaVersion)), http.StatusOK
+	}
+
+	// The shell is the enforcement point for plugin writes (ADR-007): a
+	// state-changing request is refused here unless the session's rpcd ACLs cover
+	// the plugin's declared write scopes, so the plugin — which holds no session —
+	// never sees a write the operator is not authorized for.
+	if !safeMethod(r.Method) {
+		switch allowed, err := s.authorizePluginWrite(r.Context(), m, s.sessionSID(r)); {
+		case err != nil:
+			log.Printf("verso: plugin %q permission check failed: %v", m.ID, err)
+			return s.notice("Permission check unavailable",
+				"Verso couldn’t verify your permissions just now. Try again in a moment."), http.StatusServiceUnavailable
+		case !allowed:
+			return s.notice("Not permitted",
+				fmt.Sprintf("Your account isn’t permitted to change %s.", m.Name)), http.StatusForbidden
+		}
 	}
 
 	req := plugin.Request{Method: r.Method, Path: r.PathValue("path"), Query: r.URL.Query()}
@@ -100,4 +117,32 @@ func (s *Server) notice(title, message string) template.HTML {
 func (s *Server) unavailable(m plugin.Manifest) template.HTML {
 	return s.notice("Plugin unavailable", fmt.Sprintf(
 		"%s isn’t responding right now. The rest of Verso is unaffected.", m.Name))
+}
+
+// safeMethod reports whether the HTTP method is read-only, and so neither
+// ACL-gated nor CSRF-checked. It mirrors the CSRF gate's notion of a safe method.
+func safeMethod(method string) bool {
+	return method == http.MethodGet || method == http.MethodHead
+}
+
+// authorizePluginWrite reports whether the session may perform the writes the
+// plugin declares. A plugin that declares no write scopes may not receive a
+// state-changing request (fail closed — its declared write surface is empty);
+// otherwise every declared scope must be granted by rpcd, and any single denial
+// refuses the whole request. A transport error is returned, not swallowed, so the
+// caller fails closed rather than dispatching an unauthorized write.
+func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, sid string) (bool, error) {
+	if len(m.ACL.Write) == 0 {
+		return false, nil
+	}
+	for _, a := range m.ACL.Write {
+		allowed, err := s.backend.Access(ctx, sid, a.Scope, a.Object, a.Function)
+		if err != nil {
+			return false, err
+		}
+		if !allowed {
+			return false, nil
+		}
+	}
+	return true, nil
 }

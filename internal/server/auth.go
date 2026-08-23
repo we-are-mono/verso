@@ -45,7 +45,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		// CSRF: every state-changing request must carry the session's token
 		// (VS-04). GET/HEAD are safe; /login is public and covered by the Origin
 		// check instead (it has no session yet).
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && !validCSRF(r, sess.csrf) {
+		if !safeMethod(r.Method) && !validCSRF(r, sess.csrf) {
 			http.Error(w, "invalid CSRF token", http.StatusForbidden)
 			return
 		}

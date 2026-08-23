@@ -125,6 +125,34 @@ func postForm(t *testing.T, srv *Server, path string, form url.Values) *httptest
 	return rec
 }
 
+// postPlugin issues an authenticated, CSRF-valid POST to a plugin path — the
+// path a real browser save takes — so the ACL gate (ADR-007) is exercised end to
+// end rather than short-circuited by the auth or CSRF middleware.
+func postPlugin(t *testing.T, srv *Server, path string, form url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+	token, err := srv.sessions.Create("test-sid", "root")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	sess, _ := srv.sessions.get(token)
+	if form == nil {
+		form = url.Values{}
+	}
+	form.Set("_csrf", sess.csrf)
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	return rec
+}
+
+func demoACLManifest() plugin.Manifest {
+	m := demoManifest()
+	m.ACL = plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "system", Function: "write"}}}
+	return m
+}
+
 func TestHealthzReturnsOK(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{}), "/healthz")
 	if rec.Code != http.StatusOK {
@@ -272,6 +300,99 @@ func TestPluginVersionMismatchDegrades(t *testing.T) {
 	}
 	if tr.lastSocket != "" {
 		t.Errorf("transport was dialed on a version mismatch; it must not be")
+	}
+}
+
+// TestPluginWriteAllowedWhenSessionGranted: a POST whose session holds the
+// plugin's declared write grant is dispatched to the plugin and its schema
+// renders. The gate sits in front of the existing gateway (ADR-007).
+func TestPluginWriteAllowedWhenSessionGranted(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Saved",
+		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+	}}
+	s := newServerWith(t, fakeBackend{access: true}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if tr.lastSocket != "/run/verso/demo.sock" {
+		t.Errorf("granted write was not dispatched to the plugin (socket %q)", tr.lastSocket)
+	}
+	if got := url.Values(tr.lastReq.Form).Get("hostname"); got != "verso-lab" {
+		t.Errorf("form not forwarded: hostname=%q", got)
+	}
+	if _, ok := tr.lastReq.Form["_csrf"]; ok {
+		t.Errorf("the shell's _csrf token must not be forwarded to the plugin")
+	}
+}
+
+// TestPluginWriteRefusedWhenSessionDenied: a POST whose session lacks the grant
+// is refused by the shell with 403 and NEVER reaches the plugin — the shell is
+// the enforcement point (ADR-007).
+func TestPluginWriteRefusedWhenSessionDenied(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Widget: json.RawMessage(`{"type":"card","children":[]}`)}}
+	s := newServerWith(t, fakeBackend{access: false}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"x"}})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 for a denied write", rec.Code)
+	}
+	if tr.lastSocket != "" {
+		t.Errorf("a denied write must not reach the plugin; dialed %q", tr.lastSocket)
+	}
+	if !strings.Contains(rec.Body.String(), "permitted") {
+		t.Errorf("expected a 'not permitted' notice")
+	}
+}
+
+// TestPluginWriteRefusedWithoutDeclaredACL: fail closed — a plugin that declares
+// no write scopes cannot receive a state-changing request, even for a session
+// that would pass any check (ADR-007).
+func TestPluginWriteRefusedWithoutDeclaredACL(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Widget: json.RawMessage(`{"type":"card","children":[]}`)}}
+	s := newServerWith(t, fakeBackend{access: true}, tr, []plugin.Manifest{demoManifest()}) // no ACL
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"x"}})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 when the plugin declares no write scopes", rec.Code)
+	}
+	if tr.lastSocket != "" {
+		t.Errorf("must not reach a plugin with no declared write ACL; dialed %q", tr.lastSocket)
+	}
+}
+
+// TestPluginWriteFailsClosedWhenACLCheckErrors: if rpcd can't be reached to
+// authorize, the shell fails closed (503) rather than dispatching the write.
+func TestPluginWriteFailsClosedWhenACLCheckErrors(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Widget: json.RawMessage(`{"type":"card","children":[]}`)}}
+	s := newServerWith(t, fakeBackend{accessErr: errors.New("rpcd down")}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"x"}})
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 when the ACL check errors", rec.Code)
+	}
+	if tr.lastSocket != "" {
+		t.Errorf("must not dispatch when authorization is unknown; dialed %q", tr.lastSocket)
+	}
+}
+
+// TestPluginGetNotGated: reads are not gated — a GET renders even with no write
+// grant, so a read-only operator can still view the page (ADR-007 gates writes).
+func TestPluginGetNotGated(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Demo",
+		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+	}}
+	s := newServerWith(t, fakeBackend{access: false}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := get(t, s, "/plugins/demo/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (GET must not be gated)", rec.Code)
+	}
+	if tr.lastSocket != "/run/verso/demo.sock" {
+		t.Errorf("GET should reach the plugin; dialed %q", tr.lastSocket)
 	}
 }
 

@@ -144,3 +144,37 @@ func TestDiscoverNoPluginsIsClean(t *testing.T) {
 		t.Errorf("empty dir: got=%d problems=%d, want 0/0", len(got), len(problems))
 	}
 }
+
+// TestDiscoverParsesACL: a plugin declaring the rpcd write scopes it needs parses
+// into structured ACL entries the shell gates on (ADR-007).
+func TestDiscoverParsesACL(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/w/manifest.json": `{"manifest_version":1,"id":"w","name":"N","socket":"/run/verso/w.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+			`"acl":{"write":[{"scope":"uci","object":"system","function":"write"}]}}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(problems) != 0 || len(got) != 1 {
+		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
+	}
+	w := got[0].ACL.Write
+	if len(w) != 1 || w[0].Scope != "uci" || w[0].Object != "system" || w[0].Function != "write" {
+		t.Errorf("acl.write not parsed: %+v", w)
+	}
+}
+
+// TestDiscoverRejectsIncompleteACL: a write scope missing a field is a load error,
+// not a silently-ignored (and therefore ungated) grant.
+func TestDiscoverRejectsIncompleteACL(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/x/manifest.json": `{"manifest_version":1,"id":"x","name":"N","socket":"/run/verso/x.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+			`"acl":{"write":[{"scope":"uci","object":"system"}]}}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(got) != 0 || len(problems) != 1 {
+		t.Errorf("an incomplete acl entry must be skipped: got=%d problems=%d", len(got), len(problems))
+	}
+}

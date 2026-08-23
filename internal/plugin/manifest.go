@@ -21,6 +21,26 @@ type Manifest struct {
 	Socket          string     `json:"socket"`
 	SchemaVersion   int        `json:"schema_version"`
 	Nav             []NavEntry `json:"nav"`
+	ACL             ACL        `json:"acl"`
+}
+
+// ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's
+// per-plugin acl.d (ADR-007). The shell probes session.access for the write
+// scopes before dispatching a state-changing request to the plugin, so an
+// operator whose session lacks the grant is refused by the shell and the plugin
+// never sees the write. A plugin that declares no write scopes cannot receive a
+// state-changing request at all (its declared write surface is empty).
+type ACL struct {
+	Write []ACLScope `json:"write"`
+}
+
+// ACLScope is one rpcd access triple, mirroring session.access{scope,object,
+// function} one-to-one: may the session call object.function within scope? For a
+// uci write the scope is "uci" and the object is the config name.
+type ACLScope struct {
+	Scope    string `json:"scope"`
+	Object   string `json:"object"`
+	Function string `json:"function"`
 }
 
 // NavEntry places one of a plugin's pages in the shell's navigation. A plugin
@@ -59,6 +79,13 @@ func (m Manifest) validate() error {
 		}
 		if n.Label == "" {
 			return fmt.Errorf("plugin %q nav[%d] missing label", m.ID, i)
+		}
+	}
+	for i, a := range m.ACL.Write {
+		// A partial triple can't be probed against session.access, so it would
+		// silently gate nothing — reject it rather than dispatch an ungated write.
+		if a.Scope == "" || a.Object == "" || a.Function == "" {
+			return fmt.Errorf("plugin %q acl.write[%d] needs scope, object and function", m.ID, i)
 		}
 	}
 	return nil
