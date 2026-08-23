@@ -83,3 +83,39 @@ func TestAccessPassesProbe(t *testing.T) {
 		t.Errorf("probe args = %v, want [s1 uci system write]", got)
 	}
 }
+
+// TestUCISetThreadsArgs checks UCISet passes the sid, config, section and values
+// to the seam — the real write brokers rpcd's uci.set carrying the operator's sid
+// (ADR-007 Model B: the shell writes on the plugin's behalf).
+func TestUCISetThreadsArgs(t *testing.T) {
+	var gotSID, gotConfig, gotSection string
+	var gotValues map[string]string
+	b := &NativeBackend{uciSet: func(_ context.Context, sid, config, section string, values map[string]string) error {
+		gotSID, gotConfig, gotSection, gotValues = sid, config, section, values
+		return nil
+	}}
+
+	err := b.UCISet(context.Background(), "s1", "system", "@system[0]", map[string]string{"hostname": "verso-lab"})
+	if err != nil {
+		t.Fatalf("UCISet: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "system" || gotSection != "@system[0]" || gotValues["hostname"] != "verso-lab" {
+		t.Errorf("args not threaded: sid=%q config=%q section=%q values=%v", gotSID, gotConfig, gotSection, gotValues)
+	}
+}
+
+// TestUCICommitThreadsArgs checks UCICommit passes the sid and config through.
+func TestUCICommitThreadsArgs(t *testing.T) {
+	var gotSID, gotConfig string
+	b := &NativeBackend{uciCommit: func(_ context.Context, sid, config string) error {
+		gotSID, gotConfig = sid, config
+		return nil
+	}}
+
+	if err := b.UCICommit(context.Background(), "s1", "system"); err != nil {
+		t.Fatalf("UCICommit: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "system" {
+		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
+	}
+}

@@ -26,6 +26,8 @@ type fakeBackend struct {
 	err       error
 	access    bool
 	accessErr error
+	uciErr    error       // returned by UCISet/UCICommit
+	writes    *[]uciWrite // records UCISet calls (pointer: fakeBackend is used by value)
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -41,6 +43,24 @@ func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 
 func (f fakeBackend) Access(context.Context, string, string, string, string) (bool, error) {
 	return f.access, f.accessErr
+}
+
+// uciWrite records a UCISet call so the broker tests can assert what the shell
+// wrote on the plugin's behalf (ADR-007 Model B).
+type uciWrite struct {
+	sid, config, section string
+	values               map[string]string
+}
+
+func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]string) error {
+	if f.writes != nil {
+		*f.writes = append(*f.writes, uciWrite{sid, config, section, values})
+	}
+	return f.uciErr
+}
+
+func (f fakeBackend) UCICommit(context.Context, string, string) error {
+	return f.uciErr
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

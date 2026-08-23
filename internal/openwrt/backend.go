@@ -28,6 +28,12 @@ type Backend interface {
 	// writes on the operator's rpcd ACLs (ADR-007). A transport error is distinct
 	// from a denial, so callers can fail closed on the former.
 	Access(ctx context.Context, sid, scope, object, function string) (bool, error)
+	// UCISet and UCICommit write config through rpcd's ACL-gated `uci` object,
+	// carrying the operator's sid so rpcd — not Verso — authorizes the write. The
+	// shell performs writes on a plugin's behalf (ADR-007 Model B), so a plugin
+	// holds no write privilege and no session credential of its own.
+	UCISet(ctx context.Context, sid, config, section string, values map[string]string) error
+	UCICommit(ctx context.Context, sid, config string) error
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -51,6 +57,8 @@ type (
 	hostnameFn   func(ctx context.Context, sid string) (string, error)
 	systemInfoFn func(ctx context.Context, sid string) (map[string]any, error)
 	accessFn     func(ctx context.Context, sid, scope, object, function string) (bool, error)
+	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]string) error
+	uciCommitFn  func(ctx context.Context, sid, config string) error
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -61,6 +69,8 @@ type NativeBackend struct {
 	hostname   hostnameFn
 	systemInfo systemInfoFn
 	access     accessFn
+	uciSet     uciSetFn
+	uciCommit  uciCommitFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -69,6 +79,8 @@ func NewNativeBackend() *NativeBackend {
 		hostname:   dialHostname(""),
 		systemInfo: dialSystemInfo(""),
 		access:     dialAccess(""),
+		uciSet:     dialUCISet(""),
+		uciCommit:  dialUCICommit(""),
 	}
 }
 
@@ -89,6 +101,16 @@ func (b *NativeBackend) SystemInfo(ctx context.Context, sid string) (SystemInfo,
 // Access reports whether rpcd grants the session object.function in scope.
 func (b *NativeBackend) Access(ctx context.Context, sid, scope, object, function string) (bool, error) {
 	return b.access(ctx, sid, scope, object, function)
+}
+
+// UCISet writes option values into a uci section through rpcd, gated by the sid.
+func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]string) error {
+	return b.uciSet(ctx, sid, config, section, values)
+}
+
+// UCICommit persists staged changes to a uci config through rpcd, gated by the sid.
+func (b *NativeBackend) UCICommit(ctx context.Context, sid, config string) error {
+	return b.uciCommit(ctx, sid, config)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -154,6 +176,51 @@ func dialAccess(socket string) accessFn {
 		}
 		defer c.Close()
 		return probeAccess(c, sid, scope, object, function)
+	}
+}
+
+// dialUCISet returns a uciSetFn that writes option values via rpcd's `uci` object
+// (method `set`), carrying the sid so rpcd applies the operator's ACLs. values is
+// encoded as the nested `values:{}` table uci.set expects.
+func dialUCISet(socket string) uciSetFn {
+	return func(_ context.Context, sid, config, section string, values map[string]string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeTable(id, "set", map[string]any{
+			"ubus_rpc_session": sid,
+			"config":           config,
+			"section":          section,
+			"values":           values,
+		})
+		return err
+	}
+}
+
+// dialUCICommit returns a uciCommitFn that persists a config's staged changes via
+// rpcd's `uci` object (method `commit`), carrying the sid.
+func dialUCICommit(socket string) uciCommitFn {
+	return func(_ context.Context, sid, config string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "commit", map[string]string{
+			"ubus_rpc_session": sid,
+			"config":           config,
+		})
+		return err
 	}
 }
 
