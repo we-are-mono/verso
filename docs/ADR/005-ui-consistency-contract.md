@@ -41,6 +41,22 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    the standalone CLI, no Node) to an embedded stylesheet. This is an engine choice, not
    a contract change: plugins never see classes, so it stays reversible with zero plugin
    impact. Shell templates may use utilities; plugins never do.
+7. **Behaviour is declared as intent; the shell realizes it.** The closed widget set
+   includes *behavioural* widgets — the first is `repeater`, a repeatable group of
+   widgets backed by a set of uci sections — but they obey the same rule as every other
+   widget: the plugin declares *intent* ("this group repeats"), never a mechanism and
+   never client code. The shell owns the add/remove affordances and the realization.
+   The realization is a re-render **round-trip** — the affordance POSTs, the shell
+   re-renders — and for a uci-backed repeater the shell performs the section
+   `add`/`delete` itself through rpcd, within the plugin's declared write scope
+   (ADR-007), then re-renders from a fresh read; the plugin stays pure schema and writes
+   no add/remove logic. Because the plugin declared only intent, the realization is
+   **swappable**: a hot case can become instant client-side later with no plugin change
+   — the bet is on the vocabulary, not the transport. This keeps the `raw` bridge
+   (point 4) firmly display-only: behaviour has a governed home, so it never leaks
+   through raw. `conditional` field-sets are the next behavioural widget, under this
+   same rule. The round-trip's *mechanics* are the mechanical contract's (ADR-006); what
+   a plugin may *emit* is this ADR's.
 
 ## Consequences
 
@@ -53,6 +69,10 @@ looks — while still offering a legitimate bridge when no widget yet fits.
   us which widget to build next.
 - CSS is entirely shell-internal and swappable (hand tokens now, Tailwind v4 later)
   without touching a single plugin.
+- The static-schema bet survives a *behavioural* page (the WireGuard plugin's
+  add/remove peer): the escape hatch for behaviour is a shell-realized behavioural
+  widget declaring intent, not plugin code — and because the bet is on the vocabulary,
+  the realization (round-trip now, client-side later) is swappable behind it.
 
 ### Costs / negatives
 - Verso must invest in a genuinely complete token system up front — it is the substrate
@@ -65,7 +85,8 @@ looks — while still offering a legitimate bridge when no widget yet fits.
 
 ### Neutral
 - Governs the visual/consistency model only. Manifest, socket protocol and schema
-  versioning live in the mechanical plugin-contract ADR.
+  versioning live in the mechanical plugin-contract ADR — as does the round-trip that
+  realizes a behavioural widget (point 7).
 
 ## Alternatives considered
 
@@ -77,3 +98,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
   middle.
 - **Presentational props on widgets** (authors pass colors/spacing) — more flexibility.
   Rejected: it is inconsistency by another name; two plugins would diverge immediately.
+- **Prebuilt client-side behavioural widgets as the foundation** (rather than a
+  re-render round-trip) — snappier. Rejected as the *foundation*: it grows an unbounded
+  catalogue of bespoke client behaviours and still cannot express an interaction no
+  widget covers. It returns as an *optimization* of the same declared intent (point 7),
+  not a fork to be chosen once and be stuck with.
+- **Plugins ship JS/HTML for behaviour** — maximum reach. Rejected for the same reason
+  as unconstrained raw: it dissolves crash isolation and the token-enforced look the
+  whole model exists to guarantee.
