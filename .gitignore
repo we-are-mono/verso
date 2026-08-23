@@ -1,13 +1,17 @@
 # Reference clones — cloned for investigation, not part of Verso
 /sources/
 
+# First-party plugin sources — each plugin is its own repo/module, built and
+# installed independently of the shell (see ADR-006).
+/plugins/
+
 # Scratch research notes — not part of the project
 /FINDINGS.md
 
 # Go build artifacts
 /build/
 /verso
-/verso-app-*
+/verso-plugin-*
 *.test
 *.out
 
