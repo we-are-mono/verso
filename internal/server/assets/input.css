@@ -51,6 +51,11 @@
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
 
+  /* conditional widget: reveal the gated field-set only while its toggle is
+     checked (ADR-005 §7). Pure CSS state — no JavaScript. */
+  .verso-conditional-body { display: none; }
+  .verso-conditional:has(.verso-conditional-toggle:checked) .verso-conditional-body { display: block; }
+
   /* Prose for the raw bridge: goldmark output, styled through tokens. Kept
      minimal and display-only (ADR-005) — the Tailwind typography plugin needs
      Node, which we don't ship. */

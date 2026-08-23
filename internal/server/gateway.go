@@ -192,6 +192,12 @@ func validateSchema(w widget.Widget) bool {
 			found = validateSchema(it.Widget) || found
 		}
 		return found
+	case *widget.Conditional:
+		found := false
+		for _, f := range n.Fields {
+			found = validateSchema(f) || found
+		}
+		return found
 	default:
 		return false
 	}

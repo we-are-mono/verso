@@ -66,9 +66,36 @@ func (r *Renderer) render(out io.Writer, w Widget, csrf string) error {
 		return r.renderRaw(out, v)
 	case *Repeater:
 		return r.renderRepeater(out, v, csrf)
+	case *Conditional:
+		return r.renderConditional(out, v, csrf)
 	default:
 		return fmt.Errorf("widget: no renderer for %T", w)
 	}
+}
+
+// conditionalView is the conditional template's model: the toggle plus the gated
+// fields, already rendered to trusted HTML.
+type conditionalView struct {
+	Name, Label string
+	Checked     bool
+	Fields      []template.HTML
+}
+
+// renderConditional renders the gated field-set through render, then hands the
+// template the controlling toggle. Visibility is pure CSS (ADR-005 §7): the shell
+// owns the toggle and the show/hide, the plugin only declared the intent.
+func (r *Renderer) renderConditional(out io.Writer, c *Conditional, csrf string) error {
+	fields := make([]template.HTML, 0, len(c.Fields))
+	for _, f := range c.Fields {
+		var b strings.Builder
+		if err := r.render(&b, f, csrf); err != nil {
+			return err
+		}
+		fields = append(fields, template.HTML(b.String()))
+	}
+	return r.execute(out, "conditional.html.tmpl", conditionalView{
+		Name: c.Name, Label: c.Label, Checked: c.Checked, Fields: fields,
+	})
 }
 
 // repeaterItemView is one rendered item plus the uci section it maps to, so the

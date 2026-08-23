@@ -76,6 +76,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode repeater: %w", err)
 		}
 		return &rp, nil
+	case "conditional":
+		var c Conditional
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode conditional: %w", err)
+		}
+		return &c, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}
