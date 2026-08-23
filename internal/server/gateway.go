@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -70,16 +71,33 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		}
 	}
 
-	req := plugin.Request{Method: r.Method, Path: r.PathValue("path"), Query: r.URL.Query()}
-	if r.Method != http.MethodGet {
+	// Parse a state-changing request's form up front, so a repeater structural op
+	// can be read and, failing that, the form can be forwarded to the plugin.
+	method := r.Method
+	if !safeMethod(method) {
 		if err := r.ParseForm(); err == nil {
 			r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
-			req.Form = r.PostForm
+		}
+		// A repeater's add/remove is the shell's to realize, not the plugin's
+		// (ADR-005 §7): the shell performs the uci section add/delete through rpcd,
+		// then re-renders the fresh state as a read. The plugin ships no add/remove
+		// logic — it only declared the repeater.
+		if r.PostForm.Get(widget.RepeaterOpField) != "" {
+			if body, st, ok := s.realizeRepeater(r.Context(), m, s.sessionSID(r), r.PostForm); !ok {
+				return body, st
+			}
+			method = http.MethodGet // render current state; carry no form, run no commit
 		}
 	}
-	// The shell brokers the plugin's reads (ADR-007): it reads each config the
-	// plugin declared in acl.read with the operator's sid and hands the plugin a
-	// snapshot, so a session-less plugin never touches /etc/config itself.
+
+	req := plugin.Request{Method: method, Path: r.PathValue("path"), Query: r.URL.Query()}
+	if !safeMethod(method) {
+		req.Form = r.PostForm
+	}
+	// The shell brokers the plugin's reads (ADR-007): it reads each config the plugin
+	// declared in acl.read with the operator's sid and hands the plugin a snapshot,
+	// so a session-less plugin never touches /etc/config itself. Read after any
+	// repeater op, so the re-render reflects the structural change.
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 
 	env, err := s.transport.Fetch(r.Context(), m.Socket, req)
@@ -103,8 +121,9 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 	// returned schema (ADR-008): any failure annotates the widget in place, forces
 	// 422, and blocks the write — merged with whatever the plugin already flagged.
 	// Only a clean submission reaches brokerCommit, which executes the plugin's
-	// commit intent through rpcd (ADR-007); a commit on a GET is ignored.
-	if !safeMethod(r.Method) {
+	// commit intent through rpcd (ADR-007). A repeater op was downgraded to a render
+	// above, so it skips this — its write already went through rpcd.
+	if !safeMethod(method) {
 		if validateSchema(wdg) {
 			status = http.StatusUnprocessableEntity
 		} else if len(env.Commit) > 0 {
@@ -167,6 +186,12 @@ func validateSchema(w widget.Widget) bool {
 			}
 		}
 		return len(n.Errors) > 0
+	case *widget.Repeater:
+		found := false
+		for _, it := range n.Items {
+			found = validateSchema(it.Widget) || found
+		}
+		return found
 	default:
 		return false
 	}
@@ -248,6 +273,59 @@ func (s *Server) brokerCommit(ctx context.Context, m plugin.Manifest, sid string
 		}
 	}
 	return "", 0, true
+}
+
+// realizeRepeater performs a repeater's structural change on the operator's behalf
+// (ADR-005 §7): a uci section add or delete through rpcd, then a commit. It refuses
+// a config the plugin did not declare in its acl.write — the same surface
+// brokerCommit bounds — and rpcd re-checks the operator's sid. On success the caller
+// re-renders the fresh state; a failure is a contained notice, never a crash.
+func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid string, form url.Values) (template.HTML, int, bool) {
+	config := form.Get(widget.RepeaterConfigField)
+	if config == "" || !declaredUCIConfigs(m)[config] {
+		log.Printf("verso: plugin %q repeater op on undeclared uci config %q; refused", m.ID, config)
+		return s.notice("Not permitted", fmt.Sprintf(
+			"%s tried to change settings it did not declare.", m.Name)), http.StatusForbidden, false
+	}
+
+	var err error
+	switch op := form.Get(widget.RepeaterOpField); op {
+	case widget.RepeaterOpAdd:
+		secType := form.Get(widget.RepeaterTypeField)
+		if secType == "" {
+			return s.malformedRepeater(m)
+		}
+		_, err = s.backend.UCIAdd(ctx, sid, config, secType)
+	case widget.RepeaterOpRemove:
+		section := form.Get(widget.RepeaterSectionField)
+		if section == "" {
+			return s.malformedRepeater(m)
+		}
+		err = s.backend.UCIDelete(ctx, sid, config, section)
+	default:
+		log.Printf("verso: plugin %q unknown repeater op %q; refused", m.ID, op)
+		return s.malformedRepeater(m)
+	}
+	if err != nil {
+		log.Printf("verso: plugin %q repeater op on uci %q failed: %v", m.ID, config, err)
+		return s.notice("Save failed",
+			"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+	}
+
+	if err := s.backend.UCICommit(ctx, sid, config); err != nil {
+		log.Printf("verso: plugin %q repeater commit of uci %q failed: %v", m.ID, config, err)
+		return s.notice("Save failed",
+			"The change was written but couldn’t be committed. Try again in a moment."), http.StatusServiceUnavailable, false
+	}
+	return "", 0, true
+}
+
+// malformedRepeater is the contained response to a repeater affordance that posted
+// without the fields the shell needs to act — a client-side problem, not the
+// operator's, so it is a plain notice.
+func (s *Server) malformedRepeater(m plugin.Manifest) (template.HTML, int, bool) {
+	return s.notice("Couldn’t apply that change", fmt.Sprintf(
+		"Verso couldn’t apply that change to %s.", m.Name)), http.StatusBadRequest, false
 }
 
 // declaredUCIConfigs is the set of uci configs a plugin declared it may write in

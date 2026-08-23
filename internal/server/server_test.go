@@ -206,6 +206,23 @@ func demoReadManifest() plugin.Manifest {
 	return m
 }
 
+func demoRepeaterManifest() plugin.Manifest {
+	m := demoManifest()
+	m.ACL = plugin.ACL{
+		Read:  []plugin.ACLScope{{Scope: "uci", Object: "network", Function: "read"}},
+		Write: []plugin.ACLScope{{Scope: "uci", Object: "network", Function: "write"}},
+	}
+	return m
+}
+
+func repeaterForm(op string, extra url.Values) url.Values {
+	f := url.Values{"_repeater_op": {op}, "_repeater_config": {"network"}}
+	for k, v := range extra {
+		f[k] = v
+	}
+	return f
+}
+
 func TestHealthzReturnsOK(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{}), "/healthz")
 	if rec.Code != http.StatusOK {
@@ -318,6 +335,95 @@ func TestPluginNoReadACLGetsNoSnapshot(t *testing.T) {
 	}
 	if tr.lastReq.UCI != nil {
 		t.Errorf("undeclared plugin got a snapshot: %+v", tr.lastReq.UCI)
+	}
+}
+
+// repeaterTransport renders a trivial page, standing in for the plugin's re-render
+// of the fresh state after a repeater op.
+func repeaterTransport() *fakeTransport {
+	return &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "WG", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+}
+
+// TestPluginRepeaterAddRealized: the shell — not the plugin — performs a repeater's
+// "add" (ADR-005 §7). A repeater add POST creates a uci section of the declared type
+// through rpcd and re-renders the fresh state as a read (method downgraded to GET).
+func TestPluginRepeaterAddRealized(t *testing.T) {
+	adds, dels := []string{}, []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, adds: &adds, deletes: &dels, addReturns: "cfgNEW"}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoRepeaterManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", repeaterForm("add", url.Values{"_repeater_type": {"wireguard_wg0"}}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(adds) != 1 || adds[0] != "network wireguard_wg0" {
+		t.Errorf("UCIAdd calls = %v, want one \"network wireguard_wg0\"", adds)
+	}
+	if len(dels) != 0 {
+		t.Errorf("an add must not delete: %v", dels)
+	}
+	if tr.lastReq.Method != http.MethodGet {
+		t.Errorf("re-render method = %q, want GET (the op was realized, then rendered)", tr.lastReq.Method)
+	}
+}
+
+// TestPluginRepeaterRemoveRealized: a repeater "remove" POST deletes the named uci
+// section through rpcd and re-renders.
+func TestPluginRepeaterRemoveRealized(t *testing.T) {
+	adds, dels := []string{}, []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, adds: &adds, deletes: &dels}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoRepeaterManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", repeaterForm("remove", url.Values{"_repeater_section": {"cfg01"}}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(dels) != 1 || dels[0] != "network.cfg01" {
+		t.Errorf("UCIDelete calls = %v, want one \"network.cfg01\"", dels)
+	}
+	if len(adds) != 0 {
+		t.Errorf("a remove must not add: %v", adds)
+	}
+}
+
+// TestPluginRepeaterRefusedForUndeclaredConfig: a repeater op naming a config the
+// plugin never declared in acl.write is refused, and nothing is written — the same
+// bound brokerCommit enforces.
+func TestPluginRepeaterRefusedForUndeclaredConfig(t *testing.T) {
+	adds, dels := []string{}, []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, adds: &adds, deletes: &dels}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoRepeaterManifest()})
+
+	form := url.Values{"_repeater_op": {"add"}, "_repeater_config": {"firewall"}, "_repeater_type": {"rule"}}
+	rec := postPlugin(t, s, "/plugins/demo/", form)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	if len(adds) != 0 || len(dels) != 0 {
+		t.Errorf("an undeclared-config repeater op must write nothing: adds=%v dels=%v", adds, dels)
+	}
+}
+
+// TestPluginRepeaterGatedByWriteACL: a repeater op is a state-changing request, so
+// the acl.write gate (ADR-007) refuses an operator who may not write the plugin's
+// declared configs — before any structural change.
+func TestPluginRepeaterGatedByWriteACL(t *testing.T) {
+	adds, dels := []string{}, []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: false, adds: &adds, deletes: &dels}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoRepeaterManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", repeaterForm("add", url.Values{"_repeater_type": {"wireguard_wg0"}}))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	if len(adds) != 0 {
+		t.Errorf("a denied operator must not add: %v", adds)
 	}
 }
 
