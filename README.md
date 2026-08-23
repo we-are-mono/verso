@@ -116,6 +116,8 @@ Edit a `.go`/`.tmpl`/`.css`, save, refresh the browser (~3 s). No image rebuild.
 | 003 | **Test-first**, dependency seams so units are testable without a device |
 | 004 | Frontend stack: stdlib `net/http` + `routes.go`, `html/template`, HTMX |
 | 005 | UI consistency: design tokens + closed widget set + governed `raw` bridge |
+| 006 | Plugin contract: manifest + unix-socket schema gateway + crash isolation |
+| 007 | Privilege gating: act through rpcd ACLs with the session, not ambient root |
 
 ## Roadmap
 
