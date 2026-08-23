@@ -64,3 +64,22 @@ func TestHostnamePassesSession(t *testing.T) {
 		t.Errorf("sid not threaded to the backend: got %q", gotSID)
 	}
 }
+
+// TestAccessPassesProbe checks Access threads the full ACL triple through to the
+// seam — the real probe asks rpcd's session.access (verified live). This is the
+// enforcement primitive the shell uses to gate plugin writes (ADR-007).
+func TestAccessPassesProbe(t *testing.T) {
+	var got [4]string
+	b := &NativeBackend{access: func(_ context.Context, sid, scope, object, function string) (bool, error) {
+		got = [4]string{sid, scope, object, function}
+		return true, nil
+	}}
+
+	ok, err := b.Access(context.Background(), "s1", "uci", "system", "write")
+	if err != nil || !ok {
+		t.Fatalf("Access = %v, %v; want true, nil", ok, err)
+	}
+	if got != [4]string{"s1", "uci", "system", "write"} {
+		t.Errorf("probe args = %v, want [s1 uci system write]", got)
+	}
+}

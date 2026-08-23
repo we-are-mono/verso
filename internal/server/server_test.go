@@ -18,11 +18,14 @@ import (
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
-// fakeBackend is a Backend seam double: no ubus/uci, no device needed.
+// fakeBackend is a Backend seam double: no ubus/uci, no device needed. access and
+// accessErr drive the plugin-write authorization gate (ADR-007) in tests.
 type fakeBackend struct {
-	si  openwrt.SystemInfo
-	hn  string
-	err error
+	si        openwrt.SystemInfo
+	hn        string
+	err       error
+	access    bool
+	accessErr error
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -34,6 +37,10 @@ func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 		return "", f.err
 	}
 	return f.hn, nil
+}
+
+func (f fakeBackend) Access(context.Context, string, string, string, string) (bool, error) {
+	return f.access, f.accessErr
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

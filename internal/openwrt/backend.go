@@ -23,6 +23,11 @@ var ErrAccessDenied = errors.New("openwrt: access denied by rpcd ACL")
 type Backend interface {
 	SystemInfo(ctx context.Context, sid string) (SystemInfo, error)
 	Hostname(ctx context.Context, sid string) (string, error)
+	// Access asks rpcd whether the session may call object.function within the
+	// given ACL scope. It is the enforcement point the shell uses to gate plugin
+	// writes on the operator's rpcd ACLs (ADR-007). A transport error is distinct
+	// from a denial, so callers can fail closed on the former.
+	Access(ctx context.Context, sid, scope, object, function string) (bool, error)
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -45,6 +50,7 @@ type Memory struct {
 type (
 	hostnameFn   func(ctx context.Context, sid string) (string, error)
 	systemInfoFn func(ctx context.Context, sid string) (map[string]any, error)
+	accessFn     func(ctx context.Context, sid, scope, object, function string) (bool, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -54,6 +60,7 @@ type (
 type NativeBackend struct {
 	hostname   hostnameFn
 	systemInfo systemInfoFn
+	access     accessFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -61,6 +68,7 @@ func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
 		hostname:   dialHostname(""),
 		systemInfo: dialSystemInfo(""),
+		access:     dialAccess(""),
 	}
 }
 
@@ -76,6 +84,11 @@ func (b *NativeBackend) SystemInfo(ctx context.Context, sid string) (SystemInfo,
 		return SystemInfo{}, err
 	}
 	return parseSystemInfo(m), nil
+}
+
+// Access reports whether rpcd grants the session object.function in scope.
+func (b *NativeBackend) Access(ctx context.Context, sid, scope, object, function string) (bool, error) {
+	return b.access(ctx, sid, scope, object, function)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -120,7 +133,7 @@ func dialSystemInfo(socket string) systemInfoFn {
 		}
 		defer c.Close()
 
-		if !access(c, sid, "system", "info") {
+		if ok, err := probeAccess(c, sid, "ubus", "system", "info"); err != nil || !ok {
 			return nil, ErrAccessDenied
 		}
 		id, err := c.Lookup("system")
@@ -131,31 +144,46 @@ func dialSystemInfo(socket string) systemInfoFn {
 	}
 }
 
-// access asks rpcd whether the session may call object.function on the ubus
-// scope. It is Verso's replacement for the ACL check the HTTP→ubus bridge does.
-func access(c *ubus.Client, sid, object, function string) bool {
+// dialAccess returns an accessFn that dials the socket per call and probes rpcd's
+// session.access for the session — the shell's ACL enforcement point (ADR-007).
+func dialAccess(socket string) accessFn {
+	return func(_ context.Context, sid, scope, object, function string) (bool, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return false, err
+		}
+		defer c.Close()
+		return probeAccess(c, sid, scope, object, function)
+	}
+}
+
+// probeAccess asks rpcd whether the session may call object.function within the
+// ubus ACL scope. It returns the decision and any transport error separately, so
+// a caller can tell a denial (false, nil) from an unreachable rpcd (_, err) and
+// fail closed. It is Verso's replacement for the check the HTTP→ubus bridge does.
+func probeAccess(c *ubus.Client, sid, scope, object, function string) (bool, error) {
 	id, err := c.Lookup("session")
 	if err != nil {
-		return false
+		return false, err
 	}
 	res, err := c.InvokeArgs(id, "access", map[string]string{
 		"ubus_rpc_session": sid,
-		"scope":            "ubus",
+		"scope":            scope,
 		"object":           object,
 		"function":         function,
 	})
 	if err != nil {
-		return false
+		return false, err
 	}
 	// ubus encodes booleans as the blobmsg INT8/BOOL type, which the client
 	// decodes to int64 (1/0), not a Go bool.
 	switch v := res["access"].(type) {
 	case bool:
-		return v
+		return v, nil
 	case int64:
-		return v != 0
+		return v != 0, nil
 	}
-	return false
+	return false, nil
 }
 
 // parseSystemInfo maps the generic ubus result table onto SystemInfo.
