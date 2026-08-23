@@ -40,6 +40,23 @@ own and points at the decision that governs it; the rationale lives there, not h
   the option or leaves it stale is unverified (`internal/openwrt`).
 - **`list` widget add/remove.** The `list` widget renders a fixed set of rows with
   no client-side add/remove. Blocked on the behavioural-pages item below.
+- **`commit` has no section add or delete.** A `commit` op is only `uci set` (+
+  commit): it cannot create a section (blocks adding a WireGuard peer or a new
+  tunnel) or unset an option (so an emptied optional field is left untouched, not
+  cleared). Adding/removing repeating sections needs a section add/delete op or a
+  round-trip. Governed by ADR-006/ADR-007; related to the behavioural-pages item.
+
+## Validation (ADR-008)
+
+- **A `cidr` datatype.** WireGuard addresses and allowed-IPs are CIDR
+  (`10.0.0.1/24`); `internal/datatype` has `ipaddr` (a bare address) but no CIDR
+  type, so the WireGuard plugin declares no datatype on those fields. Add a `cidr`
+  (v4/v6 `addr/len`) datatype so they validate. Governed by ADR-008.
+- **Optional fields can't declare a datatype.** The shell validates every field
+  carrying a `datatype` against its value on POST, and every datatype rejects the
+  empty string — so an optional field (a WireGuard `listen_port`, `endpoint_host`)
+  can't declare one without a blank value failing the save. Needs a
+  validate-if-present notion (skip empty, or a `required` flag). Governed by ADR-008.
 
 ## Product / definition-of-done
 
@@ -53,8 +70,10 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Research
 
-- **Behavioural pages (F3).** Build one genuinely behavioural page (a proto-switch
-  that swaps its field-set, or WireGuard-style repeating peers), find where the
-  static widget schema breaks, and land the escape hatch — shell-owned behavioural
-  widgets plus a declarative round-trip — that preserves crash isolation and
-  central theming. Plugins never ship code. Governed by ADR-005 and ADR-006.
+- **Behavioural pages (F3) — the escape hatch.** The WireGuard plugin
+  (`verso-plugin-wireguard`) is the vehicle: it renders and edits tunnels + peers
+  and makes the break concrete — there is no way to add or remove a peer with
+  today's widgets. Decide and land the escape hatch (shell-owned behavioural
+  widgets such as a `repeater`, and/or a declarative round-trip) that adds this
+  while preserving crash isolation and central theming. Plugins never ship code.
+  Governed by ADR-005 and ADR-006.
