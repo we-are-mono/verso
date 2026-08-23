@@ -142,3 +142,38 @@ func TestUCIConfigThreadsArgs(t *testing.T) {
 		t.Errorf("UCIConfig result = %v, want the wg0 section", got)
 	}
 }
+
+// TestUCIAddThreadsArgsAndReturnsSection checks UCIAdd passes sid/config/type
+// through and returns rpcd's new section id — the shell realizes a repeater's "add"
+// (ADR-005 §7).
+func TestUCIAddThreadsArgsAndReturnsSection(t *testing.T) {
+	var gotSID, gotConfig, gotType string
+	b := &NativeBackend{uciAdd: func(_ context.Context, sid, config, secType string) (string, error) {
+		gotSID, gotConfig, gotType = sid, config, secType
+		return "cfg123", nil
+	}}
+
+	sec, err := b.UCIAdd(context.Background(), "s1", "network", "wireguard_wg0")
+	if err != nil {
+		t.Fatalf("UCIAdd: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "network" || gotType != "wireguard_wg0" || sec != "cfg123" {
+		t.Errorf("args/return wrong: sid=%q config=%q type=%q sec=%q", gotSID, gotConfig, gotType, sec)
+	}
+}
+
+// TestUCIDeleteThreadsArgs checks UCIDelete passes sid/config/section through.
+func TestUCIDeleteThreadsArgs(t *testing.T) {
+	var gotSID, gotConfig, gotSection string
+	b := &NativeBackend{uciDelete: func(_ context.Context, sid, config, section string) error {
+		gotSID, gotConfig, gotSection = sid, config, section
+		return nil
+	}}
+
+	if err := b.UCIDelete(context.Background(), "s1", "network", "@wireguard_wg0[0]"); err != nil {
+		t.Fatalf("UCIDelete: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "network" || gotSection != "@wireguard_wg0[0]" {
+		t.Errorf("args not threaded: sid=%q config=%q section=%q", gotSID, gotConfig, gotSection)
+	}
+}

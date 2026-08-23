@@ -29,6 +29,9 @@ type fakeBackend struct {
 	uciErr    error                     // returned by UCISet/UCICommit
 	writes    *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
 	uci       map[string]map[string]any // per-config read snapshots UCIConfig returns
+	addReturns string                   // section id UCIAdd returns
+	adds      *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
+	deletes   *[]string                 // records "config.section" per UCIDelete
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -69,6 +72,22 @@ func (f fakeBackend) UCICommit(context.Context, string, string) error {
 // mirroring an operator who may not read it.
 func (f fakeBackend) UCIConfig(_ context.Context, _, config string) (map[string]any, error) {
 	return f.uci[config], nil
+}
+
+// UCIAdd/UCIDelete record what the shell asked rpcd to do to realize a repeater's
+// add/remove (ADR-005 §7), so the broker tests can assert it.
+func (f fakeBackend) UCIAdd(_ context.Context, _, config, secType string) (string, error) {
+	if f.adds != nil {
+		*f.adds = append(*f.adds, config+" "+secType)
+	}
+	return f.addReturns, f.uciErr
+}
+
+func (f fakeBackend) UCIDelete(_ context.Context, _, config, section string) error {
+	if f.deletes != nil {
+		*f.deletes = append(*f.deletes, config+"."+section)
+	}
+	return f.uciErr
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

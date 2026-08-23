@@ -41,6 +41,14 @@ type Backend interface {
 	// or reading /etc/config (ADR-007). rpcd scopes the read to the operator, so an
 	// unreadable config yields an empty snapshot rather than an error.
 	UCIConfig(ctx context.Context, sid, config string) (map[string]any, error)
+	// UCIAdd creates a new anonymous section of secType in config through rpcd's
+	// `uci` object, carrying the sid, and returns the new section's id. It realizes
+	// the "add" of a uci-backed repeater (ADR-005 §7): the shell — not the plugin —
+	// performs the structural change, within the plugin's declared write scope.
+	UCIAdd(ctx context.Context, sid, config, secType string) (string, error)
+	// UCIDelete removes a section from config through rpcd, carrying the sid. It
+	// realizes the "remove" of a uci-backed repeater (ADR-005 §7).
+	UCIDelete(ctx context.Context, sid, config, section string) error
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -67,6 +75,8 @@ type (
 	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciCommitFn  func(ctx context.Context, sid, config string) error
 	uciConfigFn  func(ctx context.Context, sid, config string) (map[string]any, error)
+	uciAddFn     func(ctx context.Context, sid, config, secType string) (string, error)
+	uciDeleteFn  func(ctx context.Context, sid, config, section string) error
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -80,6 +90,8 @@ type NativeBackend struct {
 	uciSet     uciSetFn
 	uciCommit  uciCommitFn
 	uciConfig  uciConfigFn
+	uciAdd     uciAddFn
+	uciDelete  uciDeleteFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -91,6 +103,8 @@ func NewNativeBackend() *NativeBackend {
 		uciSet:     dialUCISet(""),
 		uciCommit:  dialUCICommit(""),
 		uciConfig:  dialUCIConfig(""),
+		uciAdd:     dialUCIAdd(""),
+		uciDelete:  dialUCIDelete(""),
 	}
 }
 
@@ -126,6 +140,17 @@ func (b *NativeBackend) UCICommit(ctx context.Context, sid, config string) error
 // UCIConfig reads a whole uci config through rpcd, gated by the sid.
 func (b *NativeBackend) UCIConfig(ctx context.Context, sid, config string) (map[string]any, error) {
 	return b.uciConfig(ctx, sid, config)
+}
+
+// UCIAdd creates a new anonymous section of secType through rpcd, gated by the sid,
+// and returns its id.
+func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType string) (string, error) {
+	return b.uciAdd(ctx, sid, config, secType)
+}
+
+// UCIDelete removes a section through rpcd, gated by the sid.
+func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section string) error {
+	return b.uciDelete(ctx, sid, config, section)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -243,6 +268,55 @@ func dialUCIConfig(socket string) uciConfigFn {
 		}
 		values, _ := res["values"].(map[string]any)
 		return values, nil
+	}
+}
+
+// dialUCIAdd returns a uciAddFn that creates an anonymous section of secType via
+// rpcd's `uci` object (method `add`), carrying the sid, and returns rpcd's new
+// section id. The caller commits the config afterwards, as with `set`.
+func dialUCIAdd(socket string) uciAddFn {
+	return func(_ context.Context, sid, config, secType string) (string, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return "", err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return "", err
+		}
+		res, err := c.InvokeArgs(id, "add", map[string]string{
+			"ubus_rpc_session": sid,
+			"config":           config,
+			"type":             secType,
+		})
+		if err != nil {
+			return "", err
+		}
+		section, _ := res["section"].(string)
+		return section, nil
+	}
+}
+
+// dialUCIDelete returns a uciDeleteFn that removes a section via rpcd's `uci`
+// object (method `delete`), carrying the sid. The caller commits afterwards.
+func dialUCIDelete(socket string) uciDeleteFn {
+	return func(_ context.Context, sid, config, section string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "delete", map[string]string{
+			"ubus_rpc_session": sid,
+			"config":           config,
+			"section":          section,
+		})
+		return err
 	}
 }
 
