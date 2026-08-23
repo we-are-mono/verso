@@ -6,12 +6,12 @@
 <title>{{.Title}}</title>
 <style>{{.CSS}}</style>
 </head>
-<body class="min-h-screen m-0 bg-verso-bg text-verso-fg antialiased text-[0.9375rem] leading-normal">
+<body class="min-h-screen m-0 flex flex-col bg-verso-bg text-verso-fg antialiased text-[0.9375rem] leading-normal">
 <header class="border-b border-verso-border-light px-6 py-[1.125rem]">
   <h1 class="text-lg font-semibold tracking-tight">Verso</h1>
 </header>
-<div class="flex">
-  <nav class="w-56 shrink-0 px-3 pt-12 pb-4 text-sm">
+<div class="flex flex-1">
+  <nav class="w-56 shrink-0 border-r border-verso-border-light px-3 pt-12 pb-4 text-sm">
     <ul class="space-y-1">
       {{range .Nav}}
       <li>
@@ -31,7 +31,7 @@
       <li><a href="#" class="block px-3 py-2 font-medium">Logout</a></li>
     </ul>
   </nav>
-  <main class="flex-1 px-6 pt-12 pb-6">
+  <main class="flex-1 bg-verso-content pl-12 pr-6 pt-12 pb-6">
     <div class="max-w-3xl">
       <h2 class="text-2xl font-normal tracking-tight mb-10">{{.Heading}}</h2>
       {{.Body}}

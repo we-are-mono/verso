@@ -116,8 +116,12 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 // plugin page, this is the shell's own content, so a render failure is a real
 // 500, not a contained notice.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	// Wrap the status table in a headerless card, so the homepage matches the
+	// plugin pages (a white, shadowed card on the gray content).
+	page := &widget.Card{Children: []widget.Widget{s.statusTable(r.Context())}}
+
 	var body strings.Builder
-	if err := s.widgets.Render(&body, s.statusTable(r.Context())); err != nil {
+	if err := s.widgets.Render(&body, page); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

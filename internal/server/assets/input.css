@@ -17,13 +17,21 @@
 /* Verso design tokens — the consistency substrate everything renders through. */
 @theme {
   --color-verso-bg: #ffffff;
+  --color-verso-content: #f9fafb;
   --color-verso-fg: #1a1d24;
   --color-verso-muted: #6b7280;
   --color-verso-border: #e3e5ea;
   --color-verso-border-light: #edeef2;
   --color-verso-accent: #2f6fed;
+  --color-verso-accent-hover: #2560d4;
+  --color-verso-accent-active: #1f4fb0;
   --color-verso-danger: #dc2626;
   --color-verso-success: #16a34a;
+  --color-verso-success-bg: #f0fdf4;
+  --color-verso-success-border: #bbf7d0;
+
+  /* Soft card shadow, offset down and to the right. */
+  --shadow-verso: 3px 5px 8px -2px #0000001f;
 }
 
 @layer base {

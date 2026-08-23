@@ -60,7 +60,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-lg border border-verso-border"><header class="border-b border-verso-border px-4 py-3"><h3 class="text-sm font-medium text-verso-fg">empty</h3></header><div class="px-4 py-4 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-verso-border bg-verso-bg shadow-verso"><header class="border-b border-verso-border px-8 py-6"><h3 class="text-sm font-medium text-verso-fg">empty</h3></header><div class="px-8 py-8 space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -70,7 +70,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-lg border border-verso-border"><div class="px-4 py-4 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-verso-border bg-verso-bg shadow-verso"><div class="px-8 py-8 space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -86,7 +86,7 @@ func TestRenderCardNestsChild(t *testing.T) {
 	}
 
 	got := render(t, r, card)
-	body := strings.Index(got, `<div class="px-4 py-4 space-y-4">`)
+	body := strings.Index(got, `<div class="px-8 py-8 space-y-4">`)
 	table := strings.Index(got, "<table")
 	if body < 0 || table < 0 || table < body {
 		t.Errorf("nested table not rendered inside card body: %s", got)
