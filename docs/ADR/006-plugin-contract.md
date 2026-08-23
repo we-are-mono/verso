@@ -179,15 +179,18 @@ over a local socket**, exchanging *data*, not markup.
   bet's limits (`FINDINGS.md`), which is the point of the prototype.
 
 ### Neutral
-- Per-plugin **write authorization** is part of the contract via the manifest
-  `acl` field (ADR-007). A plugin declares in `acl.write` the rpcd access triples
-  its writes need; before dispatching a state-changing request the shell — which
-  holds the operator's session — probes `session.access` for each and refuses
-  (403, the plugin never dialed) any the session lacks, failing closed (403 with
-  no declared scopes, 503 when rpcd is unreachable). This governs *authorization*
-  only: §5 stands — the plugin remains authoritative for *what* it writes and for
-  validation, while the shell decides *whether* the operator may reach it for a
-  write. De-privileging the plugin process itself is the remaining half of ADR-007.
+- Per-plugin **privilege** is part of the contract via the manifest `acl` field
+  (ADR-007), with two enforcement points. Before dispatching a state-changing
+  request the shell — which holds the operator's session — probes `session.access`
+  for the plugin's declared `acl.write` scopes and refuses (403, the plugin never
+  dialed) a session that lacks the grant, failing closed (403 with no declared
+  scopes, 503 when rpcd is unreachable). And the plugin no longer writes config
+  itself: it returns a declarative `commit` intent in its envelope, and the shell
+  executes it through rpcd with the operator's sid, refusing any op outside the
+  plugin's declared configs. §5 narrows accordingly — the plugin stays
+  authoritative for *validation* and for *deciding* what to write, but the
+  privileged write is the shell's, so a de-privileged (non-root) plugin holds no
+  write access and no session credential of its own.
 - Governs mechanics only; the visual/semantic rules remain ADR-005.
 
 ## Alternatives considered

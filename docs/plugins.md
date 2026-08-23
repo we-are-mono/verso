@@ -84,14 +84,18 @@ envelope** back — `Content-Type: application/json`:
 
 - `widget` — one root widget (usually a `card`) that is your whole page body.
 - `title` — the page heading the shell renders above it.
+- `commit` — optional; on a successful write, the uci changes for the shell to
+  apply on your behalf (see [Writing config](#writing-config-the-commit-intent)).
+  You never write config yourself.
 
 **GET** `<path>` → return the page as a schema envelope, HTTP 200.
 
-**POST** `<path>` (form submit) → validate and apply, then:
-- **success:** HTTP 200, the re-rendered page (include a success note).
+**POST** `<path>` (form submit) → validate the submission, then:
+- **success:** HTTP 200 with the re-rendered page (a success note), plus a
+  `commit` intent for whatever changed. The shell — not you — performs the write.
 - **validation failure:** HTTP **422**, the *same* form re-rendered with each bad
-  field carrying its `error` and the submitted `value`. You are authoritative —
-  the shell renders exactly what you return.
+  field carrying its `error` and the submitted `value`, and **no** `commit`. You
+  are authoritative for validation — the shell renders exactly what you return.
 
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
 request path like any HTTP server.
@@ -123,8 +127,44 @@ decide, it fails closed with **503**. **A plugin that declares no `acl.write`
 cannot receive a state-changing request at all** — declare what you write, or
 your save is refused. Reads (GET/HEAD) are never gated.
 
-This gates *who* may write; you remain authoritative for *what* you write and for
-validation (tiers below).
+This gates *who* may write; you remain authoritative for deciding *what* to write
+and for validation (tiers below).
+
+### Writing config (the `commit` intent)
+
+Your plugin **does not write uci itself** — it runs unprivileged (the same
+non-root user as the shell) and holds no session (ADR-007). To change config,
+return a `commit` array next to your `widget` on a successful POST; the shell
+executes each entry through rpcd with the operator's session:
+
+```json
+{
+  "schema_version": 1,
+  "title": "General",
+  "widget": { "type": "card", "...": "..." },
+  "commit": [
+    { "config": "system", "section": "@system[0]",
+      "values": { "hostname": "verso-lab" } },
+    { "config": "system", "section": "ntp",
+      "values": { "server": ["0.pool.ntp.org", "1.pool.ntp.org"] } }
+  ]
+}
+```
+
+Each entry is one `uci set`: `config` + `section` + a `values` map of
+option→value, where a value is a string (an option) or an array of strings (a
+list option). The shell runs `set` then `commit`, and only then renders your
+`widget`. Two rules bound it, both enforced by the shell — not by your good
+behaviour:
+
+- **You can only write configs you declared** in `acl.write` (`scope: "uci"`,
+  `object: "<config>"`). A `commit` for any other config is refused and nothing
+  is written.
+- **rpcd re-checks the operator** on every write, so a session that may not write
+  that config is refused even if you ask.
+
+If the write is refused or fails, the shell shows a contained notice instead of
+your page. A `commit` on a GET is ignored.
 
 ### What the shell does when you misbehave
 
@@ -279,7 +319,9 @@ Two tiers (tier 2, live client validation, is intentionally out of scope):
 - **Tier 3 — server-side, in your POST handler. Authoritative.** Validate the
   submitted values yourself; on failure return **HTTP 422** with the same form
   re-rendered, each bad field carrying its `error` and its submitted `value`
-  (and, for a `list`, the `errors` map). Never trust tier 1 alone.
+  (and, for a `list`, the `errors` map) and no `commit`. On success, return the
+  `commit` intent and let the shell apply it — you validate and decide, the shell
+  writes. Never trust tier 1 alone.
 
 ## A worked example: verso-plugin-hostname
 
@@ -293,12 +335,12 @@ shares no Go code with the shell. Its whole shape:
 - **POST /** reads `hostname` and the multi-value `server` field, validates each
   authoritatively (tier 3), and either:
   - returns **422** with the form re-rendered — bad fields carrying `error` and
-    the submitted `value`, the list its index-keyed `errors` — and writes
-    nothing; or
-  - `uci set system.@system[0].hostname`, rewrites the `server` list,
-    `uci commit`s, and returns **200** with a `success` note.
+    the submitted `value`, the list its index-keyed `errors` — and no `commit`; or
+  - returns **200** with a `success` note **and a `commit` intent** setting
+    `system.@system[0].hostname` and the `server` list, which the shell writes and
+    commits through rpcd. The plugin runs unprivileged and touches no config itself.
 
-The write persists immediately, but the values apply on the next service reload —
+The shell writes and commits, but the values apply on the next service reload —
 the plugin surfaces that live-apply caveat with a `raw` note. That is the honest
 use of the bridge: an explanatory message no widget yet covers, which is exactly
 the signal for whether a future "note" widget is worth building.
