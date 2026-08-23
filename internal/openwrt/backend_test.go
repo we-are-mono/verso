@@ -6,13 +6,13 @@ package openwrt
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
-
-	uci "github.com/digineo/go-uci"
 )
 
 func TestHostnameFromUCI(t *testing.T) {
-	b := &NativeBackend{uci: uci.NewTree("testdata/config")}
+	b := &NativeBackend{uciDir: "testdata/config"}
 
 	hn, err := b.Hostname(context.Background())
 	if err != nil {
@@ -24,9 +24,34 @@ func TestHostnameFromUCI(t *testing.T) {
 }
 
 func TestHostnameMissing(t *testing.T) {
-	b := &NativeBackend{uci: uci.NewTree("testdata/empty")}
+	b := &NativeBackend{uciDir: "testdata/empty"}
 	if _, err := b.Hostname(context.Background()); err == nil {
 		t.Fatal("Hostname: want error when config missing, got nil")
+	}
+}
+
+// TestHostnameReflectsExternalWrite guards the fresh-read fix: a change committed
+// to the config by another process (e.g. the hostname plugin) must be visible on
+// the next read, not masked by a tree cached at startup.
+func TestHostnameReflectsExternalWrite(t *testing.T) {
+	dir := t.TempDir()
+	writeHostname := func(hn string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, "system"),
+			[]byte("config system\n\toption hostname '"+hn+"'\n"), 0o644); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+	}
+
+	writeHostname("before")
+	b := &NativeBackend{uciDir: dir}
+	if hn, err := b.Hostname(context.Background()); err != nil || hn != "before" {
+		t.Fatalf("Hostname = %q, %v; want before", hn, err)
+	}
+
+	writeHostname("after") // external writer commits a change
+	if hn, err := b.Hostname(context.Background()); err != nil || hn != "after" {
+		t.Errorf("Hostname = %q, want after (stale cached read?)", hn)
 	}
 }
 

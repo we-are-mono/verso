@@ -46,7 +46,7 @@ type ubusSystemInfo func(ctx context.Context) (map[string]any, error)
 // SECURITY: verso runs as root and reaches ubus/uci with no ACLs (kickoff
 // scope). Deliberate for the spike; a real deployment needs privilege gating.
 type NativeBackend struct {
-	uci        uci.Tree
+	uciDir     string
 	systemInfo ubusSystemInfo
 }
 
@@ -54,7 +54,7 @@ type NativeBackend struct {
 // socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		uci:        uci.NewTree("/etc/config"),
+		uciDir:     "/etc/config",
 		systemInfo: dialSystemInfo(""),
 	}
 }
@@ -77,9 +77,11 @@ func dialSystemInfo(socket string) ubusSystemInfo {
 	}
 }
 
-// Hostname reads the configured hostname straight from the uci system config.
+// Hostname reads the configured hostname from the uci system config. It opens a
+// fresh tree per call so it reflects external writes — e.g. the hostname plugin
+// committing a change — rather than a value cached at startup.
 func (b *NativeBackend) Hostname(_ context.Context) (string, error) {
-	vals, ok := b.uci.Get("system", "@system[0]", "hostname")
+	vals, ok := uci.NewTree(b.uciDir).Get("system", "@system[0]", "hostname")
 	if !ok || len(vals) == 0 {
 		return "", fmt.Errorf("openwrt: hostname not set in uci system config")
 	}
