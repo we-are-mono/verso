@@ -54,9 +54,14 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    **swappable**: a hot case can become instant client-side later with no plugin change
    — the bet is on the vocabulary, not the transport. This keeps the `raw` bridge
    (point 4) firmly display-only: behaviour has a governed home, so it never leaks
-   through raw. `conditional` field-sets are the next behavioural widget, under this
-   same rule. The round-trip's *mechanics* are the mechanical contract's (ADR-006); what
-   a plugin may *emit* is this ADR's.
+   through raw. A second behavioural widget, `conditional`, gates a field-set on a
+   controlling toggle; it follows the same rule, but its realization is *pure CSS*
+   (`:has()`) rather than a round-trip, because show/hide has no state to persist —
+   the shell still owns every line of it, and the plugin still only declares the
+   intent. A realization is chosen per widget for what it does; the invariant is that
+   the plugin declares intent and the shell owns the behaviour. The round-trip's
+   *mechanics* are the mechanical contract's (ADR-006); what a plugin may *emit* is
+   this ADR's.
 
 ## Consequences
 
