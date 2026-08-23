@@ -324,11 +324,42 @@ the list. Report a bad item with `errors` keyed by the item's index:
   "help": "One server per line." }
 ```
 
-> **This is the deliberate stress test for the schema bet.**
-> If you find yourself wanting client-side add/remove buttons, cross-field
-> conditionals, or a value computed from another field — the schema can't express
-> those, by design. That gap is a *finding*: tell us, so the next widget is the
-> right one.
+> **The schema's edges are a finding.** A single value repeats with `list`; a whole
+> *group* of fields that maps to uci sections repeats with
+> [`repeater`](#repeater--a-repeatable-group-of-sections). What still can't be
+> expressed — cross-field conditionals, a value computed from another field — is a
+> *finding*: tell us, so the next behavioural widget is the right one.
+
+### repeater — a repeatable group of sections
+
+A **behavioural** widget: a group of widgets that repeats, backed by a set of uci
+sections. You declare the *intent* — the items are `section_type` sections of
+`config` — and render the items you read from the snapshot. **The shell owns the add
+and remove affordances and performs the uci section add/delete itself** (through
+rpcd, within your `acl.write`); you ship no add/remove logic and no client code
+(ADR-005 §7).
+
+```json
+{ "type": "repeater", "config": "network", "section_type": "wireguard_wg0",
+  "add_label": "Add peer",
+  "items": [
+    { "section": "cfg0a1b2c",
+      "widget": { "type": "card", "title": "Peer: phone",
+                  "children": [ /* this peer's form */ ] } }
+  ] }
+```
+
+- `config` + `section_type` — the uci backing the shell adds to and deletes from. It
+  must be a config you declared in `acl.write`, or the shell refuses the change.
+- `items[].section` — the item's uci section id (the snapshot's section key), so the
+  shell's Remove can name it.
+- `items[].widget` — the subtree that renders the item (typically a `card` with a
+  `form`). Namespace its field names by the section so a save targets the right one.
+
+On **add**, the shell creates a new empty section of `section_type` and re-renders;
+its fields are blank for the operator to fill and save through the ordinary form
+path. On **remove**, the shell deletes the item's section and re-renders. You never
+see the add/remove request — you only ever render the sections that exist.
 
 ### raw — the governed bridge
 
