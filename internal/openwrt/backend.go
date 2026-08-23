@@ -34,6 +34,13 @@ type Backend interface {
 	// holds no write privilege and no session credential of its own.
 	UCISet(ctx context.Context, sid, config, section string, values map[string]any) error
 	UCICommit(ctx context.Context, sid, config string) error
+	// UCIConfig reads a whole uci config through rpcd's ACL-gated `uci` object,
+	// carrying the sid. It returns the `values` map — section name → section table
+	// (its `.type`/`.name` meta and options) — so the shell can hand a plugin a read
+	// snapshot of a config the plugin declared, without the plugin holding a session
+	// or reading /etc/config (ADR-007). rpcd scopes the read to the operator, so an
+	// unreadable config yields an empty snapshot rather than an error.
+	UCIConfig(ctx context.Context, sid, config string) (map[string]any, error)
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -59,6 +66,7 @@ type (
 	accessFn     func(ctx context.Context, sid, scope, object, function string) (bool, error)
 	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciCommitFn  func(ctx context.Context, sid, config string) error
+	uciConfigFn  func(ctx context.Context, sid, config string) (map[string]any, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -71,6 +79,7 @@ type NativeBackend struct {
 	access     accessFn
 	uciSet     uciSetFn
 	uciCommit  uciCommitFn
+	uciConfig  uciConfigFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -81,6 +90,7 @@ func NewNativeBackend() *NativeBackend {
 		access:     dialAccess(""),
 		uciSet:     dialUCISet(""),
 		uciCommit:  dialUCICommit(""),
+		uciConfig:  dialUCIConfig(""),
 	}
 }
 
@@ -111,6 +121,11 @@ func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string,
 // UCICommit persists staged changes to a uci config through rpcd, gated by the sid.
 func (b *NativeBackend) UCICommit(ctx context.Context, sid, config string) error {
 	return b.uciCommit(ctx, sid, config)
+}
+
+// UCIConfig reads a whole uci config through rpcd, gated by the sid.
+func (b *NativeBackend) UCIConfig(ctx context.Context, sid, config string) (map[string]any, error) {
+	return b.uciConfig(ctx, sid, config)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -200,6 +215,34 @@ func dialUCISet(socket string) uciSetFn {
 			"values":           values,
 		})
 		return err
+	}
+}
+
+// dialUCIConfig returns a uciConfigFn that reads a whole config via rpcd's `uci`
+// object (method `get` with no section), carrying the sid. rpcd returns the
+// config's sections under `values` — section name → section table — which the
+// shell hands to a plugin as its read snapshot (ADR-007). A config the operator
+// may not read comes back with no values, which surfaces as an empty snapshot.
+func dialUCIConfig(socket string) uciConfigFn {
+	return func(_ context.Context, sid, config string) (map[string]any, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return nil, err
+		}
+		res, err := c.InvokeArgs(id, "get", map[string]string{
+			"ubus_rpc_session": sid,
+			"config":           config,
+		})
+		if err != nil {
+			return nil, err
+		}
+		values, _ := res["values"].(map[string]any)
+		return values, nil
 	}
 }
 

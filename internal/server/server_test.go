@@ -26,8 +26,9 @@ type fakeBackend struct {
 	err       error
 	access    bool
 	accessErr error
-	uciErr    error       // returned by UCISet/UCICommit
-	writes    *[]uciWrite // records UCISet calls (pointer: fakeBackend is used by value)
+	uciErr    error                     // returned by UCISet/UCICommit
+	writes    *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
+	uci       map[string]map[string]any // per-config read snapshots UCIConfig returns
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -61,6 +62,13 @@ func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, valu
 
 func (f fakeBackend) UCICommit(context.Context, string, string) error {
 	return f.uciErr
+}
+
+// UCIConfig returns the canned read snapshot for a config (the shell brokers
+// plugin reads through rpcd, ADR-007). An absent config yields an empty snapshot,
+// mirroring an operator who may not read it.
+func (f fakeBackend) UCIConfig(_ context.Context, _, config string) (map[string]any, error) {
+	return f.uci[config], nil
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

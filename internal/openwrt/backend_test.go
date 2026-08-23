@@ -119,3 +119,26 @@ func TestUCICommitThreadsArgs(t *testing.T) {
 		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
 	}
 }
+
+// TestUCIConfigThreadsArgs checks UCIConfig passes the sid and config through and
+// returns the whole-config values map the shell hands a plugin as its read
+// snapshot (ADR-007).
+func TestUCIConfigThreadsArgs(t *testing.T) {
+	var gotSID, gotConfig string
+	want := map[string]any{"wg0": map[string]any{".type": "interface", "proto": "wireguard"}}
+	b := &NativeBackend{uciConfig: func(_ context.Context, sid, config string) (map[string]any, error) {
+		gotSID, gotConfig = sid, config
+		return want, nil
+	}}
+
+	got, err := b.UCIConfig(context.Background(), "s1", "network")
+	if err != nil {
+		t.Fatalf("UCIConfig: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "network" {
+		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
+	}
+	if _, ok := got["wg0"]; !ok {
+		t.Errorf("UCIConfig result = %v, want the wg0 section", got)
+	}
+}
