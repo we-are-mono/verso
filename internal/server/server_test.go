@@ -527,6 +527,93 @@ func TestPluginCommitBackendErrorContained(t *testing.T) {
 	}
 }
 
+// TestPluginDatatypeErrorBlocksCommit: the shell enforces a field's declared
+// datatype on the returned schema (ADR-008); a failure returns 422 and the commit
+// never runs, even though the plugin asked for it.
+func TestPluginDatatypeErrorBlocksCommit(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[{"type":"form","fields":[{"type":"field","name":"host","datatype":"fqdn","value":"OpenWrt"}]}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "OpenWrt"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"host": {"OpenWrt"}})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 for a datatype failure", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Errorf("a datatype failure must block the commit; got %d writes", len(calls))
+	}
+	if !strings.Contains(rec.Body.String(), "fully-qualified") {
+		t.Errorf("the shell's datatype error is not shown: %s", rec.Body.String())
+	}
+}
+
+// TestPluginDatatypeValidCommits: a submission that passes every declared datatype
+// is brokered normally.
+func TestPluginDatatypeValidCommits(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[{"type":"form","fields":[{"type":"field","name":"host","datatype":"fqdn","value":"router.lan"}]}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "router.lan"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"host": {"router.lan"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 for a valid submission", rec.Code)
+	}
+	if len(calls) != 1 {
+		t.Errorf("a valid submission must broker the commit; got %d writes", len(calls))
+	}
+}
+
+// TestPluginListDatatypeErrorBlocksCommit: a bad item in a list field is caught
+// per-item and blocks the write.
+func TestPluginListDatatypeErrorBlocksCommit(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[{"type":"form","fields":[{"type":"list","name":"server","datatype":"host","items":["good.example.com","bad host"]}]}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{"server": []any{"good.example.com", "bad host"}}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"server": {"good.example.com", "bad host"}})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 for a bad list item", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Errorf("a list datatype failure must block the commit; got %d writes", len(calls))
+	}
+}
+
+// TestValidateSchemaAnnotatesAndPreservesPluginErrors covers the walk directly:
+// the shell flags an invalid value, leaves a plugin's own error alone, and keys a
+// bad list item by its index.
+func TestValidateSchemaAnnotatesAndPreservesPluginErrors(t *testing.T) {
+	form := &widget.Form{Fields: []widget.Widget{
+		&widget.Field{Name: "a", Datatype: "fqdn", Value: "OpenWrt"},           // shell flags
+		&widget.Field{Name: "b", Datatype: "fqdn", Value: "x", Error: "taken"}, // plugin error kept
+		&widget.List{Name: "c", Datatype: "port", Items: []string{"80", "nope"}},
+	}}
+	if !validateSchema(&widget.Card{Children: []widget.Widget{form}}) {
+		t.Fatal("validateSchema should report errors")
+	}
+	if form.Fields[0].(*widget.Field).Error == "" {
+		t.Error("field a should have a shell datatype error")
+	}
+	if got := form.Fields[1].(*widget.Field).Error; got != "taken" {
+		t.Errorf("plugin error on field b was clobbered: %q", got)
+	}
+	if l := form.Fields[2].(*widget.List); l.Errors["1"] == "" || l.Errors["0"] != "" {
+		t.Errorf("list errors keyed wrong: %v", l.Errors)
+	}
+}
+
 // TestNavListsPlugins: a discovered plugin appears in the shell nav with no shell
 // change — the manifest drives it (ADR-006 §2).
 func TestNavListsPlugins(t *testing.T) {

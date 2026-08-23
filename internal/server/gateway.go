@@ -10,8 +10,10 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -82,21 +84,32 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		return s.unavailable(m), http.StatusOK
 	}
 
-	// ADR-007: the plugin holds no write access — it returns declarative
-	// uci intents, and the shell executes them through rpcd with the operator's
-	// sid. Only for a state-changing request (a commit on a GET is ignored), and
-	// only within the plugin's declared scopes.
-	if len(env.Commit) > 0 && !safeMethod(r.Method) {
-		if body, status, ok := s.brokerCommit(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
-			return body, status
-		}
-	}
-
 	wdg, err := widget.Decode(env.Widget)
 	if err != nil {
 		log.Printf("verso: plugin %q returned undecodable schema: %v", m.ID, err)
 		return s.unavailable(m), http.StatusOK
 	}
+
+	status := http.StatusOK
+	if env.Status == http.StatusUnprocessableEntity {
+		status = http.StatusUnprocessableEntity
+	}
+
+	// On a state-changing request the shell enforces the declared datatypes on the
+	// returned schema (ADR-008): any failure annotates the widget in place, forces
+	// 422, and blocks the write — merged with whatever the plugin already flagged.
+	// Only a clean submission reaches brokerCommit, which executes the plugin's
+	// commit intent through rpcd (ADR-007); a commit on a GET is ignored.
+	if !safeMethod(r.Method) {
+		if validateSchema(wdg) {
+			status = http.StatusUnprocessableEntity
+		} else if len(env.Commit) > 0 {
+			if body, st, ok := s.brokerCommit(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
+				return body, st
+			}
+		}
+	}
+
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r)); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)
@@ -105,11 +118,54 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 	if env.Title != "" {
 		*heading = env.Title
 	}
-	status := http.StatusOK
-	if env.Status == http.StatusUnprocessableEntity {
-		status = http.StatusUnprocessableEntity
-	}
 	return template.HTML(b.String()), status
+}
+
+// validateSchema walks the widget tree and enforces each field's and list item's
+// declared datatype against its value (ADR-008), annotating any failure in place.
+// It does not overwrite an error a plugin already set — a semantic message is more
+// specific — and reports whether the tree carries any error after the walk, so the
+// caller blocks the write and re-renders as 422.
+func validateSchema(w widget.Widget) bool {
+	switch n := w.(type) {
+	case *widget.Card:
+		found := false
+		for _, c := range n.Children {
+			found = validateSchema(c) || found
+		}
+		return found
+	case *widget.Form:
+		found := n.Error != ""
+		for _, f := range n.Fields {
+			found = validateSchema(f) || found
+		}
+		return found
+	case *widget.Field:
+		if n.Error == "" && n.Datatype != "" {
+			if err := datatype.Validate(n.Datatype, n.Value); err != nil {
+				n.Error = err.Error()
+			}
+		}
+		return n.Error != ""
+	case *widget.List:
+		if n.Datatype != "" {
+			for i, item := range n.Items {
+				key := strconv.Itoa(i)
+				if _, has := n.Errors[key]; has {
+					continue
+				}
+				if err := datatype.Validate(n.Datatype, item); err != nil {
+					if n.Errors == nil {
+						n.Errors = map[string]string{}
+					}
+					n.Errors[key] = err.Error()
+				}
+			}
+		}
+		return len(n.Errors) > 0
+	default:
+		return false
+	}
 }
 
 type noticeData struct{ Title, Message string }
