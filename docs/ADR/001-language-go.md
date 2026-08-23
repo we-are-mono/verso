@@ -6,7 +6,7 @@
 
 ## Context
 
-Verso is a web UI for OpenWrt, positioned as an optional complement to LuCI for devices
+Verso is a web UI for OpenWrt — on capable hardware, a replacement for LuCI — for devices
 at a deliberately high floor spec: **2 GB RAM, 8 GB eMMC, aarch64 or x86_64**. Two
 constraints dominate the language choice:
 
