@@ -140,6 +140,15 @@ requirements surfaced building it:
 procd's ujail. ujail needs namespace privileges the non-privileged dev container
 lacks, so those manifest on-device, not in the container — where the shell binds
 :8080 and needs no capability. Packaging: the `.apk` must create the `verso` user
-(OpenWrt `USERID`); `apk add` does not do it on its own. The plugin process is
-still privileged (it writes uci via go-uci as root); de-privileging plugins is the
-remaining half of this decision.
+(OpenWrt `USERID`); `apk add` does not do it on its own.
+
+Plugins are de-privileged the same way (decision 4), realized as **Model B**: a
+plugin runs as the same non-root `verso` user, never writes config itself, and
+holds no session. It returns a declarative `commit` intent (ADR-006), and the
+shell executes the write through rpcd — refusing any op outside the plugin's
+declared configs, with rpcd re-checking the operator's sid. So a compromised or
+malicious plugin cannot write `/etc/config` (non-root), cannot broker a write
+outside what it declared, and cannot exceed the operator's ACL. Reusing the shell's
+uid keeps deployment simple but does not isolate a plugin from the shell *process*
+(same-uid signal/ptrace); a dedicated per-plugin uid is the stricter option, left
+as a future hardening.
