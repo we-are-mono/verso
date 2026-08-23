@@ -178,3 +178,37 @@ func TestDiscoverRejectsIncompleteACL(t *testing.T) {
 		t.Errorf("an incomplete acl entry must be skipped: got=%d problems=%d", len(got), len(problems))
 	}
 }
+
+// TestDiscoverParsesReadACL: a plugin declaring the configs it reads parses into
+// structured acl.read entries the shell pre-reads and brokers as a snapshot (ADR-007).
+func TestDiscoverParsesReadACL(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/r/manifest.json": `{"manifest_version":1,"id":"r","name":"N","socket":"/run/verso/r.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+			`"acl":{"read":[{"scope":"uci","object":"network","function":"read"}]}}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(problems) != 0 || len(got) != 1 {
+		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
+	}
+	r := got[0].ACL.Read
+	if len(r) != 1 || r[0].Scope != "uci" || r[0].Object != "network" || r[0].Function != "read" {
+		t.Errorf("acl.read not parsed: %+v", r)
+	}
+}
+
+// TestDiscoverRejectsIncompleteReadACL: a read scope missing a field names no
+// config to fetch, so it is a load error rather than a silently-carried grant.
+func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/y/manifest.json": `{"manifest_version":1,"id":"y","name":"N","socket":"/run/verso/y.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+			`"acl":{"read":[{"scope":"uci","object":"network"}]}}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(got) != 0 || len(problems) != 1 {
+		t.Errorf("an incomplete acl.read entry must be skipped: got=%d problems=%d", len(got), len(problems))
+	}
+}

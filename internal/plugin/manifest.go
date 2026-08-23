@@ -25,12 +25,19 @@ type Manifest struct {
 }
 
 // ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's
-// per-plugin acl.d (ADR-007). The shell probes session.access for the write
-// scopes before dispatching a state-changing request to the plugin, so an
-// operator whose session lacks the grant is refused by the shell and the plugin
-// never sees the write. A plugin that declares no write scopes cannot receive a
-// state-changing request at all (its declared write surface is empty).
+// per-plugin acl.d (ADR-007). The two directions are gated differently, because
+// rpcd already gates them differently:
+//
+//   - Write scopes are probed against session.access before the shell dispatches a
+//     state-changing request, so an operator whose session lacks the grant is
+//     refused by the shell and the plugin never sees the write. A plugin that
+//     declares no write scopes cannot receive a state-changing request at all.
+//   - Read scopes name the configs the shell pre-reads and hands the plugin as its
+//     snapshot. They are not a second gate: the operator's sid scopes the actual
+//     `uci get`, so an operator who may not read a config simply gets an empty
+//     snapshot. A plugin that declares no read scopes receives no snapshot.
 type ACL struct {
+	Read  []ACLScope `json:"read"`
 	Write []ACLScope `json:"write"`
 }
 
@@ -79,6 +86,13 @@ func (m Manifest) validate() error {
 		}
 		if n.Label == "" {
 			return fmt.Errorf("plugin %q nav[%d] missing label", m.ID, i)
+		}
+	}
+	for i, a := range m.ACL.Read {
+		// A partial triple names no config to fetch — reject it rather than carry a
+		// meaningless read scope.
+		if a.Scope == "" || a.Object == "" || a.Function == "" {
+			return fmt.Errorf("plugin %q acl.read[%d] needs scope, object and function", m.ID, i)
 		}
 	}
 	for i, a := range m.ACL.Write {

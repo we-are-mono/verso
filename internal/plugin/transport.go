@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,19 +16,35 @@ import (
 	"time"
 )
 
+// HeaderUCI carries the uci read snapshot the shell brokers to a plugin (ADR-007),
+// as base64-encoded JSON. base64 keeps arbitrary config values — non-ASCII, or
+// punctuation a raw header would mangle — intact across the header.
+const HeaderUCI = "X-Verso-UCI"
+
 // maxEnvelopeBytes bounds how much a plugin can return, so a misbehaving plugin
 // cannot exhaust shell memory. Widget schema for an admin page is tiny; a
 // megabyte is generous.
 const maxEnvelopeBytes = 1 << 20
 
 // Request is what the shell forwards to a plugin over its socket: the browser's
-// method, sub-path (below the /plugins/<id>/ mount), query, and any form body.
+// method, sub-path (below the /plugins/<id>/ mount), query, any form body, and the
+// uci read snapshot the shell brokered on the plugin's behalf (ADR-007).
 type Request struct {
 	Method string
 	Path   string
 	Query  map[string][]string
 	Form   map[string][]string
+	UCI    UCI
 }
+
+// UCI is the read snapshot the shell injects into a plugin request (ADR-007):
+// config name → the rpcd `uci get` values for that config (section name → section
+// table, carrying its `.type`/`.name` meta and its options). The shell reads each
+// config the plugin declared in acl.read with the operator's sid and hands the
+// result down, so a session-less plugin renders from config without linking a uci
+// library or reading /etc/config. A list option is a JSON array; a scalar is a
+// string.
+type UCI map[string]map[string]any
 
 // Envelope is a plugin's schema response (ADR-006 §4). Widget is the raw schema
 // subtree, decoded by the widget package — the transport stays ignorant of the
@@ -149,6 +166,16 @@ func (t *SocketTransport) buildRequest(ctx context.Context, req Request) (*http.
 		httpReq.Header.Set("Content-Type", contentType)
 	}
 	httpReq.Header.Set("Accept", "application/json")
+
+	// The read snapshot rides a header, orthogonal to method/query/form: it reaches
+	// a GET as readily as a POST, and never disturbs the plugin's form parsing.
+	if len(req.UCI) > 0 {
+		snapshot, err := json.Marshal(req.UCI)
+		if err != nil {
+			return nil, fmt.Errorf("plugin: encode uci snapshot: %w", err)
+		}
+		httpReq.Header.Set(HeaderUCI, base64.StdEncoding.EncodeToString(snapshot))
+	}
 	return httpReq, nil
 }
 

@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -80,6 +81,61 @@ func TestSocketTransportForwardsMethodPathForm(t *testing.T) {
 	}
 	if want := "POST /apply hostname=router q=1"; env.Title != want {
 		t.Errorf("forwarding wrong: title = %q, want %q", env.Title, want)
+	}
+}
+
+// TestSocketTransportInjectsUCISnapshot proves the shell brokers a read snapshot
+// to the plugin (ADR-007): buildRequest carries Request.UCI in the X-Verso-UCI
+// header as base64 JSON, and a plugin decodes it the way a real plugin would —
+// here reading network.wg0.proto back out of the snapshot.
+func TestSocketTransportInjectsUCISnapshot(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, err := base64.StdEncoding.DecodeString(r.Header.Get(HeaderUCI))
+		if err != nil {
+			http.Error(w, "bad header", http.StatusBadRequest)
+			return
+		}
+		var snap UCI
+		if err := json.Unmarshal(raw, &snap); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		wg0, _ := snap["network"]["wg0"].(map[string]any)
+		proto, _ := wg0["proto"].(string)
+		envelopeJSON(w, http.StatusOK,
+			fmt.Sprintf(`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, proto))
+	}))
+
+	env, err := NewSocketTransport().Fetch(context.Background(), sock, Request{
+		Method: http.MethodGet, Path: "/",
+		UCI: UCI{"network": {"wg0": map[string]any{"proto": "wireguard"}}},
+	})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if env.Title != "wireguard" {
+		t.Errorf("snapshot did not round-trip: title = %q, want wireguard", env.Title)
+	}
+}
+
+// TestSocketTransportOmitsSnapshotHeaderWhenEmpty: no declared reads, no header —
+// the plugin sees the injection only when the shell actually brokered a read.
+func TestSocketTransportOmitsSnapshotHeaderWhenEmpty(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		absent := "false"
+		if r.Header.Get(HeaderUCI) == "" {
+			absent = "true"
+		}
+		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
+			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, absent))
+	}))
+	env, err := NewSocketTransport().Fetch(context.Background(), sock,
+		Request{Method: http.MethodGet, Path: "/"})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if env.Title != "true" {
+		t.Errorf("empty snapshot should set no header; title = %q, want true", env.Title)
 	}
 }
 
