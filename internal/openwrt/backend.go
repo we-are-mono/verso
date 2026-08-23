@@ -30,7 +30,7 @@ type Backend interface {
 	Access(ctx context.Context, sid, scope, object, function string) (bool, error)
 	// UCISet and UCICommit write config through rpcd's ACL-gated `uci` object,
 	// carrying the operator's sid so rpcd — not Verso — authorizes the write. The
-	// shell performs writes on a plugin's behalf (ADR-007 Model B), so a plugin
+	// shell performs writes on a plugin's behalf (ADR-007), so a plugin
 	// holds no write privilege and no session credential of its own.
 	UCISet(ctx context.Context, sid, config, section string, values map[string]any) error
 	UCICommit(ctx context.Context, sid, config string) error

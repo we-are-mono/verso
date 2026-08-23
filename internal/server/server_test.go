@@ -46,7 +46,7 @@ func (f fakeBackend) Access(context.Context, string, string, string, string) (bo
 }
 
 // uciWrite records a UCISet call so the broker tests can assert what the shell
-// wrote on the plugin's behalf (ADR-007 Model B).
+// wrote on the plugin's behalf (ADR-007).
 type uciWrite struct {
 	sid, config, section string
 	values               map[string]any
@@ -418,7 +418,7 @@ func TestPluginGetNotGated(t *testing.T) {
 
 // TestPluginCommitBrokered: a plugin returns a declarative write intent and the
 // shell executes it through the backend on the operator's behalf — the plugin
-// itself performs no write (ADR-007 Model B).
+// itself performs no write (ADR-007).
 func TestPluginCommitBrokered(t *testing.T) {
 	calls := []uciWrite{}
 	tr := &fakeTransport{env: &plugin.Envelope{

@@ -82,7 +82,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		return s.unavailable(m), http.StatusOK
 	}
 
-	// ADR-007 Model B: the plugin holds no write access — it returns declarative
+	// ADR-007: the plugin holds no write access — it returns declarative
 	// uci intents, and the shell executes them through rpcd with the operator's
 	// sid. Only for a state-changing request (a commit on a GET is ignored), and
 	// only within the plugin's declared scopes.
@@ -159,7 +159,7 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 }
 
 // brokerCommit performs, through rpcd and on the operator's behalf, the uci writes
-// a plugin requested (ADR-007 Model B). It refuses any op whose config the plugin
+// a plugin requested (ADR-007). It refuses any op whose config the plugin
 // did not declare in its manifest acl — a plugin cannot broker a write outside its
 // declared surface — and rpcd re-checks the operator's sid on every call. On
 // refusal or failure it returns a contained notice and a status with ok=false; on

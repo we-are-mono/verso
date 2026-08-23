@@ -86,7 +86,7 @@ func TestAccessPassesProbe(t *testing.T) {
 
 // TestUCISetThreadsArgs checks UCISet passes the sid, config, section and values
 // to the seam — the real write brokers rpcd's uci.set carrying the operator's sid
-// (ADR-007 Model B: the shell writes on the plugin's behalf).
+// (ADR-007: the shell writes on the plugin's behalf).
 func TestUCISetThreadsArgs(t *testing.T) {
 	var gotSID, gotConfig, gotSection string
 	var gotValues map[string]any

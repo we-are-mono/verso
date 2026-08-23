@@ -43,7 +43,7 @@ type Envelope struct {
 }
 
 // CommitOp is one declarative uci write a plugin asks the shell to perform on its
-// behalf (ADR-007 Model B). A de-privileged plugin holds no write access and no
+// behalf (ADR-007). A de-privileged plugin holds no write access and no
 // session; it returns intents, and the shell executes them through rpcd with the
 // operator's sid — but only for a config the plugin declared in its manifest acl,
 // so a plugin cannot broker a write outside its declared surface.

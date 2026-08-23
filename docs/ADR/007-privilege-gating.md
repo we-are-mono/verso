@@ -120,35 +120,27 @@ broken socket.**
 
 ## Implementation notes
 
-Decision 3 (de-privileging the shell) is realized on OpenWrt by running the shell
-as a dedicated non-root user (`verso`) via procd's `user`/`group`. It then holds
-no write access to `/etc/config` and does not get ubusd's uid-0 ACL exemption, so
-every backend call is bounded by rpcd plus a ubusd `acl.d` grant. Two non-obvious
-requirements surfaced building it:
+On OpenWrt the shell runs as a dedicated non-root user (`verso`) via procd's
+`user`/`group`. It then holds no write access to `/etc/config` and does not get
+ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubusd
+`acl.d` grant. Two constraints are load-bearing:
 
-- **A non-root uid is mandatory; dropping capabilities from root is not enough.**
+- **A non-root uid is required; dropping capabilities from root is not enough.**
   ubusd exempts uid 0 by uid, not by capability (`ubusd_acl.c`), so a
   capability-stripped root still bypasses ubusd entirely. Only a non-root uid is
   gated.
-- **The shell needs its own ubusd `acl.d` grant** (`/usr/share/acl.d/verso.json`)
+- **The shell has its own ubusd `acl.d` grant** (`/usr/share/acl.d/verso.json`)
   for the objects it brokers (`session`, `uci`, `system`), because ubusd
   ACL-checks non-root callers; rpcd still applies the per-operator sid gating on
-  top. That file must be root-owned and not group/world-writable, or ubusd
-  silently skips it (`ubusd_acl.c` `ubusd_acl_load`).
+  top. That file must be root-owned and not group/world-writable, or ubusd skips
+  it (`ubusd_acl.c` `ubusd_acl_load`). The shell keeps only `CAP_NET_BIND_SERVICE`
+  (to bind :80/:443) and `no_new_privs`.
 
-`CAP_NET_BIND_SERVICE` (to bind :80/:443) and `no_new_privs` are applied through
-procd's ujail. ujail needs namespace privileges the non-privileged dev container
-lacks, so those manifest on-device, not in the container — where the shell binds
-:8080 and needs no capability. Packaging: the `.apk` must create the `verso` user
-(OpenWrt `USERID`); `apk add` does not do it on its own.
-
-Plugins are de-privileged the same way (decision 4), realized as **Model B**: a
-plugin runs as the same non-root `verso` user, never writes config itself, and
-holds no session. It returns a declarative `commit` intent (ADR-006), and the
-shell executes the write through rpcd — refusing any op outside the plugin's
-declared configs, with rpcd re-checking the operator's sid. So a compromised or
-malicious plugin cannot write `/etc/config` (non-root), cannot broker a write
-outside what it declared, and cannot exceed the operator's ACL. Reusing the shell's
-uid keeps deployment simple but does not isolate a plugin from the shell *process*
-(same-uid signal/ptrace); a dedicated per-plugin uid is the stricter option, left
-as a future hardening.
+Plugins are confined the same way: a plugin runs as the same non-root `verso`
+user, never writes config, and holds no session. It returns a declarative
+`commit` intent (ADR-006) and the shell executes the write through rpcd, refusing
+any op outside the plugin's declared configs and with rpcd re-checking the
+operator's sid. A compromised plugin therefore cannot write `/etc/config`, cannot
+broker a write outside what it declared, and cannot exceed the operator's ACL.
+Sharing the shell's uid does not isolate a plugin from the shell process itself
+(same-uid signal/ptrace).
