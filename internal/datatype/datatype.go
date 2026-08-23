@@ -21,6 +21,7 @@ type Validator func(value string) error
 
 var registry = map[string]Validator{
 	"hostname": hostname,
+	"fqdn":     fqdn,
 	"ip4addr":  ip4addr,
 	"ip6addr":  ip6addr,
 	"ipaddr":   ipaddr,
@@ -58,6 +59,15 @@ func hostname(v string) error {
 		if !validLabel(label) {
 			return fmt.Errorf("must be a valid hostname")
 		}
+	}
+	return nil
+}
+
+// fqdn accepts a fully-qualified domain name: a valid hostname with at least one
+// dot, so a bare single label (e.g. "router") is rejected.
+func fqdn(v string) error {
+	if hostname(v) != nil || !strings.Contains(v, ".") {
+		return fmt.Errorf("must be a fully-qualified domain name (e.g. host.example.com)")
 	}
 	return nil
 }

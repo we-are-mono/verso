@@ -22,6 +22,17 @@ func TestValidate(t *testing.T) {
 		{"hostname", "has space", false},
 		{"hostname", "under_score", false},
 		{"hostname", "trailing.", false},
+		// fqdn — a hostname that is fully qualified (at least one dot)
+		{"fqdn", "host.example.com", true},
+		{"fqdn", "router.lan", true},
+		{"fqdn", "a.b", true},
+		{"fqdn", "OpenWrt", false}, // single label is not fully qualified
+		{"fqdn", "router", false},
+		{"fqdn", "", false},
+		{"fqdn", "-bad.example.com", false}, // invalid first label
+		{"fqdn", "under_score.com", false},
+		{"fqdn", "has space.com", false},
+		{"fqdn", "trailing.", false},
 		// ip4addr
 		{"ip4addr", "192.168.1.1", true},
 		{"ip4addr", "0.0.0.0", true},
