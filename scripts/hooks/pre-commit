@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# Gate commits on the linter (quality-first — ADR-003). Enable once with
+# `make hooks` (sets core.hooksPath to this directory). Bypass with
+# `git commit --no-verify` only when you genuinely must.
+exec make lint

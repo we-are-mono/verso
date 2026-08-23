@@ -16,9 +16,13 @@ TAILWIND_VERSION := v4.3.3
 CSS_IN           := internal/server/assets/input.css
 CSS_OUT          := internal/server/assets/verso.css
 
-.PHONY: all build run dev css test vet tidy clean
+# golangci-lint, pinned + cached on the build host (a dev tool, not a runtime dep).
+GOLANGCI         := $(BUILDDIR)/tools/golangci-lint
+GOLANGCI_VERSION := v1.64.8
 
-all: vet test build
+.PHONY: all build run dev css test lint hooks tidy clean
+
+all: lint test build
 
 $(TAILWIND):
 	@mkdir -p $(dir $@)
@@ -44,8 +48,20 @@ dev:
 test:
 	go test ./...
 
-vet:
-	go vet ./...
+# lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
+# defaults: no custom config, golangci-lint's default linter set.
+$(GOLANGCI):
+	@mkdir -p $(dir $@)
+	curl -fsSL https://github.com/golangci/golangci-lint/releases/download/$(GOLANGCI_VERSION)/golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64.tar.gz \
+		| tar -xz -C $(dir $@) --strip-components=1 golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64/golangci-lint
+	@chmod +x $@
+
+lint: $(GOLANGCI)
+	$(GOLANGCI) run ./...
+
+# hooks points git at the tracked pre-commit hook so commits are gated on lint.
+hooks:
+	git config core.hooksPath scripts/hooks
 
 tidy:
 	go mod tidy
