@@ -1,0 +1,4 @@
+config system
+	option hostname 'verso-lab'
+	option timezone 'UTC'
+	option log_size '64'

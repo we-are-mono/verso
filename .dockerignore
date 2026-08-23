@@ -1,0 +1,6 @@
+# Keep the build context small — only Go sources are needed to build verso.
+sources/
+build/
+.git/
+docs/
+*.md

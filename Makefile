@@ -10,7 +10,7 @@ GOOS     ?= linux
 GOARCH   ?= arm64
 BUILDDIR := build
 
-.PHONY: all build run test vet tidy clean
+.PHONY: all build run dev test vet tidy clean
 
 all: vet test build
 
@@ -19,6 +19,11 @@ build:
 
 run:
 	go run $(CMD)
+
+# dev: hot-reload loop — rebuild + swap the binary into the running container on
+# every source change. Requires the container up (it will start one if needed).
+dev:
+	./scripts/dev.sh
 
 test:
 	go test ./...

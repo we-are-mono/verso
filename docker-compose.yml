@@ -1,0 +1,35 @@
+# Verso — local visual-verification stack.
+# Boots OpenWrt (procd) and runs verso as a procd service so the shell can talk
+# to live ubus/uci.
+#
+# SAFETY: non-privileged and NO devices, so /dev/watchdog is absent inside the
+# container. procd cannot grab a host watchdog here, so it cannot reboot the
+# host. Never add `privileged: true` or `devices: [/dev/watchdog]`.
+services:
+  verso:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: verso:dev
+    container_name: verso
+    hostname: verso-lab
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    tmpfs:
+      - /tmp
+    networks:
+      vnet:
+        ipv4_address: 172.20.0.10   # OpenWrt's boot flushes eth0; /etc/init.d/netfix
+                                     # re-applies this exact address so Docker's
+                                     # published :8080 has a target.
+    ports:
+      - "8080:8080"                 # -> http://10.0.0.232:8080
+
+networks:
+  vnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
