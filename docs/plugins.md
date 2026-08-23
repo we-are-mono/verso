@@ -288,7 +288,7 @@ the list. Report a bad item with `errors` keyed by the item's index:
   "help": "One server per line." }
 ```
 
-> **This is the deliberate stress test for the schema bet (see FINDINGS F3).**
+> **This is the deliberate stress test for the schema bet.**
 > If you find yourself wanting client-side add/remove buttons, cross-field
 > conditionals, or a value computed from another field — the schema can't express
 > those, by design. That gap is a *finding*: tell us, so the next widget is the
@@ -314,7 +314,7 @@ Two tiers (tier 2, live client validation, is intentionally out of scope):
   names — currently `hostname`, `ip4addr`, `ip6addr`, `ipaddr`, `host`, `port`.
   It is carried in the schema and surfaced to the browser as a hint. **It is not
   enforced by the shell** — in the schema-gateway model the shell has no per-form
-  state at POST time (see FINDINGS), so tier 1 is advisory and tier 3 is where
+  state at POST time, so tier 1 is advisory and tier 3 is where
   safety lives.
 - **Tier 3 — server-side, in your POST handler. Authoritative.** Validate the
   submitted values yourself; on failure return **HTTP 422** with the same form

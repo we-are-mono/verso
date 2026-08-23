@@ -22,7 +22,7 @@ two properties the mechanics must guarantee:
 - **Crash isolation.** A third-party plugin must not be able to take the shell
   down — not by crashing, hanging, panicking, or returning garbage. LuCI's
   answer ("ship browser JS in the shell's origin") fails this: plugin code can
-  hijack the session and wedge the page (see `FINDINGS.md` F3). Isolation is the
+  hijack the session and wedge the page. Isolation is the
   whole reason to pay the cost of a separate process.
 - **Language-agnosticism.** The plugin author should not be forced into Go, or
   into linking the shell. Anyone who can serve HTTP can write a plugin.
@@ -176,7 +176,7 @@ over a local socket**, exchanging *data*, not markup.
 - The schema gateway can only render what the widget vocabulary can express.
   Where a plugin's need outruns the vocabulary it must fall to `raw` (ADR-005) —
   and where even `raw` (display-only) cannot reach, that is a *finding* about the
-  bet's limits (`FINDINGS.md`), which is the point of the prototype.
+  bet's limits, which is the point of the prototype.
 
 ### Neutral
 - Per-plugin **privilege** is part of the contract via the manifest `acl` field
