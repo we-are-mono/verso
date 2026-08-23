@@ -181,6 +181,12 @@ func demoACLManifest() plugin.Manifest {
 	return m
 }
 
+func demoReadManifest() plugin.Manifest {
+	m := demoManifest()
+	m.ACL = plugin.ACL{Read: []plugin.ACLScope{{Scope: "uci", Object: "network", Function: "read"}}}
+	return m
+}
+
 func TestHealthzReturnsOK(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{}), "/healthz")
 	if rec.Code != http.StatusOK {
@@ -249,6 +255,50 @@ func TestPluginPageRendersSchema(t *testing.T) {
 	}
 	if tr.lastReq.Method != http.MethodGet || tr.lastReq.Path != "" {
 		t.Errorf("forwarded request = %+v, want GET with empty sub-path", tr.lastReq)
+	}
+}
+
+// TestPluginReadBrokeredAsSnapshot: a plugin declaring acl.read receives the config
+// in its request as a snapshot the shell read with the operator's sid (ADR-007) —
+// the plugin never reads /etc/config itself.
+func TestPluginReadBrokeredAsSnapshot(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "WG", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+	backend := fakeBackend{uci: map[string]map[string]any{
+		"network": {"wg0": map[string]any{".type": "interface", "proto": "wireguard"}},
+	}}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoReadManifest()})
+
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	network, ok := tr.lastReq.UCI["network"]
+	if !ok {
+		t.Fatalf("forwarded request carried no network snapshot: %+v", tr.lastReq.UCI)
+	}
+	wg0, _ := network["wg0"].(map[string]any)
+	if wg0["proto"] != "wireguard" {
+		t.Errorf("snapshot wg0 = %v, want proto wireguard", wg0)
+	}
+}
+
+// TestPluginNoReadACLGetsNoSnapshot: a plugin that declares no reads receives no
+// snapshot — the shell brokers only what the manifest asked for.
+func TestPluginNoReadACLGetsNoSnapshot(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Demo", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+	backend := fakeBackend{uci: map[string]map[string]any{
+		"network": {"wg0": map[string]any{"proto": "wireguard"}},
+	}}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoManifest()})
+
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if tr.lastReq.UCI != nil {
+		t.Errorf("undeclared plugin got a snapshot: %+v", tr.lastReq.UCI)
 	}
 }
 

@@ -77,6 +77,10 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 			req.Form = r.PostForm
 		}
 	}
+	// The shell brokers the plugin's reads (ADR-007): it reads each config the
+	// plugin declared in acl.read with the operator's sid and hands the plugin a
+	// snapshot, so a session-less plugin never touches /etc/config itself.
+	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 
 	env, err := s.transport.Fetch(r.Context(), m.Socket, req)
 	if err != nil {
@@ -253,6 +257,44 @@ func declaredUCIConfigs(m plugin.Manifest) map[string]bool {
 	for _, a := range m.ACL.Write {
 		if a.Scope == "uci" {
 			out[a.Object] = true
+		}
+	}
+	return out
+}
+
+// readSnapshot brokers the plugin's reads (ADR-007): it reads each uci config the
+// plugin declared in acl.read with the operator's sid and returns them as the
+// snapshot the shell injects into the plugin request. It never fails the request —
+// reads are not gated by the shell (rpcd scopes them to the operator), and a read
+// that errors contributes nothing, degrading to an empty page section rather than
+// a 500. Returns nil when the plugin declares no reads, so no snapshot is sent.
+func (s *Server) readSnapshot(ctx context.Context, m plugin.Manifest, sid string) plugin.UCI {
+	configs := declaredUCIReadConfigs(m)
+	if len(configs) == 0 {
+		return nil
+	}
+	snapshot := make(plugin.UCI, len(configs))
+	for _, config := range configs {
+		values, err := s.backend.UCIConfig(ctx, sid, config)
+		if err != nil {
+			log.Printf("verso: plugin %q read of uci %q failed: %v", m.ID, config, err)
+			continue
+		}
+		snapshot[config] = values
+	}
+	return snapshot
+}
+
+// declaredUCIReadConfigs is the ordered, de-duplicated set of uci configs a plugin
+// declared it reads (manifest acl.read, scope "uci"). It bounds what the shell
+// pre-reads and brokers as the plugin's snapshot.
+func declaredUCIReadConfigs(m plugin.Manifest) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for _, a := range m.ACL.Read {
+		if a.Scope == "uci" && !seen[a.Object] {
+			seen[a.Object] = true
+			out = append(out, a.Object)
 		}
 	}
 	return out
