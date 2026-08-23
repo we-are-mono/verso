@@ -37,6 +37,9 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
     { "section": "System", "label": "General", "path": "/" }
   ],
   "acl": {
+    "read": [
+      { "scope": "uci", "object": "system", "function": "read" }
+    ],
     "write": [
       { "scope": "uci", "object": "system", "function": "write" }
     ]
@@ -55,7 +58,8 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 | `nav[].section` | which shell nav group the entry appears under |
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
-| `acl` | the rpcd access scopes you need ([below](#declaring-your-write-scopes-acl)); required to accept writes |
+| `acl` | the rpcd access scopes you need ([below](#declaring-your-acl-scopes)): `read` to render config, `write` to change it |
+| `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
 
 To place several pages in the menu, add more entries — each is grouped under its
@@ -71,7 +75,9 @@ own `section`:
 ## The socket contract
 
 Serve HTTP/1.1 on your `socket`. The shell forwards the browser's request path
-(below your mount), method, query, and form body to you, and expects a **schema
+(below your mount), method, query, and form body to you — plus the read snapshot
+of the configs you declared, in the `X-Verso-UCI` header (see
+[Reading config](#reading-config-the-read-snapshot)) — and expects a **schema
 envelope** back — `Content-Type: application/json`:
 
 ```json
@@ -102,35 +108,63 @@ datatypes), then:
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
 request path like any HTTP server.
 
-### Declaring your write scopes (ACL)
+### Declaring your ACL scopes
 
 Verso — not your plugin — is the enforcement point for privilege (ADR-007). Your
-plugin holds no session; the shell holds the operator's rpcd session and checks
-it against the scopes you declare, so a read-only operator cannot drive a write
-through you.
+plugin holds no session and touches config in neither direction: the shell holds
+the operator's rpcd session and acts through it on your behalf. You declare, as
+`{scope, object, function}` triples mirroring `session.access` one-to-one, the two
+things you need:
 
-Declare in `acl.write` the rpcd grants a save needs, as `{scope, object,
-function}` triples mirroring `session.access` one-to-one. For a uci write to the
-`system` config:
+- **`acl.read`** — the configs the shell reads and hands you as a snapshot (see
+  [Reading config](#reading-config-the-read-snapshot)).
+- **`acl.write`** — the configs a save changes.
 
 ```json
 "acl": {
-  "write": [
-    { "scope": "uci", "object": "system", "function": "write" }
-  ]
+  "read":  [ { "scope": "uci", "object": "system", "function": "read"  } ],
+  "write": [ { "scope": "uci", "object": "system", "function": "write" } ]
 }
 ```
 
-Before dispatching any state-changing request (POST/PUT/PATCH/DELETE) to your
-socket, the shell probes `session.access` for **every** entry. If the operator's
-ACLs cover them all, your handler runs as usual. If any is denied, the shell
-returns **403** and your plugin is never called; if rpcd can't be reached to
-decide, it fails closed with **503**. **A plugin that declares no `acl.write`
-cannot receive a state-changing request at all** — declare what you write, or
-your save is refused. Reads (GET/HEAD) are never gated.
+The two are gated differently, because rpcd already gates them differently:
 
-This gates *who* may write; you remain authoritative for deciding *what* to write
-and for semantic validation (below).
+- **Writes are probed and refused up front.** Before dispatching any state-changing
+  request (POST/PUT/PATCH/DELETE), the shell probes `session.access` for **every**
+  `acl.write` entry. If the operator's ACLs cover them all, your handler runs. If
+  any is denied, the shell returns **403** and your plugin is never called; if rpcd
+  can't be reached, it fails closed with **503**. **A plugin that declares no
+  `acl.write` cannot receive a state-changing request at all.**
+- **Reads are scoped, not gated.** `acl.read` names *which* configs the shell reads
+  for you; the operator's own sid scopes the actual read at rpcd, so an operator
+  who may not read a config simply gets an empty snapshot — never a 403. Reads
+  (GET/HEAD) are never gated by the shell.
+
+This gates *who* may act; you remain authoritative for deciding *what* to write and
+for semantic validation (below).
+
+### Reading config (the read snapshot)
+
+Your plugin **does not read `/etc/config`** — it runs unprivileged and holds no
+session (ADR-007). Instead, the shell reads each config you declared in `acl.read`
+with the operator's sid and injects the result into every request to your socket
+as the **`X-Verso-UCI`** header: base64-encoded JSON, shaped
+
+```json
+{ "<config>": { "<section>": { ".type": "…", ".name": "…",
+                               "<option>": "…", "<list-option>": ["…", "…"] } } }
+```
+
+— exactly rpcd's `uci get <config>` output. Each section carries its `.type`,
+`.name`, and `.index` meta; a scalar option is a string, a list option a JSON
+array. Decode the header, then read config from it: filter sections by `.type` to
+enumerate them (this is how you walk anonymous sections — a firewall's rules, a
+WireGuard interface's peers), and read options by name. A missing or empty header
+means the operator couldn't read the config, or you declared no `acl.read`; render
+empty rather than erroring.
+
+You link no uci library and open no file — the snapshot is your whole view of
+config. A GET carries it too, so a fresh page render reads current state.
 
 ### Writing config (the `commit` intent)
 
@@ -348,8 +382,10 @@ The reference plugin (`verso-plugin-hostname`, its own module) manages the syste
 hostname and NTP server list. It was written **only from this document** — it
 shares no Go code with the shell. Its whole shape:
 
-- **manifest.json** places one entry under System → General.
-- **GET /** reads the hostname and NTP servers from uci and returns a
+- **manifest.json** places one entry under System → General, and declares
+  `acl.read` and `acl.write` for the `system` config.
+- **GET /** reads the hostname and NTP servers from the `X-Verso-UCI` snapshot the
+  shell brokered (it links no uci library) and returns a
   `card` → `form` → (`field` hostname + `list` servers) envelope.
 - **POST /** reads `hostname` and the multi-value `server` field and returns a
   `commit` intent setting `system.@system[0].hostname` and the `server` list,
