@@ -324,11 +324,13 @@ the list. Report a bad item with `errors` keyed by the item's index:
   "help": "One server per line." }
 ```
 
-> **The schema's edges are a finding.** A single value repeats with `list`; a whole
-> *group* of fields that maps to uci sections repeats with
-> [`repeater`](#repeater--a-repeatable-group-of-sections). What still can't be
-> expressed — cross-field conditionals, a value computed from another field — is a
-> *finding*: tell us, so the next behavioural widget is the right one.
+> **The schema's edges are a finding.** A single value repeats with `list`; a group
+> of fields that maps to uci sections repeats with
+> [`repeater`](#repeater--a-repeatable-group-of-sections); a field-set appears on a
+> toggle with [`conditional`](#conditional--a-field-set-behind-a-toggle). What still
+> can't be expressed — a value *computed* from another field, or a field-set gated
+> on a multi-value `select` — is a *finding*: tell us, so the next behavioural widget
+> is the right one.
 
 ### repeater — a repeatable group of sections
 
@@ -360,6 +362,33 @@ On **add**, the shell creates a new empty section of `section_type` and re-rende
 its fields are blank for the operator to fill and save through the ordinary form
 path. On **remove**, the shell deletes the item's section and re-renders. You never
 see the add/remove request — you only ever render the sections that exist.
+
+### conditional — a field-set behind a toggle
+
+A **behavioural** widget: a field-set the shell shows only when its toggle is on.
+You declare the intent — this toggle gates these fields — and the initial state; the
+shell owns the toggle and the show/hide, realized in **pure CSS** (no JavaScript, no
+round-trip). The toggle posts its own value, so your handler can read it to decide
+whether to write the gated option (ADR-005 §7).
+
+```json
+{ "type": "conditional", "name": "use_psk", "label": "Use a pre-shared key",
+  "checked": true,
+  "fields": [
+    { "type": "field", "name": "preshared_key", "label": "Pre-shared key", "value": "…" }
+  ] }
+```
+
+- `name` — the toggle's form field name. It posts `name=on` when checked, nothing
+  when unchecked; read it in your handler to gate the save.
+- `label` — the toggle's caption.
+- `checked` — whether the field-set starts visible; derive it from state (e.g. "the
+  pre-shared key is set").
+- `fields` — the field-set revealed when the toggle is on.
+
+A hidden gated field still submits its value (it is only visually hidden), so decide
+from the toggle: when it is off, ignore or omit those options. (Gating on a `select`
+with several values is a later realization under the same declaration.)
 
 ### raw — the governed bridge
 
