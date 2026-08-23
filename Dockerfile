@@ -19,7 +19,14 @@ COPY docker/rootfs/ /
 # Docker-assigned IP and fw4's default input policy is "drop" — both break Docker
 # port publishing — and dnsmasq crash-loops under a non-privileged ujail. procd,
 # ubusd and rpcd stay up, so `system info` and uci still work.
-RUN chmod +x /etc/init.d/verso /etc/init.d/netfix \
+# Create the non-root `verso` user/group the service drops to (ADR-007). In a
+# real .apk this is the package's USERID; here it is baked into the image.
+RUN echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
+ && echo 'verso:x:6000:' >> /etc/group \
+ # ubusd skips any acl.d file that is group/world-writable or not root-owned
+ # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.
+ && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json \
+ && chmod +x /etc/init.d/verso /etc/init.d/netfix \
  && rm -f /etc/rc.d/S*firewall /etc/rc.d/S*network /etc/rc.d/S*dnsmasq /etc/rc.d/S*odhcpd* \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true

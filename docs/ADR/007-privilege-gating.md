@@ -117,3 +117,29 @@ broken socket.**
   Verso can simply ask rpcd for, and duplicates session→group resolution Verso
   does not own. Justified only if rpcd were absent — which it is not; rpcd is base
   OpenWrt and Verso already depends on it for login.
+
+## Implementation notes
+
+Decision 3 (de-privileging the shell) is realized on OpenWrt by running the shell
+as a dedicated non-root user (`verso`) via procd's `user`/`group`. It then holds
+no write access to `/etc/config` and does not get ubusd's uid-0 ACL exemption, so
+every backend call is bounded by rpcd plus a ubusd `acl.d` grant. Two non-obvious
+requirements surfaced building it:
+
+- **A non-root uid is mandatory; dropping capabilities from root is not enough.**
+  ubusd exempts uid 0 by uid, not by capability (`ubusd_acl.c`), so a
+  capability-stripped root still bypasses ubusd entirely. Only a non-root uid is
+  gated.
+- **The shell needs its own ubusd `acl.d` grant** (`/usr/share/acl.d/verso.json`)
+  for the objects it brokers (`session`, `uci`, `system`), because ubusd
+  ACL-checks non-root callers; rpcd still applies the per-operator sid gating on
+  top. That file must be root-owned and not group/world-writable, or ubusd
+  silently skips it (`ubusd_acl.c` `ubusd_acl_load`).
+
+`CAP_NET_BIND_SERVICE` (to bind :80/:443) and `no_new_privs` are applied through
+procd's ujail. ujail needs namespace privileges the non-privileged dev container
+lacks, so those manifest on-device, not in the container — where the shell binds
+:8080 and needs no capability. Packaging: the `.apk` must create the `verso` user
+(OpenWrt `USERID`); `apk add` does not do it on its own. The plugin process is
+still privileged (it writes uci via go-uci as root); de-privileging plugins is the
+remaining half of this decision.

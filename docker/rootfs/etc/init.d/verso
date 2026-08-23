@@ -10,6 +10,23 @@ start_service() {
 	procd_open_instance
 	procd_set_param command /usr/bin/verso
 	procd_set_param env VERSO_ADDR=:8080
+	# De-privilege the shell (ADR-007): run as the non-root `verso` user so it
+	# cannot write /etc/config directly and does not get ubusd's uid-0 ACL
+	# exemption — every backend op is then bounded by rpcd + the verso acl.d
+	# grant. CAP_NET_BIND_SERVICE is the one capability kept (to bind :80/:443 in
+	# production); no_new_privs blocks regaining anything via setuid binaries.
+	#
+	# NOTE: capabilities + no_new_privs are applied by procd through ujail, which
+	# needs namespace privileges the NON-privileged dev container does not have.
+	# So inside the container you will see a short "jail: failed to clone/fork:
+	# Operation not permitted" burst at boot and these two params are skipped
+	# (procd still drops user/group, so verso is non-root). They apply on real
+	# hardware. Do NOT make the container privileged to silence this — that
+	# re-exposes /dev/watchdog and can reboot the host (see docker-compose.yml).
+	procd_set_param user verso
+	procd_set_param group verso
+	procd_set_param capabilities /etc/capabilities/verso.json
+	procd_set_param no_new_privs 1
 	procd_set_param respawn
 	procd_set_param stdout 1
 	procd_set_param stderr 1
