@@ -1,0 +1,24 @@
+{{/* repeater: a shell-owned repeatable group (ADR-005 §7). Items are the plugin's
+     rendered subtrees; the add/remove affordances post back to the page and the
+     shell realizes the uci section add/delete. The plugin ships no behaviour. */}}
+<div class="space-y-6">
+  {{range .Items}}
+  <div class="space-y-2">
+    {{.Body}}
+    <form method="post" class="flex justify-end">
+      {{if $.CSRFToken}}<input type="hidden" name="_csrf" value="{{$.CSRFToken}}">{{end}}
+      <input type="hidden" name="{{$.OpField}}" value="{{$.OpRemove}}">
+      <input type="hidden" name="{{$.ConfigField}}" value="{{$.Config}}">
+      <input type="hidden" name="{{$.SectionField}}" value="{{.Section}}">
+      <button type="submit" class="cursor-pointer rounded-md border border-verso-danger-border px-3 py-1.5 text-sm font-medium text-verso-danger transition-colors hover:bg-verso-danger-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-danger focus-visible:ring-offset-2">Remove</button>
+    </form>
+  </div>
+  {{end}}
+  <form method="post">
+    {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
+    <input type="hidden" name="{{.OpField}}" value="{{.OpAdd}}">
+    <input type="hidden" name="{{.ConfigField}}" value="{{.Config}}">
+    <input type="hidden" name="{{.TypeField}}" value="{{.SectionType}}">
+    <button type="submit" class="cursor-pointer rounded-md border border-verso-border px-4 py-2 text-sm font-medium text-verso-fg transition-colors hover:border-verso-accent hover:text-verso-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.AddLabel}}</button>
+  </form>
+</div>

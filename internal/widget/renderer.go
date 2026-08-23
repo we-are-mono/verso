@@ -64,9 +64,57 @@ func (r *Renderer) render(out io.Writer, w Widget, csrf string) error {
 		return r.execute(out, "list.html.tmpl", v)
 	case *Raw:
 		return r.renderRaw(out, v)
+	case *Repeater:
+		return r.renderRepeater(out, v, csrf)
 	default:
 		return fmt.Errorf("widget: no renderer for %T", w)
 	}
+}
+
+// repeaterItemView is one rendered item plus the uci section it maps to, so the
+// remove affordance can name it.
+type repeaterItemView struct {
+	Section string
+	Body    template.HTML
+}
+
+// repeaterView is the repeater template's model: the pre-rendered items, the
+// declared uci backing, and the hidden-field names the affordances post (from the
+// package constants, so the template and the gateway never drift).
+type repeaterView struct {
+	Config, SectionType, AddLabel, CSRFToken      string
+	Items                                         []repeaterItemView
+	OpField, ConfigField, TypeField, SectionField string
+	OpAdd, OpRemove                               string
+}
+
+// renderRepeater renders each item's subtree through render (threading the CSRF
+// token to any form inside it), then hands the template the shell-owned add/remove
+// affordances. The plugin supplied only the items and the declaration; every
+// affordance and its wiring is the shell's (ADR-005 §7).
+func (r *Renderer) renderRepeater(out io.Writer, rp *Repeater, csrf string) error {
+	items := make([]repeaterItemView, 0, len(rp.Items))
+	for _, it := range rp.Items {
+		var b strings.Builder
+		if err := r.render(&b, it.Widget, csrf); err != nil {
+			return err
+		}
+		items = append(items, repeaterItemView{Section: it.Section, Body: template.HTML(b.String())})
+	}
+	add := rp.AddLabel
+	if add == "" {
+		add = "Add"
+	}
+	return r.execute(out, "repeater.html.tmpl", repeaterView{
+		Config: rp.Config, SectionType: rp.SectionType, AddLabel: add, CSRFToken: csrf,
+		Items:        items,
+		OpField:      RepeaterOpField,
+		ConfigField:  RepeaterConfigField,
+		TypeField:    RepeaterTypeField,
+		SectionField: RepeaterSectionField,
+		OpAdd:        RepeaterOpAdd,
+		OpRemove:     RepeaterOpRemove,
+	})
 }
 
 type rawView struct{ HTML template.HTML }
