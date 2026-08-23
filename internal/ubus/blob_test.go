@@ -159,3 +159,26 @@ func TestEncodeTableRejectsUnsupported(t *testing.T) {
 		t.Fatal("encodeTable: want error for an int value, got nil")
 	}
 }
+
+// TestEncodeTableArrayValue round-trips a uci list option — a value that is an
+// array of strings (e.g. system.ntp.server) — for both the []string and the
+// []any (JSON-decoded) shapes the broker sees.
+func TestEncodeTableArrayValue(t *testing.T) {
+	for name, val := range map[string]any{
+		"typed": []string{"a.pool", "b.pool"},
+		"json":  []any{"a.pool", "b.pool"},
+	} {
+		body, err := encodeTable(map[string]any{"server": val})
+		if err != nil {
+			t.Fatalf("%s: encodeTable: %v", name, err)
+		}
+		tbl, err := decodeTable(body)
+		if err != nil {
+			t.Fatalf("%s: decodeTable: %v", name, err)
+		}
+		arr, ok := tbl["server"].([]any)
+		if !ok || len(arr) != 2 || arr[0] != "a.pool" || arr[1] != "b.pool" {
+			t.Fatalf("%s: server decoded as %#v, want [a.pool b.pool]", name, tbl["server"])
+		}
+	}
+}

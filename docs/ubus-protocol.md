@@ -88,9 +88,9 @@ args on the way out, results on the way back.
 ## Scope and extension
 
 `internal/ubus` implements connect + hello + lookup + invoke, with a blobmsg args
-encoder covering strings and nested tables — enough for `system info`,
-`session.login/access`, and `uci.get/set` (whose `values:{}` is a nested table).
-Arrays and scalar (int/bool) argument types are not encoded yet; the decoder reads
-them in results. Event subscriptions (`SUBSCRIBE` / `NOTIFY`) and object
-registration are not implemented; the persistent connection could later carry them
-for live UI updates.
+encoder covering strings, nested tables, and arrays — enough for `system info`,
+`session.login/access`, and `uci.get/set` (whose `values:{}` is a nested table and
+whose list options are arrays). Scalar (int/bool) argument types are not encoded
+yet; the decoder reads all types in results. Event subscriptions (`SUBSCRIBE` /
+`NOTIFY`) and object registration are not implemented; the persistent connection
+could later carry them for live UI updates.

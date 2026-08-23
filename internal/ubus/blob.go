@@ -144,9 +144,40 @@ func appendBlobmsgValue(dst []byte, name string, val any) ([]byte, error) {
 			return nil, err
 		}
 		return appendBlobmsgAttr(dst, bmTable, name, body), nil
+	case []string:
+		return appendBlobmsgAttr(dst, bmArray, name, encodeStringArray(v)), nil
+	case []any:
+		body, err := encodeArray(v)
+		if err != nil {
+			return nil, err
+		}
+		return appendBlobmsgAttr(dst, bmArray, name, body), nil
 	default:
 		return nil, fmt.Errorf("ubus: cannot encode arg %q of unsupported type %T", name, val)
 	}
+}
+
+// encodeStringArray encodes a blobmsg array body of strings. Array elements carry
+// an empty name, per blobmsg.
+func encodeStringArray(items []string) []byte {
+	var body []byte
+	for _, s := range items {
+		body = appendBlobmsgAttr(body, bmString, "", nulTerminated(s))
+	}
+	return body
+}
+
+// encodeArray encodes a blobmsg array body from arbitrary elements (each may be a
+// string, table, or nested array). Array elements carry an empty name.
+func encodeArray(items []any) ([]byte, error) {
+	var body []byte
+	for _, el := range items {
+		var err error
+		if body, err = appendBlobmsgValue(body, "", el); err != nil {
+			return nil, err
+		}
+	}
+	return body, nil
 }
 
 // appendBlobmsgAttr appends one extended (blobmsg) attribute — a padded name

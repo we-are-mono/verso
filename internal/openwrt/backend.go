@@ -32,7 +32,7 @@ type Backend interface {
 	// carrying the operator's sid so rpcd — not Verso — authorizes the write. The
 	// shell performs writes on a plugin's behalf (ADR-007 Model B), so a plugin
 	// holds no write privilege and no session credential of its own.
-	UCISet(ctx context.Context, sid, config, section string, values map[string]string) error
+	UCISet(ctx context.Context, sid, config, section string, values map[string]any) error
 	UCICommit(ctx context.Context, sid, config string) error
 }
 
@@ -57,7 +57,7 @@ type (
 	hostnameFn   func(ctx context.Context, sid string) (string, error)
 	systemInfoFn func(ctx context.Context, sid string) (map[string]any, error)
 	accessFn     func(ctx context.Context, sid, scope, object, function string) (bool, error)
-	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]string) error
+	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciCommitFn  func(ctx context.Context, sid, config string) error
 )
 
@@ -104,7 +104,7 @@ func (b *NativeBackend) Access(ctx context.Context, sid, scope, object, function
 }
 
 // UCISet writes option values into a uci section through rpcd, gated by the sid.
-func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]string) error {
+func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]any) error {
 	return b.uciSet(ctx, sid, config, section, values)
 }
 
@@ -183,7 +183,7 @@ func dialAccess(socket string) accessFn {
 // (method `set`), carrying the sid so rpcd applies the operator's ACLs. values is
 // encoded as the nested `values:{}` table uci.set expects.
 func dialUCISet(socket string) uciSetFn {
-	return func(_ context.Context, sid, config, section string, values map[string]string) error {
+	return func(_ context.Context, sid, config, section string, values map[string]any) error {
 		c, err := ubus.Dial(socket)
 		if err != nil {
 			return err

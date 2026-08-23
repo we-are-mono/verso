@@ -48,9 +48,9 @@ type Envelope struct {
 // operator's sid — but only for a config the plugin declared in its manifest acl,
 // so a plugin cannot broker a write outside its declared surface.
 type CommitOp struct {
-	Config  string            `json:"config"`
-	Section string            `json:"section"`
-	Values  map[string]string `json:"values"`
+	Config  string         `json:"config"`
+	Section string         `json:"section"`
+	Values  map[string]any `json:"values"` // option → value; a value may be a string or a list of strings (uci list option)
 }
 
 // Transport exchanges a request with a plugin and returns its schema envelope.

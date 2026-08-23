@@ -49,10 +49,10 @@ func (f fakeBackend) Access(context.Context, string, string, string, string) (bo
 // wrote on the plugin's behalf (ADR-007 Model B).
 type uciWrite struct {
 	sid, config, section string
-	values               map[string]string
+	values               map[string]any
 }
 
-func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]string) error {
+func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]any) error {
 	if f.writes != nil {
 		*f.writes = append(*f.writes, uciWrite{sid, config, section, values})
 	}
@@ -424,7 +424,7 @@ func TestPluginCommitBrokered(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Saved", Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
-		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "verso-lab"}}},
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "verso-lab"}}},
 	}}
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
@@ -441,6 +441,30 @@ func TestPluginCommitBrokered(t *testing.T) {
 	}
 }
 
+// TestPluginCommitListOption: a uci list option (an array value, e.g. the NTP
+// server list) is carried through the broker to the backend intact.
+func TestPluginCommitListOption(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{"server": []any{"a.pool", "b.pool"}}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"server": {"a.pool", "b.pool"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("UCISet calls = %d, want 1", len(calls))
+	}
+	arr, ok := calls[0].values["server"].([]any)
+	if !ok || len(arr) != 2 || arr[0] != "a.pool" {
+		t.Errorf("list option not carried through the broker: %#v", calls[0].values["server"])
+	}
+}
+
 // TestPluginCommitRefusedForUndeclaredConfig: a plugin cannot broker a write to a
 // config it did not declare in its manifest — the shell refuses and writes nothing
 // (the malicious-plugin defense).
@@ -449,7 +473,7 @@ func TestPluginCommitRefusedForUndeclaredConfig(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
-		Commit: []plugin.CommitOp{{Config: "network", Section: "@interface[0]", Values: map[string]string{"proto": "static"}}},
+		Commit: []plugin.CommitOp{{Config: "network", Section: "@interface[0]", Values: map[string]any{"proto": "static"}}},
 	}}
 	// demoACLManifest declares only uci/system.
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
@@ -470,7 +494,7 @@ func TestPluginCommitIgnoredOnGet(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Demo",
 		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
-		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "x"}}},
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "x"}}},
 	}}
 	s := newServerWith(t, fakeBackend{access: false, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
@@ -490,7 +514,7 @@ func TestPluginCommitBackendErrorContained(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
-		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "x"}}},
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "x"}}},
 	}}
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls, uciErr: errors.New("rpcd denied")}, tr, []plugin.Manifest{demoACLManifest()})
 

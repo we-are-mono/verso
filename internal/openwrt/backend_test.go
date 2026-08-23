@@ -89,13 +89,13 @@ func TestAccessPassesProbe(t *testing.T) {
 // (ADR-007 Model B: the shell writes on the plugin's behalf).
 func TestUCISetThreadsArgs(t *testing.T) {
 	var gotSID, gotConfig, gotSection string
-	var gotValues map[string]string
-	b := &NativeBackend{uciSet: func(_ context.Context, sid, config, section string, values map[string]string) error {
+	var gotValues map[string]any
+	b := &NativeBackend{uciSet: func(_ context.Context, sid, config, section string, values map[string]any) error {
 		gotSID, gotConfig, gotSection, gotValues = sid, config, section, values
 		return nil
 	}}
 
-	err := b.UCISet(context.Background(), "s1", "system", "@system[0]", map[string]string{"hostname": "verso-lab"})
+	err := b.UCISet(context.Background(), "s1", "system", "@system[0]", map[string]any{"hostname": "verso-lab"})
 	if err != nil {
 		t.Fatalf("UCISet: %v", err)
 	}
