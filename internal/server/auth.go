@@ -68,6 +68,15 @@ func (s *Server) sessionCSRF(r *http.Request) string {
 	return ""
 }
 
+// sessionSID returns the rpcd session id for the request's session — the
+// credential Verso presents to rpcd for ACL-gated backend calls (ADR-007).
+func (s *Server) sessionSID(r *http.Request) string {
+	if sess, ok := s.currentSession(r); ok {
+		return sess.sid
+	}
+	return ""
+}
+
 func validCSRF(r *http.Request, want string) bool {
 	if want == "" {
 		return false

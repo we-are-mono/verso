@@ -15,17 +15,17 @@ import (
 // statusTable builds the system-status table from live backend data. It degrades
 // to "unavailable" rows rather than failing when the backend can't be reached,
 // so the shell never 500s on a backend hiccup; the underlying error is logged.
-func (s *Server) statusTable(ctx context.Context) *widget.Table {
+func (s *Server) statusTable(ctx context.Context, sid string) *widget.Table {
 	rows := make([][]string, 0, 4)
 
-	if hn, err := s.backend.Hostname(ctx); err == nil {
+	if hn, err := s.backend.Hostname(ctx, sid); err == nil {
 		rows = append(rows, []string{"Hostname", hn})
 	} else {
 		log.Printf("verso: hostname unavailable: %v", err)
 		rows = append(rows, []string{"Hostname", "unavailable"})
 	}
 
-	if si, err := s.backend.SystemInfo(ctx); err == nil {
+	if si, err := s.backend.SystemInfo(ctx, sid); err == nil {
 		rows = append(rows,
 			[]string{"Uptime", formatUptime(si.Uptime)},
 			[]string{"Load (1m)", formatLoad(si.Load[0])},

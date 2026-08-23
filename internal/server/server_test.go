@@ -25,11 +25,11 @@ type fakeBackend struct {
 	err error
 }
 
-func (f fakeBackend) SystemInfo(context.Context) (openwrt.SystemInfo, error) {
+func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
 	return f.si, f.err
 }
 
-func (f fakeBackend) Hostname(context.Context) (string, error) {
+func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}

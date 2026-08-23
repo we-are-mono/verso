@@ -142,7 +142,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Wrap the status table in a headerless card, so the homepage matches the
 	// plugin pages (a white, shadowed card on the gray content).
-	page := &widget.Card{Children: []widget.Widget{s.statusTable(r.Context())}}
+	page := &widget.Card{Children: []widget.Widget{s.statusTable(r.Context(), s.sessionSID(r))}}
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r)); err != nil {
