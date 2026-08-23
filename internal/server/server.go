@@ -16,6 +16,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -30,15 +31,16 @@ var cssText string
 
 // Server is the Verso HTTP shell.
 type Server struct {
-	mux        *http.ServeMux
-	widgets    *widget.Renderer
-	backend    openwrt.Backend
-	transport  plugin.Transport
-	manifests  []plugin.Manifest
-	pluginByID map[string]plugin.Manifest
+	mux          *http.ServeMux
+	widgets      *widget.Renderer
+	backend      openwrt.Backend
+	transport    plugin.Transport
+	manifests    []plugin.Manifest
+	pluginByID   map[string]plugin.Manifest
 	auth         Authenticator
 	security     Security
 	sessions     *Sessions
+	loginLimiter *loginLimiter
 	allowedHosts map[string]bool
 	page         *template.Template
 	css          template.CSS
@@ -65,17 +67,18 @@ func New(
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
 	s := &Server{
-		mux:        http.NewServeMux(),
-		widgets:    widgets,
-		backend:    backend,
-		transport:  transport,
-		manifests:  manifests,
-		pluginByID: indexByID(manifests),
-		auth:       auth,
-		security:   security,
-		sessions:   newSessions(),
-		page:       page,
-		css:        template.CSS(cssText),
+		mux:          http.NewServeMux(),
+		widgets:      widgets,
+		backend:      backend,
+		transport:    transport,
+		manifests:    manifests,
+		pluginByID:   indexByID(manifests),
+		auth:         auth,
+		security:     security,
+		sessions:     newSessions(),
+		loginLimiter: newLoginLimiter(time.Now),
+		page:         page,
+		css:          template.CSS(cssText),
 	}
 	s.routes()
 	return s, nil

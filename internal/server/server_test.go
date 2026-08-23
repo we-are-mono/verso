@@ -405,6 +405,23 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 	}
 }
 
+// TestLoginThrottled: repeated failures from one client lock further attempts
+// with 429 (VS-06).
+func TestLoginThrottled(t *testing.T) {
+	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil,
+		fakeAuth{err: errors.New("denied")}, fakeSecurity{hasPassword: true})
+	bad := url.Values{"username": {"root"}, "password": {"wrong"}}
+
+	for i := 0; i < loginMaxFailures; i++ {
+		if rec := postForm(t, srv, "/login", bad); rec.Code != http.StatusOK {
+			t.Fatalf("attempt %d: status = %d, want 200", i, rec.Code)
+		}
+	}
+	if rec := postForm(t, srv, "/login", bad); rec.Code != http.StatusTooManyRequests {
+		t.Errorf("after %d failures: status = %d, want 429", loginMaxFailures, rec.Code)
+	}
+}
+
 func TestLogoutClearsSession(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	token, _ := srv.sessions.Create("sid", "root")

@@ -90,14 +90,19 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.renderLogin(w, "")
+	s.renderLogin(w, http.StatusOK, "")
 }
 
 // handleLogin authenticates and, on success, stores the session server-side and
 // hands the browser the opaque cookie.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	key := clientIP(r)
+	if !s.loginLimiter.allowed(key) {
+		s.renderLogin(w, http.StatusTooManyRequests, "Too many attempts — wait a minute and try again.")
+		return
+	}
 	if err := r.ParseForm(); err != nil {
-		s.renderLogin(w, "Could not read the form.")
+		s.renderLogin(w, http.StatusOK, "Could not read the form.")
 		return
 	}
 	username := r.PostForm.Get("username")
@@ -106,10 +111,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// One generic message regardless of cause — do not reveal which of the
 		// username or password was wrong. The detail is logged, not shown.
+		s.loginLimiter.fail(key)
 		log.Printf("verso: login failed for %q: %v", username, err)
-		s.renderLogin(w, "Invalid username or password.")
+		s.renderLogin(w, http.StatusOK, "Invalid username or password.")
 		return
 	}
+	s.loginLimiter.success(key)
 	token, err := s.sessions.Create(sid, username)
 	if err != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
@@ -138,12 +145,13 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
+func (s *Server) renderLogin(w http.ResponseWriter, status int, errMsg string) {
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }
