@@ -416,6 +416,93 @@ func TestPluginGetNotGated(t *testing.T) {
 	}
 }
 
+// TestPluginCommitBrokered: a plugin returns a declarative write intent and the
+// shell executes it through the backend on the operator's behalf — the plugin
+// itself performs no write (ADR-007 Model B).
+func TestPluginCommitBrokered(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Saved", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "verso-lab"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("UCISet calls = %d, want 1 (the shell must broker the write)", len(calls))
+	}
+	w := calls[0]
+	if w.sid != "test-sid" || w.config != "system" || w.section != "@system[0]" || w.values["hostname"] != "verso-lab" {
+		t.Errorf("brokered write = %+v; want sid test-sid, system/@system[0], hostname=verso-lab", w)
+	}
+}
+
+// TestPluginCommitRefusedForUndeclaredConfig: a plugin cannot broker a write to a
+// config it did not declare in its manifest — the shell refuses and writes nothing
+// (the malicious-plugin defense).
+func TestPluginCommitRefusedForUndeclaredConfig(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "network", Section: "@interface[0]", Values: map[string]string{"proto": "static"}}},
+	}}
+	// demoACLManifest declares only uci/system.
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 for a write outside the declared scope", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Errorf("an undeclared write must NOT be executed; got %d UCISet calls", len(calls))
+	}
+}
+
+// TestPluginCommitIgnoredOnGet: a commit intent on a safe (GET) request is never
+// executed — reads cannot write.
+func TestPluginCommitIgnoredOnGet(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Demo",
+		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "x"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: false, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := get(t, s, "/plugins/demo/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Errorf("a commit on a GET must be ignored, not executed; got %d writes", len(calls))
+	}
+}
+
+// TestPluginCommitBackendErrorContained: if the brokered write fails at the
+// backend, the shell reports a contained failure rather than a false success.
+func TestPluginCommitBackendErrorContained(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]string{"hostname": "x"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, uciErr: errors.New("rpcd denied")}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"x"}})
+	if rec.Code == http.StatusOK {
+		t.Fatalf("a failed broker must not report 200")
+	}
+	if len(calls) != 1 {
+		t.Errorf("UCISet should have been attempted once; got %d", len(calls))
+	}
+}
+
 // TestNavListsPlugins: a discovered plugin appears in the shell nav with no shell
 // change — the manifest drives it (ADR-006 §2).
 func TestNavListsPlugins(t *testing.T) {

@@ -81,6 +81,17 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
 		return s.unavailable(m), http.StatusOK
 	}
+
+	// ADR-007 Model B: the plugin holds no write access — it returns declarative
+	// uci intents, and the shell executes them through rpcd with the operator's
+	// sid. Only for a state-changing request (a commit on a GET is ignored), and
+	// only within the plugin's declared scopes.
+	if len(env.Commit) > 0 && !safeMethod(r.Method) {
+		if body, status, ok := s.brokerCommit(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
+			return body, status
+		}
+	}
+
 	wdg, err := widget.Decode(env.Widget)
 	if err != nil {
 		log.Printf("verso: plugin %q returned undecodable schema: %v", m.ID, err)
@@ -145,4 +156,48 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 		}
 	}
 	return true, nil
+}
+
+// brokerCommit performs, through rpcd and on the operator's behalf, the uci writes
+// a plugin requested (ADR-007 Model B). It refuses any op whose config the plugin
+// did not declare in its manifest acl — a plugin cannot broker a write outside its
+// declared surface — and rpcd re-checks the operator's sid on every call. On
+// refusal or failure it returns a contained notice and a status with ok=false; on
+// success ok is true and the caller renders the plugin's returned widget.
+func (s *Server) brokerCommit(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp) (template.HTML, int, bool) {
+	declared := declaredUCIConfigs(m)
+	dirty := make(map[string]bool)
+	for _, op := range ops {
+		if op.Config == "" || !declared[op.Config] {
+			log.Printf("verso: plugin %q tried to write undeclared uci config %q; refused", m.ID, op.Config)
+			return s.notice("Not permitted", fmt.Sprintf(
+				"%s tried to change settings it did not declare.", m.Name)), http.StatusForbidden, false
+		}
+		if err := s.backend.UCISet(ctx, sid, op.Config, op.Section, op.Values); err != nil {
+			log.Printf("verso: plugin %q write to uci %q failed: %v", m.ID, op.Config, err)
+			return s.notice("Save failed",
+				"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+		}
+		dirty[op.Config] = true
+	}
+	for cfg := range dirty {
+		if err := s.backend.UCICommit(ctx, sid, cfg); err != nil {
+			log.Printf("verso: plugin %q commit of uci %q failed: %v", m.ID, cfg, err)
+			return s.notice("Save failed",
+				"The change was written but couldn’t be committed. Try again in a moment."), http.StatusServiceUnavailable, false
+		}
+	}
+	return "", 0, true
+}
+
+// declaredUCIConfigs is the set of uci configs a plugin declared it may write in
+// its manifest acl (scope "uci"). It bounds what the shell will broker for it.
+func declaredUCIConfigs(m plugin.Manifest) map[string]bool {
+	out := make(map[string]bool)
+	for _, a := range m.ACL.Write {
+		if a.Scope == "uci" {
+			out[a.Object] = true
+		}
+	}
+	return out
 }

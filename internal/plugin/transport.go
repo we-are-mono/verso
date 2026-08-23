@@ -38,7 +38,19 @@ type Envelope struct {
 	SchemaVersion int             `json:"schema_version"`
 	Title         string          `json:"title"`
 	Widget        json.RawMessage `json:"widget"`
+	Commit        []CommitOp      `json:"commit"`
 	Status        int             `json:"-"`
+}
+
+// CommitOp is one declarative uci write a plugin asks the shell to perform on its
+// behalf (ADR-007 Model B). A de-privileged plugin holds no write access and no
+// session; it returns intents, and the shell executes them through rpcd with the
+// operator's sid — but only for a config the plugin declared in its manifest acl,
+// so a plugin cannot broker a write outside its declared surface.
+type CommitOp struct {
+	Config  string            `json:"config"`
+	Section string            `json:"section"`
+	Values  map[string]string `json:"values"`
 }
 
 // Transport exchanges a request with a plugin and returns its schema envelope.
