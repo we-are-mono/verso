@@ -54,6 +54,23 @@ func TestRenderTable(t *testing.T) {
 	}
 }
 
+// TestRenderFormError renders the form-level error — a message not tied to any
+// field (e.g. a cross-field rule) — and confirms it is escaped like all
+// shell-rendered text.
+func TestRenderFormError(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Form{Error: "start port must be <= end port", Submit: "Save"})
+	if !strings.Contains(got, "start port must be") {
+		t.Errorf("form-level error not rendered: %s", got)
+	}
+	if !strings.Contains(got, "verso-danger") {
+		t.Errorf("form-level error not styled as danger: %s", got)
+	}
+	if strings.Contains(got, "must be <= end") {
+		t.Errorf("form error not HTML-escaped by the shell: %s", got)
+	}
+}
+
 func TestRenderTableEscapesCells(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{

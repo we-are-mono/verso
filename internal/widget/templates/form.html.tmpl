@@ -7,6 +7,12 @@
     <span>{{.Success}}</span>
   </div>
   {{end}}
+  {{if .Error}}
+  <div class="flex items-center gap-2 rounded-md border border-verso-danger-border bg-verso-danger-bg px-3 py-2 text-sm text-verso-danger">
+    <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+    <span>{{.Error}}</span>
+  </div>
+  {{end}}
   {{range .Fields}}{{.}}{{end}}
   <div>
     <button type="submit" class="cursor-pointer rounded-md bg-verso-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-verso-accent-hover active:bg-verso-accent-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.Submit}}</button>

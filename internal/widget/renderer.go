@@ -92,6 +92,7 @@ func (r *Renderer) RawUsage() int64 { return r.rawUses.Load() }
 type formView struct {
 	Submit    string
 	Success   string
+	Error     string
 	CSRFToken string
 	Fields    []template.HTML
 }
@@ -112,7 +113,7 @@ func (r *Renderer) renderForm(out io.Writer, f *Form, csrf string) error {
 		submit = "Save"
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Submit: submit, Success: f.Success, CSRFToken: csrf, Fields: fields,
+		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf, Fields: fields,
 	})
 }
 

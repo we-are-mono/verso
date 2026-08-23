@@ -15,6 +15,7 @@ import (
 type Form struct {
 	Submit  string   // submit button label (default "Save")
 	Success string   // optional message shown after a successful save
+	Error   string   // optional error not tied to a single field, shown above the fields
 	Fields  []Widget // form contents
 }
 
@@ -26,6 +27,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Submit  string            `json:"submit"`
 		Success string            `json:"success"`
+		Error   string            `json:"error"`
 		Fields  []json.RawMessage `json:"fields"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -33,6 +35,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 	}
 	f.Submit = raw.Submit
 	f.Success = raw.Success
+	f.Error = raw.Error
 	f.Fields = make([]Widget, 0, len(raw.Fields))
 	for i, rf := range raw.Fields {
 		field, err := Decode(rf)
