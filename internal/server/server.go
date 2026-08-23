@@ -48,11 +48,6 @@ func (s *Server) Handler() http.Handler {
 	return s.mux
 }
 
-func (s *Server) routes() {
-	s.mux.HandleFunc("GET /healthz", s.handleHealth)
-	s.mux.HandleFunc("GET /{$}", s.handleIndex)
-}
-
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
