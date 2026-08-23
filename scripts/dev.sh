@@ -25,6 +25,10 @@ ensure_container() {
 
 reload() {
 	log "building…"
+	if [ -x build/tools/tailwindcss ]; then
+		build/tools/tailwindcss -i internal/server/assets/input.css \
+			-o internal/server/assets/verso.css --minify >/dev/null 2>&1 || true
+	fi
 	if ! CGO_ENABLED=0 go build -trimpath -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0
@@ -38,7 +42,8 @@ reload() {
 # sig hashes the mtimes of watched sources; embedded templates count because
 # they are compiled into the binary.
 sig() {
-	find cmd internal \( -name '*.go' -o -name '*.tmpl' \) -printf '%T@ %p\n' 2>/dev/null | sha1sum
+	find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.css' \) \
+		! -name 'verso.css' -printf '%T@ %p\n' 2>/dev/null | sha1sum
 }
 
 ensure_container

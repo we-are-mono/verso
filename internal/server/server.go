@@ -23,12 +23,16 @@ import (
 //go:embed templates/*.tmpl
 var templateFS embed.FS
 
+//go:embed assets/verso.css
+var cssText string
+
 // Server is the Verso HTTP shell.
 type Server struct {
 	mux     *http.ServeMux
 	widgets *widget.Renderer
 	backend openwrt.Backend
 	page    *template.Template
+	css     template.CSS
 }
 
 // New constructs a Server that renders widgets through the injected renderer and
@@ -38,7 +42,10 @@ func New(widgets *widget.Renderer, backend openwrt.Backend) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
-	s := &Server{mux: http.NewServeMux(), widgets: widgets, backend: backend, page: page}
+	s := &Server{
+		mux: http.NewServeMux(), widgets: widgets, backend: backend,
+		page: page, css: template.CSS(cssText),
+	}
 	s.routes()
 	return s, nil
 }
@@ -56,6 +63,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 
 type pageData struct {
 	Title string
+	CSS   template.CSS
 	Body  template.HTML
 }
 
@@ -72,6 +80,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	var page bytes.Buffer
 	if err := s.page.ExecuteTemplate(&page, "page.html.tmpl", pageData{
 		Title: "Verso",
+		CSS:   s.css,
 		Body:  template.HTML(body.String()),
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)

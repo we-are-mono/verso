@@ -1,0 +1,60 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * Tailwind source. `make css` compiles this to verso.css, which is embedded and
+ * served by the shell. Contributors may use Tailwind utilities in the shell's
+ * own templates (scanned via @source below); plugins never touch this — they
+ * emit a semantic widget schema (ADR-005).
+ */
+@import "tailwindcss";
+
+@source "../templates/*.tmpl";
+@source "../../widget/templates/*.tmpl";
+
+/* Verso design tokens — the consistency substrate everything renders through. */
+@theme {
+  --color-verso-bg: #0f1115;
+  --color-verso-surface: #171a21;
+  --color-verso-fg: #e6e9ef;
+  --color-verso-muted: #9aa4b2;
+  --color-verso-border: #2a2f3a;
+  --color-verso-accent: #4c8bf5;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    padding: 2rem;
+    background: var(--color-verso-bg);
+    color: var(--color-verso-fg);
+    font: 15px/1.5 system-ui, -apple-system, sans-serif;
+  }
+  main { max-width: 60rem; margin: 0 auto; }
+  h1 { font-weight: 600; letter-spacing: -0.01em; }
+}
+
+@layer components {
+  .verso-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-verso-surface);
+    border: 1px solid var(--color-verso-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .verso-table th,
+  .verso-table td {
+    padding: 0.6rem 0.9rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-verso-border);
+  }
+  .verso-table thead th {
+    color: var(--color-verso-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+  }
+  .verso-table tbody tr:last-child td { border-bottom: 0; }
+}

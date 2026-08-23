@@ -37,10 +37,10 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    rendered with a visible "raw" affordance, and instrumented — its usage is the demand
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →
    author migrates. Health metric: raw usage *declines* for recurring needs.
-6. **Tailwind v4 is the sanctioned way to author the tokens later** — an engine change,
-   not a contract change. Because plugins never see classes, the token-authoring
-   approach is reversible with zero plugin impact; hand-authored token CSS is the
-   starting point.
+6. **Tailwind v4 authors the tokens.** The `@theme`-defined design tokens compile (via
+   the standalone CLI, no Node) to an embedded stylesheet. This is an engine choice, not
+   a contract change: plugins never see classes, so it stays reversible with zero plugin
+   impact. Shell templates may use utilities; plugins never do.
 
 ## Consequences
 
