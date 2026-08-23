@@ -6,14 +6,58 @@
 <title>{{.Title}}</title>
 <style>{{.CSS}}</style>
 </head>
-<body>
-<main>
-<header class="flex items-center gap-3 mb-6">
-  <span class="size-2.5 rounded-full bg-verso-accent"></span>
-  <h1 class="text-2xl font-semibold tracking-tight">Verso</h1>
-  <span class="ml-auto text-sm text-verso-muted">OpenWrt</span>
+<body class="min-h-screen m-0 bg-verso-bg text-verso-fg antialiased text-[0.9375rem] leading-normal">
+<header class="border-b border-verso-border-light px-6 py-[1.125rem]">
+  <h1 class="text-lg font-semibold tracking-tight">Verso</h1>
 </header>
-{{.Body}}
-</main>
+<div class="flex">
+  <nav class="w-56 shrink-0 px-3 pt-12 pb-4 text-sm">
+    <ul class="space-y-1">
+      <li>
+        <details open class="group">
+          <summary class="flex items-center justify-between cursor-pointer select-none list-none px-3 py-2 font-medium [&::-webkit-details-marker]:hidden">
+            Status
+            <span class="verso-chevron text-verso-muted">&rsaquo;</span>
+          </summary>
+          <ul class="mt-0.5 space-y-0.5">
+            <li><a href="/" class="block py-1.5 pl-6 pr-3 font-medium text-verso-accent">Overview</a></li>
+            <li><a href="#" class="block py-1.5 pl-6 pr-3 text-verso-muted">Routing</a></li>
+          </ul>
+        </details>
+      </li>
+      <li>
+        <details class="group">
+          <summary class="flex items-center justify-between cursor-pointer select-none list-none px-3 py-2 font-medium [&::-webkit-details-marker]:hidden">
+            System
+            <span class="verso-chevron text-verso-muted">&rsaquo;</span>
+          </summary>
+          <ul class="mt-0.5 space-y-0.5">
+            <li><a href="#" class="block py-1.5 pl-6 pr-3 text-verso-muted">Administration</a></li>
+            <li><a href="#" class="block py-1.5 pl-6 pr-3 text-verso-muted">Startup</a></li>
+          </ul>
+        </details>
+      </li>
+      <li>
+        <details class="group">
+          <summary class="flex items-center justify-between cursor-pointer select-none list-none px-3 py-2 font-medium [&::-webkit-details-marker]:hidden">
+            Services
+            <span class="verso-chevron text-verso-muted">&rsaquo;</span>
+          </summary>
+          <ul class="mt-0.5 space-y-0.5">
+            <li><a href="#" class="block py-1.5 pl-6 pr-3 text-verso-muted">DynamicDNS</a></li>
+            <li><a href="#" class="block py-1.5 pl-6 pr-3 text-verso-muted">Adblock</a></li>
+          </ul>
+        </details>
+      </li>
+      <li><a href="#" class="block px-3 py-2 font-medium">Logout</a></li>
+    </ul>
+  </nav>
+  <main class="flex-1 px-6 pt-12 pb-6">
+    <div class="max-w-3xl">
+      <h2 class="text-2xl font-normal tracking-tight mb-10">Overview</h2>
+      {{.Body}}
+    </div>
+  </main>
+</div>
 </body>
 </html>

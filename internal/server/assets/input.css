@@ -3,9 +3,11 @@
 
 /*
  * Tailwind source. `make css` compiles this to verso.css, which is embedded and
- * served by the shell. Contributors may use Tailwind utilities in the shell's
- * own templates (scanned via @source below); plugins never touch this — they
- * emit a semantic widget schema (ADR-005).
+ * served by the shell. Styling lives as utility classes in the templates
+ * (scanned via @source below); @apply is avoided. Only values utilities can't
+ * express stay here: the off-scale body font and the stateful chevron.
+ *
+ * Plugins never touch any of this — they emit a semantic widget schema (ADR-005).
  */
 @import "tailwindcss";
 
@@ -14,47 +16,23 @@
 
 /* Verso design tokens — the consistency substrate everything renders through. */
 @theme {
-  --color-verso-bg: #0f1115;
-  --color-verso-surface: #171a21;
-  --color-verso-fg: #e6e9ef;
-  --color-verso-muted: #9aa4b2;
-  --color-verso-border: #2a2f3a;
-  --color-verso-accent: #4c8bf5;
+  --color-verso-bg: #ffffff;
+  --color-verso-fg: #1a1d24;
+  --color-verso-muted: #6b7280;
+  --color-verso-border: #e3e5ea;
+  --color-verso-border-light: #edeef2;
+  --color-verso-accent: #2f6fed;
 }
 
 @layer base {
+  /* Custom font family; size/leading are utilities on <body>. */
   body {
-    margin: 0;
-    padding: 2rem;
-    background: var(--color-verso-bg);
-    color: var(--color-verso-fg);
-    font: 15px/1.5 system-ui, -apple-system, sans-serif;
+    font-family: -apple-system, system-ui, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
-  main { max-width: 60rem; margin: 0 auto; }
-  h1 { font-weight: 600; letter-spacing: -0.01em; }
 }
 
 @layer components {
-  .verso-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-verso-surface);
-    border: 1px solid var(--color-verso-border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .verso-table th,
-  .verso-table td {
-    padding: 0.6rem 0.9rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-verso-border);
-  }
-  .verso-table thead th {
-    color: var(--color-verso-muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-  }
-  .verso-table tbody tr:last-child td { border-bottom: 0; }
+  /* Stateful selector + custom timing — no direct utility equivalent. */
+  .verso-chevron { transition: transform 150ms ease; }
+  details[open] > summary .verso-chevron { transform: rotate(90deg); }
 }

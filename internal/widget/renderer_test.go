@@ -34,7 +34,7 @@ func TestRenderTable(t *testing.T) {
 	}
 
 	got := render(t, r, tbl)
-	want := `<table class="verso-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th></tr></thead><tbody><tr><td>wan</td><td>up</td></tr><tr><td>lan</td><td>down</td></tr></tbody></table>`
+	want := `<table class="w-full border-collapse overflow-hidden rounded-lg border border-verso-border"><thead><tr><th scope="col" class="border-b border-verso-border px-3.5 py-2.5 text-left text-verso-muted font-normal text-sm tracking-wider">Name</th><th scope="col" class="border-b border-verso-border px-3.5 py-2.5 text-left text-verso-muted font-normal text-sm tracking-wider">Status</th></tr></thead><tbody class="divide-y divide-verso-border"><tr><td class="px-3.5 py-2.5 text-left">wan</td><td class="px-3.5 py-2.5 text-left">up</td></tr><tr><td class="px-3.5 py-2.5 text-left">lan</td><td class="px-3.5 py-2.5 text-left">down</td></tr></tbody></table>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}

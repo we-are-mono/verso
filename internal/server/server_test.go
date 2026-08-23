@@ -79,7 +79,7 @@ func TestIndexRendersRealData(t *testing.T) {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`<table class="verso-table"`, "verso-lab", "1h 1m", "1.00", "GiB"} {
+	for _, want := range []string{"<table", "verso-lab", "1h 1m", "1.00", "GiB"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
 		}
