@@ -71,8 +71,10 @@ nest as child attributes (array elements have an empty name).
    (a blobmsg table), then a `STATUS` with the return code (`0` = OK).
 4. **Decode** `UBUS_ATTR_DATA`'s payload as a blobmsg table.
 
-Requests carry only plain blob attributes (string / int32); blobmsg appears only
-when decoding results.
+The message envelope (OBJID, METHOD, …) uses plain blob attributes; the method's
+arguments in `UBUS_ATTR_DATA` are a blobmsg table, encoded by `encodeArgs` (flat
+strings) or `encodeTable` (nested tables). blobmsg is thus used on both sides —
+args on the way out, results on the way back.
 
 ## Gotchas (learned the hard way)
 
@@ -85,8 +87,10 @@ when decoding results.
 
 ## Scope and extension
 
-`internal/ubus` implements connect + hello + lookup + no-argument invoke — enough
-for `system info`. To support argument-carrying calls, encode a blobmsg args table
-into `UBUS_ATTR_DATA` (only a blobmsg *decoder* exists today). Event subscriptions
-(`SUBSCRIBE` / `NOTIFY`) and object registration are not implemented; the
-persistent connection could later carry them for live UI updates.
+`internal/ubus` implements connect + hello + lookup + invoke, with a blobmsg args
+encoder covering strings and nested tables — enough for `system info`,
+`session.login/access`, and `uci.get/set` (whose `values:{}` is a nested table).
+Arrays and scalar (int/bool) argument types are not encoded yet; the decoder reads
+them in results. Event subscriptions (`SUBSCRIBE` / `NOTIFY`) and object
+registration are not implemented; the persistent connection could later carry them
+for live UI updates.

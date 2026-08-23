@@ -102,3 +102,60 @@ func TestEncodeArgsRoundTrip(t *testing.T) {
 		t.Errorf("password = %v (present=%v), want empty string", v, ok)
 	}
 }
+
+// TestEncodeTableGolden anchors the nested-table wire format with a hand-computed
+// golden: a table with one field "v" whose value is itself a table {"a":"hi"}.
+// This is the shape uci.set needs for its values:{} argument.
+func TestEncodeTableGolden(t *testing.T) {
+	want := []byte{
+		0x82, 0x00, 0x00, 0x14, // extended, id 2 (TABLE), raw len 20
+		0x00, 0x01, 'v', 0x00, // namelen 1, "v\0", padded to 4
+		0x83, 0x00, 0x00, 0x0b, // child: extended, id 3 (STRING), raw len 11
+		0x00, 0x01, 'a', 0x00, // namelen 1, "a\0", padded to 4
+		'h', 'i', 0x00, // "hi\0"
+		0x00, // pad child to 12
+	}
+	got, err := encodeTable(map[string]any{"v": map[string]string{"a": "hi"}})
+	if err != nil {
+		t.Fatalf("encodeTable: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("encodeTable =\n % x\nwant\n % x", got, want)
+	}
+}
+
+// TestEncodeTableRoundTrip round-trips the full uci.set argument shape — flat
+// string fields alongside a nested values table — back through the decoder.
+func TestEncodeTableRoundTrip(t *testing.T) {
+	body, err := encodeTable(map[string]any{
+		"ubus_rpc_session": "deadbeef",
+		"config":           "system",
+		"section":          "@system[0]",
+		"values":           map[string]string{"hostname": "verso-lab"},
+	})
+	if err != nil {
+		t.Fatalf("encodeTable: %v", err)
+	}
+	tbl, err := decodeTable(body)
+	if err != nil {
+		t.Fatalf("decodeTable: %v", err)
+	}
+	if tbl["config"] != "system" || tbl["section"] != "@system[0]" {
+		t.Errorf("flat fields = %q/%q, want system/@system[0]", tbl["config"], tbl["section"])
+	}
+	values, ok := tbl["values"].(map[string]any)
+	if !ok {
+		t.Fatalf("values decoded as %T, want a nested table", tbl["values"])
+	}
+	if values["hostname"] != "verso-lab" {
+		t.Errorf("values.hostname = %v, want verso-lab", values["hostname"])
+	}
+}
+
+// TestEncodeTableRejectsUnsupported: an unencodable value type is a hard error,
+// not silent corruption — a caller learns immediately it passed a bad arg.
+func TestEncodeTableRejectsUnsupported(t *testing.T) {
+	if _, err := encodeTable(map[string]any{"n": 42}); err == nil {
+		t.Fatal("encodeTable: want error for an int value, got nil")
+	}
+}

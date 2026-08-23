@@ -105,30 +105,71 @@ func (m *msg) bytes() []byte {
 }
 
 // encodeArgs encodes named string arguments as the blobmsg table libubus expects
-// in UBUS_ATTR_DATA. It is the request-side counterpart of decodeTable — the
-// piece the protocol doc flagged as missing, needed for argument-carrying calls
-// like session.login.
+// in UBUS_ATTR_DATA. It is the flat-string counterpart of decodeTable, covering
+// calls whose arguments are all strings (session.login, uci.get, session.access).
 func encodeArgs(args map[string]string) []byte {
 	var body []byte
 	for name, val := range args {
-		body = appendBlobmsgString(body, name, val)
+		body = appendBlobmsgAttr(body, bmString, name, nulTerminated(val))
 	}
 	return body
 }
 
-// appendBlobmsgString appends one extended (blobmsg) string attribute — a padded
-// name header followed by the NUL-terminated value — to a blobmsg table body.
-func appendBlobmsgString(dst []byte, name, val string) []byte {
+// encodeTable encodes named arguments that may include nested tables — the shape
+// uci.set needs for its values:{} — as a blobmsg table body. Values may be a
+// string, a map[string]string, or a map[string]any (nested table); any other
+// type is a hard error rather than silent corruption on the wire.
+func encodeTable(args map[string]any) ([]byte, error) {
+	var body []byte
+	for name, val := range args {
+		var err error
+		if body, err = appendBlobmsgValue(body, name, val); err != nil {
+			return nil, err
+		}
+	}
+	return body, nil
+}
+
+// appendBlobmsgValue appends one named blobmsg attribute, dispatching on the Go
+// type of val. Nested maps recurse as blobmsg tables; unsupported types error.
+func appendBlobmsgValue(dst []byte, name string, val any) ([]byte, error) {
+	switch v := val.(type) {
+	case string:
+		return appendBlobmsgAttr(dst, bmString, name, nulTerminated(v)), nil
+	case map[string]string:
+		return appendBlobmsgAttr(dst, bmTable, name, encodeArgs(v)), nil
+	case map[string]any:
+		body, err := encodeTable(v)
+		if err != nil {
+			return nil, err
+		}
+		return appendBlobmsgAttr(dst, bmTable, name, body), nil
+	default:
+		return nil, fmt.Errorf("ubus: cannot encode arg %q of unsupported type %T", name, val)
+	}
+}
+
+// appendBlobmsgAttr appends one extended (blobmsg) attribute — a padded name
+// header followed by the value payload — to a blobmsg table body. The payload is
+// pre-encoded by the caller: a NUL-terminated string, or a nested table's body.
+func appendBlobmsgAttr(dst []byte, id int, name string, value []byte) []byte {
 	hdrLen := pad4(2 + len(name) + 1) // blobmsg_hdrlen: u16 namelen + name + NUL, padded
-	p := make([]byte, hdrLen+len(val)+1)
+	p := make([]byte, hdrLen+len(value))
 	binary.BigEndian.PutUint16(p[0:2], uint16(len(name)))
 	copy(p[2:], name)
-	copy(p[hdrLen:], val)
+	copy(p[hdrLen:], value)
 	rawLen := 4 + len(p)
 	attr := make([]byte, pad4(rawLen))
-	binary.BigEndian.PutUint32(attr[0:4], packID(bmString, true, rawLen))
+	binary.BigEndian.PutUint32(attr[0:4], packID(id, true, rawLen))
 	copy(attr[4:], p)
 	return append(dst, attr...)
+}
+
+// nulTerminated returns s as the NUL-terminated byte payload blobmsg strings use.
+func nulTerminated(s string) []byte {
+	b := make([]byte, len(s)+1)
+	copy(b, s)
+	return b
 }
 
 // rawAttr is a decoded blob attribute: its id/type, extended flag, and payload.

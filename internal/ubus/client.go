@@ -166,22 +166,37 @@ func (c *Client) Lookup(name string) (uint32, error) {
 // Invoke calls a no-argument method on an object and returns the decoded result
 // table (int64, float64, string, map[string]any, or []any values).
 func (c *Client) Invoke(objID uint32, method string) (map[string]any, error) {
-	return c.InvokeArgs(objID, method, nil)
+	return c.invoke(objID, method, nil)
 }
 
 // InvokeArgs calls a method with named string arguments — encoded as a blobmsg
 // table in UBUS_ATTR_DATA — and returns the decoded result table. String args
-// cover what Verso needs (e.g. session.login's username/password); an empty or
-// nil map sends the empty args table a no-argument call requires.
+// cover the flat calls Verso needs (e.g. session.login's username/password);
+// InvokeTable handles arguments carrying nested tables.
 func (c *Client) InvokeArgs(objID uint32, method string, args map[string]string) (map[string]any, error) {
+	return c.invoke(objID, method, encodeArgs(args))
+}
+
+// InvokeTable calls a method whose arguments may include nested tables — the
+// shape uci.set needs for values:{} — and returns the decoded result table.
+// Argument values may be string, map[string]string, or map[string]any; any other
+// type is rejected before anything is sent.
+func (c *Client) InvokeTable(objID uint32, method string, args map[string]any) (map[string]any, error) {
+	body, err := encodeTable(args)
+	if err != nil {
+		return nil, err
+	}
+	return c.invoke(objID, method, body)
+}
+
+// invoke sends INVOKE with a pre-encoded blobmsg args table (nil or empty sends
+// the empty args table ubusd requires even for a no-argument method) and returns
+// the decoded result table.
+func (c *Client) invoke(objID uint32, method string, tableBody []byte) (map[string]any, error) {
 	var m msg
 	m.putU32(attrObjID, objID)
 	m.putString(attrMethod, method)
-	if len(args) == 0 {
-		m.put(attrData, false, nil) // empty args table — ubusd requires the DATA attr
-	} else {
-		m.put(attrData, false, encodeArgs(args))
-	}
+	m.put(attrData, false, tableBody)
 	if err := c.send(msgInvoke, 0, m.bytes()); err != nil {
 		return nil, err
 	}
