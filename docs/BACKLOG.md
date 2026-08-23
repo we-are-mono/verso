@@ -70,8 +70,10 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Research
 
-- **Behavioural pages (F3) — conditional fields.** The `repeater` behavioural
-  widget landed add/remove peers in the WireGuard plugin (ADR-005 §7): the plugin
-  declares intent, the shell realizes it. The remaining axis is *conditional
-  fields* — a field-set shown only when a controlling field has a given value —
-  under the same declare-intent/shell-realizes rule. Governed by ADR-005.
+- **Behavioural pages — remaining edges.** Both axes landed in the WireGuard
+  plugin under the declare-intent/shell-realizes rule (ADR-005 §7): `repeater` for
+  add/remove peers (realized via an rpcd round-trip), `conditional` for the
+  pre-shared-key toggle (realized in pure CSS). What the schema still can't express
+  is the finding: a value *computed* from another field (e.g. a generated keypair),
+  and a field-set gated on a multi-value `select` (a proto switch). Each is a
+  candidate next behavioural widget. Governed by ADR-005.
