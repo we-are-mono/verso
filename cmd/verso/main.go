@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/server"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -25,7 +26,17 @@ func main() {
 		log.Fatalf("verso: %v", err)
 	}
 
-	srv, err := server.New(renderer, openwrt.NewNativeBackend())
+	pluginsDir := os.Getenv("VERSO_PLUGINS_DIR")
+	if pluginsDir == "" {
+		pluginsDir = "/usr/share/verso/plugins"
+	}
+	manifests, problems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
+	for _, p := range problems {
+		log.Printf("verso: %v", p)
+	}
+	log.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
+
+	srv, err := server.New(renderer, openwrt.NewNativeBackend(), plugin.NewSocketTransport(), manifests)
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
