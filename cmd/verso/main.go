@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/server"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 func main() {
@@ -18,7 +20,15 @@ func main() {
 		addr = ":8080"
 	}
 
-	srv := server.New()
+	renderer, err := widget.NewRenderer()
+	if err != nil {
+		log.Fatalf("verso: %v", err)
+	}
+
+	srv, err := server.New(renderer, openwrt.NewNativeBackend())
+	if err != nil {
+		log.Fatalf("verso: %v", err)
+	}
 
 	log.Printf("verso listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {

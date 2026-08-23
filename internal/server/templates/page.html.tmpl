@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<style>
+:root{
+  --verso-bg:#0f1115; --verso-surface:#171a21; --verso-fg:#e6e9ef;
+  --verso-muted:#9aa4b2; --verso-border:#2a2f3a; --verso-accent:#4c8bf5;
+}
+body{margin:0;background:var(--verso-bg);color:var(--verso-fg);
+  font:15px/1.5 system-ui,-apple-system,sans-serif;padding:2rem;}
+main{max-width:60rem;margin:0 auto;}
+h1{font-weight:600;letter-spacing:-.01em;}
+.verso-table{width:100%;border-collapse:collapse;background:var(--verso-surface);
+  border:1px solid var(--verso-border);border-radius:8px;overflow:hidden;}
+.verso-table th,.verso-table td{padding:.6rem .9rem;text-align:left;
+  border-bottom:1px solid var(--verso-border);}
+.verso-table thead th{color:var(--verso-muted);font-weight:600;
+  text-transform:uppercase;font-size:.72rem;letter-spacing:.05em;}
+.verso-table tbody tr:last-child td{border-bottom:0;}
+</style>
+</head>
+<body>
+<main>
+<h1>Verso</h1>
+{{.Body}}
+</main>
+</body>
+</html>
