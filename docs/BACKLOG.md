@@ -40,11 +40,11 @@ own and points at the decision that governs it; the rationale lives there, not h
   the option or leaves it stale is unverified (`internal/openwrt`).
 - **`list` widget add/remove.** The `list` widget renders a fixed set of rows with
   no client-side add/remove. Blocked on the behavioural-pages item below.
-- **`commit` has no section add or delete.** A `commit` op is only `uci set` (+
-  commit): it cannot create a section (blocks adding a WireGuard peer or a new
-  tunnel) or unset an option (so an emptied optional field is left untouched, not
-  cleared). Adding/removing repeating sections needs a section add/delete op or a
-  round-trip. Governed by ADR-006/ADR-007; related to the behavioural-pages item.
+- **`commit` cannot unset an option.** A `commit` op is `uci set`, so an emptied
+  optional field is left untouched rather than cleared; the WireGuard plugin omits
+  empty scalars from its commit for this reason. Clearing a value needs a delete op.
+  Governed by ADR-007. (Adding and removing repeating sections is the repeater's
+  job — ADR-005 §7 — not the commit's.)
 
 ## Validation (ADR-008)
 
@@ -70,10 +70,8 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Research
 
-- **Behavioural pages (F3) — the escape hatch.** The WireGuard plugin
-  (`verso-plugin-wireguard`) is the vehicle: it renders and edits tunnels + peers
-  and makes the break concrete — there is no way to add or remove a peer with
-  today's widgets. Decide and land the escape hatch (shell-owned behavioural
-  widgets such as a `repeater`, and/or a declarative round-trip) that adds this
-  while preserving crash isolation and central theming. Plugins never ship code.
-  Governed by ADR-005 and ADR-006.
+- **Behavioural pages (F3) — conditional fields.** The `repeater` behavioural
+  widget landed add/remove peers in the WireGuard plugin (ADR-005 §7): the plugin
+  declares intent, the shell realizes it. The remaining axis is *conditional
+  fields* — a field-set shown only when a controlling field has a given value —
+  under the same declare-intent/shell-realizes rule. Governed by ADR-005.
