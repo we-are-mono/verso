@@ -300,6 +300,69 @@ func TestNavMultipleEntriesPerPlugin(t *testing.T) {
 	}
 }
 
+// TestHostGuardRejectsUnknownHost: a request with a Host outside the allowlist
+// is refused (VS-01, DNS-rebinding defense).
+func TestHostGuardRejectsUnknownHost(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	srv.SetAllowedHosts([]string{"verso.lan", "127.0.0.1"})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "evil.example.com"
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("unknown host: status = %d, want 400", rec.Code)
+	}
+}
+
+func TestHostGuardAllowsConfiguredHost(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	srv.SetAllowedHosts([]string{"verso.lan"})
+	token, _ := srv.sessions.Create("sid", "root")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "verso.lan:8080" // port is stripped before the check
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("allowed host: status = %d, want 200", rec.Code)
+	}
+}
+
+// TestHostGuardBlocksCrossOriginWrite: a state-changing request from a foreign
+// Origin is refused even with a valid session.
+func TestHostGuardBlocksCrossOriginWrite(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	srv.SetAllowedHosts([]string{"verso.lan"})
+	token, _ := srv.sessions.Create("sid", "root")
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.Host = "verso.lan"
+	req.Header.Set("Origin", "http://evil.example.com")
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("cross-origin write: status = %d, want 403", rec.Code)
+	}
+}
+
+// TestSecurityHeaders: defensive headers are set on every response (VS-07).
+func TestSecurityHeaders(t *testing.T) {
+	rec := get(t, newServer(t, fakeBackend{}), "/")
+	h := rec.Header()
+	if !strings.Contains(h.Get("Content-Security-Policy"), "script-src 'none'") {
+		t.Errorf("CSP missing or not strict: %q", h.Get("Content-Security-Policy"))
+	}
+	if h.Get("X-Frame-Options") != "DENY" {
+		t.Errorf("X-Frame-Options = %q, want DENY", h.Get("X-Frame-Options"))
+	}
+	if h.Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("X-Content-Type-Options missing")
+	}
+}
+
 // TestUnauthenticatedRedirectsToLogin: the middleware gates every non-public page.
 func TestUnauthenticatedRedirectsToLogin(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
@@ -363,8 +426,11 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 func TestLogoutClearsSession(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	token, _ := srv.sessions.Create("sid", "root")
+	sess, _ := srv.sessions.get(token)
 
-	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	form := url.Values{"_csrf": {sess.csrf}}
+	req := httptest.NewRequest(http.MethodPost, "/logout", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
@@ -374,6 +440,21 @@ func TestLogoutClearsSession(t *testing.T) {
 	}
 	if _, ok := srv.sessions.get(token); ok {
 		t.Errorf("session was not destroyed")
+	}
+}
+
+// TestCSRFRejectsPostWithoutToken: a state-changing request lacking the session
+// CSRF token is refused (VS-04).
+func TestCSRFRejectsPostWithoutToken(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	token, _ := srv.sessions.Create("sid", "root")
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil) // no _csrf
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("POST without CSRF token: status = %d, want 403", rec.Code)
 	}
 }
 

@@ -40,13 +40,24 @@ func NewRenderer() (*Renderer, error) {
 // Render writes the HTML for w. The widget set is closed, so an unknown type is
 // a programming error, not an extension point.
 func (r *Renderer) Render(out io.Writer, w Widget) error {
+	return r.render(out, w, "")
+}
+
+// RenderWithToken renders w, injecting csrfToken as a hidden field into any form
+// it produces, so state-changing plugin submissions carry the caller's CSRF
+// token (VS-04). Plain Render omits it.
+func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken string) error {
+	return r.render(out, w, csrfToken)
+}
+
+func (r *Renderer) render(out io.Writer, w Widget, csrf string) error {
 	switch v := w.(type) {
 	case *Table:
 		return r.execute(out, "table.html.tmpl", v)
 	case *Card:
-		return r.renderCard(out, v)
+		return r.renderCard(out, v, csrf)
 	case *Form:
-		return r.renderForm(out, v)
+		return r.renderForm(out, v, csrf)
 	case *Field:
 		return r.execute(out, "field.html.tmpl", v)
 	case *List:
@@ -79,18 +90,19 @@ func (r *Renderer) RawUsage() int64 { return r.rawUses.Load() }
 // formView is the form template's model: its fields pre-rendered to trusted HTML
 // (each produced by this renderer), plus the resolved submit label.
 type formView struct {
-	Submit  string
-	Success string
-	Fields  []template.HTML
+	Submit    string
+	Success   string
+	CSRFToken string
+	Fields    []template.HTML
 }
 
-// renderForm renders a form by first rendering each field through Render, keeping
+// renderForm renders a form by first rendering each field through render, keeping
 // composition in Go and the template a dumb shell (as renderCard does).
-func (r *Renderer) renderForm(out io.Writer, f *Form) error {
+func (r *Renderer) renderForm(out io.Writer, f *Form, csrf string) error {
 	fields := make([]template.HTML, 0, len(f.Fields))
 	for _, field := range f.Fields {
 		var b strings.Builder
-		if err := r.Render(&b, field); err != nil {
+		if err := r.render(&b, field, csrf); err != nil {
 			return err
 		}
 		fields = append(fields, template.HTML(b.String()))
@@ -100,7 +112,7 @@ func (r *Renderer) renderForm(out io.Writer, f *Form) error {
 		submit = "Save"
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Submit: submit, Success: f.Success, Fields: fields,
+		Submit: submit, Success: f.Success, CSRFToken: csrf, Fields: fields,
 	})
 }
 
@@ -112,13 +124,14 @@ type cardView struct {
 	Children []template.HTML
 }
 
-// renderCard renders a card by first rendering each child through Render, so
-// composition/nesting lives in Go and the template stays a dumb shell.
-func (r *Renderer) renderCard(out io.Writer, c *Card) error {
+// renderCard renders a card by first rendering each child through render, so
+// composition/nesting lives in Go and the template stays a dumb shell. The CSRF
+// token flows to any nested form.
+func (r *Renderer) renderCard(out io.Writer, c *Card, csrf string) error {
 	children := make([]template.HTML, 0, len(c.Children))
 	for _, child := range c.Children {
 		var b strings.Builder
-		if err := r.Render(&b, child); err != nil {
+		if err := r.render(&b, child, csrf); err != nil {
 			return err
 		}
 		children = append(children, template.HTML(b.String()))

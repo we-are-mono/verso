@@ -54,6 +54,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 	req := plugin.Request{Method: r.Method, Path: r.PathValue("path"), Query: r.URL.Query()}
 	if r.Method != http.MethodGet {
 		if err := r.ParseForm(); err == nil {
+			r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
 			req.Form = r.PostForm
 		}
 	}
@@ -69,7 +70,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 		return s.unavailable(m), http.StatusOK
 	}
 	var b strings.Builder
-	if err := s.widgets.Render(&b, wdg); err != nil {
+	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r)); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)
 		return s.unavailable(m), http.StatusOK
 	}

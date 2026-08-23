@@ -9,7 +9,7 @@ STOP=10
 start_service() {
 	procd_open_instance
 	procd_set_param command /usr/bin/verso
-	procd_set_param env VERSO_ADDR=:8080
+	procd_set_param env VERSO_ADDR=:8080 VERSO_ALLOWED_HOSTS=127.0.0.1,172.20.0.10,10.0.0.232
 	procd_set_param respawn
 	procd_set_param stdout 1
 	procd_set_param stderr 1

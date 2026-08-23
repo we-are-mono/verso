@@ -7,9 +7,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"sync"
+	"time"
 )
 
-const sessionCookie = "verso_session"
+const (
+	sessionCookie          = "verso_session"
+	sessionIdleTimeout     = 30 * time.Minute
+	sessionAbsoluteTimeout = 12 * time.Hour
+)
 
 // session is server-side state keyed by an opaque cookie token. The rpcd sid is
 // held here and never sent to the browser — unlike LuCI, which exposes the sid
@@ -17,40 +22,88 @@ const sessionCookie = "verso_session"
 type session struct {
 	sid      string
 	username string
+	csrf     string
+	created  time.Time
+	lastSeen time.Time
 }
 
-// Sessions is the server's in-memory session store. It is the shell's own state
-// (not an injected dependency): a random opaque token maps to the held session.
+// Sessions is the server's in-memory session store. A random opaque token maps
+// to the held session; sessions expire on idle and at an absolute cap (VS-03).
+// The clock is injected so expiry is testable without sleeping (ADR-003).
 type Sessions struct {
-	mu    sync.Mutex
-	items map[string]session
+	mu       sync.Mutex
+	items    map[string]session
+	now      func() time.Time
+	idle     time.Duration
+	absolute time.Duration
 }
 
-func newSessions() *Sessions { return &Sessions{items: make(map[string]session)} }
+func newSessions() *Sessions { return newSessionsClock(time.Now) }
 
-// Create mints a fresh opaque token for a session and returns it.
+func newSessionsClock(now func() time.Time) *Sessions {
+	return &Sessions{
+		items:    make(map[string]session),
+		now:      now,
+		idle:     sessionIdleTimeout,
+		absolute: sessionAbsoluteTimeout,
+	}
+}
+
+// Create mints a fresh opaque token for a session and returns it, opportunistically
+// sweeping expired entries.
 func (s *Sessions) Create(sid, username string) (string, error) {
 	token, err := randomToken()
 	if err != nil {
 		return "", err
 	}
+	csrf, err := randomToken()
+	if err != nil {
+		return "", err
+	}
+	now := s.now()
 	s.mu.Lock()
-	s.items[token] = session{sid: sid, username: username}
+	s.sweep(now)
+	s.items[token] = session{sid: sid, username: username, csrf: csrf, created: now, lastSeen: now}
 	s.mu.Unlock()
 	return token, nil
 }
 
+// get returns a live session, sliding its idle window. An expired session is
+// removed and reported absent.
 func (s *Sessions) get(token string) (session, bool) {
+	now := s.now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.items[token]
-	return sess, ok
+	if !ok {
+		return session{}, false
+	}
+	if s.expired(sess, now) {
+		delete(s.items, token)
+		return session{}, false
+	}
+	sess.lastSeen = now
+	s.items[token] = sess
+	return sess, true
 }
 
 func (s *Sessions) destroy(token string) {
 	s.mu.Lock()
 	delete(s.items, token)
 	s.mu.Unlock()
+}
+
+func (s *Sessions) expired(sess session, now time.Time) bool {
+	return now.Sub(sess.lastSeen) > s.idle || now.Sub(sess.created) > s.absolute
+}
+
+// sweep deletes expired sessions. The caller holds the lock.
+func (s *Sessions) sweep(now time.Time) {
+	for token, sess := range s.items {
+		if s.expired(sess, now) {
+			delete(s.items, token)
+		}
+	}
 }
 
 // randomToken returns 256 bits of hex-encoded entropy — the opaque cookie value.

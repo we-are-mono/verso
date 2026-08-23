@@ -36,12 +36,18 @@ type Server struct {
 	transport  plugin.Transport
 	manifests  []plugin.Manifest
 	pluginByID map[string]plugin.Manifest
-	auth       Authenticator
-	security   Security
-	sessions   *Sessions
-	page       *template.Template
-	css        template.CSS
+	auth         Authenticator
+	security     Security
+	sessions     *Sessions
+	allowedHosts map[string]bool
+	page         *template.Template
+	css          template.CSS
 }
+
+// SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
+// (VS-01). An empty list leaves the check disabled; production supplies the
+// device's hostnames and LAN addresses.
+func (s *Server) SetAllowedHosts(hosts []string) { s.allowedHosts = hostSet(hosts) }
 
 // New constructs a Server. It renders widgets through the injected renderer,
 // reads live state through the injected backend, and reaches plugins through the
@@ -83,9 +89,11 @@ func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 	return byID
 }
 
-// Handler returns the root HTTP handler for the shell, gated behind the session
-// middleware.
-func (s *Server) Handler() http.Handler { return s.requireAuth(s.mux) }
+// Handler returns the root HTTP handler for the shell: security headers, then
+// the session/CSRF gate, wrapping the routing mux.
+func (s *Server) Handler() http.Handler {
+	return securityHeaders(s.hostGuard(s.requireAuth(s.mux)))
+}
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -100,6 +108,7 @@ type pageData struct {
 	Nav        []navSection
 	Body       template.HTML
 	NoPassword bool
+	CSRFToken  string
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -114,6 +123,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Nav:        s.buildNav(r.URL.Path),
 		Body:       body,
 		NoPassword: !s.security.RootHasPassword(),
+		CSRFToken:  s.sessionCSRF(r),
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
@@ -132,7 +142,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	page := &widget.Card{Children: []widget.Widget{s.statusTable(r.Context())}}
 
 	var body strings.Builder
-	if err := s.widgets.Render(&body, page); err != nil {
+	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r)); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

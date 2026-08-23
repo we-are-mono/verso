@@ -8,6 +8,7 @@ package plugin
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -45,6 +46,10 @@ func (m Manifest) validate() error {
 		return fmt.Errorf("plugin %q missing name", m.ID)
 	case m.Socket == "":
 		return fmt.Errorf("plugin %q missing socket", m.ID)
+	case !filepath.IsAbs(m.Socket) || m.Socket != filepath.Clean(m.Socket):
+		// The socket is dialed as-is; require a clean absolute path so a manifest
+		// cannot aim the shell at a relative or traversal path (VS-09).
+		return fmt.Errorf("plugin %q socket must be a clean absolute path", m.ID)
 	case len(m.Nav) == 0:
 		return fmt.Errorf("plugin %q has no nav entries", m.ID)
 	}

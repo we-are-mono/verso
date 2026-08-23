@@ -107,6 +107,25 @@ func TestDiscoverRejectsUnsafeID(t *testing.T) {
 	}
 }
 
+// TestDiscoverRejectsBadSocketPath: the socket is dialed as-is, so a relative or
+// traversal path is rejected (VS-09).
+func TestDiscoverRejectsBadSocketPath(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/rel/manifest.json": `{"manifest_version":1,"id":"rel","name":"N","socket":"relative.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}]}`,
+		"plugins/dot/manifest.json": `{"manifest_version":1,"id":"dot","name":"N","socket":"/var/run/../etc/x.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}]}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(got) != 0 {
+		t.Errorf("bad socket paths must be skipped, got %+v", got)
+	}
+	if len(problems) != 2 {
+		t.Errorf("problems = %d, want 2", len(problems))
+	}
+}
+
 func TestDiscoverRejectsEmptyNav(t *testing.T) {
 	fsys := mapFS(map[string]string{
 		"plugins/x/manifest.json": `{"manifest_version":1,"id":"x","name":"N",` +

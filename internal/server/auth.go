@@ -6,9 +6,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 )
 
 // Authenticator verifies credentials and returns an rpcd session id. Injected
@@ -35,11 +37,19 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if _, ok := s.currentSession(r); ok {
-			next.ServeHTTP(w, r)
+		sess, ok := s.currentSession(r)
+		if !ok {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		// CSRF: every state-changing request must carry the session's token
+		// (VS-04). GET/HEAD are safe; /login is public and covered by the Origin
+		// check instead (it has no session yet).
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !validCSRF(r, sess.csrf) {
+			http.Error(w, "invalid CSRF token", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -49,6 +59,23 @@ func (s *Server) currentSession(r *http.Request) (session, bool) {
 		return session{}, false
 	}
 	return s.sessions.get(cookie.Value)
+}
+
+func (s *Server) sessionCSRF(r *http.Request) string {
+	if sess, ok := s.currentSession(r); ok {
+		return sess.csrf
+	}
+	return ""
+}
+
+func validCSRF(r *http.Request, want string) bool {
+	if want == "" {
+		return false
+	}
+	if err := r.ParseForm(); err != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(r.PostForm.Get("_csrf")), []byte(want)) == 1
 }
 
 type loginData struct {
@@ -95,6 +122,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   r.TLS != nil, // set over HTTPS; the dev container is plain HTTP
 		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(sessionAbsoluteTimeout / time.Second),
 	})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

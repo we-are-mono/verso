@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -47,9 +48,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+	srv.SetAllowedHosts(allowedHosts())
 
 	log.Printf("verso listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+}
+
+// allowedHosts is the DNS-rebinding Host allowlist: loopback and the device
+// hostname always, plus any hosts/LAN IPs from $VERSO_ALLOWED_HOSTS (comma-sep).
+func allowedHosts() []string {
+	hosts := []string{"localhost", "127.0.0.1", "::1"}
+	if hn, err := os.Hostname(); err == nil && hn != "" {
+		hosts = append(hosts, hn)
+	}
+	if extra := os.Getenv("VERSO_ALLOWED_HOSTS"); extra != "" {
+		hosts = append(hosts, strings.Split(extra, ",")...)
+	}
+	return hosts
 }

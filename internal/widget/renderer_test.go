@@ -4,9 +4,23 @@
 package widget
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// normalizeHTML collapses whitespace between and around tags, so render tests
+// assert structure rather than template indentation.
+var (
+	wsAfterOpen   = regexp.MustCompile(`>\s+`)
+	wsBeforeClose = regexp.MustCompile(`\s+<`)
+)
+
+func normalizeHTML(s string) string {
+	s = wsAfterOpen.ReplaceAllString(s, ">")
+	s = wsBeforeClose.ReplaceAllString(s, "<")
+	return strings.TrimSpace(s)
+}
 
 func newRenderer(t *testing.T) *Renderer {
 	t.Helper()
@@ -23,7 +37,7 @@ func render(t *testing.T, r *Renderer, w Widget) string {
 	if err := r.Render(&b, w); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	return strings.TrimSpace(b.String())
+	return normalizeHTML(b.String())
 }
 
 func TestRenderTable(t *testing.T) {
@@ -267,6 +281,29 @@ func TestRawUsageInstrumented(t *testing.T) {
 	_ = render(t, r, &Raw{Markdown: "b"})
 	if r.RawUsage() != 2 {
 		t.Errorf("RawUsage = %d, want 2", r.RawUsage())
+	}
+}
+
+// TestRenderWithTokenInjectsCSRF: a form rendered with a token carries a hidden
+// _csrf field; plain Render omits it (VS-04).
+func TestRenderWithTokenInjectsCSRF(t *testing.T) {
+	r := newRenderer(t)
+	form := &Form{Fields: []Widget{&Field{Name: "h", Label: "H"}}}
+
+	var withTok strings.Builder
+	if err := r.RenderWithToken(&withTok, form, "tok123"); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
+	}
+	if !strings.Contains(withTok.String(), `name="_csrf" value="tok123"`) {
+		t.Errorf("csrf hidden field missing: %s", withTok.String())
+	}
+
+	var plain strings.Builder
+	if err := r.Render(&plain, form); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if strings.Contains(plain.String(), "_csrf") {
+		t.Errorf("plain Render must not inject a csrf field: %s", plain.String())
 	}
 }
 
