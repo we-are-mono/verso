@@ -104,6 +104,33 @@ func (m *msg) bytes() []byte {
 	return append(hdr[:], m.children...)
 }
 
+// encodeArgs encodes named string arguments as the blobmsg table libubus expects
+// in UBUS_ATTR_DATA. It is the request-side counterpart of decodeTable — the
+// piece the protocol doc flagged as missing, needed for argument-carrying calls
+// like session.login.
+func encodeArgs(args map[string]string) []byte {
+	var body []byte
+	for name, val := range args {
+		body = appendBlobmsgString(body, name, val)
+	}
+	return body
+}
+
+// appendBlobmsgString appends one extended (blobmsg) string attribute — a padded
+// name header followed by the NUL-terminated value — to a blobmsg table body.
+func appendBlobmsgString(dst []byte, name, val string) []byte {
+	hdrLen := pad4(2 + len(name) + 1) // blobmsg_hdrlen: u16 namelen + name + NUL, padded
+	p := make([]byte, hdrLen+len(val)+1)
+	binary.BigEndian.PutUint16(p[0:2], uint16(len(name)))
+	copy(p[2:], name)
+	copy(p[hdrLen:], val)
+	rawLen := 4 + len(p)
+	attr := make([]byte, pad4(rawLen))
+	binary.BigEndian.PutUint32(attr[0:4], packID(bmString, true, rawLen))
+	copy(attr[4:], p)
+	return append(dst, attr...)
+}
+
 // rawAttr is a decoded blob attribute: its id/type, extended flag, and payload.
 type rawAttr struct {
 	id       int

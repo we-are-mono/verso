@@ -72,3 +72,33 @@ func TestSplitAttrsRejectsBadLength(t *testing.T) {
 		t.Fatal("splitAttrs: want error on oversized length")
 	}
 }
+
+// TestEncodeArgsGolden anchors the request-side blobmsg encoder with a
+// hand-computed golden: one string field "a"="hi".
+func TestEncodeArgsGolden(t *testing.T) {
+	want := []byte{
+		0x83, 0x00, 0x00, 0x0b, // extended, id 3 (STRING), raw len 11
+		0x00, 0x01, // namelen 1
+		'a', 0x00, // "a\0" — name header padded to 4
+		'h', 'i', 0x00, // "hi\0"
+		0x00, // pad attr to 12
+	}
+	if got := encodeArgs(map[string]string{"a": "hi"}); !bytes.Equal(got, want) {
+		t.Fatalf("encodeArgs =\n % x\nwant\n % x", got, want)
+	}
+}
+
+// TestEncodeArgsRoundTrip: the encoder's output decodes back to the same args,
+// including an empty value — the no-password login case.
+func TestEncodeArgsRoundTrip(t *testing.T) {
+	tbl, err := decodeTable(encodeArgs(map[string]string{"username": "root", "password": ""}))
+	if err != nil {
+		t.Fatalf("decodeTable: %v", err)
+	}
+	if tbl["username"] != "root" {
+		t.Errorf("username = %v, want root", tbl["username"])
+	}
+	if v, ok := tbl["password"]; !ok || v != "" {
+		t.Errorf("password = %v (present=%v), want empty string", v, ok)
+	}
+}
