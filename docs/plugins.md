@@ -90,12 +90,14 @@ envelope** back — `Content-Type: application/json`:
 
 **GET** `<path>` → return the page as a schema envelope, HTTP 200.
 
-**POST** `<path>` (form submit) → validate the submission, then:
+**POST** `<path>` (form submit) → run your **semantic** checks (the shell handles
+datatypes), then:
 - **success:** HTTP 200 with the re-rendered page (a success note), plus a
-  `commit` intent for whatever changed. The shell — not you — performs the write.
-- **validation failure:** HTTP **422**, the *same* form re-rendered with each bad
-  field carrying its `error` and the submitted `value`, and **no** `commit`. You
-  are authoritative for validation — the shell renders exactly what you return.
+  `commit` intent for whatever changed. The shell — not you — performs the write,
+  after it has validated every datatype.
+- **semantic failure:** HTTP **422**, the *same* form re-rendered with each bad
+  field carrying its `error` and the submitted `value`, and **no** `commit`. The
+  shell merges any datatype errors into the same form (see Validation).
 
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
 request path like any HTTP server.
@@ -128,7 +130,7 @@ cannot receive a state-changing request at all** — declare what you write, or
 your save is refused. Reads (GET/HEAD) are never gated.
 
 This gates *who* may write; you remain authoritative for deciding *what* to write
-and for validation (tiers below).
+and for semantic validation (below).
 
 ### Writing config (the `commit` intent)
 
@@ -261,7 +263,7 @@ Renders its `fields` inside a `POST` form that submits **back to the same page**
 
 - `kind`: `"text"` (default) or `"select"`.
 - `value`: the current value; echo the submitted value back on a failed POST.
-- `datatype`: a tier-1 datatype name (see Validation). Optional.
+- `datatype`: a datatype name the shell enforces (see [Datatypes](#datatypes)). Optional.
 - `error`: an inline error to show under the field (you set this on a 422).
 - For `kind:"select"`, supply `options` and set `value` to the selected one:
 
@@ -308,20 +310,37 @@ bridge, not a home.
 
 ## Validation
 
-Two tiers (tier 2, live client validation, is intentionally out of scope):
+Two layers, split by what each can know (ADR-008):
 
-- **Tier 1 — declarative `datatype`** on a `field`/`list`. Reuses LuCI's datatype
-  names — currently `hostname`, `ip4addr`, `ip6addr`, `ipaddr`, `host`, `port`.
-  It is carried in the schema and surfaced to the browser as a hint. **It is not
-  enforced by the shell** — in the schema-gateway model the shell has no per-form
-  state at POST time, so tier 1 is advisory and tier 3 is where
-  safety lives.
-- **Tier 3 — server-side, in your POST handler. Authoritative.** Validate the
-  submitted values yourself; on failure return **HTTP 422** with the same form
-  re-rendered, each bad field carrying its `error` and its submitted `value`
-  (and, for a `list`, the `errors` map) and no `commit`. On success, return the
-  `commit` intent and let the shell apply it — you validate and decide, the shell
-  writes. Never trust tier 1 alone.
+- **Declarative — the `datatype`, enforced by the shell.** Put a `datatype` on a
+  `field` or `list` (the names below). On a POST the shell validates every
+  submitted value against its datatype, and if any fail it re-renders your form
+  with the message under the offending field — or, for a `list`, the offending
+  row — and **does not apply your `commit`**. You declare it; the shell enforces
+  it. You do not re-check datatypes yourself.
+- **Semantic — cross-field and stateful, in your POST handler.** Rules only you
+  can know: "is this port already used," "do these ranges overlap," "start ≤ end."
+  Validate these yourself; on failure return **HTTP 422** with the same form
+  re-rendered — each bad field's `error`, a `list`'s index-keyed `errors`, or the
+  form-level `error` for a message tied to no single field — and **no** `commit`.
+
+Both layers feed the same error slots and render identically, so the operator
+can't tell which produced a message. (Live client-side validation is out of scope.)
+
+### Datatypes
+
+Declare one of these as a field's or list item's `datatype`; the shell enforces
+it. They are LuCI's names, so OpenWrt authors already know them.
+
+| datatype | accepts |
+|---|---|
+| `hostname` | a hostname label or dotted name — `router`, `my-host`, `host.lan` |
+| `fqdn` | a fully-qualified domain name — a hostname with at least one dot, `host.example.com` |
+| `ip4addr` | an IPv4 address — `192.168.1.1` |
+| `ip6addr` | an IPv6 address — `2001:db8::1` |
+| `ipaddr` | an IPv4 or IPv6 address |
+| `host` | a hostname or an IP address |
+| `port` | a port number, 1–65535 |
 
 ## A worked example: verso-plugin-hostname
 
@@ -332,13 +351,13 @@ shares no Go code with the shell. Its whole shape:
 - **manifest.json** places one entry under System → General.
 - **GET /** reads the hostname and NTP servers from uci and returns a
   `card` → `form` → (`field` hostname + `list` servers) envelope.
-- **POST /** reads `hostname` and the multi-value `server` field, validates each
-  authoritatively (tier 3), and either:
-  - returns **422** with the form re-rendered — bad fields carrying `error` and
-    the submitted `value`, the list its index-keyed `errors` — and no `commit`; or
-  - returns **200** with a `success` note **and a `commit` intent** setting
-    `system.@system[0].hostname` and the `server` list, which the shell writes and
-    commits through rpcd. The plugin runs unprivileged and touches no config itself.
+- **POST /** reads `hostname` and the multi-value `server` field and returns a
+  `commit` intent setting `system.@system[0].hostname` and the `server` list,
+  which the shell writes and commits through rpcd. The plugin declares the
+  datatypes (`fqdn` for the hostname, `host` for each server) and does no
+  validation of its own; if a value fails its datatype the shell re-renders the
+  form with the error and applies nothing. The plugin runs unprivileged and
+  touches no config itself.
 
 The shell writes and commits, but the values apply on the next service reload —
 the plugin surfaces that live-apply caveat with a `raw` note. That is the honest
@@ -350,16 +369,16 @@ installed manifest and the page appears at `/plugins/hostname/`.
 
 ## Conformance checklist
 
-Until an executable conformance kit lands (ADR-003), a correct plugin:
+A correct plugin:
 
 1. Serves HTTP on its `socket`; a **GET** to each nav path returns a valid schema
    envelope (`application/json`, a `schema_version` the shell supports, one root
    `widget`).
 2. Emits **only** the documented widget types with semantic props — no HTML/CSS,
    no colours or spacing.
-3. On **POST**, validates authoritatively (tier 3) and returns **422** with
-   field/`errors` on failure or **200** on success — and never writes on invalid
-   input.
+3. Declares a `datatype` on each field/list to be validated (the shell enforces
+   it), does any **semantic** checks in its handler, and on a semantic failure
+   returns **422** with `error`/`errors` and no `commit`.
 4. Reads a `list` as a multi-value form field, dropping blank slots.
 5. Never assumes it is reachable: it is fine for the shell to render
    "unavailable", and your plugin must not depend on always being up.
