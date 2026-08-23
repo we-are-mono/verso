@@ -51,7 +51,8 @@ over a local socket**, exchanging *data*, not markup.
      "name": "System — General",
      "socket": "/var/run/verso/hostname.sock",
      "schema_version": 1,
-     "nav": [ { "section": "System", "label": "General", "path": "/" } ]
+     "nav": [ { "section": "System", "label": "General", "path": "/" } ],
+     "acl": { "write": [ { "scope": "uci", "object": "system", "function": "write" } ] }
    }
    ```
 
@@ -69,6 +70,9 @@ over a local socket**, exchanging *data*, not markup.
    - `manifest_version` — the manifest *format* version, distinct from
      `schema_version`; lets the manifest shape evolve independently of the widget
      vocabulary.
+   - `acl` — the rpcd access scopes the plugin's writes need, as a `write` list of
+     `{scope, object, function}` triples mirroring `session.access` (added for
+     ADR-007, see Neutral below). Optional; a display-only plugin declares none.
 
 3. **The shell is a schema gateway, not a reverse proxy.** For a browser request
    to `/plugins/<id>/<rest>`, the shell dials the plugin's socket, issues the
@@ -175,9 +179,15 @@ over a local socket**, exchanging *data*, not markup.
   bet's limits (`FINDINGS.md`), which is the point of the prototype.
 
 ### Neutral
-- Session/identity and ACL gating are **not** in this ADR. The shell currently
-  calls plugins as itself (root, no ACL — the spike posture, README caveat).
-  Per-plugin privilege lands later behind the `Backend`/rpcd ACL model.
+- Per-plugin **write authorization** is part of the contract via the manifest
+  `acl` field (ADR-007). A plugin declares in `acl.write` the rpcd access triples
+  its writes need; before dispatching a state-changing request the shell — which
+  holds the operator's session — probes `session.access` for each and refuses
+  (403, the plugin never dialed) any the session lacks, failing closed (403 with
+  no declared scopes, 503 when rpcd is unreachable). This governs *authorization*
+  only: §5 stands — the plugin remains authoritative for *what* it writes and for
+  validation, while the shell decides *whether* the operator may reach it for a
+  write. De-privileging the plugin process itself is the remaining half of ADR-007.
 - Governs mechanics only; the visual/semantic rules remain ADR-005.
 
 ## Alternatives considered

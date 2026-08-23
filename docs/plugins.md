@@ -35,7 +35,12 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
   "schema_version": 1,
   "nav": [
     { "section": "System", "label": "General", "path": "/" }
-  ]
+  ],
+  "acl": {
+    "write": [
+      { "scope": "uci", "object": "system", "function": "write" }
+    ]
+  }
 }
 ```
 
@@ -50,6 +55,8 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 | `nav[].section` | which shell nav group the entry appears under |
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
+| `acl` | the rpcd access scopes you need ([below](#declaring-your-write-scopes-acl)); required to accept writes |
+| `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
 
 To place several pages in the menu, add more entries — each is grouped under its
 own `section`:
@@ -88,6 +95,36 @@ envelope** back — `Content-Type: application/json`:
 
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
 request path like any HTTP server.
+
+### Declaring your write scopes (ACL)
+
+Verso — not your plugin — is the enforcement point for privilege (ADR-007). Your
+plugin holds no session; the shell holds the operator's rpcd session and checks
+it against the scopes you declare, so a read-only operator cannot drive a write
+through you.
+
+Declare in `acl.write` the rpcd grants a save needs, as `{scope, object,
+function}` triples mirroring `session.access` one-to-one. For a uci write to the
+`system` config:
+
+```json
+"acl": {
+  "write": [
+    { "scope": "uci", "object": "system", "function": "write" }
+  ]
+}
+```
+
+Before dispatching any state-changing request (POST/PUT/PATCH/DELETE) to your
+socket, the shell probes `session.access` for **every** entry. If the operator's
+ACLs cover them all, your handler runs as usual. If any is denied, the shell
+returns **403** and your plugin is never called; if rpcd can't be reached to
+decide, it fails closed with **503**. **A plugin that declares no `acl.write`
+cannot receive a state-changing request at all** — declare what you write, or
+your save is refused. Reads (GET/HEAD) are never gated.
+
+This gates *who* may write; you remain authoritative for *what* you write and for
+validation (tiers below).
 
 ### What the shell does when you misbehave
 
