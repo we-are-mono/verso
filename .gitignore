@@ -1,0 +1,16 @@
+# Reference clones — cloned for investigation, not part of Verso
+/sources/
+
+# Scratch research notes — not part of the project
+/FINDINGS.md
+
+# Go build artifacts
+/build/
+/verso
+/verso-app-*
+*.test
+*.out
+
+# Editor / OS
+.DS_Store
+*.swp
