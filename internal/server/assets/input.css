@@ -26,9 +26,14 @@
   --color-verso-accent-hover: #2560d4;
   --color-verso-accent-active: #1f4fb0;
   --color-verso-danger: #dc2626;
+  --color-verso-danger-bg: #fef2f2;
+  --color-verso-danger-border: #fecaca;
   --color-verso-success: #16a34a;
   --color-verso-success-bg: #f0fdf4;
   --color-verso-success-border: #bbf7d0;
+  --color-verso-warning: #b45309;
+  --color-verso-warning-bg: #fffbeb;
+  --color-verso-warning-border: #fde68a;
 
   /* Soft card shadow, offset down and to the right. */
   --shadow-verso: 3px 5px 8px -2px #0000001f;

@@ -7,6 +7,9 @@ package server
 // scannable place. Handlers live in their feature files; this stays a map.
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
+	s.mux.HandleFunc("GET /login", s.handleLoginForm)
+	s.mux.HandleFunc("POST /login", s.handleLogin)
+	s.mux.HandleFunc("POST /logout", s.handleLogout)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 
 	// Schema gateway: every plugin page and form post funnels through here and

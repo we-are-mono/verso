@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Verso</title>
+<style>{{.CSS}}</style>
+</head>
+<body class="min-h-screen m-0 flex items-center justify-center bg-verso-content text-verso-fg antialiased text-[0.9375rem] leading-normal">
+  <div class="w-full max-w-sm px-6">
+    <h1 class="mb-6 text-center text-lg font-semibold tracking-tight">Verso</h1>
+    <div class="rounded-md border border-verso-border bg-verso-bg shadow-verso px-8 py-8">
+      <h2 class="mb-5 text-base font-medium">Sign in</h2>
+      {{if .Error}}<div class="mb-4 rounded-md border border-verso-danger-border bg-verso-danger-bg px-3 py-2 text-sm text-verso-danger">{{.Error}}</div>{{end}}
+      <form method="post" action="/login" class="space-y-4">
+        <div class="space-y-1.5">
+          <label for="username" class="block text-sm font-medium text-verso-fg">Username</label>
+          <input id="username" name="username" type="text" value="root" autocomplete="username" class="w-full rounded-md border border-verso-border bg-verso-bg px-3 py-2 text-sm text-verso-fg focus:border-verso-accent focus:outline-none">
+        </div>
+        <div class="space-y-1.5">
+          <label for="password" class="block text-sm font-medium text-verso-fg">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" class="w-full rounded-md border border-verso-border bg-verso-bg px-3 py-2 text-sm text-verso-fg focus:border-verso-accent focus:outline-none">
+        </div>
+        <button type="submit" class="w-full cursor-pointer rounded-md bg-verso-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-verso-accent-hover active:bg-verso-accent-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">Sign in</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

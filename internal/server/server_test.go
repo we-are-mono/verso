@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -51,17 +52,34 @@ func (f *fakeTransport) Fetch(_ context.Context, socket string, req plugin.Reque
 	return f.env, f.err
 }
 
-func newServerWith(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest) *Server {
+// fakeAuth / fakeSecurity are the auth seam doubles (ADR-003): no ubus, no shadow
+// file, no device.
+type fakeAuth struct {
+	sid string
+	err error
+}
+
+func (f fakeAuth) Login(context.Context, string, string) (string, error) { return f.sid, f.err }
+
+type fakeSecurity struct{ hasPassword bool }
+
+func (f fakeSecurity) RootHasPassword() bool { return f.hasPassword }
+
+func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest, auth Authenticator, sec Security) *Server {
 	t.Helper()
 	r, err := widget.NewRenderer()
 	if err != nil {
 		t.Fatalf("widget.NewRenderer: %v", err)
 	}
-	s, err := New(r, backend, tr, manifests)
+	s, err := New(r, backend, tr, manifests, auth, sec)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	return s
+}
+
+func newServerWith(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest) *Server {
+	return newServerFull(t, backend, tr, manifests, fakeAuth{sid: "test-sid"}, fakeSecurity{hasPassword: true})
 }
 
 func newServer(t *testing.T, backend openwrt.Backend) *Server {
@@ -79,6 +97,22 @@ func demoManifest() plugin.Manifest {
 func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
+	// Authenticate by default: mint a session and attach its cookie, so the
+	// behavior tests exercise the page rather than the login redirect.
+	token, err := srv.sessions.Create("test-sid", "root")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	return rec
+}
+
+func postForm(t *testing.T, srv *Server, path string, form url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec
@@ -263,5 +297,94 @@ func TestNavMultipleEntriesPerPlugin(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("nav missing %q", want)
 		}
+	}
+}
+
+// TestUnauthenticatedRedirectsToLogin: the middleware gates every non-public page.
+func TestUnauthenticatedRedirectsToLogin(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	req := httptest.NewRequest(http.MethodGet, "/", nil) // no cookie
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/login" {
+		t.Errorf("Location = %q, want /login", loc)
+	}
+}
+
+func TestLoginPageIsPublic(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Sign in") {
+		t.Errorf("login page missing the form")
+	}
+}
+
+func TestLoginSuccessSetsHttpOnlyCookieAndRedirects(t *testing.T) {
+	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "rpcd-sid"}, fakeSecurity{hasPassword: true})
+
+	rec := postForm(t, srv, "/login", url.Values{"username": {"root"}, "password": {"pw"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", rec.Code)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != sessionCookie || cookies[0].Value == "" {
+		t.Fatalf("no session cookie set: %v", cookies)
+	}
+	if !cookies[0].HttpOnly {
+		t.Errorf("session cookie must be HttpOnly")
+	}
+}
+
+func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
+	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{err: errors.New("denied")}, fakeSecurity{hasPassword: true})
+
+	rec := postForm(t, srv, "/login", url.Values{"username": {"root"}, "password": {"bad"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (re-render)", rec.Code)
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Errorf("a failed login must not set a session cookie")
+	}
+	if !strings.Contains(rec.Body.String(), "Invalid") {
+		t.Errorf("expected an error message")
+	}
+}
+
+func TestLogoutClearsSession(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	token, _ := srv.sessions.Create("sid", "root")
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", rec.Code)
+	}
+	if _, ok := srv.sessions.get(token); ok {
+		t.Errorf("session was not destroyed")
+	}
+}
+
+// TestNoPasswordBanner: the in-app warning shows only when root has no password.
+func TestNoPasswordBanner(t *testing.T) {
+	warn := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: false})
+	if !strings.Contains(get(t, warn, "/").Body.String(), "No root password") {
+		t.Errorf("expected the no-password banner")
+	}
+	safe := newServer(t, fakeBackend{}) // hasPassword true
+	if strings.Contains(get(t, safe, "/").Body.String(), "No root password") {
+		t.Errorf("must not warn when a password is set")
 	}
 }

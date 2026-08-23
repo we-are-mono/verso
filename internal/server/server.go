@@ -36,6 +36,9 @@ type Server struct {
 	transport  plugin.Transport
 	manifests  []plugin.Manifest
 	pluginByID map[string]plugin.Manifest
+	auth       Authenticator
+	security   Security
+	sessions   *Sessions
 	page       *template.Template
 	css        template.CSS
 }
@@ -48,6 +51,8 @@ func New(
 	backend openwrt.Backend,
 	transport plugin.Transport,
 	manifests []plugin.Manifest,
+	auth Authenticator,
+	security Security,
 ) (*Server, error) {
 	page, err := template.ParseFS(templateFS, "templates/*.tmpl")
 	if err != nil {
@@ -60,6 +65,9 @@ func New(
 		transport:  transport,
 		manifests:  manifests,
 		pluginByID: indexByID(manifests),
+		auth:       auth,
+		security:   security,
+		sessions:   newSessions(),
 		page:       page,
 		css:        template.CSS(cssText),
 	}
@@ -75,8 +83,9 @@ func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 	return byID
 }
 
-// Handler returns the root HTTP handler for the shell.
-func (s *Server) Handler() http.Handler { return s.mux }
+// Handler returns the root HTTP handler for the shell, gated behind the session
+// middleware.
+func (s *Server) Handler() http.Handler { return s.requireAuth(s.mux) }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -85,11 +94,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 type pageData struct {
-	Title   string
-	Heading string
-	CSS     template.CSS
-	Nav     []navSection
-	Body    template.HTML
+	Title      string
+	Heading    string
+	CSS        template.CSS
+	Nav        []navSection
+	Body       template.HTML
+	NoPassword bool
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -98,11 +108,12 @@ type pageData struct {
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, heading string, body template.HTML) {
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
-		Title:   "Verso",
-		Heading: heading,
-		CSS:     s.css,
-		Nav:     s.buildNav(r.URL.Path),
-		Body:    body,
+		Title:      "Verso",
+		Heading:    heading,
+		CSS:        s.css,
+		Nav:        s.buildNav(r.URL.Path),
+		Body:       body,
+		NoPassword: !s.security.RootHasPassword(),
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return

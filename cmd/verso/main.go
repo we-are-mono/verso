@@ -36,7 +36,14 @@ func main() {
 	}
 	log.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
 
-	srv, err := server.New(renderer, openwrt.NewNativeBackend(), plugin.NewSocketTransport(), manifests)
+	srv, err := server.New(
+		renderer,
+		openwrt.NewNativeBackend(),
+		plugin.NewSocketTransport(),
+		manifests,
+		openwrt.NewRPCDAuthenticator(),
+		openwrt.NewShadowSecurity(),
+	)
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
