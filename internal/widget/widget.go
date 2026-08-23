@@ -40,6 +40,36 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode table: %w", err)
 		}
 		return &t, nil
+	case "card":
+		var c Card
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode card: %w", err)
+		}
+		return &c, nil
+	case "form":
+		var f Form
+		if err := json.Unmarshal(data, &f); err != nil {
+			return nil, fmt.Errorf("widget: decode form: %w", err)
+		}
+		return &f, nil
+	case "field":
+		var f Field
+		if err := json.Unmarshal(data, &f); err != nil {
+			return nil, fmt.Errorf("widget: decode field: %w", err)
+		}
+		return &f, nil
+	case "list":
+		var l List
+		if err := json.Unmarshal(data, &l); err != nil {
+			return nil, fmt.Errorf("widget: decode list: %w", err)
+		}
+		return &l, nil
+	case "raw":
+		var rw Raw
+		if err := json.Unmarshal(data, &rw); err != nil {
+			return nil, fmt.Errorf("widget: decode raw: %w", err)
+		}
+		return &rw, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

@@ -1,0 +1,1 @@
+{{/* card: a titled container that nests other widgets */}}<section class="rounded-lg border border-verso-border">{{if .Title}}<header class="border-b border-verso-border px-4 py-3"><h3 class="text-sm font-medium text-verso-fg">{{.Title}}</h3></header>{{end}}<div class="px-4 py-4 space-y-4">{{range .Children}}{{.}}{{end}}</div></section>
