@@ -22,10 +22,25 @@ deliberately tiny (plugins emit a widget schema, not markup or JS).
 2. **Rendering: `html/template`** (stdlib), assets via `embed.FS`. Its contextual
    auto-escaping is load-bearing — it is what makes rendering plugin-supplied schema
    data safe.
-3. **Interactivity: HTMX**, vendored as a single file in `embed.FS` — HTML over the
-   wire, no SPA, no npm/Node build, no client-side plugin ABI. (The Hotwire/Turbo
-   equivalent for a Rails reader.)
-4. **No JS framework, no bundler, no `node_modules`.**
+3. **Interactivity: htmx for server round-trips, Alpine (CSP build) for client
+   behaviour.** Each is vendored as a single file in `embed.FS`, served first-party
+   under `/assets` — no npm/Node build, no client-side plugin ABI. htmx swaps
+   server-rendered fragments (HTML over the wire, the Hotwire/Turbo equivalent);
+   Alpine drives purely-client widgets — modals, drawers, tabs, transitions —
+   declaratively, with the shell's components registered in `verso.js`. Alpine's
+   **CSP build** evaluates no JS expressions, so the strict CSP needs no
+   `unsafe-eval`: templates reference only the property and method names a
+   component exposes. Plugins ship no JS — a behavioural widget (e.g. `modal`) is
+   shell-owned markup plus directives; the plugin only emits the schema.
+4. **No JS framework, no bundler, no `node_modules`.** htmx and Alpine are single
+   vendored files, not a build pipeline; Alpine is a small, bounded behaviour layer
+   (a deliberate exception to "no framework"), not an SPA runtime — rendering stays
+   server-side and shell-owned.
+5. **CSP: `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`.** The shell
+   serves its own JS from `/assets`; injected or plugin-supplied markup still
+   cannot execute (html/template escaping blocks tag injection, the CSP blocks
+   inline and external scripts). This replaced the earlier `script-src 'none'`
+   once the shell began shipping first-party JS.
 
 ## Consequences
 

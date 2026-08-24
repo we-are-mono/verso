@@ -61,7 +61,12 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    controlling toggle; it follows the same rule, but its realization is *pure CSS*
    (`:has()`) rather than a round-trip, because show/hide has no state to persist —
    the shell still owns every line of it, and the plugin still only declares the
-   intent. A realization is chosen per widget for what it does — the repeater's rpcd
+   intent. Behavioural widgets whose interaction never touches the server — `modal`
+   first, with `drawer`/`tabs` to follow — are realized in **shell-owned client JS**
+   (Alpine's CSP build, ADR-004): the plugin emits only `{type:"modal", …}`, and the
+   shell owns the open/close, focus-trap, and transition. Pure CSS, a round-trip,
+   and shell JS are all just realizations of a declared intent.
+   A realization is chosen per widget for what it does — the repeater's rpcd
    round-trip, the conditional's CSS, and a form's secondary *action*, which submits
    the form for the **plugin** to compute on and re-render (generating a keypair); the
    invariant is that the plugin declares intent and the shell owns the behaviour. The
