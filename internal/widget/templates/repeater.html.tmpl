@@ -10,7 +10,7 @@
       <input type="hidden" name="{{$.OpField}}" value="{{$.OpRemove}}">
       <input type="hidden" name="{{$.ConfigField}}" value="{{$.Config}}">
       <input type="hidden" name="{{$.SectionField}}" value="{{.Section}}">
-      <button type="submit" class="cursor-pointer rounded-md border border-verso-danger-border px-3 py-1.5 text-sm font-medium text-verso-danger transition-colors hover:bg-verso-danger-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-danger focus-visible:ring-offset-2">Remove</button>
+      <button type="submit" class="cursor-pointer rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2">Remove</button>
     </form>
   </div>
   {{end}}
@@ -19,6 +19,6 @@
     <input type="hidden" name="{{.OpField}}" value="{{.OpAdd}}">
     <input type="hidden" name="{{.ConfigField}}" value="{{.Config}}">
     <input type="hidden" name="{{.TypeField}}" value="{{.SectionType}}">
-    <button type="submit" class="cursor-pointer rounded-md border border-verso-border px-4 py-2 text-sm font-medium text-verso-fg transition-colors hover:border-verso-accent hover:text-verso-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.AddLabel}}</button>
+    <button type="submit" class="cursor-pointer rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.AddLabel}}</button>
   </form>
 </div>

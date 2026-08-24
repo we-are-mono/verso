@@ -79,7 +79,7 @@ over a local socket**, exchanging *data*, not markup.
    corresponding HTTP request (`<rest>`, method, form body, query preserved), and
    expects a **widget-schema JSON envelope** in reply — never HTML. It decodes
    that through `internal/widget` and renders it through the *shell's* page chrome
-   and design tokens (ADR-005). The plugin's bytes are **data the shell renders**,
+   and styling (ADR-005). The plugin's bytes are **data the shell renders**,
    never bytes streamed to the browser. Transparent reverse-proxying is rejected
    outright: it would let a plugin put arbitrary HTML/CSS/JS into the shell's
    origin, destroying both the consistency contract (ADR-005) and the XSS

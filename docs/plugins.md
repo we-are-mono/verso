@@ -15,7 +15,7 @@ you can write a Verso plugin — in any language, without touching the shell.
   procd. If your plugin crashes, hangs, or returns nonsense, the shell renders
   "plugin unavailable" in its chrome and stays up. You cannot take Verso down.
 - **A schema emitter, never a page.** You return a *widget schema* (JSON); the
-  shell renders it through its own templates and design tokens. You never emit
+  shell renders it through its own templates and styling. You never emit
   HTML, CSS, or JavaScript. Two plugins by two strangers render identically —
   that is the point (ADR-005).
 - **Reached over a unix socket.** The shell is an HTTP client to your socket and
@@ -410,7 +410,7 @@ with several values is a later realization under the same declaration.)
 ### raw — the governed bridge
 
 Display-only Markdown, for when no widget fits. Sanitised (no HTML passthrough,
-dangerous URL schemes stripped) and rendered through Verso's tokens with a
+dangerous URL schemes stripped) and rendered through Verso's styling with a
 visible "raw" affordance. **Never interactive** — no inputs, no forms. Its usage
 is metered as the demand signal for the next widget; treat it as a temporary
 bridge, not a home.

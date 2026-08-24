@@ -1,13 +1,13 @@
 {{/* table: rows of cell values beneath column headers */}}
-<table class="w-full border-collapse overflow-hidden rounded-lg border border-verso-border">
+<table class="w-full border-collapse overflow-hidden rounded-lg border border-slate-300">
   <thead>
     <tr>
       {{range .Columns}}
-      <th scope="col" class="border-b border-verso-border px-3.5 py-2.5 text-left text-verso-muted font-normal text-sm tracking-wider">{{.}}</th>
+      <th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">{{.}}</th>
       {{end}}
     </tr>
   </thead>
-  <tbody class="divide-y divide-verso-border">
+  <tbody class="divide-y divide-slate-300">
     {{range .Rows}}
     <tr>
       {{range .}}

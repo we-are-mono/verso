@@ -48,7 +48,7 @@ func TestRenderTable(t *testing.T) {
 	}
 
 	got := render(t, r, tbl)
-	want := `<table class="w-full border-collapse overflow-hidden rounded-lg border border-verso-border"><thead><tr><th scope="col" class="border-b border-verso-border px-3.5 py-2.5 text-left text-verso-muted font-normal text-sm tracking-wider">Name</th><th scope="col" class="border-b border-verso-border px-3.5 py-2.5 text-left text-verso-muted font-normal text-sm tracking-wider">Status</th></tr></thead><tbody class="divide-y divide-verso-border"><tr><td class="px-3.5 py-2.5 text-left">wan</td><td class="px-3.5 py-2.5 text-left">up</td></tr><tr><td class="px-3.5 py-2.5 text-left">lan</td><td class="px-3.5 py-2.5 text-left">down</td></tr></tbody></table>`
+	want := `<table class="w-full border-collapse overflow-hidden rounded-lg border border-slate-300"><thead><tr><th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">Name</th><th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">Status</th></tr></thead><tbody class="divide-y divide-slate-300"><tr><td class="px-3.5 py-2.5 text-left">wan</td><td class="px-3.5 py-2.5 text-left">up</td></tr><tr><td class="px-3.5 py-2.5 text-left">lan</td><td class="px-3.5 py-2.5 text-left">down</td></tr></tbody></table>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -63,7 +63,7 @@ func TestRenderFormError(t *testing.T) {
 	if !strings.Contains(got, "start port must be") {
 		t.Errorf("form-level error not rendered: %s", got)
 	}
-	if !strings.Contains(got, "verso-danger") {
+	if !strings.Contains(got, "red-600") {
 		t.Errorf("form-level error not styled as danger: %s", got)
 	}
 	if strings.Contains(got, "must be <= end") {
@@ -91,7 +91,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-md border border-verso-border bg-verso-bg shadow-verso"><header class="border-b border-verso-border px-8 py-6"><h3 class="text-sm font-medium text-verso-fg">empty</h3></header><div class="px-8 py-8 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-slate-300 bg-white shadow-md"><header class="border-b border-slate-300 px-8 py-6"><h3 class="text-sm font-medium text-slate-900">empty</h3></header><div class="px-8 py-8 space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -101,7 +101,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-md border border-verso-border bg-verso-bg shadow-verso"><div class="px-8 py-8 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-slate-300 bg-white shadow-md"><div class="px-8 py-8 space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -189,7 +189,7 @@ func TestRenderFieldError(t *testing.T) {
 	if !strings.Contains(got, "must be a valid hostname") {
 		t.Errorf("inline error not shown: %s", got)
 	}
-	if !strings.Contains(got, "border-verso-danger") {
+	if !strings.Contains(got, "border-red-600") {
 		t.Errorf("errored field should carry the danger token: %s", got)
 	}
 }

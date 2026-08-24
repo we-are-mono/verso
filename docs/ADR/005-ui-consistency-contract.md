@@ -1,4 +1,4 @@
-# ADR-005 — UI consistency contract: design tokens, a closed widget set, a governed "raw" bridge
+# ADR-005 — UI consistency contract: Tailwind's palette, a closed widget set, a governed "raw" bridge
 
 - **Status:** Accepted
 - **Date:** 2026-08-23
@@ -20,27 +20,30 @@ looks — while still offering a legitimate bridge when no widget yet fits.
 
 1. **Semantic vocabulary, not presentation.** The widget schema exposes *semantic*
    props (`variant`, `size`, `label`, `datatype`), never *presentational* ones (color,
-   spacing, font). Authors express intent; Verso maps intent → design tokens → pixels.
+   spacing, font). Authors express intent; Verso maps intent → Tailwind's palette → pixels.
    Example: `{"type":"badge","variant":"success","text":"up"}` — never a color.
-2. **Design tokens are the rendering substrate.** Everything — every widget and the raw
-   bridge — resolves through Verso's CSS-custom-property token layer. That layer *is*
-   the consistency contract; a theme swaps token values, markup stays fixed.
+2. **The shell owns all appearance, via Tailwind's palette.** Plugins emit semantic
+   schema; the shell renders it to HTML styled with Tailwind's default palette — `sky`
+   for accent, `slate` for neutrals, `red`/`green`/`amber` for states. The consistency
+   contract is that a plugin *never expresses appearance*, not any particular colour
+   system; the palette is the shell's alone to change, across the whole UI at once.
 3. **Closed widget set, open composition.** Verso defines and exposes a fixed set of
    reusable elements (card, table, form, badge, …). Plugins compose and nest them; they
    cannot add widget types or styles. Consistency is enforced by construction — plugins
    emit schema, never markup or CSS.
 4. **A governed "raw" bridge.** When no widget fits, an author may emit a `raw`
    element: **display-only**, **Markdown** (not HTML/CSS), rendered through Verso's
-   tokens and sanitizer. It grants content freedom, never appearance control.
+   styling and sanitizer. It grants content freedom, never appearance control.
    Interactivity (inputs, forms) is never available in raw.
 5. **Raw stays a bridge by mechanism, not goodwill.** `raw` is an explicit type,
    rendered with a visible "raw" affordance, and instrumented — its usage is the demand
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →
    author migrates. Health metric: raw usage *declines* for recurring needs.
-6. **Tailwind v4 authors the tokens.** The `@theme`-defined design tokens compile (via
-   the standalone CLI, no Node) to an embedded stylesheet. This is an engine choice, not
-   a contract change: plugins never see classes, so it stays reversible with zero plugin
-   impact. Shell templates may use utilities; plugins never do.
+6. **Tailwind v4, its default palette adopted directly.** The templates use Tailwind's
+   default utility classes; there is no custom design-token layer to maintain. The
+   stylesheet compiles via the standalone CLI (no Node) to an embedded file. This is an
+   engine choice, not a contract change: plugins never see classes, so the styling stays
+   reversible with zero plugin impact. Shell templates use utilities; plugins never do.
 7. **Behaviour is declared as intent; the shell realizes it.** The closed widget set
    includes *behavioural* widgets — the first is `repeater`, a repeatable group of
    widgets backed by a set of uci sections — but they obey the same rule as every other
@@ -75,7 +78,7 @@ looks — while still offering a legitimate bridge when no widget yet fits.
   instrumented, so it stays a bridge instead of becoming the norm.
 - The "schema won't be expressive enough" risk becomes a roadmap input: raw usage tells
   us which widget to build next.
-- CSS is entirely shell-internal and swappable (hand tokens now, Tailwind v4 later)
+- CSS is entirely shell-internal and swappable — the palette is the shell's to change —
   without touching a single plugin.
 - The static-schema bet survives a *behavioural* page (the WireGuard plugin's
   add/remove peer): the escape hatch for behaviour is a shell-realized behavioural
@@ -83,8 +86,9 @@ looks — while still offering a legitimate bridge when no widget yet fits.
   the realization (round-trip now, client-side later) is swappable behind it.
 
 ### Costs / negatives
-- Verso must invest in a genuinely complete token system up front — it is the substrate
-  everything (raw included) renders through, so gaps show everywhere.
+- Appearance is tied to Tailwind's palette. Adopting it wholesale means no bespoke token
+  system to build or keep complete, but the look is Tailwind's defaults until the shell
+  overrides them — a deliberate trade of bespoke control for zero maintenance.
 - Any author need not yet covered forces a raw stopgap until a widget lands; if the
   widget roadmap lags, raw accretes. The instrumentation and the visible affordance are
   what hold this in check — they are not optional extras.

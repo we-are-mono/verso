@@ -2,20 +2,20 @@
 <form method="post" class="space-y-6">
   {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
   {{if .Success}}
-  <div class="flex items-center gap-2 rounded-md border border-verso-success-border bg-verso-success-bg px-3 py-2 text-sm text-verso-success">
+  <div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-600">
     <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
     <span>{{.Success}}</span>
   </div>
   {{end}}
   {{if .Error}}
-  <div class="flex items-center gap-2 rounded-md border border-verso-danger-border bg-verso-danger-bg px-3 py-2 text-sm text-verso-danger">
+  <div class="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
     <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
     <span>{{.Error}}</span>
   </div>
   {{end}}
   {{range .Fields}}{{.}}{{end}}
   <div class="flex flex-wrap gap-3">
-    <button type="submit" class="cursor-pointer rounded-md bg-verso-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-verso-accent-hover active:bg-verso-accent-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.Submit}}</button>
-    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="cursor-pointer rounded-md border border-verso-border px-4 py-2 text-sm font-medium text-verso-fg transition-colors hover:border-verso-accent hover:text-verso-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.Label}}</button>{{end}}
+    <button type="submit" class="cursor-pointer rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.Submit}}</button>
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="cursor-pointer rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.Label}}</button>{{end}}
   </div>
 </form>

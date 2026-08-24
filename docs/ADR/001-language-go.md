@@ -38,7 +38,7 @@ rather than linking libubus — keeping the binary free of CGo and runtime deps.
   with no toolchain gymnastics. Matches the target floor spec exactly.
 - No runtime dependencies on device → directly satisfies the no-LuCI constraint and the
   trivial-packaging goal.
-- `embed.FS` bakes templates, CSS design tokens, and static assets into the binary —
+- `embed.FS` bakes templates, the compiled CSS, and static assets into the binary —
   nothing to lay on the filesystem, nothing to version-skew.
 - `html/template` gives contextual auto-escaping — important because the shell renders
   plugin-supplied schema data, which is an injection surface into the shell's own origin.

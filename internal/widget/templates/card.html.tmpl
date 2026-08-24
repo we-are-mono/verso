@@ -1,8 +1,8 @@
 {{/* card: a titled container that nests other widgets */}}
-<section class="rounded-md border border-verso-border bg-verso-bg shadow-verso">
+<section class="rounded-md border border-slate-300 bg-white shadow-md">
   {{if .Title}}
-  <header class="border-b border-verso-border px-8 py-6">
-    <h3 class="text-sm font-medium text-verso-fg">{{.Title}}</h3>
+  <header class="border-b border-slate-300 px-8 py-6">
+    <h3 class="text-sm font-medium text-slate-900">{{.Title}}</h3>
   </header>
   {{end}}
   <div class="px-8 py-8 space-y-4">{{range .Children}}{{.}}{{end}}</div>

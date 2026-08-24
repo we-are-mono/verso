@@ -3,9 +3,10 @@
 
 /*
  * Tailwind source. `make css` compiles this to verso.css, which is embedded and
- * served by the shell. Styling lives as utility classes in the templates
- * (scanned via @source below); @apply is avoided. Only values utilities can't
- * express stay here: the off-scale body font and the stateful chevron.
+ * served by the shell. Verso adopts Tailwind's default palette directly — `sky` for
+ * accent, `slate` for neutrals, `red`/`green`/`amber` for states — as utility classes
+ * in the templates. Only genuinely-custom rules live here: the raw-bridge prose, the
+ * details chevron, and the conditional widget's pure-CSS show/hide.
  *
  * Plugins never touch any of this — they emit a semantic widget schema (ADR-005).
  */
@@ -14,56 +15,23 @@
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
 
-/* Verso design tokens — the consistency substrate everything renders through. */
-@theme {
-  --color-verso-bg: #ffffff;
-  --color-verso-content: #f9fafb;
-  --color-verso-fg: #1a1d24;
-  --color-verso-muted: #6b7280;
-  --color-verso-border: #e3e5ea;
-  --color-verso-border-light: #edeef2;
-  --color-verso-accent: #2f6fed;
-  --color-verso-accent-hover: #2560d4;
-  --color-verso-accent-active: #1f4fb0;
-  --color-verso-danger: #dc2626;
-  --color-verso-danger-bg: #fef2f2;
-  --color-verso-danger-border: #fecaca;
-  --color-verso-success: #16a34a;
-  --color-verso-success-bg: #f0fdf4;
-  --color-verso-success-border: #bbf7d0;
-  --color-verso-warning: #b45309;
-  --color-verso-warning-bg: #fffbeb;
-  --color-verso-warning-border: #fde68a;
-
-  /* Soft card shadow, offset down and to the right. */
-  --shadow-verso: 3px 5px 8px -2px #0000001f;
-}
-
-@layer base {
-  /* Custom font family; size/leading are utilities on <body>. */
-  body {
-    font-family: -apple-system, system-ui, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  }
-}
-
 @layer components {
   /* Stateful selector + custom timing — no direct utility equivalent. */
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
 
-  /* conditional widget: reveal the gated field-set only while its toggle is
-     checked (ADR-005 §7). Pure CSS state — no JavaScript. */
-  .verso-conditional-body { display: none; }
-  .verso-conditional:has(.verso-conditional-toggle:checked) .verso-conditional-body { display: block; }
-
-  /* Prose for the raw bridge: goldmark output, styled through tokens. Kept
-     minimal and display-only (ADR-005) — the Tailwind typography plugin needs
-     Node, which we don't ship. */
+  /* Prose for the raw bridge: goldmark output, styled minimally and display-only
+     (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */
   .verso-prose p { margin: 0 0 0.75rem; }
   .verso-prose > :last-child { margin-bottom: 0; }
-  .verso-prose a { color: var(--color-verso-accent); text-decoration: underline; }
+  .verso-prose a { color: var(--color-sky-600); text-decoration: underline; }
   .verso-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
   .verso-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
+
+  /* conditional widget: reveal the gated field-set only while its toggle is
+     checked (ADR-005 §7). Pure CSS state — no JavaScript. */
+  .verso-conditional-body { display: none; }
+  .verso-conditional:has(.verso-conditional-toggle:checked) .verso-conditional-body { display: block; }
 }

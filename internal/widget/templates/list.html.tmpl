@@ -1,14 +1,14 @@
 {{/* list: repeating inputs sharing one name (multi-value) + one blank add-slot */}}
 <fieldset class="space-y-1.5">
-  <legend class="block text-sm font-medium text-verso-fg">{{.Label}}</legend>
+  <legend class="block text-sm font-medium text-slate-900">{{.Label}}</legend>
   <div class="space-y-2">
     {{range $i, $item := .Items}}
     <div class="space-y-1.5">
-      <input name="{{$.Name}}" value="{{$item}}" type="text"{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="w-full rounded-md border {{with index $.Errors (printf "%d" $i)}}border-verso-danger{{else}}border-verso-border{{end}} bg-verso-bg px-3 py-2 text-sm text-verso-fg focus:border-verso-accent focus:outline-none">
-      {{with index $.Errors (printf "%d" $i)}}<p class="text-sm text-verso-danger">{{.}}</p>{{end}}
+      <input name="{{$.Name}}" value="{{$item}}" type="text"{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="w-full rounded-md border {{with index $.Errors (printf "%d" $i)}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
+      {{with index $.Errors (printf "%d" $i)}}<p class="text-sm text-red-600">{{.}}</p>{{end}}
     </div>
     {{end}}
-    <input name="{{.Name}}" value="" type="text" placeholder="Add…"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border border-verso-border bg-verso-bg px-3 py-2 text-sm text-verso-fg focus:border-verso-accent focus:outline-none">
+    <input name="{{.Name}}" value="" type="text" placeholder="Add…"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
   </div>
-  {{if .Help}}<p class="mt-1.5 text-sm text-verso-muted">{{.Help}}</p>{{end}}
+  {{if .Help}}<p class="mt-1.5 text-sm text-slate-500">{{.Help}}</p>{{end}}
 </fieldset>
