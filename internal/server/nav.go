@@ -3,7 +3,29 @@
 
 package server
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
+
+// coreSectionOrder is the shell-owned core taxonomy (ADR-009 §2): these sections
+// render first, in exactly this order, ahead of any plugin-introduced section.
+// Status is served by the shell itself; Network, Firewall and System are backed
+// by bundled first-party plugins. Membership here is a nav-ordering guarantee, not
+// a mechanism — every configuring section is still an ADR-006 plugin.
+var coreSectionOrder = []string{"Status", "Network", "Firewall", "System"}
+
+// coreRank returns a section title's position in the core taxonomy, and whether
+// it is a core section at all. Non-core (plugin-introduced) sections sort after
+// all core sections, by title (ADR-009 §5).
+func coreRank(title string) (int, bool) {
+	for i, t := range coreSectionOrder {
+		if t == title {
+			return i, true
+		}
+	}
+	return 0, false
+}
 
 // navSection is one collapsible group in the sidebar; navLink is one entry. The
 // nav is built from discovered plugin manifests plus the built-in Status group,
@@ -20,10 +42,12 @@ type navLink struct {
 	Active bool
 }
 
-// buildNav assembles the sidebar for the current path. The built-in Status group
-// is always first; plugins are grouped under their manifest's nav.section in
-// discovery order (already id-sorted), so the sidebar is deterministic. The
-// section containing the active link is expanded.
+// buildNav assembles the sidebar for the current path. The shell-owned Status
+// group carries the built-in Overview link; plugins are grouped under their
+// manifest's nav.section. Sections are then ordered by the core taxonomy
+// (ADR-009 §2, §5): core sections first in canonical order, plugin-introduced
+// sections after by title — so the sidebar is deterministic regardless of plugin
+// discovery order. The section containing the active link is expanded.
 func (s *Server) buildNav(active string) []navSection {
 	sections := []navSection{{
 		Title: "Status",
@@ -46,6 +70,20 @@ func (s *Server) buildNav(active string) []navSection {
 			})
 		}
 	}
+
+	// Core sections first in canonical order, extension sections after by title.
+	// Stable so link order within a section (id-sorted discovery order) is kept.
+	sort.SliceStable(sections, func(a, b int) bool {
+		ra, ca := coreRank(sections[a].Title)
+		rb, cb := coreRank(sections[b].Title)
+		if ca != cb {
+			return ca // a core, b not → a first
+		}
+		if ca {
+			return ra < rb
+		}
+		return sections[a].Title < sections[b].Title
+	})
 
 	for si := range sections {
 		for li := range sections[si].Links {
