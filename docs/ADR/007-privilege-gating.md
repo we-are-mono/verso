@@ -72,7 +72,22 @@ broken socket.**
    privilege surface instead of ambient root, and never read `/etc/config` or hold
    a write path.
 
-5. **Staged, not big-bang.** This is the target architecture, implemented
+5. **A first-party rpcd helper performs privileged root actions that are not uci
+   config.** Some operations the shell must not do itself are not `uci` writes —
+   setting the root password is the first, and more will follow (reboot, service
+   control). Rather than depend on `rpcd-mod-luci` (a LuCI component this shell
+   exists to replace), Verso ships its own rpcd **exec plugin**, `verso-rpcd`: a
+   small, single-responsibility binary — kept **separate from the shell** so the
+   root-run process carries minimal code — that rpcd runs as root and exposes as
+   the ubus object `verso`. rpcd does **not** enforce the session ACL on exec
+   plugins, so the helper **self-gates**: each method probes `session.access` for
+   its own `{ubus, verso, <method>}` and refuses, fail-closed, a missing or invalid
+   sid. The shell calls it through the `Backend` seam carrying the operator's sid,
+   exactly as it calls `uci`. Extending it is adding a method (its arg schema plus
+   one rpcd-ACL grant); gating and protocol are shared. Its logic lives behind
+   seams (ADR-003) in `internal/rpcdhelper`, unit-tested with fakes.
+
+6. **Staged, not big-bang.** This is the target architecture, implemented
    incrementally behind the `Backend` seam and the manifest — not in one cut. The
    security review rates this a device blocker; shipping to real hardware waits
    on it.
@@ -125,6 +140,14 @@ broken socket.**
   Verso can simply ask rpcd for, and duplicates session→group resolution Verso
   does not own. Justified only if rpcd were absent — which it is not; rpcd is base
   OpenWrt and Verso already depends on it for login.
+- **For root actions (Decision 5): depend on `rpcd-mod-luci`'s `setPassword`, or
+  fold the action into the shell.** The former pulls a LuCI component into a shell
+  built to replace it; the latter re-grants the shell an ambient write path (e.g.
+  `CAP_DAC_OVERRIDE` to write `/etc/shadow`) that de-privileging removes. Also
+  rejected: a *shared* `verso-plugin` uid instead of per-plugin — it fixes the
+  shell/bus boundary but lets a compromised plugin `ptrace` a peer. The self-gated
+  `verso-rpcd` helper plus per-plugin uids keep root actions in a minimal,
+  session-authorized, mutually-isolated surface.
 
 ## Implementation notes
 
@@ -138,14 +161,17 @@ ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubu
   capability-stripped root still bypasses ubusd entirely. Only a non-root uid is
   gated.
 - **The shell has its own ubusd `acl.d` grant** (`/usr/share/acl.d/verso.json`)
-  for the objects it brokers (`session`, `uci`, `system`), because ubusd
+  for the objects it brokers (`session`, `uci`, `system`, and its `verso`
+  root-action helper — Decision 5), because ubusd
   ACL-checks non-root callers; rpcd still applies the per-operator sid gating on
   top. That file must be root-owned and not group/world-writable, or ubusd skips
   it (`ubusd_acl.c` `ubusd_acl_load`). The shell keeps only `CAP_NET_BIND_SERVICE`
   (to bind :80/:443) and `no_new_privs`.
 
-Plugins are confined the same way: a plugin runs as the same non-root `verso`
-user, holds no session, and touches config in **neither** direction directly. For
+Plugins are confined the same way, and further isolated by uid: **each plugin runs
+under its own non-root uid** (`verso-plugin-<name>`, e.g. hostname `6001`,
+wireguard `6002`), sharing only the `verso` group. A plugin holds no session and
+touches config in **neither** direction directly. For
 **reads**, the shell reads each config the plugin declares in `acl.read` through
 rpcd's `uci get` carrying the operator's sid — one whole-config call — and injects
 the result into the plugin's request as the `X-Verso-UCI` header (JSON); the plugin
@@ -159,5 +185,30 @@ empty snapshot, not an error, so `acl.read` names *what* the shell fetches rathe
 than adding a second gate. rpcd re-checks the operator's sid on every call. A
 compromised plugin therefore cannot read a config the operator can't, cannot write
 `/etc/config`, cannot act outside what it declared, and cannot exceed the operator's
-ACL. Sharing the shell's uid does not isolate a plugin from the shell process
-itself (same-uid signal/ptrace).
+ACL.
+
+The distinct per-plugin uid is the isolation boundary. `ptrace` and signals are
+uid-scoped, so a plugin can reach neither the shell nor a peer's memory. ubusd
+grants ACLs per username, so a plugin's uid — having no `acl.d` file — has **zero**
+bus access (verified: `ubus list` as the plugin uid shows nothing): it cannot reach
+the shell's brokered objects (`uci`, `system`, `session`) nor the privileged
+`verso` root-action helper (Decision 5). Plugins need none — the shell brokers every
+read and write. The shared `verso` group serves one purpose only: the shell (in
+that group) reaches each plugin's socket (`0660`, in a `1770` sticky dir so a
+plugin creates its own socket but cannot remove a peer's). The one remaining
+cross-plugin path — a plugin connecting to a peer's socket over the shared group,
+an HTTP-only surface with no memory or `ptrace` access — is a lesser residual left
+to tighten (a per-plugin socket group) if a plugin ever handles a secret a peer
+must never reach.
+
+The `verso` root-action helper (Decision 5) installs at `/usr/libexec/rpcd/verso`
+(rpcd names the object after the file). Two ACLs gate it, mirroring the rest of
+this ADR: the ubusd **uid** grant (`/usr/share/acl.d/verso.json`) lets only the
+shell's uid reach the object, and the rpcd **sid** grant
+(`/usr/share/rpcd/acl.d/verso-helper.json`) names the group that authorizes each
+method, which the operator's session must hold. The self-gate is what actually
+enforces the sid, since rpcd does not gate exec plugins; a denial reaches the shell
+as a ubus error, which the calling page renders as a notice. `passwd` is fed the
+new secret on stdin only (never argv/env). Deploying the helper or its ACLs needs
+`rpcd reload` (session-preserving) for the plugin and its sid-ACL, and a `SIGHUP`
+to ubusd for the uid-ACL — `make dev` automates both.
