@@ -163,6 +163,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode empty: %w", err)
 		}
 		return &e, nil
+	case "divider":
+		var d Divider
+		if err := json.Unmarshal(data, &d); err != nil {
+			return nil, fmt.Errorf("widget: decode divider: %w", err)
+		}
+		return &d, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

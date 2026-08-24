@@ -407,6 +407,21 @@ func TestRenderBadgeLiveDot(t *testing.T) {
 	}
 }
 
+func TestRenderDivider(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Divider{Label: "First-run / empty state"})
+	for _, want := range []string{"First-run / empty state", "bg-slate-200", "my-20"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("divider missing %q in: %s", want, got)
+		}
+	}
+	// No label → a bare rule, no label text.
+	plain := render(t, r, &Divider{})
+	if strings.Contains(plain, "<span class=\"relative") {
+		t.Errorf("labelless divider should not render a label span: %s", plain)
+	}
+}
+
 func TestRenderModal(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Modal{

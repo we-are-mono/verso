@@ -1,0 +1,7 @@
+{{/* divider: a light rule with an optional label centred on the line. The label
+     carries the page-ground background, so the rule breaks cleanly around it rather
+     than showing through. Generous vertical margin sets sections apart. */}}
+<div class="relative my-20 text-center">
+  <span class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-200"></span>
+  {{if .Label}}<span class="relative bg-slate-50 px-4 text-sm font-medium text-slate-400">{{.Label}}</span>{{end}}
+</div>
