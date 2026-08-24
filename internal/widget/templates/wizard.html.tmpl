@@ -1,0 +1,29 @@
+{{/* wizard: a short multi-step sequence, one screen at a time. Pure CSS
+     (ADR-005 §7) — a radio group holds the current step; Back/Continue are labels
+     that select the adjacent step's radio. verso.css shows one step and fills the
+     progress bar. No JavaScript. The group name is unique per render. */}}
+<div class="verso-wizard" style="--verso-wizard-n:{{.N}}">
+  {{range $i, $s := .Steps}}
+  <input type="radio" name="{{$.Group}}" id="{{$.Group}}-{{$i}}" class="verso-wizard-radio sr-only"{{if eq $i 0}} checked{{end}}>
+  {{end}}
+  <div class="verso-wizard-dots mb-5 flex gap-1.5" aria-hidden="true">
+    {{range .Steps}}<span class="verso-wizard-dot h-1 flex-1 rounded-full"></span>{{end}}
+  </div>
+  <div class="verso-wizard-steps">
+    {{range .Steps}}
+    <section class="verso-wizard-step space-y-5">
+      <div class="space-y-4">{{.Body}}</div>
+      <div class="flex items-center justify-between gap-3 pt-1">
+        {{if .HasBack}}
+        <label for="{{.PrevID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">Back</label>
+        {{else}}<span></span>{{end}}
+        {{if .HasNext}}
+        <label for="{{.NextID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700">Continue</label>
+        {{else}}
+        <button type="submit" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700">Done</button>
+        {{end}}
+      </div>
+    </section>
+    {{end}}
+  </div>
+</div>

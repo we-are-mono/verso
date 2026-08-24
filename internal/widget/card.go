@@ -6,6 +6,8 @@ package widget
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io"
 )
 
 // Card is a titled container that nests other widgets. It is the composition
@@ -39,4 +41,21 @@ func (c *Card) UnmarshalJSON(data []byte) error {
 		c.Children = append(c.Children, child)
 	}
 	return nil
+}
+
+// cardView is the card template's model: the title plus its children already
+// rendered to trusted HTML fragments.
+type cardView struct {
+	Title    string
+	Children []template.HTML
+}
+
+// renderInto renders each child through the renderer, so composition/nesting lives
+// in Go and the template stays a dumb shell. The CSRF token flows to any nested form.
+func (c *Card) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	children, err := r.renderChildren(c.Children, csrf)
+	if err != nil {
+		return err
+	}
+	return r.execute(out, "card.html.tmpl", cardView{Title: c.Title, Children: children})
 }

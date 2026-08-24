@@ -3,6 +3,8 @@
 
 package widget
 
+import "io"
+
 // List is a repeating text field: several values under one name, each validated
 // against the same datatype. It is the schema's answer to LuCI's DynamicList — a
 // stress test for the static-schema bet: repetition and per-item validation, not a
@@ -24,3 +26,7 @@ type List struct {
 }
 
 func (*List) isWidget() {}
+
+func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
+	return r.execute(out, "list.html.tmpl", l)
+}

@@ -1,0 +1,32 @@
+{{/* drawer: a slide-in detail panel. Shell-owned behaviour (ADR-005 §7) that reuses
+     the modal Alpine component (ADR-004) — open/close/focus-trap/Escape are identical;
+     only the layout differs (it slides from the right instead of centring). The plugin
+     declared the trigger, title, and body; verso.js owns the behaviour. Directives
+     reference only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
+<div x-data="modal">
+  <button type="button" @click="show"
+    class="block w-full rounded-md text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
+    {{.Trigger}}
+  </button>
+  <template x-teleport="body">
+    <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
+      <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+      <aside x-show="open"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+        x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+        class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+        <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>
+          <button type="button" @click="hide" aria-label="Close"
+            class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+        <div class="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+          {{range .Children}}{{.}}{{end}}
+        </div>
+      </aside>
+    </div>
+  </template>
+</div>

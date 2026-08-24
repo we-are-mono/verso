@@ -182,6 +182,257 @@ func TestRenderFieldSelectMarksSelected(t *testing.T) {
 	}
 }
 
+func TestRenderBadge(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
+	for _, want := range []string{"Connected", "green", "rounded-full"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("success badge missing %q in: %s", want, got)
+		}
+	}
+	// An unknown/neutral variant falls back to slate, never leaks the variant name.
+	neutral := render(t, r, &Badge{Variant: "neutral", Text: "Offline"})
+	if !strings.Contains(neutral, "slate") {
+		t.Errorf("neutral badge should use slate: %s", neutral)
+	}
+	if strings.Contains(neutral, "size-1.5") {
+		t.Errorf("badge without Dot should not render a dot: %s", neutral)
+	}
+}
+
+func TestRenderToggle(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Toggle{
+		Icon: "shield", Name: "vpn_on", Checked: true,
+		Label: "Your home VPN is on", OffLabel: "Your home VPN is off",
+		Meta: "2 of 3 devices connected",
+	})
+
+	for _, want := range []string{
+		"verso-toggle",                 // the pure-CSS state scope
+		`type="checkbox"`, `name="vpn_on"`,
+		"Your home VPN is on",          // on headline
+		"Your home VPN is off",         // off headline (CSS hides it while checked)
+		"2 of 3 devices connected",     // meta
+		"peer-checked:bg-green-500",    // switch reflects state without JS
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("toggle missing %q in: %s", want, got)
+		}
+	}
+	// The checked attribute is present on the input when Checked is true.
+	if !strings.Contains(got, `name="vpn_on" checked`) {
+		t.Errorf("checked toggle missing the checked attribute: %s", got)
+	}
+	// The switch is pure CSS: the markup carries no script and no Alpine directive.
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("toggle must be pure CSS, found script/alpine: %s", got)
+	}
+	// Unchecked renders without the checked attribute (peer-checked utility aside).
+	off := render(t, r, &Toggle{Name: "n", Label: "On", OffLabel: "Off"})
+	if strings.Contains(off, `name="n" checked`) {
+		t.Errorf("unchecked toggle must not carry the checked attribute: %s", off)
+	}
+}
+
+func TestRenderTabs(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Tabs{Tabs: []Tab{
+		{Label: "My devices", Icon: "device", Children: []Widget{&Badge{Variant: "success", Text: "here"}}},
+		{Label: "Route through a provider", Icon: "globe", Children: []Widget{&Field{Name: "cfg", Label: "Config"}}},
+	}})
+
+	for _, want := range []string{
+		"verso-tabs",
+		`type="radio"`,
+		"My devices", "Route through a provider", // both labels
+		"here",       // first tab's child rendered
+		`name="cfg"`, // second tab's child rendered
+		"verso-tab-panel",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("tabs missing %q in: %s", want, got)
+		}
+	}
+	// Exactly one radio starts checked (the first tab).
+	if n := strings.Count(got, "checked"); n != 1 {
+		t.Errorf("want exactly one checked radio, got %d: %s", n, got)
+	}
+	// Pure CSS: no script, no Alpine.
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("tabs must be pure CSS, found script/alpine: %s", got)
+	}
+	// Two tab groups on one page get distinct radio names, so they never collide.
+	two := render(t, r, &Tabs{Tabs: []Tab{{Label: "A"}, {Label: "B"}}})
+	if strings.Contains(got, `name="verso-tabs-1"`) && strings.Contains(two, `name="verso-tabs-1"`) {
+		t.Errorf("two tab groups shared a radio group name: %s", two)
+	}
+}
+
+func TestRenderChoice(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Choice{Name: "reach", Label: "What can it reach?", Options: []ChoiceOption{
+		{Value: "home", Label: "My whole home network", Desc: "Everything on your LAN.", Checked: true},
+		{Value: "device", Label: "Just this router", Desc: "Nothing else."},
+	}})
+
+	for _, want := range []string{
+		"verso-choice", "verso-choice-card", "verso-choice-tick",
+		`type="radio"`, `name="reach"`, `value="home"`, `value="device"`,
+		"My whole home network", "Everything on your LAN.", "What can it reach?",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("choice missing %q in: %s", want, got)
+		}
+	}
+	if !strings.Contains(got, `value="home" checked`) {
+		t.Errorf("checked option not marked: %s", got)
+	}
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("choice must be pure CSS: %s", got)
+	}
+}
+
+func TestRenderQr(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Qr{Data: "wg://join?token=abc", Caption: "Scan with the app"})
+
+	for _, want := range []string{"<svg", "viewBox", "<path", "Scan with the app"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("qr missing %q in: %s", want, got)
+		}
+	}
+	// It is a real, self-contained code: inline SVG, no external fetch (no <img>,
+	// no src/href pulling a remote resource). The SVG xmlns is a namespace, not a fetch.
+	if strings.Contains(got, "<img") || strings.Contains(got, "src=") || strings.Contains(got, "href=") {
+		t.Errorf("qr must be inline SVG with no external fetch: %s", got)
+	}
+	// Different payloads produce different codes (proves it encodes the data).
+	other := render(t, r, &Qr{Data: "wg://join?token=xyz"})
+	if got == other {
+		t.Errorf("qr did not vary with its payload")
+	}
+}
+
+func TestRenderWizard(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Wizard{Steps: []WizardStep{
+		{Children: []Widget{&Field{Name: "device_name", Label: "Name"}}},
+		{Children: []Widget{&Qr{Data: "x"}}},
+	}})
+
+	for _, want := range []string{
+		"verso-wizard", "verso-wizard-step", "verso-wizard-dot",
+		`name="device_name"`, // step 1 child
+		"<svg",               // step 2 child (qr)
+		"Continue", "Back", "Done",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("wizard missing %q in: %s", want, got)
+		}
+	}
+	// Exactly the first step's radio starts checked.
+	if n := strings.Count(got, "checked"); n != 1 {
+		t.Errorf("want exactly one checked step radio, got %d: %s", n, got)
+	}
+	// The Continue label on step 1 targets step 2's radio (id ...-1).
+	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md bg-sky-600`) {
+		t.Errorf("Continue label does not target the next step's radio: %s", got)
+	}
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("wizard must be pure CSS: %s", got)
+	}
+}
+
+func TestRenderDrawer(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Drawer{
+		Title:    "My Phone",
+		Trigger:  []Widget{&Row{Icon: "phone", Title: "My Phone", Meta: "My whole home network"}},
+		Children: []Widget{&Qr{Data: "x"}, &Text{Markdown: "**Added** · 2 weeks ago"}},
+	})
+
+	for _, want := range []string{
+		`x-data="modal"`,    // reuses the shell-owned modal component
+		`@click="show"`,     // the trigger opens it
+		`x-teleport="body"`, // panel escapes the content flow
+		`role="dialog"`,
+		"translate-x-full",   // slides in from the right
+		"My Phone",           // trigger + title
+		"<svg",               // qr child rendered in the body
+		"Added",              // text child rendered in the body
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("drawer missing %q in: %s", want, got)
+		}
+	}
+	// Plugins ship no JS: the markup carries only directives, never a script.
+	if strings.Contains(got, "<script") {
+		t.Errorf("drawer must not emit a script tag: %s", got)
+	}
+}
+
+func TestRenderEmpty(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Empty{
+		Icon: "shield", Title: "Reach your home from anywhere",
+		Body:     "Set up a private VPN so your devices can reach home.",
+		Children: []Widget{&Modal{Trigger: "Set up home VPN", Title: "Add a device"}},
+	})
+
+	for _, want := range []string{
+		"verso-empty-icon",
+		"Reach your home from anywhere",
+		"Set up a private VPN so your devices can reach home.",
+		"Set up home VPN", // the CTA (a modal trigger) rendered as a child
+		`x-data="modal"`,   // the CTA is a real composed widget
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("empty missing %q in: %s", want, got)
+		}
+	}
+}
+
+// TestRenderBadgeLiveDot proves a connected (success) dot gets the live pulse hook,
+// while other dots stay calm.
+func TestRenderBadgeLiveDot(t *testing.T) {
+	r := newRenderer(t)
+	live := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
+	if !strings.Contains(live, "verso-live-dot") {
+		t.Errorf("connected dot missing the live pulse hook: %s", live)
+	}
+	calm := render(t, r, &Badge{Variant: "neutral", Text: "Offline", Dot: true})
+	if strings.Contains(calm, "verso-live-dot") {
+		t.Errorf("offline dot must not pulse: %s", calm)
+	}
+}
+
+func TestRenderModal(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Modal{
+		Trigger:  "Add a device",
+		Title:    "Add a device",
+		Children: []Widget{&Field{Name: "device_name", Label: "Device name"}},
+	})
+
+	for _, want := range []string{
+		`x-data="modal"`,   // the shell-owned Alpine component
+		`@click="show"`,    // trigger opens it
+		`x-teleport="body"`, // dialog escapes the content flow
+		`role="dialog"`,
+		"Add a device",       // trigger + title
+		`name="device_name"`, // the child widget is rendered inside
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("modal missing %q in: %s", want, got)
+		}
+	}
+	// The plugin ships no JS: the markup carries only directives, never a script.
+	if strings.Contains(got, "<script") {
+		t.Errorf("modal must not emit a script tag: %s", got)
+	}
+}
+
 func TestRenderPasswordField(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Field{Name: "password", Label: "New password", Kind: "password"})
@@ -342,14 +593,7 @@ func TestRenderWithTokenInjectsCSRF(t *testing.T) {
 	}
 }
 
-func TestRenderUnknownWidgetErrors(t *testing.T) {
-	r := newRenderer(t)
-	var b strings.Builder
-	if err := r.Render(&b, fakeWidget{}); err == nil {
-		t.Fatal("Render: want error for unknown widget type, got nil")
-	}
-}
-
-type fakeWidget struct{}
-
-func (fakeWidget) isWidget() {}
+// Note: there is no "unknown widget type" render test any more. Dispatch is
+// polymorphic (each widget implements renderInto), so an unhandled type can't be
+// constructed — the compiler enforces it. The failure mode the old switch's default
+// branch guarded no longer exists.

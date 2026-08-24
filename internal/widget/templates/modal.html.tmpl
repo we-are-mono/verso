@@ -1,0 +1,27 @@
+{{/* modal: shell-owned Alpine dialog (CSP build). The plugin declared the intent
+     (trigger, title, body); verso.js owns open/close/focus. Directives reference
+     only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
+<div x-data="modal">
+  <button type="button" @click="show"
+    class="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">
+    {{.Trigger}}
+  </button>
+  <template x-teleport="body">
+    <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+        class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white shadow-xl focus:outline-none">
+        <header class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>
+          <button type="button" @click="hide" aria-label="Close"
+            class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+        <div class="px-5 py-5 space-y-4">
+          {{range .Children}}{{.}}{{end}}
+        </div>
+      </div>
+    </div>
+  </template>
+</div>

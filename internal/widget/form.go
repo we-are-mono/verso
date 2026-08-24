@@ -6,6 +6,8 @@ package widget
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io"
 )
 
 // Form is an interactive container: it renders its fields inside a POST form that
@@ -58,4 +60,32 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 		f.Fields = append(f.Fields, field)
 	}
 	return nil
+}
+
+// formView is the form template's model: its fields pre-rendered to trusted HTML,
+// plus the resolved submit label and the CSRF token threaded in by the renderer.
+type formView struct {
+	Submit    string
+	Success   string
+	Error     string
+	CSRFToken string
+	Actions   []FormAction
+	Fields    []template.HTML
+}
+
+// renderInto renders each field through the renderer, keeping composition in Go and
+// the template a dumb shell (as card does).
+func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	fields, err := r.renderChildren(f.Fields, csrf)
+	if err != nil {
+		return err
+	}
+	submit := f.Submit
+	if submit == "" {
+		submit = "Save"
+	}
+	return r.execute(out, "form.html.tmpl", formView{
+		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
+		Actions: f.Actions, Fields: fields,
+	})
 }

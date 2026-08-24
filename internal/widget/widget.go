@@ -12,12 +12,21 @@ package widget
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
-// Widget is one node in a widget schema tree. The unexported marker seals the
-// interface, enforcing the closed widget set.
+// Widget is one node in a widget schema tree. The unexported markers seal the
+// interface, enforcing the closed widget set: only this package can define a
+// widget, and every widget knows how to render itself.
+//
+// renderInto is the render dispatch — polymorphism in place of a type switch
+// (Open/Closed): the engine calls it, each widget's own file implements it, so a
+// new widget never edits a shared switch. Decode below stays a switch on purpose:
+// it is the one place the wire "type" strings map to concrete structs, a single
+// visible catalog of the closed set.
 type Widget interface {
 	isWidget()
+	renderInto(r *Renderer, out io.Writer, csrf string) error
 }
 
 // Decode parses one widget from its JSON schema representation, using the
@@ -82,6 +91,78 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode conditional: %w", err)
 		}
 		return &c, nil
+	case "modal":
+		var m Modal
+		if err := json.Unmarshal(data, &m); err != nil {
+			return nil, fmt.Errorf("widget: decode modal: %w", err)
+		}
+		return &m, nil
+	case "badge":
+		var b Badge
+		if err := json.Unmarshal(data, &b); err != nil {
+			return nil, fmt.Errorf("widget: decode badge: %w", err)
+		}
+		return &b, nil
+	case "text":
+		var t Text
+		if err := json.Unmarshal(data, &t); err != nil {
+			return nil, fmt.Errorf("widget: decode text: %w", err)
+		}
+		return &t, nil
+	case "row":
+		var rw Row
+		if err := json.Unmarshal(data, &rw); err != nil {
+			return nil, fmt.Errorf("widget: decode row: %w", err)
+		}
+		return &rw, nil
+	case "stack":
+		var st Stack
+		if err := json.Unmarshal(data, &st); err != nil {
+			return nil, fmt.Errorf("widget: decode stack: %w", err)
+		}
+		return &st, nil
+	case "toggle":
+		var t Toggle
+		if err := json.Unmarshal(data, &t); err != nil {
+			return nil, fmt.Errorf("widget: decode toggle: %w", err)
+		}
+		return &t, nil
+	case "tabs":
+		var t Tabs
+		if err := json.Unmarshal(data, &t); err != nil {
+			return nil, fmt.Errorf("widget: decode tabs: %w", err)
+		}
+		return &t, nil
+	case "qr":
+		var q Qr
+		if err := json.Unmarshal(data, &q); err != nil {
+			return nil, fmt.Errorf("widget: decode qr: %w", err)
+		}
+		return &q, nil
+	case "choice":
+		var c Choice
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode choice: %w", err)
+		}
+		return &c, nil
+	case "wizard":
+		var wz Wizard
+		if err := json.Unmarshal(data, &wz); err != nil {
+			return nil, fmt.Errorf("widget: decode wizard: %w", err)
+		}
+		return &wz, nil
+	case "drawer":
+		var d Drawer
+		if err := json.Unmarshal(data, &d); err != nil {
+			return nil, fmt.Errorf("widget: decode drawer: %w", err)
+		}
+		return &d, nil
+	case "empty":
+		var e Empty
+		if err := json.Unmarshal(data, &e); err != nil {
+			return nil, fmt.Errorf("widget: decode empty: %w", err)
+		}
+		return &e, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

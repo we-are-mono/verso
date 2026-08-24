@@ -6,6 +6,8 @@ package widget
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io"
 )
 
 // Conditional is a behavioural widget: a field-set shown only when its controlling
@@ -46,4 +48,25 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 		c.Fields = append(c.Fields, w)
 	}
 	return nil
+}
+
+// conditionalView is the conditional template's model: the toggle plus the gated
+// fields, already rendered to trusted HTML.
+type conditionalView struct {
+	Name, Label string
+	Checked     bool
+	Fields      []template.HTML
+}
+
+// renderInto renders the gated field-set through the renderer, then hands the
+// template the controlling toggle. Visibility is pure CSS (ADR-005 §7): the shell
+// owns the toggle and the show/hide, the plugin only declared the intent.
+func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	fields, err := r.renderChildren(c.Fields, csrf)
+	if err != nil {
+		return err
+	}
+	return r.execute(out, "conditional.html.tmpl", conditionalView{
+		Name: c.Name, Label: c.Label, Checked: c.Checked, Fields: fields,
+	})
 }

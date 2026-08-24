@@ -1,0 +1,25 @@
+{{/* toggle: a status-hero switch. Pure CSS (ADR-005 §7) — the checkbox's :checked
+     state drives the headline swap and the beacon, so the plugin ships no JS. The
+     state-varying styles live in verso.css (.verso-toggle), never as utilities, so
+     Tailwind's utility layer can't override the :has() rules. */}}
+<div class="verso-toggle flex items-center justify-between gap-6 rounded-md border border-slate-300 bg-white px-6 py-5 shadow-md">
+  <div class="flex min-w-0 items-center gap-4">
+    <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xl">
+      {{if eq .Icon "shield"}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>
+      {{else if eq .Icon "globe"}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+      {{else}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+      {{end}}
+    </span>
+    <div class="min-w-0">
+      <div class="verso-toggle-on text-lg font-semibold text-slate-900">{{.Label}}</div>
+      <div class="verso-toggle-off text-lg font-semibold text-slate-900">{{.OffLabel}}</div>
+      {{if .Meta}}<div class="verso-toggle-meta mt-0.5 text-sm text-slate-500">{{.Meta}}</div>{{end}}
+    </div>
+  </div>
+  <label class="relative inline-flex h-[1.875rem] w-[3.25rem] shrink-0 cursor-pointer items-center">
+    <input type="checkbox" name="{{.Name}}" {{if .Checked}}checked{{end}}
+      aria-label="{{.Label}}" class="peer sr-only">
+    <span class="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-green-500 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-600"></span>
+    <span class="absolute left-[0.1875rem] size-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[1.375rem]"></span>
+  </label>
+</div>

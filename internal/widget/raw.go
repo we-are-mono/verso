@@ -4,6 +4,10 @@
 package widget
 
 import (
+	"bytes"
+	"fmt"
+	"html/template"
+	"io"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -22,6 +26,20 @@ type Raw struct {
 }
 
 func (*Raw) isWidget() {}
+
+type rawView struct{ HTML template.HTML }
+
+// renderInto converts the plugin's Markdown through the sanitising engine and
+// wraps it in the raw affordance. It bumps the usage counter first: raw usage is
+// the demand signal for the next widget (ADR-005 §5).
+func (w *Raw) renderInto(r *Renderer, out io.Writer, _ string) error {
+	r.rawUses.Add(1)
+	var buf bytes.Buffer
+	if err := r.md.Convert([]byte(w.Markdown), &buf); err != nil {
+		return fmt.Errorf("widget: render raw: %w", err)
+	}
+	return r.execute(out, "raw.html.tmpl", rawView{HTML: template.HTML(buf.String())})
+}
 
 // newMarkdown builds the goldmark instance for the raw bridge. Raw-HTML
 // passthrough is deliberately OFF (WithUnsafe unset), so HTML in the source is

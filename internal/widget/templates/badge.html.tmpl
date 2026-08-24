@@ -1,0 +1,16 @@
+{{/* badge: a status pill. The shell maps the semantic variant to palette classes;
+     the plugin never names a colour (ADR-005). */}}
+<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset
+  {{if eq .Variant "success"}}bg-green-50 text-green-700 ring-green-600/20
+  {{else if eq .Variant "warning"}}bg-amber-50 text-amber-700 ring-amber-600/20
+  {{else if eq .Variant "danger"}}bg-red-50 text-red-700 ring-red-600/20
+  {{else if eq .Variant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20
+  {{else}}bg-slate-100 text-slate-600 ring-slate-500/20{{end}}">
+  {{if .Dot}}<span class="size-1.5 rounded-full
+    {{if eq .Variant "success"}}verso-live-dot bg-green-500
+    {{else if eq .Variant "warning"}}bg-amber-500
+    {{else if eq .Variant "danger"}}bg-red-500
+    {{else if eq .Variant "info"}}bg-sky-500
+    {{else}}bg-slate-400{{end}}"></span>{{end}}
+  {{.Text}}
+</span>
