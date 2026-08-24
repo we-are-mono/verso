@@ -49,6 +49,13 @@ type Backend interface {
 	// UCIDelete removes a section from config through rpcd, carrying the sid. It
 	// realizes the "remove" of a uci-backed repeater (ADR-005 §7).
 	UCIDelete(ctx context.Context, sid, config, section string) error
+	// SetPassword sets username's system password through rpcd's ACL-gated `luci`
+	// object (method setPassword), carrying the operator's sid. rpcd authorizes and
+	// executes the change as root; the shell itself is unprivileged and cannot
+	// write /etc/shadow (ADR-007). It backs the shell-owned password page (ADR-009
+	// §3) — the shell owns the credential surface, but the privileged write, like
+	// every other, goes through rpcd with the session.
+	SetPassword(ctx context.Context, sid, username, password string) error
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -77,6 +84,7 @@ type (
 	uciConfigFn  func(ctx context.Context, sid, config string) (map[string]any, error)
 	uciAddFn     func(ctx context.Context, sid, config, secType string) (string, error)
 	uciDeleteFn  func(ctx context.Context, sid, config, section string) error
+	passwdFn     func(ctx context.Context, sid, username, password string) error
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -84,27 +92,29 @@ type (
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
 type NativeBackend struct {
-	hostname   hostnameFn
-	systemInfo systemInfoFn
-	access     accessFn
-	uciSet     uciSetFn
-	uciCommit  uciCommitFn
-	uciConfig  uciConfigFn
-	uciAdd     uciAddFn
-	uciDelete  uciDeleteFn
+	hostname    hostnameFn
+	systemInfo  systemInfoFn
+	access      accessFn
+	uciSet      uciSetFn
+	uciCommit   uciCommitFn
+	uciConfig   uciConfigFn
+	uciAdd      uciAddFn
+	uciDelete   uciDeleteFn
+	setPassword passwdFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:   dialHostname(""),
-		systemInfo: dialSystemInfo(""),
-		access:     dialAccess(""),
-		uciSet:     dialUCISet(""),
-		uciCommit:  dialUCICommit(""),
-		uciConfig:  dialUCIConfig(""),
-		uciAdd:     dialUCIAdd(""),
-		uciDelete:  dialUCIDelete(""),
+		hostname:    dialHostname(""),
+		systemInfo:  dialSystemInfo(""),
+		access:      dialAccess(""),
+		uciSet:      dialUCISet(""),
+		uciCommit:   dialUCICommit(""),
+		uciConfig:   dialUCIConfig(""),
+		uciAdd:      dialUCIAdd(""),
+		uciDelete:   dialUCIDelete(""),
+		setPassword: dialSetPassword(""),
 	}
 }
 
@@ -151,6 +161,12 @@ func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType string)
 // UCIDelete removes a section through rpcd, gated by the sid.
 func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section string) error {
 	return b.uciDelete(ctx, sid, config, section)
+}
+
+// SetPassword sets username's system password through rpcd's `luci` object, gated
+// by the sid.
+func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
+	return b.setPassword(ctx, sid, username, password)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -295,6 +311,32 @@ func dialUCIAdd(socket string) uciAddFn {
 		}
 		section, _ := res["section"].(string)
 		return section, nil
+	}
+}
+
+// dialSetPassword returns a passwdFn that sets a user's password via Verso's own
+// `verso` rpcd helper (method `setPassword`), carrying the sid. The helper runs
+// as root under rpcd and self-gates on the session's ACL (it verifies
+// session.access for verso.setPassword before acting), so no LuCI dependency and
+// no ambient privilege in the shell (ADR-007). The password travels only in the
+// ubus payload over the local socket, never as a process argument.
+func dialSetPassword(socket string) passwdFn {
+	return func(_ context.Context, sid, username, password string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("verso")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "setPassword", map[string]string{
+			"ubus_rpc_session": sid,
+			"username":         username,
+			"password":         password,
+		})
+		return err
 	}
 }
 

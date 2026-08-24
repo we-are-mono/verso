@@ -53,8 +53,10 @@ func (a *RPCDAuthenticator) Login(_ context.Context, username, password string) 
 	return sid, nil
 }
 
-// ShadowSecurity answers security questions from the shadow file. Verso runs as
-// root, so it can read it.
+// ShadowSecurity answers security questions from the shadow file. The shell is
+// granted CAP_DAC_READ_SEARCH to read /etc/shadow (a read-only question); it does
+// not write it — setting the password is a privileged rpcd call (Backend.
+// SetPassword), since the shell holds no ambient write privilege (ADR-007).
 type ShadowSecurity struct {
 	path string // "" = /etc/shadow
 }

@@ -77,6 +77,15 @@ func (s *Server) sessionSID(r *http.Request) string {
 	return ""
 }
 
+// sessionUser returns the logged-in username for the request's session — the
+// account whose credential a shell-owned auth page acts on (ADR-009 §3).
+func (s *Server) sessionUser(r *http.Request) string {
+	if sess, ok := s.currentSession(r); ok {
+		return sess.username
+	}
+	return ""
+}
+
 func validCSRF(r *http.Request, want string) bool {
 	if want == "" {
 		return false

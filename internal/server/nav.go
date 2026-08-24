@@ -42,37 +42,41 @@ type navLink struct {
 	Active bool
 }
 
-// buildNav assembles the sidebar for the current path. The shell-owned Status
-// group carries the built-in Overview link; plugins are grouped under their
-// manifest's nav.section. Sections are then ordered by the core taxonomy
-// (ADR-009 §2, §5): core sections first in canonical order, plugin-introduced
-// sections after by title — so the sidebar is deterministic regardless of plugin
-// discovery order. The section containing the active link is expanded.
+// buildNav assembles the sidebar for the current path. The shell's own pages come
+// first (ADR-009 §3): the Status baseline and the auth surface (Password), which
+// exist without any plugin — so a fresh device can always reach them. Plugins are
+// then grouped under their manifest's nav.section. Sections are ordered by the
+// core taxonomy (ADR-009 §2, §5): core sections first in canonical order,
+// plugin-introduced sections after by title — deterministic regardless of plugin
+// discovery order. The section containing the active link is expanded; Status
+// stays open by default.
 func (s *Server) buildNav(active string) []navSection {
-	sections := []navSection{{
-		Title: "Status",
-		Open:  true,
-		Links: []navLink{{Label: "Overview", Href: "/"}},
-	}}
-	index := map[string]int{"Status": 0}
+	sections := make([]navSection, 0, len(coreSectionOrder))
+	index := map[string]int{}
+	add := func(section, label, href string) {
+		i, ok := index[section]
+		if !ok {
+			i = len(sections)
+			index[section] = i
+			sections = append(sections, navSection{Title: section})
+		}
+		sections[i].Links = append(sections[i].Links, navLink{Label: label, Href: href})
+	}
 
+	// Shell-owned pages (ADR-009 §3): the read-only baseline and the auth surface.
+	add("Status", "Overview", "/")
+	add("System", "Password", "/system/password")
+
+	// Plugin-contributed pages, in discovery (id-sorted) order.
 	for _, m := range s.manifests {
 		for _, entry := range m.Nav {
-			i, ok := index[entry.Section]
-			if !ok {
-				i = len(sections)
-				index[entry.Section] = i
-				sections = append(sections, navSection{Title: entry.Section})
-			}
-			sections[i].Links = append(sections[i].Links, navLink{
-				Label: entry.Label,
-				Href:  pluginHref(m.ID, entry.Path),
-			})
+			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path))
 		}
 	}
 
 	// Core sections first in canonical order, extension sections after by title.
-	// Stable so link order within a section (id-sorted discovery order) is kept.
+	// Stable so link order within a section (built-ins first, then id-sorted
+	// discovery order) is kept.
 	sort.SliceStable(sections, func(a, b int) bool {
 		ra, ca := coreRank(sections[a].Title)
 		rb, cb := coreRank(sections[b].Title)
@@ -86,6 +90,9 @@ func (s *Server) buildNav(active string) []navSection {
 	})
 
 	for si := range sections {
+		if sections[si].Title == "Status" {
+			sections[si].Open = true
+		}
 		for li := range sections[si].Links {
 			if isActive(active, sections[si].Links[li].Href) {
 				sections[si].Links[li].Active = true

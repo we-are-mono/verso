@@ -56,13 +56,16 @@ func TestBuildNavCoreOrderIsFixed(t *testing.T) {
 	assertTitles(t, s.buildNav("/"), "Status", "Network", "Firewall", "System")
 }
 
-// Status is always first and always carries the shell-owned Overview link, even
-// with zero plugins.
-func TestBuildNavStatusIsBuiltIn(t *testing.T) {
+// The shell's own pages exist with zero plugins (ADR-009 §3): Status carries the
+// Overview baseline, System carries the Password auth surface.
+func TestBuildNavShellOwnedPagesAreBuiltIn(t *testing.T) {
 	sections := navServer().buildNav("/")
-	assertTitles(t, sections, "Status")
+	assertTitles(t, sections, "Status", "System")
 	if got := sections[0].Links; len(got) != 1 || got[0].Label != "Overview" || got[0].Href != "/" {
 		t.Fatalf("Status links = %+v, want single Overview -> /", got)
+	}
+	if got := sections[1].Links; len(got) != 1 || got[0].Label != "Password" || got[0].Href != "/system/password" {
+		t.Fatalf("System links = %+v, want single Password -> /system/password", got)
 	}
 }
 
@@ -73,8 +76,9 @@ func TestBuildNavExtensionSectionsAfterCoreByTitle(t *testing.T) {
 		manifest("net", nav("Network", "Interfaces", "/")),
 		manifest("stats", nav("Statistics", "Graphs", "/")),
 	)
-	// Network (core) precedes the extension sections; Statistics before VPN.
-	assertTitles(t, s.buildNav("/"), "Status", "Network", "Statistics", "VPN")
+	// Core sections (Status, Network, System — System from the built-in Password)
+	// precede the extension sections; Statistics before VPN.
+	assertTitles(t, s.buildNav("/"), "Status", "Network", "System", "Statistics", "VPN")
 }
 
 // Several plugins filing into one section keep their links in discovery
@@ -94,8 +98,10 @@ func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
 	if system == nil {
 		t.Fatal("System section missing")
 	}
-	if len(system.Links) != 2 || system.Links[0].Label != "General" || system.Links[1].Label != "Time" {
-		t.Fatalf("System links = %+v, want [General, Time]", system.Links)
+	// Built-in Password first, then plugin links in discovery (id-sorted) order.
+	if len(system.Links) != 3 || system.Links[0].Label != "Password" ||
+		system.Links[1].Label != "General" || system.Links[2].Label != "Time" {
+		t.Fatalf("System links = %+v, want [Password, General, Time]", system.Links)
 	}
 }
 

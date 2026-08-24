@@ -32,6 +32,9 @@ type fakeBackend struct {
 	addReturns string                   // section id UCIAdd returns
 	adds      *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
 	deletes   *[]string                 // records "config.section" per UCIDelete
+	// setPassword backs SetPassword — tests inject it to capture the sid/username/
+	// password or return an error. Nil means "succeed silently".
+	setPassword func(ctx context.Context, sid, username, password string) error
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -88,6 +91,13 @@ func (f fakeBackend) UCIDelete(_ context.Context, _, config, section string) err
 		*f.deletes = append(*f.deletes, config+"."+section)
 	}
 	return f.uciErr
+}
+
+func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
+	if f.setPassword != nil {
+		return f.setPassword(ctx, sid, username, password)
+	}
+	return nil
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

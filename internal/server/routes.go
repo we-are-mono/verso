@@ -12,6 +12,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 
+	// Shell-owned auth surface (ADR-009 §3): the shell serves the password page
+	// itself, since it mutates the credential that gates the shell.
+	s.mux.HandleFunc("GET /system/password", s.handlePasswordForm)
+	s.mux.HandleFunc("POST /system/password", s.handlePassword)
+
 	// Schema gateway: every plugin page and form post funnels through here and
 	// is rendered via the shell's own widget renderer (ADR-006).
 	s.mux.HandleFunc("GET /plugins/{id}/{path...}", s.handlePlugin)
