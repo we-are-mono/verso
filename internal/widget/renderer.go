@@ -169,6 +169,7 @@ type formView struct {
 	Success   string
 	Error     string
 	CSRFToken string
+	Actions   []FormAction
 	Fields    []template.HTML
 }
 
@@ -188,7 +189,8 @@ func (r *Renderer) renderForm(out io.Writer, f *Form, csrf string) error {
 		submit = "Save"
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf, Fields: fields,
+		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
+		Actions: f.Actions, Fields: fields,
 	})
 }
 

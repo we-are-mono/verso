@@ -14,7 +14,8 @@
   </div>
   {{end}}
   {{range .Fields}}{{.}}{{end}}
-  <div>
+  <div class="flex flex-wrap gap-3">
     <button type="submit" class="cursor-pointer rounded-md bg-verso-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-verso-accent-hover active:bg-verso-accent-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.Submit}}</button>
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="cursor-pointer rounded-md border border-verso-border px-4 py-2 text-sm font-medium text-verso-fg transition-colors hover:border-verso-accent hover:text-verso-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verso-accent focus-visible:ring-offset-2">{{.Label}}</button>{{end}}
   </div>
 </form>
