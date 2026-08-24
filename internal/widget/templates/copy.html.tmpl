@@ -1,0 +1,10 @@
+{{/* copy: copies its text to the clipboard, then briefly confirms. Shell-owned
+     behaviour (verso.js "copy"); directives reference only property/method names, so
+     the strict CSP holds. The text rides along in a hidden span the component reads. */}}
+<button type="button" x-data="copy" @click="run"
+  class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">
+  <span x-ref="src" class="hidden">{{.Text}}</span>
+  <svg class="size-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+  <span x-show="idle">{{.Label}}</span>
+  <span x-show="done" x-cloak>Copied!</span>
+</button>

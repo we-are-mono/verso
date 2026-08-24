@@ -1,9 +1,11 @@
 {{/* qr: a real, scannable code rendered server-side as inline SVG (ADR-005 §7).
      Always dark-on-white so any scanner sees the contrast it needs, whatever the
-     page theme. The plugin supplied the payload and caption; the shell drew it. */}}
+     page theme. An optional download sits beneath as a quiet link, so the code and
+     its "can't scan?" fallback read as one centred unit. */}}
 <div class="flex flex-col items-center gap-3 text-center">
   <div class="size-52 rounded-2xl border border-slate-200 bg-white p-3 shadow-md">
     {{.SVG}}
   </div>
   {{if .Caption}}<p class="max-w-[30ch] text-sm text-slate-500">{{.Caption}}</p>{{end}}
+  {{if .DownloadHref}}<a href="{{.DownloadHref}}" download="{{.DownloadName}}" class="text-sm font-medium text-sky-600 underline underline-offset-2 hover:text-sky-700">{{.DownloadLabel}}</a>{{end}}
 </div>

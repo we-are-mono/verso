@@ -1,0 +1,8 @@
+{{/* link: a labelled hyperlink, optionally a download, in one of a few styles. */}}
+{{if eq .Style "button"}}
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}} class="inline-flex items-center justify-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700">{{.Label}}</a>
+{{else if eq .Style "ghost"}}
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}} class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">{{.Label}}</a>
+{{else}}
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}} class="text-sm font-medium text-sky-600 underline underline-offset-2 hover:text-sky-700">{{.Label}}</a>
+{{end}}

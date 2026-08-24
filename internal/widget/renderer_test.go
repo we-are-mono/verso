@@ -312,6 +312,14 @@ func TestRenderQr(t *testing.T) {
 	if got == other {
 		t.Errorf("qr did not vary with its payload")
 	}
+	// With a download, a quiet link rides beneath the code (a data: URL survives the
+	// link URL policy).
+	dl := render(t, r, &Qr{Data: "x", DownloadHref: "data:text/plain,abc", DownloadName: "home.conf", DownloadLabel: "Download config file"})
+	for _, want := range []string{`href="data:text/plain,abc"`, `download="home.conf"`, "Download config file"} {
+		if !strings.Contains(dl, want) {
+			t.Errorf("qr download missing %q in: %s", want, dl)
+		}
+	}
 }
 
 func TestRenderWizard(t *testing.T) {
@@ -420,6 +428,155 @@ func TestRenderDivider(t *testing.T) {
 	if strings.Contains(plain, "<span class=\"relative") {
 		t.Errorf("labelless divider should not render a label span: %s", plain)
 	}
+	// Tight uses compact spacing for inline group separators, not the page-scale gap.
+	tight := render(t, r, &Divider{Tight: true})
+	if !strings.Contains(tight, "my-6") || strings.Contains(tight, "my-20") {
+		t.Errorf("tight divider should use compact spacing: %s", tight)
+	}
+}
+
+func TestRenderProperties(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Properties{Items: []Property{
+		{Label: "Can reach", Value: "My whole home network"},
+		{Label: "Tunnel address", Value: "10.7.0.2", Mono: true},
+		{Label: "Server key", Value: "KEY==", Copy: true},
+	}})
+	for _, want := range []string{"<dl", "Can reach", "My whole home network", "Tunnel address", "10.7.0.2", "font-mono"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("properties missing %q in: %s", want, got)
+		}
+	}
+	// A non-mono value carries no font-mono on its own row.
+	if strings.Count(got, "font-mono") != 1 {
+		t.Errorf("only the mono value should be monospaced: %s", got)
+	}
+	// A Copy row grows an inline copy button (shell-owned) carrying the value.
+	if !strings.Contains(got, `x-data="copy"`) || !strings.Contains(got, "KEY==") {
+		t.Errorf("copyable property missing its inline copy button: %s", got)
+	}
+	// Non-copy rows don't.
+	plain := render(t, r, &Properties{Items: []Property{{Label: "A", Value: "b"}}})
+	if strings.Contains(plain, "x-data") {
+		t.Errorf("non-copy property should have no copy button: %s", plain)
+	}
+}
+
+func TestRenderConfirm(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it"})
+	for _, want := range []string{
+		"verso-confirm", "verso-confirm-toggle", "verso-confirm-panel", "verso-confirm-trigger",
+		"Remove device", "Remove this device?", "Remove", "Keep it", `type="checkbox"`,
+		"text-red-700", "<svg", // the prompt is red with a warning icon
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("confirm missing %q in: %s", want, got)
+		}
+	}
+	// Pure CSS: no script, no Alpine.
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("confirm must be pure CSS: %s", got)
+	}
+	// Labels default when unset.
+	def := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"})
+	if !strings.Contains(def, ">Confirm<") || !strings.Contains(def, ">Cancel<") {
+		t.Errorf("confirm should default its labels: %s", def)
+	}
+	// Two confirms on a page get distinct checkbox ids.
+	if strings.Count(got+def, `id="verso-confirm-`) == 2 && strings.Contains(def, `id="verso-confirm-1"`) && strings.Contains(got, `id="verso-confirm-1"`) {
+		t.Errorf("two confirms shared an id")
+	}
+}
+
+func TestRenderCallout(t *testing.T) {
+	r := newRenderer(t)
+	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
+	for _, want := range []string{"green", "Reachable", "Verified from the internet.", "<svg"} {
+		if !strings.Contains(ok, want) {
+			t.Errorf("success callout missing %q in: %s", want, ok)
+		}
+	}
+	// Unknown/default variant falls back to info (sky), never leaks the variant name.
+	def := render(t, r, &Callout{Body: "heads up"})
+	if !strings.Contains(def, "sky") {
+		t.Errorf("default callout should use the info palette: %s", def)
+	}
+	warn := render(t, r, &Callout{Variant: "warning", Body: "x"})
+	if !strings.Contains(warn, "amber") {
+		t.Errorf("warning callout should use amber: %s", warn)
+	}
+}
+
+func TestRenderLink(t *testing.T) {
+	r := newRenderer(t)
+	dl := render(t, r, &Link{Label: "Download config", Href: "data:text/plain,abc", Download: "phone.conf", Style: "ghost"})
+	for _, want := range []string{`href="data:text/plain,abc"`, `download="phone.conf"`, "Download config"} {
+		if !strings.Contains(dl, want) {
+			t.Errorf("link missing %q in: %s", want, dl)
+		}
+	}
+	// A plain link carries no download attribute.
+	plain := render(t, r, &Link{Label: "Docs", Href: "/help"})
+	if strings.Contains(plain, "download=") {
+		t.Errorf("non-download link must not carry a download attribute: %s", plain)
+	}
+}
+
+func TestRenderCopy(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Copy{Label: "Copy key", Text: "SECRETKEY=="})
+	for _, want := range []string{`x-data="copy"`, `@click="run"`, "Copy key", "Copied!", "SECRETKEY=="} {
+		if !strings.Contains(got, want) {
+			t.Errorf("copy missing %q in: %s", want, got)
+		}
+	}
+	if strings.Contains(got, "<script") {
+		t.Errorf("copy must not emit a script tag: %s", got)
+	}
+}
+
+func TestRenderDisclosure(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Disclosure{Summary: "Server settings", Children: []Widget{&Field{Name: "port", Label: "Listen port"}}})
+	for _, want := range []string{"<details", "<summary", "Server settings", "verso-chevron", `name="port"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("disclosure missing %q in: %s", want, got)
+		}
+	}
+	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
+		t.Errorf("disclosure must be pure HTML/CSS: %s", got)
+	}
+}
+
+func TestRenderSection(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Section{Title: "Devices", Children: []Widget{&Badge{Variant: "success", Text: "x"}}})
+	for _, want := range []string{"<section", "Devices", "pt-6", "x"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("section missing %q in: %s", want, got)
+		}
+	}
+	// A titleless section is valid — it still groups and spaces, with no heading.
+	notitle := render(t, r, &Section{Children: []Widget{&Badge{Text: "y"}}})
+	if strings.Contains(notitle, "<h3") {
+		t.Errorf("titleless section should render no heading: %s", notitle)
+	}
+}
+
+func TestRenderCode(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Code{Label: "Server public key", Value: "HIgo9xNzJM==", Copy: true})
+	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "<code", "font-mono", `x-data="copy"`, "Copy", "Copied!", "text-green-600"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("code missing %q in: %s", want, got)
+		}
+	}
+	// Without copy, no copy button.
+	nocopy := render(t, r, &Code{Value: "abc"})
+	if strings.Contains(nocopy, "x-data") {
+		t.Errorf("code without copy should have no copy button: %s", nocopy)
+	}
 }
 
 func TestRenderModal(t *testing.T) {
@@ -445,6 +602,22 @@ func TestRenderModal(t *testing.T) {
 	// The plugin ships no JS: the markup carries only directives, never a script.
 	if strings.Contains(got, "<script") {
 		t.Errorf("modal must not emit a script tag: %s", got)
+	}
+}
+
+// TestRenderModalAddTrigger: the "add" trigger style renders a full-width dashed
+// button (a create affordance), while the default stays a solid button.
+func TestRenderModalAddTrigger(t *testing.T) {
+	r := newRenderer(t)
+	add := render(t, r, &Modal{Trigger: "Add a device", TriggerStyle: "add", Title: "Add a device"})
+	for _, want := range []string{"border-dashed", "w-full", "Add a device"} {
+		if !strings.Contains(add, want) {
+			t.Errorf("add-style modal trigger missing %q in: %s", want, add)
+		}
+	}
+	solid := render(t, r, &Modal{Trigger: "Open", Title: "T"})
+	if strings.Contains(solid, "border-dashed") {
+		t.Errorf("default modal trigger should be solid, not dashed: %s", solid)
 	}
 }
 

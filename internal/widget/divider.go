@@ -10,6 +10,7 @@ import "io"
 // of content apart on a long page — an <hr> with an optional legend.
 type Divider struct {
 	Label string `json:"label"`
+	Tight bool   `json:"tight"` // compact spacing, for separating groups inside a card/panel
 }
 
 func (*Divider) isWidget() {}

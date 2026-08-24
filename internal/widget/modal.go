@@ -16,9 +16,10 @@ import (
 // the shell renders the markup plus the open/close/focus behaviour. Plugins ship
 // no JS; the shell owns every pixel and every interaction.
 type Modal struct {
-	Trigger  string   // label of the button that opens the dialog
-	Title    string   // dialog heading
-	Children []Widget // dialog body
+	Trigger      string   // label of the button that opens the dialog
+	TriggerStyle string   // "" (default solid button) | "add" (full-width dashed add affordance)
+	Title        string   // dialog heading
+	Children     []Widget // dialog body
 }
 
 func (*Modal) isWidget() {}
@@ -27,14 +28,16 @@ func (*Modal) isWidget() {}
 // unknown child type fails loudly rather than vanishing.
 func (m *Modal) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Trigger  string            `json:"trigger"`
-		Title    string            `json:"title"`
-		Children []json.RawMessage `json:"children"`
+		Trigger      string            `json:"trigger"`
+		TriggerStyle string            `json:"trigger_style"`
+		Title        string            `json:"title"`
+		Children     []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	m.Trigger = raw.Trigger
+	m.TriggerStyle = raw.TriggerStyle
 	m.Title = raw.Title
 	m.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
@@ -47,12 +50,13 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// modalView is the modal template's model: the trigger label, title, and the
-// dialog body already rendered to trusted HTML.
+// modalView is the modal template's model: the trigger label and style, title, and
+// the dialog body already rendered to trusted HTML.
 type modalView struct {
-	Trigger  string
-	Title    string
-	Children []template.HTML
+	Trigger      string
+	TriggerStyle string
+	Title        string
+	Children     []template.HTML
 }
 
 // renderInto renders each child through the renderer, so the dialog body composes
@@ -63,5 +67,7 @@ func (m *Modal) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "modal.html.tmpl", modalView{Trigger: m.Trigger, Title: m.Title, Children: children})
+	return r.execute(out, "modal.html.tmpl", modalView{
+		Trigger: m.Trigger, TriggerStyle: m.TriggerStyle, Title: m.Title, Children: children,
+	})
 }

@@ -169,6 +169,54 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode divider: %w", err)
 		}
 		return &d, nil
+	case "properties":
+		var p Properties
+		if err := json.Unmarshal(data, &p); err != nil {
+			return nil, fmt.Errorf("widget: decode properties: %w", err)
+		}
+		return &p, nil
+	case "confirm":
+		var c Confirm
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode confirm: %w", err)
+		}
+		return &c, nil
+	case "callout":
+		var c Callout
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode callout: %w", err)
+		}
+		return &c, nil
+	case "link":
+		var l Link
+		if err := json.Unmarshal(data, &l); err != nil {
+			return nil, fmt.Errorf("widget: decode link: %w", err)
+		}
+		return &l, nil
+	case "copy":
+		var c Copy
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode copy: %w", err)
+		}
+		return &c, nil
+	case "disclosure":
+		var d Disclosure
+		if err := json.Unmarshal(data, &d); err != nil {
+			return nil, fmt.Errorf("widget: decode disclosure: %w", err)
+		}
+		return &d, nil
+	case "section":
+		var s Section
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, fmt.Errorf("widget: decode section: %w", err)
+		}
+		return &s, nil
+	case "code":
+		var c Code
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode code: %w", err)
+		}
+		return &c, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

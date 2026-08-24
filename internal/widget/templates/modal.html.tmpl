@@ -2,10 +2,19 @@
      (trigger, title, body); verso.js owns open/close/focus. Directives reference
      only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
 <div x-data="modal">
+  {{if eq .TriggerStyle "add"}}
+  {{/* "add" affordance: a full-width dashed button that invites creating a new item. */}}
+  <button type="button" @click="show"
+    class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-4 py-4 text-sm font-semibold text-sky-600 transition-colors hover:border-sky-400 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+    {{.Trigger}}
+  </button>
+  {{else}}
   <button type="button" @click="show"
     class="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">
     {{.Trigger}}
   </button>
+  {{end}}
   <template x-teleport="body">
     <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>

@@ -6,6 +6,52 @@
 // strict CSP needs no unsafe-eval. Widget templates reference only the property
 // and method names these components expose.
 document.addEventListener("alpine:init", function () {
+  // copy: copy the widget's text to the clipboard and briefly show "Copied!".
+  // Prefers the async Clipboard API; falls back to a hidden-textarea execCommand
+  // for non-secure origins (a router reached over plain http on the LAN).
+  Alpine.data("copy", function () {
+    return {
+      idle: true,
+      done: false,
+      run: function () {
+        var src = this.$refs.src;
+        var text = src ? src.textContent : "";
+        var self = this;
+        var flash = function () {
+          self.idle = false;
+          self.done = true;
+          setTimeout(function () {
+            self.done = false;
+            self.idle = true;
+          }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(flash, function () {
+            self.fallback(text);
+            flash();
+          });
+        } else {
+          self.fallback(text);
+          flash();
+        }
+      },
+      fallback: function (text) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        } catch (e) {
+          /* clipboard unavailable; nothing more we can do */
+        }
+      },
+    };
+  });
+
   // modal: an overlay dialog. Open/close, focus the dialog on open, return focus
   // on close, close on Escape, and trap Tab within the dialog while open.
   Alpine.data("modal", function () {

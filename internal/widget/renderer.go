@@ -30,6 +30,7 @@ type Renderer struct {
 	rawUses atomic.Int64
 	tabSeq  atomic.Int64 // per-render unique id, so multiple tabs groups never collide
 	wizSeq  atomic.Int64 // ditto for wizards
+	cfmSeq  atomic.Int64 // ditto for confirm widgets
 }
 
 // NewRenderer parses the embedded widget templates and builds the sanitising

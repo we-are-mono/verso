@@ -1,0 +1,18 @@
+{{/* properties: a label/value detail list (a <dl>) — label left, value right, so
+     the facts about one thing line up and scan cleanly. A row may offer an inline
+     copy button beside its value (shell-owned "copy" behaviour, verso.js). */}}
+<dl class="space-y-3">
+  {{range .Items}}
+  <div class="flex items-baseline justify-between gap-6 text-sm">
+    <dt class="shrink-0 text-slate-500">{{.Label}}</dt>
+    <dd class="text-right font-medium text-slate-700">
+      <span class="{{if .Mono}}font-mono{{end}}">{{.Value}}</span>
+      {{if .Copy}}<button type="button" x-data="copy" @click="run" aria-label="Copy" class="ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
+        <span x-ref="src" class="hidden">{{.Value}}</span>
+        <svg x-show="idle" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <svg x-show="done" x-cloak class="size-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+      </button>{{end}}
+    </dd>
+  </div>
+  {{end}}
+</dl>

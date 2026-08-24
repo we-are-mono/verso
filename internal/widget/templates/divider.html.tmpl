@@ -1,7 +1,13 @@
-{{/* divider: a light rule with an optional label centred on the line. The label
-     carries the page-ground background, so the rule breaks cleanly around it rather
-     than showing through. Generous vertical margin sets sections apart. */}}
-<div class="relative my-20 text-center">
+{{/* divider: a light rule, optionally with a label centred on the line. With a
+     label, the rule runs behind it (the label carries the page-ground background so
+     the rule breaks cleanly around it). Without a label it's a plain <hr> — a real
+     box with symmetric margins, so its spacing can't self-collapse. Tight uses
+     compact spacing for separating groups inside a card/panel. */}}
+{{if .Label}}
+<div class="relative text-center {{if .Tight}}my-6{{else}}my-20{{end}}">
   <span class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-200"></span>
-  {{if .Label}}<span class="relative bg-slate-50 px-4 text-sm font-medium text-slate-400">{{.Label}}</span>{{end}}
+  <span class="relative bg-slate-50 px-4 text-sm font-medium text-slate-400">{{.Label}}</span>
 </div>
+{{else}}
+<hr class="border-slate-200 {{if .Tight}}my-6{{else}}my-20{{end}}">
+{{end}}

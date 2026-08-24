@@ -46,6 +46,14 @@
   .verso-conditional-body { display: none; }
   .verso-conditional:has(.verso-conditional-toggle:checked) .verso-conditional-body { display: block; }
 
+  /* confirm widget: an inline destructive confirmation (ADR-005 §7). A hidden
+     checkbox flips between the danger trigger and the confirm panel — pure CSS.
+     Both display states live here, never as utilities, so the cascade holds. */
+  .verso-confirm-trigger { display: block; }
+  .verso-confirm-panel { display: none; }
+  .verso-confirm:has(.verso-confirm-toggle:checked) .verso-confirm-panel { display: block; }
+  .verso-confirm:has(.verso-confirm-toggle:checked) .verso-confirm-trigger { display: none; }
+
   /* toggle widget: a status-hero switch (ADR-005 §7). The checkbox's :checked
      state drives everything — no JavaScript. State-varying properties live here,
      never as utilities, so the utility layer can't win the cascade. */

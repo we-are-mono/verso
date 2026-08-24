@@ -5,7 +5,7 @@
      reference only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
 <div x-data="modal">
   <button type="button" @click="show"
-    class="block w-full rounded-md text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
+    class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-1 text-left shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
     {{.Trigger}}
   </button>
   <template x-teleport="body">

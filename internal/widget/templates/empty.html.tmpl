@@ -2,14 +2,14 @@
      live in verso.css (.verso-empty-icon); the rest is layout utilities. The children
      are the call(s) to action — typically a modal trigger — so the empty state
      composes the same widgets as the populated page. */}}
-<div class="flex flex-col items-center gap-1 px-6 py-12 text-center">
-  <span class="verso-empty-icon mb-3 grid size-20 place-items-center rounded-3xl">
+<div class="flex flex-col items-center px-6 py-12 text-center">
+  <span class="verso-empty-icon mb-4 grid size-20 place-items-center rounded-3xl">
     {{if eq .Icon "globe"}}<svg class="size-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
     {{else if eq .Icon "shield"}}<svg class="size-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/><path d="M12 8v4M12 15h.01"/></svg>
     {{else}}<svg class="size-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
     {{end}}
   </span>
   {{if .Title}}<h2 class="text-2xl font-bold tracking-tight text-slate-900 text-balance">{{.Title}}</h2>{{end}}
-  {{if .Body}}<p class="mb-5 max-w-[44ch] text-slate-500">{{.Body}}</p>{{end}}
-  {{range .Children}}{{.}}{{end}}
+  {{if .Body}}<p class="mt-2 max-w-[44ch] text-slate-500">{{.Body}}</p>{{end}}
+  {{if .Children}}<div class="mt-8 flex w-full flex-col items-center gap-5">{{range .Children}}{{.}}{{end}}</div>{{end}}
 </div>

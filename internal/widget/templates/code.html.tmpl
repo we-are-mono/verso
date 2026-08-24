@@ -1,0 +1,20 @@
+{{/* code: a long machine value in a full-width monospace box, with an optional
+     inline copy (icon + label that turn green on success — shell-owned "copy"
+     behaviour, verso.js). */}}
+<div class="space-y-1.5">
+  {{if .Label}}<div class="text-sm font-medium text-slate-900">{{.Label}}</div>{{end}}
+  <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+    <code class="min-w-0 flex-1 break-all font-mono text-xs text-slate-700">{{.Value}}</code>
+    {{if .Copy}}
+    <button type="button" x-data="copy" @click="run" aria-label="Copy" class="shrink-0 text-sm font-medium">
+      <span x-ref="src" class="hidden">{{.Value}}</span>
+      <span x-show="idle" class="inline-flex items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-700">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy
+      </span>
+      <span x-show="done" x-cloak class="inline-flex items-center gap-1.5 text-green-600">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Copied!
+      </span>
+    </button>
+    {{end}}
+  </div>
+</div>

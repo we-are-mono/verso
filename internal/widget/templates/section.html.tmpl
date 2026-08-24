@@ -1,0 +1,7 @@
+{{/* section: a grouped block with an optional heading and generous space above it,
+     marking a new context on the page. The top space is padding (not margin), so it
+     never collapses against the previous element. */}}
+<section class="pt-6">
+  {{if .Title}}<h3 class="mb-3 text-base font-semibold tracking-tight text-slate-900">{{.Title}}</h3>{{end}}
+  <div class="space-y-4">{{range .Children}}{{.}}{{end}}</div>
+</section>
