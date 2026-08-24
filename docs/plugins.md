@@ -287,6 +287,23 @@ Renders its `fields` inside a `POST` form that submits **back to the same page**
 
 `submit` defaults to `"Save"`.
 
+**Secondary actions.** Besides Save, a form may declare `actions` — extra buttons
+that submit the form (all its fields) with an `_action` marker you read in your
+handler, so you can *compute* on the submitted values and re-render, without a save.
+This is the plugin-computed round-trip (ADR-005 §7): the shell renders the button and
+forwards the submission; you do the work and return fresh schema. The WireGuard
+plugin uses it to generate a keypair — the shell can't compute a WireGuard key, so
+the plugin does, fills the field, and re-renders; the operator then Saves.
+
+```json
+{ "type": "form", "submit": "Save interface",
+  "actions": [ { "label": "Generate keypair", "action": "generate-keypair" } ],
+  "fields": [ /* … */ ] }
+```
+
+On a POST, read `_action`: when it names one of your actions, compute and re-render
+(return no `commit`); otherwise treat it as the Save.
+
 ### field — one labelled control
 
 ```json
@@ -327,10 +344,10 @@ the list. Report a bad item with `errors` keyed by the item's index:
 > **The schema's edges are a finding.** A single value repeats with `list`; a group
 > of fields that maps to uci sections repeats with
 > [`repeater`](#repeater--a-repeatable-group-of-sections); a field-set appears on a
-> toggle with [`conditional`](#conditional--a-field-set-behind-a-toggle). What still
-> can't be expressed — a value *computed* from another field, or a field-set gated
-> on a multi-value `select` — is a *finding*: tell us, so the next behavioural widget
-> is the right one.
+> toggle with [`conditional`](#conditional--a-field-set-behind-a-toggle); a value is
+> *computed* by a form [action](#form--an-interactive-form) that re-renders. What
+> still can't be expressed — a field-set gated on a multi-value `select` — is a
+> *finding*: tell us, so the next behavioural widget is the right one.
 
 ### repeater — a repeatable group of sections
 

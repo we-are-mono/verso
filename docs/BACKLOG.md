@@ -70,10 +70,11 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Research
 
-- **Behavioural pages — remaining edges.** Both axes landed in the WireGuard
-  plugin under the declare-intent/shell-realizes rule (ADR-005 §7): `repeater` for
-  add/remove peers (realized via an rpcd round-trip), `conditional` for the
-  pre-shared-key toggle (realized in pure CSS). What the schema still can't express
-  is the finding: a value *computed* from another field (e.g. a generated keypair),
-  and a field-set gated on a multi-value `select` (a proto switch). Each is a
-  candidate next behavioural widget. Governed by ADR-005.
+- **Behavioural pages — the remaining edge.** Three realizations landed in the
+  WireGuard plugin under the declare-intent/shell-realizes rule (ADR-005 §7):
+  `repeater` (add/remove peers, rpcd round-trip), `conditional` (pre-shared-key
+  toggle, pure CSS), and a form `action` (generate keypair, plugin-computed
+  round-trip). The remaining edge is a field-set gated on a multi-value `select` (a
+  proto switch): as a radio group it stays pure-CSS, but as a dropdown it would be
+  the first case needing JavaScript. A candidate next behavioural widget. Governed
+  by ADR-005.
