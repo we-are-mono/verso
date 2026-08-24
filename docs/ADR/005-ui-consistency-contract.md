@@ -58,8 +58,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    controlling toggle; it follows the same rule, but its realization is *pure CSS*
    (`:has()`) rather than a round-trip, because show/hide has no state to persist —
    the shell still owns every line of it, and the plugin still only declares the
-   intent. A realization is chosen per widget for what it does; the invariant is that
-   the plugin declares intent and the shell owns the behaviour. The round-trip's
+   intent. A realization is chosen per widget for what it does — the repeater's rpcd
+   round-trip, the conditional's CSS, and a form's secondary *action*, which submits
+   the form for the **plugin** to compute on and re-render (generating a keypair); the
+   invariant is that the plugin declares intent and the shell owns the behaviour. The
+   round-trip's
    *mechanics* are the mechanical contract's (ADR-006); what a plugin may *emit* is
    this ADR's.
 
