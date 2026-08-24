@@ -54,6 +54,7 @@ type UCI map[string]map[string]any
 type Envelope struct {
 	SchemaVersion int             `json:"schema_version"`
 	Title         string          `json:"title"`
+	Width         string          `json:"width"` // page width preset: "narrow" | "normal" (default) | "wide"
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
 	Status        int             `json:"-"`

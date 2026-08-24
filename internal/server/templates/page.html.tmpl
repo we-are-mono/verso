@@ -6,44 +6,43 @@
 <title>{{.Title}}</title>
 <style>{{.CSS}}</style>
 </head>
-<body class="min-h-screen m-0 flex flex-col bg-white text-slate-900 antialiased font-sans text-sm leading-normal">
-<header class="border-b border-slate-200 px-6 py-4">
-  <h1 class="text-lg font-semibold tracking-tight">Verso</h1>
-</header>
-<div class="flex flex-1">
-  <nav class="w-56 shrink-0 border-r border-slate-200 px-3 pt-12 pb-4 text-sm">
-    <ul class="space-y-1">
-      {{range .Nav}}
-      <li>
-        <details {{if .Open}}open {{end}}class="group">
-          <summary class="flex items-center justify-between cursor-pointer select-none list-none px-3 py-2 font-medium [&::-webkit-details-marker]:hidden">
-            {{.Title}}
-            <span class="verso-chevron text-slate-500">&rsaquo;</span>
-          </summary>
-          <ul class="mt-0.5 space-y-0.5">
-            {{range .Links}}
-            <li><a href="{{.Href}}" class="block py-1.5 pl-6 pr-3 {{if .Active}}font-medium text-sky-600{{else}}text-slate-500{{end}}">{{.Label}}</a></li>
-            {{end}}
-          </ul>
-        </details>
-      </li>
-      {{end}}
-      <li><form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{.CSRFToken}}"><button type="submit" class="block w-full cursor-pointer rounded px-3 py-2 text-left font-medium">Logout</button></form></li>
-    </ul>
-  </nav>
-  <main class="flex-1 bg-slate-100 pl-12 pr-6 pt-12 pb-6">
-    <div class="max-w-3xl">
-      {{if .NoPassword}}
-      <div class="mb-8 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-        <svg class="mt-0.5 size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
-        <div><span class="font-medium">No root password set.</span> Anyone who can reach this device can administer it — set one with <code>passwd</code> over SSH.</div>
-      </div>
-      {{end}}
-      <h2 class="text-2xl font-normal tracking-tight mb-10">{{.Heading}}</h2>
-      {{.Body}}
+<body class="min-h-screen m-0 flex bg-slate-50 text-slate-900 antialiased font-sans text-sm leading-normal">
+{{/* Left rail: a fixed-width sidebar (logo, grouped section nav, logout). Being a
+     stable vertical rail, it decouples navigation from content width — the content
+     region beside it can vary per page without the chrome moving. */}}
+<aside class="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+  <a href="/" class="block px-5 py-5 text-lg font-semibold tracking-tight">Verso</a>
+  <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+    {{range .Nav}}
+    <div class="mb-5">
+      <div class="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">{{.Title}}</div>
+      <ul class="space-y-0.5">
+        {{range .Links}}
+        <li><a href="{{.Href}}" class="block rounded-md px-3 py-2 transition-colors {{if .Active}}bg-slate-100 font-medium text-slate-900{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">{{.Label}}</a></li>
+        {{end}}
+      </ul>
     </div>
-  </main>
-</div>
+    {{end}}
+  </nav>
+  <form method="post" action="/logout" class="border-t border-slate-100 p-3">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+    <button type="submit" class="block w-full rounded-md px-3 py-2 text-left font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">Logout</button>
+  </form>
+</aside>
+<main class="min-w-0 flex-1">
+  {{/* Content width is a per-page preset the page declares (default normal),
+       left-aligned against the rail (no centring — better on wide monitors). */}}
+  <div class="px-8 py-10 {{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">
+    {{if .NoPassword}}
+    <div class="mb-8 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+      <svg class="mt-0.5 size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+      <div><span class="font-medium">No root password set.</span> Anyone who can reach this device can administer it — set one with <code>passwd</code> over SSH.</div>
+    </div>
+    {{end}}
+    <h2 class="text-2xl font-normal tracking-tight mb-10">{{.Heading}}</h2>
+    {{.Body}}
+  </div>
+</main>
 {{/* Shell client-side JS (ADR-004), served first-party under the strict CSP.
      verso.js registers the shell's Alpine components before Alpine starts. */}}
 <script src="/assets/verso.js" defer></script>

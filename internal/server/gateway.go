@@ -35,8 +35,9 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	heading := m.Name
-	body, status := s.pluginBody(r, m, &heading)
-	s.renderPage(w, r, status, heading, body)
+	width := ""
+	body, status := s.pluginBody(r, m, &heading, &width)
+	s.renderPage(w, r, status, heading, width, body)
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -48,7 +49,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 // Notices (version mismatch, unavailable) are 200 — the shell is fine, it is
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
-func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string) (template.HTML, int) {
+func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading, width *string) (template.HTML, int) {
 	if m.SchemaVersion != supportedSchemaVersion {
 		return s.notice("Plugin needs a newer Verso", fmt.Sprintf(
 			"%s speaks schema version %d; this shell supports version %d.",
@@ -141,6 +142,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, heading *string)
 	if env.Title != "" {
 		*heading = env.Title
 	}
+	*width = env.Width
 	return template.HTML(b.String()), status
 }
 
