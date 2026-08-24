@@ -14,6 +14,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"strings"
 	"time"
@@ -28,6 +29,13 @@ var templateFS embed.FS
 
 //go:embed assets/verso.css
 var cssText string
+
+// scriptFS holds the shell's client-side JS, served under /assets and loaded by
+// the page chrome (ADR-004). htmx drives server round-trips; Alpine (CSP build)
+// drives client behaviour; verso.js registers the shell's Alpine components.
+//
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js
+var scriptFS embed.FS
 
 // Server is the Verso HTTP shell.
 type Server struct {
@@ -96,6 +104,21 @@ func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 // the session/CSRF gate, wrapping the routing mux.
 func (s *Server) Handler() http.Handler {
 	return securityHeaders(s.hostGuard(s.requireAuth(s.mux)))
+}
+
+// assets serves the shell's embedded client-side JS (ADR-004) under /assets. The
+// files are first-party and static; they carry no session data, so the path is
+// public (see isPublicPath) and cacheable.
+func (s *Server) assets() http.Handler {
+	sub, err := fs.Sub(scriptFS, "assets")
+	if err != nil {
+		return http.NotFoundHandler()
+	}
+	files := http.FileServerFS(sub)
+	return http.StripPrefix("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		files.ServeHTTP(w, r)
+	}))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

@@ -10,11 +10,15 @@ import (
 )
 
 // securityHeaders sets defensive response headers on every reply (VS-07). The
-// shell ships no JavaScript, so the CSP forbids scripts outright; styles are the
-// embedded stylesheet (inline), and images allow data: and https: for the raw
-// bridge. frame-ancestors + X-Frame-Options block clickjacking of a root panel.
+// shell ships its own first-party JS (htmx + Alpine + verso.js, ADR-004), so
+// script-src is 'self' — no 'unsafe-inline' and no 'unsafe-eval' (Alpine's CSP
+// build needs neither), which keeps injected or plugin-supplied markup unable to
+// execute: html/template escaping blocks tag injection, the CSP blocks inline and
+// external scripts. Styles are the embedded stylesheet (inline); images allow
+// data: and https: for the raw bridge. frame-ancestors + X-Frame-Options block
+// clickjacking of a root panel.
 func securityHeaders(next http.Handler) http.Handler {
-	const csp = "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; " +
+	const csp = "default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; " +
 		"img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

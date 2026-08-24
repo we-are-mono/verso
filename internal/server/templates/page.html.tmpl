@@ -44,5 +44,10 @@
     </div>
   </main>
 </div>
+{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP.
+     verso.js registers the shell's Alpine components before Alpine starts. */}}
+<script src="/assets/verso.js" defer></script>
+<script src="/assets/htmx.min.js" defer></script>
+<script src="/assets/alpine.csp.min.js" defer></script>
 </body>
 </html>

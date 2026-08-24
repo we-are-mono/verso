@@ -90,7 +90,7 @@ reload() {
 # they are compiled into the binary.
 sig() {
 	{
-		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.css' \) \
+		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.css' -o -name '*.js' \) \
 			! -name 'verso.css' -printf '%T@ %p\n'
 		find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum

@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type Security interface {
 }
 
 func isPublicPath(p string) bool {
-	return p == "/login" || p == "/healthz"
+	return p == "/login" || p == "/healthz" || strings.HasPrefix(p, "/assets/")
 }
 
 // requireAuth redirects unauthenticated requests to the login page; public paths

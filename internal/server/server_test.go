@@ -873,8 +873,15 @@ func TestHostGuardAllowsConfiguredHost(t *testing.T) {
 func TestSecurityHeaders(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{}), "/")
 	h := rec.Header()
-	if !strings.Contains(h.Get("Content-Security-Policy"), "script-src 'none'") {
-		t.Errorf("CSP missing or not strict: %q", h.Get("Content-Security-Policy"))
+	csp := h.Get("Content-Security-Policy")
+	// The shell serves its own first-party JS (ADR-004), so scripts are 'self' —
+	// but never 'unsafe-inline' or 'unsafe-eval', so injected/plugin markup still
+	// cannot execute (Alpine's CSP build needs neither).
+	if !strings.Contains(csp, "script-src 'self'") {
+		t.Errorf("CSP script-src should be 'self': %q", csp)
+	}
+	if strings.Contains(csp, "unsafe-eval") {
+		t.Errorf("CSP must not allow unsafe-eval: %q", csp)
 	}
 	if h.Get("X-Frame-Options") != "DENY" {
 		t.Errorf("X-Frame-Options = %q, want DENY", h.Get("X-Frame-Options"))

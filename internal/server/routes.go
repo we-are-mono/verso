@@ -7,6 +7,9 @@ package server
 // scannable place. Handlers live in their feature files; this stays a map.
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
+
+	// Shell client-side JS (htmx, Alpine, verso.js), served static and public.
+	s.mux.Handle("GET /assets/", s.assets())
 	s.mux.HandleFunc("GET /login", s.handleLoginForm)
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
