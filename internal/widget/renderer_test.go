@@ -182,6 +182,24 @@ func TestRenderFieldSelectMarksSelected(t *testing.T) {
 	}
 }
 
+func TestRenderPasswordField(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "password", Label: "New password", Kind: "password"})
+
+	for _, want := range []string{
+		`type="password"`, `name="password"`, `id="password"`,
+		`autocomplete="new-password"`, `New password`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("password field missing %q in: %s", want, got)
+		}
+	}
+	// The password must never be reflected: no value attribute on the input.
+	if strings.Contains(got, "value=") {
+		t.Errorf("password input must not carry a value attribute: %s", got)
+	}
+}
+
 func TestRenderFieldError(t *testing.T) {
 	r := newRenderer(t)
 

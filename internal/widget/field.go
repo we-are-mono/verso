@@ -10,7 +10,7 @@ package widget
 type Field struct {
 	Name     string   `json:"name"`
 	Label    string   `json:"label"`
-	Kind     string   `json:"kind"`     // "text" (default) | "select"
+	Kind     string   `json:"kind"`     // "text" (default) | "select" | "password"
 	Value    string   `json:"value"`    // current/submitted value
 	Datatype string   `json:"datatype"` // tier-1 datatype name, e.g. "hostname"
 	Options  []Option `json:"options"`  // choices when kind is "select"
