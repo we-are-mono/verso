@@ -60,9 +60,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
    non-core section, so the chrome is coherent and deterministic regardless of
    plugin discovery order.
 
-3. **The shell serves two surfaces directly; every section that configures the
-   device is a plugin.** The shell renders exactly two kinds of page in-process,
-   for two distinct reasons:
+3. **The shell serves its own machinery directly; every section that configures the
+   device is a plugin.** The shell renders in-process only the read-only baseline and
+   its own machinery — never a device operation. Three kinds of page qualify, each the
+   shell's own concern rather than the device's:
    - **The read-only status baseline** (the Status overview). The shell must
      render a coherent first screen on a freshly-flashed device *before any plugin
      is up*, and this page only *reads* state — it has nothing to crash, nothing to
@@ -74,6 +75,28 @@ call: **on a gateway the firewall is not optional, so it is core.**
      credential that gates the entire shell must never be held or mutated by an
      out-of-process plugin. First boot is passwordless (`root:::`), so setting the
      first password is onboarding the shell owns, independent of any plugin.
+   - **Plugin (extension) management** — the shell owns its own extension mechanism:
+     which plugins exist, whether each is enabled and healthy, and the rpcd ACLs it is
+     granted. This must not itself be a plugin, for the two reasons that make the auth
+     surface shell-owned. *Bootstrap:* a disabled or broken plugin could otherwise lock
+     the operator out of the very tool needed to repair it — the shell must manage its
+     plugin set before and without any plugin being healthy. *Trust:* enabling a plugin
+     grants it write ACLs, and the shell is the write-enforcement point (ADR-007), so
+     control over the plugin set and its permissions cannot be delegated to a plugin
+     without inverting the trust model. It lives in the System section beside Password.
+     The underlying package install/remove still flows through rpcd like any privileged
+     write — the shell owns the *authority* over its plugin set, not a bespoke installer.
+
+   The test for what the shell serves in-process is not "is it important" or "is it
+   read-only" but: *is it the shell's own machinery — authentication, or control of its
+   own plugin set — or the baseline that must exist before plugins?* Anything that
+   **operates or configures the device is a plugin**, including restarting device
+   services (network, dnsmasq, a VPN, the firewall): a service restart is a device
+   operation, done contextually inside the owning plugin's rpcd commit, with a general
+   services/startup list living in the **System** plugin (§2) — never a shell "service
+   manager." The one service-shaped thing the shell owns is restarting a *plugin's own
+   process* and reporting its health — part of plugin management (the shell supervises
+   plugin sockets), not device service control.
 
    Everything else — every page that *configures the device* — is served by an
    out-of-process bundled plugin through the ADR-006 gateway. There is still
@@ -169,10 +192,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
   consistency now has two enforcers), forks the privilege model, and puts the
   firewall — the surface most deserving of isolation — inside the shell's own
   address space. The per-request socket cost (ADR-006) is negligible at admin-UI
-  rates and not worth this. The shell's two in-process surfaces (§3) are the
-  bounded, principled exception: the read-only baseline that must render before any
-  plugin exists, and the auth/credential surface the shell must own outright.
-  Neither *configures the device*, so neither reopens this fork.
+  rates and not worth this. The shell's in-process surfaces (§3) are the bounded,
+  principled exception — the read-only baseline, and the shell's own machinery (the
+  auth/credential surface and control of its own plugin set). None *operates or
+  configures the device*, so none reopens this fork.
 - **Password change as a plugin (LuCI parity).** LuCI serves the router password
   under its System module like any other page. Rejected for Verso: the shell is the
   authentication authority (ADR-007) and plugins hold no credentials, so delegating
@@ -180,6 +203,19 @@ call: **on a gateway the firewall is not optional, so it is core.**
   model — and first-boot onboarding must set a password before any plugin is
   guaranteed up. Password stays a shell-owned page, displayed within the System
   section (§3).
+- **Plugin management as a plugin.** Serve the install/enable/disable page through the
+  ADR-006 gateway like everything else. Rejected for the same reasons the password page
+  is shell-owned: bootstrap (a disabled or broken plugin must not be able to lock the
+  operator out of repairing plugins) and trust (enabling a plugin grants it ACLs, and
+  the shell is the write-enforcement point, so it cannot delegate control of its own
+  plugin set). It is the shell's own machinery, not device configuration — a third
+  in-process surface (§3), not an exception to the rule.
+- **A general service manager in the shell.** Add a shell page to start/stop/restart
+  device services. Rejected: a service restart is a *device operation*, not the shell's
+  own machinery — it belongs in the owning plugin's rpcd commit (contextually) or the
+  System plugin's startup/services page. Pulling it in-shell reopens the very
+  device-configuration-in-shell fork this ADR rejects. The shell only ever restarts a
+  *plugin's own process* (part of plugin management), never device services.
 - **Firewall as an optional plugin (LuCI parity).** Keep the firewall a
   non-bundled `luci-app-firewall` equivalent. Rejected: a gateway ships firewall
   management as a baseline capability; making it optional is a worse default and
