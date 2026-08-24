@@ -19,3 +19,6 @@
 .DS_Store
 *.swp
 /.playwright-mcp/
+
+# Claude Code local worktrees and session state
+.claude/
