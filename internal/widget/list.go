@@ -4,9 +4,9 @@
 package widget
 
 // List is a repeating text field: several values under one name, each validated
-// against the same datatype. It is the schema's answer to LuCI's DynamicList and
-// the deliberate stress test for the static-schema bet (FINDINGS F3) — repetition
-// and per-item validation, not a single leaf.
+// against the same datatype. It is the schema's answer to LuCI's DynamicList — a
+// stress test for the static-schema bet: repetition and per-item validation, not a
+// single leaf.
 //
 // It renders each item as an input plus one trailing blank slot; all share Name,
 // so they post as a multi-value form field. The plugin reads them, drops blanks,
