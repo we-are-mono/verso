@@ -1,0 +1,10 @@
+{
+	"verso-helper": {
+		"description": "Verso shell privileged helper actions (verso-rpcd)",
+		"write": {
+			"ubus": {
+				"verso": [ "setPassword" ]
+			}
+		}
+	}
+}

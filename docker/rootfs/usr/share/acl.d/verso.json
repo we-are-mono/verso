@@ -3,6 +3,7 @@
 	"access": {
 		"session": { "methods": [ "login", "access", "list" ] },
 		"uci": { "methods": [ "get", "set", "commit", "apply", "changes", "add", "delete", "order", "rename", "confirm", "revert" ] },
-		"system": { "methods": [ "info", "board" ] }
+		"system": { "methods": [ "info", "board" ] },
+		"verso": { "methods": [ "setPassword" ] }
 	}
 }
