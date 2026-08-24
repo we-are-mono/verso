@@ -48,8 +48,8 @@ type navLink struct {
 // then grouped under their manifest's nav.section. Sections are ordered by the
 // core taxonomy (ADR-009 §2, §5): core sections first in canonical order,
 // plugin-introduced sections after by title — deterministic regardless of plugin
-// discovery order. The section containing the active link is expanded; Status
-// stays open by default.
+// discovery order. The section containing the active page is marked Open — the
+// top nav highlights it (and marks its active dropdown entry).
 func (s *Server) buildNav(active string) []navSection {
 	sections := make([]navSection, 0, len(coreSectionOrder))
 	index := map[string]int{}
@@ -90,9 +90,6 @@ func (s *Server) buildNav(active string) []navSection {
 	})
 
 	for si := range sections {
-		if sections[si].Title == "Status" {
-			sections[si].Open = true
-		}
 		for li := range sections[si].Links {
 			if isActive(active, sections[si].Links[li].Href) {
 				sections[si].Links[li].Active = true

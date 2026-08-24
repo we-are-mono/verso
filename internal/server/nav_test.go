@@ -114,7 +114,7 @@ func TestBuildNavActiveSectionExpands(t *testing.T) {
 	)
 	sections := s.buildNav("/plugins/fw/")
 	for _, sec := range sections {
-		wantOpen := sec.Title == "Firewall" || sec.Title == "Status" // Status open by default
+		wantOpen := sec.Title == "Firewall" // only the section holding the active page is open
 		if sec.Open != wantOpen {
 			t.Fatalf("section %q open = %v, want %v", sec.Title, sec.Open, wantOpen)
 		}
