@@ -28,15 +28,16 @@ type Renderer struct {
 	tmpl    *template.Template
 	md      goldmark.Markdown
 	rawUses atomic.Int64
-	tabSeq  atomic.Int64 // per-render unique id, so multiple tabs groups never collide
-	wizSeq  atomic.Int64 // ditto for wizards
-	cfmSeq  atomic.Int64 // ditto for confirm widgets
+	tabSeq   atomic.Int64 // per-render unique id, so multiple tabs groups never collide
+	wizSeq   atomic.Int64 // ditto for wizards
+	cfmSeq   atomic.Int64 // ditto for confirm widgets
+	chartSeq atomic.Int64 // ditto for charts' gradient ids
 }
 
 // NewRenderer parses the embedded widget templates and builds the sanitising
 // Markdown engine for the raw bridge.
 func NewRenderer() (*Renderer, error) {
-	tmpl, err := template.ParseFS(templateFS, "templates/*.tmpl")
+	tmpl, err := template.New("widget").Funcs(template.FuncMap{"icon": Icon}).ParseFS(templateFS, "templates/*.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("widget: parse templates: %w", err)
 	}

@@ -11,27 +11,32 @@ import (
 )
 
 // Card is a titled container that nests other widgets. It is the composition
-// primitive: the schema's ability to nest — not merely render a leaf — rests on
-// it. Children decode recursively through Decode, so a card may hold any widget,
-// itself included, and the closed set is enforced at every level.
+// primitive: the schema's ability to nest — not merely render a leaf — rests on it.
+// Children decode recursively through Decode, so a card may hold any widget, itself
+// included, and the closed set is enforced at every level. An optional Subtitle sits
+// just under the title as part of the header block — describing the card — set apart
+// from the content below it.
 type Card struct {
 	Title    string
+	Subtitle string
 	Children []Widget
 }
 
 func (*Card) isWidget() {}
 
-// UnmarshalJSON decodes a card's title and children, recursing through Decode so
-// an unknown child type fails here rather than silently vanishing.
+// UnmarshalJSON decodes a card's title, subtitle, and children, recursing through
+// Decode so an unknown child type fails here rather than silently vanishing.
 func (c *Card) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Title    string            `json:"title"`
+		Subtitle string            `json:"subtitle"`
 		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	c.Title = raw.Title
+	c.Subtitle = raw.Subtitle
 	c.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
 		child, err := Decode(rc)
@@ -43,10 +48,11 @@ func (c *Card) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// cardView is the card template's model: the title plus its children already
-// rendered to trusted HTML fragments.
+// cardView is the card template's model: the title and subtitle plus the children
+// already rendered to trusted HTML fragments.
 type cardView struct {
 	Title    string
+	Subtitle string
 	Children []template.HTML
 }
 
@@ -57,5 +63,5 @@ func (c *Card) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "card.html.tmpl", cardView{Title: c.Title, Children: children})
+	return r.execute(out, "card.html.tmpl", cardView{Title: c.Title, Subtitle: c.Subtitle, Children: children})
 }

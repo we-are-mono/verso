@@ -9,7 +9,12 @@ import "io"
 // name on the left and its value on the right. It is the read-only companion to a
 // form — the way to lay out the facts about one thing (a device's address, data
 // used, when it was added) so they line up and scan cleanly.
+//
+// Style sets how rows are separated: a hairline between them ("divided", the default),
+// zebra shading ("striped"), or nothing ("plain"). The shell owns the chrome; the
+// template maps the style to classes, and any unknown value falls back to "divided".
 type Properties struct {
+	Style string     `json:"style"` // "divided" (default) | "striped" | "plain"
 	Items []Property `json:"items"`
 }
 

@@ -1,2 +1,3 @@
-{{/* stack: vertical layout of pre-rendered children, no surface of its own. */}}
-<div class="space-y-4">{{range .}}{{.}}{{end}}</div>
+{{/* stack: vertical layout of pre-rendered children, no surface of its own. Divided
+     draws a hairline between entries (a list); the default spaces them (a page of cards). */}}
+<div class="{{if .Divided}}divide-y divide-slate-200{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>

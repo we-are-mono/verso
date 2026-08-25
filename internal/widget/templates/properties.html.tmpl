@@ -1,16 +1,24 @@
-{{/* properties: a label/value detail list (a <dl>) — label left, value right, so
-     the facts about one thing line up and scan cleanly. A row may offer an inline
-     copy button beside its value (shell-owned "copy" behaviour, verso.js). */}}
-<dl class="space-y-3">
+{{/* properties: a label/value detail list (a <dl>) — label left, value right, so the
+     facts about one thing line up and scan cleanly. Style picks the row separator:
+     "striped" (zebra), "plain" (none), or the default hairline between rows. The class
+     strings live here (not in Go) so Tailwind's scanner keeps them. A row may offer an
+     inline copy button (shell-owned "copy", verso.js); icons from icons.go. */}}
+<dl class="{{if eq .Style "striped"}}overflow-hidden rounded-md{{else if eq .Style "plain"}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
   {{range .Items}}
-  <div class="flex items-baseline justify-between gap-6 text-sm">
+  <div class="flex items-baseline justify-between gap-6 text-sm{{if eq $.Style "striped"}} px-3 py-2 odd:bg-slate-50{{else if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
     <dt class="shrink-0 text-slate-500">{{.Label}}</dt>
     <dd class="text-right font-medium text-slate-700">
       <span class="{{if .Mono}}font-mono{{end}}">{{.Value}}</span>
-      {{if .Copy}}<button type="button" x-data="copy" @click="run" aria-label="Copy" class="ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
+      {{if .Copy}}<button type="button" x-data="copy" @click="run" aria-label="Copy" class="group relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
         <span x-ref="src" class="hidden">{{.Value}}</span>
-        <svg x-show="idle" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-        <svg x-show="done" x-cloak class="size-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        <span x-show="idle">{{icon "copy" "size-4"}}</span>
+        <span x-show="done" x-cloak>{{icon "check" "size-4 text-green-600"}}</span>
+        {{/* Hover bubble beneath the icon: "Click to copy", flipping to "Copied!" on click
+             (same idle/done state as the icon). Pure-CSS reveal on hover/keyboard focus. */}}
+        <span class="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span x-show="idle">Click to copy</span>
+          <span x-show="done" x-cloak>Copied!</span>
+        </span>
       </button>{{end}}
     </dd>
   </div>

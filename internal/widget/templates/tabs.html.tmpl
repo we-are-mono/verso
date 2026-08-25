@@ -3,7 +3,7 @@
      JS and gets native arrow-key navigation for free. A sliding indicator (the white
      pill) glides under the active tab. --verso-tabs-n tells the CSS how many equal
      columns to slide across. The group name is unique per render, so two tab groups
-     on one page never share state. */}}
+     on one page never share state. Icons from the shared Lucide set (icons.go). */}}
 <div class="verso-tabs" style="--verso-tabs-n:{{len .Tabs}}">
   {{range $i, $t := .Tabs}}
   <input type="radio" name="{{$.Group}}" id="{{$.Group}}-{{$i}}" class="verso-tab-radio sr-only"{{if $t.First}} checked{{end}}>
@@ -12,8 +12,7 @@
     <span class="verso-tab-indicator" aria-hidden="true"></span>
     {{range $i, $t := .Tabs}}
     <label for="{{$.Group}}-{{$i}}" class="verso-tab-label relative z-10 inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition-colors">
-      {{if eq $t.Icon "device"}}<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-      {{else if eq $t.Icon "globe"}}<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v9l6 3"/><path d="M16 3h5v5"/></svg>{{end}}
+      {{if $t.Icon}}{{icon $t.Icon "size-4"}}{{end}}
       {{$t.Label}}
     </label>
     {{end}}

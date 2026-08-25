@@ -15,6 +15,34 @@
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
 
+/*
+ * Self-hosted webfonts — no CDN (ADR-001), served first-party under /assets/fonts
+ * (CSP default-src 'self' covers them). Fraunces (serif) sets the display/verdict
+ * headlines; Hanken Grotesk (sans) carries all UI text and figures. Both are the
+ * variable latin subset (weight 400–700), SIL OFL 1.1 — see assets/fonts/OFL.txt.
+ */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: optional;
+  src: url("/assets/fonts/fraunces.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: optional;
+  src: url("/assets/fonts/hanken.woff2") format("woff2");
+}
+
+/* Point Tailwind's font utilities at the embedded faces: font-sans (the body default)
+   → Hanken Grotesk; font-serif (the hero verdict + page headings) → Fraunces. */
+@theme {
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+
 @layer base {
   /* Browsers default <button> to the arrow cursor; enabled buttons and anything
      acting as a button should show the pointer, app-wide, so no widget has to
@@ -26,6 +54,13 @@
   /* Hide Alpine-controlled elements (e.g. a modal overlay) until Alpine has
      initialized, so nothing flashes on load before x-show applies (ADR-004). */
   [x-cloak] { display: none !important; }
+
+  /* Every page's content settles in with a small fade + rise on load — a quiet "loaded"
+     cue. It runs on each full navigation; the sidebar stays put, only the content moves.
+     Honours reduced-motion. */
+  @keyframes verso-page-enter { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: none; } }
+  .verso-page-enter { animation: verso-page-enter 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  @media (prefers-reduced-motion: reduce) { .verso-page-enter { animation: none; } }
 
   /* Stateful selector + custom timing — no direct utility equivalent. */
   .verso-chevron { transition: transform 150ms ease; }
@@ -93,7 +128,9 @@
      slides under the active tab; the active label's text darkens. The utility layer
      never sets these state-varying properties, so the cascade can't override them. */
   .verso-tab-panel { display: none; animation: verso-fade 0.3s ease both; }
-  @keyframes verso-fade { from { opacity: 0; transform: translateY(0.375rem); } to { opacity: 1; transform: none; } }
+  /* A crossfade only — no rise — so switching panels is smooth without adding a second
+     "slide" over the page-level entrance on load (used by tabs and wizard steps). */
+  @keyframes verso-fade { from { opacity: 0; } to { opacity: 1; } }
   .verso-tab-radio:focus-visible ~ .verso-tab-list {
     outline: 2px solid var(--color-sky-600); outline-offset: 2px; border-radius: 9999px;
   }
@@ -223,7 +260,150 @@
     100% { transform: scale(1.5); opacity: 0; }
   }
 
+  /* page masthead: the artifact-style header a page opts into (kicker + serif headline +
+     lede), rendered by the shell chrome. Sizes live here so they hot-reload. */
+  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-sky-600); }
+  .verso-page-heading { font-family: var(--font-serif); font-size: clamp(1.875rem, 4.5vw, 2.625rem); font-weight: 500; letter-spacing: -0.02em; color: var(--color-slate-900); }
+  .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-slate-500); }
+
+  /* ports widget: a device's physical rear panel, drawn to scale from data. The
+     chassis is a physical object — deliberately dark in both themes. Display-only;
+     the hover/focus tooltip is pure CSS (no JS). Connector art has no utility
+     equivalent, so it lives here rather than in the template's classes. */
+  .verso-ports-name { text-align: center; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-slate-500); }
+  .verso-ports-chassis-wrap { text-align: center; }
+  .verso-ports-chassis {
+    position: relative; display: inline-flex; gap: 1.375rem; align-items: flex-start; max-width: 100%;
+    padding: 1.5rem 1.875rem 1.125rem;
+    background: linear-gradient(180deg, #2b313d, #20252f);
+    border: 1px solid #363d4a; border-radius: 0.875rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -14px 30px rgb(0 0 0 / 0.35);
+  }
+  .verso-ports-screw { position: absolute; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: radial-gradient(circle at 35% 35%, #5a6272, #2a2f38); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4); }
+  .verso-ports-screw.tl { top: 0.5rem; left: 0.5rem; } .verso-ports-screw.tr { top: 0.5rem; right: 0.5rem; }
+  .verso-ports-screw.bl { bottom: 0.5rem; left: 0.5rem; } .verso-ports-screw.br { bottom: 0.5rem; right: 0.5rem; }
+
+  .verso-port { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.5625rem; }
+  .verso-port-jack, .verso-port-cage { height: 3.375rem; width: auto; display: block; }
+  .verso-port-frame { fill: #363c48; stroke: #4a5262; stroke-width: 1; }
+  .verso-port-mouth { fill: #0b0d12; }
+  .verso-port-pin { stroke: #caa14a; stroke-width: 1.1; }
+  .verso-port-clasp { stroke: #4a5262; stroke-width: 2; stroke-linecap: round; fill: none; }
+  .verso-port-module { fill: #454d5e; opacity: 0; transition: opacity 0.2s; }
+  .verso-port-led { fill: #454d5e; transition: fill 0.2s; }
+  .verso-port.is-linked .verso-port-module { opacity: 1; }
+  .verso-port.is-linked .verso-port-led { fill: #34d399; filter: drop-shadow(0 0 3px rgb(52 211 153 / 0.9)); }
+  .verso-port.is-linked .verso-port-frame { stroke: #4d6a63; }
+  .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px rgb(52 211 153 / 0.35)); }
+  .verso-port.is-empty .verso-port-jack, .verso-port.is-empty .verso-port-cage { opacity: 0.5; }
+  .verso-port-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; color: #d7deea; }
+  .verso-port-speed { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; }
+  .verso-port.is-linked .verso-port-speed { color: #6ee7b7; }
+  .verso-port.is-empty .verso-port-speed { color: #6a7385; }
+
+  /* per-device accent: tints the device name and the WAN port's label. */
+  .verso-ports--sky .verso-ports-name,     .verso-ports--sky .is-wan .verso-port-label     { color: var(--color-sky-400); }
+  .verso-ports--emerald .verso-ports-name, .verso-ports--emerald .is-wan .verso-port-label { color: var(--color-emerald-400); }
+  .verso-ports--violet .verso-ports-name,  .verso-ports--violet .is-wan .verso-port-label  { color: var(--color-violet-400); }
+  .verso-ports--amber .verso-ports-name,   .verso-ports--amber .is-wan .verso-port-label   { color: var(--color-amber-400); }
+
+  .verso-port-tip {
+    position: absolute; bottom: calc(100% + 0.75rem); left: 50%; transform: translateX(-50%) translateY(0.25rem);
+    z-index: 5; opacity: 0; pointer-events: none; white-space: nowrap; text-align: left;
+    padding: 0.5625rem 0.75rem; border-radius: 0.5625rem; font-size: 0.75rem;
+    background: #0b0f16; color: #e8edf5; border: 1px solid #333b49;
+    box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.7);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .verso-port-tip b { color: #fff; font-weight: 600; }
+  .verso-port-tip .role { text-transform: uppercase; }
+  .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.1875rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .verso-port-tip .r .k { color: #8a94a8; }
+  .verso-port:hover .verso-port-tip, .verso-port:focus-within .verso-port-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #0b0f16; }
+
+  .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-slate-500); }
+  .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
+  .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-300); }
+  .verso-ports-dot.on { background: var(--color-green-500); }
+
+  @media (max-width: 560px) {
+    .verso-port-jack, .verso-port-cage { height: 2.5rem; }
+    .verso-ports-chassis { gap: 0.625rem; padding: 1.125rem 0.875rem 0.875rem; }
+    .verso-port-label { font-size: 0.6875rem; } .verso-port-speed { font-size: 0.625rem; }
+  }
+
+  /* chart widget: a generic time-series plot, drawn server-side to static SVG. Colours
+     live here as CSS classes, never as SVG presentation attributes — var() resolves in
+     CSS properties but not inside SVG attrs, so stroke/fill/stop-color sit here while
+     geometry (d, viewBox, cx/cy) stays on the element. Line + area + endpoint dot share
+     one per-role palette; "idle" is the calm grey of a quiet or empty source. This SVG
+     is the first paint — the live layer hydrates the same data for smooth streaming. */
+  .verso-chart-grid line { stroke: var(--color-slate-200); stroke-width: 1; }
+  .verso-chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .verso-chart--spark .verso-chart-line { stroke-width: 1.75; }
+  .verso-chart-area { stroke: none; }
+
+  .verso-chart--sky .verso-chart-line { stroke: var(--color-sky-600); }
+  .verso-chart--sky .verso-chart-dot { fill: var(--color-sky-600); }
+  .verso-chart--sky .verso-chart-fill-0 { stop-color: var(--color-sky-600); stop-opacity: 0.24; }
+  .verso-chart--sky .verso-chart-fill-1 { stop-color: var(--color-sky-600); stop-opacity: 0; }
+
+  .verso-chart--violet .verso-chart-line { stroke: var(--color-violet-600); }
+  .verso-chart--violet .verso-chart-dot { fill: var(--color-violet-600); }
+  .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-violet-600); stop-opacity: 0.24; }
+  .verso-chart--violet .verso-chart-fill-1 { stop-color: var(--color-violet-600); stop-opacity: 0; }
+
+  .verso-chart--emerald .verso-chart-line { stroke: var(--color-emerald-600); }
+  .verso-chart--emerald .verso-chart-dot { fill: var(--color-emerald-600); }
+  .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-emerald-600); stop-opacity: 0.24; }
+  .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-emerald-600); stop-opacity: 0; }
+
+  .verso-chart--amber .verso-chart-line { stroke: var(--color-amber-600); }
+  .verso-chart--amber .verso-chart-dot { fill: var(--color-amber-600); }
+  .verso-chart--amber .verso-chart-fill-0 { stop-color: var(--color-amber-600); stop-opacity: 0.24; }
+  .verso-chart--amber .verso-chart-fill-1 { stop-color: var(--color-amber-600); stop-opacity: 0; }
+
+  .verso-chart--idle .verso-chart-line { stroke: var(--color-slate-400); }
+  .verso-chart--idle .verso-chart-dot { fill: var(--color-slate-400); }
+  .verso-chart--idle .verso-chart-fill-0 { stop-color: var(--color-slate-400); stop-opacity: 0.12; }
+  .verso-chart--idle .verso-chart-fill-1 { stop-color: var(--color-slate-400); stop-opacity: 0; }
+
+  /* chart readout: the status + current-rates panel beside a full "hero" chart. The
+     graph owns these pixels, so a rate number takes its series colour here (a chart
+     legend) — unlike the ink-only stat tile. Flex wraps the readout above the graph on a
+     narrow card. */
+  .verso-chart-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 5.25rem; }
+  .verso-chart-readout { flex: 0 0 auto; min-width: 10rem; }
+  .verso-chart-plot { position: relative; flex: 1 1 18rem; min-width: 0; }
+  /* axis labels: HTML overlaid on the plot at a true, fixed size (SVG <text> would scale
+     with the graph). Y values at the top and middle of the range; window captions at the
+     bottom corners. */
+  .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .verso-chart-yl { left: 0.3125rem; }
+  .verso-chart-yl-top { top: 0; }
+  .verso-chart-yl-mid { top: 50%; transform: translateY(-50%); }
+  .verso-chart-xl-start { left: 0.3125rem; bottom: 0; }
+  .verso-chart-xl-end { right: 0.3125rem; bottom: 0; }
+  .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-slate-900); }
+  .verso-chart-status .verso-live-dot { width: 0.625rem; height: 0.625rem; }
+  .verso-chart-meta { margin-top: 0.1875rem; font-size: 0.8125rem; color: var(--color-slate-500); }
+  .verso-chart-rates { display: flex; gap: 2rem; margin-top: 1.75rem; }
+  .verso-chart-rate-v { display: flex; align-items: baseline; gap: 0.25rem; font-size: 1.875rem; font-weight: 700; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .verso-chart-rate-v small { font-size: 1rem; font-weight: 600; color: var(--color-slate-500); }
+  .verso-chart-rate-k { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5625rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-slate-500); }
+  .verso-chart-rate-sw { width: 0.5rem; height: 0.5rem; border-radius: 0.1875rem; flex: none; }
+  .verso-chart-rate.verso-chart--sky .verso-chart-rate-v { color: var(--color-sky-600); }
+  .verso-chart-rate.verso-chart--sky .verso-chart-rate-sw { background: var(--color-sky-600); }
+  .verso-chart-rate.verso-chart--violet .verso-chart-rate-v { color: var(--color-violet-600); }
+  .verso-chart-rate.verso-chart--violet .verso-chart-rate-sw { background: var(--color-violet-600); }
+  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-v { color: var(--color-emerald-600); }
+  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-sw { background: var(--color-emerald-600); }
+  .verso-chart-rate.verso-chart--amber .verso-chart-rate-v { color: var(--color-amber-600); }
+  .verso-chart-rate.verso-chart--amber .verso-chart-rate-sw { background: var(--color-amber-600); }
+
   @media (prefers-reduced-motion: reduce) {
     .verso-empty-icon::after, .verso-live-dot::after { animation: none; }
+    .verso-port-tip { transition: none; }
   }
 }

@@ -87,13 +87,39 @@ func TestRenderTableEscapesCells(t *testing.T) {
 	}
 }
 
+func TestRenderStackDivided(t *testing.T) {
+	r := newRenderer(t)
+	plain := render(t, r, &Stack{Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
+	if !strings.Contains(plain, "space-y-4") {
+		t.Errorf("default stack should space its children:\n%s", plain)
+	}
+	div := render(t, r, &Stack{Divided: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
+	if !strings.Contains(div, "divide-y") {
+		t.Errorf("divided stack should draw hairlines:\n%s", div)
+	}
+	if strings.Contains(div, "space-y-4") {
+		t.Errorf("divided stack should not also space:\n%s", div)
+	}
+}
+
 func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-md border border-slate-300 bg-white shadow-md"><header class="border-b border-slate-300 px-8 py-6"><h3 class="text-sm font-medium text-slate-900">empty</h3></header><div class="px-8 py-8 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-slate-300 bg-white p-8 shadow-md"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func TestRenderCardSubtitle(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
+	if !strings.Contains(got, `<h3 class="text-base font-medium text-slate-900">Your gateway</h3>`) {
+		t.Errorf("card title missing:\n%s", got)
+	}
+	if !strings.Contains(got, `<p class="mt-1 text-sm text-slate-500">the back of the box</p>`) {
+		t.Errorf("card subtitle missing or not styled as a subtitle:\n%s", got)
 	}
 }
 
@@ -101,7 +127,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-md border border-slate-300 bg-white shadow-md"><div class="px-8 py-8 space-y-4"></div></section>`
+	want := `<section class="rounded-md border border-slate-300 bg-white p-8 shadow-md"><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -117,7 +143,7 @@ func TestRenderCardNestsChild(t *testing.T) {
 	}
 
 	got := render(t, r, card)
-	body := strings.Index(got, `<div class="px-8 py-8 space-y-4">`)
+	body := strings.Index(got, `<div class="space-y-4">`)
 	table := strings.Index(got, "<table")
 	if body < 0 || table < 0 || table < body {
 		t.Errorf("nested table not rendered inside card body: %s", got)
@@ -459,6 +485,29 @@ func TestRenderProperties(t *testing.T) {
 	plain := render(t, r, &Properties{Items: []Property{{Label: "A", Value: "b"}}})
 	if strings.Contains(plain, "x-data") {
 		t.Errorf("non-copy property should have no copy button: %s", plain)
+	}
+}
+
+// TestRenderPropertiesStyles: the row style resolves to hairlines (default), zebra
+// shading, or no separators.
+func TestRenderPropertiesStyles(t *testing.T) {
+	r := newRenderer(t)
+	items := []Property{{Label: "A", Value: "1"}, {Label: "B", Value: "2"}}
+
+	divided := render(t, r, &Properties{Items: items}) // default
+	if !strings.Contains(divided, "divide-y divide-slate-200") {
+		t.Errorf("default properties should use hairlines:\n%s", divided)
+	}
+	striped := render(t, r, &Properties{Style: "striped", Items: items})
+	if !strings.Contains(striped, "odd:bg-slate-50") {
+		t.Errorf("striped properties should zebra-shade rows:\n%s", striped)
+	}
+	if strings.Contains(striped, "divide-y") {
+		t.Errorf("striped properties should not also draw hairlines:\n%s", striped)
+	}
+	bare := render(t, r, &Properties{Style: "plain", Items: items})
+	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-slate-50") {
+		t.Errorf("plain properties should have no separators:\n%s", bare)
 	}
 }
 

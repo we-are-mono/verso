@@ -3,7 +3,7 @@
 <details class="verso-disclosure rounded-lg border border-slate-200 bg-white">
   <summary class="flex cursor-pointer select-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-700 [&::-webkit-details-marker]:hidden">
     {{.Summary}}
-    <svg class="verso-chevron size-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+    {{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}
   </summary>
   <div class="space-y-4 border-t border-slate-200 px-4 py-4">
     {{range .Children}}{{.}}{{end}}

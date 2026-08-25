@@ -1,0 +1,50 @@
+{{/* ports: a device's physical rear panel, drawn to scale from the supplied port list.
+     Display-only; the hover/focus tooltip is pure CSS. The connector art, palette, and
+     "connected" colour are the shell's (ADR-005) — the caller supplies ports + state.
+     Connectors drawn to real spec: RJ45 (8P8C) ~11.68×8.0mm, SFP+ ~13.4×8.5mm. */}}
+<div class="verso-ports verso-ports--{{.Accent}}">
+  {{if .Device}}<div class="verso-ports-name">{{.Device}}</div>{{end}}
+  <div class="verso-ports-chassis-wrap">
+    <div class="verso-ports-chassis">
+      <span class="verso-ports-screw tl"></span><span class="verso-ports-screw tr"></span><span class="verso-ports-screw bl"></span><span class="verso-ports-screw br"></span>
+      {{range .Items}}
+      <div class="verso-port {{if .Linked}}is-linked{{else}}is-empty{{end}}{{if eq .Role "wan"}} is-wan{{end}}" tabindex="0">
+        {{if eq .Kind "sfp"}}
+        <svg class="verso-port-cage" viewBox="0 0 86 60" aria-hidden="true">
+          <rect class="verso-port-frame" x="4" y="3" width="78" height="54" rx="4"/>
+          <rect class="verso-port-mouth" x="11" y="10" width="64" height="40" rx="2.5"/>
+          <rect class="verso-port-module" x="14" y="13" width="58" height="34" rx="1.5"/>
+          <path class="verso-port-clasp" d="M8 17 v26"/>
+          <circle class="verso-port-led" cx="72" cy="8" r="2.3"/>
+        </svg>
+        {{else}}
+        <svg class="verso-port-jack" viewBox="0 0 76 60" aria-hidden="true">
+          <rect class="verso-port-frame" x="3" y="3" width="70" height="54" rx="4"/>
+          <path class="verso-port-mouth" d="M9 11 h58 v33 h-19 v7 h-20 v-7 h-19 z"/>
+          <line class="verso-port-pin" x1="20.2" y1="13" x2="20.2" y2="19"/><line class="verso-port-pin" x1="25.3" y1="13" x2="25.3" y2="19"/><line class="verso-port-pin" x1="30.4" y1="13" x2="30.4" y2="19"/><line class="verso-port-pin" x1="35.5" y1="13" x2="35.5" y2="19"/><line class="verso-port-pin" x1="40.6" y1="13" x2="40.6" y2="19"/><line class="verso-port-pin" x1="45.7" y1="13" x2="45.7" y2="19"/><line class="verso-port-pin" x1="50.8" y1="13" x2="50.8" y2="19"/><line class="verso-port-pin" x1="55.9" y1="13" x2="55.9" y2="19"/>
+          <circle class="verso-port-led" cx="12" cy="8" r="2.3"/><circle class="verso-port-led" cx="64" cy="8" r="2.3"/>
+        </svg>
+        {{end}}
+        <div class="verso-port-label">{{.Label}}</div>
+        {{if .Speed}}<div class="verso-port-speed">{{.Speed}}</div>{{end}}
+        <div class="verso-port-tip">
+          <b>{{.Label}}</b>{{if .Role}} · <span class="role">{{.Role}}</span>{{end}}
+          {{if .Iface}}<div class="r"><span class="k">iface</span>{{.Iface}}</div>{{end}}
+          {{if .Note}}<div class="r"><span class="k">type</span>{{.Note}}</div>{{end}}
+          {{if .Addr}}<div class="r"><span class="k">addr</span>{{.Addr}}</div>{{end}}
+          {{if .Speed}}<div class="r"><span class="k">link</span>{{.Speed}}</div>{{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{if .Legend}}
+  <div class="verso-ports-legend">
+    <span class="verso-ports-key"><span class="verso-ports-dot on"></span>Connected</span>
+    <span class="verso-ports-key"><span class="verso-ports-dot"></span>Not connected</span>
+    {{if .HasWAN}}<span class="verso-ports-key">Internet = your WAN connection</span>{{end}}
+    {{if .HasRJ45}}<span class="verso-ports-key">RJ45 = network cable</span>{{end}}
+    {{if .HasSFP}}<span class="verso-ports-key">SFP+ = fiber</span>{{end}}
+  </div>
+  {{end}}
+</div>

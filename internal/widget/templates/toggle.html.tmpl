@@ -1,15 +1,11 @@
 {{/* toggle: a status-hero switch. Pure CSS (ADR-005 §7) — the checkbox's :checked
      state drives the headline swap and the beacon, so the plugin ships no JS. The
      state-varying styles live in verso.css (.verso-toggle), never as utilities, so
-     Tailwind's utility layer can't override the :has() rules. */}}
+     Tailwind's utility layer can't override the :has() rules. Icon from the shared
+     Lucide set (icons.go). */}}
 <div class="verso-toggle flex items-center justify-between gap-6 rounded-md border border-slate-300 bg-white px-6 py-5 shadow-md">
   <div class="flex min-w-0 items-center gap-4">
-    <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xl">
-      {{if eq .Icon "shield"}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>
-      {{else if eq .Icon "globe"}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
-      {{else}}<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
-      {{end}}
-    </span>
+    <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xl">{{icon .Icon "size-6"}}</span>
     <div class="min-w-0">
       <div class="verso-toggle-on text-lg font-semibold text-slate-900">{{.Label}}</div>
       <div class="verso-toggle-off text-lg font-semibold text-slate-900">{{.OffLabel}}</div>

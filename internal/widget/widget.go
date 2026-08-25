@@ -217,6 +217,42 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode code: %w", err)
 		}
 		return &c, nil
+	case "stat":
+		var s Stat
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, fmt.Errorf("widget: decode stat: %w", err)
+		}
+		return &s, nil
+	case "grid":
+		var g Grid
+		if err := json.Unmarshal(data, &g); err != nil {
+			return nil, fmt.Errorf("widget: decode grid: %w", err)
+		}
+		return &g, nil
+	case "hero":
+		var h Hero
+		if err := json.Unmarshal(data, &h); err != nil {
+			return nil, fmt.Errorf("widget: decode hero: %w", err)
+		}
+		return &h, nil
+	case "meter":
+		var m Meter
+		if err := json.Unmarshal(data, &m); err != nil {
+			return nil, fmt.Errorf("widget: decode meter: %w", err)
+		}
+		return &m, nil
+	case "ports":
+		var p Ports
+		if err := json.Unmarshal(data, &p); err != nil {
+			return nil, fmt.Errorf("widget: decode ports: %w", err)
+		}
+		return &p, nil
+	case "chart":
+		var c Chart
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode chart: %w", err)
+		}
+		return &c, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

@@ -1,20 +1,14 @@
 {{/* row: a compact list item — leading icon, title + meta, trailing status badge
-     and chevron. The status badge is pre-rendered trusted HTML. */}}
+     and chevron. The status badge is pre-rendered trusted HTML. Icons come from the
+     shared Lucide set (icons.go). */}}
 <div class="flex items-center gap-4 px-1 py-3">
   {{if .Icon}}
-  <span class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
-    {{if eq .Icon "phone"}}<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
-    {{else if eq .Icon "laptop"}}<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>
-    {{else if eq .Icon "router"}}<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 16.5h.01M12 9V6M8.5 8.5a5 5 0 0 1 7 0M6 6a9 9 0 0 1 12 0"/></svg>
-    {{else if eq .Icon "shield"}}<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>
-    {{else}}<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-    {{end}}
-  </span>
+  <span class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">{{icon .Icon "size-5"}}</span>
   {{end}}
   <div class="min-w-0 flex-1">
     <div class="font-medium text-slate-900">{{.Title}}</div>
     {{if .Meta}}<div class="text-sm text-slate-500">{{.Meta}}</div>{{end}}
   </div>
   {{if .Status}}<div class="shrink-0">{{.Status}}</div>{{end}}
-  <svg class="size-5 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+  {{icon "chevron-right" "size-5 shrink-0 text-slate-300"}}
 </div>
