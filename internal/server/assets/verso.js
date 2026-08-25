@@ -52,6 +52,48 @@ document.addEventListener("alpine:init", function () {
     };
   });
 
+  // advseam: the Advanced-settings sidebar seam. Toggles its open state (the template
+  // binds it to aria-expanded; the grid-rows CSS animates the reveal) and remembers the
+  // choice across loads. Default collapsed. CSP-safe: directives are property/method refs.
+  Alpine.data("advseam", function () {
+    return {
+      open: false,
+      init: function () {
+        // The saved state was applied to <html> pre-paint by verso-boot.js; mirror it
+        // into `open` so the button's aria-expanded reflects it for assistive tech.
+        this.open = document.documentElement.classList.contains("verso-adv-open");
+      },
+      toggle: function () {
+        this.open = document.documentElement.classList.toggle("verso-adv-open");
+        try {
+          localStorage.setItem("verso-adv", this.open ? "1" : "0");
+        } catch (e) {
+          /* storage blocked; state is still live this session */
+        }
+      },
+    };
+  });
+
+  // sidebar: the mobile off-canvas navigation drawer. Opens the rail behind a hamburger;
+  // the scrim, Escape, or a nav tap (a full-page load) closes it. No persistence — closed
+  // by default on every page.
+  Alpine.data("sidebar", function () {
+    return {
+      open: false,
+      // The CSP-friendly Alpine build can't evaluate a ternary inside :class, so expose
+      // the drawer's open-class as a plain (reactive) property to bind to.
+      get drawerClass() {
+        return this.open ? "verso-drawer-open" : "";
+      },
+      toggle: function () {
+        this.open = !this.open;
+      },
+      close: function () {
+        this.open = false;
+      },
+    };
+  });
+
   // modal: an overlay dialog. Open/close, focus the dialog on open, return focus
   // on close, close on Escape, and trap Tab within the dialog while open.
   Alpine.data("modal", function () {

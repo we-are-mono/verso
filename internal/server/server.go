@@ -35,7 +35,7 @@ var cssText string
 // the page chrome (ADR-004). htmx drives server round-trips; Alpine (CSP build)
 // drives client behaviour; verso.js registers the shell's Alpine components.
 //
-//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js assets/verso-boot.js
 //go:embed assets/fonts
 var scriptFS embed.FS
 
@@ -179,7 +179,7 @@ type pageData struct {
 	Subheading string // optional lede under the heading
 	Width      string // content-column width preset: "narrow" | "normal" (default) | "wide"
 	CSS        template.CSS
-	Nav        []navSection
+	Nav        navModel
 	Body       template.HTML
 	NoPassword bool
 	CSRFToken  string
@@ -210,7 +210,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Subheading: hdr.Subheading,
 		Width:      width,
 		CSS:        s.currentCSS(),
-		Nav:        s.buildNav(r.URL.Path),
+		Nav:        s.buildSidebar(r.URL.Path),
 		Body:       body,
 		NoPassword: !s.security.RootHasPassword(),
 		CSRFToken:  s.sessionCSRF(r),

@@ -5,31 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
 <style>{{.CSS}}</style>
+{{/* Synchronous, pre-paint: restores the Advanced-settings seam's saved state so it
+     never flashes or re-animates on navigation (CSP-safe, first-party). */}}
+<script src="/assets/verso-boot.js"></script>
 </head>
-<body class="min-h-screen m-0 flex bg-slate-50 text-slate-900 antialiased font-sans text-sm leading-normal">
-{{/* Left rail: a fixed-width sidebar (logo, grouped section nav, logout). Being a
-     stable vertical rail, it decouples navigation from content width — the content
-     region beside it can vary per page without the chrome moving. */}}
-<aside class="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-  <a href="/" class="block px-5 py-5 text-lg font-semibold tracking-tight">Verso</a>
-  <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-    {{range .Nav}}
-    <div class="mb-5">
-      <div class="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">{{.Title}}</div>
-      <ul class="space-y-0.5">
-        {{range .Links}}
-        <li><a href="{{.Href}}" class="block rounded-md px-3 py-2 transition-colors {{if .Active}}bg-slate-100 font-medium text-slate-900{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">{{.Label}}</a></li>
-        {{end}}
-      </ul>
+<body x-data="sidebar" class="min-h-screen m-0 flex bg-slate-50 text-slate-900 antialiased font-sans text-sm leading-normal">
+{{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
+<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-slate-900/40 md:hidden"></div>
+{{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind a hamburger
+     (verso.js "sidebar"); on desktop it's the static rail. */}}
+<aside class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto" :class="drawerClass" @keydown.escape.window="close">
+  <div class="flex items-center justify-between px-5 py-5">
+    <a href="/" class="text-lg font-semibold tracking-tight">Verso</a>
+    <div class="flex items-center gap-1">
+      {{/* Light/dark toggle — placeholder; dark mode is a separate pass, so it isn't wired yet. */}}
+      <button type="button" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "moon" "size-5"}}</button>
+      <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden">{{icon "x" "size-5"}}</button>
     </div>
-    {{end}}
+  </div>
+  <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+    {{/* Everyday rows — plain labels + icons, no status (the homepage owns that). */}}
+    <ul class="space-y-0.5">
+      {{range .Nav.Basic}}
+      <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50{{else}}hover:bg-slate-50{{end}}">
+        <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
+        <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
+        {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "good"}}text-green-700{{else}}text-slate-400{{end}}">
+          {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "good"}}verso-live-dot bg-green-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
+      </a></li>
+      {{end}}
+    </ul>
+    {{/* Advanced settings — a collapsible seam; verso.js toggles aria-expanded + persists
+         it, the grid-rows CSS drives the reveal. Groups are the real manifest sections. */}}
+    <div x-data="advseam" class="mt-2.5 border-t border-slate-100 pt-2.5">
+      <button type="button" @click="toggle" :aria-expanded="open" aria-controls="verso-adv" class="verso-seam group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-slate-50">
+        <span class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-600">{{icon "sliders-horizontal" "size-5"}}</span>
+        <span class="text-sm font-medium text-slate-700 transition group-hover:translate-x-1 group-hover:text-slate-900">Advanced settings</span>
+        <span class="verso-chev ml-auto text-slate-400">{{icon "chevron-down" "size-4"}}</span>
+      </button>
+      <div id="verso-adv" class="verso-adv-wrap">
+        <div class="verso-adv space-y-3 pt-1">
+          {{range .Nav.Advanced}}
+          <div>
+            <div class="px-2.5 pb-1 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
+            <ul class="space-y-0.5">
+              {{range .Links}}
+              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">
+                <span class="size-1 shrink-0 rounded-full transition {{if .Active}}bg-sky-600{{else}}bg-slate-300 group-hover:translate-x-1 group-hover:bg-sky-600{{end}}"></span><span class="transition {{if not .Active}}group-hover:translate-x-1{{end}}">{{.Label}}</span></a></li>
+              {{end}}
+            </ul>
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
   </nav>
-  <form method="post" action="/logout" class="border-t border-slate-100 p-3">
-    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-    <button type="submit" class="block w-full rounded-md px-3 py-2 text-left font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">Logout</button>
-  </form>
+  {{/* Bottom: the "update ready" device row, then sign out. */}}
+  <div class="space-y-1 border-t border-slate-100 p-3">
+    <a href="/plugins/hostname/" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+      <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
+        {{icon "settings" "size-5"}}
+        <span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>
+      </span>
+      <span class="text-sm font-medium transition group-hover:translate-x-1">This device</span>
+      <span class="ml-auto text-xs font-medium text-amber-700">Update ready</span>
+    </a>
+    {{/* Account chip: who's signed in + a quick sign-out. (The theme toggle from the mock
+         waits on a dark-mode pass; Verso is light-only today.) */}}
+    <div class="flex items-center gap-3 rounded-xl px-2 py-2">
+      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">A</span>
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-sm font-medium text-slate-900">Administrator</div>
+        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-green-500"></span>Signed in</div>
+      </div>
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <button type="submit" aria-label="Sign out" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "log-out" "size-5"}}</button>
+      </form>
+    </div>
+  </div>
 </aside>
 <main class="min-w-0 flex-1">
+  {{/* Mobile top bar: the hamburger opens the drawer. */}}
+  <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
+    <button type="button" @click="toggle" aria-label="Open menu" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100">{{icon "menu" "size-5"}}</button>
+    <a href="/" class="text-base font-semibold tracking-tight">Verso</a>
+  </div>
   {{/* Content width is a per-page preset the page declares (default normal),
        left-aligned against the rail (no centring — better on wide monitors). */}}
   <div class="px-8 py-10 {{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">

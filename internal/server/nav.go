@@ -39,7 +39,54 @@ type navSection struct {
 type navLink struct {
 	Label  string
 	Href   string
+	Icon   string // sidebar basic rows carry an icon; advanced text links leave it empty
 	Active bool
+	// Optional trailing detail on the right of a basic row — a short word or count with an
+	// optional leading dot; Variant tints it ("good" = green). A couple of examples today;
+	// any row can grow one later.
+	Detail  string
+	Dot     bool
+	Variant string
+}
+
+// navModel is the device-first sidebar: a few everyday "basic" rows on top, then the
+// technical pages grouped under a collapsible "Advanced settings" seam. The advanced
+// groups are the real manifest-driven sections (buildNav) minus Status — which surfaces
+// as "Home" up top — so a bundled plugin's pages (the Styleguide today) appear in
+// Advanced with no extra classification. The everyday rows are the plain-language
+// destinations a non-technical person reaches for (placeholders until their pages exist).
+type navModel struct {
+	Basic    []navLink
+	Advanced []navGroup
+}
+
+// navGroup is one titled cluster inside the Advanced seam.
+type navGroup struct {
+	Title string
+	Links []navLink
+}
+
+// buildSidebar assembles the device-first sidebar for the current path: the everyday
+// basic rows, then the manifest-driven sections (via buildNav) as the Advanced groups.
+func (s *Server) buildSidebar(active string) navModel {
+	basic := func(label, icon, href string) navLink {
+		return navLink{Label: label, Icon: icon, Href: href, Active: isActive(active, href)}
+	}
+	m := navModel{Basic: []navLink{
+		basic("Home", "house", "/"),
+		{Label: "Internet", Icon: "globe", Href: "#", Detail: "Online", Dot: true, Variant: "good"},
+		{Label: "Devices", Icon: "devices", Href: "#", Detail: "9"},
+		basic("Wi-Fi", "wifi", "#"),
+		basic("Family", "users", "#"),
+		basic("Safety", "shield", "#"),
+	}}
+	for _, sec := range s.buildNav(active) {
+		if sec.Title == "Status" {
+			continue // the read-only baseline is "Home" in the basic tier
+		}
+		m.Advanced = append(m.Advanced, navGroup{Title: sec.Title, Links: sec.Links})
+	}
+	return m
 }
 
 // buildNav assembles the sidebar for the current path. The shell's own pages come
