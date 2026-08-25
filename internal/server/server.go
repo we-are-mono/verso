@@ -16,6 +16,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -34,8 +35,17 @@ var cssText string
 // the page chrome (ADR-004). htmx drives server round-trips; Alpine (CSP build)
 // drives client behaviour; verso.js registers the shell's Alpine components.
 //
-//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js
+//go:embed assets/fonts
 var scriptFS embed.FS
+
+// devCSSPath is the hot-reload stylesheet drop point. When scripts/dev.sh is driving a
+// session it compiles the CSS here, and the shell reads it fresh on every render (and
+// serves it at /assets/verso.css for the in-place swap) — so a CSS edit lands with no
+// rebuild. The file exists only under dev.sh; every real deployment has no such file and
+// uses the embedded stylesheet. (Not under /tmp: the dev container mounts /tmp as tmpfs,
+// which `docker cp` cannot write into.)
+const devCSSPath = "/usr/share/verso/verso-dev.css"
 
 // Server is the Verso HTTP shell.
 type Server struct {
@@ -52,6 +62,7 @@ type Server struct {
 	allowedHosts map[string]bool
 	page         *template.Template
 	css          template.CSS
+	devCSS       string // dev hot-reload stylesheet path, "" in a normal build
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -70,7 +81,7 @@ func New(
 	auth Authenticator,
 	security Security,
 ) (*Server, error) {
-	page, err := template.ParseFS(templateFS, "templates/*.tmpl")
+	page, err := template.New("page").Funcs(template.FuncMap{"icon": widget.Icon}).ParseFS(templateFS, "templates/*.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
@@ -88,8 +99,25 @@ func New(
 		page:         page,
 		css:          template.CSS(cssText),
 	}
+	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
+	// checked once, so a normal deployment pays nothing per render.
+	if _, err := os.Stat(devCSSPath); err == nil {
+		s.devCSS = devCSSPath
+	}
 	s.routes()
 	return s, nil
+}
+
+// currentCSS is the stylesheet to inline: the live dev file (read fresh each render) in
+// a hot-reload session, otherwise the embedded copy. A missing or empty dev file falls
+// back to embedded, so a mid-write read never blanks the page.
+func (s *Server) currentCSS() template.CSS {
+	if s.devCSS != "" {
+		if b, err := os.ReadFile(s.devCSS); err == nil && len(b) > 0 {
+			return template.CSS(b)
+		}
+	}
+	return s.css
 }
 
 func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
@@ -116,7 +144,14 @@ func (s *Server) assets() http.Handler {
 	}
 	files := http.FileServerFS(sub)
 	return http.StripPrefix("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
+		// Fonts never change and are the one asset a re-fetch makes visible (a FOUT
+		// blink on every navigation), so cache them hard. Everything else stays
+		// no-cache, so a redeployed binary's JS/CSS is picked up immediately.
+		if strings.HasPrefix(r.URL.Path, "fonts/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		files.ServeHTTP(w, r)
 	}))
 }
@@ -127,31 +162,59 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ok\n"))
 }
 
+// handleCSS serves the current stylesheet at a stable URL. The page still inlines the
+// CSS for first paint; this is what the dev hot-reload script re-fetches to swap the
+// <style> in place. Fresh from disk in a dev session, embedded otherwise.
+func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write([]byte(s.currentCSS()))
+}
+
 type pageData struct {
 	Title      string
 	Heading    string
+	Kicker     string // optional eyebrow above the heading (with a live dot when Live)
+	Live       bool
+	Subheading string // optional lede under the heading
 	Width      string // content-column width preset: "narrow" | "normal" (default) | "wide"
 	CSS        template.CSS
 	Nav        []navSection
 	Body       template.HTML
 	NoPassword bool
 	CSRFToken  string
+	Dev        bool // dev session: inject the CSS hot-reload script
+}
+
+// pageHeader is the masthead the shell renders above a page body. Heading is always
+// shown; a page may also declare a kicker (an eyebrow, optionally with a live dot) and a
+// lede subheading to get the fuller "your connection, live" header, otherwise it stays a
+// plain heading.
+type pageHeader struct {
+	Heading    string
+	Kicker     string
+	Live       bool
+	Subheading string
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
 // manifest-driven nav with the active link marked, and the page heading — and
 // sends it with the given status (200 normally; a plugin's 422 is propagated).
-func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, heading, width string, body template.HTML) {
+func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, body template.HTML) {
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
 		Title:      "Verso",
-		Heading:    heading,
+		Heading:    hdr.Heading,
+		Kicker:     hdr.Kicker,
+		Live:       hdr.Live,
+		Subheading: hdr.Subheading,
 		Width:      width,
-		CSS:        s.css,
+		CSS:        s.currentCSS(),
 		Nav:        s.buildNav(r.URL.Path),
 		Body:       body,
 		NoPassword: !s.security.RootHasPassword(),
 		CSRFToken:  s.sessionCSRF(r),
+		Dev:        s.devCSS != "",
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
@@ -174,5 +237,5 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, "Overview", "", template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", template.HTML(body.String()))
 }

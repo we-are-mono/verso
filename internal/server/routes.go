@@ -10,6 +10,9 @@ func (s *Server) routes() {
 
 	// Shell client-side JS (htmx, Alpine, verso.js), served static and public.
 	s.mux.Handle("GET /assets/", s.assets())
+	// The stylesheet at a stable URL (more specific than /assets/, so it wins): the
+	// page inlines CSS for first paint, and the dev hot-reload script re-fetches this.
+	s.mux.HandleFunc("GET /assets/verso.css", s.handleCSS)
 	s.mux.HandleFunc("GET /login", s.handleLoginForm)
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)

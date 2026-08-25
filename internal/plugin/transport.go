@@ -54,7 +54,10 @@ type UCI map[string]map[string]any
 type Envelope struct {
 	SchemaVersion int             `json:"schema_version"`
 	Title         string          `json:"title"`
-	Width         string          `json:"width"` // page width preset: "narrow" | "normal" (default) | "wide"
+	Kicker        string          `json:"kicker"`     // optional eyebrow above the heading, e.g. "Internet · live"
+	Live          bool            `json:"live"`       // optional pulsing dot on the kicker
+	Subheading    string          `json:"subheading"` // optional lede under the heading
+	Width         string          `json:"width"`      // page width preset: "narrow" | "normal" (default) | "wide"
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
 	Status        int             `json:"-"`
