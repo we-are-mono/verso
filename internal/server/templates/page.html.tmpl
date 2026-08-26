@@ -85,7 +85,19 @@
     </div>
   </div>
 </aside>
-<main class="min-w-0 flex-1">
+<main class="min-w-0 flex-1{{if .Pages}} verso-haspages{{end}}">
+  {{/* The top bar — third navigation tier (sidebar → domain, top bar → this
+       domain's subpages, in-page → position). Full width of the content area,
+       offset past the sidebar by construction; sticky on desktop so switching
+       stays one click from any depth. */}}
+  {{if .Pages}}
+  <nav class="z-30 flex h-12 items-center gap-1 border-b border-slate-200 bg-white px-8 md:sticky md:top-0" aria-label="Subpages">
+    {{range .Pages}}
+    <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}
+      class="relative flex h-full items-center px-3 text-sm font-medium transition-colors {{if .Active}}text-slate-900 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-sky-600{{else}}text-slate-500 hover:text-slate-900{{end}}">{{.Label}}</a>
+    {{end}}
+  </nav>
+  {{end}}
   {{/* Mobile top bar: the hamburger opens the drawer. */}}
   <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
     <button type="button" @click="toggle" aria-label="Open menu" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100">{{icon "menu" "size-5"}}</button>

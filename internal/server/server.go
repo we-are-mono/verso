@@ -185,6 +185,15 @@ type pageData struct {
 	CSRFToken  string
 	Dev        bool        // dev session: inject the CSS hot-reload script
 	Capsule    capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
+	Pages      []pageTab   // the domain's subpages, rendered as the top bar (third navigation tier)
+}
+
+// pageTab is one entry in the top bar: the shell-built href and whether it is
+// the page being viewed.
+type pageTab struct {
+	Label  string
+	Href   string
+	Active bool
 }
 
 // pageHeader is the masthead the shell renders above a page body. Heading is always
@@ -201,7 +210,7 @@ type pageHeader struct {
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
 // manifest-driven nav with the active link marked, and the page heading — and
 // sends it with the given status (200 normally; a plugin's 422 is propagated).
-func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, body template.HTML) {
+func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, body template.HTML) {
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
 		Title:      "Verso",
@@ -217,6 +226,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		CSRFToken:  s.sessionCSRF(r),
 		Dev:        s.devCSS != "",
 		Capsule:    s.capsule(r.Context(), s.sessionSID(r)),
+		Pages:      pages,
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
@@ -239,5 +249,5 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", nil, template.HTML(body.String()))
 }

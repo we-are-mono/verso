@@ -7,7 +7,9 @@
 {{/* pt-8 = the content column's own 2rem (px-8) gutter, so the pinned bar sits as
      far from the top as the content does from the sidebar. Constant padding — a
      pin-time change would shift the page, and the lens never moves anything. */}}
-<div class="verso-filter-dock sticky top-0 z-20 -mx-8 bg-slate-50 px-8 pt-8 pb-3">
+{{/* top offset is owned by the stylesheet (components layer), not a utility —
+     it must yield to the subpage top bar when one is present. */}}
+<div class="verso-filter-dock sticky z-20 -mx-8 bg-slate-50 px-8 pt-8 pb-3">
   <div class="verso-filter-bar flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4.5 py-3 shadow-sm focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
     {{icon "search" "size-5 shrink-0 text-slate-400"}}
     <input type="search" data-verso-filter placeholder="{{.}}" aria-label="Filter everything on this page"

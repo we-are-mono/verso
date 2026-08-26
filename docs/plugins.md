@@ -344,6 +344,22 @@ not carrying the page:
             "rows": [ /* the folded sections, same cell shapes */ ] } }
 ```
 
+### Subpages (`pages`) — the domain's top bar
+
+A domain with more than one kind of visit (live state you watch, configuration
+you edit) declares its subpages next to `widget`; the shell renders them as the
+top bar — the third navigation tier (sidebar → domain, top bar → subpage,
+in-page → position). Paths are relative to your mount; the shell builds every
+href and marks the active tab from the request, so the bar cannot point outside
+your plugin. Declare the same `pages` on every subpage's envelope.
+
+```json
+{ "schema_version": 1, "title": "DNS & DHCP",
+  "pages": [ { "label": "Leases", "path": "dnsdhcp" },
+             { "label": "Configuration", "path": "dnsdhcp/config" } ],
+  "widget": { /* … */ } }
+```
+
 ### filter — the page-wide lens
 
 One field that narrows **every** listing on the page at once — the scale answer

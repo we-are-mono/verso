@@ -136,6 +136,12 @@
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
 
+  /* The dock's pin offset lives here (not as a utility, which would win the
+     layer order): the viewport edge normally, below the subpage top bar when
+     one is present. */
+  .verso-filter-dock { top: 0; }
+  .verso-haspages .verso-filter-dock { top: 3rem; }
+
   /* Page-wide filter (the still-lens, verso.js "filter"): the dock is invisible at
      rest (page-ground colour); pinned, rows slide beneath it and dissolve through
      the gradient fade. On pin the bar breathes in a step; typing never moves the

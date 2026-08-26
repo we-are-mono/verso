@@ -240,6 +240,40 @@ func postPlugin(t *testing.T, srv *Server, path string, form url.Values) *httpte
 	return rec
 }
 
+// TestPluginSubpageBar: a plugin's declared subpages render as the shell's top
+// bar — shell-built hrefs, the active tab marked from the request path.
+func TestPluginSubpageBar(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "DNS & DHCP", Status: http.StatusOK,
+		Pages: []plugin.PageTab{
+			{Label: "Leases", Path: "dnsdhcp"},
+			{Label: "Configuration", Path: "dnsdhcp/config"},
+		},
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	body := get(t, s, "/plugins/demo/dnsdhcp").Body.String()
+	for _, want := range []string{
+		`aria-label="Subpages"`,
+		`href="/plugins/demo/dnsdhcp"`,
+		`href="/plugins/demo/dnsdhcp/config"`,
+		`aria-current="page"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("subpage bar missing %q", want)
+		}
+	}
+	// The active marker sits on the Leases tab (the requested path), not Configuration.
+	if !strings.Contains(body, `href="/plugins/demo/dnsdhcp"`+" aria-current") &&
+		!strings.Contains(body, `href="/plugins/demo/dnsdhcp" aria-current="page"`) {
+		t.Errorf("active tab not marked on the requested path:\n%s", body)
+	}
+	if strings.Contains(body, `href="/plugins/demo/dnsdhcp/config" aria-current`) {
+		t.Error("the inactive tab must not carry aria-current")
+	}
+}
+
 func demoACLManifest() plugin.Manifest {
 	m := demoManifest()
 	m.ACL = plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "system", Function: "write"}}}

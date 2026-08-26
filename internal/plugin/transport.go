@@ -58,9 +58,20 @@ type Envelope struct {
 	Live          bool            `json:"live"`       // optional pulsing dot on the kicker
 	Subheading    string          `json:"subheading"` // optional lede under the heading
 	Width         string          `json:"width"`      // page width preset: "narrow" | "normal" (default) | "wide"
+	Pages         []PageTab       `json:"pages"`      // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
 	Status        int             `json:"-"`
+}
+
+// PageTab is one subpage in a domain's top bar (the third navigation tier:
+// sidebar → domain, top bar → kind of visit, in-page → position). Path is
+// relative to the plugin's mount; the shell builds the href and marks the
+// active tab from the request path, so a plugin cannot point the bar outside
+// itself.
+type PageTab struct {
+	Label string `json:"label"`
+	Path  string `json:"path"`
 }
 
 // CommitOp is one declarative uci write a plugin asks the shell to perform on its

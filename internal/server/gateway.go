@@ -36,8 +36,9 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	hdr := pageHeader{Heading: m.Name}
 	width := ""
-	body, status := s.pluginBody(r, m, &hdr, &width)
-	s.renderPage(w, r, status, hdr, width, body)
+	var pages []pageTab
+	body, status := s.pluginBody(r, m, &hdr, &width, &pages)
+	s.renderPage(w, r, status, hdr, width, pages, body)
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -49,7 +50,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 // Notices (version mismatch, unavailable) are 200 — the shell is fine, it is
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
-func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader, width *string) (template.HTML, int) {
+func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
 	if m.SchemaVersion != supportedSchemaVersion {
 		return s.notice("Plugin needs a newer Verso", fmt.Sprintf(
 			"%s speaks schema version %d; this shell supports version %d.",
@@ -147,7 +148,29 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 	hdr.Live = env.Live
 	hdr.Subheading = env.Subheading
 	*width = env.Width
+	*pages = subpageTabs(m, r, env.Pages)
 	return template.HTML(b.String()), status
+}
+
+// subpageTabs builds the top bar (the third navigation tier) from a plugin's
+// declared subpages. Paths are relative to the plugin's mount — the shell
+// builds every href and marks the active tab from the request, so the bar can
+// never point outside the plugin.
+func subpageTabs(m plugin.Manifest, r *http.Request, declared []plugin.PageTab) []pageTab {
+	if len(declared) == 0 {
+		return nil
+	}
+	cur := strings.Trim(r.PathValue("path"), "/")
+	tabs := make([]pageTab, 0, len(declared))
+	for _, p := range declared {
+		rel := strings.Trim(p.Path, "/")
+		href := "/plugins/" + m.ID + "/"
+		if rel != "" {
+			href += rel
+		}
+		tabs = append(tabs, pageTab{Label: p.Label, Href: href, Active: cur == rel})
+	}
+	return tabs
 }
 
 // validateSchema walks the widget tree and enforces each field's and list item's
