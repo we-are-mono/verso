@@ -34,16 +34,18 @@ server builds from). Plugins are not limited to Mono's feed.
 
 ## Decision
 
-**Plugin management is a shell-owned surface at `/system/plugins` with two
-faces — Installed (manage and monitor what is here) and Discover (browse the
-configured feeds) — presenting each plugin with the powers its manifest
-declares, driving the full lifecycle through the one privileged helper, with
-runtime manifest rediscovery so the shell never restarts itself.**
+**Two shell-owned surfaces, split by nature: `/system/packages` (files on
+disk — Installed inventory + Discover over the configured feeds) and
+`/system/services` (procd's live table, the userspace half of `ps`). A
+package is a group of files that may or may not provide a service; a service
+is a running, stoppable thing — too different to share one view. Both drive
+their acts through the one privileged helper, with runtime manifest
+rediscovery so the shell never restarts itself.**
 
 1. **Shell-owned, not a plugin.** The surface mutates the set of things the
    shell trusts and must exist before any plugin does — the ADR-009 §3
    reasoning that made the password page shell-owned. Routes are
-   `/system/plugins` (Installed) and `/system/plugins/discover`, rendered
+   `/system/packages` (Installed) and `/system/packages/discover`, rendered
    through the shell's own renderer with the standard subpage top bar; the
    sidebar row ships with the shell.
 
@@ -56,12 +58,16 @@ runtime manifest rediscovery so the shell never restarts itself.**
    information, not an approval step; the wording ("will be able to") is true
    under exactly this model.
 
-3. **A plugin is a package named `verso-plugin-*`.** The trailing segment is
-   the plugin id: `verso-plugin-wireguard` installs id `wireguard`, mounted at
-   `/plugins/wireguard/`. Discover filters feed indexes on the name
-   convention; installed truth is a manifest present under
-   `/usr/share/verso/plugins/<id>/`. Any configured feed can carry plugins —
-   origin is shown, never restricted.
+3. **A plugin is a package named `verso-plugin-*`; the surface handles every
+   package.** The trailing segment is the plugin id: `verso-plugin-wireguard`
+   installs id `wireguard`, mounted at `/plugins/wireguard/`; installed truth
+   is a manifest under `/usr/share/verso/plugins/<id>/`. Plugins are the
+   surface's first-class citizens — but Discover searches the whole feed
+   index (plugins surface first via the default query), and Installed lists
+   the device's full package set below the plugin roster, the page-wide lens
+   keeping it one page. Any configured feed; origin shown, never restricted.
+   A small keep-list (busybox, apk, procd, ubus, rpcd, …) refuses removal of
+   what keeps the device and this surface alive.
 
 4. **Package operations are helper verbs on apk.** `verso-rpcd` grows narrow,
    sid-gated verbs beside the uci ones: list installed, list available,
@@ -70,12 +76,17 @@ runtime manifest rediscovery so the shell never restarts itself.**
    executes package tools itself; there is exactly one privileged path
    (ADR-007), and these verbs join it.
 
-5. **Lifecycle is procd; monitoring composes what the shell already knows.**
-   Enabled-at-boot (rc.d enable/disable) renders as a switch, distinct from
-   running-right-now (start/stop/restart with live state). The monitor view
-   is facts the shell already holds — socket reachability, schema handshake,
-   version, service uid — plus recent `logread` lines for the service,
-   fetched through the helper.
+5. **Lifecycle is procd, on the Services page — plugins are not special
+   there.** `/system/services` renders procd's whole rc table, lined like
+   the process list it corresponds to: every service as one row of columns —
+   name, providing package (exact name match), live state, boot as a
+   checkmark, and the on/off switch (on = enable+start, off = stop+disable —
+   one human concept, both procd facts). No drawers: every fact is a column,
+   and off→on covers restart. A service keep-list (verso, rpcd, ubus)
+   refuses lifecycle acts from the UI — severing them severs the surface;
+   the rest, network included, stays the operator's call. Verso plugin
+   services sharpen the state with the socket probe (running / not
+   responding). The Packages inventory carries no lifecycle cells at all.
 
 6. **Discover reads a cached index; the network is touched only on request.**
    Opening the page never fetches; it shows when the index was last
@@ -97,9 +108,6 @@ runtime manifest rediscovery so the shell never restarts itself.**
 
 ## Non-goals
 
-- **General package management.** This surface manages Verso plugins only.
-  A software page for arbitrary packages is a different domain with a
-  different audience; folding it in here would bury the trust story.
 - **Shell-controlled ACL granting.** Moving ACL deployment from packages into
   the shell — turning the install screen's information into real consent —
   is a separate architectural decision touching packaging and ADR-007's
