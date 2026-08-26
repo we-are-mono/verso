@@ -1,10 +1,9 @@
 {{/* settings: a card of option rows — plain name, one-line description, the
      underlying option as a mono code chip, and the state on the right (a shared
-     switch, or value pills for a read-only policy row). Same quiet card as the
-     table widget; the plain style drops the card chrome for embedding inside a
-     drawer or form. */}}
-<div class="{{if .Plain}}{{else}}rounded-2xl border border-slate-200 bg-white px-5 shadow-sm{{end}}">
-  {{range .Items}}
+     switch, value pills, or a mono read-out value). Same quiet card as the table
+     widget; the plain style drops the card chrome for embedding inside a drawer
+     or form. A seam folds the card's long tail of options inside the same card. */}}
+{{define "settings.row"}}
   <div class="flex items-center gap-4 border-b border-slate-200 py-3.5 last:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="font-medium text-slate-900">{{.Title}}</div>
@@ -13,8 +12,22 @@
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
       {{range .PillsHTML}}{{.}}{{end}}
+      {{if .Value}}<span class="font-mono text-[0.9rem] tabular-nums text-slate-900">{{.Value}}</span>{{end}}
       {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
     </div>
   </div>
+{{end}}
+<div class="{{if .Plain}}{{else}}rounded-2xl border border-slate-200 bg-white px-5 shadow-sm{{end}}">
+  {{range .Items}}{{template "settings.row" .}}{{end}}
+  {{if .SeamSummary}}
+  <details class="-mx-5 border-t border-slate-200">
+    <summary class="flex cursor-pointer items-center gap-2.5 px-5 py-3 text-sm font-semibold text-slate-600 select-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+      {{.SeamSummary}}
+      <span class="ml-auto">{{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}</span>
+    </summary>
+    <div class="px-5 pb-1">
+      {{range .SeamItems}}{{template "settings.row" .}}{{end}}
+    </div>
+  </details>
   {{end}}
 </div>

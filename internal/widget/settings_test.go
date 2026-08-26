@@ -53,6 +53,30 @@ func TestRenderSettings(t *testing.T) {
 	}
 }
 
+// TestRenderSettingsValueAndSeam: a read-out value renders mono; the seam folds
+// extra rows behind a details block inside the same card — never a second card.
+func TestRenderSettingsValueAndSeam(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Settings{
+		Items: []SettingsItem{{Title: "Local domain", Code: "domain", Value: "lan"}},
+		Seam: &SettingsSeam{Summary: "2 more options", Items: []SettingsItem{
+			{Title: "Wildcard address", Code: "address"},
+			{Title: "Skip /etc/hosts", Code: "nohosts", Toggle: &SettingsToggle{Name: "nohosts"}},
+		}},
+	})
+	for _, want := range []string{
+		">lan</span>", "font-mono",
+		"<details", "2 more options", "nohosts", "verso-chevron",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("settings missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "rounded-2xl") != 1 {
+		t.Errorf("the seam must not add a second card:\n%s", got)
+	}
+}
+
 // TestDecodeSettings: the wire shape round-trips — pills as badges, toggles
 // with name and state.
 func TestDecodeSettings(t *testing.T) {
