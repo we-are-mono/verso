@@ -30,7 +30,7 @@ type capsuleView struct {
 // concurrent uci shell on an undeclared config) are not the shell's to manage.
 func (s *Server) declaredConfigsUnion() map[string]bool {
 	union := make(map[string]bool)
-	for _, m := range s.manifests {
+	for _, m := range s.manifestList() {
 		for cfg := range declaredUCIConfigs(m) {
 			union[cfg] = true
 		}

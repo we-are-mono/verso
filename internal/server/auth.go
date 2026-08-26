@@ -87,6 +87,23 @@ func (s *Server) sessionUser(r *http.Request) string {
 	return ""
 }
 
+// flash stores a one-shot confirmation on the request's session — set by an
+// action just before its redirect, shown by the next render (the PRG flash).
+func (s *Server) flash(r *http.Request, variant, message string) {
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		s.sessions.SetFlash(cookie.Value, variant, message)
+	}
+}
+
+// takeFlash returns and clears the request session's flash.
+func (s *Server) takeFlash(r *http.Request) (variant, message string) {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return "", ""
+	}
+	return s.sessions.TakeFlash(cookie.Value)
+}
+
 func validCSRF(r *http.Request, want string) bool {
 	if want == "" {
 		return false

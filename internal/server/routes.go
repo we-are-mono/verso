@@ -23,6 +23,17 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/password", s.handlePasswordForm)
 	s.mux.HandleFunc("POST /system/password", s.handlePassword)
 
+	// Package + service management (ADR-011): shell-owned — installing or
+	// stopping things mutates the set the shell trusts. Packages are files on
+	// disk; Services are procd's live table — two natures, two pages. All
+	// immediate acts, outside the staged-changes lifecycle.
+	s.mux.HandleFunc("GET /system/packages", s.handlePackagesPage)
+	s.mux.HandleFunc("POST /system/packages", s.handlePackagesAction)
+	s.mux.HandleFunc("GET /system/packages/discover", s.handleDiscoverPage)
+	s.mux.HandleFunc("POST /system/packages/discover", s.handleDiscoverAction)
+	s.mux.HandleFunc("GET /system/services", s.handleServicesPage)
+	s.mux.HandleFunc("POST /system/services", s.handleServicesAction)
+
 	// Staged-changes capsule (ADR-010): apply with device-side rollback, confirm
 	// to disarm it, discard to revert the stage. Session- and CSRF-gated like
 	// every state-changing route.

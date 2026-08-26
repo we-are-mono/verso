@@ -234,6 +234,9 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
+	// Tests have no real plugin sockets; default to alive so nav and pages
+	// render fully. Liveness-specific tests override s.probe themselves.
+	s.probe = func(string) bool { return true }
 	return s
 }
 

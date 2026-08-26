@@ -25,6 +25,11 @@ type session struct {
 	csrf     string
 	created  time.Time
 	lastSeen time.Time
+	// flash is the one-shot confirmation carried across a POST→redirect→GET:
+	// set by the action, shown by the next render, gone after (VS: server-side,
+	// so nothing user-visible rides the URL).
+	flash        string
+	flashVariant string
 }
 
 // Sessions is the server's in-memory session store. A random opaque token maps
@@ -85,6 +90,32 @@ func (s *Sessions) get(token string) (session, bool) {
 	sess.lastSeen = now
 	s.items[token] = sess
 	return sess, true
+}
+
+// SetFlash stores the session's one-shot confirmation for the next render.
+func (s *Sessions) SetFlash(token, variant, message string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.items[token]
+	if !ok {
+		return
+	}
+	sess.flash, sess.flashVariant = message, variant
+	s.items[token] = sess
+}
+
+// TakeFlash returns and clears the session's flash — each message shows once.
+func (s *Sessions) TakeFlash(token string) (variant, message string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.items[token]
+	if !ok || sess.flash == "" {
+		return "", ""
+	}
+	variant, message = sess.flashVariant, sess.flash
+	sess.flash, sess.flashVariant = "", ""
+	s.items[token] = sess
+	return variant, message
 }
 
 func (s *Sessions) destroy(token string) {

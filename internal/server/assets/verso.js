@@ -366,3 +366,37 @@ document.addEventListener(
     }
   });
 })();
+
+// Named switches post themselves: flipping an on/off control outside a form is
+// a complete instruction (ADR-010 reads them as instant interactions), so the
+// change POSTs {name: "on"|"off"} with the session's CSRF token to the current
+// page and reloads on success. A switch inside a <form> belongs to that form's
+// submit; a nameless switch is presentation only — both are left alone.
+(function () {
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (!el || !el.matches || !el.matches("input[data-verso-switch][name]")) return;
+    if (el.closest("form")) return;
+    var meta = document.querySelector('meta[name="verso-csrf"]');
+    var body = new URLSearchParams();
+    body.set(el.name, el.checked ? "on" : "off");
+    if (meta) body.set("_csrf", meta.content);
+    el.disabled = true; // one flip, one round-trip; the reload re-renders truth
+    fetch(window.location.pathname, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      credentials: "same-origin",
+    }).then(function (res) {
+      if (res.ok || res.redirected) {
+        window.location.reload();
+      } else {
+        el.disabled = false;
+        el.checked = !el.checked; // the device said no; show the truth
+      }
+    }).catch(function () {
+      el.disabled = false;
+      el.checked = !el.checked;
+    });
+  });
+})();

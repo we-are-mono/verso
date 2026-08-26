@@ -29,7 +29,7 @@ const supportedSchemaVersion = 1
 // tokens. It is NOT a reverse proxy — plugin bytes are data the shell renders,
 // never markup streamed to the browser.
 func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
-	m, ok := s.pluginByID[r.PathValue("id")]
+	m, ok := s.manifestByID(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -38,7 +38,9 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	width := ""
 	var pages []pageTab
 	body, status := s.pluginBody(r, m, &hdr, &width, &pages)
-	s.renderPage(w, r, status, hdr, width, pages, body)
+	// Plugin pages are the staging surface (ADR-010): their Saves stage, so
+	// the bar is a fixture there even when clean.
+	s.renderPage(w, r, status, hdr, width, pages, true, body)
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -232,22 +234,37 @@ func validateSchema(w widget.Widget) bool {
 	}
 }
 
-type noticeData struct{ Title, Message string }
+type noticeData struct {
+	Title, Message          string
+	ActionLabel, ActionHref string // optional door out of the dead end
+}
 
 // notice renders a shell-owned message (not plugin content) through the shell's
 // tokens. Fields flow through html/template, so an untrusted plugin name in the
 // message is escaped.
 func (s *Server) notice(title, message string) template.HTML {
+	return s.noticeWith(noticeData{Title: title, Message: message})
+}
+
+func (s *Server) noticeWith(d noticeData) template.HTML {
 	var b bytes.Buffer
-	if err := s.page.ExecuteTemplate(&b, "notice.html.tmpl", noticeData{title, message}); err != nil {
-		return template.HTML(template.HTMLEscapeString(title + ": " + message))
+	if err := s.page.ExecuteTemplate(&b, "notice.html.tmpl", d); err != nil {
+		return template.HTML(template.HTMLEscapeString(d.Title + ": " + d.Message))
 	}
 	return template.HTML(b.String())
 }
 
+// unavailable is the honest dead-plugin page — and a door, not a wall: the
+// commonest cause is the plugin being turned off, and the management surface
+// (ADR-011) is where it turns back on.
 func (s *Server) unavailable(m plugin.Manifest) template.HTML {
-	return s.notice("Plugin unavailable", fmt.Sprintf(
-		"%s isn’t responding right now. The rest of Verso is unaffected.", m.Name))
+	return s.noticeWith(noticeData{
+		Title: "Plugin unavailable",
+		Message: fmt.Sprintf(
+			"%s isn’t responding right now — it may be turned off. The rest of Verso is unaffected.", m.Name),
+		ActionLabel: "Open Packages",
+		ActionHref:  "/system/packages",
+	})
 }
 
 // safeMethod reports whether the HTTP method is read-only, and so neither

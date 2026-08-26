@@ -48,6 +48,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+	// The management surface rescans manifests after an install or remove
+	// (ADR-011 §7), so a plugin package appears without a shell restart.
+	srv.SetRescan(func() []plugin.Manifest {
+		rescanned, rescanProblems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
+		for _, p := range rescanProblems {
+			log.Printf("verso: %v", p)
+		}
+		log.Printf("verso: rediscovered %d plugin(s) in %s", len(rescanned), pluginsDir)
+		return rescanned
+	})
 	srv.SetAllowedHosts(allowedHosts())
 
 	log.Printf("verso listening on %s", addr)

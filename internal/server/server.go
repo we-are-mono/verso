@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -49,12 +50,19 @@ const devCSSPath = "/usr/share/verso/verso-dev.css"
 
 // Server is the Verso HTTP shell.
 type Server struct {
-	mux          *http.ServeMux
-	widgets      *widget.Renderer
-	backend      openwrt.Backend
-	transport    plugin.Transport
-	manifests    []plugin.Manifest
-	pluginByID   map[string]plugin.Manifest
+	mux     *http.ServeMux
+	widgets *widget.Renderer
+	backend openwrt.Backend
+	transport plugin.Transport
+	// The discovered manifests and their id index, guarded by manifestsMu:
+	// the management surface rescans them at runtime after an install or
+	// remove (ADR-011 §7), so every read goes through the accessors below.
+	manifestsMu sync.RWMutex
+	manifests   []plugin.Manifest
+	pluginByID  map[string]plugin.Manifest
+	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
+	// tests that never install). Its result replaces the served set.
+	rescan func() []plugin.Manifest
 	auth         Authenticator
 	security     Security
 	sessions     *Sessions
@@ -63,6 +71,10 @@ type Server struct {
 	page         *template.Template
 	css          template.CSS
 	devCSS       string // dev hot-reload stylesheet path, "" in a normal build
+	// probe reports whether a plugin's unix socket accepts a connection — the
+	// liveness half of the management surface (ADR-011); a seam so tests need
+	// no real sockets.
+	probe func(path string) bool
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -98,6 +110,7 @@ func New(
 		loginLimiter: newLoginLimiter(time.Now),
 		page:         page,
 		css:          template.CSS(cssText),
+		probe:        probeSocket,
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -126,6 +139,38 @@ func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 		byID[m.ID] = m
 	}
 	return byID
+}
+
+// SetRescan wires the manifest re-reader the management surface runs after an
+// install or remove completes (ADR-011 §7).
+func (s *Server) SetRescan(rescan func() []plugin.Manifest) { s.rescan = rescan }
+
+// rescanManifests replaces the served manifest set from disk. With no
+// re-reader wired it is a no-op — the startup set stands.
+func (s *Server) rescanManifests() {
+	if s.rescan == nil {
+		return
+	}
+	manifests := s.rescan()
+	s.manifestsMu.Lock()
+	s.manifests = manifests
+	s.pluginByID = indexByID(manifests)
+	s.manifestsMu.Unlock()
+}
+
+// manifestList is the served manifest set; manifestByID resolves one plugin.
+// Both take the read lock so a concurrent rescan swaps atomically underneath.
+func (s *Server) manifestList() []plugin.Manifest {
+	s.manifestsMu.RLock()
+	defer s.manifestsMu.RUnlock()
+	return s.manifests
+}
+
+func (s *Server) manifestByID(id string) (plugin.Manifest, bool) {
+	s.manifestsMu.RLock()
+	defer s.manifestsMu.RUnlock()
+	m, ok := s.pluginByID[id]
+	return m, ok
 }
 
 // Handler returns the root HTTP handler for the shell: security headers, then
@@ -172,9 +217,10 @@ func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
 }
 
 type pageData struct {
-	Title      string
-	Heading    string
-	Kicker     string // optional eyebrow above the heading (with a live dot when Live)
+	Title         string
+	Heading       string
+	HeadingDetail string // the active subpage's name, muted beside the heading
+	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	Live       bool
 	Subheading string // optional lede under the heading
 	Width      string // content-column width preset: "narrow" | "normal" (default) | "wide"
@@ -185,7 +231,16 @@ type pageData struct {
 	CSRFToken  string
 	Dev        bool        // dev session: inject the CSS hot-reload script
 	Capsule    capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
-	Pages      []pageTab   // the domain's subpages, rendered as the top bar (third navigation tier)
+	// ShowCapsule: staging pages carry the bar always (inert when clean — a
+	// real control at rest, ADR-010); pages whose actions are immediate
+	// (Plugins, Password, Overview) show it only when the shared stage holds
+	// changes from elsewhere — there it is a truth-carrier, not furniture.
+	ShowCapsule bool
+	Pages       []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
+	// Flash is the one-shot confirmation from the last action (PRG): shown
+	// once at the top of the content, then gone.
+	FlashVariant string // "success" | "danger" | "" (no flash)
+	FlashMessage string
 }
 
 // pageTab is one entry in the top bar: the shell-built href and whether it is
@@ -210,23 +265,40 @@ type pageHeader struct {
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
 // manifest-driven nav with the active link marked, and the page heading — and
 // sends it with the given status (200 normally; a plugin's 422 is propagated).
-func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, body template.HTML) {
+// stages declares whether the page's own edits go through the uci stage: such
+// pages carry the staged-changes bar even when clean; immediate-action pages
+// get it only when the shared stage is non-empty.
+func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
+	capsule := s.capsule(r.Context(), s.sessionSID(r))
+	flashVariant, flashMessage := s.takeFlash(r)
+	// A page with a top bar names its face in the headline — "Plugins —
+	// Discover" — with the face in muted ink so the domain stays the title.
+	headingDetail := ""
+	for _, p := range pages {
+		if p.Active {
+			headingDetail = p.Label
+		}
+	}
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
-		Title:      "Verso",
-		Heading:    hdr.Heading,
-		Kicker:     hdr.Kicker,
-		Live:       hdr.Live,
-		Subheading: hdr.Subheading,
-		Width:      width,
-		CSS:        s.currentCSS(),
-		Nav:        s.buildSidebar(r.URL.Path),
-		Body:       body,
-		NoPassword: !s.security.RootHasPassword(),
-		CSRFToken:  s.sessionCSRF(r),
-		Dev:        s.devCSS != "",
-		Capsule:    s.capsule(r.Context(), s.sessionSID(r)),
-		Pages:      pages,
+		Title:         "Verso",
+		Heading:       hdr.Heading,
+		HeadingDetail: headingDetail,
+		Kicker:        hdr.Kicker,
+		Live:        hdr.Live,
+		Subheading:  hdr.Subheading,
+		Width:       width,
+		CSS:         s.currentCSS(),
+		Nav:         s.buildSidebar(r.URL.Path),
+		Body:        body,
+		NoPassword:  !s.security.RootHasPassword(),
+		CSRFToken:   s.sessionCSRF(r),
+		Dev:         s.devCSS != "",
+		Capsule:      capsule,
+		ShowCapsule:  stages || capsule.Count > 0,
+		Pages:        pages,
+		FlashVariant: flashVariant,
+		FlashMessage: flashMessage,
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
@@ -249,5 +321,5 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", nil, template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", nil, false, template.HTML(body.String()))
 }

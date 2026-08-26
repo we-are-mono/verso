@@ -65,21 +65,31 @@ func TestCapsuleRendersPendingChanges(t *testing.T) {
 	}
 }
 
-// TestCapsuleInertWhenClean: the bar is always in the flow — clean pages show it
-// with the actions disabled and no review list.
+// TestCapsuleInertWhenClean: staging pages (plugin pages) keep the bar in the
+// flow even when clean — actions disabled, no review list. Immediate-action
+// pages (the Overview) drop the bar entirely when nothing is staged.
 func TestCapsuleInertWhenClean(t *testing.T) {
-	s := newServer(t, fakeBackend{})
-	body := get(t, s, "/").Body.String()
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Demo", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	body := get(t, s, "/plugins/demo/").Body.String()
 	for _, want := range []string{
 		"No pending changes",
 		`id="verso-capsule-apply" disabled`,
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("clean bar missing %q", want)
+			t.Errorf("clean staging page missing %q", want)
 		}
 	}
 	if strings.Contains(body, "verso-capsule-review") {
 		t.Error("a clean page has nothing to review")
+	}
+
+	if home := get(t, s, "/").Body.String(); strings.Contains(home, `id="verso-capsule"`) {
+		t.Error("a clean immediate-action page must not carry the bar")
 	}
 }
 

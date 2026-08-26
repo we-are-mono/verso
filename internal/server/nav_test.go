@@ -13,7 +13,9 @@ import (
 // the sidebar ordering (ADR-009 §2, §5) is unit-testable with no transport,
 // backend, or device.
 func navServer(manifests ...plugin.Manifest) *Server {
-	return &Server{manifests: manifests}
+	// Sockets read as alive so every manifest contributes rows; the
+	// liveness-hiding test overrides probe itself.
+	return &Server{manifests: manifests, probe: func(string) bool { return true }}
 }
 
 func manifest(id string, entries ...plugin.NavEntry) plugin.Manifest {
@@ -57,15 +59,18 @@ func TestBuildNavCoreOrderIsFixed(t *testing.T) {
 }
 
 // The shell's own pages exist with zero plugins (ADR-009 §3): Status carries the
-// Overview baseline, System carries the Password auth surface.
+// Overview baseline, System the Password auth surface and the plugin-management
+// surface (ADR-011).
 func TestBuildNavShellOwnedPagesAreBuiltIn(t *testing.T) {
 	sections := navServer().buildNav("/")
 	assertTitles(t, sections, "Status", "System")
 	if got := sections[0].Links; len(got) != 1 || got[0].Label != "Overview" || got[0].Href != "/" {
 		t.Fatalf("Status links = %+v, want single Overview -> /", got)
 	}
-	if got := sections[1].Links; len(got) != 1 || got[0].Label != "Password" || got[0].Href != "/system/password" {
-		t.Fatalf("System links = %+v, want single Password -> /system/password", got)
+	if got := sections[1].Links; len(got) != 3 || got[0].Label != "Password" || got[0].Href != "/system/password" ||
+		got[1].Label != "Packages" || got[1].Href != "/system/packages" ||
+		got[2].Label != "Services" || got[2].Href != "/system/services" {
+		t.Fatalf("System links = %+v, want [Password, Packages, Services]", got)
 	}
 }
 
@@ -98,10 +103,12 @@ func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
 	if system == nil {
 		t.Fatal("System section missing")
 	}
-	// Built-in Password first, then plugin links in discovery (id-sorted) order.
-	if len(system.Links) != 3 || system.Links[0].Label != "Password" ||
-		system.Links[1].Label != "General" || system.Links[2].Label != "Time" {
-		t.Fatalf("System links = %+v, want [Password, General, Time]", system.Links)
+	// Built-in Password and Plugins first, then plugin links in discovery
+	// (id-sorted) order.
+	if len(system.Links) != 5 || system.Links[0].Label != "Password" || system.Links[1].Label != "Packages" ||
+		system.Links[2].Label != "Services" ||
+		system.Links[3].Label != "General" || system.Links[4].Label != "Time" {
+		t.Fatalf("System links = %+v, want [Password, Packages, Services, General, Time]", system.Links)
 	}
 }
 
@@ -122,6 +129,28 @@ func TestBuildNavActiveSectionExpands(t *testing.T) {
 			if l.Active != (sec.Title == "Firewall") {
 				t.Fatalf("link %q active = %v, want %v", l.Label, l.Active, sec.Title == "Firewall")
 			}
+		}
+	}
+}
+
+// A plugin whose socket does not answer contributes no rows — a menu entry
+// that leads to "unavailable" is a dead door; the plugin stays reachable by
+// URL and through the management page (ADR-011). Shell-owned rows are
+// unaffected.
+func TestBuildNavHidesDeadPlugins(t *testing.T) {
+	s := navServer(
+		manifest("fw", nav("Firewall", "Zones", "/")),
+		manifest("vpn", nav("VPN", "WireGuard", "/")),
+	)
+	s.manifests[0].Socket = "/dead/fw.sock"
+	s.manifests[1].Socket = "/live/vpn.sock"
+	s.probe = func(path string) bool { return path == "/live/vpn.sock" }
+
+	sections := s.buildNav("/")
+	assertTitles(t, sections, "Status", "System", "VPN")
+	for _, sec := range sections {
+		if sec.Title == "Firewall" {
+			t.Fatalf("dead plugin still contributes section %q", sec.Title)
 		}
 	}
 }

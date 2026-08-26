@@ -515,3 +515,18 @@
     .verso-port-tip { transition: none; }
   }
 }
+
+/* The dock keeps a constant pt-8 so pinning never shifts the page — but a lens
+   that OPENS a page would sit 2rem below the masthead line other toolbars
+   start on. When its sentinel is the container's first child, the dock cancels
+   that padding out of the flow; pinned geometry is unchanged. Utilities layer,
+   at the end: the stack's space-y utility writes margin-block-start on every
+   non-last child, and only a later utilities-layer rule outranks it. */
+@layer utilities {
+  :first-child + .verso-filter-dock { margin-top: -2rem; }
+  /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
+  :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
+  /* With a flash above the body, the pull-up would slide the dock's white
+     ground over the flash's bottom — the space it reclaims is occupied. */
+  .verso-flash ~ .verso-page-enter .verso-filter-dock { margin-top: 0; }
+}

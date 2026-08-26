@@ -110,12 +110,22 @@ func (s *Server) buildNav(active string) []navSection {
 		sections[i].Links = append(sections[i].Links, navLink{Label: label, Href: href})
 	}
 
-	// Shell-owned pages (ADR-009 §3): the read-only baseline and the auth surface.
+	// Shell-owned pages (ADR-009 §3): the read-only baseline, the auth surface,
+	// and the plugin-management surface (ADR-011).
 	add("Status", "Overview", "/")
 	add("System", "Password", "/system/password")
+	add("System", "Packages", "/system/packages")
+	add("System", "Services", "/system/services")
 
-	// Plugin-contributed pages, in discovery (id-sorted) order.
-	for _, m := range s.manifests {
+	// Plugin-contributed pages, in discovery (id-sorted) order. Only plugins
+	// whose socket answers contribute rows: a menu entry that leads to
+	// "unavailable" is a dead door, and an installed-but-off plugin is the
+	// management page's business (ADR-011). Direct URLs still answer — with
+	// the notice and its way back on — so nothing is unreachable, just unlisted.
+	for _, m := range s.manifestList() {
+		if !s.probe(m.Socket) {
+			continue
+		}
 		for _, entry := range m.Nav {
 			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path))
 		}
