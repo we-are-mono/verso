@@ -110,6 +110,7 @@ type Backend interface {
 type WANState struct {
 	Up     bool
 	Device string // the l3 device carrying the uplink, e.g. "wan0"
+	Addr   string // the uplink's IPv4 address, "" until the protocol is up
 }
 
 // DeviceStats is one network device's link state and byte counters, from
@@ -981,13 +982,19 @@ func dialWANStatus(socket string) wanStatusFn {
 }
 
 // parseWANState maps netifd's interface status onto WANState. netifd reports
-// l3_device once the protocol is up; device is the configured fallback.
+// l3_device once the protocol is up; device is the configured fallback. The
+// address is the first entry of ipv4-address, present only while up.
 func parseWANState(m map[string]any) WANState {
 	ws := WANState{Up: asBool(m["up"])}
 	if d, ok := m["l3_device"].(string); ok && d != "" {
 		ws.Device = d
 	} else if d, ok := m["device"].(string); ok {
 		ws.Device = d
+	}
+	if addrs, ok := m["ipv4-address"].([]any); ok && len(addrs) > 0 {
+		if entry, ok := addrs[0].(map[string]any); ok {
+			ws.Addr, _ = entry["address"].(string)
+		}
 	}
 	return ws
 }

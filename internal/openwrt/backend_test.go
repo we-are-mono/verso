@@ -181,12 +181,15 @@ func TestUCIDeleteThreadsArgs(t *testing.T) {
 // TestParseWANState: up plus the l3 device once the protocol holds it, the
 // configured device as fallback, and a down interface reads honestly down.
 func TestParseWANState(t *testing.T) {
-	got := parseWANState(map[string]any{"up": true, "l3_device": "wan0", "device": "wan0"})
-	if !got.Up || got.Device != "wan0" {
+	got := parseWANState(map[string]any{
+		"up": true, "l3_device": "wan0", "device": "wan0",
+		"ipv4-address": []any{map[string]any{"address": "172.30.1.178", "mask": int64(24)}},
+	})
+	if !got.Up || got.Device != "wan0" || got.Addr != "172.30.1.178" {
 		t.Errorf("up wan = %+v", got)
 	}
 	got = parseWANState(map[string]any{"up": false, "device": "wan0"})
-	if got.Up || got.Device != "wan0" {
+	if got.Up || got.Device != "wan0" || got.Addr != "" {
 		t.Errorf("down wan = %+v", got)
 	}
 }
