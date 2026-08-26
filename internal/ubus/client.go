@@ -44,6 +44,11 @@ func Dial(socket string) (*Client, error) {
 	return c, nil
 }
 
+// SetTimeout widens (or narrows) this client's per-message deadline. The
+// default suits status reads; a call that runs a package fetch on the far
+// side needs the room its work takes.
+func (c *Client) SetTimeout(d time.Duration) { c.timeout = d }
+
 // Close releases the connection.
 func (c *Client) Close() error { return c.conn.Close() }
 
