@@ -24,7 +24,8 @@ services:
                                      # re-applies this exact address so Docker's
                                      # published :8080 has a target.
     ports:
-      - "8080:8080"                 # -> http://10.0.0.232:8080
+      - "8080:8080"                 # verso -> http://10.0.0.232:8080
+      - "8081:80"                   # luci  -> http://10.0.0.232:8081 (reference UI, same live uci/ubus)
 
 networks:
   vnet:
