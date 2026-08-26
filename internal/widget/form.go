@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -15,6 +16,9 @@ import (
 // recursively through Decode, so a form composes the closed set — typically
 // fields and lists, but any widget nests.
 type Form struct {
+	Style   string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row)
+	Icon    string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
+	Note    string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
 	Submit  string       // submit button label (default "Save")
 	Success string       // optional message shown after a successful save
 	Error   string       // optional error not tied to a single field, shown above the fields
@@ -29,7 +33,8 @@ type Form struct {
 // computation (e.g. generating a keypair) and returns fresh schema, not a save.
 type FormAction struct {
 	Label  string `json:"label"`
-	Action string `json:"action"` // posted as _action=<Action>
+	Action string `json:"action"`         // posted as _action=<Action>
+	Icon   string `json:"icon,omitempty"` // optional leading icon, by Lucide name
 }
 
 func (*Form) isWidget() {}
@@ -65,6 +70,9 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 // formView is the form template's model: its fields pre-rendered to trusted HTML,
 // plus the resolved submit label and the CSRF token threaded in by the renderer.
 type formView struct {
+	Inline    bool
+	Icon      string
+	Note      template.HTML
 	Submit    string
 	Success   string
 	Error     string
@@ -84,7 +92,16 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if submit == "" {
 		submit = "Save"
 	}
+	var note template.HTML
+	if f.Note != "" {
+		var buf bytes.Buffer
+		if err := r.md.Convert([]byte(f.Note), &buf); err != nil {
+			return err
+		}
+		note = template.HTML(buf.String())
+	}
 	return r.execute(out, "form.html.tmpl", formView{
+		Inline: f.Style == "inline", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

@@ -1,6 +1,10 @@
-{{/* field: one labelled control (text or select), with datatype + inline error */}}
+{{/* field: one labelled control (text or select), with datatype + inline error.
+     Kind "hidden" is the bare carrier — no label, no chrome — for a value a
+     form must post but a person never edits (e.g. which object a button acts
+     on). */}}
+{{if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
 <div class="space-y-1.5">
-  <label for="{{.Name}}" class="block text-sm font-medium text-slate-900">{{.Label}}</label>
+  {{if .Label}}<label for="{{.Name}}" class="block text-sm font-medium text-slate-900">{{.Label}}</label>{{end}}
   {{if eq .Kind "select"}}
   {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
        the native arrow hugs the border and can't follow the theme. */}}
@@ -35,3 +39,4 @@
   {{/* On error, the helper line becomes the error — one line under the field, not two. */}}
   {{if .Error}}<p class="text-sm text-red-600">{{.Error}}</p>{{else if .Help}}<p class="text-sm text-slate-500">{{.Help}}</p>{{end}}
 </div>
+{{end}}

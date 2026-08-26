@@ -1,5 +1,12 @@
-{{/* form: POSTs to the current page; fields are pre-rendered trusted HTML */}}
-<form method="post" class="space-y-6">
+{{/* form: POSTs to the current page; fields are pre-rendered trusted HTML.
+     Inline puts the fields and the submit on one row — visible fields at a
+     fixed narrow width, the button beside them at the same height (a search
+     row); hidden carriers take no space either way. */}}
+{{/* inline widths hit only the field wrappers — the last div is the buttons
+     row and sizes to its content. The submit glues onto the last field (one
+     instrument: the button acts on the field): the field's input squares its
+     right corners and the buttons row pulls back across the gap. */}}
+<form method="post" class="{{if .Inline}}flex flex-wrap items-end gap-3 [&>div:not(:last-of-type)]:w-72 [&>div:not(:last-of-type)_input]:rounded-r-none{{else}}space-y-6{{end}}">
   {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
   {{if .Success}}
   <div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-600">
@@ -14,8 +21,12 @@
   </div>
   {{end}}
   {{range .Fields}}{{.}}{{end}}
-  <div class="flex flex-wrap gap-3">
-    <button type="submit" class="cursor-pointer rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.Submit}}</button>
-    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="cursor-pointer rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.Label}}</button>{{end}}
+  <div class="flex flex-wrap gap-3{{if .Inline}} -ml-3{{end}}">
+    {{/* border-transparent: inputs carry a 1px border, so the button does too —
+         inline rows sit at exactly the field's height. */}}
+    <button type="submit" class="inline-flex cursor-pointer items-center gap-1.5 border border-transparent bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{if .Inline}}rounded-r-md{{else}}rounded-md{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
+    {{if and .Note .Inline}}<span class="self-center text-sm text-slate-500 [&>p]:inline">{{.Note}}</span>{{end}}
   </div>
+  {{if and .Note (not .Inline)}}<div class="text-sm text-slate-500 [&>p]:inline">{{.Note}}</div>{{end}}
 </form>
