@@ -22,20 +22,26 @@ COPY --from=build /out/verso /usr/bin/verso
 # Installed as `verso` so rpcd names the ubus object "verso".
 COPY --from=build /out/verso-rpcd /usr/libexec/rpcd/verso
 COPY docker/rootfs/ /
-# Disable OpenWrt's network stack, firewall, and DHCP/DNS: netifd flushes eth0's
-# Docker-assigned IP and fw4's default input policy is "drop" — both break Docker
-# port publishing — and dnsmasq crash-loops under a non-privileged ujail. procd,
-# ubusd and rpcd stay up, so `system info` and uci still work.
+# The full network stack runs (netifd, dnsmasq, fw4): /etc/config/network
+# declares eth0's Docker address as the static mgmt interface and the firewall's
+# mgmt zone keeps input open there, so port publishing survives — while wan0 and
+# br-lan (the testbed networks in docker-compose.yml) behave like a real
+# router's ports. Only odhcpd stays off (no IPv6 RA business in the testbed).
 # Create the non-root `verso` user/group the service drops to (ADR-007). In a
 # real .apk this is the package's USERID; here it is baked into the image.
 RUN echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
  && echo 'verso:x:6000:' >> /etc/group \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
  # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.
- && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json \
+ && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json /usr/share/rpcd/acl.d/verso-shell.json \
  && chmod 0755 /usr/libexec/rpcd/verso \
  && chmod +x /etc/init.d/verso /etc/init.d/netfix \
- && rm -f /etc/rc.d/S*firewall /etc/rc.d/S*network /etc/rc.d/S*dnsmasq /etc/rc.d/S*odhcpd* \
+ # No ujail in an unprivileged container: it cannot clone namespaces (EPERM),
+ # which turns jailed services (dnsmasq) into crash loops. Without the binary,
+ # procd runs every instance plain — the same skip verso's own jail params
+ # already get here (see /etc/init.d/verso). Jails apply on real hardware.
+ && rm -f /sbin/ujail \
+ && rm -f /etc/rc.d/S*odhcpd* \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true
 EXPOSE 8080

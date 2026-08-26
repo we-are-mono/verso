@@ -1,9 +1,22 @@
-# Verso — local visual-verification stack.
-# Boots OpenWrt (procd) and runs verso as a procd service so the shell can talk
-# to live ubus/uci.
+# Verso — local visual-verification stack, wired as a real router.
+#
+# Three containers, three networks:
+#
+#   [wan-sim] ── wan-net ── [verso/OpenWrt] ── lan-net ── [lan-client]
+#    fake ISP                  the router                  fake laptop
+#                                  │
+#                                vnet (management) → published :8080/:8081
+#
+# The OpenWrt container runs its full network stack (netifd, dnsmasq, fw4):
+# wan0 DHCPs from wan-sim, br-lan serves DHCP to lan-client, traffic routes and
+# NATs through — so Verso reads live WAN state, leases, and port counters. The
+# wan/lan interface names come from each network's container_iface_prefix, so
+# uci config matches without renames. Both testbed networks are `internal`: no
+# host uplink, they can never bridge onto the real LAN; wan-sim's own uplink is
+# plain container egress on vnet.
 #
 # SAFETY: non-privileged and NO devices, so /dev/watchdog is absent inside the
-# container. procd cannot grab a host watchdog here, so it cannot reboot the
+# containers. procd cannot grab a host watchdog here, so it cannot reboot the
 # host. Never add `privileged: true` or `devices: [/dev/watchdog]`.
 services:
   verso:
@@ -20,12 +33,53 @@ services:
       - /tmp
     networks:
       vnet:
-        ipv4_address: 172.20.0.10   # OpenWrt's boot flushes eth0; /etc/init.d/netfix
-                                     # re-applies this exact address so Docker's
-                                     # published :8080 has a target.
+        ipv4_address: 172.20.0.10   # management: /etc/config/network declares this
+                                     # exact static address (netfix is the backstop)
+                                     # so Docker's published :8080 has a target.
+      wan-net:
+        ipv4_address: 172.30.1.10   # placeholder — netifd flushes it and DHCPs
+                                     # from wan-sim like a real WAN uplink.
+      lan-net:
+        ipv4_address: 192.168.77.1  # becomes br-lan's static address (reserving
+                                     # it here keeps Docker's IPAM off it).
     ports:
       - "8080:8080"                 # verso -> http://10.0.0.232:8080
       - "8081:80"                   # luci  -> http://10.0.0.232:8081 (reference UI, same live uci/ubus)
+
+  # The fake ISP: answers the router's DHCP on wan-net and NATs its traffic out
+  # through vnet, so the LAN reaches the real internet through two honest hops.
+  wan-sim:
+    image: alpine:3.22
+    container_name: verso-wan
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    networks:
+      vnet: {}                      # egress uplink (Docker NAT)
+      wan-net:
+        ipv4_address: 172.30.1.2    # the "ISP gateway" the router DHCPs against
+    volumes:
+      - ./docker/testbed/wan-sim.sh:/wan-sim.sh:ro
+    command: ["/bin/sh", "/wan-sim.sh"]
+
+  # A LAN host behind the router: drops its Docker-assigned address and DHCPs
+  # from the router, so it shows up in leases and its traffic transits the box.
+  lan-client:
+    image: alpine:3.22
+    container_name: verso-client
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lan-net:
+        ipv4_address: 192.168.77.2  # placeholder only (flushed before DHCP) —
+                                     # pinned so IPAM never hands this container
+                                     # the router's .1 first.
+    volumes:
+      - ./docker/testbed/lan-client.sh:/lan-client.sh:ro
+    command: ["/bin/sh", "/lan-client.sh"]
 
 networks:
   vnet:
@@ -34,3 +88,22 @@ networks:
       config:
         - subnet: 172.20.0.0/16
           gateway: 172.20.0.1
+  wan-net:
+    driver: bridge
+    internal: true                  # no host uplink — the only way out is wan-sim
+    driver_opts:
+      com.docker.network.container_iface_prefix: wan
+    ipam:
+      config:
+        - subnet: 172.30.1.0/24
+          gateway: 172.30.1.254     # Docker's host-side bridge address; kept off
+                                     # .1/.2 so the testbed roles own those.
+  lan-net:
+    driver: bridge
+    internal: true
+    driver_opts:
+      com.docker.network.container_iface_prefix: lan
+    ipam:
+      config:
+        - subnet: 192.168.77.0/24
+          gateway: 192.168.77.254

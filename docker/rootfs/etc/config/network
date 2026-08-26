@@ -1,0 +1,46 @@
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+# Management: Docker's vnet. The address MUST match the verso service's
+# ipv4_address in docker-compose.yml. No gateway on purpose — the default
+# route belongs to wan, like a real router; the host reaches this subnet
+# directly, so published ports need no route out.
+config interface 'mgmt'
+	option device 'eth0'
+	option proto 'static'
+	option ipaddr '172.20.0.10'
+	option netmask '255.255.0.0'
+
+# Traffic addressed to the management IP answers back the way it came: without
+# this, replies to off-subnet sources (a browser on the real LAN hitting the
+# published :8080) would follow the wan default route into the fake ISP and
+# die. Source-based rule → its own table → Docker's bridge gateway; traffic
+# the router originates itself still uses wan.
+config route
+	option interface 'mgmt'
+	option target '0.0.0.0/0'
+	option gateway '172.20.0.1'
+	option table '100'
+
+config rule
+	option src '172.20.0.10/32'
+	option lookup '100'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+	list ports 'lan0'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.77.1'
+	option netmask '255.255.255.0'
+
+# The uplink: DHCPs from wan-sim (the fake ISP) on the wan-net interface.
+config interface 'wan'
+	option device 'wan0'
+	option proto 'dhcp'

@@ -2,15 +2,16 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-# Re-apply the container's Docker-assigned static IP after OpenWrt's preinit
-# flushes eth0. netifd is disabled, so nothing clears it again. These values
-# MUST match the `vnet` static address/gateway in docker-compose.yml.
+# Backstop for the management address: if anything leaves eth0 bare between
+# preinit's flush and netifd applying the mgmt interface, re-apply the address
+# so Docker's published :8080 always has a target. No default route here — the
+# default route is wan's (see /etc/config/network). The address MUST match the
+# `vnet` static address in docker-compose.yml.
 START=91
 STOP=99
 
 start() {
 	ip link set dev eth0 up 2>/dev/null
 	ip address add 172.20.0.10/16 dev eth0 2>/dev/null
-	ip route add default via 172.20.0.1 2>/dev/null
 	return 0
 }
