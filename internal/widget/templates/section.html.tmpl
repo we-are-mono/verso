@@ -3,8 +3,10 @@
      never collapses against the previous element. With a sub, the description sits
      tight under the title (they read as one head unit) and the saved space moves
      below the sub — the title-to-content distance stays what it was without one. */}}
-<section class="pt-6">
-  {{if .Title}}<h3 class="{{if .Sub}}mb-1{{else}}mb-3{{end}} text-lg font-semibold tracking-tight text-slate-900">{{.Title}}</h3>{{end}}
+{{/* a section that follows another draws the page's divider rule with air on
+     both sides — major contexts separate with a line, not a card. */}}
+<section class="pt-6 [section+&]:mt-10 [section+&]:border-t [section+&]:border-slate-200 [section+&]:pt-10">
+  {{if .Title}}<h3 class="{{if .Sub}}mb-1{{else}}mb-3{{end}} text-xl font-semibold tracking-tight text-slate-900">{{.Title}}</h3>{{end}}
   {{if .Sub}}<div class="verso-prose mb-6 max-w-[72ch] text-sm text-slate-500">{{.Sub}}</div>{{end}}
   <div class="space-y-8">{{range .Children}}{{.}}{{end}}</div>
 </section>

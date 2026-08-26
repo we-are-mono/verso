@@ -8,16 +8,17 @@
        full-bleed border-t is the one divider there. */}}
   {{/* single-line row: name, its code chip beside it (the option's machine name
        is the name's metadata), the description filling the middle, and every
-       control — switch, in-place field, or read-out — on the right edge. */}}
-  <div class="flex items-center gap-3 border-b border-slate-200 py-2.5 last:border-b-0 [&:has(+details)]:border-b-0">
-    <div class="shrink-0 text-base font-semibold text-slate-900">{{.Title}}</div>
+       control — switch, in-place field, or read-out — on the right edge.
+       Bare rows zebra-stripe (no hairlines); card rows divide with them. */}}
+  <div class="flex items-center gap-3 py-2.5 {{if .Bare}}px-3{{if .Stripe}} bg-slate-50{{end}}{{else}}border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0{{end}}">
+    <div class="shrink-0 text-[0.95rem] font-semibold text-slate-900">{{.Title}}</div>
     {{if .Code}}<span class="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
     <div class="min-w-0 flex-1 truncate text-sm text-slate-500"{{if .Desc}} title="{{.Desc}}"{{end}}>{{.Desc}}</div>
     {{range .PillsHTML}}{{.}}{{end}}
     {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
     {{/* the in-place field: fixed width (no resize while typing), the pencil
          inside its right edge. */}}
-    {{if .Name}}<label class="flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 transition-colors focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
+    {{if .Name}}<label class="flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 inset-shadow-xs transition-colors focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
       <input type="text" name="{{.Name}}" value="{{.Value}}"
         class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-[0.9rem] tabular-nums text-slate-900 focus:outline-none">
       {{icon "pencil" "size-3.5 shrink-0 text-slate-400"}}
@@ -25,26 +26,36 @@
     {{else if .Value}}<span class="shrink-0 font-mono text-[0.9rem] tabular-nums text-slate-900">{{.Value}}</span>{{end}}
   </div>
 {{end}}
-{{/* pb-2.5 + the first/last row's own py-2.5 = the card's px-5 — equal breathing
-     room on both axes; an untitled card trims its top (pt-1.5) so the first
-     row sits where a title row would. The seam swallows the bottom padding
-     with -mb-2.5, and overflow-hidden clips its hover wash to the card's own
-     rounded edge. */}}
-<div class="{{if .Plain}}{{else}}overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 pb-2.5 shadow-sm {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
+{{/* bare by default: rows sit straight on the page, hairlines doing the
+     separating. style "card" opts into the box for the select places that
+     earn one — there pb-2.5 + the first/last row's own py-2.5 = the card's
+     px-5 (equal breathing room on both axes), an untitled card trims its top
+     (pt-1.5) so the first row sits where a title row would, the seam swallows
+     the bottom padding with -mb-2.5, and overflow-hidden clips the seam's
+     hover wash to the rounded edge. */}}
+{{/* the card frame is a twin hairline — the border plus a ring floated 4px
+     out with the page showing through — so a card reads as a deliberate
+     object on the white canvas without leaning on shadow. */}}
+<div class="{{if .Card}}overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 pb-2.5 ring-1 ring-slate-200 ring-offset-4 ring-offset-white {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
   {{/* the group label lives inside its card (same treatment as table column
        heads), so section headings above stay the only floating text. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
+  {{/* bare groups rule off their head like a table's thead — the same hairline
+       under the label; framed cards stay ruleless. */}}
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-slate-200 px-3 {{end}}text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
     <span>{{.Title}}</span>
     {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case tracking-normal text-slate-400">{{.Meta}}</span>{{end}}
   </div>{{end}}
   {{range .Items}}{{template "settings.row" .}}{{end}}
   {{if .SeamSummary}}
-  <details class="-mx-5 -mb-2.5 border-t border-slate-200">
-    <summary class="flex cursor-pointer items-center gap-2.5 px-5 py-3 text-sm font-semibold text-slate-600 select-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+  <details class="{{if .Card}}-mx-5 -mb-2.5 border-t border-slate-200{{end}}">
+    {{/* the chevron sits with the label (an orphaned right-edge chevron fades)
+         and the pair wears the interactive sky, so the fold reads as a place
+         to go without button chrome. */}}
+    <summary class="flex cursor-pointer items-center gap-1.5 {{if .Card}}px-5{{else}}px-3{{end}} py-3 text-sm font-semibold text-sky-700 transition-colors select-none hover:bg-slate-50 hover:text-sky-800 [&::-webkit-details-marker]:hidden">
+      {{icon "chevron-right" "verso-chevron size-4"}}
       {{.SeamSummary}}
-      <span class="ml-auto">{{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}</span>
     </summary>
-    <div class="px-5 pb-1">
+    <div class="{{if .Card}}px-5 pb-1{{end}}">
       {{range .SeamItems}}{{template "settings.row" .}}{{end}}
     </div>
   </details>

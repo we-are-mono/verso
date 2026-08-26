@@ -30,6 +30,7 @@ import (
 //	             renders a faint dash — pills stay meaningful because most
 //	             cells in such a column are empty or quiet
 type Table struct {
+	Style   string        `json:"style,omitempty"` // "" (bare striped rows on the page, default) | "card" — the framed box, for listings that are objects
 	Columns []TableColumn `json:"columns"`
 	Rows    []TableRow    `json:"rows"`
 	Seam    *TableSeam    `json:"seam,omitempty"`
@@ -136,6 +137,7 @@ var endpointIcons = map[string]string{
 // table-wide (main rows and seam alike) so every row pads the chevron column
 // and the grid stays aligned.
 type tableView struct {
+	Card        bool
 	Columns     []TableColumn
 	HasDrawers  bool
 	Rows        []tableRowView
@@ -147,6 +149,7 @@ type tableRowView struct {
 	ID         string
 	Cells      []tableCellView
 	HasDrawers bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Card       bool // table-wide flag, copied for the same reason: bare rows stripe, card rows divide
 	Drawer     bool
 	DrawerTitle string
 	DrawerBody []template.HTML
@@ -181,24 +184,24 @@ func (t *Table) hasDrawers() bool {
 }
 
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
-	v := tableView{Columns: t.Columns, HasDrawers: t.hasDrawers()}
+	v := tableView{Card: t.Style == "card", Columns: t.Columns, HasDrawers: t.hasDrawers()}
 	var err error
-	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers); err != nil {
+	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers, v.Card); err != nil {
 		return v, err
 	}
 	if t.Seam != nil {
 		v.SeamSummary = t.Seam.Summary
-		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers); err != nil {
+		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers, v.Card); err != nil {
 			return v, err
 		}
 	}
 	return v, nil
 }
 
-func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers bool) ([]tableRowView, error) {
+func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers, card bool) ([]tableRowView, error) {
 	out := make([]tableRowView, 0, len(rows))
 	for _, row := range rows {
-		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Cells: make([]tableCellView, 0, len(t.Columns))}
+		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Card: card, Cells: make([]tableCellView, 0, len(t.Columns))}
 		if row.Drawer != nil {
 			body, err := r.renderChildren(row.Drawer.Children, csrf)
 			if err != nil {

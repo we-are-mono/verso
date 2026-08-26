@@ -39,7 +39,8 @@ func TestRenderSettings(t *testing.T) {
 		"synflood_protect", // the underlying option is on the row
 		"font-mono",       // …as a mono code chip
 		`type="checkbox"`, // toggle rows carry the shared switch
-		"last:border-b-0", // the card closes without a trailing divider
+		"bg-slate-50", // bare rows zebra-stripe instead of dividing
+		"px-3",        // …square full-width stripes with their own inset
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
@@ -54,10 +55,12 @@ func TestRenderSettings(t *testing.T) {
 }
 
 // TestRenderSettingsValueAndSeam: a read-out value renders mono; the seam folds
-// extra rows behind a details block inside the same card — never a second card.
+// extra rows behind a details block. The default presentation is bare — rows
+// straight on the page; style "card" opts into the one box.
 func TestRenderSettingsValueAndSeam(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Settings{
+		Style: "card",
 		Title: "Resolution",
 		Items: []SettingsItem{
 			{Title: "Local domain", Code: "domain", Value: "lan"},
@@ -80,6 +83,21 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 	}
 	if strings.Count(got, "rounded-2xl") != 1 {
 		t.Errorf("the seam must not add a second card:\n%s", got)
+	}
+}
+
+// TestRenderSettingsBare: without style "card" the rows are bare — no box, no
+// card padding, the seam un-inset — so pages stay quiet by default.
+func TestRenderSettingsBare(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Settings{
+		Items: []SettingsItem{{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"}},
+		Seam:  &SettingsSeam{Summary: "1 more option", Items: []SettingsItem{{Title: "Minimum TTL", Code: "min_cache_ttl"}}},
+	})
+	for _, bad := range []string{"rounded-2xl", "shadow-sm", "-mx-5", "px-5"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("bare settings must not carry card chrome %q:\n%s", bad, got)
+		}
 	}
 }
 

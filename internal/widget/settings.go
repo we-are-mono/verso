@@ -16,8 +16,8 @@ import (
 // triplet). Generic by design: any options block (firewall defaults, Wi-Fi
 // advanced, DHCP options) is this shape.
 type Settings struct {
-	Style string         `json:"style,omitempty"` // "" (card, default) | "plain" — rows only, for embedding in a drawer or form
-	Title string         `json:"title,omitempty"` // optional group label rendered inside the card, above the rows
+	Style string         `json:"style,omitempty"` // "" (bare rows on the page, default; "plain" is its legacy alias) | "card" — boxed, for the select places that earn a card
+	Title string         `json:"title,omitempty"` // optional group label above the rows
 	Meta  string         `json:"meta,omitempty"`  // optional quiet detail on the title row's right, e.g. a subnet · live count
 	Items []SettingsItem `json:"items"`
 	Seam  *SettingsSeam  `json:"seam,omitempty"`
@@ -54,10 +54,10 @@ type SettingsToggle struct {
 
 func (*Settings) isWidget() {}
 
-// settingsView carries the card style and its rows; each item's pills are
+// settingsView carries the presentation and the rows; each item's pills are
 // pre-rendered to trusted HTML, the rest is plain text the template escapes.
 type settingsView struct {
-	Plain       bool
+	Card        bool
 	Title       string
 	Meta        string
 	Items       []settingsItemView
@@ -68,15 +68,17 @@ type settingsView struct {
 type settingsItemView struct {
 	SettingsItem
 	PillsHTML []template.HTML
+	Bare      bool // bare presentation: striped rows instead of hairlines
+	Stripe    bool // this row carries the zebra tint (parity runs across the seam)
 }
 
-func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
+func (s *Settings) itemViews(r *Renderer, items []SettingsItem, bare bool, offset int) ([]settingsItemView, error) {
 	out := make([]settingsItemView, 0, len(items))
-	for _, it := range items {
-		iv := settingsItemView{SettingsItem: it}
-		for i := range it.Pills {
+	for i, it := range items {
+		iv := settingsItemView{SettingsItem: it, Bare: bare, Stripe: (offset+i)%2 == 0}
+		for p := range it.Pills {
 			var b strings.Builder
-			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[i]); err != nil {
+			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[p]); err != nil {
 				return nil, err
 			}
 			iv.PillsHTML = append(iv.PillsHTML, template.HTML(b.String()))
@@ -87,14 +89,15 @@ func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemV
 }
 
 func (s *Settings) renderInto(r *Renderer, out io.Writer, _ string) error {
-	v := settingsView{Plain: s.Style == "plain", Title: s.Title, Meta: s.Meta}
+	card := s.Style == "card"
+	v := settingsView{Card: card, Title: s.Title, Meta: s.Meta}
 	var err error
-	if v.Items, err = s.itemViews(r, s.Items); err != nil {
+	if v.Items, err = s.itemViews(r, s.Items, !card, 0); err != nil {
 		return err
 	}
 	if s.Seam != nil {
 		v.SeamSummary = s.Seam.Summary
-		if v.SeamItems, err = s.itemViews(r, s.Seam.Items); err != nil {
+		if v.SeamItems, err = s.itemViews(r, s.Seam.Items, !card, len(s.Items)); err != nil {
 			return err
 		}
 	}

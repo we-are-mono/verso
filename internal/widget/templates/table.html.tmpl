@@ -11,9 +11,9 @@
            opens on click (showFromRow skips clicks on controls inside the row), and
            carries the chevron affordance. The panel itself teleports to <body>. */}}
       {{if .Drawer}}
-      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer transition hover:bg-sky-50/40">
+      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer transition hover:bg-sky-50/40{{if not .Card}} odd:bg-slate-50{{end}}">
       {{else}}
-      <tr class="group transition hover:bg-sky-50/40">
+      <tr class="group transition hover:bg-sky-50/40{{if not .Card}} odd:bg-slate-50{{end}}">
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "toggle"}}
@@ -31,7 +31,7 @@
           </span>
         </td>
         {{else if eq .Kind "name"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-bold text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-semibold text-slate-900 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "pill"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
         {{else if eq .Kind "mono"}}
@@ -81,13 +81,17 @@
     <thead>
       <tr>
         {{range .Columns}}
-        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-[0.7rem] font-bold uppercase tracking-[0.07em] text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-xs font-bold uppercase tracking-[0.07em] text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDrawers}}<th scope="col" class="w-8 border-b border-slate-200"></th>{{end}}
       </tr>
     </thead>
 {{end}}
-<div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white px-5 pb-2 shadow-sm">
+{{/* bare by default: striped rows straight on the page (no cell hairlines, a
+     little stripe inset). style "card" opts into the twin-hairline frame —
+     border plus a ring floated 4px out — shared with the settings card, so
+     every boxed listing speaks one card language. */}}
+<div class="overflow-x-auto{{if .Card}} rounded-2xl border border-slate-200 bg-white px-5 pb-2 ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{else}} [&_td]:border-b-0 [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{end}}">
   <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
     {{template "table.head" .}}
     <tbody>
@@ -95,18 +99,18 @@
     </tbody>
   </table>
   {{if .SeamSummary}}
-  {{/* the seam: extra rows folded inside the same card, behind a native <details> —
-       a full-bleed divider, not a nested card. verso.js nudges the opened content
-       into view. */}}
-  <details class="-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200">
-    {{/* px-5 = the card's gutter: first-column content sits flush at it (the
-         first cell drops its own left pad), so the lock and chevron align. */}}
-    <summary class="flex cursor-pointer items-center gap-2.5 px-5 py-3 text-sm font-semibold text-slate-600 select-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+  {{/* the seam: extra rows folded behind a native <details> — in a card, a
+       full-bleed divider inside the same box. verso.js nudges the opened
+       content into view. */}}
+  <details class="{{if .Card}}-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200{{end}}">
+    {{/* the fold affordance speaks the same voice as the settings seam:
+         chevron with the label, interactive sky; the lock marks stock rows. */}}
+    <summary class="flex cursor-pointer items-center gap-1.5 {{if .Card}}px-5{{else}}px-3{{end}} py-3 text-sm font-semibold text-sky-700 transition-colors select-none hover:bg-slate-50 hover:text-sky-800 [&::-webkit-details-marker]:hidden">
+      {{icon "chevron-right" "verso-chevron size-4"}}
       {{icon "lock" "size-4 text-slate-400"}}
       {{.SeamSummary}}
-      <span class="ml-auto">{{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}</span>
     </summary>
-    <div class="px-5 pb-1">
+    <div class="{{if .Card}}px-5 pb-1{{end}}">
       <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
         {{template "table.head" .}}
         <tbody>

@@ -134,6 +134,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 func TestRenderTableSeam(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
+	tbl.Style = "card"
 	tbl.Seam = &TableSeam{
 		Summary: "OpenWrt defaults — 9 stock rules",
 		Rows: []TableRow{{ID: "allow_ping", Cells: []TableCell{
