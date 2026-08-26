@@ -1,0 +1,20 @@
+{{/* settings: a card of option rows — plain name, one-line description, the
+     underlying option as a mono code chip, and the state on the right (a shared
+     switch, or value pills for a read-only policy row). Same quiet card as the
+     table widget; the plain style drops the card chrome for embedding inside a
+     drawer or form. */}}
+<div class="{{if .Plain}}{{else}}rounded-2xl border border-slate-200 bg-white px-5 shadow-sm{{end}}">
+  {{range .Items}}
+  <div class="flex items-center gap-4 border-b border-slate-200 py-3.5 last:border-b-0">
+    <div class="min-w-0 flex-1">
+      <div class="font-medium text-slate-900">{{.Title}}</div>
+      {{if .Desc}}<div class="mt-0.5 text-sm text-slate-500">{{.Desc}}</div>{{end}}
+      {{if .Code}}<span class="mt-1.5 inline-block rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
+    </div>
+    <div class="flex shrink-0 items-center gap-1.5">
+      {{range .PillsHTML}}{{.}}{{end}}
+      {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
+    </div>
+  </div>
+  {{end}}
+</div>

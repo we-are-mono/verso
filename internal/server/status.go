@@ -16,28 +16,34 @@ import (
 // to "unavailable" rows rather than failing when the backend can't be reached,
 // so the shell never 500s on a backend hiccup; the underlying error is logged.
 func (s *Server) statusTable(ctx context.Context, sid string) *widget.Table {
-	rows := make([][]string, 0, 4)
+	row := func(field, value string) widget.TableRow {
+		return widget.TableRow{Cells: []widget.TableCell{{Text: field}, {Text: value}}}
+	}
+	rows := make([]widget.TableRow, 0, 4)
 
 	if hn, err := s.backend.Hostname(ctx, sid); err == nil {
-		rows = append(rows, []string{"Hostname", hn})
+		rows = append(rows, row("Hostname", hn))
 	} else {
 		log.Printf("verso: hostname unavailable: %v", err)
-		rows = append(rows, []string{"Hostname", "unavailable"})
+		rows = append(rows, row("Hostname", "unavailable"))
 	}
 
 	if si, err := s.backend.SystemInfo(ctx, sid); err == nil {
 		rows = append(rows,
-			[]string{"Uptime", formatUptime(si.Uptime)},
-			[]string{"Load (1m)", formatLoad(si.Load[0])},
-			[]string{"Memory", fmt.Sprintf("%s free of %s",
-				formatBytes(si.Memory.Available), formatBytes(si.Memory.Total))},
+			row("Uptime", formatUptime(si.Uptime)),
+			row("Load (1m)", formatLoad(si.Load[0])),
+			row("Memory", fmt.Sprintf("%s free of %s",
+				formatBytes(si.Memory.Available), formatBytes(si.Memory.Total))),
 		)
 	} else {
 		log.Printf("verso: system info unavailable: %v", err)
-		rows = append(rows, []string{"System", "unavailable"})
+		rows = append(rows, row("System", "unavailable"))
 	}
 
-	return &widget.Table{Columns: []string{"Field", "Value"}, Rows: rows}
+	return &widget.Table{
+		Columns: []widget.TableColumn{{Label: "Field"}, {Label: "Value"}},
+		Rows:    rows,
+	}
 }
 
 func formatUptime(sec int64) string {

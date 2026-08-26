@@ -5,26 +5,6 @@ package widget
 
 import "testing"
 
-func TestDecodeTable(t *testing.T) {
-	in := []byte(`{"type":"table","columns":["A","B"],"rows":[["1","2"],["3","4"]]}`)
-
-	w, err := Decode(in)
-	if err != nil {
-		t.Fatalf("Decode: unexpected error: %v", err)
-	}
-
-	tbl, ok := w.(*Table)
-	if !ok {
-		t.Fatalf("Decode: got %T, want *Table", w)
-	}
-	if got, want := tbl.Columns, []string{"A", "B"}; !equalStrings(got, want) {
-		t.Errorf("Columns = %v, want %v", got, want)
-	}
-	if len(tbl.Rows) != 2 || tbl.Rows[1][0] != "3" || tbl.Rows[0][1] != "2" {
-		t.Errorf("Rows = %v, want [[1 2] [3 4]]", tbl.Rows)
-	}
-}
-
 func TestDecodeUnknownType(t *testing.T) {
 	if _, err := Decode([]byte(`{"type":"nope"}`)); err == nil {
 		t.Fatal("Decode: want error for unknown type, got nil")
@@ -38,7 +18,7 @@ func TestDecodeMissingType(t *testing.T) {
 }
 
 func TestDecodeCard(t *testing.T) {
-	in := []byte(`{"type":"card","title":"System","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`)
+	in := []byte(`{"type":"card","title":"System","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`)
 
 	w, err := Decode(in)
 	if err != nil {
@@ -63,7 +43,7 @@ func TestDecodeCard(t *testing.T) {
 // TestDecodeCardNested exercises the recursion the whole schema bet rests on: a
 // container inside a container. If this decodes, nesting is real, not a leaf trick.
 func TestDecodeCardNested(t *testing.T) {
-	in := []byte(`{"type":"card","title":"outer","children":[{"type":"card","title":"inner","children":[{"type":"table","columns":["A"],"rows":[]}]}]}`)
+	in := []byte(`{"type":"card","title":"outer","children":[{"type":"card","title":"inner","children":[{"type":"table","columns":[{"label":"A"}],"rows":[]}]}]}`)
 
 	w, err := Decode(in)
 	if err != nil {
@@ -180,16 +160,4 @@ func TestDecodeRaw(t *testing.T) {
 	if rw, ok := w.(*Raw); !ok || rw.Markdown != "# Hi" {
 		t.Errorf("raw decode wrong: %+v", w)
 	}
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

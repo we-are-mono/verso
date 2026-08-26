@@ -282,7 +282,7 @@ func TestIndexDegradesWhenBackendFails(t *testing.T) {
 func TestPluginPageRendersSchema(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Demo Page",
-		Widget: json.RawMessage(`{"type":"card","title":"Hello","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Widget: json.RawMessage(`{"type":"card","title":"Hello","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
@@ -459,7 +459,7 @@ func TestPluginUnavailableWhenTransportFails(t *testing.T) {
 func TestPluginValidation422Propagates(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusUnprocessableEntity,
-		Widget: json.RawMessage(`{"type":"card","children":[{"type":"table","columns":["A"],"rows":[]}]}`),
+		Widget: json.RawMessage(`{"type":"card","children":[{"type":"table","columns":[{"label":"A"}],"rows":[]}]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
@@ -522,7 +522,7 @@ func TestPluginVersionMismatchDegrades(t *testing.T) {
 func TestPluginWriteAllowedWhenSessionGranted(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Saved",
-		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`),
 	}}
 	s := newServerWith(t, fakeBackend{access: true}, tr, []plugin.Manifest{demoACLManifest()})
 
@@ -596,7 +596,7 @@ func TestPluginWriteFailsClosedWhenACLCheckErrors(t *testing.T) {
 func TestPluginGetNotGated(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Demo",
-		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`),
 	}}
 	s := newServerWith(t, fakeBackend{access: false}, tr, []plugin.Manifest{demoACLManifest()})
 
@@ -616,7 +616,7 @@ func TestPluginCommitBrokered(t *testing.T) {
 	calls := []uciWrite{}
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Saved", Status: http.StatusOK,
-		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Widget: json.RawMessage(`{"type":"card","title":"Saved","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`),
 		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "verso-lab"}}},
 	}}
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
@@ -686,7 +686,7 @@ func TestPluginCommitIgnoredOnGet(t *testing.T) {
 	calls := []uciWrite{}
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Demo",
-		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":["A"],"rows":[["1"]]}]}`),
+		Widget: json.RawMessage(`{"type":"card","title":"Hi","children":[{"type":"table","columns":[{"label":"A"}],"rows":[{"cells":[{"text":"1"}]}]}]}`),
 		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "x"}}},
 	}}
 	s := newServerWith(t, fakeBackend{access: false, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})

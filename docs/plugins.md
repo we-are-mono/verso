@@ -266,12 +266,111 @@ Nests other widgets. This is how you lay out a page.
   "children": [ /* any widgets */ ] }
 ```
 
-### table — read-only rows
+### table — config sections as identical rows
+
+The Advanced-view listing: one row per config section under fixed columns. Every
+column declares a `kind`, and that kind renders every cell in it the same way —
+rows cannot vary in shape. The tuple (from, to, protocol, port) is the row; the
+name is an optional trailing comment.
 
 ```json
 { "type": "table",
-  "columns": ["Field", "Value"],
-  "rows": [ ["Uptime", "1h 2m"], ["Load", "0.10"] ] }
+  "columns": [
+    { "kind": "toggle" },
+    { "label": "From",     "kind": "endpoint" },
+    { "label": "To",       "kind": "endpoint" },
+    { "label": "Protocol", "kind": "keyword" },
+    { "label": "Port",     "kind": "mono" },
+    { "label": "Comment",  "kind": "comment" },
+    { "label": "Hits",     "kind": "num" }
+  ],
+  "rows": [
+    { "id": "force_dns_guest", "cells": [
+      { "on": true, "name": "force_dns_guest" },
+      { "endpoints": [ { "kind": "zone", "label": "guest" } ] },
+      { "endpoints": [ { "kind": "router", "label": "router" } ] },
+      { "text": "tcp/udp" },
+      { "text": "53" },
+      { "text": "Force-DNS-to-AdGuard-guest" },
+      { "text": "0" }
+    ] }
+  ] }
+```
+
+Column kinds, one treatment each (never mix them per row):
+
+- `"text"` (default) — plain ink text.
+- `"name"` — the row's identity (a zone, an interface): bold ink, nothing else —
+  in a column where the type never varies, even an icon is noise.
+- `"mono"` — verbatim machine strings only: addresses, ports, device names.
+- `"keyword"` — closed-vocabulary words (`tcp`, `udp`, `icmpv6`): sans, muted.
+- `"comment"` — optional free text such as a UCI `name`; muted, blank when absent.
+- `"num"` — right-aligned tabular figures (counters); muted.
+- `"toggle"` — an on/off switch; the cell carries `on` and an optional form `name`.
+- `"pill"` — an enum value as a status pill; the cell carries `text` plus a
+  `variant` from the badge vocabulary (`success`/`warning`/`danger`/`info`/
+  neutral) — e.g. `accept`→success, `reject`→warning, `drop`→danger. An empty
+  cell renders a faint dash, which is what keeps the pills meaningful.
+- `"endpoint"` — one or more traffic endpoints; each is `{ "kind", "label" }`
+  where kind is `"zone"` (sans + shield), `"device"` (mono address + screen),
+  `"router"` (this device, accented), or `"any"` (muted globe).
+
+A row's `id` is its stable handle — use the UCI section name.
+
+**Row drawer.** A row with a `drawer` is an object you can open: clicking the row
+slides in a right panel — typically a form prefilled with the section's values, a
+warning callout naming the blast radius, and a `confirm` for deletion (delete
+lives in the drawer, never on the row). The row gets a trailing chevron and the
+pointer; controls inside the row (toggles) keep their own meaning.
+
+```json
+{ "id": "force_dns_guest", "cells": [ /* … */ ],
+  "drawer": { "title": "Edit redirect — Force-DNS-to-AdGuard-guest",
+              "children": [ /* form, callout, confirm */ ] } }
+```
+
+**Seam.** A table may fold extra rows behind a collapsed block *inside the same
+card* — e.g. the stock rules a fresh install ships with, present and honest but
+not carrying the page:
+
+```json
+{ "type": "table", "columns": [ /* … */ ], "rows": [ /* your sections */ ],
+  "seam": { "summary": "OpenWrt defaults — 9 stock rules that ship with a fresh install",
+            "rows": [ /* the folded sections, same cell shapes */ ] } }
+```
+
+### filter — the page-wide lens
+
+One field that narrows **every** listing on the page at once — the scale answer
+for long pages (never tabs, never pagination). The shell owns the behaviour:
+while typing nothing moves — non-matching table rows dim in place, zero-match
+sections ghost, a collapsed seam opens only when it holds a match. `/` focuses
+it from anywhere; Escape clears. It rides a sticky dock that pins to the top of
+the scroll. Declare it once, near the top of the page:
+
+```json
+{ "type": "filter", "placeholder": "Filter — zone, port, IP, comment…" }
+```
+
+### settings — a card of option rows
+
+The "config defaults" pattern: each row a plainly-named option with a one-line
+description, the underlying option name as a mono code chip, and its state on
+the right — a `toggle` (switch) for an on/off option, or `pills` (badge
+vocabulary) for a row that reads rather than toggles.
+
+```json
+{ "type": "settings",
+  "items": [
+    { "title": "Default policies", "desc": "What happens to traffic no zone claims.",
+      "pills": [ { "variant": "warning", "text": "in: reject" },
+                 { "variant": "success", "text": "out: accept" },
+                 { "variant": "warning", "text": "fwd: reject" } ] },
+    { "title": "SYN-flood protection",
+      "desc": "Rate-limit half-open connections to blunt basic floods.",
+      "code": "synflood_protect",
+      "toggle": { "name": "synflood_protect", "on": true } }
+  ] }
 ```
 
 ### form — an interactive form
@@ -312,7 +411,7 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
   "error": "", "help": "The device's hostname." }
 ```
 
-- `kind`: `"text"` (default) or `"select"`.
+- `kind`: `"text"` (default), `"select"`, or `"checks"`.
 - `value`: the current value; echo the submitted value back on a failed POST.
 - `datatype`: a datatype name the shell enforces (see [Datatypes](#datatypes)). Optional.
 - `error`: an inline error to show under the field (you set this on a 422).
@@ -323,6 +422,20 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
   "value": "UTC",
   "options": [ {"value":"UTC","label":"UTC"},
                {"value":"Europe/Ljubljana","label":"Europe/Ljubljana"} ] }
+```
+
+- For `kind:"checks"` — membership in a known set (checkboxes; per the control
+  vocabulary, checks mean "include this one", a switch means on/off state).
+  Supply `options` and put the checked ones in `values`; all boxes share `name`
+  and post as a multi-value field, the same contract as `list`. Use it wherever
+  the valid values are enumerable — a zone's networks, protocols, days — so a
+  typo'd dead reference is untypeable:
+
+```json
+{ "type": "field", "name": "network", "label": "Networks", "kind": "checks",
+  "values": ["lan", "lan2"],
+  "options": [ {"value":"lan","label":"lan"}, {"value":"lan2","label":"lan2"},
+               {"value":"guest","label":"guest"} ] }
 ```
 
 ### list — a repeating text field

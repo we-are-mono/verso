@@ -1,19 +1,119 @@
-{{/* table: rows of cell values beneath column headers */}}
-<table class="w-full border-collapse overflow-hidden rounded-lg border border-slate-300">
-  <thead>
-    <tr>
-      {{range .Columns}}
-      <th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">{{.}}</th>
-      {{end}}
-    </tr>
-  </thead>
-  <tbody class="divide-y divide-slate-300">
-    {{range .Rows}}
-    <tr>
+{{/* table: config sections as identical rows under kind-typed columns. The card is
+     the quietest element (inset table, transparent header — typography alone marks
+     it); pills and counters are the loudest. One treatment per element type:
+     endpoints are a type icon + label (no pill — the grid already contains them),
+     mono is reserved for verbatim machine strings, counters read sans with tabular
+     figures. Type scale: data 0.95rem sans / 0.9rem mono, headers 0.7rem. An
+     optional seam folds extra rows (stock defaults) inside the same card. */}}
+{{define "table.rows"}}
       {{range .}}
-      <td class="px-3.5 py-2.5 text-left">{{.}}</td>
+      {{/* A row with a drawer is an openable object: it hosts its own modal scope,
+           opens on click (showFromRow skips clicks on controls inside the row), and
+           carries the chevron affordance. The panel itself teleports to <body>. */}}
+      {{if .Drawer}}
+      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer transition hover:bg-sky-50/40">
+      {{else}}
+      <tr class="group transition hover:bg-sky-50/40">
       {{end}}
-    </tr>
-    {{end}}
-  </tbody>
-</table>
+        {{range .Cells}}
+        {{if eq .Kind "toggle"}}
+        <td class="w-11 border-b border-slate-200 py-3 pr-1 pl-3.5 align-middle group-last:border-b-0">
+          {{template "switch.html.tmpl" .}}
+        </td>
+        {{else if eq .Kind "endpoint"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle group-last:border-b-0">
+          <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {{range .Endpoints}}
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap {{if eq .Kind "router"}}font-semibold text-sky-700{{else if eq .Kind "device"}}font-mono text-[0.9rem] tabular-nums text-slate-900{{else if eq .Kind "any"}}text-slate-500{{else}}font-semibold text-slate-900{{end}}">
+              <span class="{{if eq .Kind "router"}}text-sky-600{{else}}text-slate-400{{end}}">{{icon .Icon "size-3.5"}}</span>{{.Label}}
+            </span>
+            {{end}}
+          </span>
+        </td>
+        {{else if eq .Kind "name"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle font-bold text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "pill"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
+        {{else if eq .Kind "mono"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle font-mono text-[0.9rem] tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "keyword"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "comment"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle text-slate-500 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "num"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 text-right align-middle tabular-nums text-slate-500 group-last:border-b-0">{{.Text}}</td>
+        {{else}}
+        <td class="border-b border-slate-200 px-3.5 py-3 align-middle text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        {{end}}
+        {{end}}
+        {{if .HasDrawers}}
+        <td class="w-8 border-b border-slate-200 py-3 pr-1 text-right align-middle group-last:border-b-0">
+          {{if .Drawer}}<span class="inline-block text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500">{{icon "chevron-right" "size-4"}}</span>{{end}}
+        </td>
+        {{end}}
+        {{if .Drawer}}
+        <template x-teleport="body">
+          <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
+            <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+            <aside x-show="open"
+              x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+              x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+              x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+              class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+              <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                <h3 class="text-base font-medium text-slate-900">{{.DrawerTitle}}</h3>
+                <button type="button" @click="hide" aria-label="Close"
+                  class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
+                  {{icon "x" "size-5"}}
+                </button>
+              </header>
+              <div class="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+                {{range .DrawerBody}}{{.}}{{end}}
+              </div>
+            </aside>
+          </div>
+        </template>
+        {{end}}
+      </tr>
+      {{end}}
+{{end}}
+{{define "table.head"}}
+    <thead>
+      <tr>
+        {{range .Columns}}
+        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 text-[0.7rem] font-bold uppercase tracking-[0.07em] text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
+        {{end}}
+        {{if .HasDrawers}}<th scope="col" class="w-8 border-b border-slate-200"></th>{{end}}
+      </tr>
+    </thead>
+{{end}}
+<div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white px-5 pb-2 shadow-sm">
+  <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
+    {{template "table.head" .}}
+    <tbody>
+{{template "table.rows" .Rows}}
+    </tbody>
+  </table>
+  {{if .SeamSummary}}
+  {{/* the seam: extra rows folded inside the same card, behind a native <details> —
+       a full-bleed divider, not a nested card. verso.js nudges the opened content
+       into view. */}}
+  <details class="-mx-5 border-t border-slate-200">
+    {{/* px-8.5 = the card's px-5 plus the cells' px-3.5, so the lock and chevron
+         align with the column content above and below. */}}
+    <summary class="flex cursor-pointer items-center gap-2.5 px-8.5 py-3 text-sm font-semibold text-slate-600 select-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+      {{icon "lock" "size-4 text-slate-400"}}
+      {{.SeamSummary}}
+      <span class="ml-auto">{{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}</span>
+    </summary>
+    <div class="px-5 pb-1">
+      <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
+        {{template "table.head" .}}
+        <tbody>
+{{template "table.rows" .SeamRows}}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {{end}}
+</div>

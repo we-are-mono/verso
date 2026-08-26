@@ -253,6 +253,18 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode chart: %w", err)
 		}
 		return &c, nil
+	case "settings":
+		var s Settings
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, fmt.Errorf("widget: decode settings: %w", err)
+		}
+		return &s, nil
+	case "filter":
+		var f Filter
+		if err := json.Unmarshal(data, &f); err != nil {
+			return nil, fmt.Errorf("widget: decode filter: %w", err)
+		}
+		return &f, nil
 	default:
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}

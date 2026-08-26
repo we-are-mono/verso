@@ -12,21 +12,34 @@ import "io"
 type Field struct {
 	Name     string   `json:"name"`
 	Label    string   `json:"label"`
-	Kind     string   `json:"kind"`     // "text" (default) | "select" | "password" | "textarea"
+	Kind     string   `json:"kind"`     // "text" (default) | "select" | "checks" | "password" | "textarea"
 	Value    string   `json:"value"`    // current/submitted value
+	Values   []string `json:"values"`   // kind "checks": the checked option values
 	Datatype string   `json:"datatype"` // tier-1 datatype name, e.g. "hostname"
-	Options  []Option `json:"options"`  // choices when kind is "select"
+	Options  []Option `json:"options"`  // choices when kind is "select" or "checks"
 	Error    string   `json:"error"`    // inline validation error (set on 422)
 	Help     string   `json:"help"`     // optional helper text
 }
 
-// Option is one choice in a select field.
+// Option is one choice in a select or checks field.
 type Option struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
 
 func (*Field) isWidget() {}
+
+// Checked reports whether v is among the checks field's current values — the
+// template's membership test. Selection semantics per the control vocabulary:
+// checks = "include this one" (a set), never on/off state (that's a switch).
+func (f *Field) Checked(v string) bool {
+	for _, cur := range f.Values {
+		if cur == v {
+			return true
+		}
+	}
+	return false
+}
 
 func (f *Field) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "field.html.tmpl", f)

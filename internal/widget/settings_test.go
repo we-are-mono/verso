@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package widget
+
+import (
+	"strings"
+	"testing"
+)
+
+// firewallDefaults is the "config defaults" block in miniature: a read-only
+// policy row carrying value pills, and toggle rows carrying the shared switch
+// plus their underlying option name as a code chip.
+func firewallDefaults() *Settings {
+	return &Settings{Items: []SettingsItem{
+		{Title: "Default policies", Desc: "What happens to traffic no zone claims.",
+			Pills: []Badge{
+				{Variant: "warning", Text: "in: reject"},
+				{Variant: "success", Text: "out: accept"},
+				{Variant: "warning", Text: "fwd: reject"},
+			}},
+		{Title: "SYN-flood protection", Desc: "Rate-limit half-open connections.",
+			Code: "synflood_protect", Toggle: &SettingsToggle{Name: "synflood_protect", On: true}},
+		{Title: "Drop invalid packets", Code: "drop_invalid",
+			Toggle: &SettingsToggle{Name: "drop_invalid"}},
+	}}
+}
+
+// TestRenderSettings: each row shows its plain name, muted description, mono
+// code chip, and exactly one kind of trailing state — pills or the shared
+// switch, in the state given.
+func TestRenderSettings(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, firewallDefaults())
+	for _, want := range []string{
+		"Default policies", "What happens to traffic no zone claims.",
+		"in: reject", "out: accept", // policy pills render through the badge
+		"bg-amber-50",     // reject carries the warning palette
+		"synflood_protect", // the underlying option is on the row
+		"font-mono",       // …as a mono code chip
+		`type="checkbox"`, // toggle rows carry the shared switch
+		"last:border-b-0", // the card closes without a trailing divider
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("settings missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, " checked") != 1 {
+		t.Errorf("exactly one switch should be on:\n%s", got)
+	}
+	if strings.Count(got, `type="checkbox"`) != 2 {
+		t.Errorf("only toggle rows should render switches:\n%s", got)
+	}
+}
+
+// TestDecodeSettings: the wire shape round-trips — pills as badges, toggles
+// with name and state.
+func TestDecodeSettings(t *testing.T) {
+	w, err := Decode([]byte(`{
+		"type": "settings",
+		"items": [
+			{"title": "Default policies", "pills": [{"variant":"warning","text":"in: reject"}]},
+			{"title": "SYN-flood protection", "code": "synflood_protect",
+			 "toggle": {"name": "synflood_protect", "on": true}}
+		]
+	}`))
+	if err != nil {
+		t.Fatalf("decode settings: %v", err)
+	}
+	s, ok := w.(*Settings)
+	if !ok {
+		t.Fatalf("decoded %T, want *Settings", w)
+	}
+	if len(s.Items) != 2 || s.Items[0].Pills[0].Variant != "warning" {
+		t.Errorf("pills not decoded: %+v", s.Items)
+	}
+	if s.Items[1].Toggle == nil || !s.Items[1].Toggle.On {
+		t.Errorf("toggle not decoded: %+v", s.Items[1])
+	}
+}

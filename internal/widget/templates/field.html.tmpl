@@ -2,9 +2,28 @@
 <div class="space-y-1.5">
   <label for="{{.Name}}" class="block text-sm font-medium text-slate-900">{{.Label}}</label>
   {{if eq .Kind "select"}}
-  <select id="{{.Name}}" name="{{.Name}}" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
-    {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
-  </select>
+  {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
+       the native arrow hugs the border and can't follow the theme. */}}
+  <div class="relative">
+    <select id="{{.Name}}" name="{{.Name}}" class="w-full appearance-none rounded-md border border-slate-300 bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
+      {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">{{icon "chevron-down" "size-4"}}</span>
+  </div>
+  {{else if eq .Kind "checks"}}
+  {{/* checks: membership in a known set — all boxes share the field's name and
+       post as a multi-value field (name=a&name=b), the list-widget contract.
+       Free text is how dead references happen; a closed set makes them
+       untypeable. */}}
+  <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5 sm:grid-cols-3">
+    {{range .Options}}
+    <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-900">
+      <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}}
+        class="size-4 cursor-pointer rounded border-slate-300 accent-sky-600">
+      {{.Label}}
+    </label>
+    {{end}}
+  </div>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
   <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="new-password" class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">

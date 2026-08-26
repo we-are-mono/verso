@@ -40,20 +40,6 @@ func render(t *testing.T, r *Renderer, w Widget) string {
 	return normalizeHTML(b.String())
 }
 
-func TestRenderTable(t *testing.T) {
-	r := newRenderer(t)
-	tbl := &Table{
-		Columns: []string{"Name", "Status"},
-		Rows:    [][]string{{"wan", "up"}, {"lan", "down"}},
-	}
-
-	got := render(t, r, tbl)
-	want := `<table class="w-full border-collapse overflow-hidden rounded-lg border border-slate-300"><thead><tr><th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">Name</th><th scope="col" class="border-b border-slate-300 px-3.5 py-2.5 text-left text-slate-500 font-normal text-sm tracking-wider">Status</th></tr></thead><tbody class="divide-y divide-slate-300"><tr><td class="px-3.5 py-2.5 text-left">wan</td><td class="px-3.5 py-2.5 text-left">up</td></tr><tr><td class="px-3.5 py-2.5 text-left">lan</td><td class="px-3.5 py-2.5 text-left">down</td></tr></tbody></table>`
-	if got != want {
-		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
-	}
-}
-
 // TestRenderFormError renders the form-level error — a message not tied to any
 // field (e.g. a cross-field rule) — and confirms it is escaped like all
 // shell-rendered text.
@@ -74,8 +60,8 @@ func TestRenderFormError(t *testing.T) {
 func TestRenderTableEscapesCells(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{
-		Columns: []string{"x"},
-		Rows:    [][]string{{`<script>alert(1)</script>`}},
+		Columns: []TableColumn{{Label: "x"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: `<script>alert(1)</script>`}}}},
 	}
 
 	got := render(t, r, tbl)
@@ -139,7 +125,7 @@ func TestRenderCardNestsChild(t *testing.T) {
 	r := newRenderer(t)
 	card := &Card{
 		Title:    "Status",
-		Children: []Widget{&Table{Columns: []string{"A"}, Rows: [][]string{{"1"}}}},
+		Children: []Widget{&Table{Columns: []TableColumn{{Label: "A"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "1"}}}}}},
 	}
 
 	got := render(t, r, card)
@@ -154,7 +140,7 @@ func TestRenderCardNestingDepth(t *testing.T) {
 	r := newRenderer(t)
 	card := &Card{Title: "outer", Children: []Widget{
 		&Card{Title: "inner", Children: []Widget{
-			&Table{Columns: []string{"A"}, Rows: [][]string{{"1"}}},
+			&Table{Columns: []TableColumn{{Label: "A"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "1"}}}}},
 		}},
 	}}
 

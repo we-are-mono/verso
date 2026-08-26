@@ -3,18 +3,241 @@
 
 package widget
 
-import "io"
+import (
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"io"
+)
 
-// Table presents rows of cell values beneath column headers. Cells are plain
-// text for now; nested-widget cells will arrive once a second widget type
-// exists to nest.
+// Table is the Advanced-view listing: config sections as identical rows under
+// fixed columns. Every column declares a kind, and that kind renders every cell
+// in it the same way — rows cannot vary in shape, which is the point (the tuple
+// is the row; names and comments are trailing metadata).
+//
+// Column kinds:
+//
+//	"text"     — plain ink text (the default)
+//	"name"     — the row's identity (a zone, an interface): bold ink
+//	"mono"     — verbatim machine strings: addresses, ports, device names
+//	"keyword"  — closed-vocabulary words (tcp, udp, icmpv6): sans, muted
+//	"comment"  — optional free text (e.g. a UCI name), muted, blank when absent
+//	"num"      — right-aligned tabular figures (counters); muted
+//	"toggle"   — an on/off switch (a section's enabled state)
+//	"endpoint" — one or more traffic endpoints, each a type icon + label
+//	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
+//	             cell's variant uses the badge vocabulary, and an empty cell
+//	             renders a faint dash — pills stay meaningful because most
+//	             cells in such a column are empty or quiet
 type Table struct {
-	Columns []string   `json:"columns"`
-	Rows    [][]string `json:"rows"`
+	Columns []TableColumn `json:"columns"`
+	Rows    []TableRow    `json:"rows"`
+	Seam    *TableSeam    `json:"seam,omitempty"`
+}
+
+// TableSeam is a collapsed block of extra rows inside the same card — the
+// "stock rules that ship with the install" pattern: present and honest, but
+// folded so the user's own sections carry the page. It expands in place under
+// the same columns.
+type TableSeam struct {
+	Summary string     `json:"summary"`
+	Rows    []TableRow `json:"rows"`
+}
+
+// TableColumn is one column: its header label and the kind every cell in it
+// renders as.
+type TableColumn struct {
+	Label string `json:"label,omitempty"`
+	Kind  string `json:"kind,omitempty"` // see Table; "" means "text"
+}
+
+// TableRow is one config section. ID is its stable handle (e.g. the UCI section
+// name); it does not render. A row with a Drawer is an object you can open:
+// clicking it slides in the drawer (the row gets a trailing chevron and the
+// pointer; controls inside the row keep their own meaning).
+type TableRow struct {
+	ID     string      `json:"id,omitempty"`
+	Cells  []TableCell `json:"cells"`
+	Drawer *RowDrawer  `json:"drawer,omitempty"`
+}
+
+// RowDrawer is a row's edit surface: a right slide-in panel — typically a form
+// prefilled with the section's values, a blast-radius callout, and a confirm
+// for deletion. Same shell behaviour as the drawer widget (ADR-005 §7).
+type RowDrawer struct {
+	Title    string   `json:"title"`
+	Children []Widget `json:"children"`
+}
+
+// UnmarshalJSON decodes the drawer's children recursively through Decode, so an
+// unknown child type fails loudly rather than vanishing.
+func (tr *TableRow) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID     string      `json:"id"`
+		Cells  []TableCell `json:"cells"`
+		Drawer *struct {
+			Title    string            `json:"title"`
+			Children []json.RawMessage `json:"children"`
+		} `json:"drawer"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	tr.ID = raw.ID
+	tr.Cells = raw.Cells
+	tr.Drawer = nil
+	if raw.Drawer == nil {
+		return nil
+	}
+	d := &RowDrawer{Title: raw.Drawer.Title, Children: make([]Widget, 0, len(raw.Drawer.Children))}
+	for i, rc := range raw.Drawer.Children {
+		w, err := Decode(rc)
+		if err != nil {
+			return fmt.Errorf("row drawer child %d: %w", i, err)
+		}
+		d.Children = append(d.Children, w)
+	}
+	tr.Drawer = d
+	return nil
+}
+
+// TableCell carries the value for one cell; which field applies is decided by
+// the column's kind (Text for text/name/mono/keyword/comment/num, Text+Variant
+// for pill, On/Name for toggle, Endpoints for endpoint).
+type TableCell struct {
+	Text      string          `json:"text,omitempty"`
+	Variant   string          `json:"variant,omitempty"` // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
+	On        bool            `json:"on,omitempty"`
+	Name      string          `json:"name,omitempty"` // form name the toggle posts under
+	Endpoints []TableEndpoint `json:"endpoints,omitempty"`
+}
+
+// TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
+// type icon and treatment: a zone name reads sans, a device address reads mono,
+// "router" (this device) carries the accent, "any" is muted.
+type TableEndpoint struct {
+	Kind  string `json:"kind"` // "zone" | "device" | "router" | "any"
+	Label string `json:"label"`
 }
 
 func (*Table) isWidget() {}
 
-func (t *Table) renderInto(r *Renderer, out io.Writer, _ string) error {
-	return r.execute(out, "table.html.tmpl", t)
+// endpointIcons maps an endpoint kind to its registered icon. Unknown kinds fall
+// back to the zone glyph — a wrong icon beats a missing one in a listing.
+var endpointIcons = map[string]string{
+	"zone":   "zone",
+	"device": "device",
+	"router": "router",
+	"any":    "globe",
+}
+
+// tableView is the render model: cells zipped with their column's kind, so the
+// template stays a flat range with no positional arithmetic. HasDrawers is
+// table-wide (main rows and seam alike) so every row pads the chevron column
+// and the grid stays aligned.
+type tableView struct {
+	Columns     []TableColumn
+	HasDrawers  bool
+	Rows        []tableRowView
+	SeamSummary string
+	SeamRows    []tableRowView
+}
+
+type tableRowView struct {
+	ID         string
+	Cells      []tableCellView
+	HasDrawers bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Drawer     bool
+	DrawerTitle string
+	DrawerBody []template.HTML
+}
+
+type tableCellView struct {
+	Kind string
+	TableCell
+	Endpoints []tableEndpointView
+	Pill      *Badge // pill cells render through the badge component
+}
+
+type tableEndpointView struct {
+	TableEndpoint
+	Icon string
+}
+
+func (t *Table) hasDrawers() bool {
+	for _, row := range t.Rows {
+		if row.Drawer != nil {
+			return true
+		}
+	}
+	if t.Seam != nil {
+		for _, row := range t.Seam.Rows {
+			if row.Drawer != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
+	v := tableView{Columns: t.Columns, HasDrawers: t.hasDrawers()}
+	var err error
+	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers); err != nil {
+		return v, err
+	}
+	if t.Seam != nil {
+		v.SeamSummary = t.Seam.Summary
+		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers); err != nil {
+			return v, err
+		}
+	}
+	return v, nil
+}
+
+func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers bool) ([]tableRowView, error) {
+	out := make([]tableRowView, 0, len(rows))
+	for _, row := range rows {
+		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Cells: make([]tableCellView, 0, len(t.Columns))}
+		if row.Drawer != nil {
+			body, err := r.renderChildren(row.Drawer.Children, csrf)
+			if err != nil {
+				return nil, err
+			}
+			rv.Drawer = true
+			rv.DrawerTitle = row.Drawer.Title
+			rv.DrawerBody = body
+		}
+		for i := range t.Columns {
+			kind := t.Columns[i].Kind
+			if kind == "" {
+				kind = "text"
+			}
+			cv := tableCellView{Kind: kind}
+			if i < len(row.Cells) {
+				cv.TableCell = row.Cells[i]
+				for _, ep := range row.Cells[i].Endpoints {
+					icon, ok := endpointIcons[ep.Kind]
+					if !ok {
+						icon = "zone"
+					}
+					cv.Endpoints = append(cv.Endpoints, tableEndpointView{TableEndpoint: ep, Icon: icon})
+				}
+				if kind == "pill" && cv.Text != "" {
+					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text}
+				}
+			}
+			rv.Cells = append(rv.Cells, cv)
+		}
+		out = append(out, rv)
+	}
+	return out, nil
+}
+
+func (t *Table) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	v, err := t.view(r, csrf)
+	if err != nil {
+		return err
+	}
+	return r.execute(out, "table.html.tmpl", v)
 }
