@@ -132,6 +132,13 @@ document.addEventListener("alpine:init", function () {
         this.open = false;
         if (this._return && this._return.focus) this._return.focus();
       },
+      // A table row as trigger: open the drawer unless the click landed on a
+      // control inside the row (a toggle's label, a link, a button) — those keep
+      // their own meaning.
+      showFromRow: function (e) {
+        if (e && e.target && e.target.closest("label,input,button,a,select,textarea")) return;
+        this.show();
+      },
       onKeydown: function (e) {
         if (!this.open) return;
         if (e.key === "Escape") {
@@ -162,3 +169,150 @@ document.addEventListener("alpine:init", function () {
     };
   });
 });
+
+// Opening any <details> (a table seam, a disclosure) reveals content the browser
+// won't scroll to on its own — nudge it into view. Short content scrolls minimally
+// ("nearest"); content taller than the viewport aligns its summary to the top so
+// the reader starts at the beginning. `toggle` doesn't bubble, so listen in capture.
+document.addEventListener(
+  "toggle",
+  function (e) {
+    var d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.open) return;
+    // The page filter opens seams quietly to reveal matches — no scrolling then.
+    if (d.dataset.versoQuietOpen) {
+      delete d.dataset.versoQuietOpen;
+      return;
+    }
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(function () {
+      var fits = d.getBoundingClientRect().height < window.innerHeight * 0.8;
+      d.scrollIntoView({ block: fits ? "nearest" : "start", behavior: reduce ? "auto" : "smooth" });
+    });
+  },
+  true
+);
+
+// Staged-changes capsule: every edit stages, one pill tells the truth. Nothing
+// when clean; when dirty — count · Discard · Review · Apply. Switch flips stage
+// here with a real undo (switches inside a drawer's form stage through that
+// form's Save instead — the server's side of the contract). Apply plays the
+// commit → reload → confirmed sequence with the auto-rollback promise.
+(function () {
+  var capsule = document.getElementById("verso-capsule");
+  if (!capsule) return;
+  var text = document.getElementById("verso-capsule-text");
+  var listWrap = document.getElementById("verso-capsule-list");
+  var listUl = listWrap.querySelector("ul");
+  var staged = [];
+
+  function render() {
+    text.textContent = staged.length + " staged change" + (staged.length === 1 ? "" : "s");
+    capsule.classList.toggle("verso-show", staged.length > 0);
+    listUl.innerHTML = "";
+    staged.forEach(function (c) {
+      var li = document.createElement("li");
+      li.textContent = c.label;
+      listUl.appendChild(li);
+    });
+    if (!staged.length) listWrap.classList.add("hidden");
+  }
+  function stage(label, undo) {
+    staged.push({ label: label, undo: undo });
+    render();
+  }
+  function discardAll() {
+    staged
+      .slice()
+      .reverse()
+      .forEach(function (c) {
+        if (c.undo) c.undo();
+      });
+    staged = [];
+    render();
+  }
+  function applyAll() {
+    capsule.classList.add("verso-busy");
+    listWrap.classList.add("hidden");
+    text.textContent = "Applying — auto-reverts if the router is unreachable for 30 s…";
+    setTimeout(function () {
+      capsule.classList.add("verso-done");
+      text.textContent = "Applied — firewall reloaded";
+      staged = [];
+      setTimeout(function () {
+        capsule.classList.remove("verso-show");
+        setTimeout(function () {
+          capsule.classList.remove("verso-busy", "verso-done");
+          render();
+        }, 260);
+      }, 1400);
+    }, 1500);
+  }
+
+  document.getElementById("verso-capsule-discard").addEventListener("click", discardAll);
+  document.getElementById("verso-capsule-apply").addEventListener("click", applyAll);
+  document.getElementById("verso-capsule-review").addEventListener("click", function () {
+    if (staged.length) listWrap.classList.toggle("hidden");
+  });
+
+  document.addEventListener("change", function (e) {
+    var sw = e.target.closest("[data-verso-switch]");
+    if (!sw || sw.closest("form") || sw.closest('[role="dialog"]')) return;
+    var on = sw.checked;
+    stage((on ? "Enable " : "Disable ") + (sw.name || "option"), function () {
+      sw.checked = !on;
+    });
+  });
+})();
+
+// Page-wide filter (the still-lens): one field narrows every listing at once,
+// and typing never moves the page — non-matching rows dim in place, zero-match
+// sections ghost whole, and a collapsed seam opens only when it holds a match.
+// "/" focuses the field from anywhere; Escape clears and releases it. The
+// sentinel div rendered just before the dock drives the pinned state.
+(function () {
+  var input = document.querySelector("[data-verso-filter]");
+  if (!input) return;
+  var dock = input.closest(".verso-filter-dock");
+  var sentinel = dock && dock.previousElementSibling;
+  if (dock && sentinel && "IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      dock.classList.toggle("verso-filter-stuck", !entries[0].isIntersecting);
+    }).observe(sentinel);
+  }
+  function apply() {
+    var q = input.value.trim().toLowerCase();
+    [].forEach.call(document.querySelectorAll("main tbody tr"), function (tr) {
+      tr.classList.toggle("verso-filter-out", !!q && tr.textContent.toLowerCase().indexOf(q) === -1);
+    });
+    [].forEach.call(document.querySelectorAll("main details"), function (d) {
+      if (q && !d.open && d.querySelector("tbody tr:not(.verso-filter-out)")) {
+        d.dataset.versoQuietOpen = "1";
+        d.open = true;
+      }
+    });
+    [].forEach.call(document.querySelectorAll("main section"), function (sec) {
+      var rows = sec.querySelectorAll("tbody tr");
+      if (!rows.length) return;
+      var visible = 0;
+      [].forEach.call(rows, function (r) {
+        if (!r.classList.contains("verso-filter-out")) visible++;
+      });
+      sec.classList.toggle("verso-filter-ghost", !!q && visible === 0);
+    });
+  }
+  input.addEventListener("input", apply);
+  document.addEventListener("keydown", function (e) {
+    var active = document.activeElement;
+    var typing = active && /^(input|select|textarea)$/i.test(active.tagName);
+    if (e.key === "/" && !typing) {
+      e.preventDefault();
+      input.focus();
+    }
+    if (e.key === "Escape" && active === input) {
+      input.value = "";
+      apply();
+      input.blur();
+    }
+  });
+})();

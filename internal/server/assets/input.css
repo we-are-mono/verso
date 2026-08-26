@@ -136,6 +136,55 @@
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
 
+  /* Page-wide filter (the still-lens, verso.js "filter"): the dock is invisible at
+     rest (page-ground colour); pinned, rows slide beneath it and dissolve through
+     the gradient fade. On pin the bar breathes in a step; typing never moves the
+     page — non-matching rows dim in place, zero-match sections ghost whole. */
+  .verso-filter-dock::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 3rem;
+    /* The capsule's recipe, inverted: the upper 70% is solid ground, the bottom
+       30% the actual gradient. Solid ground would blank real content while the
+       dock rests in the flow, so the fade exists only while pinned. */
+    background: linear-gradient(var(--color-slate-50) 70%, transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .verso-filter-stuck::after { opacity: 1; }
+  tbody tr { transition: opacity 0.15s ease; }
+  tbody tr.verso-filter-out { opacity: 0.16; }
+  section.verso-filter-ghost { opacity: 0.4; transition: opacity 0.15s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    tbody tr, section.verso-filter-ghost, .verso-filter-dock::after { transition: none; }
+  }
+
+  /* Staged-changes capsule (verso.js "capsule"): hidden while clean, rising in
+     when the first change stages. Its dock mirrors the filter's — a page-ground
+     strip with a gradient fade above it, so content melts beneath the pill. */
+  .verso-capsule { opacity: 0; transform: translateY(0.75rem); pointer-events: none; transition: opacity 0.22s ease, transform 0.22s ease; }
+  .verso-capsule.verso-show { opacity: 1; transform: none; pointer-events: auto; }
+  .verso-capsule::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    height: 3rem;
+    /* Top 30% is the actual gradient; the lower 70% is solid ground. */
+    background: linear-gradient(transparent, var(--color-slate-50) 30%);
+    pointer-events: none;
+  }
+  .verso-capsule.verso-busy button { opacity: 0.45; pointer-events: none; }
+  .verso-capsule.verso-done #verso-capsule-dot { background: var(--color-green-500); }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-capsule { transition: none; }
+  }
+
   /* Prose for the raw bridge: goldmark output, styled minimally and display-only
      (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */
   .verso-prose p { margin: 0 0 0.75rem; }

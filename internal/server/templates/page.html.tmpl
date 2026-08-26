@@ -115,6 +115,30 @@
     <div class="verso-page-enter">{{.Body}}</div>
   </div>
 </main>
+
+{{/* Staged-changes capsule (shell-owned, verso.js "capsule"): nothing when the
+     page is clean; one pill when it is dirty — count · Discard · Review · Apply.
+     It sits in a bottom dock mirroring the filter's: page-ground strip spanning
+     the content column with a gradient fade above, so content dissolves beneath
+     it instead of scrolling behind a floating pill. Never a modal nag, never
+     auto-apply; Apply carries the auto-rollback promise. */}}
+<div id="verso-capsule" class="verso-capsule fixed inset-x-0 bottom-0 z-30 bg-slate-50 md:left-64">
+  {{/* The pill centres on the content column, not the window: same width preset
+       and padding as the page's content container above. */}}
+  <div class="flex justify-center px-8 pt-2.5 pb-5 {{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">
+  <div class="relative flex items-center gap-2 rounded-full border border-slate-200 bg-white py-2 pr-2 pl-4 shadow-lg">
+    <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full bg-sky-500"></span>
+    <span id="verso-capsule-text" class="mr-1.5 text-sm font-semibold whitespace-nowrap text-slate-900">0 staged changes</span>
+    <button type="button" id="verso-capsule-discard" class="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100">Discard</button>
+    <button type="button" id="verso-capsule-review" class="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100">Review</button>
+    <button type="button" id="verso-capsule-apply" class="rounded-full bg-sky-600 px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700">Apply</button>
+    <div id="verso-capsule-list" class="absolute right-0 bottom-full mb-2 hidden w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+      <ul class="max-h-60 space-y-1 overflow-y-auto text-sm text-slate-700"></ul>
+      <p class="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500">Nothing is live yet. Apply commits and reloads the firewall — and auto-reverts if the router becomes unreachable for 30&nbsp;seconds.</p>
+    </div>
+  </div>
+  </div>
+</div>
 {{/* Shell client-side JS (ADR-004), served first-party under the strict CSP.
      verso.js registers the shell's Alpine components before Alpine starts. */}}
 <script src="/assets/verso.js" defer></script>
