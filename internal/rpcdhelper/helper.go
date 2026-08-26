@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 )
 
 // Exit codes are ubus status codes: rpcd maps the plugin's exit code onto the
@@ -38,6 +39,56 @@ type Authorizer interface {
 // protocol is testable without mutating the host (ADR-003).
 type PasswordSetter interface {
 	SetPassword(username, password string) error
+}
+
+// PackageManager wraps the system package manager — apk on the 25.12 target
+// (ADR-011 §4). Split behind an interface so the protocol is testable without
+// touching the host's package database.
+type PackageManager interface {
+	// Update refreshes the feed indexes from the network.
+	Update() error
+	// Search lists packages matching the query (substring on the name), at
+	// most limit, with descriptions filled in.
+	Search(query string, limit int) ([]Package, int, error)
+	// Installed lists every installed package (descriptions skipped — the
+	// full set in one exec).
+	Installed() ([]Package, error)
+	// Install and Remove act on one exact package name and return the
+	// manager's output tail for the caller to surface.
+	Install(name string) (string, error)
+	Remove(name string) (string, error)
+	// CheckedAt is the unix mtime of the freshest feed index — the "checked
+	// N ago" honesty on the Discover face. Zero means never.
+	CheckedAt() int64
+}
+
+// Package is one row of a package search or the installed listing. The
+// detail fields (license, webpage, size) ride along where the source provides
+// them in bulk — the drawers are server-rendered, so detail must be cheap.
+type Package struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Feed        string `json:"feed"`
+	Description string `json:"description"`
+	License     string `json:"license,omitempty"`
+	Webpage     string `json:"webpage,omitempty"`
+	Size        int64  `json:"size,omitempty"` // package file size, bytes
+	Installed   bool   `json:"installed"`
+}
+
+// pkgNameRe is the exact shape of an installable package name — nothing else
+// reaches the package manager's argv. Globs, options, and path characters are
+// untypeable by construction.
+var pkgNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._+-]{0,63}$`)
+
+// pkgQueryRe is the searchable shape — the same alphabet, anywhere in the name.
+var pkgQueryRe = regexp.MustCompile(`^[a-zA-Z0-9._+-]{1,64}$`)
+
+// pkgKeep is the base set the remove verb refuses to touch: losing any of
+// these severs the device or this very control surface.
+var pkgKeep = map[string]bool{
+	"busybox": true, "apk": true, "procd": true, "ubusd": true, "ubus": true,
+	"rpcd": true, "uhttpd": true, "netifd": true, "libc": true, "musl": true,
 }
 
 // statusError carries a ubus status for an action failure so Run can map it to
@@ -68,7 +119,7 @@ type Helper struct {
 
 // New builds the helper with the standard method set. Register further root
 // actions here; each is self-gated identically.
-func New(auth Authorizer, pw PasswordSetter) *Helper {
+func New(auth Authorizer, pw PasswordSetter, pkgs PackageManager) *Helper {
 	h := &Helper{auth: auth, methods: map[string]method{}}
 
 	h.methods["setPassword"] = method{
@@ -86,8 +137,84 @@ func New(auth Authorizer, pw PasswordSetter) *Helper {
 		},
 	}
 
+	// The package verbs (ADR-011 §4): the one privileged path to apk. Names
+	// and queries are validated to an exact alphabet before touching argv.
+	h.methods["pkgStatus"] = method{
+		signature: map[string]string{},
+		run: func(map[string]any) (any, error) {
+			return map[string]any{"checked_at": pkgs.CheckedAt()}, nil
+		},
+	}
+	h.methods["pkgUpdate"] = method{
+		signature: map[string]string{},
+		run: func(map[string]any) (any, error) {
+			if err := pkgs.Update(); err != nil {
+				return nil, err
+			}
+			return map[string]any{"result": true, "checked_at": pkgs.CheckedAt()}, nil
+		},
+	}
+	h.methods["pkgInstalled"] = method{
+		signature: map[string]string{},
+		run: func(map[string]any) (any, error) {
+			pkgsFound, err := pkgs.Installed()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"packages": pkgsFound}, nil
+		},
+	}
+	h.methods["pkgSearch"] = method{
+		signature: map[string]string{"query": ""},
+		run: func(args map[string]any) (any, error) {
+			q, _ := args["query"].(string)
+			if !pkgQueryRe.MatchString(q) {
+				return nil, argErr("query must match %s", pkgQueryRe)
+			}
+			pkgsFound, total, err := pkgs.Search(q, searchLimit)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"packages": pkgsFound, "total": total}, nil
+		},
+	}
+	h.methods["pkgInstall"] = method{
+		signature: map[string]string{"package": ""},
+		run: func(args map[string]any) (any, error) {
+			name, _ := args["package"].(string)
+			if !pkgNameRe.MatchString(name) {
+				return nil, argErr("package must match %s", pkgNameRe)
+			}
+			out, err := pkgs.Install(name)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"result": true, "output": out}, nil
+		},
+	}
+	h.methods["pkgRemove"] = method{
+		signature: map[string]string{"package": ""},
+		run: func(args map[string]any) (any, error) {
+			name, _ := args["package"].(string)
+			if !pkgNameRe.MatchString(name) {
+				return nil, argErr("package must match %s", pkgNameRe)
+			}
+			if pkgKeep[name] {
+				return nil, argErr("%s is part of the device's base and stays", name)
+			}
+			out, err := pkgs.Remove(name)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"result": true, "output": out}, nil
+		},
+	}
+
 	return h
 }
+
+// searchLimit caps one search's rows (and its per-package description reads).
+const searchLimit = 30
 
 // Run executes the rpcd protocol for one invocation and returns the process exit
 // code. args is os.Args[1:]: "list" to advertise methods, or "call <method>" with

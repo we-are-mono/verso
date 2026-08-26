@@ -35,6 +35,29 @@ func (f *fakePasswd) SetPassword(username, password string) error {
 	return f.err
 }
 
+// fakePkgs records package-manager calls and serves canned search results.
+type fakePkgs struct {
+	updated            bool
+	installed, removed []string
+	found              []Package
+	err                error
+}
+
+func (f *fakePkgs) Update() error { f.updated = true; return f.err }
+func (f *fakePkgs) Search(string, int) ([]Package, int, error) {
+	return f.found, len(f.found), f.err
+}
+func (f *fakePkgs) Installed() ([]Package, error) { return f.found, f.err }
+func (f *fakePkgs) Install(name string) (string, error) {
+	f.installed = append(f.installed, name)
+	return "OK", f.err
+}
+func (f *fakePkgs) Remove(name string) (string, error) {
+	f.removed = append(f.removed, name)
+	return "OK", f.err
+}
+func (f *fakePkgs) CheckedAt() int64 { return 42 }
+
 func run(h *Helper, stdin string, args ...string) (int, string) {
 	var out strings.Builder
 	code := h.Run(args, strings.NewReader(stdin), &out)
@@ -42,7 +65,7 @@ func run(h *Helper, stdin string, args ...string) (int, string) {
 }
 
 func TestListAdvertisesMethods(t *testing.T) {
-	h := New(fakeAuth{}, &fakePasswd{})
+	h := New(fakeAuth{}, &fakePasswd{}, &fakePkgs{})
 	code, out := run(h, "", "list")
 	if code != statusOK {
 		t.Fatalf("list exit = %d, want 0", code)
@@ -55,7 +78,7 @@ func TestListAdvertisesMethods(t *testing.T) {
 
 func TestSetPasswordAuthorized(t *testing.T) {
 	pw := &fakePasswd{}
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw)
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"good-sid","username":"root","password":"correct-horse"}`, "call", "setPassword")
 	if code != statusOK {
 		t.Fatalf("exit = %d, want 0", code)
@@ -69,7 +92,7 @@ func TestSetPasswordAuthorized(t *testing.T) {
 // refused with PERMISSION_DENIED and the action must not run.
 func TestSetPasswordUnauthorizedDenied(t *testing.T) {
 	pw := &fakePasswd{}
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw)
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"bad-sid","username":"root","password":"correct-horse"}`, "call", "setPassword")
 	if code != statusPermissionDenied {
 		t.Fatalf("exit = %d, want %d (permission denied)", code, statusPermissionDenied)
@@ -82,7 +105,7 @@ func TestSetPasswordUnauthorizedDenied(t *testing.T) {
 // A probe error fails closed — the password is not changed.
 func TestSetPasswordProbeErrorDenied(t *testing.T) {
 	pw := &fakePasswd{}
-	h := New(fakeAuth{err: errors.New("ubus down")}, pw)
+	h := New(fakeAuth{err: errors.New("ubus down")}, pw, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"any","username":"root","password":"x2345678"}`, "call", "setPassword")
 	if code != statusPermissionDenied {
 		t.Fatalf("exit = %d, want permission denied on probe error", code)
@@ -96,7 +119,7 @@ func TestSetPasswordProbeErrorDenied(t *testing.T) {
 // slip past the gate.
 func TestCallWithoutArgsDenied(t *testing.T) {
 	pw := &fakePasswd{}
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw)
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw, &fakePkgs{})
 	code, _ := run(h, "", "call", "setPassword")
 	if code != statusPermissionDenied {
 		t.Fatalf("exit = %d, want permission denied", code)
@@ -108,7 +131,7 @@ func TestCallWithoutArgsDenied(t *testing.T) {
 
 func TestSetPasswordMissingFields(t *testing.T) {
 	pw := &fakePasswd{}
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw)
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"good-sid","username":"root"}`, "call", "setPassword")
 	if code != statusInvalidArgument {
 		t.Fatalf("exit = %d, want %d (invalid argument)", code, statusInvalidArgument)
@@ -120,7 +143,7 @@ func TestSetPasswordMissingFields(t *testing.T) {
 
 func TestPasswdFailureIsUnknownError(t *testing.T) {
 	pw := &fakePasswd{err: errors.New("passwd blew up")}
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw)
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, pw, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"good-sid","username":"root","password":"x2345678"}`, "call", "setPassword")
 	if code != statusUnknownError {
 		t.Fatalf("exit = %d, want %d (unknown error)", code, statusUnknownError)
@@ -128,7 +151,7 @@ func TestPasswdFailureIsUnknownError(t *testing.T) {
 }
 
 func TestUnknownMethod(t *testing.T) {
-	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{})
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{}, &fakePkgs{})
 	code, _ := run(h, `{"ubus_rpc_session":"good-sid"}`, "call", "reboot")
 	if code != statusMethodNotFound {
 		t.Fatalf("exit = %d, want %d (method not found)", code, statusMethodNotFound)
@@ -136,8 +159,61 @@ func TestUnknownMethod(t *testing.T) {
 }
 
 func TestNoArgsIsInvalid(t *testing.T) {
-	h := New(fakeAuth{}, &fakePasswd{})
+	h := New(fakeAuth{}, &fakePasswd{}, &fakePkgs{})
 	if code, _ := run(h, ""); code != statusInvalidArgument {
 		t.Fatalf("exit = %d, want %d", code, statusInvalidArgument)
+	}
+}
+
+// TestPkgInstallValidatesName: a name outside the exact package alphabet is
+// refused before the package manager is touched — options, globs, and shell
+// metacharacters are untypeable (ADR-011 §4).
+func TestPkgInstallValidatesName(t *testing.T) {
+	pm := &fakePkgs{}
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{}, pm)
+	for _, bad := range []string{"", "-rf", "a b", "htop;reboot", "../etc", "htop*"} {
+		code, _ := run(h, `{"ubus_rpc_session":"good-sid","package":"`+bad+`"}`, "call", "pkgInstall")
+		if code != statusInvalidArgument {
+			t.Errorf("package %q: exit = %d, want %d", bad, code, statusInvalidArgument)
+		}
+	}
+	if len(pm.installed) != 0 {
+		t.Fatalf("invalid names must not reach the manager: %v", pm.installed)
+	}
+}
+
+// TestPkgInstallRuns: a valid gated call reaches the manager and reports OK.
+func TestPkgInstallRuns(t *testing.T) {
+	pm := &fakePkgs{}
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{}, pm)
+	code, out := run(h, `{"ubus_rpc_session":"good-sid","package":"htop"}`, "call", "pkgInstall")
+	if code != statusOK || len(pm.installed) != 1 || pm.installed[0] != "htop" {
+		t.Fatalf("exit=%d installed=%v out=%s", code, pm.installed, out)
+	}
+}
+
+// TestPkgRemoveKeepsBase: the base set that keeps the device (and this
+// surface) alive is not removable.
+func TestPkgRemoveKeepsBase(t *testing.T) {
+	pm := &fakePkgs{}
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{}, pm)
+	code, _ := run(h, `{"ubus_rpc_session":"good-sid","package":"busybox"}`, "call", "pkgRemove")
+	if code != statusInvalidArgument || len(pm.removed) != 0 {
+		t.Fatalf("exit=%d removed=%v — busybox must be refused", code, pm.removed)
+	}
+}
+
+// TestPkgSearchShape: a search returns the packages array and the total.
+func TestPkgSearchShape(t *testing.T) {
+	pm := &fakePkgs{found: []Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Installed: false}}}
+	h := New(fakeAuth{allow: map[string]bool{"good-sid": true}}, &fakePasswd{}, pm)
+	code, out := run(h, `{"ubus_rpc_session":"good-sid","query":"htop"}`, "call", "pkgSearch")
+	if code != statusOK {
+		t.Fatalf("exit = %d, want ok", code)
+	}
+	for _, want := range []string{`"htop"`, `"total":1`, `"packages"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("search output missing %s: %s", want, out)
+		}
 	}
 }
