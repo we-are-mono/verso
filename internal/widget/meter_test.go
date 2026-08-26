@@ -51,6 +51,36 @@ func TestMeterInfoVariant(t *testing.T) {
 	}
 }
 
+// TestMeterLiveHooks: a named meter carries the handle and per-part hooks the
+// shell's client script streams fresh readings into, and its ring wears the
+// transition class so a new dash glides rather than snaps.
+func TestMeterLiveHooks(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Name: "memory", Label: "Memory", Value: "1.2", Unit: "GB", Fill: 60})
+	for _, want := range []string{
+		`data-verso-meter="memory"`,
+		"data-verso-meter-ring", "verso-meter-ring",
+		"data-verso-meter-value", "data-verso-meter-unit", "data-verso-meter-detail",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("live meter missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestMeterNamelessIsStatic: without a Name there is no live handle, and an
+// empty detail renders nothing at all.
+func TestMeterNamelessIsStatic(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Label: "Storage", Value: "23", Unit: "GB", Fill: 72})
+	if strings.Contains(got, `data-verso-meter="`) {
+		t.Errorf("nameless meter must not carry a live handle:\n%s", got)
+	}
+	if strings.Contains(got, "data-verso-meter-detail") {
+		t.Errorf("nameless meter with no detail renders no detail slot:\n%s", got)
+	}
+}
+
 // TestMeterClampsFill: a Fill over 100 fills the whole ring.
 func TestMeterClampsFill(t *testing.T) {
 	r := newRenderer(t)

@@ -530,3 +530,10 @@
      ground over the flash's bottom — the space it reclaims is occupied. */
   .verso-flash ~ .verso-page-enter .verso-filter-dock { margin-top: 0; }
 }
+
+/* Live meters glide: a fresh reading lands as a stroke-dasharray change
+   (verso.js streams them in) and the ring eases there instead of snapping. */
+@layer components {
+  .verso-meter-ring { transition: stroke-dasharray 600ms ease; }
+  @media (prefers-reduced-motion: reduce) { .verso-meter-ring { transition: none; } }
+}

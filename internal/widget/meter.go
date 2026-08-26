@@ -25,6 +25,10 @@ type Meter struct {
 	Fill    int    `json:"fill"`    // ring fill, 0–100 percent (the proportion; may differ from Value)
 	Detail  string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
 	Variant string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)
+	// Name is a stable handle for a live meter: the rendered markup carries it
+	// (plus per-part hooks) so the shell's client script can stream fresh
+	// readings into the ring and text in place. A nameless meter is static.
+	Name string `json:"name,omitempty"`
 }
 
 func (*Meter) isWidget() {}
@@ -37,8 +41,25 @@ type meterView struct {
 	Value  string
 	Unit   string
 	Detail string
+	Name   string
 	Band   string // "good" | "warn" | "danger" | "info"
 	Dash   string // stroke-dasharray for the fill arc
+}
+
+// MeterBand is the ring's colour band for a fill: "good" until 80, "warn"
+// until 92, "danger" beyond; Variant "info" overrides with the accent.
+// Exported so a live reading's producer can send the same truth the renderer
+// would have drawn.
+func MeterBand(fill int, variant string) string {
+	switch {
+	case variant == "info":
+		return "info"
+	case fill >= 92:
+		return "danger"
+	case fill >= 80:
+		return "warn"
+	}
+	return "good"
 }
 
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -48,15 +69,9 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	} else if fill > 100 {
 		fill = 100
 	}
-	band := "good"
-	switch {
-	case m.Variant == "info":
-		band = "info"
-	case fill >= 92:
-		band = "danger"
-	case fill >= 80:
-		band = "warn"
-	}
 	dash := fmt.Sprintf("%.1f %.2f", float64(fill)/100*meterCircumference, meterCircumference)
-	return r.execute(out, "meter.html.tmpl", meterView{Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail, Band: band, Dash: dash})
+	return r.execute(out, "meter.html.tmpl", meterView{
+		Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
+		Name: m.Name, Band: MeterBand(fill, m.Variant), Dash: dash,
+	})
 }
