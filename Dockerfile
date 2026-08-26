@@ -15,7 +15,9 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/verso ./cmd/verso
 RUN CGO_ENABLED=0 go build -trimpath -o /out/verso-rpcd ./cmd/verso-rpcd
 
 # --- runtime: full OpenWrt (procd init), verso as a procd service ----------
-FROM openwrt/rootfs:x86-64-24.10.2
+# 25.12 = the apk-based series the Mono image targets (25.12.5); the hub's
+# newest published rootfs tag is .4 — bump when .5 lands.
+FROM openwrt/rootfs:x86-64-25.12.4
 COPY --from=build /out/verso /usr/bin/verso
 # Installed as `verso` so rpcd names the ubus object "verso".
 COPY --from=build /out/verso-rpcd /usr/libexec/rpcd/verso
