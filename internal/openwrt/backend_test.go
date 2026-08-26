@@ -177,3 +177,31 @@ func TestUCIDeleteThreadsArgs(t *testing.T) {
 		t.Errorf("args not threaded: sid=%q config=%q section=%q", gotSID, gotConfig, gotSection)
 	}
 }
+
+// TestParseWANState: up plus the l3 device once the protocol holds it, the
+// configured device as fallback, and a down interface reads honestly down.
+func TestParseWANState(t *testing.T) {
+	got := parseWANState(map[string]any{"up": true, "l3_device": "wan0", "device": "wan0"})
+	if !got.Up || got.Device != "wan0" {
+		t.Errorf("up wan = %+v", got)
+	}
+	got = parseWANState(map[string]any{"up": false, "device": "wan0"})
+	if got.Up || got.Device != "wan0" {
+		t.Errorf("down wan = %+v", got)
+	}
+}
+
+// TestParseDeviceStats: netifd's "1000F" speed string reads as Mbps, counters
+// come from the statistics table, and an unknown speed maps to 0.
+func TestParseDeviceStats(t *testing.T) {
+	got := parseDeviceStats(map[string]any{
+		"carrier": true, "speed": "1000F",
+		"statistics": map[string]any{"rx_bytes": int64(7733), "tx_bytes": int64(13877)},
+	})
+	if !got.Carrier || got.SpeedMbps != 1000 || got.RxBytes != 7733 || got.TxBytes != 13877 {
+		t.Errorf("device stats = %+v", got)
+	}
+	if got := parseDeviceStats(map[string]any{"speed": "-1"}); got.SpeedMbps != 0 {
+		t.Errorf("unknown speed = %d, want 0", got.SpeedMbps)
+	}
+}

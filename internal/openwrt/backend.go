@@ -96,6 +96,29 @@ type Backend interface {
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
 	PkgInstall(ctx context.Context, sid, name string) error
 	PkgRemove(ctx context.Context, sid, name string) error
+	// WANStatus reads the uplink's live condition from netifd
+	// (network.interface.wan status) — whether it is up and which l3 device
+	// carries it — gated on the session's access to that object.
+	WANStatus(ctx context.Context, sid string) (WANState, error)
+	// DeviceStats reads one network device's link state and byte counters
+	// (network.device status), sid-gated likewise. A throughput reading is the
+	// delta between two of these.
+	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
+}
+
+// WANState is the uplink's live condition, from network.interface.wan status.
+type WANState struct {
+	Up     bool
+	Device string // the l3 device carrying the uplink, e.g. "wan0"
+}
+
+// DeviceStats is one network device's link state and byte counters, from
+// network.device status.
+type DeviceStats struct {
+	Carrier   bool
+	SpeedMbps int // negotiated link speed; 0 when the driver reports none
+	RxBytes   int64
+	TxBytes   int64
 }
 
 // Package is one row of a package search or listing, as the helper reports
@@ -137,26 +160,28 @@ type Memory struct {
 // unit-testable with fakes; the real implementations dial the ubus socket and
 // go through rpcd (verified live, like the ubus client itself).
 type (
-	hostnameFn   func(ctx context.Context, sid string) (string, error)
-	systemInfoFn func(ctx context.Context, sid string) (map[string]any, error)
-	accessFn     func(ctx context.Context, sid, scope, object, function string) (bool, error)
-	uciSetFn     func(ctx context.Context, sid, config, section string, values map[string]any) error
-	uciCommitFn  func(ctx context.Context, sid, config string) error
-	uciConfigFn  func(ctx context.Context, sid, config string) (map[string]any, error)
-	uciAddFn     func(ctx context.Context, sid, config, secType string) (string, error)
-	uciDeleteFn  func(ctx context.Context, sid, config, section string) error
-	passwdFn     func(ctx context.Context, sid, username, password string) error
-	uciChangesFn func(ctx context.Context, sid string) (map[string][][]string, error)
-	uciRevertFn  func(ctx context.Context, sid, config string) error
-	uciApplyFn   func(ctx context.Context, sid string, timeout int) error
-	uciConfirmFn func(ctx context.Context, sid string) error
-	rcListFn     func(ctx context.Context, sid string) (map[string]RCState, error)
-	rcInitFn     func(ctx context.Context, sid, name, action string) error
+	hostnameFn     func(ctx context.Context, sid string) (string, error)
+	systemInfoFn   func(ctx context.Context, sid string) (map[string]any, error)
+	accessFn       func(ctx context.Context, sid, scope, object, function string) (bool, error)
+	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
+	uciCommitFn    func(ctx context.Context, sid, config string) error
+	uciConfigFn    func(ctx context.Context, sid, config string) (map[string]any, error)
+	uciAddFn       func(ctx context.Context, sid, config, secType string) (string, error)
+	uciDeleteFn    func(ctx context.Context, sid, config, section string) error
+	passwdFn       func(ctx context.Context, sid, username, password string) error
+	uciChangesFn   func(ctx context.Context, sid string) (map[string][][]string, error)
+	uciRevertFn    func(ctx context.Context, sid, config string) error
+	uciApplyFn     func(ctx context.Context, sid string, timeout int) error
+	uciConfirmFn   func(ctx context.Context, sid string) error
+	rcListFn       func(ctx context.Context, sid string) (map[string]RCState, error)
+	rcInitFn       func(ctx context.Context, sid, name, action string) error
 	pkgStatusFn    func(ctx context.Context, sid string) (int64, error)
 	pkgUpdateFn    func(ctx context.Context, sid string) error
 	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
 	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
 	pkgActFn       func(ctx context.Context, sid, name string) error
+	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
+	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -164,53 +189,57 @@ type (
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
 type NativeBackend struct {
-	hostname    hostnameFn
-	systemInfo  systemInfoFn
-	access      accessFn
-	uciSet      uciSetFn
-	uciCommit   uciCommitFn
-	uciConfig   uciConfigFn
-	uciAdd      uciAddFn
-	uciDelete   uciDeleteFn
-	setPassword passwdFn
-	uciChanges  uciChangesFn
-	uciRevert   uciRevertFn
-	uciApply    uciApplyFn
-	uciConfirm  uciConfirmFn
-	rcList      rcListFn
-	rcInit      rcInitFn
+	hostname     hostnameFn
+	systemInfo   systemInfoFn
+	access       accessFn
+	uciSet       uciSetFn
+	uciCommit    uciCommitFn
+	uciConfig    uciConfigFn
+	uciAdd       uciAddFn
+	uciDelete    uciDeleteFn
+	setPassword  passwdFn
+	uciChanges   uciChangesFn
+	uciRevert    uciRevertFn
+	uciApply     uciApplyFn
+	uciConfirm   uciConfirmFn
+	rcList       rcListFn
+	rcInit       rcInitFn
 	pkgStatus    pkgStatusFn
 	pkgUpdate    pkgUpdateFn
 	pkgSearch    pkgSearchFn
 	pkgInstalled pkgInstalledFn
 	pkgInstall   pkgActFn
 	pkgRemove    pkgActFn
+	wanStatus    wanStatusFn
+	deviceStats  deviceStatsFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:    dialHostname(""),
-		systemInfo:  dialSystemInfo(""),
-		access:      dialAccess(""),
-		uciSet:      dialUCISet(""),
-		uciCommit:   dialUCICommit(""),
-		uciConfig:   dialUCIConfig(""),
-		uciAdd:      dialUCIAdd(""),
-		uciDelete:   dialUCIDelete(""),
-		setPassword: dialSetPassword(""),
-		uciChanges:  dialUCIChanges(""),
-		uciRevert:   dialUCIRevert(""),
-		uciApply:    dialUCIApply(""),
-		uciConfirm:  dialUCIConfirm(""),
-		rcList:      dialRCList(""),
-		rcInit:      dialRCInit(""),
+		hostname:     dialHostname(""),
+		systemInfo:   dialSystemInfo(""),
+		access:       dialAccess(""),
+		uciSet:       dialUCISet(""),
+		uciCommit:    dialUCICommit(""),
+		uciConfig:    dialUCIConfig(""),
+		uciAdd:       dialUCIAdd(""),
+		uciDelete:    dialUCIDelete(""),
+		setPassword:  dialSetPassword(""),
+		uciChanges:   dialUCIChanges(""),
+		uciRevert:    dialUCIRevert(""),
+		uciApply:     dialUCIApply(""),
+		uciConfirm:   dialUCIConfirm(""),
+		rcList:       dialRCList(""),
+		rcInit:       dialRCInit(""),
 		pkgStatus:    dialPkgStatus(""),
 		pkgUpdate:    dialPkgUpdate(""),
 		pkgSearch:    dialPkgSearch(""),
 		pkgInstalled: dialPkgInstalled(""),
 		pkgInstall:   dialPkgAct("", "pkgInstall"),
 		pkgRemove:    dialPkgAct("", "pkgRemove"),
+		wanStatus:    dialWANStatus(""),
+		deviceStats:  dialDeviceStats(""),
 	}
 }
 
@@ -316,6 +345,14 @@ func (b *NativeBackend) PkgInstall(ctx context.Context, sid, name string) error 
 
 func (b *NativeBackend) PkgRemove(ctx context.Context, sid, name string) error {
 	return b.pkgRemove(ctx, sid, name)
+}
+
+func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, error) {
+	return b.wanStatus(ctx, sid)
+}
+
+func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
+	return b.deviceStats(ctx, sid, device)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -915,4 +952,89 @@ func dialRCInit(socket string) rcInitFn {
 		_, err = c.InvokeArgs(id, "init", map[string]string{"name": name, "action": action})
 		return err
 	}
+}
+
+// dialWANStatus reads network.interface.wan status through netifd, after
+// probing the session's access to the object. Only the shell-rendered facts
+// are mapped: up, and the l3 device carrying the uplink.
+func dialWANStatus(socket string) wanStatusFn {
+	return func(_ context.Context, sid string) (WANState, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return WANState{}, err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "network.interface.wan", "status"); err != nil || !ok {
+			return WANState{}, ErrAccessDenied
+		}
+		id, err := c.Lookup("network.interface.wan")
+		if err != nil {
+			return WANState{}, err
+		}
+		res, err := c.Invoke(id, "status")
+		if err != nil {
+			return WANState{}, err
+		}
+		return parseWANState(res), nil
+	}
+}
+
+// parseWANState maps netifd's interface status onto WANState. netifd reports
+// l3_device once the protocol is up; device is the configured fallback.
+func parseWANState(m map[string]any) WANState {
+	ws := WANState{Up: asBool(m["up"])}
+	if d, ok := m["l3_device"].(string); ok && d != "" {
+		ws.Device = d
+	} else if d, ok := m["device"].(string); ok {
+		ws.Device = d
+	}
+	return ws
+}
+
+// dialDeviceStats reads network.device status for one named device, after
+// probing the session's access to the object.
+func dialDeviceStats(socket string) deviceStatsFn {
+	return func(_ context.Context, sid, device string) (DeviceStats, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return DeviceStats{}, err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "network.device", "status"); err != nil || !ok {
+			return DeviceStats{}, ErrAccessDenied
+		}
+		id, err := c.Lookup("network.device")
+		if err != nil {
+			return DeviceStats{}, err
+		}
+		res, err := c.InvokeTable(id, "status", map[string]any{"name": device})
+		if err != nil {
+			return DeviceStats{}, err
+		}
+		return parseDeviceStats(res), nil
+	}
+}
+
+// parseDeviceStats maps network.device status onto DeviceStats. netifd
+// reports speed as a string like "1000F" (Mbps plus duplex) — the leading
+// digits are the number; an unknown speed ("-1", absent) maps to 0.
+func parseDeviceStats(m map[string]any) DeviceStats {
+	ds := DeviceStats{Carrier: asBool(m["carrier"])}
+	if s, ok := m["speed"].(string); ok {
+		n := 0
+		for _, r := range s {
+			if r < '0' || r > '9' {
+				break
+			}
+			n = n*10 + int(r-'0')
+		}
+		ds.SpeedMbps = n
+	}
+	if st, ok := m["statistics"].(map[string]any); ok {
+		ds.RxBytes = asInt64(st["rx_bytes"])
+		ds.TxBytes = asInt64(st["tx_bytes"])
+	}
+	return ds
 }

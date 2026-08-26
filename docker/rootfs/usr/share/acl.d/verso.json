@@ -5,6 +5,8 @@
 		"uci": { "methods": [ "get", "set", "commit", "apply", "changes", "add", "delete", "order", "rename", "confirm", "revert" ] },
 		"system": { "methods": [ "info", "board" ] },
 		"rc": { "methods": [ "list", "init" ] },
+		"network.interface.wan": { "methods": [ "status" ] },
+		"network.device": { "methods": [ "status" ] },
 		"verso": { "methods": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ] }
 	}
 }

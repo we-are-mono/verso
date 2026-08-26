@@ -58,6 +58,31 @@ type fakeBackend struct {
 	pkgUpdates   *int      // counts PkgUpdate calls
 	pkgInstalls  *[]string // records installed names
 	pkgRemoves   *[]string // records removed names
+	// The wan side of the overview meters: canned uplink state and a queue of
+	// device-counter snapshots, popped one per DeviceStats call (pointer:
+	// fakeBackend is used by value); the last snapshot repeats.
+	wan      openwrt.WANState
+	wanErr   error
+	devStats *[]openwrt.DeviceStats
+	devErr   error
+}
+
+func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
+	return f.wan, f.wanErr
+}
+
+func (f fakeBackend) DeviceStats(context.Context, string, string) (openwrt.DeviceStats, error) {
+	if f.devErr != nil {
+		return openwrt.DeviceStats{}, f.devErr
+	}
+	if f.devStats == nil || len(*f.devStats) == 0 {
+		return openwrt.DeviceStats{}, nil
+	}
+	st := (*f.devStats)[0]
+	if len(*f.devStats) > 1 {
+		*f.devStats = (*f.devStats)[1:]
+	}
+	return st, nil
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
