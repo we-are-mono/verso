@@ -367,30 +367,31 @@ document.addEventListener(
   });
 })();
 
-// Live meters ride the overview stream: one EventSource the shell pushes a
-// readings event into every second — text swapped in place, ring dash
-// re-drawn (the CSS transition does the glide), colour band re-applied.
-// Reconnection after a drop is EventSource's own; when the session ends the
-// reconnect lands on the login redirect — not an event stream — which closes
-// the client for good.
+// The overview stream: one EventSource the shell pushes fresh truth into —
+// `meters` readings every second, `ports` panel state when it changes. Each
+// type updates its rendered widget in place (the CSS transitions do the
+// glides). Reconnection after a drop is EventSource's own; when the session
+// ends the reconnect lands on the login redirect — not an event stream —
+// which closes the client for good.
 (function () {
-  if (!document.querySelector("[data-verso-meter]") || !window.EventSource) return;
+  if (!window.EventSource) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]")) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
     danger: "stroke-red-600",
     info: "stroke-sky-600",
   };
-  function setText(root, hook, text) {
-    var el = root.querySelector("[" + hook + "]");
+  function setText(root, selector, text) {
+    var el = root.querySelector(selector);
     if (el) el.textContent = text;
   }
-  function apply(reading) {
+  function applyMeter(reading) {
     var root = document.querySelector('[data-verso-meter="' + reading.name + '"]');
     if (!root) return;
-    setText(root, "data-verso-meter-value", reading.value);
-    setText(root, "data-verso-meter-unit", reading.unit);
-    setText(root, "data-verso-meter-detail", reading.detail);
+    setText(root, "[data-verso-meter-value]", reading.value);
+    setText(root, "[data-verso-meter-unit]", reading.unit);
+    setText(root, "[data-verso-meter-detail]", reading.detail);
     var ring = root.querySelector("[data-verso-meter-ring]");
     if (ring) {
       var c = 2 * Math.PI * parseFloat(ring.getAttribute("r"));
@@ -402,16 +403,30 @@ document.addEventListener(
     var svg = root.querySelector("svg");
     if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
+  function applyPort(port) {
+    var root = document.querySelector('[data-verso-port="' + port.iface + '"]');
+    if (!root) return;
+    root.classList.toggle("is-linked", port.linked);
+    root.classList.toggle("is-empty", !port.linked);
+    root.classList.toggle("is-active", port.active);
+    setText(root, ".verso-port-speed", port.speed);
+    setText(root, "[data-verso-port-link]", port.speed);
+    setText(root, "[data-verso-port-addr]", port.addr);
+  }
+  function listen(es, type, key, apply) {
+    es.addEventListener(type, function (e) {
+      var data;
+      try {
+        data = JSON.parse(e.data);
+      } catch (err) {
+        return;
+      }
+      if (data && data[key]) data[key].forEach(apply);
+    });
+  }
   var es = new EventSource("/overview/events");
-  es.addEventListener("meters", function (e) {
-    var data;
-    try {
-      data = JSON.parse(e.data);
-    } catch (err) {
-      return;
-    }
-    if (data && data.meters) data.meters.forEach(apply);
-  });
+  listen(es, "meters", "meters", applyMeter);
+  listen(es, "ports", "ports", applyPort);
 })();
 
 // Named switches post themselves: flipping an on/off control outside a form is

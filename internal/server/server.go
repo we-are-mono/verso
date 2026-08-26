@@ -81,9 +81,10 @@ type Server struct {
 	stats statSource
 	// wan holds the throughput tracker behind the overview's speed meter.
 	wan *wanRate
-	// eventInterval paces the overview stream's sampling clock (events.go);
-	// tests shrink it.
+	// eventInterval paces the overview stream's readings clock and
+	// portsInterval its faster panel clock (events.go); tests shrink both.
 	eventInterval time.Duration
+	portsInterval time.Duration
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -123,6 +124,7 @@ func New(
 		stats:         sysstat.New(),
 		wan:           &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
 		eventInterval: time.Second,
+		portsInterval: 250 * time.Millisecond,
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -324,10 +326,14 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 // plugin page, this is the shell's own content, so a render failure is a real
 // 500, not a contained notice.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// The box-health donuts lead (live — the verso.js poller keeps them
-	// current); the status table follows in a headerless card.
+	// The gateway's rear panel leads, bare on the canvas with a hairline rule
+	// under it; the box-health donuts follow (both live — the overview stream
+	// keeps them current), then the status table in a headerless card.
 	sid := s.sessionSID(r)
-	children := make([]widget.Widget, 0, 2)
+	children := make([]widget.Widget, 0, 4)
+	if items, _ := s.portList(r.Context(), sid); len(items) > 0 {
+		children = append(children, gatewayPanel(items), &widget.Divider{})
+	}
 	if donuts := meterGrid(s.meterReadings(r.Context(), sid)); donuts != nil {
 		children = append(children, donuts)
 	}

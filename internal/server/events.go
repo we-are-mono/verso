@@ -4,6 +4,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,10 +14,12 @@ import (
 
 // The overview stream: one long-lived GET (Server-Sent Events) the browser's
 // EventSource holds open, into which the shell pushes fresh truth — the
-// server owns the sampling clock, the client just renders what arrives.
-// Today it carries one event type, `meters`, once a second; event-shaped
-// facts (an uplink going down, a lease appearing) join as their own types
-// and arrive the moment the source reports them, not on the next tick.
+// server owns the sampling clock, the client just renders what arrives. Two
+// event types ride it: `meters` every second, and `ports` whenever the
+// panel's truth moves (a cable, a renegotiation, traffic starting or
+// stopping) — sampled on its own faster clock so the activity LEDs feel
+// live. Further types (an uplink going down, a lease appearing) join the
+// same stream.
 
 // handleOverviewEvents serves the stream. The session is re-checked every
 // tick: a stream must not outlive its session the way a one-shot poll could
@@ -32,22 +35,68 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
 	sid := s.sessionSID(r)
-	ticker := time.NewTicker(s.eventInterval)
-	defer ticker.Stop()
+	meters := time.NewTicker(s.eventInterval)
+	defer meters.Stop()
+	// Ports run their own, faster clock: the amber activity LED wants a
+	// livelier signal than the once-a-second readings, and a port sample is
+	// one cheap device read.
+	ports := time.NewTicker(s.portsInterval)
+	defer ports.Stop()
+
+	var lastPorts []byte
+	var prevCounters map[string]int64
+	sendMeters := func() bool {
+		return writeMetersEvent(w, s.meterReadings(r.Context(), sid)) == nil
+	}
+	// The panel frame goes out only when the truth moved (a cable, a
+	// renegotiation, the amber LED flipping) — the change-driven shape every
+	// event type after meters follows.
+	sendPorts := func() bool {
+		items, counters := s.portList(r.Context(), sid)
+		markPortActivity(items, counters, prevCounters)
+		prevCounters = counters
+		payload, changed := marshalIfChanged(items, lastPorts)
+		if !changed {
+			return true
+		}
+		lastPorts = payload
+		_, err := fmt.Fprintf(w, "event: ports\ndata: {\"ports\":%s}\n\n", payload)
+		return err == nil
+	}
+
+	if !sendMeters() || !sendPorts() {
+		return
+	}
+	flusher.Flush()
 	for {
-		if s.sessionUser(r) == "" {
-			return
-		}
-		if err := writeMetersEvent(w, s.meterReadings(r.Context(), sid)); err != nil {
-			return
-		}
-		flusher.Flush()
 		select {
 		case <-r.Context().Done(): // the browser went away
 			return
-		case <-ticker.C:
+		case <-meters.C:
+			if s.sessionUser(r) == "" || !sendMeters() {
+				return
+			}
+			flusher.Flush()
+		case <-ports.C:
+			if !sendPorts() {
+				return
+			}
+			flusher.Flush()
 		}
 	}
+}
+
+// marshalIfChanged encodes a non-empty value and reports whether it differs
+// from the previous encoding — the skip-unchanged-frames helper.
+func marshalIfChanged[T any](items []T, last []byte) ([]byte, bool) {
+	if len(items) == 0 {
+		return last, false
+	}
+	payload, err := json.Marshal(items)
+	if err != nil || bytes.Equal(payload, last) {
+		return last, false
+	}
+	return payload, true
 }
 
 // writeMetersEvent frames one readings snapshot as an SSE `meters` event:
