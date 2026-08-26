@@ -75,3 +75,26 @@ func TestDecodePorts(t *testing.T) {
 		}
 	}
 }
+
+// TestPortsLiveHooks: a port with an Iface carries the handle and the tip's
+// addr/link slots the overview stream updates in place — rendered even while
+// empty, so a later reading has a place to land.
+func TestPortsLiveHooks(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "Internet", Role: "wan", Iface: "wan0"}}})
+	for _, want := range []string{`data-verso-port="wan0"`, "data-verso-port-addr", "data-verso-port-link", "verso-port-speed"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("live port missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestPortsWithoutIfaceIsStatic: no Iface, no live handle, and empty detail
+// slots stay unrendered.
+func TestPortsWithoutIfaceIsStatic(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "x"}}})
+	if strings.Contains(got, "data-verso-port") {
+		t.Errorf("static port must not carry live hooks:\n%s", got)
+	}
+}

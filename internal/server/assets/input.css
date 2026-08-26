@@ -398,9 +398,19 @@
   .verso-port-pin { stroke: #caa14a; stroke-width: 1.1; }
   .verso-port-clasp { stroke: #4a5262; stroke-width: 2; stroke-linecap: round; fill: none; }
   .verso-port-module { fill: #454d5e; opacity: 0; transition: opacity 0.2s; }
+  /* Two LEDs per connector, in the lip: green carries link, amber carries
+     traffic — the amber one blinks (a hardware-ish ~4 Hz steps cadence) while
+     the port is active. */
   .verso-port-led { fill: #454d5e; transition: fill 0.2s; }
   .verso-port.is-linked .verso-port-module { opacity: 1; }
-  .verso-port.is-linked .verso-port-led { fill: #34d399; filter: drop-shadow(0 0 3px rgb(52 211 153 / 0.9)); }
+  .verso-port.is-linked .verso-port-led.led-link { fill: #34d399; filter: drop-shadow(0 0 3px rgb(52 211 153 / 0.9)); }
+  .verso-port.is-active .verso-port-led.led-act { fill: #fbbf24; filter: drop-shadow(0 0 3px rgb(251 191 36 / 0.9)); animation: verso-led-blink 0.26s steps(1) infinite; }
+  @keyframes verso-led-blink {
+    50% { fill: #454d5e; filter: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-port.is-active .verso-port-led.led-act { animation: none; }
+  }
   .verso-port.is-linked .verso-port-frame { stroke: #4d6a63; }
   .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px rgb(52 211 153 / 0.35)); }
   .verso-port.is-empty .verso-port-jack, .verso-port.is-empty .verso-port-cage { opacity: 0.5; }
@@ -434,6 +444,7 @@
   .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
   .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-300); }
   .verso-ports-dot.on { background: var(--color-green-500); }
+  .verso-ports-dot.act { background: var(--color-amber-400); }
 
   @media (max-width: 560px) {
     .verso-port-jack, .verso-port-cage { height: 2.5rem; }

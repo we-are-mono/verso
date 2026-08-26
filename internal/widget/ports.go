@@ -28,7 +28,8 @@ type PortItem struct {
 	Kind   string `json:"kind"`   // "rj45" | "sfp"
 	Label  string `json:"label"`  // plain-language label ("Internet", "Network 1")
 	Role   string `json:"role"`   // "wan" | "lan" | "" — tints the label for the WAN
-	Linked bool   `json:"linked"` // a cable is connected
+	Linked bool   `json:"linked"` // a cable is connected — the green LED
+	Active bool   `json:"active"` // traffic is flowing right now — the amber LED blinks
 	Speed  string `json:"speed"`  // link speed shown under the port ("1 Gbps", "—")
 	Iface  string `json:"iface"`  // hover detail: interface name
 	Addr   string `json:"addr"`   // hover detail: address
