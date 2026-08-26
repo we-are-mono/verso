@@ -17,6 +17,8 @@ import (
 // advanced, DHCP options) is this shape.
 type Settings struct {
 	Style string         `json:"style,omitempty"` // "" (card, default) | "plain" — rows only, for embedding in a drawer or form
+	Title string         `json:"title,omitempty"` // optional group label rendered inside the card, above the rows
+	Meta  string         `json:"meta,omitempty"`  // optional quiet detail on the title row's right, e.g. a subnet · live count
 	Items []SettingsItem `json:"items"`
 	Seam  *SettingsSeam  `json:"seam,omitempty"`
 }
@@ -30,12 +32,15 @@ type SettingsSeam struct {
 }
 
 // SettingsItem is one option row. Exactly one of Toggle, Pills, or Value should
-// carry the trailing state; a row with none is informational.
+// carry the trailing state; a row with none is informational. A Value with a
+// Name is edited in place: the read-out renders as a borderless input posting
+// under that name — the value on screen is the control.
 type SettingsItem struct {
 	Title  string          `json:"title"`
 	Desc   string          `json:"desc,omitempty"`
 	Code   string          `json:"code,omitempty"`  // the underlying option name, e.g. "synflood_protect"
 	Value  string          `json:"value,omitempty"` // a read-out value (mono), e.g. "lan", "1000"
+	Name   string          `json:"name,omitempty"`  // form name; makes Value an in-place input
 	Toggle *SettingsToggle `json:"toggle,omitempty"`
 	Pills  []Badge         `json:"pills,omitempty"`
 }
@@ -53,6 +58,8 @@ func (*Settings) isWidget() {}
 // pre-rendered to trusted HTML, the rest is plain text the template escapes.
 type settingsView struct {
 	Plain       bool
+	Title       string
+	Meta        string
 	Items       []settingsItemView
 	SeamSummary string
 	SeamItems   []settingsItemView
@@ -80,7 +87,7 @@ func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemV
 }
 
 func (s *Settings) renderInto(r *Renderer, out io.Writer, _ string) error {
-	v := settingsView{Plain: s.Style == "plain"}
+	v := settingsView{Plain: s.Style == "plain", Title: s.Title, Meta: s.Meta}
 	var err error
 	if v.Items, err = s.itemViews(r, s.Items); err != nil {
 		return err

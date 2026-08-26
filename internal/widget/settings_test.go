@@ -58,7 +58,11 @@ func TestRenderSettings(t *testing.T) {
 func TestRenderSettingsValueAndSeam(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Settings{
-		Items: []SettingsItem{{Title: "Local domain", Code: "domain", Value: "lan"}},
+		Title: "Resolution",
+		Items: []SettingsItem{
+			{Title: "Local domain", Code: "domain", Value: "lan"},
+			{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"},
+		},
 		Seam: &SettingsSeam{Summary: "2 more options", Items: []SettingsItem{
 			{Title: "Wildcard address", Code: "address"},
 			{Title: "Skip /etc/hosts", Code: "nohosts", Toggle: &SettingsToggle{Name: "nohosts"}},
@@ -66,6 +70,8 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 	})
 	for _, want := range []string{
 		">lan</span>", "font-mono",
+		`name="cachesize" value="1000"`, "w-28", // a named value is a fixed-width in-place input
+		"<span>Resolution</span>", "uppercase", // the group label renders inside the card
 		"<details", "2 more options", "nohosts", "verso-chevron",
 	} {
 		if !strings.Contains(got, want) {

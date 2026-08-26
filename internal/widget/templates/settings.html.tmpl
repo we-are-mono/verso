@@ -4,23 +4,42 @@
      widget; the plain style drops the card chrome for embedding inside a drawer
      or form. A seam folds the card's long tail of options inside the same card. */}}
 {{define "settings.row"}}
-  <div class="flex items-center gap-4 border-b border-slate-200 py-3.5 last:border-b-0">
-    <div class="min-w-0 flex-1">
-      <div class="font-medium text-slate-900">{{.Title}}</div>
-      {{if .Desc}}<div class="mt-0.5 text-sm text-slate-500">{{.Desc}}</div>{{end}}
-      {{if .Code}}<span class="mt-1.5 inline-block rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
-    </div>
-    <div class="flex shrink-0 items-center gap-1.5">
-      {{range .PillsHTML}}{{.}}{{end}}
-      {{if .Value}}<span class="font-mono text-[0.9rem] tabular-nums text-slate-900">{{.Value}}</span>{{end}}
-      {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
-    </div>
+  {{/* has(+details): the row before the seam drops its inset border — the seam's
+       full-bleed border-t is the one divider there. */}}
+  {{/* single-line row: name, its code chip beside it (the option's machine name
+       is the name's metadata), the description filling the middle, and every
+       control — switch, in-place field, or read-out — on the right edge. */}}
+  <div class="flex items-center gap-3 border-b border-slate-200 py-2.5 last:border-b-0 [&:has(+details)]:border-b-0">
+    <div class="shrink-0 text-base font-semibold text-slate-900">{{.Title}}</div>
+    {{if .Code}}<span class="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
+    <div class="min-w-0 flex-1 truncate text-sm text-slate-500"{{if .Desc}} title="{{.Desc}}"{{end}}>{{.Desc}}</div>
+    {{range .PillsHTML}}{{.}}{{end}}
+    {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
+    {{/* the in-place field: fixed width (no resize while typing), the pencil
+         inside its right edge. */}}
+    {{if .Name}}<label class="flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 transition-colors focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
+      <input type="text" name="{{.Name}}" value="{{.Value}}"
+        class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-[0.9rem] tabular-nums text-slate-900 focus:outline-none">
+      {{icon "pencil" "size-3.5 shrink-0 text-slate-400"}}
+    </label>
+    {{else if .Value}}<span class="shrink-0 font-mono text-[0.9rem] tabular-nums text-slate-900">{{.Value}}</span>{{end}}
   </div>
 {{end}}
-<div class="{{if .Plain}}{{else}}rounded-2xl border border-slate-200 bg-white px-5 shadow-sm{{end}}">
+{{/* pb-2.5 + the first/last row's own py-2.5 = the card's px-5 — equal breathing
+     room on both axes; an untitled card trims its top (pt-1.5) so the first
+     row sits where a title row would. The seam swallows the bottom padding
+     with -mb-2.5, and overflow-hidden clips its hover wash to the card's own
+     rounded edge. */}}
+<div class="{{if .Plain}}{{else}}overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 pb-2.5 shadow-sm {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
+  {{/* the group label lives inside its card (same treatment as table column
+       heads), so section headings above stay the only floating text. */}}
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
+    <span>{{.Title}}</span>
+    {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case tracking-normal text-slate-400">{{.Meta}}</span>{{end}}
+  </div>{{end}}
   {{range .Items}}{{template "settings.row" .}}{{end}}
   {{if .SeamSummary}}
-  <details class="-mx-5 border-t border-slate-200">
+  <details class="-mx-5 -mb-2.5 border-t border-slate-200">
     <summary class="flex cursor-pointer items-center gap-2.5 px-5 py-3 text-sm font-semibold text-slate-600 select-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
       {{.SeamSummary}}
       <span class="ml-auto">{{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}</span>
