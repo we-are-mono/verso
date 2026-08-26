@@ -120,15 +120,27 @@ document.addEventListener("alpine:init", function () {
     return {
       open: false,
       _return: null,
+      _dirty: false,
       show: function () {
         this._return = document.activeElement;
+        this._dirty = false;
         this.open = true;
         var self = this;
         this.$nextTick(function () {
           if (self.$refs.dialog) self.$refs.dialog.focus();
         });
       },
+      // Any edit inside the dialog marks it dirty (the panels bind @input/@change
+      // to this); closing a dirty dialog asks first — Save means kept, closing
+      // means lost, and losing work silently is never fine.
+      markDirty: function () {
+        this._dirty = true;
+      },
       hide: function () {
+        if (this._dirty && !window.confirm("You have unsaved changes. Close without saving?")) {
+          return;
+        }
+        this._dirty = false;
         this.open = false;
         if (this._return && this._return.focus) this._return.focus();
       },
@@ -170,6 +182,32 @@ document.addEventListener("alpine:init", function () {
   });
 });
 
+// Leaving the page with unsaved form edits loses them — warn first. Any edit to
+// a field inside a <form> marks the page dirty; submitting a form is intentional
+// navigation and clears the flag. The browser renders its native prompt.
+(function () {
+  var dirty = false;
+  document.addEventListener(
+    "input",
+    function (e) {
+      if (e.target.closest && e.target.closest("form")) dirty = true;
+    },
+    true
+  );
+  document.addEventListener(
+    "submit",
+    function () {
+      dirty = false;
+    },
+    true
+  );
+  window.addEventListener("beforeunload", function (e) {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = ""; // required by Chromium for the prompt to show
+  });
+})();
+
 // Opening any <details> (a table seam, a disclosure) reveals content the browser
 // won't scroll to on its own — nudge it into view. Short content scrolls minimally
 // ("nearest"); content taller than the viewport aligns its summary to the top so
@@ -193,75 +231,87 @@ document.addEventListener(
   true
 );
 
-// Staged-changes capsule: every edit stages, one pill tells the truth. Nothing
-// when clean; when dirty — count · Discard · Review · Apply. Switch flips stage
-// here with a real undo (switches inside a drawer's form stage through that
-// form's Save instead — the server's side of the contract). Apply plays the
-// commit → reload → confirmed sequence with the auto-rollback promise.
+// Staged-changes capsule (ADR-010): the pill and its review list are
+// server-rendered from UCI's own stage — this client only drives the three
+// posts. Discard reverts and reloads. Apply commits with the device-side
+// rollback armed, then polls confirm inside the window (the LuCI cadence);
+// confirmed, it shows the applied state and reloads into a clean page. If
+// confirm never lands, the router reverts itself — the capsule says so.
 (function () {
   var capsule = document.getElementById("verso-capsule");
   if (!capsule) return;
   var text = document.getElementById("verso-capsule-text");
-  var listWrap = document.getElementById("verso-capsule-list");
-  var listUl = listWrap.querySelector("ul");
-  var staged = [];
+  var listWrap = document.getElementById("verso-capsule-list"); // absent on a clean page
+  var review = document.getElementById("verso-capsule-review");
+  var csrf = capsule.getAttribute("data-csrf") || "";
 
-  function render() {
-    text.textContent = staged.length + " staged change" + (staged.length === 1 ? "" : "s");
-    capsule.classList.toggle("verso-show", staged.length > 0);
-    listUl.innerHTML = "";
-    staged.forEach(function (c) {
-      var li = document.createElement("li");
-      li.textContent = c.label;
-      listUl.appendChild(li);
+  function post(path) {
+    return fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "_csrf=" + encodeURIComponent(csrf),
     });
-    if (!staged.length) listWrap.classList.add("hidden");
-  }
-  function stage(label, undo) {
-    staged.push({ label: label, undo: undo });
-    render();
-  }
-  function discardAll() {
-    staged
-      .slice()
-      .reverse()
-      .forEach(function (c) {
-        if (c.undo) c.undo();
-      });
-    staged = [];
-    render();
-  }
-  function applyAll() {
-    capsule.classList.add("verso-busy");
-    listWrap.classList.add("hidden");
-    text.textContent = "Applying — auto-reverts if the router is unreachable for 30 s…";
-    setTimeout(function () {
-      capsule.classList.add("verso-done");
-      text.textContent = "Applied — firewall reloaded";
-      staged = [];
-      setTimeout(function () {
-        capsule.classList.remove("verso-show");
-        setTimeout(function () {
-          capsule.classList.remove("verso-busy", "verso-done");
-          render();
-        }, 260);
-      }, 1400);
-    }, 1500);
   }
 
-  document.getElementById("verso-capsule-discard").addEventListener("click", discardAll);
-  document.getElementById("verso-capsule-apply").addEventListener("click", applyAll);
-  document.getElementById("verso-capsule-review").addEventListener("click", function () {
-    if (staged.length) listWrap.classList.toggle("hidden");
+  if (review && listWrap) {
+    review.addEventListener("click", function () {
+      listWrap.classList.toggle("hidden");
+    });
+  }
+
+  document.getElementById("verso-capsule-discard").addEventListener("click", function () {
+    capsule.classList.add("verso-busy");
+    post("/uci/discard")
+      .then(function (res) {
+        if (!res.ok) throw new Error("discard failed");
+        location.reload();
+      })
+      .catch(function () {
+        capsule.classList.remove("verso-busy");
+        text.textContent = "Couldn’t discard — try again";
+      });
   });
 
-  document.addEventListener("change", function (e) {
-    var sw = e.target.closest("[data-verso-switch]");
-    if (!sw || sw.closest("form") || sw.closest('[role="dialog"]')) return;
-    var on = sw.checked;
-    stage((on ? "Enable " : "Disable ") + (sw.name || "option"), function () {
-      sw.checked = !on;
-    });
+  document.getElementById("verso-capsule-apply").addEventListener("click", function () {
+    capsule.classList.add("verso-busy");
+    if (listWrap) listWrap.classList.add("hidden");
+    text.textContent = "Applying — auto-reverts if the router is unreachable for 30 s…";
+    var deadline = Date.now() + 28000;
+
+    function confirmLoop() {
+      post("/uci/confirm")
+        .then(function (res) {
+          if (res.ok) {
+            capsule.classList.add("verso-done");
+            text.textContent = "Applied";
+            setTimeout(function () {
+              location.reload();
+            }, 900);
+            return;
+          }
+          retry();
+        })
+        .catch(retry);
+    }
+    function retry() {
+      if (Date.now() < deadline) {
+        setTimeout(confirmLoop, 500);
+        return;
+      }
+      capsule.classList.remove("verso-busy");
+      text.textContent = "Couldn’t confirm — the router may have rolled back";
+    }
+
+    post("/uci/apply")
+      .then(function (res) {
+        if (!res.ok) throw new Error("apply failed");
+        setTimeout(confirmLoop, 1000);
+      })
+      .catch(function () {
+        // The apply itself may have severed our path (a network change); keep
+        // trying to confirm — reaching the router again is the success signal.
+        setTimeout(confirmLoop, 1000);
+      });
   });
 })();
 

@@ -23,6 +23,13 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/password", s.handlePasswordForm)
 	s.mux.HandleFunc("POST /system/password", s.handlePassword)
 
+	// Staged-changes capsule (ADR-010): apply with device-side rollback, confirm
+	// to disarm it, discard to revert the stage. Session- and CSRF-gated like
+	// every state-changing route.
+	s.mux.HandleFunc("POST /uci/apply", s.handleUCIApply)
+	s.mux.HandleFunc("POST /uci/confirm", s.handleUCIConfirm)
+	s.mux.HandleFunc("POST /uci/discard", s.handleUCIDiscard)
+
 	// Schema gateway: every plugin page and form post funnels through here and
 	// is rendered via the shell's own widget renderer (ADR-006).
 	s.mux.HandleFunc("GET /plugins/{id}/{path...}", s.handlePlugin)

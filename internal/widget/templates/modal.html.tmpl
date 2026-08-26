@@ -18,7 +18,7 @@
   <template x-teleport="body">
     <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
-      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+      <div x-show="open" x-transition @input="markDirty" @change="markDirty" x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
         class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white shadow-xl focus:outline-none">
         <header class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>

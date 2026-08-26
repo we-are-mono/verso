@@ -183,7 +183,8 @@ type pageData struct {
 	Body       template.HTML
 	NoPassword bool
 	CSRFToken  string
-	Dev        bool // dev session: inject the CSS hot-reload script
+	Dev        bool        // dev session: inject the CSS hot-reload script
+	Capsule    capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
 }
 
 // pageHeader is the masthead the shell renders above a page body. Heading is always
@@ -215,6 +216,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		NoPassword: !s.security.RootHasPassword(),
 		CSRFToken:  s.sessionCSRF(r),
 		Dev:        s.devCSS != "",
+		Capsule:    s.capsule(r.Context(), s.sessionSID(r)),
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return

@@ -56,6 +56,22 @@ type Backend interface {
 	// §3) — the shell owns the credential surface, but the privileged write, like
 	// every other, goes through rpcd with the session.
 	SetPassword(ctx context.Context, sid, username, password string) error
+	// The rest of the uci two-phase lifecycle (ADR-010). Staged edits live in
+	// UCI's own stage; these four let the shell read it, discard it, and apply it
+	// with rpcd's native device-side rollback — all sid-gated like every write.
+	//
+	// UCIChanges returns the pending (staged, uncommitted) changes across all
+	// configs the session may see: config name → change records, each record the
+	// uci tuple [op, section, option?, value?].
+	UCIChanges(ctx context.Context, sid string) (map[string][][]string, error)
+	// UCIRevert discards a config's staged changes.
+	UCIRevert(ctx context.Context, sid, config string) error
+	// UCIApply commits every dirty config, lets procd's config triggers reload the
+	// affected services, and arms rpcd's rollback: unless UCIConfirm lands within
+	// timeout seconds, the device reverts itself.
+	UCIApply(ctx context.Context, sid string, timeout int) error
+	// UCIConfirm disarms a pending rollback, keeping the applied configuration.
+	UCIConfirm(ctx context.Context, sid string) error
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -85,6 +101,10 @@ type (
 	uciAddFn     func(ctx context.Context, sid, config, secType string) (string, error)
 	uciDeleteFn  func(ctx context.Context, sid, config, section string) error
 	passwdFn     func(ctx context.Context, sid, username, password string) error
+	uciChangesFn func(ctx context.Context, sid string) (map[string][][]string, error)
+	uciRevertFn  func(ctx context.Context, sid, config string) error
+	uciApplyFn   func(ctx context.Context, sid string, timeout int) error
+	uciConfirmFn func(ctx context.Context, sid string) error
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -101,6 +121,10 @@ type NativeBackend struct {
 	uciAdd      uciAddFn
 	uciDelete   uciDeleteFn
 	setPassword passwdFn
+	uciChanges  uciChangesFn
+	uciRevert   uciRevertFn
+	uciApply    uciApplyFn
+	uciConfirm  uciConfirmFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -115,6 +139,10 @@ func NewNativeBackend() *NativeBackend {
 		uciAdd:      dialUCIAdd(""),
 		uciDelete:   dialUCIDelete(""),
 		setPassword: dialSetPassword(""),
+		uciChanges:  dialUCIChanges(""),
+		uciRevert:   dialUCIRevert(""),
+		uciApply:    dialUCIApply(""),
+		uciConfirm:  dialUCIConfirm(""),
 	}
 }
 
@@ -167,6 +195,27 @@ func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section stri
 // by the sid.
 func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
 	return b.setPassword(ctx, sid, username, password)
+}
+
+// UCIChanges reads the pending uci changes across all configs through rpcd, gated
+// by the sid.
+func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string][][]string, error) {
+	return b.uciChanges(ctx, sid)
+}
+
+// UCIRevert discards a config's staged changes through rpcd, gated by the sid.
+func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error {
+	return b.uciRevert(ctx, sid, config)
+}
+
+// UCIApply commits all dirty configs with rpcd's rollback armed, gated by the sid.
+func (b *NativeBackend) UCIApply(ctx context.Context, sid string, timeout int) error {
+	return b.uciApply(ctx, sid, timeout)
+}
+
+// UCIConfirm disarms a pending rollback through rpcd, gated by the sid.
+func (b *NativeBackend) UCIConfirm(ctx context.Context, sid string) error {
+	return b.uciConfirm(ctx, sid)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -378,6 +427,133 @@ func dialUCICommit(socket string) uciCommitFn {
 		_, err = c.InvokeArgs(id, "commit", map[string]string{
 			"ubus_rpc_session": sid,
 			"config":           config,
+		})
+		return err
+	}
+}
+
+// dialUCIChanges returns a uciChangesFn that reads all pending changes via rpcd's
+// `uci` object (method `changes`, no config), carrying the sid. rpcd answers
+// {changes: {config: [[op, section, option?, value?], …]}}; configs the operator
+// may not read simply do not appear.
+func dialUCIChanges(socket string) uciChangesFn {
+	return func(_ context.Context, sid string) (map[string][][]string, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return nil, err
+		}
+		res, err := c.InvokeArgs(id, "changes", map[string]string{
+			"ubus_rpc_session": sid,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return parseChanges(res["changes"]), nil
+	}
+}
+
+// parseChanges maps rpcd's generic changes table onto config → change tuples,
+// dropping anything that is not a list of strings.
+func parseChanges(v any) map[string][][]string {
+	out := map[string][][]string{}
+	byConfig, ok := v.(map[string]any)
+	if !ok {
+		return out
+	}
+	for config, recs := range byConfig {
+		list, ok := recs.([]any)
+		if !ok {
+			continue
+		}
+		for _, rec := range list {
+			tuple, ok := rec.([]any)
+			if !ok {
+				continue
+			}
+			change := make([]string, 0, len(tuple))
+			for _, f := range tuple {
+				s, ok := f.(string)
+				if !ok {
+					change = nil
+					break
+				}
+				change = append(change, s)
+			}
+			if change != nil {
+				out[config] = append(out[config], change)
+			}
+		}
+	}
+	return out
+}
+
+// dialUCIRevert returns a uciRevertFn that discards a config's staged changes via
+// rpcd's `uci` object (method `revert`), carrying the sid.
+func dialUCIRevert(socket string) uciRevertFn {
+	return func(_ context.Context, sid, config string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "revert", map[string]string{
+			"ubus_rpc_session": sid,
+			"config":           config,
+		})
+		return err
+	}
+}
+
+// dialUCIApply returns a uciApplyFn that commits all dirty configs via rpcd's
+// `uci` object (method `apply` with rollback), carrying the sid. rpcd checkpoints
+// the configs, commits, lets procd's config triggers reload services, and reverts
+// on the device unless `confirm` lands within timeout seconds — the safety net
+// runs on the router, the only place it works when the operator cuts their own
+// connectivity (ADR-010).
+func dialUCIApply(socket string) uciApplyFn {
+	return func(_ context.Context, sid string, timeout int) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeTable(id, "apply", map[string]any{
+			"ubus_rpc_session": sid,
+			"rollback":         true,
+			"timeout":          timeout,
+		})
+		return err
+	}
+}
+
+// dialUCIConfirm returns a uciConfirmFn that disarms a pending rollback via rpcd's
+// `uci` object (method `confirm`), carrying the sid.
+func dialUCIConfirm(socket string) uciConfirmFn {
+	return func(_ context.Context, sid string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "confirm", map[string]string{
+			"ubus_rpc_session": sid,
 		})
 		return err
 	}

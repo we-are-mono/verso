@@ -121,14 +121,15 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 	// On a state-changing request the shell enforces the declared datatypes on the
 	// returned schema (ADR-008): any failure annotates the widget in place, forces
 	// 422, and blocks the write — merged with whatever the plugin already flagged.
-	// Only a clean submission reaches brokerCommit, which executes the plugin's
-	// commit intent through rpcd (ADR-007). A repeater op was downgraded to a render
-	// above, so it skips this — its write already went through rpcd.
+	// Only a clean submission reaches brokerStage, which stages the plugin's
+	// commit intent through rpcd (ADR-007, ADR-010) — nothing is live until the
+	// capsule applies. A repeater op was downgraded to a render above, so it skips
+	// this — its write already went through rpcd.
 	if !safeMethod(method) {
 		if validateSchema(wdg) {
 			status = http.StatusUnprocessableEntity
 		} else if len(env.Commit) > 0 {
-			if body, st, ok := s.brokerCommit(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
+			if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
 				return body, st
 			}
 		}
@@ -254,15 +255,16 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 	return true, nil
 }
 
-// brokerCommit performs, through rpcd and on the operator's behalf, the uci writes
-// a plugin requested (ADR-007). It refuses any op whose config the plugin
-// did not declare in its manifest acl — a plugin cannot broker a write outside its
-// declared surface — and rpcd re-checks the operator's sid on every call. On
-// refusal or failure it returns a contained notice and a status with ok=false; on
-// success ok is true and the caller renders the plugin's returned widget.
-func (s *Server) brokerCommit(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp) (template.HTML, int, bool) {
+// brokerStage performs, through rpcd and on the operator's behalf, the uci writes
+// a plugin requested (ADR-007) — into UCI's stage, never committed here
+// (ADR-010): the staged-changes capsule owns apply and discard. It refuses any
+// op whose config the plugin did not declare in its manifest acl — a plugin
+// cannot broker a write outside its declared surface — and rpcd re-checks the
+// operator's sid on every call. On refusal or failure it returns a contained
+// notice and a status with ok=false; on success ok is true and the caller
+// renders the plugin's returned widget.
+func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp) (template.HTML, int, bool) {
 	declared := declaredUCIConfigs(m)
-	dirty := make(map[string]bool)
 	for _, op := range ops {
 		if op.Config == "" || !declared[op.Config] {
 			log.Printf("verso: plugin %q tried to write undeclared uci config %q; refused", m.ID, op.Config)
@@ -274,23 +276,16 @@ func (s *Server) brokerCommit(ctx context.Context, m plugin.Manifest, sid string
 			return s.notice("Save failed",
 				"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
 		}
-		dirty[op.Config] = true
-	}
-	for cfg := range dirty {
-		if err := s.backend.UCICommit(ctx, sid, cfg); err != nil {
-			log.Printf("verso: plugin %q commit of uci %q failed: %v", m.ID, cfg, err)
-			return s.notice("Save failed",
-				"The change was written but couldn’t be committed. Try again in a moment."), http.StatusServiceUnavailable, false
-		}
 	}
 	return "", 0, true
 }
 
 // realizeRepeater performs a repeater's structural change on the operator's behalf
-// (ADR-005 §7): a uci section add or delete through rpcd, then a commit. It refuses
-// a config the plugin did not declare in its acl.write — the same surface
-// brokerCommit bounds — and rpcd re-checks the operator's sid. On success the caller
-// re-renders the fresh state; a failure is a contained notice, never a crash.
+// (ADR-005 §7): a uci section add or delete through rpcd, staged like every other
+// write (ADR-010). It refuses a config the plugin did not declare in its
+// acl.write — the same surface brokerStage bounds — and rpcd re-checks the
+// operator's sid. On success the caller re-renders the fresh state; a failure is
+// a contained notice, never a crash.
 func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid string, form url.Values) (template.HTML, int, bool) {
 	config := form.Get(widget.RepeaterConfigField)
 	if config == "" || !declaredUCIConfigs(m)[config] {
@@ -321,12 +316,6 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 		log.Printf("verso: plugin %q repeater op on uci %q failed: %v", m.ID, config, err)
 		return s.notice("Save failed",
 			"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
-	}
-
-	if err := s.backend.UCICommit(ctx, sid, config); err != nil {
-		log.Printf("verso: plugin %q repeater commit of uci %q failed: %v", m.ID, config, err)
-		return s.notice("Save failed",
-			"The change was written but couldn’t be committed. Try again in a moment."), http.StatusServiceUnavailable, false
 	}
 	return "", 0, true
 }

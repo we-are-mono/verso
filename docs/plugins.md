@@ -171,7 +171,11 @@ config. A GET carries it too, so a fresh page render reads current state.
 Your plugin **does not write uci itself** — it runs unprivileged (the same
 non-root user as the shell) and holds no session (ADR-007). To change config,
 return a `commit` array next to your `widget` on a successful POST; the shell
-executes each entry through rpcd with the operator's session:
+**stages** each entry through rpcd with the operator's session (ADR-010).
+Nothing goes live on Save: staged edits sit in UCI's own stage, the shell's
+staged-changes capsule shows them on every page, and the operator applies or
+discards the whole stage from there. Your reads reflect staged values (uci
+merges the stage), so your page re-renders coherently after a Save:
 
 ```json
 {
@@ -189,8 +193,9 @@ executes each entry through rpcd with the operator's session:
 
 Each entry is one `uci set`: `config` + `section` + a `values` map of
 option→value, where a value is a string (an option) or an array of strings (a
-list option). The shell runs `set` then `commit`, and only then renders your
-`widget`. Two rules bound it, both enforced by the shell — not by your good
+list option). The shell stages every entry, then renders your `widget`; commit,
+service reload, and the rollback safety net belong to the capsule, never to a
+plugin. Two rules bound it, both enforced by the shell — not by your good
 behaviour:
 
 - **You can only write configs you declared** in `acl.write` (`scope: "uci"`,

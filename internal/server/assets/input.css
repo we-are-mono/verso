@@ -163,27 +163,10 @@
     tbody tr, section.verso-filter-ghost, .verso-filter-dock::after { transition: none; }
   }
 
-  /* Staged-changes capsule (verso.js "capsule"): hidden while clean, rising in
-     when the first change stages. Its dock mirrors the filter's — a page-ground
-     strip with a gradient fade above it, so content melts beneath the pill. */
-  .verso-capsule { opacity: 0; transform: translateY(0.75rem); pointer-events: none; transition: opacity 0.22s ease, transform 0.22s ease; }
-  .verso-capsule.verso-show { opacity: 1; transform: none; pointer-events: auto; }
-  .verso-capsule::before {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    height: 3rem;
-    /* Top 30% is the actual gradient; the lower 70% is solid ground. */
-    background: linear-gradient(transparent, var(--color-slate-50) 30%);
-    pointer-events: none;
-  }
+  /* Staged-changes bar (verso.js "capsule"): in-flow at the bottom of the
+     content, always visible; only its busy/done states are stateful. */
   .verso-capsule.verso-busy button { opacity: 0.45; pointer-events: none; }
   .verso-capsule.verso-done #verso-capsule-dot { background: var(--color-green-500); }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-capsule { transition: none; }
-  }
 
   /* Prose for the raw bridge: goldmark output, styled minimally and display-only
      (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */

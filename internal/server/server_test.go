@@ -35,6 +35,14 @@ type fakeBackend struct {
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword func(ctx context.Context, sid, username, password string) error
+	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
+	// of what the shell committed, applied, confirmed, or reverted.
+	changes    map[string][][]string
+	changesErr error
+	commits    *[]string // records committed configs (pointer: fakeBackend is by value)
+	reverts    *[]string // records reverted configs
+	applies    *[]int    // records UCIApply rollback timeouts
+	confirms   *int      // counts UCIConfirm calls
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -66,7 +74,10 @@ func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, valu
 	return f.uciErr
 }
 
-func (f fakeBackend) UCICommit(context.Context, string, string) error {
+func (f fakeBackend) UCICommit(_ context.Context, _, config string) error {
+	if f.commits != nil {
+		*f.commits = append(*f.commits, config)
+	}
 	return f.uciErr
 }
 
@@ -89,6 +100,31 @@ func (f fakeBackend) UCIAdd(_ context.Context, _, config, secType string) (strin
 func (f fakeBackend) UCIDelete(_ context.Context, _, config, section string) error {
 	if f.deletes != nil {
 		*f.deletes = append(*f.deletes, config+"."+section)
+	}
+	return f.uciErr
+}
+
+func (f fakeBackend) UCIChanges(context.Context, string) (map[string][][]string, error) {
+	return f.changes, f.changesErr
+}
+
+func (f fakeBackend) UCIRevert(_ context.Context, _, config string) error {
+	if f.reverts != nil {
+		*f.reverts = append(*f.reverts, config)
+	}
+	return f.uciErr
+}
+
+func (f fakeBackend) UCIApply(_ context.Context, _ string, timeout int) error {
+	if f.applies != nil {
+		*f.applies = append(*f.applies, timeout)
+	}
+	return f.uciErr
+}
+
+func (f fakeBackend) UCIConfirm(context.Context, string) error {
+	if f.confirms != nil {
+		*f.confirms++
 	}
 	return f.uciErr
 }
