@@ -367,6 +367,58 @@ document.addEventListener(
   });
 })();
 
+// Live meters poll for fresh readings: every few seconds the page asks the
+// shell for the current numbers and eases each named donut to them — text
+// swapped in place, ring dash re-drawn (the CSS transition does the glide),
+// colour band re-applied. Transient fetch failures are skipped; a redirect
+// means the session is gone, so polling stops rather than hammering the login
+// page.
+(function () {
+  if (!document.querySelector("[data-verso-meter]")) return;
+  var BANDS = {
+    good: "stroke-green-600",
+    warn: "stroke-amber-500",
+    danger: "stroke-red-600",
+    info: "stroke-sky-600",
+  };
+  function setText(root, hook, text) {
+    var el = root.querySelector("[" + hook + "]");
+    if (el) el.textContent = text;
+  }
+  function apply(reading) {
+    var root = document.querySelector('[data-verso-meter="' + reading.name + '"]');
+    if (!root) return;
+    setText(root, "data-verso-meter-value", reading.value);
+    setText(root, "data-verso-meter-unit", reading.unit);
+    setText(root, "data-verso-meter-detail", reading.detail);
+    var ring = root.querySelector("[data-verso-meter-ring]");
+    if (ring) {
+      var c = 2 * Math.PI * parseFloat(ring.getAttribute("r"));
+      var fill = Math.min(100, Math.max(0, reading.fill));
+      ring.setAttribute("stroke-dasharray", ((fill / 100) * c).toFixed(1) + " " + c.toFixed(2));
+      for (var band in BANDS) ring.classList.remove(BANDS[band]);
+      ring.classList.add(BANDS[reading.band] || BANDS.good);
+    }
+    var svg = root.querySelector("svg");
+    if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
+  }
+  var timer = setInterval(function () {
+    if (document.hidden) return; // a background tab reads nothing
+    fetch("/overview/meters", { credentials: "same-origin" })
+      .then(function (res) {
+        if (res.redirected || !res.ok) {
+          clearInterval(timer);
+          return null;
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        if (data) data.meters.forEach(apply);
+      })
+      .catch(function () {}); // transient — keep polling
+  }, 3000);
+})();
+
 // Named switches post themselves: flipping an on/off control outside a form is
 // a complete instruction (ADR-010 reads them as instant interactions), so the
 // change POSTs {name: "on"|"off"} with the session's CSRF token to the current

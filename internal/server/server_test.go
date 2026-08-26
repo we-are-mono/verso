@@ -15,6 +15,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -262,6 +263,9 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	// Tests have no real plugin sockets; default to alive so nav and pages
 	// render fully. Liveness-specific tests override s.probe themselves.
 	s.probe = func(string) bool { return true }
+	// Tests read no real kernel either: canned box health (meters-specific
+	// tests substitute their own).
+	s.stats = fakeStats{cpu: 18, root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}}
 	return s
 }
 

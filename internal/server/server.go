@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -75,6 +76,11 @@ type Server struct {
 	// liveness half of the management surface (ADR-011); a seam so tests need
 	// no real sockets.
 	probe func(path string) bool
+	// stats reads local machine health (CPU busy share, root fullness) for the
+	// overview meters; a seam so tests need no kernel.
+	stats statSource
+	// wan holds the throughput tracker behind the overview's speed meter.
+	wan *wanRate
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -111,6 +117,8 @@ func New(
 		page:         page,
 		css:          template.CSS(cssText),
 		probe:        probeSocket,
+		stats:        sysstat.New(),
+		wan:          &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -312,9 +320,15 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 // plugin page, this is the shell's own content, so a render failure is a real
 // 500, not a contained notice.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// Wrap the status table in a headerless card, so the homepage matches the
-	// plugin pages (a white, shadowed card on the gray content).
-	page := &widget.Card{Children: []widget.Widget{s.statusTable(r.Context(), s.sessionSID(r))}}
+	// The box-health donuts lead (live — the verso.js poller keeps them
+	// current); the status table follows in a headerless card.
+	sid := s.sessionSID(r)
+	children := make([]widget.Widget, 0, 2)
+	if donuts := meterGrid(s.meterReadings(r.Context(), sid)); donuts != nil {
+		children = append(children, donuts)
+	}
+	children = append(children, &widget.Card{Children: []widget.Widget{s.statusTable(r.Context(), sid)}})
+	page := &widget.Stack{Children: children}
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r)); err != nil {
