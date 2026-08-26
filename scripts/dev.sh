@@ -47,6 +47,8 @@ deploy_acls() {
 # sessions (so the dev browser is not logged out).
 deploy_helper() {
 	if CGO_ENABLED=0 go build -trimpath -o build/verso-rpcd ./cmd/verso-rpcd 2>&1; then
+		# A fresh container has no rpcd plugin dir until something installs one.
+		docker exec "$CONTAINER" mkdir -p /usr/libexec/rpcd
 		docker cp build/verso-rpcd "$CONTAINER":/usr/libexec/rpcd/verso
 		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/rpcd/verso; chmod 0755 /usr/libexec/rpcd/verso'
 	else
