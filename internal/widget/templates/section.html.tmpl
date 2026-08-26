@@ -6,5 +6,5 @@
 <section class="pt-6">
   {{if .Title}}<h3 class="{{if .Sub}}mb-1{{else}}mb-3{{end}} text-lg font-semibold tracking-tight text-slate-900">{{.Title}}</h3>{{end}}
   {{if .Sub}}<div class="verso-prose mb-6 max-w-[72ch] text-sm text-slate-500">{{.Sub}}</div>{{end}}
-  <div class="space-y-4">{{range .Children}}{{.}}{{end}}</div>
+  <div class="space-y-8">{{range .Children}}{{.}}{{end}}</div>
 </section>
