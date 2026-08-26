@@ -22,17 +22,17 @@ import (
 // fakeBackend is a Backend seam double: no ubus/uci, no device needed. access and
 // accessErr drive the plugin-write authorization gate (ADR-007) in tests.
 type fakeBackend struct {
-	si        openwrt.SystemInfo
-	hn        string
-	err       error
-	access    bool
-	accessErr error
-	uciErr    error                     // returned by UCISet/UCICommit
-	writes    *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
-	uci       map[string]map[string]any // per-config read snapshots UCIConfig returns
-	addReturns string                   // section id UCIAdd returns
-	adds      *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
-	deletes   *[]string                 // records "config.section" per UCIDelete
+	si         openwrt.SystemInfo
+	hn         string
+	err        error
+	access     bool
+	accessErr  error
+	uciErr     error                     // returned by UCISet/UCICommit
+	writes     *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
+	uci        map[string]map[string]any // per-config read snapshots UCIConfig returns
+	addReturns string                    // section id UCIAdd returns
+	adds       *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
+	deletes    *[]string                 // records "config.section" per UCIDelete
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword func(ctx context.Context, sid, username, password string) error
@@ -55,10 +55,10 @@ type fakeBackend struct {
 	pkgFound         []openwrt.Package
 	pkgInstalledList []openwrt.Package
 	pkgTotal         int
-	pkgErr       error
-	pkgUpdates   *int      // counts PkgUpdate calls
-	pkgInstalls  *[]string // records installed names
-	pkgRemoves   *[]string // records removed names
+	pkgErr           error
+	pkgUpdates       *int      // counts PkgUpdate calls
+	pkgInstalls      *[]string // records installed names
+	pkgRemoves       *[]string // records removed names
 	// The wan side of the overview meters: canned uplink state and a queue of
 	// device-counter snapshots, popped one per DeviceStats call (pointer:
 	// fakeBackend is used by value); the last snapshot repeats.

@@ -221,12 +221,12 @@ func TestRenderToggle(t *testing.T) {
 	})
 
 	for _, want := range []string{
-		"verso-toggle",                 // the pure-CSS state scope
+		"verso-toggle", // the pure-CSS state scope
 		`type="checkbox"`, `name="vpn_on"`,
-		"Your home VPN is on",          // on headline
-		"Your home VPN is off",         // off headline (CSS hides it while checked)
-		"2 of 3 devices connected",     // meta
-		"peer-checked:bg-emerald-500",  // switch reflects state without JS
+		"Your home VPN is on",         // on headline
+		"Your home VPN is off",        // off headline (CSS hides it while checked)
+		"2 of 3 devices connected",    // meta
+		"peer-checked:bg-emerald-500", // switch reflects state without JS
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("toggle missing %q in: %s", want, got)
@@ -377,10 +377,10 @@ func TestRenderDrawer(t *testing.T) {
 		`@click="show"`,     // the trigger opens it
 		`x-teleport="body"`, // panel escapes the content flow
 		`role="dialog"`,
-		"translate-x-full",   // slides in from the right
-		"My Phone",           // trigger + title
-		"<svg",               // qr child rendered in the body
-		"Added",              // text child rendered in the body
+		"translate-x-full", // slides in from the right
+		"My Phone",         // trigger + title
+		"<svg",             // qr child rendered in the body
+		"Added",            // text child rendered in the body
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer missing %q in: %s", want, got)
@@ -405,7 +405,7 @@ func TestRenderEmpty(t *testing.T) {
 		"Reach your home from anywhere",
 		"Set up a private VPN so your devices can reach home.",
 		"Set up home VPN", // the CTA (a modal trigger) rendered as a child
-		`x-data="modal"`,   // the CTA is a real composed widget
+		`x-data="modal"`,  // the CTA is a real composed widget
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("empty missing %q in: %s", want, got)
@@ -623,8 +623,8 @@ func TestRenderModal(t *testing.T) {
 	})
 
 	for _, want := range []string{
-		`x-data="modal"`,   // the shell-owned Alpine component
-		`@click="show"`,    // trigger opens it
+		`x-data="modal"`,    // the shell-owned Alpine component
+		`@click="show"`,     // trigger opens it
 		`x-teleport="body"`, // dialog escapes the content flow
 		`role="dialog"`,
 		"Add a device",       // trigger + title

@@ -13,7 +13,7 @@ func TestRenderMeter(t *testing.T) {
 	got := render(t, r, &Meter{Label: "Storage", Value: "23", Unit: "GB", Fill: 72, Detail: "9 GB free"})
 	for _, want := range []string{
 		"Storage", ">23<", ">GB<", "9 GB free",
-		`r="50"`,          // a full ring
+		`r="50"`,           // a full ring
 		"stroke-dasharray", // filled by Fill
 		"tabular-nums",
 		"stroke-green-600", // 72% is still healthy (amber starts at 80)

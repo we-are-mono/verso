@@ -24,7 +24,7 @@ func (*Confirm) isWidget() {}
 // confirmView is the confirm template's model: a render-unique id (so several
 // confirms on a page never share checkbox state) plus the resolved labels.
 type confirmView struct {
-	ID                       string
+	ID                                string
 	Trigger, Message, Confirm, Cancel string
 }
 

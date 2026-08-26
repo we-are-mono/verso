@@ -148,14 +148,14 @@ type tableView struct {
 }
 
 type tableRowView struct {
-	ID         string
-	Cells      []tableCellView
-	HasDrawers bool // table-wide flag, copied so the rows sub-template needs no second argument
-	Striped    bool // table-wide flag, copied for the same reason: only the default style zebra-stripes
-	Lined      bool // table-wide flag, copied likewise: lined rows hover a shade quieter
-	Drawer     bool
+	ID          string
+	Cells       []tableCellView
+	HasDrawers  bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Striped     bool // table-wide flag, copied for the same reason: only the default style zebra-stripes
+	Lined       bool // table-wide flag, copied likewise: lined rows hover a shade quieter
+	Drawer      bool
 	DrawerTitle string
-	DrawerBody []template.HTML
+	DrawerBody  []template.HTML
 }
 
 type tableCellView struct {

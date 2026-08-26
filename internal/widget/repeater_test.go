@@ -39,7 +39,7 @@ func TestRepeaterDecodeAndRender(t *testing.T) {
 	got := normalizeHTML(b.String())
 	for _, want := range []string{
 		"Peer: phone", "Peer: laptop", // the plugin's item subtrees rendered
-		`name="_csrf" value="tok"`,    // CSRF threaded to the shell-owned affordances
+		`name="_csrf" value="tok"`, // CSRF threaded to the shell-owned affordances
 		`name="_repeater_op" value="remove"`, `name="_repeater_section" value="cfg01"`,
 		`name="_repeater_config" value="network"`,
 		`name="_repeater_op" value="add"`, `name="_repeater_type" value="wireguard_wg0"`,

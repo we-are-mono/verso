@@ -30,9 +30,9 @@ type Storage struct {
 // /proc/stat snapshots, so the Sampler is stateful: each reading spans the
 // interval since the previous one. Safe for concurrent use.
 type Sampler struct {
-	readStat func() ([]byte, error)          // /proc/stat, behind a seam for tests
+	readStat func() ([]byte, error)             // /proc/stat, behind a seam for tests
 	statfs   func(path string) (Storage, error) // statfs(2), likewise
-	wait     func()                          // the beat between the cold-start double sample
+	wait     func()                             // the beat between the cold-start double sample
 
 	mu        sync.Mutex
 	lastBusy  int64

@@ -25,7 +25,7 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 
 	got := render(t, newRenderer(t), c)
 	for _, want := range []string{
-		"verso-conditional",                              // the shell-owned wrapper the CSS targets
+		"verso-conditional",                               // the shell-owned wrapper the CSS targets
 		`type="checkbox"`, `name="use_psk"`, `value="on"`, // the controlling toggle
 		"checked", "Use a pre-shared key",
 		"verso-conditional-body", // the gated field-set the CSS shows/hides

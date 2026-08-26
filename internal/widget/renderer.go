@@ -25,9 +25,9 @@ var templateFS embed.FS
 // (below), so adding a widget touches only that widget's file — never this engine.
 // The per-widget view models and render logic live beside their structs.
 type Renderer struct {
-	tmpl    *template.Template
-	md      goldmark.Markdown
-	rawUses atomic.Int64
+	tmpl     *template.Template
+	md       goldmark.Markdown
+	rawUses  atomic.Int64
 	tabSeq   atomic.Int64 // per-render unique id, so multiple tabs groups never collide
 	wizSeq   atomic.Int64 // ditto for wizards
 	cfmSeq   atomic.Int64 // ditto for confirm widgets

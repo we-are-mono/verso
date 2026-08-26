@@ -20,10 +20,10 @@ func TestRenderSectionSub(t *testing.T) {
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
-		"mb-1",                          // title pulled tight to its description
-		"mb-6",                          // the gap moves below the sub
-		"<strong>Input</strong>",        // sub renders Markdown
-		"text-slate-500",                // sub is muted head-matter, not body prose
+		"mb-1",                   // title pulled tight to its description
+		"mb-6",                   // the gap moves below the sub
+		"<strong>Input</strong>", // sub renders Markdown
+		"text-slate-500",         // sub is muted head-matter, not body prose
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section sub missing %q:\n%s", want, got)

@@ -52,7 +52,7 @@ func TestCapsuleRendersPendingChanges(t *testing.T) {
 
 	body := get(t, s, "/").Body.String()
 	for _, want := range []string{
-		"1 staged change",                          // the undeclared config is filtered out
+		"1 staged change",                         // the undeclared config is filtered out
 		"system: @system[0].hostname = verso-lab", // mechanical humanization
 		"verso-capsule-review",                    // the review affordance appears with changes
 	} {

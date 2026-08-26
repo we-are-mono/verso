@@ -14,7 +14,7 @@ import (
 // building block for lists of things-with-status — devices, interfaces, services —
 // so they read as scannable rows rather than stacked boxes.
 type Row struct {
-	Icon    string `json:"icon"`    // "phone" | "laptop" | "router" | "device" (default) | "" (none)
+	Icon    string `json:"icon"` // "phone" | "laptop" | "router" | "device" (default) | "" (none)
 	Title   string `json:"title"`
 	Meta    string `json:"meta"`    // secondary text, inline after the title
 	Tag     string `json:"tag"`     // small category chip after the meta (e.g. a network/zone); omitted when empty

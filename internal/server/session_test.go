@@ -10,8 +10,8 @@ import (
 
 type fakeClock struct{ t time.Time }
 
-func (c *fakeClock) now() time.Time            { return c.t }
-func (c *fakeClock) advance(d time.Duration)   { c.t = c.t.Add(d) }
+func (c *fakeClock) now() time.Time          { return c.t }
+func (c *fakeClock) advance(d time.Duration) { c.t = c.t.Add(d) }
 
 func TestSessionIdleExpiry(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}

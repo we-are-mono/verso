@@ -53,14 +53,14 @@ func TestRenderTableKinds(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		">Protocol<", ">Hits<", // headers render
-		"uppercase",                       // header treatment is typographic, not a fill
-		"font-mono",                       // the port column is a machine string
-		"8443 → 443",                      // port rewrite verbatim
-		"tabular-nums",                    // counters align
-		`type="checkbox"`,                 // the toggle is a real switch
-		`name="force_dns_guest"`,          // …posting under the section's handle
-		"Force-DNS-to-AdGuard-guest",      // comments carry the optional UCI name
-		"text-right",                      // num columns right-align (th and td)
+		"uppercase",                  // header treatment is typographic, not a fill
+		"font-mono",                  // the port column is a machine string
+		"8443 → 443",                 // port rewrite verbatim
+		"tabular-nums",               // counters align
+		`type="checkbox"`,            // the toggle is a real switch
+		`name="force_dns_guest"`,     // …posting under the section's handle
+		"Force-DNS-to-AdGuard-guest", // comments carry the optional UCI name
+		"text-right",                 // num columns right-align (th and td)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
@@ -116,10 +116,10 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"font-bold",                    // the identity column is bold ink, no icon
-		"bg-green-50 text-green-700",   // accept pill through the badge palette
-		"bg-amber-50 text-amber-700",   // reject pill
-		"bg-sky-50 text-sky-700",       // NAT carries the info accent
+		"font-bold",                             // the identity column is bold ink, no icon
+		"bg-green-50 text-green-700",            // accept pill through the badge palette
+		"bg-amber-50 text-amber-700",            // reject pill
+		"bg-sky-50 text-sky-700",                // NAT carries the info accent
 		`<span class="text-slate-300">—</span>`, // empty pill cell is a faint dash
 	} {
 		if !strings.Contains(got, want) {
@@ -146,8 +146,8 @@ func TestRenderTableSeam(t *testing.T) {
 	got := render(t, r, tbl)
 	for _, want := range []string{
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
-		"verso-chevron",                  // the shared rotate-on-open affordance
-		lucideIcons["lock"],              // the stock-rules padlock
+		"verso-chevron",     // the shared rotate-on-open affordance
+		lucideIcons["lock"], // the stock-rules padlock
 		"-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200", // full-bleed divider; hover wash clips to the card's bottom radius
 	} {
 		if !strings.Contains(got, want) {
