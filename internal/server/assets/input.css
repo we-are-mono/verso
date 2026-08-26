@@ -156,7 +156,7 @@
     /* The capsule's recipe, inverted: the upper 70% is solid ground, the bottom
        30% the actual gradient. Solid ground would blank real content while the
        dock rests in the flow, so the fade exists only while pinned. */
-    background: linear-gradient(var(--color-slate-50) 70%, transparent);
+    background: linear-gradient(var(--color-white) 70%, transparent);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;

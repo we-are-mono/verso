@@ -9,7 +9,7 @@
      never flashes or re-animates on navigation (CSP-safe, first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
-<body x-data="sidebar" class="min-h-screen m-0 flex bg-slate-50 text-slate-900 antialiased font-sans text-sm leading-normal">
+<body x-data="sidebar" class="min-h-screen m-0 flex bg-white text-slate-900 antialiased font-sans text-sm leading-normal">
 {{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
 <div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-black/50 md:hidden"></div>
 {{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind a hamburger
