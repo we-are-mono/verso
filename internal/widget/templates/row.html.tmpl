@@ -1,13 +1,12 @@
 {{/* row: a compact list item — leading icon, title + meta, trailing status badge
      and chevron. The status badge is pre-rendered trusted HTML. Icons come from the
      shared Lucide set (icons.go). */}}
-<div class="flex items-center gap-4 px-1 py-3">
-  {{if .Icon}}
-  <span class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">{{icon .Icon "size-5"}}</span>
-  {{end}}
-  <div class="min-w-0 flex-1">
-    <div class="font-medium text-slate-900">{{.Title}}</div>
-    {{if .Meta}}<div class="text-sm text-slate-500">{{.Meta}}</div>{{end}}
+<div class="flex items-center gap-3 px-1 py-2">
+  {{if .Icon}}<span class="shrink-0 text-slate-400">{{icon .Icon "size-5"}}</span>{{end}}
+  <div class="flex min-w-0 flex-1 items-baseline gap-2.5">
+    <span class="truncate font-medium text-slate-900 {{if .Columns}}w-40 shrink-0{{else}}min-w-0{{end}}">{{.Title}}</span>
+    {{if .Meta}}<span class="truncate text-sm text-slate-500 {{if .Columns}}w-32 shrink-0 font-mono tabular-nums{{else}}shrink-0{{end}}">{{.Meta}}</span>{{end}}
+    {{if .Columns}}<span class="w-24 shrink-0">{{if .Tag}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}</span>{{else if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
   </div>
   {{if .Status}}<div class="shrink-0">{{.Status}}</div>{{end}}
   {{icon "chevron-right" "size-5 shrink-0 text-slate-300"}}

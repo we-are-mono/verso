@@ -91,6 +91,26 @@ document.addEventListener("alpine:init", function () {
       close: function () {
         this.open = false;
       },
+      // Flip light/dark by toggling .dark on <html> and remembering it. The palette
+      // variables under :root.dark (input.css) do the rest.
+      toggleTheme: function () {
+        // Freeze transitions for the single frame the palette swaps, so filled
+        // elements (the active row, the cog) flip instantly instead of animating
+        // their colour change — otherwise the switch reads as a janky blink.
+        var el = document.documentElement;
+        el.classList.add("verso-theming");
+        var dark = el.classList.toggle("dark");
+        try {
+          localStorage.setItem("verso-theme", dark ? "dark" : "light");
+        } catch (e) {
+          /* storage blocked; theme is still live this session */
+        }
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            el.classList.remove("verso-theming");
+          });
+        });
+      },
     };
   });
 

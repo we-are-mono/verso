@@ -43,6 +43,51 @@
   --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif;
 }
 
+/* Dark mode: redefine the palette variables the utilities already read (Tailwind v4
+   compiles every colour to var(--color-*)), so bg-white / text-slate-* / border-slate-*
+   all flip with zero template edits. Activated by `.dark` on <html> — set pre-paint by
+   verso-boot.js from localStorage/system, toggled by the header button. Neutrals invert
+   the slate scale + the surface; the light accent tints become dark tints; the accent
+   mid-tones (sky/green/amber-600…) read fine on dark and are left alone. */
+:root.dark {
+  --color-white: #0f172a;      /* surfaces: cards, sidebar, panels */
+  --color-slate-50: #020617;   /* app canvas */
+  --color-slate-100: #1e293b;  /* hover / subtle fill */
+  --color-slate-200: #273140;  /* hairlines / borders */
+  --color-slate-300: #3a4657;  /* stronger borders, resting dots */
+  --color-slate-400: #8b97ab;  /* muted icons */
+  --color-slate-500: #9ba7bc;  /* muted text */
+  --color-slate-600: #b7c1d1;  /* secondary text */
+  --color-slate-700: #cdd5e1;  /* body text */
+  --color-slate-800: #e4e9f0;  /* strong text */
+  --color-slate-900: #f1f5f9;  /* headings / ink */
+  --color-slate-950: #f8fafc;
+  --color-sky-50: #0b2236;
+  --color-sky-100: #0e3050;
+  --color-sky-200: #16466c;
+  --color-green-50: #06281a;
+  --color-green-100: #0a3a26;
+  --color-green-200: #0f5334;
+  --color-amber-50: #2a1d06;
+  --color-amber-200: #4a3410;
+  --color-red-50: #2a1010;
+  --color-red-200: #4c1d1d;
+}
+
+/* Header theme toggle shows the icon for the mode you'd switch TO: moon in light, sun in
+   dark. Swapped by CSS off the same .dark class — no Alpine expression needed. */
+.verso-theme-sun { display: none; }
+:root.dark .verso-theme-moon { display: none; }
+:root.dark .verso-theme-sun { display: block; }
+
+/* During a theme flip verso.js adds .verso-theming for one frame; kill every
+   transition so the palette swaps instantly with no colour-fade blink. */
+.verso-theming *,
+.verso-theming *::before,
+.verso-theming *::after {
+  transition: none !important;
+}
+
 @layer base {
   /* Browsers default <button> to the arrow cursor; enabled buttons and anything
      acting as a button should show the pointer, app-wide, so no widget has to

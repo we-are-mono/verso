@@ -11,7 +11,7 @@
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex bg-slate-50 text-slate-900 antialiased font-sans text-sm leading-normal">
 {{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
-<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-slate-900/40 md:hidden"></div>
+<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-black/50 md:hidden"></div>
 {{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind a hamburger
      (verso.js "sidebar"); on desktop it's the static rail. */}}
 <aside class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto" :class="drawerClass" @keydown.escape.window="close">
@@ -19,7 +19,7 @@
     <a href="/" class="text-lg font-semibold tracking-tight">Verso</a>
     <div class="flex items-center gap-1">
       {{/* Light/dark toggle — placeholder; dark mode is a separate pass, so it isn't wired yet. */}}
-      <button type="button" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "moon" "size-5"}}</button>
+      <button type="button" @click="toggleTheme" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
       <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden">{{icon "x" "size-5"}}</button>
     </div>
   </div>
@@ -44,13 +44,13 @@
         <span class="verso-chev ml-auto text-slate-400">{{icon "chevron-down" "size-4"}}</span>
       </button>
       <div id="verso-adv" class="verso-adv-wrap">
-        <div class="verso-adv space-y-3 pt-1">
+        <div class="verso-adv space-y-3 pt-1.5">
           {{range .Nav.Advanced}}
           <div>
-            <div class="px-2.5 pb-1 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
+            <div class="px-3 pb-0.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
             <ul class="space-y-0.5">
               {{range .Links}}
-              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">
+              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">
                 <span class="size-1 shrink-0 rounded-full transition {{if .Active}}bg-sky-600{{else}}bg-slate-300 group-hover:translate-x-1 group-hover:bg-sky-600{{end}}"></span><span class="transition {{if not .Active}}group-hover:translate-x-1{{end}}">{{.Label}}</span></a></li>
               {{end}}
             </ul>
