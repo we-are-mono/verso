@@ -147,7 +147,7 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",                  // the shared rotate-on-open affordance
 		lucideIcons["lock"],              // the stock-rules padlock
-		"-mx-5 border-t border-slate-200", // a full-bleed divider inside the card, not a nested card
+		"-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200", // full-bleed divider; hover wash clips to the card's bottom radius
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("seam missing %q:\n%s", want, got)
