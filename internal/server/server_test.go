@@ -43,6 +43,21 @@ type fakeBackend struct {
 	reverts    *[]string // records reverted configs
 	applies    *[]int    // records UCIApply rollback timeouts
 	confirms   *int      // counts UCIConfirm calls
+	// procd's rc view (ADR-011): canned per-service states, and records of the
+	// lifecycle actions the shell forwarded.
+	rcStates map[string]openwrt.RCState
+	rcErr    error
+	rcInits  *[]string // records "service action" per RCInit
+	// The helper's package verbs (ADR-011 §4): canned search results and
+	// records of what the shell installed, removed, or refreshed.
+	pkgCheckedAt     int64
+	pkgFound         []openwrt.Package
+	pkgInstalledList []openwrt.Package
+	pkgTotal         int
+	pkgErr       error
+	pkgUpdates   *int      // counts PkgUpdate calls
+	pkgInstalls  *[]string // records installed names
+	pkgRemoves   *[]string // records removed names
 }
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
@@ -127,6 +142,50 @@ func (f fakeBackend) UCIConfirm(context.Context, string) error {
 		*f.confirms++
 	}
 	return f.uciErr
+}
+
+func (f fakeBackend) RCList(context.Context, string) (map[string]openwrt.RCState, error) {
+	return f.rcStates, f.rcErr
+}
+
+func (f fakeBackend) RCInit(_ context.Context, _ string, name, action string) error {
+	if f.rcInits != nil {
+		*f.rcInits = append(*f.rcInits, name+" "+action)
+	}
+	return f.rcErr
+}
+
+func (f fakeBackend) PkgStatus(context.Context, string) (int64, error) {
+	return f.pkgCheckedAt, f.pkgErr
+}
+
+func (f fakeBackend) PkgUpdate(context.Context, string) error {
+	if f.pkgUpdates != nil {
+		*f.pkgUpdates++
+	}
+	return f.pkgErr
+}
+
+func (f fakeBackend) PkgSearch(context.Context, string, string) ([]openwrt.Package, int, error) {
+	return f.pkgFound, f.pkgTotal, f.pkgErr
+}
+
+func (f fakeBackend) PkgInstalled(context.Context, string) ([]openwrt.Package, error) {
+	return f.pkgInstalledList, f.pkgErr
+}
+
+func (f fakeBackend) PkgInstall(_ context.Context, _ string, name string) error {
+	if f.pkgInstalls != nil {
+		*f.pkgInstalls = append(*f.pkgInstalls, name)
+	}
+	return f.pkgErr
+}
+
+func (f fakeBackend) PkgRemove(_ context.Context, _ string, name string) error {
+	if f.pkgRemoves != nil {
+		*f.pkgRemoves = append(*f.pkgRemoves, name)
+	}
+	return f.pkgErr
 }
 
 func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password string) error {

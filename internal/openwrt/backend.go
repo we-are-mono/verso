@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/ubus"
 )
@@ -72,6 +73,50 @@ type Backend interface {
 	UCIApply(ctx context.Context, sid string, timeout int) error
 	// UCIConfirm disarms a pending rollback, keeping the applied configuration.
 	UCIConfirm(ctx context.Context, sid string) error
+	// RCList reads procd's rc snapshot — per init script, whether it starts at
+	// boot and whether procd reports it running — gated on the session's
+	// ubus/rc/list access. The plugin-management surface (ADR-011) reads plugin
+	// service state through it.
+	RCList(ctx context.Context, sid string) (map[string]RCState, error)
+	// RCInit drives one lifecycle action (start, stop, restart, enable,
+	// disable) on a named init script through procd's rc object, gated on the
+	// session's ubus/rc/init access. Callers constrain the name to services
+	// they own; the backend adds no policy of its own beyond the session gate.
+	RCInit(ctx context.Context, sid, name, action string) error
+	// The package verbs (ADR-011 §4) ride the privileged helper's ubus object
+	// ("verso"), which self-gates on the sid; the helper validates names and
+	// queries again on its side. PkgStatus reports when the feed indexes were
+	// last refreshed (unix seconds; 0 = never); PkgUpdate refreshes them;
+	// PkgSearch lists matching packages plus the uncapped total; PkgInstall
+	// and PkgRemove act on one exact package name.
+	PkgStatus(ctx context.Context, sid string) (int64, error)
+	PkgUpdate(ctx context.Context, sid string) error
+	PkgSearch(ctx context.Context, sid, query string) ([]Package, int, error)
+	// PkgInstalled lists every installed package (no descriptions).
+	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
+	PkgInstall(ctx context.Context, sid, name string) error
+	PkgRemove(ctx context.Context, sid, name string) error
+}
+
+// Package is one row of a package search or listing, as the helper reports
+// it; the detail fields are filled where the source provides them in bulk.
+type Package struct {
+	Name        string
+	Version     string
+	Feed        string
+	Description string
+	License     string
+	Webpage     string
+	Size        int64 // package file size, bytes
+	Installed   bool
+}
+
+// RCState is one procd service's rc snapshot: enabled is the boot symlink,
+// running is procd's live view. procd omits `running` for scripts it has never
+// managed; that decodes as false, which is the honest reading.
+type RCState struct {
+	Enabled bool
+	Running bool
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -105,6 +150,13 @@ type (
 	uciRevertFn  func(ctx context.Context, sid, config string) error
 	uciApplyFn   func(ctx context.Context, sid string, timeout int) error
 	uciConfirmFn func(ctx context.Context, sid string) error
+	rcListFn     func(ctx context.Context, sid string) (map[string]RCState, error)
+	rcInitFn     func(ctx context.Context, sid, name, action string) error
+	pkgStatusFn    func(ctx context.Context, sid string) (int64, error)
+	pkgUpdateFn    func(ctx context.Context, sid string) error
+	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
+	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
+	pkgActFn       func(ctx context.Context, sid, name string) error
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -125,6 +177,14 @@ type NativeBackend struct {
 	uciRevert   uciRevertFn
 	uciApply    uciApplyFn
 	uciConfirm  uciConfirmFn
+	rcList      rcListFn
+	rcInit      rcInitFn
+	pkgStatus    pkgStatusFn
+	pkgUpdate    pkgUpdateFn
+	pkgSearch    pkgSearchFn
+	pkgInstalled pkgInstalledFn
+	pkgInstall   pkgActFn
+	pkgRemove    pkgActFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -143,6 +203,14 @@ func NewNativeBackend() *NativeBackend {
 		uciRevert:   dialUCIRevert(""),
 		uciApply:    dialUCIApply(""),
 		uciConfirm:  dialUCIConfirm(""),
+		rcList:      dialRCList(""),
+		rcInit:      dialRCInit(""),
+		pkgStatus:    dialPkgStatus(""),
+		pkgUpdate:    dialPkgUpdate(""),
+		pkgSearch:    dialPkgSearch(""),
+		pkgInstalled: dialPkgInstalled(""),
+		pkgInstall:   dialPkgAct("", "pkgInstall"),
+		pkgRemove:    dialPkgAct("", "pkgRemove"),
 	}
 }
 
@@ -216,6 +284,38 @@ func (b *NativeBackend) UCIApply(ctx context.Context, sid string, timeout int) e
 // UCIConfirm disarms a pending rollback through rpcd, gated by the sid.
 func (b *NativeBackend) UCIConfirm(ctx context.Context, sid string) error {
 	return b.uciConfirm(ctx, sid)
+}
+
+func (b *NativeBackend) RCList(ctx context.Context, sid string) (map[string]RCState, error) {
+	return b.rcList(ctx, sid)
+}
+
+func (b *NativeBackend) RCInit(ctx context.Context, sid, name, action string) error {
+	return b.rcInit(ctx, sid, name, action)
+}
+
+func (b *NativeBackend) PkgStatus(ctx context.Context, sid string) (int64, error) {
+	return b.pkgStatus(ctx, sid)
+}
+
+func (b *NativeBackend) PkgUpdate(ctx context.Context, sid string) error {
+	return b.pkgUpdate(ctx, sid)
+}
+
+func (b *NativeBackend) PkgSearch(ctx context.Context, sid, query string) ([]Package, int, error) {
+	return b.pkgSearch(ctx, sid, query)
+}
+
+func (b *NativeBackend) PkgInstalled(ctx context.Context, sid string) ([]Package, error) {
+	return b.pkgInstalled(ctx, sid)
+}
+
+func (b *NativeBackend) PkgInstall(ctx context.Context, sid, name string) error {
+	return b.pkgInstall(ctx, sid, name)
+}
+
+func (b *NativeBackend) PkgRemove(ctx context.Context, sid, name string) error {
+	return b.pkgRemove(ctx, sid, name)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -613,4 +713,206 @@ func asInt64(v any) int64 {
 		return int64(n)
 	}
 	return 0
+}
+
+// asBool reads a blobmsg boolean, which the ubus client may decode as a Go
+// bool or as an int8-carried int64 (1/0) depending on the sender's type tag.
+func asBool(v any) bool {
+	switch b := v.(type) {
+	case bool:
+		return b
+	case int64:
+		return b != 0
+	case float64:
+		return b != 0
+	}
+	return false
+}
+
+// dialRCList reads procd's rc table — every init script with its boot-enabled
+// flag and procd's live running view — after probing the session's
+// ubus/rc/list access (ADR-011: plugin service state).
+func dialRCList(socket string) rcListFn {
+	return func(_ context.Context, sid string) (map[string]RCState, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "rc", "list"); err != nil || !ok {
+			return nil, ErrAccessDenied
+		}
+		id, err := c.Lookup("rc")
+		if err != nil {
+			return nil, err
+		}
+		res, err := c.Invoke(id, "list")
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[string]RCState, len(res))
+		for name, v := range res {
+			t, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			out[name] = RCState{Enabled: asBool(t["enabled"]), Running: asBool(t["running"])}
+		}
+		return out, nil
+	}
+}
+
+// pkgCallTimeout is the widened per-message deadline for helper package
+// calls: an index refresh or an install does real network and disk work on
+// the far side.
+const pkgCallTimeout = 90 * time.Second
+
+// dialVerso opens a ubus client aimed at the privileged helper's object with
+// the package-call deadline. The helper self-gates on the sid it is handed.
+func dialVerso(socket string) (*ubus.Client, uint32, error) {
+	c, err := ubus.Dial(socket)
+	if err != nil {
+		return nil, 0, err
+	}
+	c.SetTimeout(pkgCallTimeout)
+	id, err := c.Lookup("verso")
+	if err != nil {
+		c.Close()
+		return nil, 0, err
+	}
+	return c, id, nil
+}
+
+func dialPkgStatus(socket string) pkgStatusFn {
+	return func(_ context.Context, sid string) (int64, error) {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return 0, err
+		}
+		defer c.Close()
+		res, err := c.InvokeArgs(id, "pkgStatus", map[string]string{"ubus_rpc_session": sid})
+		if err != nil {
+			return 0, err
+		}
+		return asInt64(res["checked_at"]), nil
+	}
+}
+
+func dialPkgUpdate(socket string) pkgUpdateFn {
+	return func(_ context.Context, sid string) error {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		_, err = c.InvokeArgs(id, "pkgUpdate", map[string]string{"ubus_rpc_session": sid})
+		return err
+	}
+}
+
+func dialPkgSearch(socket string) pkgSearchFn {
+	return func(_ context.Context, sid, query string) ([]Package, int, error) {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return nil, 0, err
+		}
+		defer c.Close()
+		res, err := c.InvokeArgs(id, "pkgSearch", map[string]string{
+			"ubus_rpc_session": sid,
+			"query":            query,
+		})
+		if err != nil {
+			return nil, 0, err
+		}
+		raw, _ := res["packages"].([]any)
+		pkgs := make([]Package, 0, len(raw))
+		for _, r := range raw {
+			t, ok := r.(map[string]any)
+			if !ok {
+				continue
+			}
+			name, _ := t["name"].(string)
+			version, _ := t["version"].(string)
+			feed, _ := t["feed"].(string)
+			desc, _ := t["description"].(string)
+			pkgs = append(pkgs, Package{
+				Name: name, Version: version, Feed: feed, Description: desc,
+				Installed: asBool(t["installed"]),
+			})
+		}
+		return pkgs, int(asInt64(res["total"])), nil
+	}
+}
+
+func dialPkgInstalled(socket string) pkgInstalledFn {
+	return func(_ context.Context, sid string) ([]Package, error) {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+		res, err := c.InvokeArgs(id, "pkgInstalled", map[string]string{"ubus_rpc_session": sid})
+		if err != nil {
+			return nil, err
+		}
+		raw, _ := res["packages"].([]any)
+		pkgs := make([]Package, 0, len(raw))
+		for _, r := range raw {
+			t, ok := r.(map[string]any)
+			if !ok {
+				continue
+			}
+			name, _ := t["name"].(string)
+			version, _ := t["version"].(string)
+			feed, _ := t["feed"].(string)
+			desc, _ := t["description"].(string)
+			license, _ := t["license"].(string)
+			webpage, _ := t["webpage"].(string)
+			pkgs = append(pkgs, Package{
+				Name: name, Version: version, Feed: feed,
+				Description: desc, License: license, Webpage: webpage,
+				Size: asInt64(t["size"]), Installed: true,
+			})
+		}
+		return pkgs, nil
+	}
+}
+
+func dialPkgAct(socket, methodName string) pkgActFn {
+	return func(_ context.Context, sid, name string) error {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		_, err = c.InvokeArgs(id, methodName, map[string]string{
+			"ubus_rpc_session": sid,
+			"package":          name,
+		})
+		return err
+	}
+}
+
+// dialRCInit drives one rc action on a named init script through procd, after
+// probing the session's ubus/rc/init access. Name and action policy is the
+// caller's (the shell restricts both); rpcd's session gate is the backstop.
+func dialRCInit(socket string) rcInitFn {
+	return func(_ context.Context, sid, name, action string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "rc", "init"); err != nil || !ok {
+			return ErrAccessDenied
+		}
+		id, err := c.Lookup("rc")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeArgs(id, "init", map[string]string{"name": name, "action": action})
+		return err
+	}
 }
