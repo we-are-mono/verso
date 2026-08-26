@@ -49,8 +49,11 @@ deploy_helper() {
 	if CGO_ENABLED=0 go build -trimpath -o build/verso-rpcd ./cmd/verso-rpcd 2>&1; then
 		# A fresh container has no rpcd plugin dir until something installs one.
 		docker exec "$CONTAINER" mkdir -p /usr/libexec/rpcd
-		docker cp build/verso-rpcd "$CONTAINER":/usr/libexec/rpcd/verso
-		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/rpcd/verso; chmod 0755 /usr/libexec/rpcd/verso'
+		# Land beside the live helper and rename into place: docker cp is not
+		# atomic, and rpcd execs this path per call — an exec mid-copy runs a
+		# truncated binary and surfaces as a garbage ubus status.
+		docker cp build/verso-rpcd "$CONTAINER":/usr/libexec/rpcd/.verso.new
+		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/rpcd/.verso.new; chmod 0755 /usr/libexec/rpcd/.verso.new; mv /usr/libexec/rpcd/.verso.new /usr/libexec/rpcd/verso'
 	else
 		log "verso-rpcd build failed — keeping the running helper"
 	fi
