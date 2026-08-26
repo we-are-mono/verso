@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
-	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -51,9 +51,9 @@ const devCSSPath = "/usr/share/verso/verso-dev.css"
 
 // Server is the Verso HTTP shell.
 type Server struct {
-	mux     *http.ServeMux
-	widgets *widget.Renderer
-	backend openwrt.Backend
+	mux       *http.ServeMux
+	widgets   *widget.Renderer
+	backend   openwrt.Backend
 	transport plugin.Transport
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
@@ -63,7 +63,7 @@ type Server struct {
 	pluginByID  map[string]plugin.Manifest
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
-	rescan func() []plugin.Manifest
+	rescan       func() []plugin.Manifest
 	auth         Authenticator
 	security     Security
 	sessions     *Sessions
@@ -81,6 +81,9 @@ type Server struct {
 	stats statSource
 	// wan holds the throughput tracker behind the overview's speed meter.
 	wan *wanRate
+	// eventInterval paces the overview stream's sampling clock (events.go);
+	// tests shrink it.
+	eventInterval time.Duration
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -104,21 +107,22 @@ func New(
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
 	s := &Server{
-		mux:          http.NewServeMux(),
-		widgets:      widgets,
-		backend:      backend,
-		transport:    transport,
-		manifests:    manifests,
-		pluginByID:   indexByID(manifests),
-		auth:         auth,
-		security:     security,
-		sessions:     newSessions(),
-		loginLimiter: newLoginLimiter(time.Now),
-		page:         page,
-		css:          template.CSS(cssText),
-		probe:        probeSocket,
-		stats:        sysstat.New(),
-		wan:          &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
+		mux:           http.NewServeMux(),
+		widgets:       widgets,
+		backend:       backend,
+		transport:     transport,
+		manifests:     manifests,
+		pluginByID:    indexByID(manifests),
+		auth:          auth,
+		security:      security,
+		sessions:      newSessions(),
+		loginLimiter:  newLoginLimiter(time.Now),
+		page:          page,
+		css:           template.CSS(cssText),
+		probe:         probeSocket,
+		stats:         sysstat.New(),
+		wan:           &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
+		eventInterval: time.Second,
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -229,16 +233,16 @@ type pageData struct {
 	Heading       string
 	HeadingDetail string // the active subpage's name, muted beside the heading
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
-	Live       bool
-	Subheading string // optional lede under the heading
-	Width      string // content-column width preset: "narrow" | "normal" (default) | "wide"
-	CSS        template.CSS
-	Nav        navModel
-	Body       template.HTML
-	NoPassword bool
-	CSRFToken  string
-	Dev        bool        // dev session: inject the CSS hot-reload script
-	Capsule    capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
+	Live          bool
+	Subheading    string // optional lede under the heading
+	Width         string // content-column width preset: "narrow" | "normal" (default) | "wide"
+	CSS           template.CSS
+	Nav           navModel
+	Body          template.HTML
+	NoPassword    bool
+	CSRFToken     string
+	Dev           bool        // dev session: inject the CSS hot-reload script
+	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
 	// ShowCapsule: staging pages carry the bar always (inert when clean — a
 	// real control at rest, ADR-010); pages whose actions are immediate
 	// (Plugins, Password, Overview) show it only when the shared stage holds
@@ -293,20 +297,20 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Heading:       hdr.Heading,
 		HeadingDetail: headingDetail,
 		Kicker:        hdr.Kicker,
-		Live:        hdr.Live,
-		Subheading:  hdr.Subheading,
-		Width:       width,
-		CSS:         s.currentCSS(),
-		Nav:         s.buildSidebar(r.URL.Path),
-		Body:        body,
-		NoPassword:  !s.security.RootHasPassword(),
-		CSRFToken:   s.sessionCSRF(r),
-		Dev:         s.devCSS != "",
-		Capsule:      capsule,
-		ShowCapsule:  stages || capsule.Count > 0,
-		Pages:        pages,
-		FlashVariant: flashVariant,
-		FlashMessage: flashMessage,
+		Live:          hdr.Live,
+		Subheading:    hdr.Subheading,
+		Width:         width,
+		CSS:           s.currentCSS(),
+		Nav:           s.buildSidebar(r.URL.Path),
+		Body:          body,
+		NoPassword:    !s.security.RootHasPassword(),
+		CSRFToken:     s.sessionCSRF(r),
+		Dev:           s.devCSS != "",
+		Capsule:       capsule,
+		ShowCapsule:   stages || capsule.Count > 0,
+		Pages:         pages,
+		FlashVariant:  flashVariant,
+		FlashMessage:  flashMessage,
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return

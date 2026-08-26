@@ -367,14 +367,14 @@ document.addEventListener(
   });
 })();
 
-// Live meters poll for fresh readings: every few seconds the page asks the
-// shell for the current numbers and eases each named donut to them — text
-// swapped in place, ring dash re-drawn (the CSS transition does the glide),
-// colour band re-applied. Transient fetch failures are skipped; a redirect
-// means the session is gone, so polling stops rather than hammering the login
-// page.
+// Live meters ride the overview stream: one EventSource the shell pushes a
+// readings event into every second — text swapped in place, ring dash
+// re-drawn (the CSS transition does the glide), colour band re-applied.
+// Reconnection after a drop is EventSource's own; when the session ends the
+// reconnect lands on the login redirect — not an event stream — which closes
+// the client for good.
 (function () {
-  if (!document.querySelector("[data-verso-meter]")) return;
+  if (!document.querySelector("[data-verso-meter]") || !window.EventSource) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
@@ -402,21 +402,16 @@ document.addEventListener(
     var svg = root.querySelector("svg");
     if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
-  var timer = setInterval(function () {
-    if (document.hidden) return; // a background tab reads nothing
-    fetch("/overview/meters", { credentials: "same-origin" })
-      .then(function (res) {
-        if (res.redirected || !res.ok) {
-          clearInterval(timer);
-          return null;
-        }
-        return res.json();
-      })
-      .then(function (data) {
-        if (data) data.meters.forEach(apply);
-      })
-      .catch(function () {}); // transient — keep polling
-  }, 3000);
+  var es = new EventSource("/overview/events");
+  es.addEventListener("meters", function (e) {
+    var data;
+    try {
+      data = JSON.parse(e.data);
+    } catch (err) {
+      return;
+    }
+    if (data && data.meters) data.meters.forEach(apply);
+  });
 })();
 
 // Named switches post themselves: flipping an on/off control outside a form is

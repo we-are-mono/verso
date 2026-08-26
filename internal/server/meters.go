@@ -5,11 +5,9 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,12 +17,12 @@ import (
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
-// The overview meters (the donuts): the box-health glance — memory, storage,
-// processor — as live readings. One builder feeds both faces: the page render
-// composes meter widgets from it, and GET /overview/meters serves the same
-// readings as JSON for the poller in verso.js to stream into the rendered
-// rings. A source that fails is omitted (and logged), never a 500 — the glance
-// degrades the way the status table does.
+// The overview meters (the donuts): the box-health glance — speed, memory,
+// storage, processor — as live readings. One builder feeds both faces: the
+// page render composes meter widgets from it, and the overview stream
+// (events.go) pushes the same readings into the rendered rings. A source that
+// fails is omitted (and logged), never a 500 — the glance degrades the way
+// the status table does.
 
 // statSource is the local-machine seam the meters read — CPU busy share and
 // root-filesystem fullness; sysstat.Sampler is the real one, tests fake it.
@@ -194,16 +192,6 @@ func meterGrid(readings []meterReading) widget.Widget {
 		columns = 4
 	}
 	return &widget.Grid{Columns: columns, Children: children}
-}
-
-// handleMetersJSON serves the current readings for the meters poller
-// (verso.js). Same session gate as every page; a GET, so no CSRF.
-func (s *Server) handleMetersJSON(w http.ResponseWriter, r *http.Request) {
-	readings := s.meterReadings(r.Context(), s.sessionSID(r))
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{"meters": readings}); err != nil {
-		log.Printf("verso: meters: encode: %v", err)
-	}
 }
 
 // gb renders a byte count as gigabytes the way a person says them — one

@@ -34,10 +34,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/services", s.handleServicesPage)
 	s.mux.HandleFunc("POST /system/services", s.handleServicesAction)
 
-	// The overview's live readings: the meters poller (verso.js) refreshes the
-	// homepage donuts from here. Read-only, behind the same session gate as
-	// every page.
-	s.mux.HandleFunc("GET /overview/meters", s.handleMetersJSON)
+	// The overview stream (SSE): the browser's EventSource holds this open and
+	// the shell pushes fresh readings into it (events.go). Read-only, behind
+	// the same session gate as every page.
+	s.mux.HandleFunc("GET /overview/events", s.handleOverviewEvents)
 
 	// Staged-changes capsule (ADR-010): apply with device-side rollback, confirm
 	// to disarm it, discard to revert the stage. Session- and CSRF-gated like
