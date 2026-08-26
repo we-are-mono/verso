@@ -26,11 +26,11 @@
   </div>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="new-password" class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="new-password" class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 inset-shadow-xs text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
   {{else if eq .Kind "textarea"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 font-mono text-sm text-slate-900 focus:border-sky-600 focus:outline-none">{{.Value}}</textarea>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 inset-shadow-xs font-mono text-sm text-slate-900 focus:border-sky-600 focus:outline-none">{{.Value}}</textarea>
   {{else}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{if .Error}}border-red-600{{else}}border-slate-300{{end}} bg-white px-3 py-2 inset-shadow-xs text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
   {{end}}
   {{/* On error, the helper line becomes the error — one line under the field, not two. */}}
   {{if .Error}}<p class="text-sm text-red-600">{{.Error}}</p>{{else if .Help}}<p class="text-sm text-slate-500">{{.Help}}</p>{{end}}
