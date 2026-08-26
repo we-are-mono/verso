@@ -9,11 +9,13 @@
      pin-time change would shift the page, and the lens never moves anything. */}}
 {{/* top offset is owned by the stylesheet (components layer), not a utility —
      it must yield to the subpage top bar when one is present. */}}
-<div class="verso-filter-dock sticky z-20 -mx-8 bg-slate-50 px-8 pt-8 pb-3">
-  <div class="verso-filter-bar flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4.5 py-3 shadow-sm focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
+<div class="verso-filter-dock sticky z-20 -mx-8 bg-white px-8 pt-8 pb-3">
+  {{/* the lens wears the interactive sky as a thick frame at rest — the one
+       always-on doorway on the page; flat like everything else (no shadow). */}}
+  <div class="verso-filter-bar flex items-center gap-3 rounded-2xl border-4 border-sky-600 bg-white px-4.5 py-3 inset-shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
     {{icon "search" "size-5 shrink-0 text-slate-400"}}
     <input type="search" data-verso-filter placeholder="{{.}}" aria-label="Filter everything on this page"
       class="w-full border-0 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400">
-    <kbd class="shrink-0 rounded-md border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-400" aria-hidden="true">/</kbd>
+    <kbd class="shrink-0 rounded-md border border-slate-400 px-1.5 py-0.5 font-mono text-xs text-slate-500" aria-hidden="true">/</kbd>
   </div>
 </div>
