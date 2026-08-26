@@ -226,7 +226,7 @@ func TestRenderToggle(t *testing.T) {
 		"Your home VPN is on",          // on headline
 		"Your home VPN is off",         // off headline (CSS hides it while checked)
 		"2 of 3 devices connected",     // meta
-		"peer-checked:bg-green-500",    // switch reflects state without JS
+		"peer-checked:bg-emerald-500",  // switch reflects state without JS
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("toggle missing %q in: %s", want, got)
