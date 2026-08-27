@@ -382,6 +382,13 @@ document.addEventListener(
     danger: "stroke-red-600",
     info: "stroke-sky-600",
   };
+  // The bar layout tints its fill with a background, not a stroke.
+  var BAR_BANDS = {
+    good: "bg-green-600",
+    warn: "bg-amber-500",
+    danger: "bg-red-600",
+    info: "bg-sky-600",
+  };
   function setText(root, selector, text) {
     var el = root.querySelector(selector);
     if (el) el.textContent = text;
@@ -392,13 +399,19 @@ document.addEventListener(
     setText(root, "[data-verso-meter-value]", reading.value);
     setText(root, "[data-verso-meter-unit]", reading.unit);
     setText(root, "[data-verso-meter-detail]", reading.detail);
+    var fill = Math.min(100, Math.max(0, reading.fill));
     var ring = root.querySelector("[data-verso-meter-ring]");
     if (ring) {
       var c = 2 * Math.PI * parseFloat(ring.getAttribute("r"));
-      var fill = Math.min(100, Math.max(0, reading.fill));
       ring.setAttribute("stroke-dasharray", ((fill / 100) * c).toFixed(1) + " " + c.toFixed(2));
       for (var band in BANDS) ring.classList.remove(BANDS[band]);
       ring.classList.add(BANDS[reading.band] || BANDS.good);
+    }
+    var bar = root.querySelector("[data-verso-meter-bar]");
+    if (bar) {
+      bar.style.width = fill + "%";
+      for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
+      bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.good);
     }
     var svg = root.querySelector("svg");
     if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());

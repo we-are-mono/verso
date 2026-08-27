@@ -89,3 +89,73 @@ func TestMeterClampsFill(t *testing.T) {
 		t.Errorf("fill>100 should fill the ring:\n%s", got)
 	}
 }
+
+// TestRenderMeterBar: the "bar" layout is the same reading as a horizontal gauge —
+// the value over its unit, a track filled to Fill%, and the caption — with no ring.
+func TestRenderMeterBar(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Layout: "bar", Label: "Storage", Value: "23", Unit: "GB", Fill: 72, Detail: "9 GB free"})
+	for _, want := range []string{
+		"Storage", ">23<", ">GB<", "9 GB free",
+		"data-verso-meter-bar", // the fill element
+		"width: 72%",           // filled by Fill
+		"bg-green-600",         // 72% is still healthy
+		"tabular-nums",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("bar meter missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "stroke-dasharray") || strings.Contains(got, `r="50"`) {
+		t.Errorf("bar layout must not draw a ring:\n%s", got)
+	}
+}
+
+// TestMeterBarBands: the bar tints itself from Fill, same rule as the ring.
+func TestMeterBarBands(t *testing.T) {
+	r := newRenderer(t)
+	cases := map[int]string{45: "bg-green-600", 85: "bg-amber-500", 95: "bg-red-600"}
+	for fill, want := range cases {
+		got := render(t, r, &Meter{Layout: "bar", Label: "x", Value: "x", Fill: fill})
+		if !strings.Contains(got, want) {
+			t.Errorf("fill %d: want %q in:\n%s", fill, want, got)
+		}
+	}
+}
+
+// TestMeterBarInfoVariant: "info" forces the accent fill, bypassing auto-colour.
+func TestMeterBarInfoVariant(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Layout: "bar", Label: "Speed", Value: "300", Unit: "Mbps", Fill: 30, Variant: "info", Detail: "24 Mbps up"})
+	if !strings.Contains(got, "bg-sky-600") {
+		t.Errorf("info bar must use the accent:\n%s", got)
+	}
+	if strings.Contains(got, "bg-green-600") {
+		t.Errorf("info variant must not auto-colour:\n%s", got)
+	}
+}
+
+// TestMeterBarLiveHooks: a named bar carries the same per-part hooks the client
+// streams into, plus the bar handle and the transition class.
+func TestMeterBarLiveHooks(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Layout: "bar", Name: "memory", Label: "Memory", Value: "1.2", Unit: "GB", Fill: 60})
+	for _, want := range []string{
+		`data-verso-meter="memory"`,
+		"data-verso-meter-bar", "verso-meter-bar",
+		"data-verso-meter-value", "data-verso-meter-unit", "data-verso-meter-detail",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("live bar meter missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestMeterBarClampsFill: a Fill over 100 fills the whole track, not past it.
+func TestMeterBarClampsFill(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Layout: "bar", Label: "x", Value: "x", Fill: 150})
+	if !strings.Contains(got, "width: 100%") {
+		t.Errorf("fill>100 should fill the whole bar:\n%s", got)
+	}
+}

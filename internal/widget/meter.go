@@ -18,6 +18,10 @@ import (
 // Value (Value "23" GB with Fill 72), or match it (a CPU reading of "18" %, Fill 18).
 // The shell colours the ring by how full it is (green/amber/red); Variant "info"
 // overrides that with the accent, for a rate like speed that has no "getting full".
+//
+// Layout picks the face: the default ring, or "bar" — the same reading as a
+// left-aligned strip (label, big value, a thin horizontal track, caption). Both
+// faces carry the same live hooks and colour by the same band rule.
 type Meter struct {
 	Label   string `json:"label"`
 	Value   string `json:"value"`   // the centred number in its native unit ("23", "1.2", "300", "18")
@@ -25,6 +29,7 @@ type Meter struct {
 	Fill    int    `json:"fill"`    // ring fill, 0–100 percent (the proportion; may differ from Value)
 	Detail  string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
 	Variant string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)
+	Layout  string `json:"layout,omitempty"` // "" ring (default) | "bar" (horizontal strip)
 	// Name is a stable handle for a live meter: the rendered markup carries it
 	// (plus per-part hooks) so the shell's client script can stream fresh
 	// readings into the ring and text in place. A nameless meter is static.
@@ -43,7 +48,8 @@ type meterView struct {
 	Detail string
 	Name   string
 	Band   string // "good" | "warn" | "danger" | "info"
-	Dash   string // stroke-dasharray for the fill arc
+	Dash   string // stroke-dasharray for the ring's fill arc
+	Width  string // width of the bar's fill, e.g. "72%"
 }
 
 // MeterBand is the ring's colour band for a fill: "good" until 80, "warn"
@@ -69,9 +75,15 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	} else if fill > 100 {
 		fill = 100
 	}
-	dash := fmt.Sprintf("%.1f %.2f", float64(fill)/100*meterCircumference, meterCircumference)
-	return r.execute(out, "meter.html.tmpl", meterView{
+	view := meterView{
 		Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
-		Name: m.Name, Band: MeterBand(fill, m.Variant), Dash: dash,
-	})
+		Name: m.Name, Band: MeterBand(fill, m.Variant),
+		Dash:  fmt.Sprintf("%.1f %.2f", float64(fill)/100*meterCircumference, meterCircumference),
+		Width: fmt.Sprintf("%d%%", fill),
+	}
+	tmpl := "meter.html.tmpl"
+	if m.Layout == "bar" {
+		tmpl = "meterbar.html.tmpl"
+	}
+	return r.execute(out, tmpl, view)
 }
