@@ -10,6 +10,10 @@ GOOS     ?= linux
 GOARCH   ?= arm64
 BUILDDIR := build
 
+# Strip the symbol table (-s) and DWARF debug info (-w): a shipped runtime binary
+# needs neither, and dropping them cuts ~25-30% off its size.
+LDFLAGS  := -s -w
+
 # Tailwind v4 standalone CLI (no Node); runs on the build host, pinned + cached.
 TAILWIND         := $(BUILDDIR)/tools/tailwindcss
 TAILWIND_VERSION := v4.3.3
@@ -35,7 +39,7 @@ css: $(TAILWIND)
 	$(TAILWIND) -i $(CSS_IN) -o $(CSS_OUT) --minify
 
 build: css
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -trimpath -o $(BUILDDIR)/$(BINARY) $(CMD)
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -trimpath -ldflags "$(LDFLAGS)" -o $(BUILDDIR)/$(BINARY) $(CMD)
 
 run:
 	go run $(CMD)

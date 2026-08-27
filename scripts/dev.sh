@@ -46,7 +46,7 @@ deploy_acls() {
 # method list and ACL are picked up by `rpcd reload`, which preserves live
 # sessions (so the dev browser is not logged out).
 deploy_helper() {
-	if CGO_ENABLED=0 go build -trimpath -o build/verso-rpcd ./cmd/verso-rpcd 2>&1; then
+	if CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o build/verso-rpcd ./cmd/verso-rpcd 2>&1; then
 		# A fresh container has no rpcd plugin dir until something installs one.
 		docker exec "$CONTAINER" mkdir -p /usr/libexec/rpcd
 		# Land beside the live helper and rename into place: docker cp is not
@@ -96,7 +96,7 @@ reload() {
 	deploy_helper
 	log "building…"
 	compile_css
-	if ! CGO_ENABLED=0 go build -trimpath -o "$BIN" "$CMD" 2>&1; then
+	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0
 	fi
