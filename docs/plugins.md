@@ -191,6 +191,11 @@ merges the stage), so your page re-renders coherently after a Save:
 }
 ```
 
+An entry may also **create** a section: with `section` empty and a `type`
+(`{ "config": "firewall", "section": "", "type": "rule", "values": { … } }`),
+the shell adds a new anonymous section of that type and sets `values` on it —
+one staged step, so an "Add" drawer's Save creates the row it promised.
+
 Each entry is one `uci set`: `config` + `section` + a `values` map of
 option→value, where a value is a string (an option) or an array of strings (a
 list option). The shell stages every entry, then renders your `widget`; commit,

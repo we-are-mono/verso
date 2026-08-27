@@ -311,7 +311,20 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 			return s.notice("Not permitted", fmt.Sprintf(
 				"%s tried to change settings it did not declare.", m.Name)), http.StatusForbidden, false
 		}
-		if err := s.backend.UCISet(ctx, sid, op.Config, op.Section, op.Values); err != nil {
+		// An op with no section and a type creates the section first (through
+		// rpcd, staged like the set): the "drawer first, row on save" flow —
+		// a plugin never adds bare sections it then has to chase.
+		section := op.Section
+		if section == "" && op.Type != "" {
+			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type)
+			if err != nil {
+				log.Printf("verso: plugin %q section create in uci %q failed: %v", m.ID, op.Config, err)
+				return s.notice("Save failed",
+					"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+			}
+			section = created
+		}
+		if err := s.backend.UCISet(ctx, sid, op.Config, section, op.Values); err != nil {
 			log.Printf("verso: plugin %q write to uci %q failed: %v", m.ID, op.Config, err)
 			return s.notice("Save failed",
 				"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false

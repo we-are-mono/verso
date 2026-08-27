@@ -82,7 +82,8 @@ type PageTab struct {
 type CommitOp struct {
 	Config  string         `json:"config"`
 	Section string         `json:"section"`
-	Values  map[string]any `json:"values"` // option → value; a value may be a string or a list of strings (uci list option)
+	Type    string         `json:"type,omitempty"` // with an empty Section: create a new section of this type, then set Values on it
+	Values  map[string]any `json:"values"`         // option → value; a value may be a string or a list of strings (uci list option)
 }
 
 // Transport exchanges a request with a plugin and returns its schema envelope.

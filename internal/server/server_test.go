@@ -808,6 +808,32 @@ func TestPluginCommitBrokered(t *testing.T) {
 	}
 }
 
+// TestPluginCommitCreatesSection: a commit op with no section and a type
+// creates the section through the backend, then sets the values on the id the
+// add returned — one staged step, so an Add drawer's Save yields its row.
+func TestPluginCommitCreatesSection(t *testing.T) {
+	calls := []uciWrite{}
+	adds := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "", Type: "led", Values: map[string]any{"name": "disk"}}},
+	}}
+	be := fakeBackend{access: true, writes: &calls, adds: &adds, addReturns: "cfg99aa"}
+	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"name": {"disk"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(adds) != 1 || adds[0] != "system led" {
+		t.Fatalf("UCIAdd calls = %v, want one system/led create", adds)
+	}
+	if len(calls) != 1 || calls[0].section != "cfg99aa" || calls[0].values["name"] != "disk" {
+		t.Fatalf("brokered write = %+v; want the created section's id", calls)
+	}
+}
+
 // TestPluginCommitListOption: a uci list option (an array value, e.g. the NTP
 // server list) is carried through the broker to the backend intact.
 func TestPluginCommitListOption(t *testing.T) {
