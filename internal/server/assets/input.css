@@ -461,6 +461,15 @@
   .verso-chart-grid line { stroke: var(--color-slate-200); stroke-width: 1; }
   .verso-chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
   .verso-chart--spark .verso-chart-line { stroke-width: 1.75; }
+  /* The panel plot: fixed height (the viewBox matches, so strokes stay true),
+     half-weight lines, and quarter gridlines faint enough to read as texture. */
+  .verso-chart--panel { height: 12.5rem; }
+  .verso-chart--panel .verso-chart-line { stroke-width: 1.25; }
+  .verso-chart--panel .verso-chart-grid line { stroke: var(--color-slate-100); }
+  .verso-chart-yl--mid { transform: translateY(-50%); }
+  /* The panel's time captions: their own quiet row hugging the baseline (the
+     plot's own bottom padding already keeps them clear of it). */
+  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; }
   .verso-chart-area { stroke: none; }
 
   .verso-chart--sky .verso-chart-line { stroke: var(--color-sky-600); }
@@ -500,8 +509,6 @@
      bottom corners. */
   .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; pointer-events: none; }
   .verso-chart-yl { left: 0.3125rem; }
-  .verso-chart-yl-top { top: 0; }
-  .verso-chart-yl-mid { top: 50%; transform: translateY(-50%); }
   .verso-chart-xl-start { left: 0.3125rem; bottom: 0; }
   .verso-chart-xl-end { right: 0.3125rem; bottom: 0; }
   .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-slate-900); }

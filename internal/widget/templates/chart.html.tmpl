@@ -9,10 +9,10 @@
      scales with the graph, so a nominal 11px renders far bigger on a wide plot. The HTML
      spans render at a true, fixed size. This SVG is the first paint; the live layer
      hydrates the same series without touching the schema. */}}
-{{define "verso-chart-svg"}}<svg class="verso-chart {{.Class}} block h-auto w-full overflow-visible" viewBox="0 0 {{.W}} {{.H}}" role="img" aria-label="{{.Label}}">
+{{define "verso-chart-svg"}}<svg class="verso-chart {{.Class}} block {{if .Stretch}}w-full{{else}}h-auto w-full{{end}} overflow-visible" viewBox="0 0 {{.W}} {{.H}}"{{if .Stretch}} preserveAspectRatio="none"{{end}} role="img" aria-label="{{.Label}}"{{if .Name}} data-verso-chart="{{.Name}}"{{end}}>
   {{if .GridYs}}<g class="verso-chart-grid">{{range .GridYs}}<line x1="0" y1="{{.}}" x2="{{$.W}}" y2="{{.}}"/>{{end}}</g>{{end}}
   {{range .Series}}
-  <g class="verso-chart-series verso-chart--{{.RoleClass}}">
+  <g class="verso-chart-series verso-chart--{{.RoleClass}}" data-verso-chart-role="{{.Role}}">
     {{if .Area}}
     <defs><linearGradient id="{{.GradID}}" x1="0" y1="0" x2="0" y2="1"><stop class="verso-chart-fill-0" offset="0"/><stop class="verso-chart-fill-1" offset="1"/></linearGradient></defs>
     <path class="verso-chart-area" fill="url(#{{.GradID}})" d="{{.Area}}"/>
@@ -22,13 +22,15 @@
   </g>
   {{end}}
 </svg>{{end}}
-{{define "verso-chart-plot"}}<div class="verso-chart-plot">
+{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot">
   {{template "verso-chart-svg" .}}
-  {{if .AxisTop}}<span class="verso-chart-yl verso-chart-yl-top">{{.AxisTop}}</span>{{end}}
-  {{if .AxisMid}}<span class="verso-chart-yl verso-chart-yl-mid">{{.AxisMid}}</span>{{end}}
-  {{if .XStart}}<span class="verso-chart-xl verso-chart-xl-start">{{.XStart}}</span>{{end}}
-  {{if .XEnd}}<span class="verso-chart-xl verso-chart-xl-end">{{.XEnd}}</span>{{end}}
-</div>{{end}}
+  {{range .YLabels}}<span class="verso-chart-yl{{if .Mid}} verso-chart-yl--mid{{end}}" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+  {{/* The window captions: a stretched (panel) plot carries them in their own
+       row hugging the baseline — wrapped with the plot in one block, so a
+       parent stack's spacing lands around the pair, not between them. The
+       hero keeps them overlaid inside the corners. */}}
+  {{if not .Stretch}}{{if .XStart}}<span class="verso-chart-xl verso-chart-xl-start">{{.XStart}}</span>{{end}}{{if .XEnd}}<span class="verso-chart-xl verso-chart-xl-end">{{.XEnd}}</span>{{end}}{{end}}
+</div>{{if $times}}<div class="verso-chart-xrow"><span>{{.XStart}}</span><span>{{.XEnd}}</span></div></div>{{end}}{{end}}
 {{if .Readout}}<div class="verso-chart-hero">
   <div class="verso-chart-readout">
     {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green-500"></span>{{end}}{{.Title}}</div>{{end}}

@@ -26,10 +26,14 @@ import (
 // palette while geometry (viewBox, d, cx/cy) stays on the element.
 type Chart struct {
 	Series []ChartSeries `json:"series"` // 1–2 series, drawn back to front
-	Size   string        `json:"size"`   // "full" (hero) | "spark" (compact, the default)
+	Size   string        `json:"size"`   // "full" (hero) | "panel" (fixed-height detail) | "spark" (compact, the default)
 	Max    float64       `json:"max"`    // fixed top of scale; 0 auto-scales to the data
 	Label  string        `json:"label"`  // accessible description of the whole plot
 	Idle   bool          `json:"idle"`   // draw calm grey — a quiet or empty source
+	// Name is a stable handle for a live chart: the rendered SVG carries it
+	// (plus per-series role hooks) so the shell's client script can stream
+	// fresh series into the drawn paths. A nameless chart is static.
+	Name string `json:"name,omitempty"`
 
 	// Axis draws a value scale on a "full" chart: labelled horizontal gridlines at the
 	// top and middle of the range (Unit rides the top label), plus optional captions at
@@ -70,20 +74,26 @@ type chartDims struct {
 }
 
 func chartDimsFor(size string) chartDims {
-	if size == "full" {
+	switch size {
+	case "full":
 		return chartDims{W: 620, H: 130, Pad: 12, Grid: true, Dot: 3}
+	case "panel":
+		// The fixed-height detail plot (12.5rem via CSS): the viewBox height
+		// matches the rendered height, so strokes draw at their nominal width.
+		return chartDims{W: 620, H: 200, Pad: 8, Grid: false, Dot: 3}
 	}
 	return chartDims{W: 210, H: 34, Pad: 3, Grid: false, Dot: 0}
 }
 
 type chartView struct {
 	Label   string
-	Class   string // size class on the svg root: verso-chart--full | verso-chart--spark
+	Name    string // live handle (data-verso-chart), empty for a static chart
+	Class   string // size class on the svg root: verso-chart--full | verso-chart--panel | verso-chart--spark
+	Stretch bool   // preserveAspectRatio="none": the CSS fixes the height, the width flexes
 	W, H    float64
 	GridYs  []float64
 	HasAxis bool // wrap the plot so the HTML axis labels can overlay it
-	AxisTop string
-	AxisMid string
+	YLabels []chartYLabel
 	XStart  string
 	XEnd    string
 	Series  []chartSeriesView
@@ -92,6 +102,14 @@ type chartView struct {
 	Live    bool
 	Note    string
 	Rates   []chartRate
+}
+
+// chartYLabel is one value label riding a gridline, positioned by percent of
+// the plot's height (inline style — SVG text would scale with the viewBox).
+type chartYLabel struct {
+	TopPct float64
+	Mid    bool // vertically centre on the line (the topmost label hangs below it)
+	Text   string
 }
 
 // chartRate is one current-value entry in the readout: a value in its unit, coloured to
@@ -105,6 +123,7 @@ type chartRate struct {
 
 type chartSeriesView struct {
 	RoleClass string // sky | violet | emerald | amber | idle
+	Role      string // the raw palette slot, stamped as a hook so a live chart can leave idle
 	GradID    string // unique per render, so multiple charts' gradients never collide
 	Area      string // area path, empty when the series is not filled
 	Line      string
@@ -134,25 +153,45 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	}
 
 	class := "verso-chart--spark"
-	if c.Size == "full" {
+	switch c.Size {
+	case "full":
 		class = "verso-chart--full"
+	case "panel":
+		class = "verso-chart--panel"
 	}
 
-	view := chartView{Label: c.Label, Class: class, W: dims.W, H: dims.H}
+	view := chartView{Label: c.Label, Name: c.Name, Class: class, W: dims.W, H: dims.H, Stretch: c.Size == "panel"}
+	scaleY := func(v float64) float64 { return dims.H - dims.Pad - (v/max)*(dims.H-2*dims.Pad) }
 	switch {
+	case c.Axis && c.Size == "panel":
+		// Four barely-there dividing lines at the quarters of the range, each
+		// carrying its value. Labels are HTML overlaid on the plot (not SVG
+		// text), so they render at a fixed size instead of scaling.
+		view.HasAxis = true
+		for i, frac := range []float64{1, 0.75, 0.5, 0.25} {
+			y := scaleY(max * frac)
+			view.GridYs = append(view.GridYs, y)
+			text := chartAxisValue(max * frac)
+			if i == 0 && c.Unit != "" {
+				text += " " + c.Unit
+			}
+			// Every label rides across its line — the topmost included.
+			view.YLabels = append(view.YLabels, chartYLabel{TopPct: y / dims.H * 100, Mid: true, Text: text})
+		}
+		view.XStart = c.AxisStart
+		view.XEnd = c.AxisEnd
 	case c.Axis && c.Size == "full":
-		// Value gridlines at the top and middle of the range. The labels are HTML
-		// overlaid on the plot (not SVG text), so they render at a fixed size instead of
-		// scaling with the graph — SVG text in a stretched viewBox looks far bigger than
-		// its nominal px.
-		scaleY := func(v float64) float64 { return dims.H - dims.Pad - (v/max)*(dims.H-2*dims.Pad) }
+		// Value gridlines at the top and middle of the range, labelled likewise.
 		view.GridYs = []float64{scaleY(max), scaleY(max / 2)}
 		view.HasAxis = true
-		view.AxisTop = fmt.Sprintf("%.0f", max)
+		top := chartAxisValue(max)
 		if c.Unit != "" {
-			view.AxisTop += " " + c.Unit
+			top += " " + c.Unit
 		}
-		view.AxisMid = fmt.Sprintf("%.0f", max/2)
+		view.YLabels = []chartYLabel{
+			{TopPct: 0, Text: top},
+			{TopPct: 50, Mid: true, Text: chartAxisValue(max / 2)},
+		}
 		view.XStart = c.AxisStart
 		view.XEnd = c.AxisEnd
 	case dims.Grid:
@@ -166,6 +205,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		}
 		sv := chartSeriesView{
 			RoleClass: chartRoleClass(s.Role, c.Idle),
+			Role:      s.Role,
 			Line:      chartLine(s.Values, dims.W, dims.H, max, dims.Pad),
 		}
 		if s.Fill {
@@ -198,6 +238,15 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Readout = view.Title != "" || view.Note != "" || len(view.Rates) > 0
 	}
 	return r.execute(out, "chart.html.tmpl", view)
+}
+
+// chartAxisValue renders a gridline's value compactly — whole numbers from 10
+// up, one decimal below.
+func chartAxisValue(v float64) string {
+	if v >= 10 {
+		return fmt.Sprintf("%.0f", v)
+	}
+	return strings.TrimSuffix(fmt.Sprintf("%.1f", v), ".0")
 }
 
 // chartRoleClass maps a series role to a palette-slot class the shell owns (ADR-005).

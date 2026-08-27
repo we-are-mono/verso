@@ -51,8 +51,8 @@ func TestRenderChartAxis(t *testing.T) {
 	})
 	for _, want := range []string{
 		"verso-chart-plot",
-		"verso-chart-yl-top", ">400 Mbps<", // top of the scale, with the unit
-		"verso-chart-yl-mid", ">200<", // the middle level, number only
+		`style="top:0.0%"`, ">400 Mbps<", // top of the scale, with the unit
+		`style="top:50.0%"`, ">200<", // the middle level, number only
 		"verso-chart-xl-start", ">60s ago<",
 		"verso-chart-xl-end", ">now<",
 	} {
@@ -175,5 +175,43 @@ func TestRenderChartReadout(t *testing.T) {
 	spark := render(t, r, &Chart{Size: "spark", Title: "Online", Series: []ChartSeries{{Value: "5", Values: []float64{1, 2}}}})
 	if strings.Contains(spark, "verso-chart-readout") {
 		t.Errorf("spark must not render a readout:\n%s", spark)
+	}
+}
+
+// TestChartPanel: the fixed-height detail plot — four quarter gridlines with
+// their values (unit on the topmost), the stretch mode that lets CSS own the
+// height, and the live handle + role hooks the stream updates through.
+func TestChartPanel(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Chart{
+		Size: "panel", Name: "aa:bb", Axis: true, Unit: "Mbps", Max: 400,
+		Series: []ChartSeries{
+			{Values: []float64{10, 200, 100}, Role: "sky", Fill: true},
+			{Values: []float64{1, 5, 2}, Role: "violet"},
+		},
+	})
+	for _, want := range []string{
+		`data-verso-chart="aa:bb"`, `preserveAspectRatio="none"`, "verso-chart--panel",
+		`data-verso-chart-role="sky"`, `data-verso-chart-role="violet"`,
+		">400 Mbps<", ">300<", ">200<", ">100<",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("panel chart missing %q:\n%s", want, got)
+		}
+	}
+	if gridlines := strings.Count(got, "<line "); gridlines != 4 {
+		t.Errorf("panel gridlines = %d, want 4", gridlines)
+	}
+	// Every value label rides across its line, and the time captions sit in
+	// their own row below the plot rather than overlaid inside it.
+	if n := strings.Count(got, "verso-chart-yl--mid"); n != 4 {
+		t.Errorf("panel mid-riding labels = %d, want 4", n)
+	}
+	withTimes := render(t, r, &Chart{
+		Size: "panel", Axis: true, AxisStart: "60s ago", AxisEnd: "now",
+		Series: []ChartSeries{{Values: []float64{1, 2}, Role: "sky"}},
+	})
+	if !strings.Contains(withTimes, "verso-chart-xrow") || strings.Contains(withTimes, "verso-chart-xl-start") {
+		t.Errorf("panel time captions should sit in the row below:\n%s", withTimes)
 	}
 }
