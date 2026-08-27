@@ -43,13 +43,16 @@
           </span>
         </td>
         {{else if eq .Kind "pill"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
+        {{/* a status pill — or, when the cell carries a Button instead, a small
+             secondary button that opens the row's drawer (the reserve-vs-reserved
+             pattern: a badge once it's done, the action button until then). */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else if .Button}}<button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">{{.Button}}</button>{{else}}<span class="text-slate-300">—</span>{{end}}</td>
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green-600"}}{{end}}</td>
         {{else if eq .Kind "mono"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">{{.Text}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</td>
         {{else if eq .Kind "keyword"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
@@ -60,11 +63,12 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle text-slate-900 group-last:border-b-0">{{.Text}}</td>
         {{end}}
         {{end}}
-        {{if .HasDrawers}}
+        {{if .HasDetail}}
         {{/* the trailing "more" affordance: a plain link hard-right, the only
-             click target in the row. Blank when the row has nothing behind it. */}}
+             click target in the row. Blank when the row has nothing behind it,
+             or when its drawer already opens from an in-cell button. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 pr-1 text-right align-middle whitespace-nowrap last:pr-0 group-last:border-b-0">
-          {{if .Drawer}}<button type="button" @click="show" class="text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">Details</button>{{end}}
+          {{if and .Drawer (not .Inline)}}<button type="button" @click="show" class="text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">Details</button>{{end}}
         </td>
         {{end}}
         {{if .Drawer}}
@@ -99,7 +103,7 @@
         {{range .Columns}}
         <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-sm font-light text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
         {{end}}
-        {{if .HasDrawers}}<th scope="col" class="border-b border-slate-200"></th>{{end}}
+        {{if .HasDetail}}<th scope="col" class="border-b border-slate-200"></th>{{end}}
       </tr>
     </thead>
 {{end}}
@@ -110,19 +114,25 @@
      little — the live-listing look (a process table). style "card" opts into the
      twin-hairline frame — border plus a ring floated 4px out — shared with the
      settings card, so every boxed listing speaks one card language. */}}
-<div class="overflow-x-auto{{if .Card}} rounded-2xl border border-slate-200 bg-white px-5 pb-2 ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{else if .Lined}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{else if .Condensed}} [&_td]:py-1.5 [&_th]:pt-2.5 [&_th]:pb-2{{end}}">
+{{/* overflow-x-auto lets a genuinely wide table scroll sideways, but the browser
+     then computes overflow-y to auto too (CSS spec) — so an in-cell copy button's
+     absolute hover tooltip, which sits just below its row, would trip a spurious
+     vertical scrollbar on the last row. overflow-y-hidden clips that overhang (the
+     tooltip is a hover hint, not content) with no scrollbar. The card style keeps
+     its overflow visible so its ring-offset frame is never clipped. */}}
+<div class="overflow-x-auto{{if .Card}} rounded-2xl border border-slate-200 bg-white px-5 pb-2 ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{else}} overflow-y-hidden{{if .Lined}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{else if .Condensed}} [&_td]:py-1.5 [&_th]:pt-2.5 [&_th]:pb-2{{end}}{{end}}">
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush
        left title, flush right link), a hairline under it so it reads as the
        table's first row. */}}
-  <div class="flex min-w-[44rem] items-baseline gap-3 border-b border-slate-200 pt-1 pb-3">
+  <div class="flex items-baseline gap-3 border-b border-slate-200 pt-1 pb-3">
     <h3 class="text-xl font-semibold tracking-tight text-slate-900">{{.Title}}</h3>
     {{if .Detail}}<span class="text-sm text-slate-500">{{.Detail}}</span>{{end}}
     <span class="flex-1"></span>
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  <table class="w-full min-w-[44rem] border-collapse text-sm">
+  <table class="w-full border-collapse text-sm">
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
 {{template "table.rows" .Rows}}
@@ -141,7 +151,7 @@
       {{.SeamSummary}}
     </summary>
     <div class="{{if .Card}}px-5 pb-1{{end}}">
-      <table class="w-full min-w-[44rem] border-collapse text-sm">
+      <table class="w-full border-collapse text-sm">
         {{if .HasLabels}}{{template "table.head" .}}{{end}}
         <tbody>
 {{template "table.rows" .SeamRows}}

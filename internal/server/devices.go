@@ -260,28 +260,43 @@ func presenceBadge(p presence) *widget.Badge {
 	return &widget.Badge{Variant: "neutral", Text: "Offline"}
 }
 
-// connectedSection composes the roster: hairline-divided trigger rows, bare
-// on the canvas, each opening its device's wide drawer.
+// connectedSection composes the roster as a flat table: one inert row per
+// device — its name carrying its zone as an inline chip, its address (mono,
+// copyable), a presence pill, and its total download — with the device's full
+// story opening from a trailing Details link. The header band names the roster
+// and counts what's online.
 func connectedSection(devices []deviceEntry) widget.Widget {
 	if len(devices) == 0 {
 		return nil
 	}
-	rows := make([]widget.Widget, 0, len(devices))
+	rows := make([]widget.TableRow, 0, len(devices))
+	online := 0
 	for _, d := range devices {
-		row := &widget.Row{
-			Icon: d.Icon, Title: d.Name, Meta: d.IP, Tag: d.Zone,
-			Columns: true, Status: presenceBadge(d.Presence), Chevron: true,
+		if d.Presence == presenceOnline {
+			online++
 		}
-		rows = append(rows, &widget.Drawer{
-			Title: d.Name, Size: "wide", Style: "bare",
-			Dot: presenceDot(d.Presence), Tag: d.Zone,
-			Trigger:  []widget.Widget{row},
-			Children: deviceDrawerBody(d),
+		p := presenceBadge(d.Presence)
+		down, unit := splitBytes(d.Traffic.RxBytes)
+		rows = append(rows, widget.TableRow{
+			ID: d.MAC,
+			Cells: []widget.TableCell{
+				{Text: d.Name, Chip: d.Zone},
+				{Text: d.IP, Copy: true},
+				{Text: p.Text, Variant: p.Variant, Dot: p.Dot},
+				{Text: down + " " + unit},
+			},
+			Drawer: &widget.RowDrawer{Title: d.Name, Children: deviceDrawerBody(d)},
 		})
 	}
-	return &widget.Section{Title: "Connected devices", Children: []widget.Widget{
-		&widget.Stack{Divided: true, Children: rows},
-	}}
+	return &widget.Table{
+		Style:  "flat",
+		Title:  "Connected devices",
+		Detail: fmt.Sprintf("%d online", online),
+		Columns: []widget.TableColumn{
+			{Kind: "name"}, {Kind: "mono"}, {Kind: "pill"}, {Kind: "num"},
+		},
+		Rows: rows,
+	}
 }
 
 // deviceDrawerBody is the device's full story — everything the kernel and
@@ -395,19 +410,6 @@ func lastPoint(vals []float64) float64 {
 // the readout stays calm.
 func rateStr(v float64) string {
 	return fmt.Sprintf("%.0f", v)
-}
-
-// presenceDot maps presence onto the drawer title's status-dot vocabulary —
-// a pulsing green for a confirmed-live device, quiet slate for one seen
-// lately, nothing for one that is gone.
-func presenceDot(p presence) string {
-	switch p {
-	case presenceOnline:
-		return "success"
-	case presenceIdle:
-		return "neutral"
-	}
-	return ""
 }
 
 // leaseIn says when the lease runs out the way a person would.

@@ -320,6 +320,36 @@ func TestRenderTableFlatCondensed(t *testing.T) {
 	}
 }
 
+// TestRenderTableCellButton: a cell can carry a button that opens the row's
+// drawer in place of the trailing "Details" link. When every drawer row opens
+// from such a button, the table grows no trailing Details column at all.
+func TestRenderTableCellButton(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Style:   "flat",
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Static", Kind: "pill"}},
+		Rows: []TableRow{
+			// reserved: a badge, no drawer.
+			{Cells: []TableCell{{Text: "nas"}, {Text: "reserved", Variant: "info"}}},
+			// dynamic: an in-cell "Reserve IP" button that opens the drawer.
+			{Cells: []TableCell{{Text: "laptop"}, {Button: "Reserve IP"}},
+				Drawer: &RowDrawer{Title: "Reserve — laptop", Children: []Widget{&Divider{}}}},
+		},
+	})
+	for _, want := range []string{
+		"reserved",                    // the badge state
+		">Reserve IP<", `@click="show"`, // the action button opens the drawer
+		`x-data="modal"`,              // the button's row hosts the modal scope
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("cell-button table missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, ">Details<") {
+		t.Errorf("no trailing Details when the drawer opens from an in-cell button:\n%s", got)
+	}
+}
+
 // TestDecodeTable: the wire shape — kind-typed columns, cells with endpoints —
 // round-trips through Decode.
 func TestDecodeTable(t *testing.T) {

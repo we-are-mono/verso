@@ -130,6 +130,7 @@ type TableCell struct {
 	Dot       bool            `json:"dot,omitempty"`     // pill cells: leading status dot — the same cue the badge carries elsewhere
 	Copy      bool            `json:"copy,omitempty"`    // mono cells: offer the inline copy button beside the value
 	Chip      string          `json:"chip,omitempty"`    // name cells: a small category chip inline after the name (e.g. its zone)
+	Button    string          `json:"button,omitempty"`  // an in-cell button that opens the row's drawer (label is the text); replaces the auto trailing "Details" link for that row
 	On        bool            `json:"on,omitempty"`
 	Name      string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints []TableEndpoint `json:"endpoints,omitempty"`
@@ -155,9 +156,10 @@ var endpointIcons = map[string]string{
 }
 
 // tableView is the render model: cells zipped with their column's kind, so the
-// template stays a flat range with no positional arithmetic. HasDrawers is
-// table-wide (main rows and seam alike) so every row pads the chevron column
-// and the grid stays aligned.
+// template stays a flat range with no positional arithmetic. HasDetail is
+// table-wide (main rows and seam alike): it is true when some drawer row has no
+// in-cell button of its own, so the table carries a trailing "Details" column
+// and every row pads it to keep the grid aligned.
 type tableView struct {
 	Card        bool
 	Lined       bool
@@ -167,7 +169,7 @@ type tableView struct {
 	Action      *TableAction
 	HasLabels   bool // any column carries a header label; a labelless table draws no <thead>
 	Columns     []TableColumn
-	HasDrawers  bool
+	HasDetail   bool
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
@@ -176,8 +178,9 @@ type tableView struct {
 type tableRowView struct {
 	ID          string
 	Cells       []tableCellView
-	HasDrawers  bool // table-wide flag, copied so the rows sub-template needs no second argument
-	Drawer      bool
+	HasDetail   bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Drawer      bool // this row has a drawer (hosts the modal scope)
+	Inline      bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
 	DrawerTitle string
 	DrawerBody  []template.HTML
 }
@@ -194,20 +197,29 @@ type tableEndpointView struct {
 	Icon string
 }
 
-func (t *Table) hasDrawers() bool {
-	for _, row := range t.Rows {
-		if row.Drawer != nil {
+// rowHasButton reports whether any cell offers an in-cell button (which opens
+// the row's drawer in place of a trailing "Details" link).
+func rowHasButton(row TableRow) bool {
+	for _, c := range row.Cells {
+		if c.Button != "" {
 			return true
 		}
 	}
-	if t.Seam != nil {
-		for _, row := range t.Seam.Rows {
-			if row.Drawer != nil {
+	return false
+}
+
+// hasDetail reports whether the table needs a trailing "Details" column: true
+// when some drawer row has no in-cell button to open itself.
+func (t *Table) hasDetail() bool {
+	need := func(rows []TableRow) bool {
+		for _, row := range rows {
+			if row.Drawer != nil && !rowHasButton(row) {
 				return true
 			}
 		}
+		return false
 	}
-	return false
+	return need(t.Rows) || (t.Seam != nil && need(t.Seam.Rows))
 }
 
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
@@ -215,15 +227,15 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		Card: t.Style == "card", Lined: t.Style == "lined",
 		Condensed: t.Condensed, Title: t.Title, Detail: t.Detail, Action: t.Action,
 		HasLabels: hasColumnLabels(t.Columns),
-		Columns:   t.Columns, HasDrawers: t.hasDrawers(),
+		Columns:   t.Columns, HasDetail: t.hasDetail(),
 	}
 	var err error
-	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers); err != nil {
+	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDetail); err != nil {
 		return v, err
 	}
 	if t.Seam != nil {
 		v.SeamSummary = t.Seam.Summary
-		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers); err != nil {
+		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDetail); err != nil {
 			return v, err
 		}
 	}
@@ -241,10 +253,10 @@ func hasColumnLabels(cols []TableColumn) bool {
 	return false
 }
 
-func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers bool) ([]tableRowView, error) {
+func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bool) ([]tableRowView, error) {
 	out := make([]tableRowView, 0, len(rows))
 	for _, row := range rows {
-		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Cells: make([]tableCellView, 0, len(t.Columns))}
+		rv := tableRowView{ID: row.ID, HasDetail: hasDetail, Inline: rowHasButton(row), Cells: make([]tableCellView, 0, len(t.Columns))}
 		if row.Drawer != nil {
 			body, err := r.renderChildren(row.Drawer.Children, csrf)
 			if err != nil {
