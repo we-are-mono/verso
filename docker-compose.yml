@@ -29,6 +29,10 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+    sysctls:
+      net.netfilter.nf_conntrack_acct: "1"  # per-connection byte counters — the
+                                            # device-traffic truth Verso reads
+      net.ipv6.conf.all.forwarding: "1"     # a v6 router routes
     tmpfs:
       - /tmp
     networks:
@@ -39,6 +43,9 @@ services:
       wan-net:
         ipv4_address: 172.30.1.10   # placeholder — netifd flushes it and DHCPs
                                      # from wan-sim like a real WAN uplink.
+        mac_address: "02:42:7e:a0:00:01"  # pinned: the ISP's DHCPv6 reservation
+                                           # and its route back to the delegated
+                                           # prefix key on this MAC.
       lan-net:
         ipv4_address: 192.168.77.1  # becomes br-lan's static address (reserving
                                      # it here keeps Docker's IPAM off it).
@@ -56,10 +63,14 @@ services:
       - NET_ADMIN
     sysctls:
       net.ipv4.ip_forward: "1"
+      net.ipv6.conf.all.forwarding: "1"  # radvd refuses to advertise from a
+                                          # non-forwarding box, and the ISP
+                                          # routes the delegated prefix back
     networks:
       vnet: {}                      # egress uplink (Docker NAT)
       wan-net:
         ipv4_address: 172.30.1.2    # the "ISP gateway" the router DHCPs against
+        ipv6_address: fd42:7ea:1::2
     volumes:
       - ./docker/testbed/wan-sim.sh:/wan-sim.sh:ro
     command: ["/bin/sh", "/wan-sim.sh"]
@@ -88,9 +99,15 @@ networks:
       config:
         - subnet: 172.20.0.0/16
           gateway: 172.20.0.1
+  # IPv6 everywhere below is ULA (fd42:7ea::/32 slices): routable inside the
+  # testbed, unroutable beyond it by definition — it can never leak onto the
+  # real LAN. The delegated space (fd42:7ea:aa00::/48) is Kea's PD pool, not
+  # Docker's: the router obtains it over real DHCPv6-PD and carves br-lan's
+  # /64 out of it, exactly like a home fiber line.
   wan-net:
     driver: bridge
     internal: true                  # no host uplink — the only way out is wan-sim
+    enable_ipv6: true
     driver_opts:
       com.docker.network.container_iface_prefix: wan
     ipam:
@@ -98,12 +115,19 @@ networks:
         - subnet: 172.30.1.0/24
           gateway: 172.30.1.254     # Docker's host-side bridge address; kept off
                                      # .1/.2 so the testbed roles own those.
+        - subnet: fd42:7ea:1::/64
+          gateway: fd42:7ea:1::fffe
   lan-net:
     driver: bridge
     internal: true
+    enable_ipv6: true
     driver_opts:
       com.docker.network.container_iface_prefix: lan
     ipam:
       config:
         - subnet: 192.168.77.0/24
           gateway: 192.168.77.254
+        - subnet: fd42:7ea:2::/64   # Docker IPAM placeholder only — flushed on
+                                     # both ends; the real LAN prefix arrives by
+                                     # delegation.
+          gateway: fd42:7ea:2::fffe

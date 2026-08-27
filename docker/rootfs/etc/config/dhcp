@@ -12,13 +12,26 @@ config dnsmasq
 	option localservice '1'
 
 # Serve the LAN from .100 up; .254 is Docker's host-side bridge address and
-# .1 is the router itself.
+# .1 is the router itself. odhcpd announces the delegated v6 prefix on the
+# same interface: RA for SLAAC plus a DHCPv6 server for managed addresses.
 config dhcp 'lan'
 	option interface 'lan'
 	option start '100'
 	option limit '150'
 	option leasetime '12h'
+	option dhcpv6 'server'
+	option ra 'server'
+	# The testbed's v6 is ULA end to end, which odhcpd treats as non-public
+	# and would announce no default route for; announce it whenever the
+	# router itself holds one.
+	option ra_default '1'
 
 config dhcp 'wan'
 	option interface 'wan'
 	option ignore '1'
+
+config odhcpd 'odhcpd'
+	option maindhcp '0'
+	option leasefile '/tmp/hosts/odhcpd'
+	option leasetrigger '/usr/sbin/odhcpd-update'
+	option loglevel '4'

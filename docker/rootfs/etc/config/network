@@ -39,8 +39,18 @@ config interface 'lan'
 	option proto 'static'
 	option ipaddr '192.168.77.1'
 	option netmask '255.255.255.0'
+	# Carve the LAN's /60 out of whatever wan6's delegation brings in; odhcpd
+	# then announces it (RA + DHCPv6, /etc/config/dhcp).
+	option ip6assign '60'
 
-# The uplink: DHCPs from wan-sim (the fake ISP) on the wan-net interface.
+# The uplink: DHCPs from wan-sim (the fake ISP) on the wan-net interface —
+# v4 address, and over DHCPv6 an address plus the delegated prefix.
 config interface 'wan'
 	option device 'wan0'
 	option proto 'dhcp'
+
+config interface 'wan6'
+	option device 'wan0'
+	option proto 'dhcpv6'
+	option reqaddress 'try'
+	option reqprefix 'auto'
