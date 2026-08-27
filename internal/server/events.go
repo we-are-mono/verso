@@ -47,23 +47,25 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	var lastPorts, lastTraffic []byte
 	var prevCounters map[string]int64
 	sendMeters := func() bool {
-		// The stream is also the traffic historian: it holds a session and a
-		// steady clock, so each tick feeds the per-address rate history the
-		// device charts draw from.
-		if byAddr, err := s.backend.ConnStats(r.Context(), sid); err == nil {
-			s.trafHist.Observe(byAddr)
-		}
 		return writeMetersEvent(w, s.meterReadings(r.Context(), sid)) == nil
 	}
-	// Per-device history frames follow the same change-driven shape as ports:
-	// a fully quiet minute stops the frames until traffic moves again.
+	// Per-device frames follow the same change-driven shape as ports: a fully
+	// quiet minute stops them until traffic moves again. The tick's conntrack
+	// snapshot serves twice — the rate history behind the charts, and the
+	// running totals on the tiles. The stream is the traffic historian: it
+	// holds a session and a steady clock.
 	sendTraffic := func() bool {
-		payload, changed := marshalIfChanged(s.deviceTrafficSeries(), lastTraffic)
+		byAddr, err := s.backend.ConnStats(r.Context(), sid)
+		if err != nil {
+			return true // conntrack down is a logged page-render concern, not a stream killer
+		}
+		s.trafHist.Observe(byAddr)
+		payload, changed := marshalIfChanged(s.deviceTrafficSeries(byAddr), lastTraffic)
 		if !changed {
 			return true
 		}
 		lastTraffic = payload
-		_, err := fmt.Fprintf(w, "event: traffic\ndata: {\"devices\":%s}\n\n", payload)
+		_, err = fmt.Fprintf(w, "event: traffic\ndata: {\"devices\":%s}\n\n", payload)
 		return err == nil
 	}
 	// The panel frame goes out only when the truth moved (a cable, a

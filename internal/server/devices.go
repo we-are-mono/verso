@@ -139,23 +139,7 @@ func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
 	if byAddr, err := s.backend.ConnStats(ctx, sid); err != nil {
 		log.Printf("verso: devices: conntrack unavailable: %v", err)
 	} else {
-		addrKey := make(map[string]string)
-		for _, l := range leases {
-			mac := strings.ToLower(l.mac)
-			addrKey[l.ip] = mac
-			for _, n := range agg[mac] {
-				addrKey[n.Addr] = mac
-			}
-		}
-		for addr, mac := range addrKey {
-			if at, ok := byAddr[addr]; ok {
-				t := traffic[mac]
-				t.TxBytes += at.TxBytes
-				t.RxBytes += at.RxBytes
-				t.Conns += at.Conns
-				traffic[mac] = t
-			}
-		}
+		traffic = foldTraffic(leases, agg, byAddr)
 	}
 
 	var devices []deviceEntry
@@ -190,6 +174,25 @@ func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
 	return devices
 }
 
+// foldTraffic groups per-address conntrack totals by device MAC — both
+// families of a device summing into one figure.
+func foldTraffic(leases []lease, agg map[string][]sysstat.Neighbor, byAddr map[string]sysstat.DeviceTraffic) map[string]sysstat.DeviceTraffic {
+	traffic := make(map[string]sysstat.DeviceTraffic)
+	for _, l := range leases {
+		mac := strings.ToLower(l.mac)
+		for _, addr := range deviceAddrs(l, agg[mac]) {
+			if at, ok := byAddr[addr]; ok {
+				t := traffic[mac]
+				t.TxBytes += at.TxBytes
+				t.RxBytes += at.RxBytes
+				t.Conns += at.Conns
+				traffic[mac] = t
+			}
+		}
+	}
+	return traffic
+}
+
 // deviceAddrs is every address a device answers to: the lease's v4 plus each
 // neighbour entry on its MAC.
 func deviceAddrs(l lease, entries []sysstat.Neighbor) []string {
@@ -203,32 +206,43 @@ func deviceAddrs(l lease, entries []sysstat.Neighbor) []string {
 	return addrs
 }
 
-// deviceSeries is one device's history frame on the overview stream — the
-// same series the drawer's panel chart was rendered from, so the live layer
-// redraws exactly what the static layer drew.
+// deviceSeries is one device's frame on the overview stream — the same
+// series the drawer's panel chart was rendered from (so the live layer
+// redraws exactly what the static layer drew), plus its running totals for
+// the stat tiles.
 type deviceSeries struct {
-	Key  string    `json:"key"`
-	Down []float64 `json:"down"`
-	Up   []float64 `json:"up"`
+	Key     string    `json:"key"`
+	Down    []float64 `json:"down"`
+	Up      []float64 `json:"up"`
+	RxBytes int64     `json:"rx"`
+	TxBytes int64     `json:"tx"`
+	Conns   int       `json:"conns"`
 }
 
 // deviceTrafficSeries builds the per-device frames the stream pushes each
-// tick. Devices with no observed history yet send nothing.
-func (s *Server) deviceTrafficSeries() []deviceSeries {
+// tick, from the tick's own conntrack snapshot. Devices with no observed
+// history yet send nothing.
+func (s *Server) deviceTrafficSeries(byAddr map[string]sysstat.DeviceTraffic) []deviceSeries {
 	raw, err := s.readLeases()
 	if err != nil {
 		return nil
 	}
+	leases := parseLeases(raw)
 	neigh, _ := s.neighbors()
 	agg := aggregateNeighbors(neigh)
+	traffic := foldTraffic(leases, agg, byAddr)
 	var out []deviceSeries
-	for _, l := range parseLeases(raw) {
+	for _, l := range leases {
 		mac := strings.ToLower(l.mac)
 		down, up := s.trafHist.Series(deviceAddrs(l, agg[mac]))
 		if down == nil {
 			continue
 		}
-		out = append(out, deviceSeries{Key: mac, Down: down, Up: up})
+		t := traffic[mac]
+		out = append(out, deviceSeries{
+			Key: mac, Down: down, Up: up,
+			RxBytes: t.RxBytes, TxBytes: t.TxBytes, Conns: t.Conns,
+		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
 	return out
@@ -260,6 +274,7 @@ func connectedSection(devices []deviceEntry) widget.Widget {
 		}
 		rows = append(rows, &widget.Drawer{
 			Title: d.Name, Size: "wide", Style: "bare",
+			Dot: presenceDot(d.Presence), Tag: d.Zone,
 			Trigger:  []widget.Widget{row},
 			Children: deviceDrawerBody(d),
 		})
@@ -270,60 +285,53 @@ func connectedSection(devices []deviceEntry) widget.Widget {
 }
 
 // deviceDrawerBody is the device's full story — everything the kernel and
-// the lease file say, and nothing invented.
+// the lease file say, and nothing invented. The order tells it top-down:
+// what's flowing right now (the live rates and their minute), the running
+// totals, the honest note on what routed traffic can count, then every
+// address the device answers to.
 func deviceDrawerBody(d deviceEntry) []widget.Widget {
-	identity := []widget.Property{
-		{Label: "MAC address", Value: d.MAC, Mono: true, Copy: true},
-	}
-	if d.Zone != "" {
-		identity = append(identity, widget.Property{Label: "Zone", Value: d.Zone, Chip: true})
-	}
-	if d.Port != "" {
-		identity = append(identity, widget.Property{Label: "Router port", Value: d.Port, Mono: true})
+	downTotal, downUnit := splitBytes(d.Traffic.RxBytes)
+	upTotal, upUnit := splitBytes(d.Traffic.TxBytes)
+	stats := []widget.Widget{
+		&widget.Stat{Label: "Downloaded", Value: downTotal, Unit: downUnit, Style: "bare", Name: d.MAC + ":down"},
+		&widget.Stat{Label: "Uploaded", Value: upTotal, Unit: upUnit, Style: "bare", Name: d.MAC + ":up"},
+		&widget.Stat{Label: "Connections", Value: strconv.Itoa(d.Traffic.Conns), Style: "bare", Name: d.MAC + ":conns"},
 	}
 	if d.LeaseExpiry > 0 {
-		identity = append(identity, widget.Property{Label: "Lease renews", Value: leaseIn(d.LeaseExpiry, time.Now())})
+		stats = append(stats, &widget.Stat{Label: "Lease renews", Style: "bare",
+			Value: strings.TrimPrefix(leaseIn(d.LeaseExpiry, time.Now()), "in ")})
 	}
-	identity = append(identity,
-		widget.Property{Label: "Downloaded", Value: formatBytes(d.Traffic.RxBytes)},
-		widget.Property{Label: "Uploaded", Value: formatBytes(d.Traffic.TxBytes)},
-		widget.Property{Label: "Active connections", Value: strconv.Itoa(d.Traffic.Conns)},
-	)
 
-	addrRows := make([]widget.TableRow, 0, 1+len(d.Addrs))
+	addrs := make([]widget.Property, 0, 2+len(d.Addrs))
 	seen := false
 	for _, a := range d.Addrs {
 		if a.Addr == d.IP {
 			seen = true
 		}
-		addrRows = append(addrRows, addrRow(a.Addr, a.State))
+		addrs = append(addrs, addrProperty(a.Addr, a.State))
 	}
 	if !seen { // the lease's v4 even when the kernel holds no entry for it
-		addrRows = append([]widget.TableRow{addrRow(d.IP, 0)}, addrRows...)
+		addrs = append([]widget.Property{addrProperty(d.IP, 0)}, addrs...)
+	}
+	addrs = append(addrs, widget.Property{Label: "MAC", Value: d.MAC, Mono: true, Copy: true})
+	if d.Port != "" {
+		addrs = append(addrs, widget.Property{Label: "Interface", Value: d.Port, Mono: true})
 	}
 
 	return []widget.Widget{
-		&widget.Properties{Items: identity},
 		trafficSpark(d),
+		&widget.Grid{Columns: len(stats), Children: stats},
 		&widget.Callout{Variant: "info",
 			Body: "Traffic counts what has crossed the router on connections still open — chatter between devices on your own network never passes through, so it isn't counted."},
-		&widget.Table{
-			Style: "lined",
-			Columns: []widget.TableColumn{
-				{Label: "Address", Kind: "mono"},
-				{Label: "Type"},
-				{Label: "State", Kind: "pill"},
-			},
-			Rows: addrRows,
-		},
+		&widget.Properties{Items: addrs, Align: "left"},
 	}
 }
 
 // trafficSpark draws the device's last minute of throughput — download and
-// upload on the fixed-height panel plot with its quarter value lines — fed
-// by the history the overview stream accumulates and updated live by the
-// stream's traffic events. A quiet (or not-yet-observed) minute draws in the
-// calm grey.
+// upload on the fixed-height panel plot, the current rates reading out above
+// it — fed by the history the overview stream accumulates and updated live
+// by the stream's traffic events. A quiet (or not-yet-observed) minute draws
+// in the calm grey.
 func trafficSpark(d deviceEntry) widget.Widget {
 	idle := true
 	for _, v := range append(append([]float64{}, d.Down...), d.Up...) {
@@ -336,31 +344,70 @@ func trafficSpark(d deviceEntry) widget.Widget {
 		Size: "panel", Idle: idle, Name: d.MAC,
 		Axis: true, Unit: "Mbps", AxisStart: "60s ago", AxisEnd: "now",
 		Label: d.Name + " throughput over the last minute",
+		Note:  "live · 1s samples",
 		Series: []widget.ChartSeries{
-			{Label: "Download", Values: d.Down, Role: "sky", Fill: true},
-			{Label: "Upload", Values: d.Up, Role: "violet"},
+			{Label: "Download", Value: rateStr(lastPoint(d.Down)), Values: d.Down, Role: "sky", Fill: true},
+			{Label: "Upload", Value: rateStr(lastPoint(d.Up)), Values: d.Up, Role: "violet"},
 		},
 	}
 }
 
-// addrRow is one line of the drawer's address table.
-func addrRow(addr string, st sysstat.NeighState) widget.TableRow {
-	kind := "IPv4"
+// addrProperty is one address line: its family as the label, the address
+// itself with a copy control, and its own presence state in the shared badge
+// vocabulary.
+func addrProperty(addr string, st sysstat.NeighState) widget.Property {
+	label := "IPv4"
 	switch {
 	case strings.HasPrefix(addr, "fe80"):
-		kind = "Link-local"
+		label = "Link-local"
 	case strings.Contains(addr, ":"):
-		kind = "IPv6"
+		label = "IPv6"
 	}
-	// The same presence vocabulary the roster badges speak — dots included.
-	state := widget.TableCell{Text: "Offline", Variant: "neutral"}
+	status := &widget.Badge{Variant: "neutral", Text: "Offline"}
 	switch {
 	case st.Active():
-		state = widget.TableCell{Text: "Online", Variant: "success", Dot: true}
+		status = &widget.Badge{Variant: "success", Dot: true, Text: "Online"}
 	case st.Recent():
-		state = widget.TableCell{Text: "Idle", Variant: "neutral", Dot: true}
+		status = &widget.Badge{Variant: "neutral", Dot: true, Text: "Idle"}
 	}
-	return widget.TableRow{Cells: []widget.TableCell{{Text: addr, Copy: true}, {Text: kind}, state}}
+	return widget.Property{Label: label, Value: addr, Mono: true, Copy: true, Status: status}
+}
+
+// splitBytes breaks formatBytes' "103.7 MiB" into the value and its unit,
+// the shape a stat tile wants.
+func splitBytes(b int64) (value, unit string) {
+	parts := strings.SplitN(formatBytes(b), " ", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
+}
+
+// lastPoint is a series' newest value, zero when there is none.
+func lastPoint(vals []float64) float64 {
+	if len(vals) == 0 {
+		return 0
+	}
+	return vals[len(vals)-1]
+}
+
+// rateStr renders a current rate in Mbps — always the nearest whole number,
+// the readout stays calm.
+func rateStr(v float64) string {
+	return fmt.Sprintf("%.0f", v)
+}
+
+// presenceDot maps presence onto the drawer title's status-dot vocabulary —
+// a pulsing green for a confirmed-live device, quiet slate for one seen
+// lately, nothing for one that is gone.
+func presenceDot(p presence) string {
+	switch p {
+	case presenceOnline:
+		return "success"
+	case presenceIdle:
+		return "neutral"
+	}
+	return ""
 }
 
 // leaseIn says when the lease runs out the way a person would.

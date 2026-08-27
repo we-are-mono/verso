@@ -157,18 +157,21 @@ func TestLeaseIn(t *testing.T) {
 
 // TestIndexRendersRoster: the section sits bare on the canvas — trigger rows
 // with zone chips, presence badges, honest chevrons — and each device's wide
-// drawer carries the kernel's full story.
+// drawer tells the story top-down: live chart with rate readout, stat tiles,
+// the info note, then every address with its state.
 func TestIndexRendersRoster(t *testing.T) {
 	body := get(t, rosterServer(t), "/").Body.String()
 	for _, want := range []string{
 		"Connected devices", "toms-iphone", "192.168.77.102", "Device 0e:57",
 		"Online", "Idle", "Offline",
-		">lan<",                 // the zone chip
-		"max-w-2xl",             // the wide drawer
-		"fd42:7ea:aa00:0:1::66", // v6 in the drawer's address table
-		"42:e6:ad:ff:b7:af",     // MAC in identity
-		"lan0",                  // bridge port
-		"Active connections",    // conntrack block
+		">lan<",                                           // the zone chip (rows and drawer title alike)
+		"max-w-2xl",                                       // the wide drawer
+		"fd42:7ea:aa00:0:1::66",                           // v6 in the drawer's address list
+		"42:e6:ad:ff:b7:af",                               // MAC row
+		"lan0",                                            // interface row (the bridge port)
+		"live · 1s samples",                               // the readout's sampling note
+		"verso-chart-panel-head",                          // rates above the plot
+		">Downloaded<", ">Connections<", ">Lease renews<", // stat tiles
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)

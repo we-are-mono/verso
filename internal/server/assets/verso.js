@@ -457,6 +457,9 @@ document.addEventListener(
     });
     // The value labels ride their gridlines: quarters of the new range, the
     // unit staying on the topmost (captured from the rendered text once).
+    var fmt = function (v) {
+      return v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
+    };
     var labels = svg.parentElement.querySelectorAll(".verso-chart-yl");
     labels.forEach(function (el, i) {
       var frac = [1, 0.75, 0.5, 0.25][i];
@@ -465,9 +468,42 @@ document.addEventListener(
         el.dataset.unit = (el.textContent.match(/[\d.]+\s*(.*)$/) || ["", ""])[1];
       }
       var v = max * frac;
-      var text = v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
-      el.textContent = el.dataset.unit ? text + " " + el.dataset.unit : text;
+      el.textContent = el.dataset.unit ? fmt(v) + " " + el.dataset.unit : fmt(v);
     });
+    // The readout above the plot shows each series' newest value — whole
+    // numbers only, the readout stays calm.
+    var block = document.querySelector('[data-verso-chart-block="' + dev.key + '"]');
+    if (block) {
+      block.querySelectorAll("[data-verso-chart-rate-v]").forEach(function (el, i) {
+        var vals = series[i];
+        if (vals && vals.length) el.textContent = String(Math.round(vals[vals.length - 1]));
+      });
+    }
+    // The running totals on the device's stat tiles.
+    setStat(dev.key + ":down", fmtBytes(dev.rx));
+    setStat(dev.key + ":up", fmtBytes(dev.tx));
+    setStat(dev.key + ":conns", [String(dev.conns || 0), ""]);
+  }
+  // fmtBytes mirrors the server's byte formatting: whole bytes, then one
+  // decimal per binary step.
+  function fmtBytes(n) {
+    n = n || 0;
+    if (n < 1024) return [String(n), "B"];
+    var units = ["KiB", "MiB", "GiB", "TiB", "PiB"];
+    var i = -1;
+    do {
+      n /= 1024;
+      i++;
+    } while (n >= 1024 && i < units.length - 1);
+    return [n.toFixed(1), units[i]];
+  }
+  function setStat(name, parts) {
+    var tile = document.querySelector('[data-verso-stat="' + name + '"]');
+    if (!tile) return;
+    var v = tile.querySelector("[data-verso-stat-v]");
+    if (v) v.textContent = parts[0];
+    var u = tile.querySelector("[data-verso-stat-u]");
+    if (u) u.textContent = parts[1];
   }
   function listen(es, type, key, apply) {
     es.addEventListener(type, function (e) {
