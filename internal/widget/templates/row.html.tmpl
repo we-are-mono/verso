@@ -1,6 +1,6 @@
-{{/* row: a compact list item — leading icon, title + meta, trailing status badge
-     and chevron. The status badge is pre-rendered trusted HTML. Icons come from the
-     shared Lucide set (icons.go). */}}
+{{/* row: a compact list item — leading icon, title + meta, trailing status badge,
+     and (only when the row actually opens something) a chevron. The status badge is
+     pre-rendered trusted HTML. Icons come from the shared Lucide set (icons.go). */}}
 <div class="flex items-center gap-3 px-1 py-2">
   {{if .Icon}}<span class="shrink-0 text-slate-400">{{icon .Icon "size-5"}}</span>{{end}}
   <div class="flex min-w-0 flex-1 items-baseline gap-2.5">
@@ -9,5 +9,5 @@
     {{if .Columns}}<span class="w-24 shrink-0">{{if .Tag}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}</span>{{else if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
   </div>
   {{if .Status}}<div class="shrink-0">{{.Status}}</div>{{end}}
-  {{icon "chevron-right" "size-5 shrink-0 text-slate-300"}}
+  {{if .Chevron}}{{icon "chevron-right" "size-5 shrink-0 text-slate-300"}}{{end}}
 </div>

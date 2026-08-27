@@ -26,6 +26,9 @@ type Property struct {
 	Value string `json:"value"`
 	Mono  bool   `json:"mono"`
 	Copy  bool   `json:"copy"`
+	// Chip renders the value as the small category chip — the same treatment
+	// a zone gets everywhere else, so one fact never wears two dresses.
+	Chip bool `json:"chip,omitempty"`
 }
 
 func (*Properties) isWidget() {}

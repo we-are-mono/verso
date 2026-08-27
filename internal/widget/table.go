@@ -109,6 +109,8 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 type TableCell struct {
 	Text      string          `json:"text,omitempty"`
 	Variant   string          `json:"variant,omitempty"` // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
+	Dot       bool            `json:"dot,omitempty"`     // pill cells: leading status dot — the same cue the badge carries elsewhere
+	Copy      bool            `json:"copy,omitempty"`    // mono cells: offer the inline copy button beside the value
 	On        bool            `json:"on,omitempty"`
 	Name      string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints []TableEndpoint `json:"endpoints,omitempty"`
@@ -231,7 +233,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers, 
 					cv.Endpoints = append(cv.Endpoints, tableEndpointView{TableEndpoint: ep, Icon: icon})
 				}
 				if kind == "pill" && cv.Text != "" {
-					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text}
+					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot}
 				}
 			}
 			rv.Cells = append(rv.Cells, cv)

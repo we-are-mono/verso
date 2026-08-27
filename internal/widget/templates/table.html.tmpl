@@ -41,7 +41,7 @@
              no "no", nothing to read when there is nothing to say. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green-600"}}{{end}}</td>
         {{else if eq .Kind "mono"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</td>
         {{else if eq .Kind "keyword"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}

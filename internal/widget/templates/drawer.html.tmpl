@@ -4,8 +4,10 @@
      declared the trigger, title, and body; verso.js owns the behaviour. Directives
      reference only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
 <div x-data="modal">
+  {{/* The trigger's dress depends on where it lives: framed as a card button on
+       its own, or bare with the row hover tint inside a hairline-divided list. */}}
   <button type="button" @click="show"
-    class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-1 text-left shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
+    class="block w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 {{if .Bare}}transition-colors hover:bg-slate-50{{else}}rounded-xl border border-slate-200 bg-white px-4 py-1 shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md{{end}}">
     {{.Trigger}}
   </button>
   <template x-teleport="body">
@@ -15,7 +17,7 @@
         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
         x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-        class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+        class="absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
         <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>
           <button type="button" @click="hide" aria-label="Close"
@@ -23,7 +25,19 @@
             {{icon "x" "size-5"}}
           </button>
         </header>
-        <div class="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+        {{/* Tables lose their page-width floor in here: the panel is narrower
+             than the 44rem that keeps columns comfortable on a full page, and
+             a scrollbar inside a drawer helps nobody. Horizontal overflow is
+             clipped outright — edge-hugging absolute bits (a copy button's
+             tooltip) must not grow a sideways scroll area. Table edges run
+             flush with the panel's own: no side padding on the outer cells,
+             and the last column rides the right edge. */}}
+        {{/* The table's own scroll wrapper goes inert in here too: with the
+             width floor gone it never needs to scroll, and its scroll context
+             would otherwise grow a vertical bar from the copy tooltips. Row
+             hover goes quiet as well — these rows open nothing, and the tint
+             would promise otherwise. */}}
+        <div class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
           {{range .Children}}{{.}}{{end}}
         </div>
       </aside>

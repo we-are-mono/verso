@@ -20,6 +20,10 @@ type Row struct {
 	Tag     string `json:"tag"`     // small category chip after the meta (e.g. a network/zone); omitted when empty
 	Columns bool   `json:"columns"` // give title/meta/tag fixed widths so a list of rows aligns into columns (scannable)
 	Status  *Badge `json:"status"`  // optional trailing status pill
+	// Chevron is the "this opens" cue. It is opt-in and must be honest: set
+	// it only when the row actually goes somewhere — as a drawer trigger or a
+	// link — never as decoration on a purely informational row.
+	Chevron bool `json:"chevron,omitempty"`
 }
 
 func (*Row) isWidget() {}
@@ -28,7 +32,7 @@ func (*Row) isWidget() {}
 // trusted HTML (by this renderer), the rest plain text the template escapes.
 type rowView struct {
 	Icon, Title, Meta, Tag string
-	Columns                bool
+	Columns, Chevron       bool
 	Status                 template.HTML
 }
 
@@ -41,5 +45,5 @@ func (w *Row) renderInto(r *Renderer, out io.Writer, _ string) error {
 		}
 		status = template.HTML(b.String())
 	}
-	return r.execute(out, "row.html.tmpl", rowView{Icon: w.Icon, Title: w.Title, Meta: w.Meta, Tag: w.Tag, Columns: w.Columns, Status: status})
+	return r.execute(out, "row.html.tmpl", rowView{Icon: w.Icon, Title: w.Title, Meta: w.Meta, Tag: w.Tag, Columns: w.Columns, Chevron: w.Chevron, Status: status})
 }
