@@ -107,8 +107,9 @@
   {{/* Content width is a per-page preset the page declares (default normal),
        left-aligned against the rail (no centring — better on wide monitors). */}}
   {{/* pt equals px, so the masthead sits as far from the top edge as from the
-       left one; the bottom keeps the roomier close. */}}
-  <div class="px-8 pt-8 pb-10 {{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">
+       left one; the bottom keeps the roomier close — deepened when the pinned
+       capsule bar would otherwise cover the last of the content. */}}
+  <div class="px-8 pt-8 {{if .ShowCapsule}}pb-32{{else}}pb-10{{end}} {{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">
     {{if .NoPassword}}
     <div class="mb-8 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
       {{icon "triangle-alert" "mt-0.5 size-4 shrink-0"}}
@@ -137,16 +138,18 @@
     {{/* Only the body settles in on load; the masthead above (kicker/heading/lede) stays put. */}}
     <div class="verso-page-enter">{{.Body}}</div>
 
-    {{/* Staged-changes bar (shell-owned, verso.js "capsule"): in the flow at the
-         bottom of the content — where every form keeps its actions (the LuCI
-         convention). It renders from UCI's own stage (ADR-010): the count and
-         the review list are the pending `uci changes`, server-rendered; the
-         buttons post to /uci/*. Staging pages show it always (inert when
-         clean); immediate-action pages only when the shared stage holds
-         changes from elsewhere. Apply carries the auto-rollback promise. */}}
+    {{/* Staged-changes bar (shell-owned, verso.js "capsule"): a bottom drawer
+         pinned open across the content area — its top rule runs the full
+         content width, stopping at the sidebar. It renders from UCI's own
+         stage (ADR-010): the count and the review list are the pending `uci
+         changes`, server-rendered; the buttons post to /uci/*. Staging pages
+         show it always (inert when clean); immediate-action pages only when
+         the shared stage holds changes from elsewhere. Apply carries the
+         auto-rollback promise. */}}
     {{if .ShowCapsule}}
     <div id="verso-capsule" data-csrf="{{.CSRFToken}}"
-      class="verso-capsule relative mt-12 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
+      class="verso-capsule fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white md:left-64">
+      <div class="relative flex flex-wrap items-center gap-3 px-8 py-5">
       <button type="button" id="verso-capsule-apply"{{if not .Capsule.Count}} disabled{{end}}
         class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:pointer-events-none disabled:opacity-40">Save &amp; Apply</button>
       <button type="button" id="verso-capsule-discard"{{if not .Capsule.Count}} disabled{{end}}
@@ -158,13 +161,14 @@
       {{if .Capsule.Count}}
       <button type="button" id="verso-capsule-review"
         class="text-sm font-semibold text-sky-700 transition-colors hover:text-sky-800">Review</button>
-      <div id="verso-capsule-list" class="absolute bottom-full left-0 mb-2 hidden w-96 max-w-full rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+      <div id="verso-capsule-list" class="absolute bottom-full left-8 mb-2 hidden w-96 max-w-full rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
         <ul class="max-h-60 space-y-1 overflow-y-auto font-mono text-xs text-slate-700">
           {{range .Capsule.Items}}<li>{{.}}</li>{{end}}
         </ul>
         <p class="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500">Nothing is live yet. Save &amp; Apply commits and reloads the affected services — and auto-reverts if the router becomes unreachable for 30&nbsp;seconds.</p>
       </div>
       {{end}}
+      </div>
     </div>
     {{end}}
   </div>
