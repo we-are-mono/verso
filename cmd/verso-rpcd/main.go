@@ -16,6 +16,6 @@ import (
 )
 
 func main() {
-	h := rpcdhelper.New(rpcdhelper.UbusAuthorizer{}, rpcdhelper.SystemPasswordSetter{}, rpcdhelper.ApkPackageManager{})
+	h := rpcdhelper.New(rpcdhelper.UbusAuthorizer{}, rpcdhelper.SystemPasswordSetter{}, rpcdhelper.ApkPackageManager{}, rpcdhelper.SysTrafficReader{})
 	os.Exit(h.Run(os.Args[1:], os.Stdin, os.Stdout))
 }

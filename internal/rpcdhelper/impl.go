@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/ubus"
 )
 
@@ -220,4 +221,16 @@ func (a UbusAuthorizer) Access(sid, function string) (bool, error) {
 		return v != 0, nil
 	}
 	return false, nil
+}
+
+// SysTrafficReader reads the kernel's conntrack table — a root-only file —
+// and hands back per-address totals (sysstat owns the parsing and the fold).
+type SysTrafficReader struct{}
+
+func (SysTrafficReader) ConnStats() (map[string]sysstat.DeviceTraffic, error) {
+	raw, err := sysstat.ConntrackDump()
+	if err != nil {
+		return nil, err
+	}
+	return sysstat.AggregateByAddress(sysstat.ParseConntrack(raw)), nil
 }

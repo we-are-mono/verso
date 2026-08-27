@@ -3,7 +3,7 @@
 		"description": "Verso shell privileged helper actions (verso-rpcd)",
 		"write": {
 			"ubus": {
-				"verso": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ]
+				"verso": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove", "connStats" ]
 			}
 		}
 	}

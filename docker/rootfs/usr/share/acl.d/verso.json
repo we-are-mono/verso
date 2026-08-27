@@ -7,6 +7,6 @@
 		"rc": { "methods": [ "list", "init" ] },
 		"network.interface.wan": { "methods": [ "status" ] },
 		"network.device": { "methods": [ "status" ] },
-		"verso": { "methods": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ] }
+		"verso": { "methods": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove", "connStats" ] }
 	}
 }

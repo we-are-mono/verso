@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+
+	"github.com/we-are-mono/verso/internal/sysstat"
 )
 
 // Exit codes are ubus status codes: rpcd maps the plugin's exit code onto the
@@ -76,6 +78,13 @@ type Package struct {
 	Installed   bool   `json:"installed"`
 }
 
+// TrafficReader reports per-address traffic totals aggregated from the
+// kernel's conntrack table. Split behind an interface so the protocol is
+// testable without a kernel.
+type TrafficReader interface {
+	ConnStats() (map[string]sysstat.DeviceTraffic, error)
+}
+
 // pkgNameRe is the exact shape of an installable package name — nothing else
 // reaches the package manager's argv. Globs, options, and path characters are
 // untypeable by construction.
@@ -119,7 +128,7 @@ type Helper struct {
 
 // New builds the helper with the standard method set. Register further root
 // actions here; each is self-gated identically.
-func New(auth Authorizer, pw PasswordSetter, pkgs PackageManager) *Helper {
+func New(auth Authorizer, pw PasswordSetter, pkgs PackageManager, traffic TrafficReader) *Helper {
 	h := &Helper{auth: auth, methods: map[string]method{}}
 
 	h.methods["setPassword"] = method{
@@ -139,6 +148,20 @@ func New(auth Authorizer, pw PasswordSetter, pkgs PackageManager) *Helper {
 
 	// The package verbs (ADR-011 §4): the one privileged path to apk. Names
 	// and queries are validated to an exact alphabet before touching argv.
+	// connStats: per-address traffic totals from conntrack — root's read
+	// (/proc/net/nf_conntrack is closed to the unprivileged shell), already
+	// aggregated so the reply stays one small row per active address.
+	h.methods["connStats"] = method{
+		signature: map[string]string{},
+		run: func(map[string]any) (any, error) {
+			totals, err := traffic.ConnStats()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"addrs": totals}, nil
+		},
+	}
+
 	h.methods["pkgStatus"] = method{
 		signature: map[string]string{},
 		run: func(map[string]any) (any, error) {
