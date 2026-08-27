@@ -484,12 +484,14 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	if !strings.Contains(divided, "divide-y divide-slate-200") {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
 	}
+	// Striping is retired: a "striped" request falls through to the hairline
+	// default and never zebra-shades.
 	striped := render(t, r, &Properties{Style: "striped", Items: items})
-	if !strings.Contains(striped, "odd:bg-slate-50") {
-		t.Errorf("striped properties should zebra-shade rows:\n%s", striped)
+	if strings.Contains(striped, "odd:bg-slate-50") {
+		t.Errorf("striped is retired; must not zebra-shade:\n%s", striped)
 	}
-	if strings.Contains(striped, "divide-y") {
-		t.Errorf("striped properties should not also draw hairlines:\n%s", striped)
+	if !strings.Contains(striped, "divide-y divide-slate-200") {
+		t.Errorf("retired striped should render as the hairline default:\n%s", striped)
 	}
 	bare := render(t, r, &Properties{Style: "plain", Items: items})
 	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-slate-50") {

@@ -1,8 +1,8 @@
 {{/* properties: a label/value detail list (a <dl>) — label left, value right, so the
      facts about one thing line up and scan cleanly. Style picks the row separator:
-     "striped" (zebra), "plain" (none), or the default hairline between rows. The class
-     strings live here (not in Go) so Tailwind's scanner keeps them. A row may offer an
-     inline copy button (shell-owned "copy", verso.js); icons from icons.go. */}}
+     "plain" (none) or the default hairline between rows. The class strings live here
+     (not in Go) so Tailwind's scanner keeps them. A row may offer an inline copy
+     button (shell-owned "copy", verso.js); icons from icons.go. */}}
 {{/* verso-copy-inline: the icon-sized copy control beside a value — context is the
      text to copy. Shared by properties rows and mono table cells. */}}
 {{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="Copy" class="group/copy relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
@@ -18,9 +18,9 @@
     <span x-show="done" x-cloak>Copied!</span>
   </span>
 </button>{{end}}
-<dl class="{{if eq .Style "striped"}}overflow-hidden rounded-md{{else if eq .Style "plain"}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
+<dl class="{{if eq .Style "plain"}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
   {{range .Items}}
-  <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "striped"}} px-3 py-2 odd:bg-slate-50{{else if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
+  <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
     <dt class="shrink-0 text-slate-500{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
     <dd class="{{if eq $.Align "left"}}flex min-w-0 flex-1 items-baseline text-left{{else}}text-right{{end}} font-medium text-slate-700">
       {{if .Chip}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Value}}</span>{{else}}<span class="{{if .Mono}}font-mono{{end}}">{{.Value}}</span>{{end}}

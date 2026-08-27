@@ -53,7 +53,7 @@ func TestRenderTableKinds(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		">Protocol<", ">Hits<", // headers render
-		"uppercase",                  // header treatment is typographic, not a fill
+		"font-semibold",              // header treatment is weight, not a fill
 		"font-mono",                  // the port column is a machine string
 		"8443 → 443",                 // port rewrite verbatim
 		"tabular-nums",               // counters align
@@ -116,7 +116,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"font-bold",                             // the identity column is bold ink, no icon
+		"font-semibold text-slate-900",          // the identity column is emphasised ink, no icon
 		"bg-green-50 text-green-700",            // accept pill through the badge palette
 		"bg-amber-50 text-amber-700",            // reject pill
 		"bg-sky-50 text-sky-700",                // NAT carries the info accent
@@ -165,11 +165,10 @@ func TestRenderTableSeam(t *testing.T) {
 	}
 }
 
-// TestRenderTableRowDrawer: a row with a drawer is an openable object — it hosts
-// its own modal scope, opens via showFromRow (which skips clicks on controls),
-// shows the chevron affordance, and teleports its panel to <body>. Rows without
-// drawers pad the chevron column so the grid stays aligned; forms inside the
-// drawer receive the CSRF token.
+// TestRenderTableRowDrawer: a row with a drawer is an openable object, but the
+// row itself is inert — it hosts its own modal scope and opens from a trailing
+// "Details" link (never a whole-row click, so cell values stay selectable). The
+// panel teleports to <body>; forms inside it receive the CSRF token.
 func TestRenderTableRowDrawer(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
@@ -183,7 +182,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	}
 	got := b.String()
 	for _, want := range []string{
-		`x-data="modal"`, `@click="showFromRow"`, "cursor-pointer",
+		`x-data="modal"`, `@click="show"`, ">Details<", // opens from the trailing link
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
 	} {
@@ -191,9 +190,13 @@ func TestRenderTableRowDrawer(t *testing.T) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
 		}
 	}
-	// One chevron for the drawer row; the drawerless row pads the column.
-	if strings.Count(got, "m9 18 6-6-6-6") != 1 {
-		t.Errorf("exactly one chevron affordance expected:\n%s", got)
+	for _, absent := range []string{
+		`@click="showFromRow"`, // the row itself is not clickable
+		"m9 18 6-6-6-6",        // no row chevron — the "Details" link is the affordance
+	} {
+		if strings.Contains(got, absent) {
+			t.Errorf("inert row must not contain %q:\n%s", absent, got)
+		}
 	}
 	if strings.Count(got, `x-data="modal"`) != 1 {
 		t.Errorf("only drawer rows should host a modal scope:\n%s", got)
@@ -231,6 +234,89 @@ func TestTableRaggedRow(t *testing.T) {
 	})
 	if strings.Count(got, "<td") != 2 {
 		t.Errorf("short row should be padded to the column count:\n%s", got)
+	}
+}
+
+// flatDevicesTable is the connected-devices flat listing in miniature: a header
+// band, no column labels, and a drawer row whose only click target is the
+// trailing "Details" link.
+func flatDevicesTable() *Table {
+	return &Table{
+		Style:  "flat",
+		Title:  "Connected devices",
+		Detail: "12 online · 3 busy",
+		Action: &TableAction{Label: "View all", Href: "/devices"},
+		Columns: []TableColumn{
+			{Kind: "name"}, {Kind: "keyword"}, {Kind: "pill"},
+		},
+		Rows: []TableRow{
+			{Cells: []TableCell{{Text: "Gaming PC"}, {Text: "Ethernet"}, {Text: "High use", Variant: "warning"}},
+				Drawer: &RowDrawer{Title: "Gaming PC", Children: []Widget{&Divider{}}}},
+		},
+	}
+}
+
+// TestRenderTableFlat: the flat style draws a header band aligned to the table's
+// edges, no stripe, inert rows (values stay selectable), and opens a drawer from
+// a trailing "Details" link rather than a whole-row click. A labelless flat table
+// draws no <thead>.
+func TestRenderTableFlat(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, flatDevicesTable())
+	for _, want := range []string{
+		">Connected devices<",    // header band title
+		"12 online · 3 busy",     // header band detail
+		">View all<",             // header band action
+		`href="/devices"`,        // action link target
+		">Details<",              // the trailing "more" affordance
+		`@click="show"`,          // the Details link opens the drawer
+		"border-b border-slate-200", // hairline rows
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("flat table missing %q:\n%s", want, got)
+		}
+	}
+	for _, absent := range []string{
+		"odd:bg-slate-50",       // stripes are retired in the flat style
+		`@click="showFromRow"`,  // the row itself is not clickable
+		"cursor-pointer",        // no pointer on inert rows
+		"<thead",                // no column labels → no header row
+	} {
+		if strings.Contains(got, absent) {
+			t.Errorf("flat table must not contain %q:\n%s", absent, got)
+		}
+	}
+}
+
+// TestRenderTableFlatLabels: a flat table WITH column labels renders the <thead>
+// and stays stripeless.
+func TestRenderTableFlatLabels(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Style:   "flat",
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Port", Kind: "mono"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: "SSH"}, {Text: "22"}}}},
+	})
+	for _, want := range []string{"<thead", ">Name<", ">Port<"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("labelled flat table missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "odd:bg-slate-50") {
+		t.Errorf("flat table must not stripe:\n%s", got)
+	}
+}
+
+// TestRenderTableFlatCondensed: Condensed lowers the flat row padding.
+func TestRenderTableFlatCondensed(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Style: "flat", Condensed: true,
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: "SSH"}}}},
+	})
+	if !strings.Contains(got, "[&_td]:py-1.5") {
+		t.Errorf("condensed flat table should tighten row padding:\n%s", got)
 	}
 }
 

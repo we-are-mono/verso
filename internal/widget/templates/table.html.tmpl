@@ -3,21 +3,18 @@
      it); pills and counters are the loudest. One treatment per element type:
      endpoints are a type icon + label (no pill — the grid already contains them),
      mono is reserved for verbatim machine strings, counters read sans with tabular
-     figures. Type scale: data 0.95rem sans / 0.9rem mono, headers 0.7rem. An
+     figures. Type scale: data 0.875rem sans (text-sm) / 0.9rem mono, headers 0.75rem. An
      optional seam folds extra rows (stock defaults) inside the same card. */}}
 {{define "table.rows"}}
       {{range .}}
-      {{/* A row with a drawer is an openable object: it hosts its own modal scope,
-           opens on click (showFromRow skips clicks on controls inside the row), and
-           carries the chevron affordance. The panel itself teleports to <body>. */}}
+      {{/* Rows are inert: no whole-row click, so cell values stay selectable and
+           copy-pastable. A row with a drawer still hosts its own modal scope, but
+           it opens from the trailing "Details" link, never the row. The panel
+           teleports to <body>. */}}
       {{if .Drawer}}
-      {{/* Rows never tint on hover — the cursor and the chevron's nudge carry
-           the "this opens" cue on drawer rows. */}}
-      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer{{if .Striped}} odd:bg-slate-50{{end}}">
+      <tr x-data="modal" class="group">
       {{else}}
-      {{/* No drawer, no hover tint: a highlight that answers no click is a
-           promise the row can't keep. */}}
-      <tr class="group{{if .Striped}} odd:bg-slate-50{{end}}">
+      <tr class="group">
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "toggle"}}
@@ -37,7 +34,14 @@
           </span>
         </td>
         {{else if eq .Kind "name"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-semibold text-slate-900 group-last:border-b-0">{{.Text}}</td>
+        {{/* the identity column: the name in bold ink, with an optional small
+             category chip inline after it (e.g. the device's zone). */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
+          <span class="inline-flex items-center gap-2">
+            <span class="font-semibold text-slate-900">{{.Text}}</span>
+            {{if .Chip}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Chip}}</span>{{end}}
+          </span>
+        </td>
         {{else if eq .Kind "pill"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
         {{else if eq .Kind "check"}}
@@ -57,8 +61,10 @@
         {{end}}
         {{end}}
         {{if .HasDrawers}}
-        <td class="w-8 border-b border-slate-200 py-3 pr-1 text-right align-middle last:pr-0 group-last:border-b-0">
-          {{if .Drawer}}<span class="inline-block text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500">{{icon "chevron-right" "size-4"}}</span>{{end}}
+        {{/* the trailing "more" affordance: a plain link hard-right, the only
+             click target in the row. Blank when the row has nothing behind it. */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 pr-1 text-right align-middle whitespace-nowrap last:pr-0 group-last:border-b-0">
+          {{if .Drawer}}<button type="button" @click="show" class="text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">Details</button>{{end}}
         </td>
         {{end}}
         {{if .Drawer}}
@@ -91,21 +97,33 @@
     <thead>
       <tr>
         {{range .Columns}}
-        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-xs font-bold uppercase tracking-[0.07em] text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-sm font-light text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
         {{end}}
-        {{if .HasDrawers}}<th scope="col" class="w-8 border-b border-slate-200"></th>{{end}}
+        {{if .HasDrawers}}<th scope="col" class="border-b border-slate-200"></th>{{end}}
       </tr>
     </thead>
 {{end}}
-{{/* bare by default: striped rows straight on the page (no cell hairlines, a
-     little stripe inset). style "lined" keeps the bare ground but divides
-     rows with the cells' own hairlines — the live-listing look (a process
-     table). style "card" opts into the twin-hairline frame — border plus a
-     ring floated 4px out — shared with the settings card, so every boxed
-     listing speaks one card language. */}}
-<div class="overflow-x-auto{{if .Card}} rounded-2xl border border-slate-200 bg-white px-5 pb-2 ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{else if .Lined}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{else}} [&_td]:border-b-0 [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{end}}">
-  <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
-    {{template "table.head" .}}
+{{/* the default: bare hairline rows flush to the table's edges (first column to
+     the left border, last to the right), an optional header band, and inert
+     rows — no stripe, no whole-row click, so values stay selectable; Condensed
+     just tightens the row padding. style "lined" insets the same hairline rows a
+     little — the live-listing look (a process table). style "card" opts into the
+     twin-hairline frame — border plus a ring floated 4px out — shared with the
+     settings card, so every boxed listing speaks one card language. */}}
+<div class="overflow-x-auto{{if .Card}} rounded-2xl border border-slate-200 bg-white px-5 pb-2 ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{else if .Lined}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{else if .Condensed}} [&_td]:py-1.5 [&_th]:pt-2.5 [&_th]:pb-2{{end}}">
+  {{if .Title}}
+  {{/* the header band: a top row aligned to the table's own edges (flush
+       left title, flush right link), a hairline under it so it reads as the
+       table's first row. */}}
+  <div class="flex min-w-[44rem] items-baseline gap-3 border-b border-slate-200 pt-1 pb-3">
+    <h3 class="text-xl font-semibold tracking-tight text-slate-900">{{.Title}}</h3>
+    {{if .Detail}}<span class="text-sm text-slate-500">{{.Detail}}</span>{{end}}
+    <span class="flex-1"></span>
+    {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Action.Label}}</a>{{end}}
+  </div>
+  {{end}}
+  <table class="w-full min-w-[44rem] border-collapse text-sm">
+    {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
 {{template "table.rows" .Rows}}
     </tbody>
@@ -123,8 +141,8 @@
       {{.SeamSummary}}
     </summary>
     <div class="{{if .Card}}px-5 pb-1{{end}}">
-      <table class="w-full min-w-[44rem] border-collapse text-[0.95rem]">
-        {{template "table.head" .}}
+      <table class="w-full min-w-[44rem] border-collapse text-sm">
+        {{if .HasLabels}}{{template "table.head" .}}{{end}}
         <tbody>
 {{template "table.rows" .SeamRows}}
         </tbody>

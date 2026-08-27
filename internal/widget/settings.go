@@ -68,14 +68,12 @@ type settingsView struct {
 type settingsItemView struct {
 	SettingsItem
 	PillsHTML []template.HTML
-	Bare      bool // bare presentation: striped rows instead of hairlines
-	Stripe    bool // this row carries the zebra tint (parity runs across the seam)
 }
 
-func (s *Settings) itemViews(r *Renderer, items []SettingsItem, bare bool, offset int) ([]settingsItemView, error) {
+func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
 	out := make([]settingsItemView, 0, len(items))
-	for i, it := range items {
-		iv := settingsItemView{SettingsItem: it, Bare: bare, Stripe: (offset+i)%2 == 0}
+	for _, it := range items {
+		iv := settingsItemView{SettingsItem: it}
 		for p := range it.Pills {
 			var b strings.Builder
 			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[p]); err != nil {
@@ -89,15 +87,14 @@ func (s *Settings) itemViews(r *Renderer, items []SettingsItem, bare bool, offse
 }
 
 func (s *Settings) renderInto(r *Renderer, out io.Writer, _ string) error {
-	card := s.Style == "card"
-	v := settingsView{Card: card, Title: s.Title, Meta: s.Meta}
+	v := settingsView{Card: s.Style == "card", Title: s.Title, Meta: s.Meta}
 	var err error
-	if v.Items, err = s.itemViews(r, s.Items, !card, 0); err != nil {
+	if v.Items, err = s.itemViews(r, s.Items); err != nil {
 		return err
 	}
 	if s.Seam != nil {
 		v.SeamSummary = s.Seam.Summary
-		if v.SeamItems, err = s.itemViews(r, s.Seam.Items, !card, len(s.Items)); err != nil {
+		if v.SeamItems, err = s.itemViews(r, s.Seam.Items); err != nil {
 			return err
 		}
 	}

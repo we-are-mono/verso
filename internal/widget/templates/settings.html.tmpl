@@ -8,9 +8,10 @@
        full-bleed border-t is the one divider there. */}}
   {{/* single-line row: name, its code chip beside it (the option's machine name
        is the name's metadata), the description filling the middle, and every
-       control — switch, in-place field, or read-out — on the right edge.
-       Bare rows zebra-stripe (no hairlines); card rows divide with them. */}}
-  <div class="flex items-center gap-3 py-2.5 {{if .Bare}}px-3{{if .Stripe}} bg-slate-50{{end}}{{else}}border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0{{end}}">
+       control — switch, in-place field, or read-out — on the right edge. Rows
+       divide with hairlines — bare rows flush to the edge, card rows inside the
+       box's padding. */}}
+  <div class="flex items-center gap-3 py-2.5 border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0">
     <div class="shrink-0 text-[0.95rem] font-semibold text-slate-900">{{.Title}}</div>
     {{if .Code}}<span class="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
     <div class="min-w-0 flex-1 truncate text-sm text-slate-500"{{if .Desc}} title="{{.Desc}}"{{end}}>{{.Desc}}</div>
@@ -41,7 +42,7 @@
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline
        under the label; framed cards stay ruleless. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-slate-200 px-3 {{end}}text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-slate-200 {{end}}text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
     <span>{{.Title}}</span>
     {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case tracking-normal text-slate-400">{{.Meta}}</span>{{end}}
   </div>{{end}}

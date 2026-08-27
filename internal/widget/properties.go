@@ -10,11 +10,12 @@ import "io"
 // form — the way to lay out the facts about one thing (a device's address, data
 // used, when it was added) so they line up and scan cleanly.
 //
-// Style sets how rows are separated: a hairline between them ("divided", the default),
-// zebra shading ("striped"), or nothing ("plain"). The shell owns the chrome; the
-// template maps the style to classes, and any unknown value falls back to "divided".
+// Style sets how rows are separated: a hairline between them ("divided", the
+// default) or nothing ("plain"). The shell owns the chrome; the template maps the
+// style to classes, and any unknown value (including the retired "striped") falls
+// back to "divided".
 type Properties struct {
-	Style string     `json:"style"` // "divided" (default) | "striped" | "plain"
+	Style string     `json:"style"` // "divided" (default) | "plain"
 	Items []Property `json:"items"`
 	// Align: "" keeps values on the right edge (the default fact sheet);
 	// "left" sets them beside a fixed-width label column — the reading order

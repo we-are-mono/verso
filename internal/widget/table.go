@@ -31,10 +31,28 @@ import (
 //	             renders a faint dash — pills stay meaningful because most
 //	             cells in such a column are empty or quiet
 type Table struct {
-	Style   string        `json:"style,omitempty"` // "" (bare striped rows, default) | "lined" — bare with hairline dividers, for live listings like a process table | "card" — the framed box
+	Style   string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, flush edges, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "lined" — inset hairline rows, for a live listing like a process table | "card" — the framed box
 	Columns []TableColumn `json:"columns"`
 	Rows    []TableRow    `json:"rows"`
 	Seam    *TableSeam    `json:"seam,omitempty"`
+
+	// The flat style's optional header band — a top row aligned to the table's
+	// own edges: the listing's name, a quiet detail beside it (a count/summary),
+	// and an optional link hard-right. All three are optional; an absent Title
+	// draws no band. Ignored by the other styles.
+	Title  string       `json:"title,omitempty"`
+	Detail string       `json:"detail,omitempty"`
+	Action *TableAction `json:"action,omitempty"`
+
+	// Condensed lowers the flat style's row padding only — same anatomy, tighter
+	// vertical rhythm, for a dense listing. Ignored by the other styles.
+	Condensed bool `json:"condensed,omitempty"`
+}
+
+// TableAction is the flat header band's trailing link (e.g. "View all").
+type TableAction struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
 }
 
 // TableSeam is a collapsed block of extra rows inside the same card — the
@@ -111,6 +129,7 @@ type TableCell struct {
 	Variant   string          `json:"variant,omitempty"` // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
 	Dot       bool            `json:"dot,omitempty"`     // pill cells: leading status dot — the same cue the badge carries elsewhere
 	Copy      bool            `json:"copy,omitempty"`    // mono cells: offer the inline copy button beside the value
+	Chip      string          `json:"chip,omitempty"`    // name cells: a small category chip inline after the name (e.g. its zone)
 	On        bool            `json:"on,omitempty"`
 	Name      string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints []TableEndpoint `json:"endpoints,omitempty"`
@@ -142,6 +161,11 @@ var endpointIcons = map[string]string{
 type tableView struct {
 	Card        bool
 	Lined       bool
+	Condensed   bool
+	Title       string
+	Detail      string
+	Action      *TableAction
+	HasLabels   bool // any column carries a header label; a labelless table draws no <thead>
 	Columns     []TableColumn
 	HasDrawers  bool
 	Rows        []tableRowView
@@ -153,8 +177,6 @@ type tableRowView struct {
 	ID          string
 	Cells       []tableCellView
 	HasDrawers  bool // table-wide flag, copied so the rows sub-template needs no second argument
-	Striped     bool // table-wide flag, copied for the same reason: only the default style zebra-stripes
-	Lined       bool // table-wide flag, copied likewise: lined rows hover a shade quieter
 	Drawer      bool
 	DrawerTitle string
 	DrawerBody  []template.HTML
@@ -189,25 +211,40 @@ func (t *Table) hasDrawers() bool {
 }
 
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
-	v := tableView{Card: t.Style == "card", Lined: t.Style == "lined", Columns: t.Columns, HasDrawers: t.hasDrawers()}
-	striped := !v.Card && !v.Lined
+	v := tableView{
+		Card: t.Style == "card", Lined: t.Style == "lined",
+		Condensed: t.Condensed, Title: t.Title, Detail: t.Detail, Action: t.Action,
+		HasLabels: hasColumnLabels(t.Columns),
+		Columns:   t.Columns, HasDrawers: t.hasDrawers(),
+	}
 	var err error
-	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers, striped, v.Lined); err != nil {
+	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDrawers); err != nil {
 		return v, err
 	}
 	if t.Seam != nil {
 		v.SeamSummary = t.Seam.Summary
-		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers, striped, v.Lined); err != nil {
+		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDrawers); err != nil {
 			return v, err
 		}
 	}
 	return v, nil
 }
 
-func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers, striped, lined bool) ([]tableRowView, error) {
+// hasColumnLabels reports whether any column carries a header label. A table
+// with none (the connected-devices reference) draws no <thead>.
+func hasColumnLabels(cols []TableColumn) bool {
+	for _, c := range cols {
+		if c.Label != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDrawers bool) ([]tableRowView, error) {
 	out := make([]tableRowView, 0, len(rows))
 	for _, row := range rows {
-		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Striped: striped, Lined: lined, Cells: make([]tableCellView, 0, len(t.Columns))}
+		rv := tableRowView{ID: row.ID, HasDrawers: hasDrawers, Cells: make([]tableCellView, 0, len(t.Columns))}
 		if row.Drawer != nil {
 			body, err := r.renderChildren(row.Drawer.Children, csrf)
 			if err != nil {

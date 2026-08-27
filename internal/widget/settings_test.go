@@ -38,9 +38,8 @@ func TestRenderSettings(t *testing.T) {
 		"bg-amber-50",      // reject carries the warning palette
 		"synflood_protect", // the underlying option is on the row
 		"font-mono",        // …as a mono code chip
-		`type="checkbox"`,  // toggle rows carry the shared switch
-		"bg-slate-50",      // bare rows zebra-stripe instead of dividing
-		"px-3",             // …square full-width stripes with their own inset
+		`type="checkbox"`,           // toggle rows carry the shared switch
+		"border-b border-slate-200", // bare rows divide with hairlines (stripes retired)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
