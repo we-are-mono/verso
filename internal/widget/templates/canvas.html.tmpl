@@ -1,0 +1,5 @@
+{{/* canvas: a light inset surface — a subtle rounded panel (slate-50 on a
+     slate-200 hairline) for holding a visual like the network map, set apart from
+     the white page without the weight of a card. Padding is uniform and
+     per-canvas (Pad), so it rides in an inline style. */}}
+<div class="rounded-2xl border border-slate-200 bg-slate-50" style="padding: {{.Pad}};">{{range .Children}}{{.}}{{end}}</div>

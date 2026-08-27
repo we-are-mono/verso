@@ -1,0 +1,30 @@
+{{/* netmap: the home network as a left-to-right map — a source (internet) flows
+     into the hub (this router), which branches to the leaves (Wi-Fi, Ethernet).
+     Horizontal positions are percentages so the map is responsive; vertical
+     positions are pixels against the fixed height. The SVG draws a grey track
+     for each link; when Live, a green flow (verso-netflow, input.css) animates
+     over it to say traffic is moving. */}}
+{{define "netmap.node"}}
+<div class="absolute" style="left: {{.Left}}; width: {{.Width}}; top: {{.Top}}px;">
+  <div class="flex h-14 items-center justify-center gap-2.5 rounded-xl border bg-white text-sm font-medium text-slate-900 {{if .Good}}border-emerald-300{{else}}border-slate-300{{end}}">
+    {{if .Icon}}<span class="{{if .Good}}text-emerald-600{{else}}text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>{{end}}
+    {{.Label}}
+  </div>
+  {{if .Detail}}<div class="mt-2.5 text-center text-xs text-slate-500">{{.Detail}}</div>{{end}}
+</div>
+{{end}}
+{{define "netmap.leaf"}}
+<div class="absolute flex h-12 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 text-sm" style="left: {{.Left}}; width: {{.Width}}; top: {{.Top}}px;">
+  <span class="min-w-0 flex-1 truncate font-medium text-slate-900">{{.Label}}</span>
+  {{if .Detail}}<span class="shrink-0 text-xs text-slate-500">{{.Detail}}</span>{{end}}
+</div>
+{{end}}
+<div class="relative w-full max-w-5xl" style="height: {{.Height}}px;">
+  <svg width="100%" height="{{.Height}}" viewBox="0 0 1024 {{.Height}}" preserveAspectRatio="none" class="absolute inset-0 overflow-visible" aria-hidden="true">
+    {{/* the ants are the only thing on the path — no grey track behind them */}}
+    {{range .Links}}<path d="{{.}}" class="verso-netants{{if $.Live}} verso-netants-live{{end}}"/>{{end}}
+  </svg>
+  {{template "netmap.node" .Source}}
+  {{template "netmap.node" .Hub}}
+  {{range .Leaves}}{{template "netmap.leaf" .}}{{end}}
+</div>

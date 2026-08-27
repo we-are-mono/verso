@@ -247,6 +247,18 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode ports: %w", err)
 		}
 		return &p, nil
+	case "netmap":
+		var nm NetMap
+		if err := json.Unmarshal(data, &nm); err != nil {
+			return nil, fmt.Errorf("widget: decode netmap: %w", err)
+		}
+		return &nm, nil
+	case "canvas":
+		var cv Canvas
+		if err := json.Unmarshal(data, &cv); err != nil {
+			return nil, fmt.Errorf("widget: decode canvas: %w", err)
+		}
+		return &cv, nil
 	case "chart":
 		var c Chart
 		if err := json.Unmarshal(data, &c); err != nil {

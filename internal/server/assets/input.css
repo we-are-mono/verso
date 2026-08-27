@@ -565,4 +565,24 @@
   @media (prefers-reduced-motion: reduce) {
     .verso-meter-ring, .verso-meter-bar { transition: none; }
   }
+
+  /* netmap ants: a lit green dash pattern is the only thing on each link (no
+     track behind it). verso-netants-live streams it to say traffic is moving. */
+  .verso-netants {
+    fill: none;
+    stroke: #10b981;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 7.7 8.5;
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.55));
+  }
+  .verso-netants-live {
+    animation: verso-netants-stream 0.405s linear infinite;
+  }
+  @keyframes verso-netants-stream {
+    to { stroke-dashoffset: -16.2; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-netants-live { animation: none; }
+  }
 }
