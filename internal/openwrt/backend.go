@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/ubus"
 )
 
@@ -104,6 +105,11 @@ type Backend interface {
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
+	// ConnStats reads per-address traffic totals aggregated from conntrack,
+	// through the helper's connStats verb — the flow table is root's to read
+	// (ADR-007), the helper folds it so one small row per address crosses the
+	// bus.
+	ConnStats(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error)
 }
 
 // WANState is the uplink's live condition, from network.interface.wan status.
@@ -183,6 +189,7 @@ type (
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
 	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
+	connStatsFn    func(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -213,6 +220,7 @@ type NativeBackend struct {
 	pkgRemove    pkgActFn
 	wanStatus    wanStatusFn
 	deviceStats  deviceStatsFn
+	connStats    connStatsFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -241,6 +249,7 @@ func NewNativeBackend() *NativeBackend {
 		pkgRemove:    dialPkgAct("", "pkgRemove"),
 		wanStatus:    dialWANStatus(""),
 		deviceStats:  dialDeviceStats(""),
+		connStats:    dialConnStats(""),
 	}
 }
 
@@ -354,6 +363,10 @@ func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, er
 
 func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
 	return b.deviceStats(ctx, sid, device)
+}
+
+func (b *NativeBackend) ConnStats(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error) {
+	return b.connStats(ctx, sid)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -1044,4 +1057,42 @@ func parseDeviceStats(m map[string]any) DeviceStats {
 		ds.TxBytes = asInt64(st["tx_bytes"])
 	}
 	return ds
+}
+
+// dialConnStats reads per-address traffic totals through the helper's
+// connStats verb (the conntrack table is root's to read, ADR-007).
+func dialConnStats(socket string) connStatsFn {
+	return func(_ context.Context, sid string) (map[string]sysstat.DeviceTraffic, error) {
+		c, id, err := dialVerso(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+		res, err := c.InvokeArgs(id, "connStats", map[string]string{"ubus_rpc_session": sid})
+		if err != nil {
+			return nil, err
+		}
+		return parseConnStats(res), nil
+	}
+}
+
+// parseConnStats maps the helper's addrs table onto per-address totals.
+func parseConnStats(m map[string]any) map[string]sysstat.DeviceTraffic {
+	totals := make(map[string]sysstat.DeviceTraffic)
+	addrs, ok := m["addrs"].(map[string]any)
+	if !ok {
+		return totals
+	}
+	for addr, v := range addrs {
+		t, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		totals[addr] = sysstat.DeviceTraffic{
+			TxBytes: asInt64(t["TxBytes"]),
+			RxBytes: asInt64(t["RxBytes"]),
+			Conns:   int(asInt64(t["Conns"])),
+		}
+	}
+	return totals
 }
