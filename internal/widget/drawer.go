@@ -26,7 +26,8 @@ type Drawer struct {
 	Size string `json:"size,omitempty"`
 	// Style dresses the trigger: "" wraps it as a framed card button; "bare"
 	// leaves it an unstyled block with the row hover tint — for triggers that
-	// live inside a hairline-divided list.
+	// live inside a hairline-divided list; "button" wears the primary action
+	// button — for an affordance like "Add …" whose editor is the drawer.
 	Style string `json:"style,omitempty"`
 	// Dot marks the title with a status dot (the badge variant vocabulary;
 	// "success" pulses — a live thing), and Tag hangs the small category chip
@@ -82,6 +83,7 @@ type drawerView struct {
 	Title    string
 	Wide     bool
 	Bare     bool
+	Button   bool
 	Dot      string
 	Tag      string
 	Trigger  template.HTML
@@ -101,7 +103,7 @@ func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	return r.execute(out, "drawer.html.tmpl", drawerView{
-		Title: d.Title, Wide: d.Size == "wide", Bare: d.Style == "bare",
+		Title: d.Title, Wide: d.Size == "wide", Bare: d.Style == "bare", Button: d.Style == "button",
 		Dot: d.Dot, Tag: d.Tag,
 		Trigger: joinHTML(trigger), Children: children,
 	})

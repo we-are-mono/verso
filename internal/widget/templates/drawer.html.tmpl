@@ -5,9 +5,10 @@
      reference only component properties/methods, so the strict CSP needs no unsafe-eval. */}}
 <div x-data="modal">
   {{/* The trigger's dress depends on where it lives: framed as a card button on
-       its own, or bare with the row hover tint inside a hairline-divided list. */}}
+       its own, bare with the row hover tint inside a hairline-divided list, or
+       the primary action button for an "Add …" whose editor is the drawer. */}}
   <button type="button" @click="show"
-    class="block w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 {{if .Bare}}transition-colors hover:bg-slate-50{{else}}rounded-xl border border-slate-200 bg-white px-4 py-1 shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md{{end}}">
+    class="{{if .Button}}inline-flex cursor-pointer items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-sky-700 active:bg-sky-800 [&_.verso-prose]:!text-sm [&_.verso-prose]:!text-white{{else}}block w-full{{end}} text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 {{if .Bare}}transition-colors hover:bg-slate-50{{else if not .Button}}rounded-xl border border-slate-200 bg-white px-4 py-1 shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md{{end}}">
     {{.Trigger}}
   </button>
   <template x-teleport="body">

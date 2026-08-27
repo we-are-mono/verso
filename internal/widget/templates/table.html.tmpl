@@ -11,9 +11,13 @@
            opens on click (showFromRow skips clicks on controls inside the row), and
            carries the chevron affordance. The panel itself teleports to <body>. */}}
       {{if .Drawer}}
-      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer transition {{if .Lined}}hover:bg-sky-50/50{{else}}hover:bg-sky-100/60{{end}}{{if .Striped}} odd:bg-slate-50{{end}}">
+      {{/* Rows never tint on hover — the cursor and the chevron's nudge carry
+           the "this opens" cue on drawer rows. */}}
+      <tr x-data="modal" @click="showFromRow" class="group cursor-pointer{{if .Striped}} odd:bg-slate-50{{end}}">
       {{else}}
-      <tr class="group transition {{if .Lined}}hover:bg-sky-50/50{{else}}hover:bg-sky-100/60{{end}}{{if .Striped}} odd:bg-slate-50{{end}}">
+      {{/* No drawer, no hover tint: a highlight that answers no click is a
+           promise the row can't keep. */}}
+      <tr class="group{{if .Striped}} odd:bg-slate-50{{end}}">
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "toggle"}}
