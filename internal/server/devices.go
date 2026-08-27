@@ -1,0 +1,430 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package server
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/widget"
+)
+
+// Connected devices: the roster, from the router's own truth. dnsmasq's
+// lease file names who holds an address; the kernel supplies everything
+// else, joined by MAC — neighbour entries both families (with real NUD
+// confidence), the bridge port the MAC was learned on, and conntrack's
+// per-connection byte counters. Friendly names lead; each row opens the
+// device's full story in a wide drawer.
+
+const leasesPath = "/tmp/dhcp.leases"
+
+// presence is the roster's honest tri-state: the kernel confirmed the device
+// recently (online), holds a lapsed entry (idle — seen lately, quiet since),
+// or has nothing current (offline).
+type presence int
+
+const (
+	presenceOffline presence = iota
+	presenceIdle
+	presenceOnline
+)
+
+// deviceEntry is one device: the lease identity, enriched with everything
+// the kernel ties to its MAC.
+type deviceEntry struct {
+	Name        string
+	IP          string
+	MAC         string
+	Icon        string
+	Presence    presence
+	Zone        string             // firewall zone its subnet sits behind
+	Port        string             // bridge port the MAC was learned on ("" unknown)
+	LeaseExpiry int64              // unix; when the DHCP lease runs out
+	Addrs       []sysstat.Neighbor // every address the kernel ties to the MAC, states included
+	Traffic     sysstat.DeviceTraffic
+	Down, Up    []float64 // last-minute rate history in Mbps (traffic_history.go)
+}
+
+// ipv6 lists the device's v6 addresses (already ordered globals-first).
+func (d deviceEntry) ipv6() []string {
+	var out []string
+	for _, a := range d.Addrs {
+		if strings.Contains(a.Addr, ":") {
+			out = append(out, a.Addr)
+		}
+	}
+	return out
+}
+
+// aggregateNeighbors folds the neighbour table per MAC (lowercased): every
+// entry, v4 first, then v6 globals, link-locals last. An entry without a MAC
+// (unresolved, failed) says nothing about any device.
+func aggregateNeighbors(neigh []sysstat.Neighbor) map[string][]sysstat.Neighbor {
+	agg := make(map[string][]sysstat.Neighbor)
+	for _, n := range neigh {
+		if n.MAC == "" {
+			continue
+		}
+		mac := strings.ToLower(n.MAC)
+		agg[mac] = append(agg[mac], n)
+	}
+	rank := func(addr string) int {
+		switch {
+		case !strings.Contains(addr, ":"):
+			return 0
+		case !strings.HasPrefix(addr, "fe80"):
+			return 1
+		}
+		return 2
+	}
+	for _, entries := range agg {
+		sort.Slice(entries, func(i, j int) bool {
+			if ri, rj := rank(entries[i].Addr), rank(entries[j].Addr); ri != rj {
+				return ri < rj
+			}
+			return entries[i].Addr < entries[j].Addr
+		})
+	}
+	return agg
+}
+
+// bestPresence is the strongest confidence across a device's addresses.
+func bestPresence(entries []sysstat.Neighbor) presence {
+	best := presenceOffline
+	for _, n := range entries {
+		switch {
+		case n.State.Active():
+			return presenceOnline
+		case n.State.Recent():
+			best = presenceIdle
+		}
+	}
+	return best
+}
+
+// deviceList reads the roster. No lease file (dnsmasq not serving) means no
+// roster — the page then carries no section; every other source degrades to
+// its own absence.
+func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
+	raw, err := s.readLeases()
+	if err != nil {
+		log.Printf("verso: devices: leases unavailable: %v", err)
+		return nil
+	}
+	leases := parseLeases(raw)
+
+	neigh, err := s.neighbors()
+	if err != nil {
+		log.Printf("verso: devices: neighbour table unavailable: %v", err)
+	}
+	agg := aggregateNeighbors(neigh)
+
+	ports, err := s.bridgePorts()
+	if err != nil {
+		log.Printf("verso: devices: fdb unavailable: %v", err)
+	}
+	zones := s.zoneMap(ctx, sid)
+
+	// Conntrack totals arrive per address (through the helper — the flow
+	// table is root's to read); every address of a device keys back to its
+	// MAC, folding both families into one total.
+	traffic := map[string]sysstat.DeviceTraffic{}
+	if byAddr, err := s.backend.ConnStats(ctx, sid); err != nil {
+		log.Printf("verso: devices: conntrack unavailable: %v", err)
+	} else {
+		addrKey := make(map[string]string)
+		for _, l := range leases {
+			mac := strings.ToLower(l.mac)
+			addrKey[l.ip] = mac
+			for _, n := range agg[mac] {
+				addrKey[n.Addr] = mac
+			}
+		}
+		for addr, mac := range addrKey {
+			if at, ok := byAddr[addr]; ok {
+				t := traffic[mac]
+				t.TxBytes += at.TxBytes
+				t.RxBytes += at.RxBytes
+				t.Conns += at.Conns
+				traffic[mac] = t
+			}
+		}
+	}
+
+	var devices []deviceEntry
+	for _, l := range leases {
+		mac := strings.ToLower(l.mac)
+		entries := agg[mac]
+		down, up := s.trafHist.Series(deviceAddrs(l, entries))
+		if down == nil { // no history yet: a flat baseline the live layer can grow
+			down, up = []float64{0, 0}, []float64{0, 0}
+		}
+		devices = append(devices, deviceEntry{
+			Name:        deviceName(l.host, l.mac),
+			IP:          l.ip,
+			MAC:         mac,
+			Icon:        deviceIcon(l.host),
+			Presence:    bestPresence(entries),
+			Zone:        zoneForAddr(zones, l.ip),
+			Port:        ports[mac],
+			LeaseExpiry: l.expiry,
+			Addrs:       entries,
+			Traffic:     traffic[mac],
+			Down:        down,
+			Up:          up,
+		})
+	}
+	sort.Slice(devices, func(i, j int) bool {
+		if devices[i].Presence != devices[j].Presence {
+			return devices[i].Presence > devices[j].Presence
+		}
+		return devices[i].Name < devices[j].Name
+	})
+	return devices
+}
+
+// deviceAddrs is every address a device answers to: the lease's v4 plus each
+// neighbour entry on its MAC.
+func deviceAddrs(l lease, entries []sysstat.Neighbor) []string {
+	addrs := make([]string, 0, 1+len(entries))
+	addrs = append(addrs, l.ip)
+	for _, n := range entries {
+		if n.Addr != l.ip {
+			addrs = append(addrs, n.Addr)
+		}
+	}
+	return addrs
+}
+
+// deviceSeries is one device's history frame on the overview stream — the
+// same series the drawer's panel chart was rendered from, so the live layer
+// redraws exactly what the static layer drew.
+type deviceSeries struct {
+	Key  string    `json:"key"`
+	Down []float64 `json:"down"`
+	Up   []float64 `json:"up"`
+}
+
+// deviceTrafficSeries builds the per-device frames the stream pushes each
+// tick. Devices with no observed history yet send nothing.
+func (s *Server) deviceTrafficSeries() []deviceSeries {
+	raw, err := s.readLeases()
+	if err != nil {
+		return nil
+	}
+	neigh, _ := s.neighbors()
+	agg := aggregateNeighbors(neigh)
+	var out []deviceSeries
+	for _, l := range parseLeases(raw) {
+		mac := strings.ToLower(l.mac)
+		down, up := s.trafHist.Series(deviceAddrs(l, agg[mac]))
+		if down == nil {
+			continue
+		}
+		out = append(out, deviceSeries{Key: mac, Down: down, Up: up})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
+}
+
+// presenceBadge is the shared presence vocabulary — the roster rows and the
+// drawer's address table speak it identically.
+func presenceBadge(p presence) *widget.Badge {
+	switch p {
+	case presenceOnline:
+		return &widget.Badge{Variant: "success", Dot: true, Text: "Online"}
+	case presenceIdle:
+		return &widget.Badge{Variant: "neutral", Dot: true, Text: "Idle"}
+	}
+	return &widget.Badge{Variant: "neutral", Text: "Offline"}
+}
+
+// connectedSection composes the roster: hairline-divided trigger rows, bare
+// on the canvas, each opening its device's wide drawer.
+func connectedSection(devices []deviceEntry) widget.Widget {
+	if len(devices) == 0 {
+		return nil
+	}
+	rows := make([]widget.Widget, 0, len(devices))
+	for _, d := range devices {
+		row := &widget.Row{
+			Icon: d.Icon, Title: d.Name, Meta: d.IP, Tag: d.Zone,
+			Columns: true, Status: presenceBadge(d.Presence), Chevron: true,
+		}
+		rows = append(rows, &widget.Drawer{
+			Title: d.Name, Size: "wide", Style: "bare",
+			Trigger:  []widget.Widget{row},
+			Children: deviceDrawerBody(d),
+		})
+	}
+	return &widget.Section{Title: "Connected devices", Children: []widget.Widget{
+		&widget.Stack{Divided: true, Children: rows},
+	}}
+}
+
+// deviceDrawerBody is the device's full story — everything the kernel and
+// the lease file say, and nothing invented.
+func deviceDrawerBody(d deviceEntry) []widget.Widget {
+	identity := []widget.Property{
+		{Label: "MAC address", Value: d.MAC, Mono: true, Copy: true},
+	}
+	if d.Zone != "" {
+		identity = append(identity, widget.Property{Label: "Zone", Value: d.Zone, Chip: true})
+	}
+	if d.Port != "" {
+		identity = append(identity, widget.Property{Label: "Router port", Value: d.Port, Mono: true})
+	}
+	if d.LeaseExpiry > 0 {
+		identity = append(identity, widget.Property{Label: "Lease renews", Value: leaseIn(d.LeaseExpiry, time.Now())})
+	}
+	identity = append(identity,
+		widget.Property{Label: "Downloaded", Value: formatBytes(d.Traffic.RxBytes)},
+		widget.Property{Label: "Uploaded", Value: formatBytes(d.Traffic.TxBytes)},
+		widget.Property{Label: "Active connections", Value: strconv.Itoa(d.Traffic.Conns)},
+	)
+
+	addrRows := make([]widget.TableRow, 0, 1+len(d.Addrs))
+	seen := false
+	for _, a := range d.Addrs {
+		if a.Addr == d.IP {
+			seen = true
+		}
+		addrRows = append(addrRows, addrRow(a.Addr, a.State))
+	}
+	if !seen { // the lease's v4 even when the kernel holds no entry for it
+		addrRows = append([]widget.TableRow{addrRow(d.IP, 0)}, addrRows...)
+	}
+
+	return []widget.Widget{
+		&widget.Properties{Items: identity},
+		trafficSpark(d),
+		&widget.Callout{Variant: "info",
+			Body: "Traffic counts what has crossed the router on connections still open — chatter between devices on your own network never passes through, so it isn't counted."},
+		&widget.Table{
+			Style: "lined",
+			Columns: []widget.TableColumn{
+				{Label: "Address", Kind: "mono"},
+				{Label: "Type"},
+				{Label: "State", Kind: "pill"},
+			},
+			Rows: addrRows,
+		},
+	}
+}
+
+// trafficSpark draws the device's last minute of throughput — download and
+// upload on the fixed-height panel plot with its quarter value lines — fed
+// by the history the overview stream accumulates and updated live by the
+// stream's traffic events. A quiet (or not-yet-observed) minute draws in the
+// calm grey.
+func trafficSpark(d deviceEntry) widget.Widget {
+	idle := true
+	for _, v := range append(append([]float64{}, d.Down...), d.Up...) {
+		if v > 0.01 {
+			idle = false
+			break
+		}
+	}
+	return &widget.Chart{
+		Size: "panel", Idle: idle, Name: d.MAC,
+		Axis: true, Unit: "Mbps", AxisStart: "60s ago", AxisEnd: "now",
+		Label: d.Name + " throughput over the last minute",
+		Series: []widget.ChartSeries{
+			{Label: "Download", Values: d.Down, Role: "sky", Fill: true},
+			{Label: "Upload", Values: d.Up, Role: "violet"},
+		},
+	}
+}
+
+// addrRow is one line of the drawer's address table.
+func addrRow(addr string, st sysstat.NeighState) widget.TableRow {
+	kind := "IPv4"
+	switch {
+	case strings.HasPrefix(addr, "fe80"):
+		kind = "Link-local"
+	case strings.Contains(addr, ":"):
+		kind = "IPv6"
+	}
+	// The same presence vocabulary the roster badges speak — dots included.
+	state := widget.TableCell{Text: "Offline", Variant: "neutral"}
+	switch {
+	case st.Active():
+		state = widget.TableCell{Text: "Online", Variant: "success", Dot: true}
+	case st.Recent():
+		state = widget.TableCell{Text: "Idle", Variant: "neutral", Dot: true}
+	}
+	return widget.TableRow{Cells: []widget.TableCell{{Text: addr, Copy: true}, {Text: kind}, state}}
+}
+
+// leaseIn says when the lease runs out the way a person would.
+func leaseIn(expiry int64, now time.Time) string {
+	d := time.Unix(expiry, 0).Sub(now)
+	switch {
+	case d <= 0:
+		return "expired"
+	case d < time.Hour:
+		return fmt.Sprintf("in %d min", int(d.Minutes()))
+	}
+	return fmt.Sprintf("in %dh %02dm", int(d.Hours()), int(d.Minutes())%60)
+}
+
+// lease is one dnsmasq lease-file line: expiry, MAC, address, hostname,
+// client id — hostname is "*" when the device offered none.
+type lease struct {
+	expiry        int64
+	mac, ip, host string
+}
+
+func parseLeases(raw []byte) []lease {
+	var leases []lease
+	for _, line := range strings.Split(string(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		expiry, _ := strconv.ParseInt(fields[0], 10, 64)
+		leases = append(leases, lease{expiry: expiry, mac: fields[1], ip: fields[2], host: fields[3]})
+	}
+	return leases
+}
+
+// deviceName prefers the DHCP hostname; a device that offered none gets a
+// quiet stand-in from its MAC tail ("Device b7:af") rather than a full MAC.
+func deviceName(host, mac string) string {
+	if host != "" && host != "*" {
+		return host
+	}
+	if parts := strings.Split(mac, ":"); len(parts) >= 2 {
+		return "Device " + strings.Join(parts[len(parts)-2:], ":")
+	}
+	return "Device"
+}
+
+// deviceIcon guesses a silhouette from the hostname — a hint, not a claim;
+// anything unrecognised is the generic device.
+func deviceIcon(host string) string {
+	h := strings.ToLower(host)
+	switch {
+	case strings.Contains(h, "phone"), strings.Contains(h, "android"),
+		strings.Contains(h, "pixel"), strings.Contains(h, "galaxy"),
+		strings.Contains(h, "ipad"):
+		return "phone"
+	case strings.Contains(h, "tv"), strings.Contains(h, "roku"),
+		strings.Contains(h, "chromecast"), strings.Contains(h, "shield"):
+		return "tv"
+	case strings.Contains(h, "book"), strings.Contains(h, "laptop"),
+		strings.Contains(h, "desktop"), strings.Contains(h, "pc"):
+		return "laptop"
+	case strings.Contains(h, "router"), strings.Contains(h, "switch"),
+		strings.Contains(h, "ap-"):
+		return "router"
+	}
+	return "device"
+}

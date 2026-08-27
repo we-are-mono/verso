@@ -66,6 +66,13 @@ type fakeBackend struct {
 	wanErr   error
 	devStats *[]openwrt.DeviceStats
 	devErr   error
+	// Per-address conntrack totals the helper's connStats verb would return.
+	connStats map[string]sysstat.DeviceTraffic
+	connErr   error
+}
+
+func (f fakeBackend) ConnStats(context.Context, string) (map[string]sysstat.DeviceTraffic, error) {
+	return f.connStats, f.connErr
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
@@ -264,8 +271,14 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	// render fully. Liveness-specific tests override s.probe themselves.
 	s.probe = func(string) bool { return true }
 	// Tests read no real kernel either: canned box health (meters-specific
-	// tests substitute their own).
+	// tests substitute their own), and no roster files (roster tests supply
+	// theirs).
 	s.stats = fakeStats{cpu: 18, root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}}
+	s.readLeases = func() ([]byte, error) { return nil, errors.New("no leases in tests") }
+	s.neighbors = func() ([]sysstat.Neighbor, error) {
+		return nil, errors.New("no neighbour table in tests")
+	}
+	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb in tests") }
 	return s
 }
 

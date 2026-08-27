@@ -85,6 +85,16 @@ type Server struct {
 	// portsInterval its faster panel clock (events.go); tests shrink both.
 	eventInterval time.Duration
 	portsInterval time.Duration
+	// readLeases, neighbors, and conntrack feed the device roster and its
+	// detail drawer (devices.go) — dnsmasq's lease file, the kernel's
+	// rtnetlink neighbour table, and the conntrack flow table, behind seams
+	// so tests need none of them.
+	readLeases  func() ([]byte, error)
+	neighbors   func() ([]sysstat.Neighbor, error)
+	bridgePorts func() (map[string]string, error)
+	// trafHist accumulates per-address rate history from the overview
+	// stream's once-a-second conntrack observations (traffic_history.go).
+	trafHist *trafficHistory
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -125,6 +135,10 @@ func New(
 		wan:           &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
 		eventInterval: time.Second,
 		portsInterval: 250 * time.Millisecond,
+		readLeases:    func() ([]byte, error) { return os.ReadFile(leasesPath) },
+		neighbors:     sysstat.Neighbors,
+		bridgePorts:   sysstat.BridgePorts,
+		trafHist:      newTrafficHistory(time.Now),
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -336,6 +350,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	if donuts := meterGrid(s.meterReadings(r.Context(), sid)); donuts != nil {
 		children = append(children, donuts)
+	}
+	if roster := connectedSection(s.deviceList(r.Context(), sid)); roster != nil {
+		children = append(children, roster)
 	}
 	children = append(children, &widget.Card{Children: []widget.Widget{s.statusTable(r.Context(), sid)}})
 	page := &widget.Stack{Children: children}

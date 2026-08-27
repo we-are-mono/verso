@@ -375,7 +375,7 @@ document.addEventListener(
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]")) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
@@ -413,6 +413,62 @@ document.addEventListener(
     setText(root, "[data-verso-port-link]", port.speed);
     setText(root, "[data-verso-port-addr]", port.addr);
   }
+  // applyChart redraws a named chart from fresh series — the same geometry
+  // the server drew (viewBox coordinates from the svg itself), so the live
+  // layer and the first paint never disagree. Series pair with the rendered
+  // groups by order; the role hook lets an idle-grey chart take its colours
+  // when traffic starts.
+  var CHART_ROLES = ["sky", "violet", "emerald", "amber", "idle"];
+  function applyChart(dev) {
+    var svg = document.querySelector('svg[data-verso-chart="' + dev.key + '"]');
+    if (!svg) return;
+    var vb = svg.viewBox.baseVal;
+    var W = vb.width, H = vb.height, PAD = 8;
+    var series = [dev.down || [], dev.up || []];
+    var max = 0;
+    series.forEach(function (vals) {
+      vals.forEach(function (v) {
+        if (v > max) max = v;
+      });
+    });
+    var active = max > 0.01;
+    max *= 1.15;
+    if (max <= 0) max = 1;
+    var y = function (v) {
+      return (H - PAD - (v / max) * (H - 2 * PAD)).toFixed(1);
+    };
+    svg.querySelectorAll("g.verso-chart-series").forEach(function (g, i) {
+      var vals = series[i];
+      if (!vals || vals.length < 2) return;
+      var pts = vals.map(function (v, j) {
+        return ((j / (vals.length - 1)) * W).toFixed(1) + " " + y(v);
+      });
+      var line = g.querySelector(".verso-chart-line");
+      if (line) line.setAttribute("d", "M" + pts.join(" L"));
+      var area = g.querySelector(".verso-chart-area");
+      if (area) area.setAttribute("d", "M0 " + H + " L" + pts.join(" L") + " L" + W + " " + H + " Z");
+      var dot = g.querySelector(".verso-chart-dot");
+      if (dot) dot.setAttribute("cy", y(vals[vals.length - 1]));
+      var role = g.getAttribute("data-verso-chart-role") || "sky";
+      CHART_ROLES.forEach(function (r) {
+        g.classList.remove("verso-chart--" + r);
+      });
+      g.classList.add("verso-chart--" + (active ? role : "idle"));
+    });
+    // The value labels ride their gridlines: quarters of the new range, the
+    // unit staying on the topmost (captured from the rendered text once).
+    var labels = svg.parentElement.querySelectorAll(".verso-chart-yl");
+    labels.forEach(function (el, i) {
+      var frac = [1, 0.75, 0.5, 0.25][i];
+      if (frac === undefined) return;
+      if (el.dataset.unit === undefined) {
+        el.dataset.unit = (el.textContent.match(/[\d.]+\s*(.*)$/) || ["", ""])[1];
+      }
+      var v = max * frac;
+      var text = v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
+      el.textContent = el.dataset.unit ? text + " " + el.dataset.unit : text;
+    });
+  }
   function listen(es, type, key, apply) {
     es.addEventListener(type, function (e) {
       var data;
@@ -427,6 +483,7 @@ document.addEventListener(
   var es = new EventSource("/overview/events");
   listen(es, "meters", "meters", applyMeter);
   listen(es, "ports", "ports", applyPort);
+  listen(es, "traffic", "devices", applyChart);
 })();
 
 // Named switches post themselves: flipping an on/off control outside a form is

@@ -15,11 +15,12 @@ import (
 // The overview stream: one long-lived GET (Server-Sent Events) the browser's
 // EventSource holds open, into which the shell pushes fresh truth — the
 // server owns the sampling clock, the client just renders what arrives. Two
-// event types ride it: `meters` every second, and `ports` whenever the
-// panel's truth moves (a cable, a renegotiation, traffic starting or
-// stopping) — sampled on its own faster clock so the activity LEDs feel
-// live. Further types (an uplink going down, a lease appearing) join the
-// same stream.
+// event types ride it: `meters` every second; `ports` whenever the panel's
+// truth moves (a cable, a renegotiation, traffic starting or stopping) —
+// sampled on its own faster clock so the activity LEDs feel live; and
+// `traffic`, the per-device rate history behind the drawer charts, sent on
+// the readings tick while it changes. Further types (an uplink going down, a
+// lease appearing) join the same stream.
 
 // handleOverviewEvents serves the stream. The session is re-checked every
 // tick: a stream must not outlive its session the way a one-shot poll could
@@ -43,10 +44,27 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	ports := time.NewTicker(s.portsInterval)
 	defer ports.Stop()
 
-	var lastPorts []byte
+	var lastPorts, lastTraffic []byte
 	var prevCounters map[string]int64
 	sendMeters := func() bool {
+		// The stream is also the traffic historian: it holds a session and a
+		// steady clock, so each tick feeds the per-address rate history the
+		// device charts draw from.
+		if byAddr, err := s.backend.ConnStats(r.Context(), sid); err == nil {
+			s.trafHist.Observe(byAddr)
+		}
 		return writeMetersEvent(w, s.meterReadings(r.Context(), sid)) == nil
+	}
+	// Per-device history frames follow the same change-driven shape as ports:
+	// a fully quiet minute stops the frames until traffic moves again.
+	sendTraffic := func() bool {
+		payload, changed := marshalIfChanged(s.deviceTrafficSeries(), lastTraffic)
+		if !changed {
+			return true
+		}
+		lastTraffic = payload
+		_, err := fmt.Fprintf(w, "event: traffic\ndata: {\"devices\":%s}\n\n", payload)
+		return err == nil
 	}
 	// The panel frame goes out only when the truth moved (a cable, a
 	// renegotiation, the amber LED flipping) — the change-driven shape every
@@ -64,7 +82,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		return err == nil
 	}
 
-	if !sendMeters() || !sendPorts() {
+	if !sendMeters() || !sendPorts() || !sendTraffic() {
 		return
 	}
 	flusher.Flush()
@@ -73,7 +91,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if s.sessionUser(r) == "" || !sendMeters() {
+			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() {
 				return
 			}
 			flusher.Flush()
