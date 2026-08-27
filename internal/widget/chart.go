@@ -116,6 +116,7 @@ type chartYLabel struct {
 // its series, with the series label.
 type chartRate struct {
 	RoleClass string
+	Role      string // raw palette slot for the panel readout's swatch class
 	Value     string
 	Unit      string
 	Label     string
@@ -221,17 +222,21 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Series = append(view.Series, sv)
 	}
 
-	// A full chart may carry a readout: the status headline, its meta line, and the
-	// current value of each series (coloured to match its line). Sparklines never do.
-	if c.Size == "full" {
+	// A full or panel chart may carry a readout: the current value of each
+	// series, coloured to match its line — beside the hero, above the panel
+	// (where Note becomes the quiet sampling tag). Sparklines never do.
+	if c.Size == "full" || c.Size == "panel" {
 		view.Title, view.Live, view.Note = c.Title, c.Live, c.Note
 		for _, s := range c.Series {
 			if s.Value != "" {
 				view.Rates = append(view.Rates, chartRate{
 					RoleClass: chartRoleClass(s.Role, c.Idle),
-					Value:     s.Value,
-					Unit:      c.Unit,
-					Label:     s.Label,
+					// The panel readout keys its swatch on identity, not state:
+					// the legend still names the lines while the minute is idle.
+					Role:  chartRoleClass(s.Role, false),
+					Value: s.Value,
+					Unit:  c.Unit,
+					Label: s.Label,
 				})
 			}
 		}

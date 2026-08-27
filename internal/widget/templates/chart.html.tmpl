@@ -31,7 +31,13 @@
        hero keeps them overlaid inside the corners. */}}
   {{if not .Stretch}}{{if .XStart}}<span class="verso-chart-xl verso-chart-xl-start">{{.XStart}}</span>{{end}}{{if .XEnd}}<span class="verso-chart-xl verso-chart-xl-end">{{.XEnd}}</span>{{end}}{{end}}
 </div>{{if $times}}<div class="verso-chart-xrow"><span>{{.XStart}}</span><span>{{.XEnd}}</span></div></div>{{end}}{{end}}
-{{if .Readout}}<div class="verso-chart-hero">
+{{if and .Readout .Stretch}}{{/* the panel: current values above the plot, labels riding below each number */}}<div{{if .Name}} data-verso-chart-block="{{.Name}}"{{end}}>
+  <div class="verso-chart-panel-head">
+    {{if .Rates}}<div class="verso-chart-rates">{{range .Rates}}<div class="verso-chart-rate verso-chart--{{.Role}}"><div class="verso-chart-rate-v"><span data-verso-chart-rate-v>{{.Value}}</span>{{if .Unit}} <small>{{.Unit}}</small>{{end}}</div><div class="verso-chart-rate-k"><span class="verso-chart-rate-sw"></span>{{.Label}}</div></div>{{end}}</div>{{end}}
+    {{if .Note}}<span class="verso-chart-panel-note">{{.Note}}</span>{{end}}
+  </div>
+  {{template "verso-chart-plot" .}}
+</div>{{else if .Readout}}<div class="verso-chart-hero">
   <div class="verso-chart-readout">
     {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green-500"></span>{{end}}{{.Title}}</div>{{end}}
     {{if .Note}}<div class="verso-chart-meta">{{.Note}}</div>{{end}}

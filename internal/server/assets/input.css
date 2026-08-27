@@ -467,6 +467,14 @@
   .verso-chart--panel .verso-chart-line { stroke-width: 1.25; }
   .verso-chart--panel .verso-chart-grid line { stroke: var(--color-slate-100); }
   .verso-chart-yl--mid { transform: translateY(-50%); }
+  /* The panel's readout: current values over the plot, each label riding
+     below its number, the sampling note tucked against the baseline of the
+     row. */
+  .verso-chart-panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+  .verso-chart-panel-head .verso-chart-rates { margin-top: 0; }
+  /* The panel's current values lead the whole block. */
+  .verso-chart-panel-head .verso-chart-rate-v { font-size: 3rem; }
+  .verso-chart-panel-note { font-size: 0.8125rem; color: var(--color-slate-400); }
   /* The panel's time captions: their own quiet row hugging the baseline (the
      plot's own bottom padding already keeps them clear of it). */
   .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; }

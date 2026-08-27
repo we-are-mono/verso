@@ -28,6 +28,11 @@ type Drawer struct {
 	// leaves it an unstyled block with the row hover tint — for triggers that
 	// live inside a hairline-divided list.
 	Style string `json:"style,omitempty"`
+	// Dot marks the title with a status dot (the badge variant vocabulary;
+	// "success" pulses — a live thing), and Tag hangs the small category chip
+	// beside it — the same chip a row's Tag wears.
+	Dot string `json:"dot,omitempty"`
+	Tag string `json:"tag,omitempty"`
 }
 
 func (*Drawer) isWidget() {}
@@ -39,6 +44,8 @@ func (d *Drawer) UnmarshalJSON(data []byte) error {
 		Title    string            `json:"title"`
 		Size     string            `json:"size"`
 		Style    string            `json:"style"`
+		Dot      string            `json:"dot"`
+		Tag      string            `json:"tag"`
 		Trigger  []json.RawMessage `json:"trigger"`
 		Children []json.RawMessage `json:"children"`
 	}
@@ -48,6 +55,8 @@ func (d *Drawer) UnmarshalJSON(data []byte) error {
 	d.Title = raw.Title
 	d.Size = raw.Size
 	d.Style = raw.Style
+	d.Dot = raw.Dot
+	d.Tag = raw.Tag
 	d.Trigger = make([]Widget, 0, len(raw.Trigger))
 	for i, rc := range raw.Trigger {
 		w, err := Decode(rc)
@@ -73,6 +82,8 @@ type drawerView struct {
 	Title    string
 	Wide     bool
 	Bare     bool
+	Dot      string
+	Tag      string
 	Trigger  template.HTML
 	Children []template.HTML
 }
@@ -91,6 +102,7 @@ func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	return r.execute(out, "drawer.html.tmpl", drawerView{
 		Title: d.Title, Wide: d.Size == "wide", Bare: d.Style == "bare",
+		Dot: d.Dot, Tag: d.Tag,
 		Trigger: joinHTML(trigger), Children: children,
 	})
 }

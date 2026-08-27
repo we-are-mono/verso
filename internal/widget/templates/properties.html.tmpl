@@ -20,11 +20,12 @@
 </button>{{end}}
 <dl class="{{if eq .Style "striped"}}overflow-hidden rounded-md{{else if eq .Style "plain"}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
   {{range .Items}}
-  <div class="flex items-baseline justify-between gap-6 text-sm{{if eq $.Style "striped"}} px-3 py-2 odd:bg-slate-50{{else if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
-    <dt class="shrink-0 text-slate-500">{{.Label}}</dt>
-    <dd class="text-right font-medium text-slate-700">
+  <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "striped"}} px-3 py-2 odd:bg-slate-50{{else if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
+    <dt class="shrink-0 text-slate-500{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
+    <dd class="{{if eq $.Align "left"}}flex min-w-0 flex-1 items-baseline text-left{{else}}text-right{{end}} font-medium text-slate-700">
       {{if .Chip}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Value}}</span>{{else}}<span class="{{if .Mono}}font-mono{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex shrink-0 align-middle">{{template "badge.html.tmpl" .Status}}</span>{{end}}
     </dd>
   </div>
   {{end}}

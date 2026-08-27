@@ -23,6 +23,13 @@ type Stat struct {
 	Variant string `json:"variant"` // "neutral" (default) | "good" | "warning" | "danger"
 	Dot     bool   `json:"dot"`     // show a status dot on the sub line (pulses when good)
 	Href    string `json:"href"`    // optional: makes the whole tile a doorway to a detail page
+	// Style: "" wears the framed card; "bare" is label over number on the
+	// open canvas — for tile rows inside panels that already carry a frame.
+	Style string `json:"style,omitempty"`
+	// Name is a stable handle for a live tile: the markup carries it (plus
+	// value/unit hooks) so the shell's client script can stream fresh
+	// readings in. A nameless stat is static.
+	Name string `json:"name,omitempty"`
 }
 
 func (*Stat) isWidget() {}

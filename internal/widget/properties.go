@@ -16,6 +16,11 @@ import "io"
 type Properties struct {
 	Style string     `json:"style"` // "divided" (default) | "striped" | "plain"
 	Items []Property `json:"items"`
+	// Align: "" keeps values on the right edge (the default fact sheet);
+	// "left" sets them beside a fixed-width label column — the reading order
+	// for values a person compares line by line (addresses), with any status
+	// pill still holding the right edge.
+	Align string `json:"align,omitempty"`
 }
 
 // Property is one row: a label, its value, whether the value is monospaced (for
@@ -29,6 +34,9 @@ type Property struct {
 	// Chip renders the value as the small category chip — the same treatment
 	// a zone gets everywhere else, so one fact never wears two dresses.
 	Chip bool `json:"chip,omitempty"`
+	// Status hangs a trailing state pill after the value — the same badge
+	// vocabulary rows and pill cells speak.
+	Status *Badge `json:"status,omitempty"`
 }
 
 func (*Properties) isWidget() {}

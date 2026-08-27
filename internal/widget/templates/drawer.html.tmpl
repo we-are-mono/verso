@@ -18,8 +18,14 @@
         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
         x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
         class="absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
-        <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>
+        <header class="flex items-center justify-between px-6 py-4">
+          {{/* The title row can carry state: a status dot (pulsing when it marks
+               something live) and the category chip the rows wear elsewhere. */}}
+          <div class="flex min-w-0 items-center gap-2.5">
+            {{if .Dot}}<span class="{{if eq .Dot "success"}}verso-live-dot bg-green-500{{else if eq .Dot "danger"}}bg-red-500{{else if eq .Dot "warning"}}bg-amber-500{{else}}bg-slate-400{{end}} size-2 shrink-0 rounded-full"></span>{{end}}
+            <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
+            {{if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
+          </div>
           <button type="button" @click="hide" aria-label="Close"
             class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
             {{icon "x" "size-5"}}
@@ -37,7 +43,9 @@
              would otherwise grow a vertical bar from the copy tooltips. Row
              hover goes quiet as well — these rows open nothing, and the tint
              would promise otherwise. */}}
-        <div class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+        {{/* A fact list following other content gets double the stack's gap —
+             the drawer's closing section starts as its own breath. */}}
+        <div class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
           {{range .Children}}{{.}}{{end}}
         </div>
       </aside>
