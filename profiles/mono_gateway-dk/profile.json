@@ -1,0 +1,29 @@
+{
+  "name": "Mono Gateway Development Kit",
+
+  "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
+
+  "fans": [
+    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1" },
+    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@1": "System Fan 2" }
+  ],
+
+  "power": [
+    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery" },
+    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU", "main": true },
+    { "i2c-mux@70/i2c@0/power_sensor@42": "1V Core PSU" },
+    { "i2c-mux@70/i2c@0/power_sensor@43": "1.2V DDR PSU" },
+    { "i2c-mux@70/i2c@1/power_sensor@40": "1.35V SerDes PSU" },
+    { "i2c-mux@70/i2c@1/power_sensor@41": "1.8V PSU" },
+    { "i2c-mux@70/i2c@1/power_sensor@42": "2.5V DDR PSU" },
+    { "i2c-mux@70/i2c@1/power_sensor@43": "3.3V PSU" }
+  ],
+
+  "thermal": [
+    { "cluster-thermal": "cluster", "cpu": true },
+    { "ddr-thermal": "Memory" },
+    { "fman-thermal": "Network" },
+    { "serdes-thermal": "SerDes" },
+    { "sec-thermal": "Crypto" }
+  ]
+}
