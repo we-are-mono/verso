@@ -18,9 +18,10 @@ profiles/
   mono_gateway-dk/
     profile.json     # the sensor / port map (below)
     back.svg         # optional rear-panel artwork (see "Back panel")
-  generic/
-    profile.json     # the fallback (auto-detection)
 ```
+
+A board with **no matching folder needs none** — the fallback is auto-detection, not
+a file (below).
 
 ## How a profile is chosen
 
@@ -31,9 +32,12 @@ separate DMI selectors, and no `id` field inside the file.
 
 - **`aliases`** (optional, in `profile.json`): extra board_names this folder also
   covers — for a board that reports different names across revisions or variants.
-- **`generic/`**: the reserved fallback, used when no directory matches. It's pure
-  auto-detection, so a plain OpenWrt-on-a-PC still shows its standard
-  `coretemp`/`k10temp` reading with no board folder at all.
+- **No match → auto-detect.** When no directory matches the board_name, there is no
+  fallback *file* — the shell simply enumerates whatever sysfs exposes. A plain
+  OpenWrt-on-a-PC shows its standard `coretemp`/`k10temp` reading, and a VM shows its
+  virtual CPU / memory / disk / net, with no board folder at all. A profile is only
+  ever *overrides on top of* that auto-detection, so "empty profile" and "no profile"
+  are the same thing.
 
 Profiles earn their keep on SoC boards (whose sensor names are non-standard) and
 for curating the multi-sensor facts (power, fans) and port order.
