@@ -118,6 +118,7 @@ type OverviewDevice struct {
 	Interface string
 	Presence  string
 
+	DUID       string
 	Zone       string
 	Addresses  []OverviewAddr
 	Connection string
@@ -393,7 +394,7 @@ func (o *Overview) portsTable() *Table {
 			link = TableCell{Text: "Up", Variant: "success"}
 		}
 		if r.Wan {
-			link.Tag, link.TagVariant = "WAN", "info"
+			link.Tag, link.TagVariant, link.TagIcon = "WAN", "info", "globe"
 		}
 		rows = append(rows, TableRow{Cells: []TableCell{
 			{Text: r.Port, Muted: !r.Up},
@@ -433,7 +434,7 @@ func (o *Overview) devicesTable() *Table {
 		})
 	}
 	return &Table{
-		Style: "flat", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
+		Style: "flat", Align: "top", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
 		Columns: []TableColumn{
 			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "entity"},
 			{Label: "MAC", Kind: "mono"}, {Label: "Addresses", Kind: "addr"},
@@ -482,6 +483,7 @@ func (o *Overview) deviceDrawer(d OverviewDevice) *RowDrawer {
 		Columns: []TableColumn{{Kind: "keyword"}, {Kind: "text"}},
 		Rows: []TableRow{
 			factRow("MAC", d.MAC),
+			factRow("DUID", orDash(d.DUID)),
 			factRow("Interface", orDash(d.Interface)),
 			factRow("Zone", orDash(d.Zone)),
 			factRow("Connection", orDash(d.Connection)),

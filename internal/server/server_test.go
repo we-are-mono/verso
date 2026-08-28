@@ -24,6 +24,7 @@ import (
 type fakeBackend struct {
 	si         openwrt.SystemInfo
 	board      openwrt.Board
+	v6Leases   []openwrt.V6Lease
 	hn         string
 	err        error
 	access     bool
@@ -83,6 +84,10 @@ func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error
 
 func (f fakeBackend) WANConn(context.Context, string) (openwrt.WANConn, error) {
 	return f.wanConn, f.wanErr
+}
+
+func (f fakeBackend) IPv6Leases(context.Context, string) ([]openwrt.V6Lease, error) {
+	return f.v6Leases, nil
 }
 
 func (f fakeBackend) DeviceStats(context.Context, string, string) (openwrt.DeviceStats, error) {

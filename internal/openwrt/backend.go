@@ -108,6 +108,10 @@ type Backend interface {
 	// protocol) from the wan and wan6 interfaces — the overview's IPv4/IPv6
 	// panel — sid-gated like WANStatus.
 	WANConn(ctx context.Context, sid string) (WANConn, error)
+	// IPv6Leases reads odhcpd's DHCPv6 leases (`dhcp ipv6leases`) — the client
+	// DUID, hostname, and assigned addresses — sid-gated. DHCPv6 keys on the DUID,
+	// not the MAC, so the roster joins a lease to a device by a shared address.
+	IPv6Leases(ctx context.Context, sid string) ([]V6Lease, error)
 	// DeviceStats reads one network device's link state and byte counters
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
@@ -189,6 +193,15 @@ type Board struct {
 	Model     string
 }
 
+// V6Lease is one odhcpd DHCPv6 lease: the client DUID (its stable DHCPv6
+// identity — there is no MAC in DHCPv6), its hostname, and the IPv6 addresses
+// assigned to it.
+type V6Lease struct {
+	DUID     string
+	Hostname string
+	Addrs    []string
+}
+
 // Memory holds byte counts reported by system info.
 type Memory struct {
 	Total     int64
@@ -203,6 +216,7 @@ type (
 	hostnameFn     func(ctx context.Context, sid string) (string, error)
 	systemInfoFn   func(ctx context.Context, sid string) (map[string]any, error)
 	systemBoardFn  func(ctx context.Context, sid string) (map[string]any, error)
+	ipv6LeasesFn   func(ctx context.Context, sid string) (map[string]any, error)
 	wanConnFn      func(ctx context.Context, sid string) (WANConn, error)
 	accessFn       func(ctx context.Context, sid, scope, object, function string) (bool, error)
 	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
@@ -235,6 +249,7 @@ type NativeBackend struct {
 	hostname     hostnameFn
 	systemInfo   systemInfoFn
 	systemBoard  systemBoardFn
+	ipv6Leases   ipv6LeasesFn
 	wanConn      wanConnFn
 	access       accessFn
 	uciSet       uciSetFn
@@ -266,6 +281,7 @@ func NewNativeBackend() *NativeBackend {
 		hostname:     dialHostname(""),
 		systemInfo:   dialSystemInfo(""),
 		systemBoard:  dialSystemBoard(""),
+		ipv6Leases:   dialIPv6Leases(""),
 		wanConn:      dialWANConn(""),
 		access:       dialAccess(""),
 		uciSet:       dialUCISet(""),
@@ -493,6 +509,27 @@ func dialSystemBoard(socket string) systemBoardFn {
 			return nil, err
 		}
 		return c.Invoke(id, "board")
+	}
+}
+
+// dialIPv6Leases returns an ipv6LeasesFn that reads `ubus call dhcp ipv6leases`
+// (odhcpd's DHCPv6 lease table), sid-gated like the other reads.
+func dialIPv6Leases(socket string) ipv6LeasesFn {
+	return func(_ context.Context, sid string) (map[string]any, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "dhcp", "ipv6leases"); err != nil || !ok {
+			return nil, ErrAccessDenied
+		}
+		id, err := c.Lookup("dhcp")
+		if err != nil {
+			return nil, err
+		}
+		return c.Invoke(id, "ipv6leases")
 	}
 }
 
@@ -828,6 +865,51 @@ func parseSystemInfo(m map[string]any) SystemInfo {
 		si.Memory.Available = asInt64(mem["available"])
 	}
 	return si
+}
+
+// IPv6Leases reads odhcpd's DHCPv6 lease table and folds it to a flat list of
+// DUID + hostname + assigned addresses per client.
+func (b *NativeBackend) IPv6Leases(ctx context.Context, sid string) ([]V6Lease, error) {
+	m, err := b.ipv6Leases(ctx, sid)
+	if err != nil {
+		return nil, err
+	}
+	return parseV6Leases(m), nil
+}
+
+// parseV6Leases folds the `dhcp ipv6leases` response — {device: {<iface>:
+// {leases: [...]}}} — into a flat list, keeping only leases that carry a DUID.
+func parseV6Leases(m map[string]any) []V6Lease {
+	var out []V6Lease
+	devs, _ := m["device"].(map[string]any)
+	for _, d := range devs {
+		iface, _ := d.(map[string]any)
+		leases, _ := iface["leases"].([]any)
+		for _, l := range leases {
+			lease, _ := l.(map[string]any)
+			duid, _ := lease["duid"].(string)
+			if duid == "" {
+				continue
+			}
+			host, _ := lease["hostname"].(string)
+			out = append(out, V6Lease{DUID: duid, Hostname: host, Addrs: leaseV6Addrs(lease)})
+		}
+	}
+	return out
+}
+
+// leaseV6Addrs collects a lease's assigned addresses from its ipv6-addr array.
+func leaseV6Addrs(lease map[string]any) []string {
+	arr, _ := lease["ipv6-addr"].([]any)
+	out := make([]string, 0, len(arr))
+	for _, a := range arr {
+		if am, ok := a.(map[string]any); ok {
+			if s, _ := am["address"].(string); s != "" {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
 }
 
 // parseBoard folds `system board` to the firmware release (distribution +

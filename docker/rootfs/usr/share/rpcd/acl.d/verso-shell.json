@@ -1,10 +1,11 @@
 {
 	"verso-shell": {
-		"description": "Session read grants for Verso's shell-owned pages (the overview's wan meters). Self-contained: the shell never leans on another package's ACL files.",
+		"description": "Session read grants for Verso's shell-owned pages (the overview's wan meters + the connected-devices DUID). Self-contained: the shell never leans on another package's ACL files.",
 		"read": {
 			"ubus": {
 				"network.interface.wan": [ "status" ],
-				"network.device": [ "status" ]
+				"network.device": [ "status" ],
+				"dhcp": [ "ipv6leases" ]
 			}
 		}
 	}

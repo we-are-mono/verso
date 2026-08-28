@@ -47,7 +47,8 @@ func TestRenderOverview(t *testing.T) {
 		Devices: []OverviewDevice{
 			{
 				Name: "Gaming PC", MAC: "a4:83:e7:2b:19:0c",
-				V4: "192.168.1.104", V6: "2001:db8::4f",
+				DUID: "00:03:00:01:a4:83:e7:2b:19:0c",
+				V4:   "192.168.1.104", V6: "2001:db8::4f",
 				Interface: "lan", Zone: "lan", Presence: "online",
 				Addresses: []OverviewAddr{
 					{Addr: "192.168.1.104", Family: "IPv4", State: "reachable"},
@@ -100,8 +101,9 @@ func TestRenderOverview(t *testing.T) {
 		"Interface",         // the segment column (ties to the Interfaces table)
 		"Online", "Offline", // presence words
 		"Details", "max-w-2xl",             // the drawer opener + its wide panel
-		"in 11h 12m", "No DHCP lease",      // drawer lease facts
-		"12.4 GB down · 3.1 GB up", "lan1", // drawer traffic + connection
+		"in 11h 12m", "No DHCP lease",              // drawer lease facts
+		"12.4 GB down · 3.1 GB up", "lan1",         // drawer traffic + connection
+		"DUID", "00:03:00:01:a4:83:e7:2b:19:0c", // the DHCPv6 identity in the drawer
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)

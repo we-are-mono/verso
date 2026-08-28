@@ -42,7 +42,7 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
           <span class="inline-flex items-center gap-2">
             <span class="{{if .Primary}}text-base {{end}}font-semibold text-slate-900">{{.Text}}</span>
-            {{if .Chip}}<span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Chip}}</span>{{end}}
+            {{if .Chip}}<span class="inline-flex items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Chip}}</span>{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
         </td>
@@ -53,7 +53,10 @@
           <span class="inline-flex items-center gap-2">
             <span class="size-2 shrink-0 rounded-full {{if eq .Variant "success"}}bg-emerald-500{{else if eq .Variant "warning"}}bg-amber-500{{else if eq .Variant "danger"}}bg-red-500{{else}}bg-slate-300{{end}}"></span>
             <span>{{.Text}}</span>
-            {{if .Tag}}{{template "table.tag" .}}{{end}}
+            {{/* a tag with an icon becomes a ring-chip (the WAN uplink) — the one
+                 identity chip that keeps its colour, so the uplink stands out;
+                 every other tag stays the flat coloured label. */}}
+            {{if .Tag}}{{if .TagIcon}}<span class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium whitespace-nowrap ring-1 ring-inset {{if eq .TagVariant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20{{else}}bg-slate-50 text-slate-600 ring-slate-200{{end}}"><span class="{{if eq .TagVariant "info"}}text-sky-600{{else}}text-slate-400{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{.Tag}}</span>{{else}}{{template "table.tag" .}}{{end}}{{end}}
           </span>
         </td>
         {{else if eq .Kind "link"}}
@@ -75,7 +78,7 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
           {{if .Chips}}
           <span class="flex flex-wrap items-center gap-1.5">
-            {{range .Chips}}<span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600 whitespace-nowrap"><span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{.Label}}</span>{{end}}
+            {{range .Chips}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap"><span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{.Label}}</span>{{end}}
           </span>
           {{else}}<span class="text-slate-300">—</span>{{end}}
         </td>
@@ -169,7 +172,7 @@
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  <table class="w-full border-collapse text-sm">
+  <table class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
 {{template "table.rows" .Rows}}
@@ -188,7 +191,7 @@
       {{.SeamSummary}}
     </summary>
     <div class="{{if .Card}}px-5 pb-1{{end}}">
-      <table class="w-full border-collapse text-sm">
+      <table class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
         {{if .HasLabels}}{{template "table.head" .}}{{end}}
         <tbody>
 {{template "table.rows" .SeamRows}}

@@ -208,3 +208,37 @@ func TestParseDeviceStats(t *testing.T) {
 		t.Errorf("unknown speed = %d, want 0", got.SpeedMbps)
 	}
 }
+
+// TestParseV6Leases folds the odhcpd ipv6leases response — per-device, per-lease
+// with an ipv6-addr array — to a flat DUID/hostname/addresses list, skipping any
+// lease without a DUID.
+func TestParseV6Leases(t *testing.T) {
+	m := map[string]any{
+		"device": map[string]any{
+			"br-lan": map[string]any{
+				"leases": []any{
+					map[string]any{
+						"duid":     "00030001a483e72b190c",
+						"hostname": "gaming-pc",
+						"ipv6-addr": []any{
+							map[string]any{"address": "2001:db8::4f", "valid": 43200.0},
+							map[string]any{"address": "fd00::4f"},
+						},
+					},
+					map[string]any{"hostname": "no-duid"}, // skipped: no DUID
+				},
+			},
+		},
+	}
+	got := parseV6Leases(m)
+	if len(got) != 1 {
+		t.Fatalf("leases = %d, want 1 (the DUID-less one dropped): %+v", len(got), got)
+	}
+	l := got[0]
+	if l.DUID != "00030001a483e72b190c" || l.Hostname != "gaming-pc" {
+		t.Errorf("lease id wrong: %+v", l)
+	}
+	if len(l.Addrs) != 2 || l.Addrs[0] != "2001:db8::4f" || l.Addrs[1] != "fd00::4f" {
+		t.Errorf("lease addrs wrong: %+v", l.Addrs)
+	}
+}

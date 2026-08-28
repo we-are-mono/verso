@@ -50,6 +50,11 @@ type Table struct {
 	// Condensed lowers the flat style's row padding only — same anatomy, tighter
 	// vertical rhythm, for a dense listing. Ignored by the other styles.
 	Condensed bool `json:"condensed,omitempty"`
+
+	// Align "top" pins every cell to the row's top instead of centring it — so a
+	// cell that stacks two values (an IPv4 over an IPv6) keeps its first line on
+	// the shared top line with the single-value cells, the second dangling below.
+	Align string `json:"align,omitempty"`
 }
 
 // TableAction is the flat header band's trailing link (e.g. "View all").
@@ -135,12 +140,14 @@ type TableCell struct {
 	Text       string          `json:"text,omitempty"`
 	Variant    string          `json:"variant,omitempty"`     // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
 	Dot        bool            `json:"dot,omitempty"`         // pill cells: leading status dot — the same cue the badge carries elsewhere
+	Icon       string          `json:"icon,omitempty"`        // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
 	Copy       bool            `json:"copy,omitempty"`        // mono cells: offer the inline copy button beside the value
 	Chip       string          `json:"chip,omitempty"`        // name cells: a small category chip inline after the name (e.g. its zone)
 	Muted      bool            `json:"muted,omitempty"`       // text/mono cells: render the value as secondary ink (a quiet or absent value)
 	Sub        string          `json:"sub,omitempty"`         // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
 	Tag        string          `json:"tag,omitempty"`         // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant string          `json:"tag_variant,omitempty"` // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
+	TagIcon    string          `json:"tag_icon,omitempty"`    // status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
 	Href       string          `json:"href,omitempty"`        // link cells: the destination of the row's action link
 	Button     string          `json:"button,omitempty"`      // an in-cell button that opens the row's drawer (label is the text); replaces the auto trailing "Details" link for that row
 	On         bool            `json:"on,omitempty"`
@@ -187,6 +194,7 @@ type tableView struct {
 	Card        bool
 	Lined       bool
 	Condensed   bool
+	AlignTop    bool
 	Title       string
 	Detail      string
 	Action      *TableAction
@@ -250,7 +258,8 @@ func (t *Table) hasDetail() bool {
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	v := tableView{
 		Card: t.Style == "card", Lined: t.Style == "lined",
-		Condensed: t.Condensed, Title: t.Title, Detail: t.Detail, Action: t.Action,
+		Condensed: t.Condensed, AlignTop: t.Align == "top",
+		Title: t.Title, Detail: t.Detail, Action: t.Action,
 		HasLabels: hasColumnLabels(t.Columns),
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 	}
@@ -308,7 +317,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 					cv.Endpoints = append(cv.Endpoints, tableEndpointView{TableEndpoint: ep, Icon: icon})
 				}
 				if kind == "pill" && cv.Text != "" {
-					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot}
+					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot, Icon: cv.Icon}
 				}
 			}
 			rv.Cells = append(rv.Cells, cv)

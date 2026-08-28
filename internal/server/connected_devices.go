@@ -52,6 +52,19 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 		log.Printf("verso: devices: network config unavailable: %v", err)
 	}
 
+	// DHCPv6 DUIDs, keyed by an assigned address — DHCPv6 carries no MAC, so a
+	// lease joins to a device through a v6 address they share.
+	duidByAddr := map[string]string{}
+	if v6, err := s.backend.IPv6Leases(ctx, sid); err != nil {
+		log.Printf("verso: devices: ipv6 leases unavailable: %v", err)
+	} else {
+		for _, l := range v6 {
+			for _, a := range l.Addrs {
+				duidByAddr[a] = l.DUID
+			}
+		}
+	}
+
 	byAddr := map[string]sysstat.DeviceTraffic{}
 	if bt, err := s.backend.ConnStats(ctx, sid); err != nil {
 		log.Printf("verso: devices: conntrack unavailable: %v", err)
@@ -89,6 +102,7 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 		out = append(out, widget.OverviewDevice{
 			Name:       deviceName(host, mac),
 			MAC:        mac,
+			DUID:       duidFor(all, duidByAddr),
 			V4:         v4,
 			V6:         v6,
 			Interface:  ifaceForAddr(nets, zoneAddr),
@@ -144,6 +158,17 @@ func deviceAddresses(l lease, hasLease bool, entries []sysstat.Neighbor) (v4, v6
 		add(n.Addr, neighWord(n.State))
 	}
 	return v4, v6, all
+}
+
+// duidFor returns a device's DHCPv6 DUID — the DUID of the first of its addresses
+// a DHCPv6 lease was issued against, or "" when it holds no v6 lease.
+func duidFor(addrs []widget.OverviewAddr, duidByAddr map[string]string) string {
+	for _, a := range addrs {
+		if d, ok := duidByAddr[a.Addr]; ok {
+			return d
+		}
+	}
+	return ""
 }
 
 // neighborState finds a specific address's confidence word among the entries, or

@@ -25,7 +25,7 @@
           <div class="flex min-w-0 items-center gap-2.5">
             {{if .Dot}}<span class="{{if eq .Dot "success"}}verso-live-dot bg-green-500{{else if eq .Dot "danger"}}bg-red-500{{else if eq .Dot "warning"}}bg-amber-500{{else}}bg-slate-400{{end}} size-2 shrink-0 rounded-full"></span>{{end}}
             <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
-            {{if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
+            {{if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
           </div>
           <button type="button" @click="hide" aria-label="Close"
             class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
