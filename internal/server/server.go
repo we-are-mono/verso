@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -95,6 +96,9 @@ type Server struct {
 	// trafHist accumulates per-address rate history from the overview
 	// stream's once-a-second conntrack observations (traffic_history.go).
 	trafHist *trafficHistory
+	// wanHist accumulates the WAN device's throughput history from the same
+	// stream's once-a-second counter observations (wan_history.go).
+	wanHist *wanHistory
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -139,6 +143,7 @@ func New(
 		neighbors:     sysstat.Neighbors,
 		bridgePorts:   sysstat.BridgePorts,
 		trafHist:      newTrafficHistory(time.Now),
+		wanHist:       newWanHistory(time.Now),
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -343,24 +348,104 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The gateway's rear panel leads, bare on the canvas with a hairline rule
 	// under it; the box-health donuts follow (both live — the overview stream
 	// keeps them current), then the status table in a headerless card.
+	// The advanced overview, transferred hardcoded from the design: verdict,
+	// status tiles, IPv4/IPv6 facts, the traffic graph, System, and the Interfaces
+	// / DHCP leases listings (each a flat Table). It opens on the verdict, so the
+	// page carries no masthead heading. The System panel's firmware/kernel/uptime
+	// are live; the shell fills them, degrading to "unavailable" on a backend miss.
 	sid := s.sessionSID(r)
-	children := make([]widget.Widget, 0, 4)
-	if items, _ := s.portList(r.Context(), sid); len(items) > 0 {
-		children = append(children, gatewayPanel(items), &widget.Divider{})
+	ov := &widget.Overview{}
+	if b, err := s.backend.Board(r.Context(), sid); err == nil {
+		ov.Firmware, ov.Kernel = b.Firmware, b.Kernel
+	} else {
+		log.Printf("verso: overview: board unavailable: %v", err)
 	}
-	if donuts := meterGrid(s.meterReadings(r.Context(), sid)); donuts != nil {
-		children = append(children, donuts)
+	if si, err := s.backend.SystemInfo(r.Context(), sid); err == nil {
+		ov.Uptime = formatUptime(si.Uptime)
+	} else {
+		log.Printf("verso: overview: system info unavailable: %v", err)
 	}
-	if roster := connectedSection(s.deviceList(r.Context(), sid)); roster != nil {
-		children = append(children, roster)
+	// The traffic graph draws the real WAN throughput minute the stream has
+	// accumulated; the live layer scrolls fresh samples in after load.
+	ov.DownSeries, ov.UpSeries = s.wanHist.Series()
+	d, u := s.wanHist.Latest()
+	ov.DownVal, ov.UpVal = fmt.Sprintf("%.1f", d), fmt.Sprintf("%.1f", u)
+	// The IPv4/IPv6 panel reads the uplink's live connection facts.
+	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
+		ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
+		ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn)
+	} else {
+		log.Printf("verso: overview: wan connection unavailable: %v", err)
+		unavailable := []widget.OverviewFact{{Label: "Status", Value: "unavailable"}}
+		ov.V4, ov.V6 = unavailable, unavailable
 	}
-	children = append(children, &widget.Card{Children: []widget.Widget{s.statusTable(r.Context(), sid)}})
-	page := &widget.Stack{Children: children}
+	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
+	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r)); err != nil {
+	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Overview"}, "", nil, false, template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{}, "", nil, false, template.HTML(body.String()))
+}
+
+// sysMetricsToWidget maps the System readings onto the overview's gauge fields,
+// resolving each metric's icon by name.
+func sysMetricsToWidget(rs []meterReading) []widget.OverviewMeter {
+	icons := map[string]string{
+		"sys-load": "activity", "sys-cpu": "cpu",
+		"sys-memory": "memory-stick", "sys-storage": "hard-drive",
+	}
+	out := make([]widget.OverviewMeter, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, widget.OverviewMeter{
+			Name: r.Name, Label: r.Label, Icon: icons[r.Name], Role: r.Role,
+			Value: r.Value, Unit: r.Unit, Fill: r.Fill, Detail: r.Detail,
+		})
+	}
+	return out
+}
+
+// wanFactsV4 / wanFactsV6 turn the uplink's connection facts into the overview's
+// IPv4/IPv6 rows — addresses copyable, the IPv6 lease shown as time remaining. An
+// absent side reads "Not configured" rather than an empty column.
+func wanFactsV4(c openwrt.WANConn) []widget.OverviewFact {
+	var f []widget.OverviewFact
+	if c.V4Addr != "" {
+		f = append(f, widget.OverviewFact{Label: "Address", Value: c.V4Addr, Copy: true})
+	}
+	if c.V4Gateway != "" {
+		f = append(f, widget.OverviewFact{Label: "Gateway", Value: c.V4Gateway, Copy: true})
+	}
+	for _, d := range c.V4DNS {
+		f = append(f, widget.OverviewFact{Label: "DNS", Value: d, Copy: true})
+	}
+	if len(f) == 0 {
+		return []widget.OverviewFact{{Label: "Status", Value: "Not configured"}}
+	}
+	return f
+}
+
+func wanFactsV6(c openwrt.WANConn) []widget.OverviewFact {
+	var f []widget.OverviewFact
+	if c.V6Prefix != "" {
+		f = append(f, widget.OverviewFact{Label: "Prefix", Value: c.V6Prefix, Copy: true})
+	}
+	if c.V6Addr != "" {
+		f = append(f, widget.OverviewFact{Label: "Address", Value: c.V6Addr, Copy: true})
+	}
+	if c.V6Gateway != "" {
+		f = append(f, widget.OverviewFact{Label: "Gateway", Value: c.V6Gateway, Copy: true})
+	}
+	for _, d := range c.V6DNS {
+		f = append(f, widget.OverviewFact{Label: "DNS", Value: d, Copy: true})
+	}
+	if c.V6Valid > 0 {
+		f = append(f, widget.OverviewFact{Label: "Expires", Value: formatUptime(c.V6Valid)})
+	}
+	if len(f) == 0 {
+		return []widget.OverviewFact{{Label: "Status", Value: "Not configured"}}
+	}
+	return f
 }

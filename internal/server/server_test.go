@@ -23,6 +23,7 @@ import (
 // accessErr drive the plugin-write authorization gate (ADR-007) in tests.
 type fakeBackend struct {
 	si         openwrt.SystemInfo
+	board      openwrt.Board
 	hn         string
 	err        error
 	access     bool
@@ -63,6 +64,7 @@ type fakeBackend struct {
 	// device-counter snapshots, popped one per DeviceStats call (pointer:
 	// fakeBackend is used by value); the last snapshot repeats.
 	wan      openwrt.WANState
+	wanConn  openwrt.WANConn
 	wanErr   error
 	devStats *[]openwrt.DeviceStats
 	devErr   error
@@ -77,6 +79,10 @@ func (f fakeBackend) ConnStats(context.Context, string) (map[string]sysstat.Devi
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
 	return f.wan, f.wanErr
+}
+
+func (f fakeBackend) WANConn(context.Context, string) (openwrt.WANConn, error) {
+	return f.wanConn, f.wanErr
 }
 
 func (f fakeBackend) DeviceStats(context.Context, string, string) (openwrt.DeviceStats, error) {
@@ -95,6 +101,10 @@ func (f fakeBackend) DeviceStats(context.Context, string, string) (openwrt.Devic
 
 func (f fakeBackend) SystemInfo(context.Context, string) (openwrt.SystemInfo, error) {
 	return f.si, f.err
+}
+
+func (f fakeBackend) Board(context.Context, string) (openwrt.Board, error) {
+	return f.board, f.err
 }
 
 func (f fakeBackend) Hostname(context.Context, string) (string, error) {
@@ -417,14 +427,14 @@ func TestHealthzReturnsOK(t *testing.T) {
 	}
 }
 
-func TestIndexRendersRealData(t *testing.T) {
+// TestIndexRendersOverview: the landing page renders the advanced overview — the
+// verdict, the traffic section, the System panel with live firmware/kernel/uptime
+// from the backend, and the lease table.
+func TestIndexRendersOverview(t *testing.T) {
 	backend := fakeBackend{
-		hn: "verso-lab",
-		si: openwrt.SystemInfo{
-			Uptime: 3661,
-			Load:   [3]int64{65536, 0, 0},
-			Memory: openwrt.Memory{Total: 64883740672, Available: 37969338368},
-		},
+		hn:    "verso-lab",
+		board: openwrt.Board{Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101"},
+		si:    openwrt.SystemInfo{Uptime: 3661},
 	}
 	rec := get(t, newServer(t, backend), "/")
 
@@ -432,21 +442,26 @@ func TestIndexRendersRealData(t *testing.T) {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"<table", "verso-lab", "1h 1m", "1.00", "GiB"} {
+	for _, want := range []string{
+		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces", "DHCP leases",
+		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
 		}
 	}
 }
 
+// TestIndexDegradesWhenBackendFails: the overview is hardcoded for now, so the
+// page renders (never 500s) even when the backend is unreachable.
 func TestIndexDegradesWhenBackendFails(t *testing.T) {
 	rec := get(t, newServer(t, fakeBackend{err: errors.New("ubus down")}), "/")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200 (must degrade, not 500)", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "unavailable") {
-		t.Errorf("GET /: expected 'unavailable' degradation")
+	if !strings.Contains(rec.Body.String(), "Your network is") {
+		t.Errorf("GET /: overview should render regardless of backend")
 	}
 }
 

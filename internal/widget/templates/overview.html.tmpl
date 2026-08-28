@@ -1,0 +1,110 @@
+{{/* overview: the advanced overview page, bare on the canvas (no card). Sections
+     stack with generous spacing; hairline rules span the content width. Colours map
+     the mock's slates/emerald/amber onto the Tailwind scale; the verdict headline is
+     Fraunces (font-serif). The traffic plot is the generic Chart widget, injected;
+     the copy control is the shared verso-copy-inline (properties.html.tmpl). Shell-
+     owned, hardcoded content (not the plugin vocabulary). Icons from icons.go. */}}
+<div>
+
+  {{/* Verdict: kicker above, then the headline with the Basic/Advanced toggle on its row. */}}
+  <div>
+    <div class="flex items-center gap-2.5">
+      <span class="size-2.5 shrink-0 rounded-full bg-emerald-500 verso-live-dot"></span>
+      <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">{{.Kicker}}</span>
+    </div>
+    <div class="mt-3.5 flex items-center justify-between gap-4">
+      <h1 class="font-serif text-4xl font-semibold leading-tight tracking-tight text-slate-900">{{.Lead}}<span class="text-emerald-600">{{.Accent}}</span></h1>
+      <span class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <span class="rounded-md px-3 py-1 text-sm font-medium text-slate-500">Basic</span>
+        <span class="rounded-md bg-white px-3 py-1 text-sm font-medium text-slate-900 shadow-sm">Advanced</span>
+      </span>
+    </div>
+  </div>
+
+  {{/* Status tiles: four across, hairline rules top/bottom and between. */}}
+  <div class="mt-8 grid grid-cols-4 divide-x divide-slate-100 border-y border-slate-100">
+    {{range .Tiles}}
+    <div class="px-6 py-5 first:pl-0 last:pr-0">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{.Label}}</span>
+        <span class="shrink-0 {{if eq .Variant "warning"}}text-amber-600{{else}}text-emerald-500{{end}}">{{icon .Icon "size-4"}}</span>
+      </div>
+      <div class="mt-3 flex items-center gap-2">
+        <span class="size-2 shrink-0 rounded-full {{if eq .Variant "warning"}}bg-amber-500{{else}}bg-emerald-500{{end}}"></span>
+        <span class="text-base font-semibold {{if eq .Variant "warning"}}text-amber-700{{else}}text-slate-900{{end}}">{{.Status}}</span>
+      </div>
+      <div class="mt-1.5 text-sm text-slate-400">{{.Caption}}</div>
+    </div>
+    {{end}}
+  </div>
+
+  {{/* Connection facts: IPv4 and IPv6 side by side, label → mono value with copy. */}}
+  <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+    {{range .Facts}}
+    <div class="py-6 {{if eq .Side "left"}}pr-8{{else}}pl-8{{end}}">
+      <div class="flex items-baseline gap-2.5">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{.Kind}}</span>
+        <span class="text-xs text-slate-400">{{.Proto}}</span>
+      </div>
+      <div class="mt-2">
+        {{range .Rows}}
+        <div class="flex gap-4 border-t border-slate-100 py-2.5">
+          <span class="w-24 shrink-0 text-sm text-slate-400">{{.Label}}</span>
+          <span class="min-w-0 flex-1 break-all font-mono text-sm text-slate-900">{{.Value}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}</span>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  {{/* Internet traffic: title + meta left, the down/up legend hard-right, plot below. */}}
+  <section class="mt-12">
+    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      <h2 class="text-2xl font-semibold tracking-tight text-slate-900">{{.ChartTitle}}</h2>
+      <span class="text-sm text-slate-400">{{.ChartMeta}}</span>
+      <span class="ml-auto inline-flex items-center gap-5 text-sm text-slate-400">
+        <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-sky-600"></span><span class="font-bold tabular-nums text-slate-900" data-verso-traffic-down>{{.DownVal}}</span> {{.RateUnit}} down</span>
+        <span class="inline-flex items-center gap-2"><span class="size-2 rounded-sm bg-violet-600"></span><span class="font-bold tabular-nums text-slate-900" data-verso-traffic-up>{{.UpVal}}</span> {{.RateUnit}} up</span>
+      </span>
+    </div>
+    <div class="mt-6" data-verso-traffic-chart data-verso-traffic-seed="{{.TrafficSeed}}">{{.Chart}}</div>
+  </section>
+
+  {{/* System: headline metrics with bars, then the hardware facts in two columns. */}}
+  <section class="mt-12">
+    <div class="flex items-baseline gap-4">
+      <h2 class="text-2xl font-semibold tracking-tight text-slate-900">System</h2>
+      <span class="text-sm text-slate-400">{{.SysMeta}}</span>
+    </div>
+    {{/* The headline metrics: bar-layout Meter widgets, injected into a divided
+         strip — the page owns the strip, the widget owns each gauge. */}}
+    <div class="mt-7 grid grid-cols-4 divide-x divide-slate-100">
+      {{range .Metrics}}<div class="px-9 first:pl-0 last:pr-0">{{.}}</div>{{end}}
+    </div>
+    <div class="mt-8 grid grid-cols-2 gap-14">
+      {{template "overview_props" .SysLeft}}
+      {{template "overview_props" .SysRight}}
+    </div>
+  </section>
+
+  {{/* Interfaces, Connected devices, DHCP leases: the generic flat Table widget,
+       rendered and injected — each owns its own header band; the section spacing
+       is the page's. */}}
+  <section class="mt-12">{{.Interfaces}}</section>
+  <section class="mt-12">{{.DhcpLeases}}</section>
+
+</div>
+
+{{define "overview_props"}}
+<div>
+  {{range .}}
+  <div class="flex items-baseline justify-between gap-4 border-t border-slate-100 py-3">
+    <span class="text-sm text-slate-500">{{.Label}}</span>
+    <span class="text-sm font-medium text-slate-900">
+      {{if .Dot}}<span class="mr-2 inline-block size-1.5 rounded-full bg-emerald-500 align-middle"></span>{{end}}<span class="{{if .Mono}}font-mono text-[0.9rem]{{end}}">{{.Value}}</span>
+    </span>
+  </div>
+  {{end}}
+</div>
+{{end}}

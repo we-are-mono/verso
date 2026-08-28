@@ -24,6 +24,9 @@ var ErrAccessDenied = errors.New("openwrt: access denied by rpcd ACL")
 // authorizes the operation (ADR-007).
 type Backend interface {
 	SystemInfo(ctx context.Context, sid string) (SystemInfo, error)
+	// Board reads the device's identity from `ubus call system board` — the
+	// firmware release and kernel version — sid-gated like system info.
+	Board(ctx context.Context, sid string) (Board, error)
 	Hostname(ctx context.Context, sid string) (string, error)
 	// Access asks rpcd whether the session may call object.function within the
 	// given ACL scope. It is the enforcement point the shell uses to gate plugin
@@ -101,6 +104,10 @@ type Backend interface {
 	// (network.interface.wan status) — whether it is up and which l3 device
 	// carries it — gated on the session's access to that object.
 	WANStatus(ctx context.Context, sid string) (WANState, error)
+	// WANConn reads the uplink's connection facts (address, gateway, DNS,
+	// protocol) from the wan and wan6 interfaces — the overview's IPv4/IPv6
+	// panel — sid-gated like WANStatus.
+	WANConn(ctx context.Context, sid string) (WANConn, error)
 	// DeviceStats reads one network device's link state and byte counters
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
@@ -117,6 +124,22 @@ type WANState struct {
 	Up     bool
 	Device string // the l3 device carrying the uplink, e.g. "wan0"
 	Addr   string // the uplink's IPv4 address, "" until the protocol is up
+}
+
+// WANConn is the uplink's connection facts as the overview lists them: the IPv4
+// side from the wan interface, the IPv6 side from wan6. Every string is empty
+// when the protocol doesn't carry it (a v4-only uplink leaves the v6 fields bare).
+type WANConn struct {
+	V4Proto   string // "DHCP" | "PPPoE" | "Static" | …
+	V4Addr    string // "172.30.1.171/24"
+	V4Gateway string
+	V4DNS     []string
+	V6Proto   string // "DHCPv6 client" | …
+	V6Prefix  string // the delegated prefix, "fd42:7ea:aa00::/56"
+	V6Addr    string
+	V6Gateway string
+	V6DNS     []string
+	V6Valid   int64 // seconds the prefix stays valid (the lease's time left); 0 = none
 }
 
 // DeviceStats is one network device's link state and byte counters, from
@@ -156,6 +179,13 @@ type SystemInfo struct {
 	Memory Memory
 }
 
+// Board is the subset of `ubus call system board` Verso renders: the firmware
+// release ("OpenWrt 25.12.4") and the kernel version ("Linux 6.12.101").
+type Board struct {
+	Firmware string
+	Kernel   string
+}
+
 // Memory holds byte counts reported by system info.
 type Memory struct {
 	Total     int64
@@ -169,6 +199,8 @@ type Memory struct {
 type (
 	hostnameFn     func(ctx context.Context, sid string) (string, error)
 	systemInfoFn   func(ctx context.Context, sid string) (map[string]any, error)
+	systemBoardFn  func(ctx context.Context, sid string) (map[string]any, error)
+	wanConnFn      func(ctx context.Context, sid string) (WANConn, error)
 	accessFn       func(ctx context.Context, sid, scope, object, function string) (bool, error)
 	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciCommitFn    func(ctx context.Context, sid, config string) error
@@ -199,6 +231,8 @@ type (
 type NativeBackend struct {
 	hostname     hostnameFn
 	systemInfo   systemInfoFn
+	systemBoard  systemBoardFn
+	wanConn      wanConnFn
 	access       accessFn
 	uciSet       uciSetFn
 	uciCommit    uciCommitFn
@@ -228,6 +262,8 @@ func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
 		hostname:     dialHostname(""),
 		systemInfo:   dialSystemInfo(""),
+		systemBoard:  dialSystemBoard(""),
+		wanConn:      dialWANConn(""),
 		access:       dialAccess(""),
 		uciSet:       dialUCISet(""),
 		uciCommit:    dialUCICommit(""),
@@ -265,6 +301,16 @@ func (b *NativeBackend) SystemInfo(ctx context.Context, sid string) (SystemInfo,
 		return SystemInfo{}, err
 	}
 	return parseSystemInfo(m), nil
+}
+
+// Board reads `ubus call system board` and folds it to the firmware release and
+// kernel version.
+func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
+	m, err := b.systemBoard(ctx, sid)
+	if err != nil {
+		return Board{}, err
+	}
+	return parseBoard(m), nil
 }
 
 // Access reports whether rpcd grants the session object.function in scope.
@@ -361,6 +407,10 @@ func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, er
 	return b.wanStatus(ctx, sid)
 }
 
+func (b *NativeBackend) WANConn(ctx context.Context, sid string) (WANConn, error) {
+	return b.wanConn(ctx, sid)
+}
+
 func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
 	return b.deviceStats(ctx, sid, device)
 }
@@ -419,6 +469,27 @@ func dialSystemInfo(socket string) systemInfoFn {
 			return nil, err
 		}
 		return c.Invoke(id, "info")
+	}
+}
+
+// dialSystemBoard returns a systemBoardFn that reads `ubus call system board`,
+// the device's identity (firmware release, kernel), sid-gated like system info.
+func dialSystemBoard(socket string) systemBoardFn {
+	return func(_ context.Context, sid string) (map[string]any, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
+
+		if ok, err := probeAccess(c, sid, "ubus", "system", "board"); err != nil || !ok {
+			return nil, ErrAccessDenied
+		}
+		id, err := c.Lookup("system")
+		if err != nil {
+			return nil, err
+		}
+		return c.Invoke(id, "board")
 	}
 }
 
@@ -756,6 +827,31 @@ func parseSystemInfo(m map[string]any) SystemInfo {
 	return si
 }
 
+// parseBoard folds `system board` to the firmware release (distribution +
+// version, e.g. "OpenWrt 25.12.4") and the kernel version ("Linux 6.12.101").
+func parseBoard(m map[string]any) Board {
+	str := func(v any) string { s, _ := v.(string); return s }
+	var b Board
+	if k := str(m["kernel"]); k != "" {
+		b.Kernel = "Linux " + k
+	}
+	if rel, ok := m["release"].(map[string]any); ok {
+		dist, ver := str(rel["distribution"]), str(rel["version"])
+		switch {
+		case dist != "" && ver != "":
+			b.Firmware = dist + " " + ver
+		case dist != "":
+			b.Firmware = dist
+		default:
+			b.Firmware = ver
+		}
+		if b.Firmware == "" {
+			b.Firmware = str(rel["description"])
+		}
+	}
+	return b
+}
+
 func asInt64(v any) int64 {
 	switch n := v.(type) {
 	case int64:
@@ -1010,6 +1106,124 @@ func parseWANState(m map[string]any) WANState {
 		}
 	}
 	return ws
+}
+
+// dialWANConn reads the wan (IPv4) and wan6 (IPv6) interface status and folds
+// both into the connection facts. Each read is sid-gated; a missing wan6 (a
+// v4-only uplink) leaves the v6 fields empty rather than failing.
+func dialWANConn(socket string) wanConnFn {
+	return func(_ context.Context, sid string) (WANConn, error) {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return WANConn{}, err
+		}
+		defer c.Close()
+		read := func(iface string) map[string]any {
+			if ok, err := probeAccess(c, sid, "ubus", "network.interface."+iface, "status"); err != nil || !ok {
+				return nil
+			}
+			id, err := c.Lookup("network.interface." + iface)
+			if err != nil {
+				return nil
+			}
+			res, _ := c.Invoke(id, "status")
+			return res
+		}
+		wan := read("wan")
+		if wan == nil {
+			return WANConn{}, ErrAccessDenied
+		}
+		return parseWANConn(wan, read("wan6")), nil
+	}
+}
+
+// parseWANConn maps the wan/wan6 interface status onto WANConn: the first
+// address (with its mask), the default route's nexthop as the gateway, the DNS
+// list, the delegated IPv6 prefix, and the prefix's valid lifetime as the lease
+// time left.
+func parseWANConn(v4, v6 map[string]any) WANConn {
+	var wc WANConn
+	str := func(v any) string { s, _ := v.(string); return s }
+	// addr formats ipv{4,6}-address[0] as "address/mask".
+	addr := func(m map[string]any, key string) string {
+		list, ok := m[key].([]any)
+		if !ok || len(list) == 0 {
+			return ""
+		}
+		e, ok := list[0].(map[string]any)
+		if !ok {
+			return ""
+		}
+		a := str(e["address"])
+		if a == "" {
+			return ""
+		}
+		if mask := asInt64(e["mask"]); mask > 0 {
+			return fmt.Sprintf("%s/%d", a, mask)
+		}
+		return a
+	}
+	// gateway is the nexthop of the default route (target all-zeros, mask 0).
+	gateway := func(m map[string]any, wantTarget string) string {
+		routes, ok := m["route"].([]any)
+		if !ok {
+			return ""
+		}
+		for _, r := range routes {
+			e, ok := r.(map[string]any)
+			if ok && str(e["target"]) == wantTarget && asInt64(e["mask"]) == 0 {
+				return str(e["nexthop"])
+			}
+		}
+		return ""
+	}
+	dns := func(m map[string]any) []string {
+		list, ok := m["dns-server"].([]any)
+		if !ok {
+			return nil
+		}
+		out := make([]string, 0, len(list))
+		for _, d := range list {
+			if s := str(d); s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	proto := func(p string) string {
+		switch p {
+		case "dhcp":
+			return "DHCP"
+		case "pppoe":
+			return "PPPoE"
+		case "static":
+			return "Static"
+		case "dhcpv6":
+			return "DHCPv6 client"
+		}
+		return p
+	}
+
+	wc.V4Proto = proto(str(v4["proto"]))
+	wc.V4Addr = addr(v4, "ipv4-address")
+	wc.V4Gateway = gateway(v4, "0.0.0.0")
+	wc.V4DNS = dns(v4)
+
+	if v6 != nil {
+		wc.V6Proto = proto(str(v6["proto"]))
+		wc.V6Addr = addr(v6, "ipv6-address")
+		wc.V6Gateway = gateway(v6, "::")
+		wc.V6DNS = dns(v6)
+		if pfx, ok := v6["ipv6-prefix"].([]any); ok && len(pfx) > 0 {
+			if e, ok := pfx[0].(map[string]any); ok {
+				if a := str(e["address"]); a != "" {
+					wc.V6Prefix = fmt.Sprintf("%s/%d", a, asInt64(e["mask"]))
+				}
+				wc.V6Valid = asInt64(e["valid"])
+			}
+		}
+	}
+	return wc
 }
 
 // dialDeviceStats reads network.device status for one named device, after

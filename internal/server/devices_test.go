@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -155,34 +154,7 @@ func TestLeaseIn(t *testing.T) {
 	}
 }
 
-// TestIndexRendersRoster: the section sits bare on the canvas — trigger rows
-// with zone chips, presence badges, honest chevrons — and each device's wide
-// drawer tells the story top-down: live chart with rate readout, stat tiles,
-// the info note, then every address with its state.
-func TestIndexRendersRoster(t *testing.T) {
-	body := get(t, rosterServer(t), "/").Body.String()
-	for _, want := range []string{
-		"Connected devices", "toms-iphone", "192.168.77.102", "Device 0e:57",
-		"Online", "Idle", "Offline",
-		">lan<",                                           // the zone chip (rows and drawer title alike)
-		"max-w-2xl",                                       // the wide drawer
-		"fd42:7ea:aa00:0:1::66",                           // v6 in the drawer's address list
-		"42:e6:ad:ff:b7:af",                               // MAC row
-		"lan0",                                            // interface row (the bridge port)
-		"live · 1s samples",                               // the readout's sampling note
-		"verso-chart-panel-head",                          // rates above the plot
-		">Downloaded<", ">Connections<", ">Lease renews<", // stat tiles
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("GET /: body missing %q", want)
-		}
-	}
-}
-
-// TestIndexWithoutLeasesSkipsRoster: a router not serving DHCP carries no
-// empty section.
-func TestIndexWithoutLeasesSkipsRoster(t *testing.T) {
-	if strings.Contains(get(t, newServer(t, fakeBackend{}), "/").Body.String(), "Connected devices") {
-		t.Error("GET /: roster rendered with no leases")
-	}
-}
+// The overview's live device data (deviceList and the aggregation behind it) is
+// covered by TestDeviceList above; the landing page now renders the hardcoded
+// Overview/ConnectedDevices widgets (tested in internal/widget), so there is no
+// roster-on-"/" assertion here.

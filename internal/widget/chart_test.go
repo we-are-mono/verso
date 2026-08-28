@@ -199,8 +199,12 @@ func TestChartPanel(t *testing.T) {
 			t.Errorf("panel chart missing %q:\n%s", want, got)
 		}
 	}
-	if gridlines := strings.Count(got, "<line "); gridlines != 4 {
-		t.Errorf("panel gridlines = %d, want 4", gridlines)
+	// Four value gridlines plus the value-0 baseline.
+	if lines := strings.Count(got, "<line "); lines != 5 {
+		t.Errorf("panel lines = %d, want 5 (4 gridlines + baseline)", lines)
+	}
+	if !strings.Contains(got, "verso-chart-baseline") {
+		t.Errorf("panel chart should draw a value-0 baseline")
 	}
 	// Every value label rides across its line, and the time captions sit in
 	// their own row below the plot rather than overlaid inside it.

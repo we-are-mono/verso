@@ -26,6 +26,9 @@ import (
 //	"toggle"   — an on/off switch (a section's enabled state)
 //	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
 //	"endpoint" — one or more traffic endpoints, each a type icon + label
+//	"status"   — a state as a bare dot + word (a link's up/down): the dot takes
+//	             the cell's variant colour, the word reads calm; no pill frame
+//	"link"     — a right-aligned action link to the cell's Href (e.g. "Details")
 //	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
 //	             cell's variant uses the badge vocabulary, and an empty cell
 //	             renders a faint dash — pills stay meaningful because most
@@ -125,15 +128,19 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 // the column's kind (Text for text/name/mono/keyword/comment/num, Text+Variant
 // for pill, On/Name for toggle, Endpoints for endpoint).
 type TableCell struct {
-	Text      string          `json:"text,omitempty"`
-	Variant   string          `json:"variant,omitempty"` // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
-	Dot       bool            `json:"dot,omitempty"`     // pill cells: leading status dot — the same cue the badge carries elsewhere
-	Copy      bool            `json:"copy,omitempty"`    // mono cells: offer the inline copy button beside the value
-	Chip      string          `json:"chip,omitempty"`    // name cells: a small category chip inline after the name (e.g. its zone)
-	Button    string          `json:"button,omitempty"`  // an in-cell button that opens the row's drawer (label is the text); replaces the auto trailing "Details" link for that row
-	On        bool            `json:"on,omitempty"`
-	Name      string          `json:"name,omitempty"` // form name the toggle posts under
-	Endpoints []TableEndpoint `json:"endpoints,omitempty"`
+	Text       string          `json:"text,omitempty"`
+	Variant    string          `json:"variant,omitempty"`     // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
+	Dot        bool            `json:"dot,omitempty"`         // pill cells: leading status dot — the same cue the badge carries elsewhere
+	Copy       bool            `json:"copy,omitempty"`        // mono cells: offer the inline copy button beside the value
+	Chip       string          `json:"chip,omitempty"`        // name cells: a small category chip inline after the name (e.g. its zone)
+	Muted      bool            `json:"muted,omitempty"`       // text/mono cells: render the value as secondary ink (a quiet or absent value)
+	Tag        string          `json:"tag,omitempty"`         // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
+	TagVariant string          `json:"tag_variant,omitempty"` // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
+	Href       string          `json:"href,omitempty"`        // link cells: the destination of the row's action link
+	Button     string          `json:"button,omitempty"`      // an in-cell button that opens the row's drawer (label is the text); replaces the auto trailing "Details" link for that row
+	On         bool            `json:"on,omitempty"`
+	Name       string          `json:"name,omitempty"` // form name the toggle posts under
+	Endpoints  []TableEndpoint `json:"endpoints,omitempty"`
 }
 
 // TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
@@ -186,7 +193,8 @@ type tableRowView struct {
 }
 
 type tableCellView struct {
-	Kind string
+	Kind    string
+	Primary bool // the first column — the row's identity, set one step larger
 	TableCell
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -271,7 +279,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind}
+			cv := tableCellView{Kind: kind, Primary: i == 0}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
 				for _, ep := range row.Cells[i].Endpoints {

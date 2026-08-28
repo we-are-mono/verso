@@ -143,13 +143,6 @@ func parseNetworkTopology(cfg map[string]any) networkTopology {
 	return topo
 }
 
-// gatewayPanel is the rear panel as the overview carries it: bare on the
-// canvas (no card frame — the chassis is its own object), a hairline rule
-// below setting it apart from what follows.
-func gatewayPanel(items []widget.PortItem) *widget.Ports {
-	return &widget.Ports{Accent: "sky", Legend: true, Items: items}
-}
-
 // linkSpeed renders a negotiated link the way a person says it; an unlinked
 // or speedless port shows a quiet dash.
 func linkSpeed(st openwrt.DeviceStats) string {

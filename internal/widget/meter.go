@@ -24,12 +24,18 @@ import (
 // faces carry the same live hooks and colour by the same band rule.
 type Meter struct {
 	Label   string `json:"label"`
-	Value   string `json:"value"`   // the centred number in its native unit ("23", "1.2", "300", "18")
-	Unit    string `json:"unit"`    // "GB" | "Mbps" | "%" | …
-	Fill    int    `json:"fill"`    // ring fill, 0–100 percent (the proportion; may differ from Value)
-	Detail  string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
-	Variant string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)
+	Value   string `json:"value"`            // the centred number in its native unit ("23", "1.2", "300", "18")
+	Unit    string `json:"unit"`             // "GB" | "Mbps" | "%" | …
+	Fill    int    `json:"fill"`             // ring fill, 0–100 percent (the proportion; may differ from Value)
+	Detail  string `json:"detail"`           // the one fact worth acting on, e.g. "9 GB free"
+	Variant string `json:"variant"`          // "" auto-colour by Fill | "info" (accent, for a rate)
 	Layout  string `json:"layout,omitempty"` // "" ring (default) | "bar" (horizontal strip)
+	// Icon sits in front of the label (bar layout) — a glyph naming the metric.
+	Icon string `json:"icon,omitempty"`
+	// Role paints the bar (and the icon) a fixed decorative accent instead of the
+	// fill-band health colour — for a dashboard row where each gauge carries its
+	// own hue, not a good/warn/danger reading: "sky" | "violet" | "emerald" | "amber".
+	Role string `json:"role,omitempty"`
 	// Name is a stable handle for a live meter: the rendered markup carries it
 	// (plus per-part hooks) so the shell's client script can stream fresh
 	// readings into the ring and text in place. A nameless meter is static.
@@ -47,6 +53,8 @@ type meterView struct {
 	Unit   string
 	Detail string
 	Name   string
+	Icon   string
+	Role   string // decorative accent for the bar + icon; "" colours by band
 	Band   string // "good" | "warn" | "danger" | "info"
 	Dash   string // stroke-dasharray for the ring's fill arc
 	Width  string // width of the bar's fill, e.g. "72%"
@@ -77,7 +85,7 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	}
 	view := meterView{
 		Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
-		Name: m.Name, Band: MeterBand(fill, m.Variant),
+		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
 		Dash:  fmt.Sprintf("%.1f %.2f", float64(fill)/100*meterCircumference, meterCircumference),
 		Width: fmt.Sprintf("%d%%", fill),
 	}

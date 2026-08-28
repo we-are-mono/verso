@@ -129,22 +129,6 @@ func TestLinkSpeed(t *testing.T) {
 	}
 }
 
-// TestIndexRendersGatewayPanel: the overview carries the rear panel with live
-// hooks on each connector.
-func TestIndexRendersGatewayPanel(t *testing.T) {
-	be := portsBackend()
-	stats := []openwrt.DeviceStats{{Carrier: true, SpeedMbps: 10000}, {Carrier: true, SpeedMbps: 1000}}
-	be.devStats = &stats
-	body := get(t, newServer(t, be), "/").Body.String()
-	for _, want := range []string{
-		"verso-ports", `data-verso-port="lan0"`, `data-verso-port="wan0"`, "Internet",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("GET /: body missing %q", want)
-		}
-	}
-}
-
 // TestOverviewStreamCarriesPorts: the stream sends a `ports` frame when the
 // panel's truth exists, and not again while it is unchanged — the
 // change-driven shape event types after meters follow.

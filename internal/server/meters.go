@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,7 +43,8 @@ type meterReading struct {
 	Fill    int    `json:"fill"`
 	Band    string `json:"band"`
 	Detail  string `json:"detail"`
-	Variant string `json:"-"` // widget variant ("info" for a rate); the JSON carries its band instead
+	Variant string `json:"-"`              // widget variant ("info" for a rate); the JSON carries its band instead
+	Role    string `json:"role,omitempty"` // decorative bar accent (sky|violet|emerald|amber); the client keeps it instead of a health band
 }
 
 // wanRate turns the wan device's byte counters into a throughput reading: the
@@ -174,24 +176,67 @@ func (s *Server) meterReadings(ctx context.Context, sid string) []meterReading {
 	return readings
 }
 
-// meterGrid composes the readings as the overview's donut row. Nil when there
-// is nothing to show — an empty grid is furniture.
-func meterGrid(readings []meterReading) widget.Widget {
-	if len(readings) == 0 {
-		return nil
-	}
-	children := make([]widget.Widget, 0, len(readings))
-	for _, m := range readings {
-		children = append(children, &widget.Meter{
-			Name: m.Name, Label: m.Label, Value: m.Value, Unit: m.Unit,
-			Fill: m.Fill, Detail: m.Detail, Variant: m.Variant,
+// systemMeters assembles the System panel's four bar gauges — load, CPU,
+// memory, storage — as live readings with a fixed decorative accent each (not a
+// health band). Memory and storage read as a percentage full; load carries its
+// raw figure with the bar showing its share of the cores. A failed source is
+// omitted (and logged) rather than zeroed.
+func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
+	out := make([]meterReading, 0, 4)
+	cores := runtime.NumCPU()
+
+	si, siErr := s.backend.SystemInfo(ctx, sid)
+	if siErr != nil {
+		log.Printf("verso: system meters: system info unavailable: %v", siErr)
+	} else {
+		fill := 0
+		if cores > 0 {
+			fill = int(math.Round(float64(si.Load[0]) / 65536.0 / float64(cores) * 100))
+		}
+		out = append(out, meterReading{
+			Name: "sys-load", Label: "LOAD", Value: formatLoad(si.Load[0]),
+			Fill: clampPct(fill), Detail: "1-minute average", Role: "sky",
 		})
 	}
-	columns := len(children)
-	if columns > 4 {
-		columns = 4
+
+	if pct, err := s.stats.CPUPercent(); err != nil {
+		log.Printf("verso: system meters: cpu unavailable: %v", err)
+	} else {
+		out = append(out, meterReading{
+			Name: "sys-cpu", Label: "CPU", Value: strconv.Itoa(pct), Unit: "%",
+			Fill: clampPct(pct), Detail: fmt.Sprintf("%d cores", cores), Role: "violet",
+		})
 	}
-	return &widget.Grid{Columns: columns, Children: children}
+
+	if siErr == nil && si.Memory.Total > 0 {
+		used := si.Memory.Total - si.Memory.Available
+		pct := int(used * 100 / si.Memory.Total)
+		out = append(out, meterReading{
+			Name: "sys-memory", Label: "MEMORY", Value: strconv.Itoa(pct), Unit: "%",
+			Fill: clampPct(pct), Detail: "of " + gb(si.Memory.Total) + " GB", Role: "emerald",
+		})
+	}
+
+	if st, err := s.stats.Root(); err != nil {
+		log.Printf("verso: system meters: storage unavailable: %v", err)
+	} else if total := st.Used + st.Free; total > 0 {
+		pct := int(st.Used * 100 / total)
+		out = append(out, meterReading{
+			Name: "sys-storage", Label: "STORAGE", Value: strconv.Itoa(pct), Unit: "%",
+			Fill: clampPct(pct), Detail: "of " + gb(total) + " GB", Role: "amber",
+		})
+	}
+	return out
+}
+
+func clampPct(p int) int {
+	if p < 0 {
+		return 0
+	}
+	if p > 100 {
+		return 100
+	}
+	return p
 }
 
 // gb renders a byte count as gigabytes the way a person says them — one

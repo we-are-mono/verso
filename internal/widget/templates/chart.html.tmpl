@@ -11,6 +11,7 @@
      hydrates the same series without touching the schema. */}}
 {{define "verso-chart-svg"}}<svg class="verso-chart {{.Class}} block {{if .Stretch}}w-full{{else}}h-auto w-full{{end}} overflow-visible" viewBox="0 0 {{.W}} {{.H}}"{{if .Stretch}} preserveAspectRatio="none"{{end}} role="img" aria-label="{{.Label}}"{{if .Name}} data-verso-chart="{{.Name}}"{{end}}>
   {{if .GridYs}}<g class="verso-chart-grid">{{range .GridYs}}<line x1="0" y1="{{.}}" x2="{{$.W}}" y2="{{.}}"/>{{end}}</g>{{end}}
+  {{if .Baseline}}<line class="verso-chart-baseline" x1="0" y1="{{.Baseline}}" x2="{{.W}}" y2="{{.Baseline}}" vector-effect="non-scaling-stroke"/>{{end}}
   {{range .Series}}
   <g class="verso-chart-series verso-chart--{{.RoleClass}}" data-verso-chart-role="{{.Role}}">
     {{if .Area}}
@@ -22,9 +23,10 @@
   </g>
   {{end}}
 </svg>{{end}}
-{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot">
+{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot{{if .YLabels}} verso-chart-plot--gutter{{end}}">
   {{template "verso-chart-svg" .}}
   {{range .YLabels}}<span class="verso-chart-yl{{if .Mid}} verso-chart-yl--mid{{end}}" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+  {{range .HTMLDots}}<span class="verso-chart-dot-html verso-chart--{{.RoleClass}}" style="top:{{printf "%.1f" .TopPct}}%"></span>{{end}}
   {{/* The window captions: a stretched (panel) plot carries them in their own
        row hugging the baseline — wrapped with the plot in one block, so a
        parent stack's spacing lands around the pair, not between them. The

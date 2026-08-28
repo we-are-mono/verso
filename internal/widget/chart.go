@@ -90,9 +90,11 @@ type chartView struct {
 	Name    string // live handle (data-verso-chart), empty for a static chart
 	Class   string // size class on the svg root: verso-chart--full | verso-chart--panel | verso-chart--spark
 	Stretch bool   // preserveAspectRatio="none": the CSS fixes the height, the width flexes
-	W, H    float64
-	GridYs  []float64
-	HasAxis bool // wrap the plot so the HTML axis labels can overlay it
+	W, H     float64
+	GridYs   []float64
+	Baseline float64 // y of the value-0 line; 0 = none (full/panel draw it)
+	HasAxis  bool     // wrap the plot so the HTML axis labels can overlay it
+	HTMLDots []chartHTMLDot
 	YLabels []chartYLabel
 	XStart  string
 	XEnd    string
@@ -110,6 +112,14 @@ type chartYLabel struct {
 	TopPct float64
 	Mid    bool // vertically centre on the line (the topmost label hangs below it)
 	Text   string
+}
+
+// chartHTMLDot is an endpoint marker drawn as an HTML overlay (not an SVG circle) so
+// it stays round on a stretched plot, where preserveAspectRatio="none" would squash a
+// circle into an oval. It rides the plot's right edge at the series' last value.
+type chartHTMLDot struct {
+	RoleClass string
+	TopPct    float64
 }
 
 // chartRate is one current-value entry in the readout: a value in its unit, coloured to
@@ -199,25 +209,38 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.GridYs = []float64{dims.Pad, (dims.H + dims.Pad) / 2}
 	}
 
+	// A value-0 baseline anchors the plot's bottom on the hero and panel charts
+	// (a sparkline stays bare).
+	if c.Size == "full" || c.Size == "panel" {
+		view.Baseline = scaleY(0)
+	}
+
 	seq := r.chartSeq.Add(1)
 	for i, s := range c.Series {
 		if len(s.Values) < 2 {
 			continue // a line needs at least two points
 		}
+		pts := chartPoints(s.Values, dims.W, dims.H, max, dims.Pad)
 		sv := chartSeriesView{
 			RoleClass: chartRoleClass(s.Role, c.Idle),
 			Role:      s.Role,
-			Line:      chartLine(s.Values, dims.W, dims.H, max, dims.Pad),
+			Line:      chartCurve(pts),
 		}
 		if s.Fill {
 			sv.GradID = fmt.Sprintf("vc%d-%d", seq, i)
-			sv.Area = chartArea(s.Values, dims.W, dims.H, max, dims.Pad)
+			sv.Area = chartCurveArea(pts, dims.W, dims.H)
 		}
 		if dims.Dot > 0 {
-			last := s.Values[len(s.Values)-1]
-			sv.DotR = dims.Dot
-			sv.DotX = fmt.Sprintf("%.1f", dims.W)
-			sv.DotY = fmt.Sprintf("%.1f", dims.H-dims.Pad-(last/max)*(dims.H-2*dims.Pad))
+			lastY := pts[len(pts)-1][1]
+			if view.Stretch {
+				// A stretched plot squashes an SVG circle; draw the dot as a
+				// round HTML overlay at the plot's right edge instead.
+				view.HTMLDots = append(view.HTMLDots, chartHTMLDot{RoleClass: sv.RoleClass, TopPct: lastY / dims.H * 100})
+			} else {
+				sv.DotR = dims.Dot
+				sv.DotX = fmt.Sprintf("%.1f", dims.W)
+				sv.DotY = fmt.Sprintf("%.1f", lastY)
+			}
 		}
 		view.Series = append(view.Series, sv)
 	}
@@ -268,32 +291,54 @@ func chartRoleClass(role string, idle bool) string {
 	}
 }
 
-// chartLine builds the "M…L…" path through the points: x spreads them evenly across the
+// chartPoints maps the values to plot coordinates: x spreads them evenly across the
 // width, y maps each value into the padded height (the top of the scale is max).
-func chartLine(vals []float64, w, h, max, pad float64) string {
-	var b strings.Builder
+func chartPoints(vals []float64, w, h, max, pad float64) [][2]float64 {
+	pts := make([][2]float64, len(vals))
 	for i, v := range vals {
-		x := float64(i) / float64(len(vals)-1) * w
-		y := h - pad - (v/max)*(h-2*pad)
-		if i == 0 {
-			fmt.Fprintf(&b, "M%.1f %.1f", x, y)
-		} else {
-			fmt.Fprintf(&b, " L%.1f %.1f", x, y)
+		pts[i] = [2]float64{
+			float64(i) / float64(len(vals)-1) * w,
+			h - pad - (v/max)*(h-2*pad),
 		}
 	}
+	return pts
+}
+
+// chartSegments appends the cubic-bezier segments of a smooth curve through the points
+// (a Catmull-Rom spline, tension 1/6): each segment eases into the next so the line
+// reads as a curve, not a run of straight hops. The opening "M" is written by the caller.
+func chartSegments(b *strings.Builder, pts [][2]float64) {
+	for i := 0; i < len(pts)-1; i++ {
+		p0 := pts[i]
+		if i > 0 {
+			p0 = pts[i-1]
+		}
+		p1, p2 := pts[i], pts[i+1]
+		p3 := p2
+		if i+2 < len(pts) {
+			p3 = pts[i+2]
+		}
+		fmt.Fprintf(b, " C%.1f %.1f %.1f %.1f %.1f %.1f",
+			p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6,
+			p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6,
+			p2[0], p2[1])
+	}
+}
+
+// chartCurve is the smooth line through the points.
+func chartCurve(pts [][2]float64) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "M%.1f %.1f", pts[0][0], pts[0][1])
+	chartSegments(&b, pts)
 	return b.String()
 }
 
-// chartArea is the same curve closed down to the baseline and back — the filled shape
-// under the line.
-func chartArea(vals []float64, w, h, max, pad float64) string {
+// chartCurveArea is the same smooth curve closed down to the baseline and back — the
+// filled shape under the line.
+func chartCurveArea(pts [][2]float64, w, h float64) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "M0 %.1f", h)
-	for i, v := range vals {
-		x := float64(i) / float64(len(vals)-1) * w
-		y := h - pad - (v/max)*(h-2*pad)
-		fmt.Fprintf(&b, " L%.1f %.1f", x, y)
-	}
+	fmt.Fprintf(&b, "M0 %.1f L%.1f %.1f", h, pts[0][0], pts[0][1])
+	chartSegments(&b, pts)
 	fmt.Fprintf(&b, " L%.1f %.1f Z", w, h)
 	return b.String()
 }

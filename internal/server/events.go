@@ -47,7 +47,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	var lastPorts, lastTraffic []byte
 	var prevCounters map[string]int64
 	sendMeters := func() bool {
-		return writeMetersEvent(w, s.meterReadings(r.Context(), sid)) == nil
+		return writeMetersEvent(w, s.systemMeters(r.Context(), sid)) == nil
 	}
 	// Per-device frames follow the same change-driven shape as ports: a fully
 	// quiet minute stops them until traffic moves again. The tick's conntrack
@@ -68,6 +68,20 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprintf(w, "event: traffic\ndata: {\"devices\":%s}\n\n", payload)
 		return err == nil
 	}
+	// The WAN throughput frame: sample the uplink device's counters once a
+	// second, fold them into the minute-long history the overview graph draws,
+	// and stream the newest down/up so the live graph scrolls in real values.
+	sendWan := func() bool {
+		ws, err := s.backend.WANStatus(r.Context(), sid)
+		if err != nil || ws.Device == "" {
+			return true // no uplink device is a page-render concern, not a stream killer
+		}
+		st := s.deviceStats(r.Context(), sid, ws.Device)
+		s.wanHist.Observe(st.RxBytes, st.TxBytes)
+		down, up := s.wanHist.Latest()
+		_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f}\n\n", down, up)
+		return err == nil
+	}
 	// The panel frame goes out only when the truth moved (a cable, a
 	// renegotiation, the amber LED flipping) — the change-driven shape every
 	// event type after meters follows.
@@ -84,7 +98,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		return err == nil
 	}
 
-	if !sendMeters() || !sendPorts() || !sendTraffic() {
+	if !sendMeters() || !sendPorts() || !sendTraffic() || !sendWan() {
 		return
 	}
 	flusher.Flush()
@@ -93,7 +107,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() {
+			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() || !sendWan() {
 				return
 			}
 			flusher.Flush()

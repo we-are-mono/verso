@@ -4,47 +4,9 @@
 package server
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"time"
-
-	"github.com/we-are-mono/verso/internal/widget"
 )
-
-// statusTable builds the system-status table from live backend data. It degrades
-// to "unavailable" rows rather than failing when the backend can't be reached,
-// so the shell never 500s on a backend hiccup; the underlying error is logged.
-func (s *Server) statusTable(ctx context.Context, sid string) *widget.Table {
-	row := func(field, value string) widget.TableRow {
-		return widget.TableRow{Cells: []widget.TableCell{{Text: field}, {Text: value}}}
-	}
-	rows := make([]widget.TableRow, 0, 4)
-
-	if hn, err := s.backend.Hostname(ctx, sid); err == nil {
-		rows = append(rows, row("Hostname", hn))
-	} else {
-		log.Printf("verso: hostname unavailable: %v", err)
-		rows = append(rows, row("Hostname", "unavailable"))
-	}
-
-	if si, err := s.backend.SystemInfo(ctx, sid); err == nil {
-		rows = append(rows,
-			row("Uptime", formatUptime(si.Uptime)),
-			row("Load (1m)", formatLoad(si.Load[0])),
-			row("Memory", fmt.Sprintf("%s free of %s",
-				formatBytes(si.Memory.Available), formatBytes(si.Memory.Total))),
-		)
-	} else {
-		log.Printf("verso: system info unavailable: %v", err)
-		rows = append(rows, row("System", "unavailable"))
-	}
-
-	return &widget.Table{
-		Columns: []widget.TableColumn{{Label: "Field"}, {Label: "Value"}},
-		Rows:    rows,
-	}
-}
 
 func formatUptime(sec int64) string {
 	if sec < 0 {

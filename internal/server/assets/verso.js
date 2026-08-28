@@ -375,7 +375,7 @@ document.addEventListener(
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]")) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
@@ -410,8 +410,12 @@ document.addEventListener(
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {
       bar.style.width = fill + "%";
-      for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
-      bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.good);
+      // A role-accented bar keeps its fixed colour (a dashboard hue, not a health
+      // band); only a band-coloured bar recolours with its reading.
+      if (!reading.role) {
+        for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
+        bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.good);
+      }
     }
     var svg = root.querySelector("svg");
     if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
@@ -533,6 +537,12 @@ document.addEventListener(
   listen(es, "meters", "meters", applyMeter);
   listen(es, "ports", "ports", applyPort);
   listen(es, "traffic", "devices", applyChart);
+  // The WAN throughput sample hands off to the traffic-graph animator, if present.
+  es.addEventListener("wan", function (e) {
+    var d;
+    try { d = JSON.parse(e.data); } catch (err) { return; }
+    if (d && window.__versoWanSample) window.__versoWanSample(d.down, d.up);
+  });
 })();
 
 // Named switches post themselves: flipping an on/off control outside a form is
@@ -567,4 +577,104 @@ document.addEventListener(
       el.checked = !el.checked;
     });
   });
+})();
+
+// The overview's Internet-traffic graph, live: it seeds from the real WAN minute
+// the server rendered (data-verso-traffic-seed) and then FLOWS left continuously
+// as fresh samples arrive on the overview stream's `wan` event (window.__verso-
+// WanSample). Each frame the curves translate by a fraction of one sample; when a
+// sample lands the value is committed and the translate resets — a seamless
+// treadmill drawing the same smooth curve and fixed 300 Mbps scale the server
+// drew. A clip hides what scrolls past the edges. Reduced-motion still updates,
+// just in discrete steps instead of a glide.
+(function () {
+  var host = document.querySelector("[data-verso-traffic-chart]");
+  if (!host) return;
+  var svg = host.querySelector("svg.verso-chart");
+  if (!svg) return;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var NS = "http://www.w3.org/2000/svg";
+  var vb = svg.viewBox.baseVal;
+  var W = vb.width, H = vb.height, PAD = 8, MAX = 300, INTERVAL = 1000;
+  var groups = svg.querySelectorAll("g.verso-chart-series");
+  var dots = host.querySelectorAll(".verso-chart-dot-html");
+  var downEl = document.querySelector("[data-verso-traffic-down]");
+  var upEl = document.querySelector("[data-verso-traffic-up]");
+
+  // Seed the live series from the server's rendered minute.
+  var seed = { down: [], up: [] };
+  try { seed = JSON.parse(host.getAttribute("data-verso-traffic-seed") || "{}"); } catch (e) { seed = {}; }
+  var down = (seed.down || []).slice(), up = (seed.up || []).slice();
+  var N = Math.min(down.length, up.length); // visible points fill 0..W
+  if (N < 2) return;
+  down.push(down[N - 1]); up.push(up[N - 1]); // one extra, off-right, until a sample lands
+  var step = W / (N - 1);
+  var series = [down, up];
+
+  // Clip each series to the plot rect so the treadmill's off-edge content hides.
+  var clip = document.createElementNS(NS, "clipPath");
+  clip.setAttribute("id", "verso-traffic-clip");
+  var rect = document.createElementNS(NS, "rect");
+  rect.setAttribute("x", "0"); rect.setAttribute("y", "0");
+  rect.setAttribute("width", String(W)); rect.setAttribute("height", String(H));
+  clip.appendChild(rect); svg.appendChild(clip);
+
+  var lines = [], areas = [];
+  groups.forEach(function (g) {
+    g.setAttribute("clip-path", "url(#verso-traffic-clip)");
+    lines.push(g.querySelector(".verso-chart-line"));
+    areas.push(g.querySelector(".verso-chart-area"));
+  });
+
+  function y(v) { return H - PAD - (v / MAX) * (H - 2 * PAD); }
+  function points(vals) { return vals.map(function (v, j) { return [j * step, y(v)]; }); }
+  // The same Catmull-Rom spline the server draws, so the live curve matches.
+  function segments(p) {
+    var s = "";
+    for (var k = 0; k < p.length - 1; k++) {
+      var p0 = k > 0 ? p[k - 1] : p[k], p1 = p[k], p2 = p[k + 1], p3 = k + 2 < p.length ? p[k + 2] : p2;
+      s += " C" + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + " " + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) +
+        " " + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + " " + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) +
+        " " + p2[0].toFixed(1) + " " + p2[1].toFixed(1);
+    }
+    return s;
+  }
+  function draw() {
+    series.forEach(function (vals, idx) {
+      var p = points(vals), head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
+      if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].setAttribute("transform", "translate(0 0)"); }
+      if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].setAttribute("transform", "translate(0 0)"); }
+    });
+  }
+
+  var lastCommit = null;
+  // A fresh WAN sample: commit the newest down/up, drop the oldest, redraw.
+  window.__versoWanSample = function (nd, nu) {
+    if (typeof nd !== "number" || typeof nu !== "number") return;
+    down.push(nd); down.shift();
+    up.push(nu); up.shift();
+    draw();
+    if (downEl) downEl.textContent = (Math.round(nd * 10) / 10).toFixed(1);
+    if (upEl) upEl.textContent = (Math.round(nu * 10) / 10).toFixed(1);
+    lastCommit = performance.now();
+  };
+
+  draw();
+  if (reduce) return; // discrete live updates only; no glide
+  function frame(ts) {
+    if (lastCommit !== null) {
+      var progress = Math.min(1, (ts - lastCommit) / INTERVAL);
+      var tf = "translate(" + (-progress * step).toFixed(2) + " 0)";
+      lines.forEach(function (l) { if (l) l.setAttribute("transform", tf); });
+      areas.forEach(function (a) { if (a) a.setAttribute("transform", tf); });
+      series.forEach(function (vals, idx) {
+        if (!dots[idx]) return;
+        var v = vals[N - 1] * (1 - progress) + vals[N] * progress;
+        dots[idx].style.top = ((y(v) / H) * 100).toFixed(1) + "%";
+      });
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 })();

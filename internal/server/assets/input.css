@@ -459,6 +459,15 @@
      one per-role palette; "idle" is the calm grey of a quiet or empty source. This SVG
      is the first paint — the live layer hydrates the same data for smooth streaming. */
   .verso-chart-grid line { stroke: var(--color-slate-200); stroke-width: 1; }
+  .verso-chart-baseline { stroke: var(--color-slate-300); stroke-width: 1.5; }
+  /* endpoint dot as a round HTML overlay (a stretched SVG circle turns oval); it rides
+     the plot's right edge at the series' last value, coloured to its series. */
+  .verso-chart-dot-html { position: absolute; right: 0; width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; transform: translate(50%, -50%); }
+  .verso-chart-dot-html.verso-chart--sky { background: var(--color-sky-600); }
+  .verso-chart-dot-html.verso-chart--violet { background: var(--color-violet-600); }
+  .verso-chart-dot-html.verso-chart--emerald { background: var(--color-emerald-600); }
+  .verso-chart-dot-html.verso-chart--amber { background: var(--color-amber-600); }
+  .verso-chart-dot-html.verso-chart--idle { background: var(--color-slate-400); }
   .verso-chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
   .verso-chart--spark .verso-chart-line { stroke-width: 1.75; }
   /* The panel plot: fixed height (the viewBox matches, so strokes stay true),
@@ -517,6 +526,12 @@
      bottom corners. */
   .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; pointer-events: none; }
   .verso-chart-yl { left: 0.3125rem; }
+  /* When a plot carries y-axis labels, indent the graph so the values fall into an
+     exposed left gutter, hugging the border, instead of overlapping the line. */
+  .verso-chart-plot--gutter { padding-left: 2.5rem; }
+  .verso-chart-plot--gutter .verso-chart-yl { left: 0; }
+  /* the window captions below a guttered plot line up under the graph, not the gutter. */
+  .verso-chart-plot--gutter + .verso-chart-xrow { padding-left: 2.5rem; }
   .verso-chart-xl-start { left: 0.3125rem; bottom: 0; }
   .verso-chart-xl-end { right: 0.3125rem; bottom: 0; }
   .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-slate-900); }

@@ -184,47 +184,39 @@ func TestOverviewEventsStream(t *testing.T) {
 		t.Fatalf("Content-Type = %q, want text/event-stream", ct)
 	}
 
+	// The stream carries several event types now (meters, ports, traffic, wan);
+	// collect the two meters payloads, tracking the current event.
 	var payloads []string
+	var event string
 	scanner := bufio.NewScanner(res.Body)
 	for scanner.Scan() && len(payloads) < 2 {
 		line := scanner.Text()
-		if data, ok := strings.CutPrefix(line, "data: "); ok {
-			payloads = append(payloads, data)
+		if ev, ok := strings.CutPrefix(line, "event: "); ok {
+			event = ev
 			continue
 		}
-		if line != "" && line != "event: meters" {
+		if data, ok := strings.CutPrefix(line, "data: "); ok {
+			if event == "meters" {
+				payloads = append(payloads, data)
+			}
+			continue
+		}
+		if line != "" {
 			t.Fatalf("unexpected stream line %q", line)
 		}
 	}
 	if len(payloads) < 2 {
-		t.Fatalf("stream ended after %d event(s): %v", len(payloads), scanner.Err())
+		t.Fatalf("stream ended after %d meters event(s): %v", len(payloads), scanner.Err())
 	}
 	meters := decodeMeters(t, payloads[0])
-	if len(meters) != 3 || meters[0].Name != "memory" {
+	if len(meters) != 4 || meters[0].Name != "sys-load" {
 		t.Fatalf("first event payload = %+v", meters)
 	}
 }
 
-// TestIndexRendersLiveMeters: the homepage leads with the three named donuts,
-// so the stream has handles to push into.
-func TestIndexRendersLiveMeters(t *testing.T) {
-	rec := get(t, newServer(t, metersBackend()), "/")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
-	}
-	body := rec.Body.String()
-	for _, want := range []string{
-		`data-verso-meter="memory"`, `data-verso-meter="storage"`, `data-verso-meter="cpu"`,
-		"Memory", "Storage", "Processor",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("GET /: body missing %q", want)
-		}
-	}
-}
-
-// TestIndexWithoutMetersStillRenders: every source down drops the donut row
-// entirely (no empty grid), and the page still answers.
+// TestIndexWithoutMetersStillRenders: the overview renders (and answers 200)
+// even with every live source down — its System panel is hardcoded for now, so
+// the page never depends on the meter sources.
 func TestIndexWithoutMetersStillRenders(t *testing.T) {
 	s := newServer(t, fakeBackend{err: errors.New("bus down")})
 	s.stats = fakeStats{cpuErr: errors.New("no proc"), rootErr: errors.New("no statfs")}
@@ -232,7 +224,7 @@ func TestIndexWithoutMetersStillRenders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if strings.Contains(rec.Body.String(), "data-verso-meter") {
-		t.Error("GET /: donuts rendered with every source down")
+	if !strings.Contains(rec.Body.String(), "Your network is") {
+		t.Error("GET /: overview should render regardless of the meter sources")
 	}
 }
