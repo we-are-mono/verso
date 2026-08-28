@@ -28,6 +28,14 @@ func TestRenderOverview(t *testing.T) {
 			{Name: "sys-memory", Label: "MEMORY", Icon: "memory-stick", Role: "emerald", Value: "60", Unit: "%", Fill: 60},
 			{Name: "sys-storage", Label: "STORAGE", Icon: "hard-drive", Role: "amber", Value: "78", Unit: "%", Fill: 78},
 		},
+		InterfaceRows: []OverviewInterface{
+			{Port: "eth0", Up: false, Speed: "", Traffic: ""},
+			{Port: "eth4", Up: true, Wan: true, Speed: "10 Gbps", Traffic: "18.4 / 2.1 GB"},
+		},
+		LeaseRows: []OverviewLease{
+			{Name: "Gaming PC", Zone: "lan", MAC: "a4:83:e7:2b:19:0c", IP: "192.168.1.104", Expires: "11h 12m"},
+			{Name: "Unknown device", Zone: "guest", MAC: "9e:2f:11:c4:08:5b", IP: "192.168.20.44", Expires: "30m"},
+		},
 	})
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "font-serif", // verdict in Fraunces
@@ -44,10 +52,11 @@ func TestRenderOverview(t *testing.T) {
 		// Resolved hardware sensors (profile-keyed); the temp dot reads emerald.
 		"Temperature", "52 °C · Normal", "bg-emerald-500",
 		"Fan", "3630 rpm", "Power draw", "12.4 W", "8 power · 5 thermal",
-		// Interfaces table (flat Table): the WAN tag rides the eth4 link cell.
-		"Interfaces", "eth0", "eth4", ">WAN<", "18.4 / 2.1 GB",
-		// DHCP leases table: MAC + IP mono, copyable.
-		"DHCP leases", "5 active", "a4:83:e7:2b:19:0c", "192.168.20.44",
+		// Interfaces table (flat Table): the WAN tag rides the eth4 link cell,
+		// eth0's down row greys, and the header counts the ports.
+		"Interfaces", "2 ports", "eth0", "No link", "eth4", ">WAN<", "18.4 / 2.1 GB",
+		// DHCP leases table: MAC + IP mono, copyable; zone chip + remaining time.
+		"DHCP leases", "2 leases", "a4:83:e7:2b:19:0c", "192.168.20.44", "11h 12m",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)

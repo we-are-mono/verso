@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -57,6 +58,33 @@ type Overview struct {
 	Fan           string
 	Power         string
 	SensorSummary string
+
+	// InterfaceRows and LeaseRows are the live Interfaces and DHCP-leases
+	// listings; the shell fills them from the backend. Empty renders the table
+	// with its header and no rows rather than a stale placeholder.
+	InterfaceRows []OverviewInterface
+	LeaseRows     []OverviewLease
+}
+
+// OverviewInterface is one Interfaces-table row: the port device, its link state
+// (Up when carrier is present, Wan tags the uplink), negotiated speed, and RX/TX
+// totals — all pre-formatted by the shell.
+type OverviewInterface struct {
+	Port    string
+	Up      bool
+	Wan     bool
+	Speed   string
+	Traffic string
+}
+
+// OverviewLease is one DHCP-leases-table row: the device name with its zone chip,
+// its MAC and IP (copyable machine strings), and time until the lease expires.
+type OverviewLease struct {
+	Name    string
+	Zone    string
+	MAC     string
+	IP      string
+	Expires string
 }
 
 // OverviewFact is one connection-facts row: a label, its value, and whether the
@@ -185,11 +213,11 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	interfaces, err := renderToHTML(r, overviewInterfaces(), csrf)
+	interfaces, err := renderToHTML(r, o.interfacesTable(), csrf)
 	if err != nil {
 		return err
 	}
-	leases, err := renderToHTML(r, overviewLeases(), csrf)
+	leases, err := renderToHTML(r, o.leasesTable(), csrf)
 	if err != nil {
 		return err
 	}
@@ -300,61 +328,71 @@ func renderToHTML(r *Renderer, w interface {
 	return template.HTML(b.String()), nil
 }
 
-// overviewInterfaces is the ports listing as a flat table: the port (mono, greyed
+// interfacesTable is the ports listing as a flat table: the port (mono, greyed
 // when down), its link state as a status dot + word (the WAN uplink tagged), the
-// negotiated speed, and today's RX/TX.
-func overviewInterfaces() *Table {
-	up := func(port, speed, rx string, wan bool) TableRow {
-		link := TableCell{Text: "Up", Variant: "success"}
-		if wan {
+// negotiated speed, and RX/TX totals — built from the live InterfaceRows.
+func (o *Overview) interfacesTable() *Table {
+	rows := make([]TableRow, 0, len(o.InterfaceRows))
+	for _, r := range o.InterfaceRows {
+		link := TableCell{Text: "No link", Variant: "neutral"}
+		if r.Up {
+			link = TableCell{Text: "Up", Variant: "success"}
+		}
+		if r.Wan {
 			link.Tag, link.TagVariant = "WAN", "info"
 		}
-		return TableRow{Cells: []TableCell{
-			{Text: port}, link, {Text: speed, Muted: true}, {Text: rx},
-		}}
+		rows = append(rows, TableRow{Cells: []TableCell{
+			{Text: r.Port, Muted: !r.Up},
+			link,
+			{Text: orDash(r.Speed), Muted: !r.Up},
+			{Text: orDash(r.Traffic)},
+		}})
 	}
 	return &Table{
-		Style: "flat", Title: "Interfaces", Detail: "5 ports",
+		Style: "flat", Title: "Interfaces", Detail: countLabel(len(rows), "port"),
 		Columns: []TableColumn{
 			{Label: "Port", Kind: "mono"}, {Label: "Link", Kind: "status"},
-			{Label: "Speed", Kind: "text"}, {Label: "RX / TX today", Kind: "num"},
+			{Label: "Speed", Kind: "text"}, {Label: "RX / TX", Kind: "num"},
 		},
-		Rows: []TableRow{
-			{Cells: []TableCell{
-				{Text: "eth0", Muted: true}, {Text: "No link", Variant: "neutral"},
-				{Text: "—", Muted: true}, {Text: "—"},
-			}},
-			up("eth1", "1 Gbps · full", "4.1 / 0.9 GB", false),
-			up("eth2", "1 Gbps · full", "0.3 / 0.1 GB", false),
-			up("eth3", "10 Gbps", "2.7 / 1.2 GB", false),
-			up("eth4", "10 Gbps", "18.4 / 2.1 GB", true),
-		},
+		Rows: rows,
 	}
 }
 
-// overviewLeases is the DHCP lease table: the device with its zone chip, its MAC
-// and IP as copy-pastable machine strings, and time remaining.
-func overviewLeases() *Table {
-	row := func(dev, zone, mac, ip, expires string) TableRow {
-		return TableRow{Cells: []TableCell{
-			{Text: dev, Chip: zone},
-			{Text: mac, Copy: true},
-			{Text: ip, Copy: true},
-			{Text: expires},
-		}}
+// leasesTable is the DHCP lease table: the device with its zone chip, its MAC and
+// IP as copy-pastable machine strings, and time remaining — from LeaseRows.
+func (o *Overview) leasesTable() *Table {
+	rows := make([]TableRow, 0, len(o.LeaseRows))
+	for _, l := range o.LeaseRows {
+		rows = append(rows, TableRow{Cells: []TableCell{
+			{Text: l.Name, Chip: l.Zone},
+			{Text: l.MAC, Copy: true},
+			{Text: l.IP, Copy: true},
+			{Text: orDash(l.Expires)},
+		}})
 	}
 	return &Table{
-		Style: "flat", Title: "DHCP leases", Detail: "5 active",
+		Style: "flat", Title: "DHCP leases", Detail: countLabel(len(rows), "lease"),
 		Columns: []TableColumn{
 			{Label: "Device", Kind: "name"}, {Label: "MAC", Kind: "mono"},
 			{Label: "IP", Kind: "mono"}, {Label: "Expires", Kind: "num"},
 		},
-		Rows: []TableRow{
-			row("Gaming PC", "lan", "a4:83:e7:2b:19:0c", "192.168.1.104", "11h 12m"),
-			row("Living Room TV", "lan", "dc:a6:32:44:8f:2e", "192.168.1.140", "9h 03m"),
-			row("family-laptop", "lan", "f0:18:98:1d:77:a1", "192.168.1.156", "6h 44m"),
-			row("Alice's iPhone", "lan", "b8:e6:0c:5a:3f:d2", "192.168.1.181", "2h 20m"),
-			row("Unknown device", "guest", "9e:2f:11:c4:08:5b", "192.168.20.44", "30m"),
-		},
+		Rows: rows,
 	}
+}
+
+// orDash falls a missing cell value back to a quiet dash.
+func orDash(s string) string {
+	if s == "" {
+		return "—"
+	}
+	return s
+}
+
+// countLabel renders a header count like "5 ports" / "1 lease", pluralising the
+// noun with a plain "s".
+func countLabel(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
 }
