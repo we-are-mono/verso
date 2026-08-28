@@ -68,8 +68,28 @@
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green-600"}}{{end}}</td>
+        {{else if eq .Kind "entity"}}
+        {{/* entity references — an interface, a zone, or physical ports — as icon
+             chips: the Lucide glyph names the kind, the label the one. One chip or
+             a wrapping row of them; empty reads as a quiet dash. */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
+          {{if .Chips}}
+          <span class="flex flex-wrap items-center gap-1.5">
+            {{range .Chips}}<span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600 whitespace-nowrap"><span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{.Label}}</span>{{end}}
+          </span>
+          {{else}}<span class="text-slate-300">—</span>{{end}}
+        </td>
         {{else if eq .Kind "mono"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono {{if .Primary}}text-base{{else}}text-[0.9rem]{{end}} tabular-nums whitespace-nowrap {{if .Muted}}text-slate-500{{else}}text-slate-900{{end}} group-last:border-b-0">{{.Text}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</td>
+        {{else if eq .Kind "addr"}}
+        {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
+             line (the global IPv6) muted below — both copyable, so the cell holds
+             both families without a second column. */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums group-last:border-b-0">
+          {{if .Text}}<div class="whitespace-nowrap text-slate-900">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
+          {{if .Sub}}<div class="whitespace-nowrap text-slate-500">{{.Sub}}{{if .Copy}}{{template "verso-copy-inline" .Sub}}{{end}}</div>{{end}}
+          {{if and (not .Text) (not .Sub)}}<span class="text-slate-300">—</span>{{end}}
+        </td>
         {{else if eq .Kind "keyword"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
@@ -96,7 +116,7 @@
               x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
               x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
               x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-              class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+              class="absolute inset-y-0 right-0 flex w-full {{if .DrawerWide}}max-w-2xl{{else}}max-w-md{{end}} flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
               <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
                 <h3 class="text-base font-medium text-slate-900">{{.DrawerTitle}}</h3>
                 <button type="button" @click="hide" aria-label="Close"

@@ -443,7 +443,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces", "DHCP leases",
+		"ALL GOOD", "healthy", "Internet traffic", "System", "Ports", "Interfaces", "Connected devices",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
 	} {
 		if !strings.Contains(body, want) {

@@ -88,11 +88,13 @@
     </div>
   </section>
 
-  {{/* Interfaces, Connected devices, DHCP leases: the generic flat Table widget,
-       rendered and injected — each owns its own header band; the section spacing
-       is the page's. */}}
+  {{/* The network read top-down: Ports (physical), Interfaces (the logical
+       networks/VLANs riding them, each row opening a per-port membership drawer),
+       then Connected devices (the clients on them). Each is the generic flat Table
+       widget, rendered and injected; the section spacing is the page's. */}}
+  <section class="mt-12">{{.Ports}}</section>
   <section class="mt-12">{{.Interfaces}}</section>
-  <section class="mt-12">{{.DhcpLeases}}</section>
+  <section class="mt-12">{{.Devices}}</section>
 
 </div>
 

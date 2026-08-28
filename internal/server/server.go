@@ -384,9 +384,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
 	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
 	s.applySensors(ov, board.BoardName)
-	// The Interfaces and DHCP-leases listings, read live from the backend.
-	ov.InterfaceRows = s.overviewInterfaces(r.Context(), sid)
-	ov.LeaseRows = s.overviewLeases(r.Context(), sid)
+	// The Ports, Interfaces, and Connected-devices listings, read live from the
+	// backend. Interfaces reuses the device roster for its per-segment count.
+	ov.Ports = s.overviewPorts(r.Context(), sid)
+	ov.Devices = s.connectedDevices(r.Context(), sid)
+	ov.Interfaces = s.interfaceList(r.Context(), sid, ov.Devices)
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {

@@ -86,9 +86,12 @@ type TableRow struct {
 
 // RowDrawer is a row's edit surface: a right slide-in panel — typically a form
 // prefilled with the section's values, a blast-radius callout, and a confirm
-// for deletion. Same shell behaviour as the drawer widget (ADR-005 §7).
+// for deletion. Same shell behaviour as the drawer widget (ADR-005 §7). Size
+// widens the panel ("" reading width | "wide") for detail views that carry
+// tables beside prose.
 type RowDrawer struct {
 	Title    string   `json:"title"`
+	Size     string   `json:"size,omitempty"`
 	Children []Widget `json:"children"`
 }
 
@@ -100,6 +103,7 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 		Cells  []TableCell `json:"cells"`
 		Drawer *struct {
 			Title    string            `json:"title"`
+			Size     string            `json:"size"`
 			Children []json.RawMessage `json:"children"`
 		} `json:"drawer"`
 	}
@@ -112,7 +116,7 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 	if raw.Drawer == nil {
 		return nil
 	}
-	d := &RowDrawer{Title: raw.Drawer.Title, Children: make([]Widget, 0, len(raw.Drawer.Children))}
+	d := &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, Children: make([]Widget, 0, len(raw.Drawer.Children))}
 	for i, rc := range raw.Drawer.Children {
 		w, err := Decode(rc)
 		if err != nil {
@@ -134,6 +138,7 @@ type TableCell struct {
 	Copy       bool            `json:"copy,omitempty"`        // mono cells: offer the inline copy button beside the value
 	Chip       string          `json:"chip,omitempty"`        // name cells: a small category chip inline after the name (e.g. its zone)
 	Muted      bool            `json:"muted,omitempty"`       // text/mono cells: render the value as secondary ink (a quiet or absent value)
+	Sub        string          `json:"sub,omitempty"`         // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
 	Tag        string          `json:"tag,omitempty"`         // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant string          `json:"tag_variant,omitempty"` // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
 	Href       string          `json:"href,omitempty"`        // link cells: the destination of the row's action link
@@ -141,6 +146,17 @@ type TableCell struct {
 	On         bool            `json:"on,omitempty"`
 	Name       string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints  []TableEndpoint `json:"endpoints,omitempty"`
+	Chips      []TableChip     `json:"chips,omitempty"` // entity cells: one or more icon+label reference chips
+}
+
+// TableChip is one entity-reference chip: a Lucide type icon (naming the kind —
+// an interface, a zone, a physical port) plus the entity's label (naming the
+// one). It is the shared treatment for referencing a network entity inside
+// another entity's row, so the three never blur together (a shield is always a
+// zone, a network glyph always an interface, a port glyph always a port).
+type TableChip struct {
+	Icon  string `json:"icon"`
+	Label string `json:"label"`
 }
 
 // TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
@@ -188,6 +204,7 @@ type tableRowView struct {
 	HasDetail   bool // table-wide flag, copied so the rows sub-template needs no second argument
 	Drawer      bool // this row has a drawer (hosts the modal scope)
 	Inline      bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
+	DrawerWide  bool // the drawer opens at the wide detail width
 	DrawerTitle string
 	DrawerBody  []template.HTML
 }
@@ -271,6 +288,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				return nil, err
 			}
 			rv.Drawer = true
+			rv.DrawerWide = row.Drawer.Size == "wide"
 			rv.DrawerTitle = row.Drawer.Title
 			rv.DrawerBody = body
 		}
