@@ -82,6 +82,22 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f}\n\n", down, up)
 		return err == nil
 	}
+	// The hardware-sensor frame: CPU temperature, fan speed, power draw, resolved
+	// through the board profile and pushed each readings tick so the System panel's
+	// rows keep current the way the gauges above them do. The board name selects
+	// the profile and is fixed for the box, so read it once per connection.
+	boardName := ""
+	if b, err := s.backend.Board(r.Context(), sid); err == nil {
+		boardName = b.BoardName
+	}
+	sendSensors := func() bool {
+		payload, err := json.Marshal(resolveSensors(boardName))
+		if err != nil {
+			return true // a formatting slip is not a stream killer
+		}
+		_, err = fmt.Fprintf(w, "event: sensors\ndata: %s\n\n", payload)
+		return err == nil
+	}
 	// The panel frame goes out only when the truth moved (a cable, a
 	// renegotiation, the amber LED flipping) — the change-driven shape every
 	// event type after meters follows.
@@ -98,7 +114,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		return err == nil
 	}
 
-	if !sendMeters() || !sendPorts() || !sendTraffic() || !sendWan() {
+	if !sendMeters() || !sendPorts() || !sendTraffic() || !sendWan() || !sendSensors() {
 		return
 	}
 	flusher.Flush()
@@ -107,7 +123,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() || !sendWan() {
+			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() || !sendWan() || !sendSensors() {
 				return
 			}
 			flusher.Flush()

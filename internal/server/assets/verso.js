@@ -375,7 +375,7 @@ document.addEventListener(
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
@@ -542,6 +542,28 @@ document.addEventListener(
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
     if (d && window.__versoWanSample) window.__versoWanSample(d.down, d.up);
+  });
+  // The hardware-sensor frame updates the System panel's temperature/fan/power
+  // rows in place; an absent reading (a row hidden at load) has no element to
+  // find, so it is silently skipped. The temperature dot recolours to match.
+  function setSensor(name, val) {
+    if (val == null) return;
+    var el = document.querySelector('[data-verso-sensor="' + name + '"]');
+    if (el) el.textContent = val;
+  }
+  es.addEventListener("sensors", function (e) {
+    var d;
+    try { d = JSON.parse(e.data); } catch (err) { return; }
+    if (!d) return;
+    setSensor("temperature", d.temperature);
+    setSensor("fan", d.fan);
+    setSensor("power", d.power);
+    setSensor("summary", d.summary);
+    var dot = document.querySelector('[data-verso-sensor-dot="temperature"]');
+    if (dot && d.tempLevel) {
+      var color = d.tempLevel === "red" ? "bg-red-500" : d.tempLevel === "amber" ? "bg-amber-500" : "bg-emerald-500";
+      dot.className = "mr-2 inline-block size-1.5 rounded-full align-middle " + color;
+    }
   });
 })();
 

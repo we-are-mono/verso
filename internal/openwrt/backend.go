@@ -180,10 +180,13 @@ type SystemInfo struct {
 }
 
 // Board is the subset of `ubus call system board` Verso renders: the firmware
-// release ("OpenWrt 25.12.4") and the kernel version ("Linux 6.12.101").
+// release ("OpenWrt 25.12.4"), the kernel version ("Linux 6.12.101"), the
+// board_name that selects a hardware profile, and the human model string.
 type Board struct {
-	Firmware string
-	Kernel   string
+	Firmware  string
+	Kernel    string
+	BoardName string
+	Model     string
 }
 
 // Memory holds byte counts reported by system info.
@@ -832,6 +835,8 @@ func parseSystemInfo(m map[string]any) SystemInfo {
 func parseBoard(m map[string]any) Board {
 	str := func(v any) string { s, _ := v.(string); return s }
 	var b Board
+	b.BoardName = str(m["board_name"])
+	b.Model = str(m["model"])
 	if k := str(m["kernel"]); k != "" {
 		b.Kernel = "Linux " + k
 	}

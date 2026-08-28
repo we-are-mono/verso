@@ -46,6 +46,17 @@ type Overview struct {
 	// SysMetrics are the live System gauges (load, CPU, memory, storage); empty
 	// falls back to a static placeholder.
 	SysMetrics []OverviewMeter
+
+	// Model is the board's human name. Temperature/Fan/Power/SensorSummary are
+	// the resolved hardware sensor facts (see internal/sensors); an empty string
+	// hides that row — an unprofiled PC shows no power draw rather than a zero.
+	// TempDot is the temperature status colour ("emerald"|"amber"|"red").
+	Model         string
+	Temperature   string
+	TempDot       string
+	Fan           string
+	Power         string
+	SensorSummary string
 }
 
 // OverviewFact is one connection-facts row: a label, its value, and whether the
@@ -103,12 +114,15 @@ type ohFactCol struct {
 }
 
 // ohProp is one System fact row: a label and its value, mono for machine strings,
-// with an optional leading status dot (Dot names the colour, e.g. "emerald").
+// with an optional leading status dot (Dot names the colour, e.g. "emerald"). Key
+// tags a live-updated sensor row (temperature/fan/power/summary) so the overview
+// stream can refresh its value — and the dot's colour — in place.
 type ohProp struct {
 	Label string
 	Value string
 	Mono  bool
 	Dot   string
+	Key   string
 }
 
 type overviewView struct {
@@ -213,17 +227,12 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		SysMeta: "hardware · live",
 		Metrics: metrics,
 		SysLeft: []ohProp{
-			{Label: "Model", Value: "Mono Gateway Development Kit"},
+			{Label: "Model", Value: orUnavailable(o.Model)},
 			{Label: "Firmware", Value: orUnavailable(o.Firmware), Mono: true},
 			{Label: "Kernel", Value: orUnavailable(o.Kernel), Mono: true},
 			{Label: "Uptime", Value: orUnavailable(o.Uptime)},
 		},
-		SysRight: []ohProp{
-			{Label: "Temperature", Value: "41 °C · Normal", Dot: "emerald"},
-			{Label: "Fan", Value: "1200 rpm"},
-			{Label: "Power draw", Value: "12.4 W"},
-			{Label: "Sensors", Value: "8 power · 2 thermal"},
-		},
+		SysRight: o.sysRight(),
 
 		Interfaces: interfaces,
 		DhcpLeases: leases,
@@ -242,6 +251,26 @@ func (o *Overview) sysMeters() []*Meter {
 		})
 	}
 	return out
+}
+
+// sysRight builds the hardware-sensor facts column, omitting any reading the box
+// doesn't expose — a PC with no power sensor simply shows no "Power draw" row,
+// never a fabricated zero.
+func (o *Overview) sysRight() []ohProp {
+	rows := make([]ohProp, 0, 4)
+	if o.Temperature != "" {
+		rows = append(rows, ohProp{Label: "Temperature", Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
+	}
+	if o.Fan != "" {
+		rows = append(rows, ohProp{Label: "Fan", Value: o.Fan, Key: "fan"})
+	}
+	if o.Power != "" {
+		rows = append(rows, ohProp{Label: "Power draw", Value: o.Power, Key: "power"})
+	}
+	if o.SensorSummary != "" {
+		rows = append(rows, ohProp{Label: "Sensors", Value: o.SensorSummary, Key: "summary"})
+	}
+	return rows
 }
 
 // factCols builds the IPv4/IPv6 connection-facts columns from the live fields.

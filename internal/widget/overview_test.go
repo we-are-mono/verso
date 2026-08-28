@@ -16,7 +16,10 @@ import (
 func TestRenderOverview(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Overview{
+		Model:    "Mono Gateway Development Kit",
 		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
+		Temperature: "52 °C · Normal", TempDot: "emerald",
+		Fan: "3630 rpm", Power: "12.4 W", SensorSummary: "8 power · 5 thermal",
 		V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
 		SysMetrics: []OverviewMeter{
@@ -38,6 +41,9 @@ func TestRenderOverview(t *testing.T) {
 		"data-verso-meter=\"sys-cpu\"", // named gauge, so the stream can update it
 		"Mono Gateway Development Kit",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "6d 4h 0m", // live System facts
+		// Resolved hardware sensors (profile-keyed); the temp dot reads emerald.
+		"Temperature", "52 °C · Normal", "bg-emerald-500",
+		"Fan", "3630 rpm", "Power draw", "12.4 W", "8 power · 5 thermal",
 		// Interfaces table (flat Table): the WAN tag rides the eth4 link cell.
 		"Interfaces", "eth0", "eth4", ">WAN<", "18.4 / 2.1 GB",
 		// DHCP leases table: MAC + IP mono, copyable.
@@ -51,8 +57,13 @@ func TestRenderOverview(t *testing.T) {
 	if !strings.Contains(got, "text-amber-700") {
 		t.Errorf("the software (update) tile should read amber")
 	}
-	// A missing live fact degrades to "unavailable" rather than a stale placeholder.
-	if bare := render(t, r, &Overview{}); !strings.Contains(bare, "unavailable") {
+	// A missing live fact degrades to "unavailable" rather than a stale placeholder,
+	// and an unreadable sensor drops its row entirely (no fabricated "Power draw").
+	bare := render(t, r, &Overview{})
+	if !strings.Contains(bare, "unavailable") {
 		t.Errorf("an empty overview should mark its live facts unavailable")
+	}
+	if strings.Contains(bare, "Power draw") {
+		t.Errorf("an unreadable power sensor should hide its row, not show a zero")
 	}
 }

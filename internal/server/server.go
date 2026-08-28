@@ -355,10 +355,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// are live; the shell fills them, degrading to "unavailable" on a backend miss.
 	sid := s.sessionSID(r)
 	ov := &widget.Overview{}
-	if b, err := s.backend.Board(r.Context(), sid); err == nil {
-		ov.Firmware, ov.Kernel = b.Firmware, b.Kernel
+	board, boardErr := s.backend.Board(r.Context(), sid)
+	if boardErr == nil {
+		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model
 	} else {
-		log.Printf("verso: overview: board unavailable: %v", err)
+		log.Printf("verso: overview: board unavailable: %v", boardErr)
 	}
 	if si, err := s.backend.SystemInfo(r.Context(), sid); err == nil {
 		ov.Uptime = formatUptime(si.Uptime)
@@ -381,6 +382,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
+	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
+	s.applySensors(ov, board.BoardName)
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {

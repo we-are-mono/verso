@@ -102,7 +102,7 @@
   <div class="flex items-baseline justify-between gap-4 border-t border-slate-100 py-3">
     <span class="text-sm text-slate-500">{{.Label}}</span>
     <span class="text-sm font-medium text-slate-900">
-      {{if .Dot}}<span class="mr-2 inline-block size-1.5 rounded-full bg-emerald-500 align-middle"></span>{{end}}<span class="{{if .Mono}}font-mono text-[0.9rem]{{end}}">{{.Value}}</span>
+      {{if .Dot}}<span class="mr-2 inline-block size-1.5 rounded-full align-middle {{if eq .Dot "red"}}bg-red-500{{else if eq .Dot "amber"}}bg-amber-500{{else}}bg-emerald-500{{end}}"{{if .Key}} data-verso-sensor-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-sensor="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-[0.9rem]{{end}}">{{.Value}}</span>
     </span>
   </div>
   {{end}}
