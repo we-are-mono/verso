@@ -146,13 +146,20 @@ func (s *Server) buildNav(active string) []navSection {
 		return sections[a].Title < sections[b].Title
 	})
 
+	// Only the most specific match lights up. A plugin's root link (…/, its index
+	// subpage) is a prefix of every sibling subpage, so on a deeper page several
+	// links match; the longest matching href is the real destination.
+	bestSi, bestLi, bestLen := -1, -1, -1
 	for si := range sections {
 		for li := range sections[si].Links {
-			if isActive(active, sections[si].Links[li].Href) {
-				sections[si].Links[li].Active = true
-				sections[si].Open = true
+			if h := sections[si].Links[li].Href; isActive(active, h) && len(h) > bestLen {
+				bestSi, bestLi, bestLen = si, li, len(h)
 			}
 		}
+	}
+	if bestSi >= 0 {
+		sections[bestSi].Links[bestLi].Active = true
+		sections[bestSi].Open = true
 	}
 	return sections
 }

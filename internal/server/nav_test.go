@@ -133,6 +133,30 @@ func TestBuildNavActiveSectionExpands(t *testing.T) {
 	}
 }
 
+// On a deep subpage, only that subpage's link lights up — not the plugin's root
+// link, whose href (…/) prefixes every sibling. Regression: the Zones (root) link
+// used to stay active on Redirects/Rules because it prefix-matched their URLs.
+func TestBuildNavDeepSubpageMarksOnlyItself(t *testing.T) {
+	s := navServer(manifest("firewall",
+		nav("Firewall", "Zones", "/"),
+		nav("Firewall", "Redirects", "/redirects"),
+		nav("Firewall", "Traffic rules", "/rules"),
+	))
+	sections := s.buildNav("/plugins/firewall/redirects")
+	var fw navSection
+	for _, sec := range sections {
+		if sec.Title == "Firewall" {
+			fw = sec
+		}
+	}
+	for _, l := range fw.Links {
+		want := l.Label == "Redirects"
+		if l.Active != want {
+			t.Errorf("link %q active = %v, want %v", l.Label, l.Active, want)
+		}
+	}
+}
+
 // A plugin whose socket does not answer contributes no rows — a menu entry
 // that leads to "unavailable" is a dead door; the plugin stays reachable by
 // URL and through the management page (ADR-011). Shell-owned rows are
