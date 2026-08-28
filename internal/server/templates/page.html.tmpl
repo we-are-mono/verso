@@ -19,7 +19,9 @@
   <div class="flex items-center justify-between px-5 py-5">
     <a href="/" class="text-lg font-semibold tracking-tight">Verso</a>
     <div class="flex items-center gap-1">
-      {{/* Light/dark toggle — placeholder; dark mode is a separate pass, so it isn't wired yet. */}}
+      {{/* Light/dark toggle — flips .dark on <html> and persists it (verso.js
+           toggleTheme); the palette vars under :root.dark do the rest, and
+           verso-boot.js re-applies the choice pre-paint on every page. */}}
       <button type="button" @click="toggleTheme" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
       <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden">{{icon "x" "size-5"}}</button>
     </div>
@@ -71,8 +73,7 @@
       <span class="text-sm font-medium transition group-hover:translate-x-1">This device</span>
       <span class="ml-auto text-xs font-medium text-amber-700">Update ready</span>
     </a>
-    {{/* Account chip: who's signed in + a quick sign-out. (The theme toggle from the mock
-         waits on a dark-mode pass; Verso is light-only today.) */}}
+    {{/* Account chip: who's signed in + a quick sign-out. */}}
     <div class="flex items-center gap-3 rounded-xl px-2 py-2">
       <span class="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">A</span>
       <div class="min-w-0 flex-1">

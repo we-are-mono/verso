@@ -25,23 +25,27 @@
     [  95, -80,  55, "#34d399"], // active
     [ 140,  50, -50, "#34d399"], // active
     [  60, 125,  45, "#34d399"], // active
-    [ -85, -75, -45, "#cbd5e1"], // idle
-    [  25, -120, 60, "#cbd5e1"], // idle
+    [ -85, -75, -45, "var(--color-slate-300)"], // idle
+    [  25, -120, 60, "var(--color-slate-300)"], // idle
     [ 120,  -5,  50, "#34d399"], // active
     [ -70, 105,  55, "#cbd5e1"]  // idle
   ];
 
   // Build an edge + a dot per node (edges first, so dots paint on top).
+  // Stroke/fill go through the theme's palette vars (via CSS style, which resolves
+  // var()) so the hairline edges and idle dots follow light/dark; the accent
+  // colours (green/blue) are set literally — they read on either ground.
   var els = nodes.map(function (n) {
     var line = document.createElementNS(NS, "line");
     line.setAttribute("x1", CX); line.setAttribute("y1", CY);
-    line.setAttribute("stroke", "#e2e8f0"); line.setAttribute("stroke-width", "1.5");
+    line.setAttribute("stroke-width", "1.5");
+    line.style.stroke = "var(--color-slate-200)";
     mesh.appendChild(line);
     return { line: line };
   });
   els.forEach(function (e, i) {
     var dot = document.createElementNS(NS, "circle");
-    dot.setAttribute("fill", nodes[i][3]);
+    dot.style.fill = nodes[i][3];
     mesh.appendChild(dot);
     e.dot = dot;
   });

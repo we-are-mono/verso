@@ -22,6 +22,9 @@
     .verso-login-pulse { animation: none; opacity: 0.25; }
   }
 </style>
+{{/* Applies the saved theme (or the OS preference) before paint — so the login
+     honours the choice made in the app, with no toggle of its own and no flash. */}}
+<script src="/assets/verso-boot.js"></script>
 </head>
 <body class="m-0 bg-white text-slate-900 antialiased text-sm leading-normal">
   {{/* Left-aligned and width-capped to the app's total footprint — the 70rem
