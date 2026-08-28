@@ -13,8 +13,12 @@ that register with the shell and look native — **without writing HTML or CSS**
 > serves a live system-status page reading real `ubus`/`uci` from a booted OpenWrt, styled
 > with a design-token system. The plugin transport and most widgets are still ahead.
 
-**Target floor spec (deliberately high):** 2 GB RAM, 8 GB eMMC, aarch64 or x86_64. That
-lets Verso be relaxed about resident memory and binary size where LuCI cannot.
+**Minimum target: 128 MB flash** (NAND-class). Flash is the binding constraint, not RAM:
+the shell is a single, deliberately unconstrained Go binary, and it plus its plugins fit
+128 MB with ample headroom — so the shell never fights for kilobytes. The resident memory
+footprint sits well within what 128 MB-class hardware carries, so RAM is not the wall.
+Below this floor, on the legacy NOR-flash tier, the shell binary simply doesn't fit, and
+LuCI stays the right choice there — the same boundary the intro draws.
 
 ## The core idea
 
