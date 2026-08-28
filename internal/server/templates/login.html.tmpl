@@ -5,25 +5,93 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in · Verso</title>
 <style>{{.CSS}}</style>
+<style>
+  /* The hero's living network: one node quietly pulses, the way a live device
+     breathes. Calm, not busy — and still when the viewer prefers less motion. */
+  @keyframes verso-login-pulse {
+    0%   { transform: scale(1);   opacity: 0.45; }
+    70%  { transform: scale(2.6); opacity: 0; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+  .verso-login-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: verso-login-pulse 3s ease-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-login-pulse { animation: none; opacity: 0.25; }
+  }
+</style>
 </head>
-<body class="min-h-screen m-0 flex items-center justify-center bg-slate-100 text-slate-900 antialiased text-sm leading-normal">
-  <div class="w-full max-w-sm px-6">
-    <h1 class="mb-6 text-center text-lg font-semibold tracking-tight">Verso</h1>
-    <div class="rounded-md border border-slate-300 bg-white shadow-md px-8 py-8">
-      <h2 class="mb-5 text-base font-medium">Sign in</h2>
-      {{if .Error}}<div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{{.Error}}</div>{{end}}
-      <form method="post" action="/login" class="space-y-4">
-        <div class="space-y-1.5">
-          <label for="username" class="block text-sm font-medium text-slate-900">Username</label>
-          <input id="username" name="username" type="text" value="root" autocomplete="username" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
-        </div>
-        <div class="space-y-1.5">
-          <label for="password" class="block text-sm font-medium text-slate-900">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-600 focus:outline-none">
-        </div>
-        <button type="submit" class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">Sign in</button>
-      </form>
+<body class="m-0 bg-white text-slate-900 antialiased text-sm leading-normal">
+  {{/* Left-aligned and width-capped to the app's total footprint — the 70rem
+       content area plus the 16rem sidebar the login doesn't have (86rem) — never
+       centred, so it never drifts to the far edge of an ultrawide, and the hero
+       has room to breathe. */}}
+  <div class="max-w-[86rem] px-6 md:px-8">
+    <div class="grid min-h-screen gap-x-12 md:grid-cols-2">
+
+    {{/* Hero — brand + the product itself: a small network breathing. Hidden on
+         narrow screens, where the form leads with a compact wordmark. */}}
+    <section class="relative hidden flex-col justify-between py-12 md:flex">
+      <div>
+        <h1 class="font-serif text-6xl font-medium tracking-tight text-slate-900">Verso</h1>
+        <p class="mt-4 text-lg text-slate-500">Your network, at a glance.</p>
+      </div>
+
+      {{/* The constellation as a true 3D scene: each device node sits at its own
+           depth around the router, which is fixed at the rotation centre (so it
+           never leaves the middle). login.js rotates the nodes toward the cursor
+           and projects them — edges always reconnect. Purely decorative. */}}
+      <div class="flex flex-1 items-center justify-center py-8" aria-hidden="true">
+        <svg id="verso-constellation" viewBox="0 0 440 320" class="block h-auto w-full max-w-lg overflow-visible" fill="none">
+          <g id="verso-mesh"></g>
+          <circle class="verso-login-pulse" cx="220" cy="160" r="11" fill="#0ea5e9"/>
+          <circle cx="220" cy="160" r="9"  fill="#0ea5e9"/>
+          <circle cx="220" cy="160" r="3.5" fill="#ffffff"/>
+        </svg>
+      </div>
+
+      <p class="text-sm text-slate-400">
+        {{if .Firmware}}{{.Firmware}}{{else}}OpenWrt{{end}}{{if .Hostname}} · <span class="font-mono text-slate-500">{{.Hostname}}</span>{{end}}
+      </p>
+    </section>
+
+    {{/* Form — borderless on white, hairline (ring) inputs, the single sky accent
+         on the primary action. */}}
+    <section class="flex items-center py-12">
+      <div class="w-full max-w-sm">
+        <h1 class="mb-10 font-serif text-4xl font-medium tracking-tight text-slate-900 md:hidden">Verso</h1>
+
+        <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
+          Sign in{{if .Hostname}} to <span class="font-mono text-sky-700">{{.Hostname}}</span>{{end}}
+        </h2>
+        <p class="mt-1.5 text-slate-500">Enter your router password to continue.</p>
+
+        {{if .Error}}
+        <div class="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200">{{.Error}}</div>
+        {{end}}
+
+        <form method="post" action="/login" class="mt-8 space-y-5">
+          <div class="space-y-1.5">
+            <label for="username" class="block font-medium text-slate-700">Username</label>
+            <input id="username" name="username" type="text" value="root" autocomplete="username"
+              class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
+          </div>
+          <div class="space-y-1.5">
+            <label for="password" class="block font-medium text-slate-700">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" autofocus
+              class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
+          </div>
+          <button type="submit"
+            class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:outline-none">
+            Sign in
+          </button>
+        </form>
+      </div>
+    </section>
     </div>
   </div>
+  <script src="/assets/login.js"></script>
 </body>
 </html>

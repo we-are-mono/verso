@@ -38,7 +38,7 @@ var cssText string
 // the page chrome (ADR-004). htmx drives server round-trips; Alpine (CSP build)
 // drives client behaviour; verso.js registers the shell's Alpine components.
 //
-//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js assets/verso-boot.js
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js assets/verso-boot.js assets/login.js
 //go:embed assets/fonts
 var scriptFS embed.FS
 

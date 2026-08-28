@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -115,8 +116,37 @@ func validCSRF(r *http.Request, want string) bool {
 }
 
 type loginData struct {
-	CSS   template.CSS
-	Error string
+	CSS      template.CSS
+	Error    string
+	Hostname string // the device's own name, a warm "sign in to THIS box" touch
+	Firmware string // the OpenWrt release + revision, shown quietly in the hero
+}
+
+// loginHostname is the device's hostname for the login greeting — read locally
+// (no session needed, and it is broadcast on the LAN anyway). Empty on error, so
+// the page falls back to a plain heading.
+func loginHostname() string {
+	h, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(h)
+}
+
+// loginFirmware reads the OpenWrt release + revision from /etc/openwrt_release
+// (DISTRIB_DESCRIPTION, e.g. "OpenWrt 25.12.4 r32933-4ccb782af7") for the hero
+// footer. Empty on any trouble, so the page falls back to a plain "OpenWrt".
+func loginFirmware() string {
+	data, err := os.ReadFile("/etc/openwrt_release")
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if v, ok := strings.CutPrefix(line, "DISTRIB_DESCRIPTION="); ok {
+			return strings.Trim(strings.TrimSpace(v), "'\"")
+		}
+	}
+	return ""
 }
 
 // handleLoginForm serves the login page (redirecting an already-signed-in user
@@ -183,7 +213,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) renderLogin(w http.ResponseWriter, status int, errMsg string) {
 	var buf bytes.Buffer
-	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg}); err != nil {
+	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg, Hostname: loginHostname(), Firmware: loginFirmware()}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return
 	}
