@@ -24,7 +24,7 @@ func systemManifest() plugin.Manifest {
 	}
 }
 
-func TestSystemGeneralUsesBundledPluginBehindStableRoute(t *testing.T) {
+func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "ignored plugin title", Status: http.StatusOK,
 		Subheading: "The name, place, and clock shared by everything on this router.",
@@ -35,7 +35,7 @@ func TestSystemGeneralUsesBundledPluginBehindStableRoute(t *testing.T) {
 			]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{systemManifest()})
-	body := get(t, s, "/system/general").Body.String()
+	body := get(t, s, "/plugins/system/").Body.String()
 
 	for _, want := range []string{
 		"System", "— General", `href="/system/access"`, `href="/system/packages"`,
@@ -58,11 +58,25 @@ func TestSystemGeneralUsesBundledPluginBehindStableRoute(t *testing.T) {
 	}
 }
 
-func TestSystemRootRedirectsToGeneral(t *testing.T) {
-	s := newServer(t, fakeBackend{})
+func TestSystemRootRedirectsToFirstLiveRegisteredPage(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{systemManifest()})
 	rec := get(t, s, "/system")
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/general" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/plugins/system/" {
 		t.Fatalf("redirect = %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+func TestStoppedSystemPluginWithdrawsGeneralRegistration(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{systemManifest()})
+	s.probe = func(string) bool { return false }
+
+	rec := get(t, s, "/system")
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+		t.Fatalf("redirect with stopped plugin = %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	body := get(t, s, "/system/access").Body.String()
+	if strings.Contains(body, `href="/plugins/system/"`) || strings.Contains(body, `>General</a>`) {
+		t.Error("stopped System plugin must not leave its General registration in navigation")
 	}
 }
 

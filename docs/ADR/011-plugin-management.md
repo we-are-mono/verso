@@ -84,7 +84,9 @@ rediscovery so the shell never restarts itself.**
    refuses lifecycle acts from the UI — severing them severs the surface;
    the rest, network included, stays the operator's call. Verso plugin
    services sharpen the state with the socket probe (running / not
-   responding). The Packages inventory carries no lifecycle cells at all.
+   responding). Turning a plugin off also withdraws its manifest-registered pages
+   from navigation on the next render; the Services row remains available so it
+   can be turned back on. The Packages inventory carries no lifecycle cells at all.
 
 6. **Discover reads a cached index; the network is touched only on request.**
    Opening the page never fetches; it shows when the index was last
@@ -94,7 +96,7 @@ rediscovery so the shell never restarts itself.**
 
 7. **The shell rediscovers manifests at runtime.** After a helper-reported
    install or remove completes, the shell rescans the manifest directory and
-   rebuilds its nav and routing — no self-restart. The trigger is the
+   rebuilds its navigation — no self-restart. The trigger is the
    completed operation, not filesystem watching: deterministic, and always
    attributable to a known event.
 

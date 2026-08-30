@@ -19,8 +19,6 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("GET /system", s.handleSystemRoot)
 	s.mux.HandleFunc("GET /system/{$}", s.handleSystemRoot)
-	s.mux.HandleFunc("GET /system/general", s.handleSystemGeneral)
-	s.mux.HandleFunc("POST /system/general", s.handleSystemGeneral)
 
 	// Shell-owned auth surface (ADR-009 §3): the shell serves the password page
 	// itself, since it mutates the credential that gates the shell.

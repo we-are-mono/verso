@@ -51,9 +51,9 @@ type navLink struct {
 
 // navModel is the device-first sidebar: a few everyday "basic" rows on top, then the
 // technical pages grouped under a collapsible "Advanced settings" seam. System is a
-// stable top-level destination of its own: the shell owns its five-page frame while the
-// General page is supplied by the bundled System plugin. The remaining manifest-driven
-// sections live under Advanced. The everyday rows are the plain-language destinations a
+// stable top-level destination of its own: its frame combines live plugin registrations
+// with the shell-owned administration pages. The remaining manifest-driven sections
+// live under Advanced. The everyday rows are the plain-language destinations a
 // non-technical person reaches for (placeholders until their pages exist).
 type navModel struct {
 	Basic    []navLink
@@ -79,11 +79,16 @@ func (s *Server) buildSidebar(active string) navModel {
 		basic("Wi-Fi", "wifi", "#"),
 		basic("Family", "users", "#"),
 		basic("Safety", "shield", "#"),
-		basic("System", "settings", "/system/general"),
+		basic("System", "settings", "/system"),
 	}}
-	// System's default destination is General, but the row represents the whole
-	// five-page domain and remains selected while any System subpage is open.
-	m.Basic[len(m.Basic)-1].Active = active == "/system" || strings.HasPrefix(active, "/system/")
+	// System's destination is its first live registered page (normally the
+	// bundled General plugin), falling back naturally to the first shell page.
+	// The row represents the whole mixed-ownership domain, including plugin URLs.
+	pages := s.systemPages(active)
+	if len(pages) > 0 {
+		m.Basic[len(m.Basic)-1].Href = pages[0].Href
+	}
+	m.Basic[len(m.Basic)-1].Active = s.isSystemPath(active)
 	for _, sec := range s.buildNav(active) {
 		if sec.Title == "Status" || sec.Title == "System" {
 			continue // Home and System are first-class destinations above the seam
@@ -115,9 +120,9 @@ func (s *Server) buildNav(active string) []navSection {
 	}
 
 	// Shell-owned pages (ADR-009 §3): the read-only baseline, the auth surface,
-	// and the plugin-management surface (ADR-011).
+	// and the plugin-management surface (ADR-011). Plugin-owned System pages are
+	// added below from their manifests; General is not a shell-owned slot.
 	add("Status", "Overview", "/")
-	add("System", "General", "/system/general")
 	add("System", "Access", "/system/access")
 	add("System", "Packages", "/system/packages")
 	add("System", "Services", "/system/services")
@@ -133,12 +138,6 @@ func (s *Server) buildNav(active string) []navSection {
 			continue
 		}
 		for _, entry := range m.Nav {
-			// The bundled System plugin fills the shell's fixed General slot. Its
-			// manifest entry is needed for discovery, but must not duplicate the
-			// stable shell-owned navigation row above.
-			if m.ID == "system" && entry.Section == "System" {
-				continue
-			}
 			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path))
 		}
 	}
@@ -174,6 +173,24 @@ func (s *Server) buildNav(active string) []navSection {
 		sections[bestSi].Open = true
 	}
 	return sections
+}
+
+// isSystemPath reports whether a request belongs to either a shell-owned
+// System page or any manifest-registered System plugin page. Liveness is not
+// required here: a direct URL to a stopped plugin still belongs visually to
+// System while it explains that the plugin is unavailable.
+func (s *Server) isSystemPath(active string) bool {
+	if active == "/system" || strings.HasPrefix(active, "/system/") {
+		return true
+	}
+	for _, m := range s.manifestList() {
+		for _, entry := range m.Nav {
+			if entry.Section == "System" && isActive(active, pluginHref(m.ID, entry.Path)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount

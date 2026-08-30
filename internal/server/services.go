@@ -247,7 +247,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "The processes this router runs — procd's service table, live.",
-	}, "narrow", systemPages("services"), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name, the

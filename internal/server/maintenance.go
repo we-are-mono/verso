@@ -131,7 +131,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		return
 	}
 	s.renderPage(w, r, status, pageHeader{Heading: "System"}, "narrow",
-		systemPages("maintenance"), false, template.HTML(body.String()))
+		s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

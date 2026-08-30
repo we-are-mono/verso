@@ -277,5 +277,5 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	hdr := pageHeader{Heading: "System", Immediate: true, Subheading: "Control who can sign in to this router, and end access you no longer recognize."}
-	s.renderPage(w, r, status, hdr, "narrow", systemPages("access"), false, template.HTML(body.String()))
+	s.renderPage(w, r, status, hdr, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }

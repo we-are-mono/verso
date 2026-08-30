@@ -38,6 +38,14 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	width := ""
 	var pages []pageTab
 	body, status := s.pluginBodyAt(r, m, r.PathValue("path"), &hdr, &width, &pages)
+	// A plugin filing a page into System joins the shell's mixed-ownership
+	// System frame. The manifest registration, not a shell route, supplies the
+	// page and its label; stopped plugins disappear through the ordinary live
+	// registration filter used by every other plugin page.
+	if pluginNavSectionAt(m, r.PathValue("path")) == "System" {
+		hdr.Heading = "System"
+		pages = s.systemPages(r.URL.Path)
+	}
 	// Configuration pages keep the staging capsule at rest. A page made only of
 	// immediate commands may omit the clean capsule; an existing stage still
 	// follows the operator here as shared state.

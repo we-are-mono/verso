@@ -58,20 +58,20 @@ func TestBuildNavCoreOrderIsFixed(t *testing.T) {
 	assertTitles(t, s.buildNav("/"), "Status", "Network", "Firewall", "System")
 }
 
-// The System frame exists with zero plugins: its stable five destinations are
-// shell navigation even though General's content is supplied by a plugin.
+// The System frame exists with zero plugins, but contains only pages the shell
+// owns. General must be contributed by a plugin manifest.
 func TestBuildNavShellOwnedPagesAreBuiltIn(t *testing.T) {
 	sections := navServer().buildNav("/")
 	assertTitles(t, sections, "Status", "System")
 	if got := sections[0].Links; len(got) != 1 || got[0].Label != "Overview" || got[0].Href != "/" {
 		t.Fatalf("Status links = %+v, want single Overview -> /", got)
 	}
-	if got := sections[1].Links; len(got) != 5 || got[0].Label != "General" || got[0].Href != "/system/general" ||
-		got[1].Label != "Access" || got[1].Href != "/system/access" ||
-		got[2].Label != "Packages" || got[2].Href != "/system/packages" ||
-		got[3].Label != "Services" || got[3].Href != "/system/services" ||
-		got[4].Label != "Maintenance" || got[4].Href != "/system/maintenance" {
-		t.Fatalf("System links = %+v, want [General, Access, Packages, Services, Maintenance]", got)
+	if got := sections[1].Links; len(got) != 4 ||
+		got[0].Label != "Access" || got[0].Href != "/system/access" ||
+		got[1].Label != "Packages" || got[1].Href != "/system/packages" ||
+		got[2].Label != "Services" || got[2].Href != "/system/services" ||
+		got[3].Label != "Maintenance" || got[3].Href != "/system/maintenance" {
+		t.Fatalf("System links = %+v, want [Access, Packages, Services, Maintenance]", got)
 	}
 }
 
@@ -104,25 +104,46 @@ func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
 	if system == nil {
 		t.Fatal("System section missing")
 	}
-	// The stable System frame comes first, then extension links in discovery
-	// (id-sorted) order.
-	if len(system.Links) != 7 || system.Links[0].Label != "General" || system.Links[1].Label != "Access" ||
-		system.Links[2].Label != "Packages" || system.Links[3].Label != "Services" ||
-		system.Links[4].Label != "Maintenance" || system.Links[5].Label != "General" ||
-		system.Links[6].Label != "Time" {
-		t.Fatalf("System links = %+v, want stable frame followed by plugin links", system.Links)
+	// Shell-owned entries come first in this grouped navigation model, followed
+	// by manifest registrations in discovery order.
+	if len(system.Links) != 6 || system.Links[0].Label != "Access" ||
+		system.Links[1].Label != "Packages" || system.Links[2].Label != "Services" ||
+		system.Links[3].Label != "Maintenance" || system.Links[4].Label != "General" ||
+		system.Links[5].Label != "Time" {
+		t.Fatalf("System links = %+v, want shell pages followed by plugin registrations", system.Links)
 	}
 }
 
 func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
-	s := navServer(manifest("net", nav("Network", "Interfaces", "/")))
-	model := s.buildSidebar("/system/general")
-	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/system/general" || !got.Active {
-		t.Fatalf("last basic row = %+v, want active System", got)
+	system := manifest("system", nav("System", "General", "/"))
+	system.Socket = "/system.sock"
+	s := navServer(system, manifest("net", nav("Network", "Interfaces", "/")))
+	model := s.buildSidebar("/plugins/system/")
+	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/plugins/system/" || !got.Active {
+		t.Fatalf("last basic row = %+v, want active System targeting registered General", got)
 	}
 	for _, group := range model.Advanced {
 		if group.Title == "System" {
 			t.Fatal("System must not also appear under Advanced settings")
+		}
+	}
+}
+
+func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
+	system := manifest("system", nav("System", "General", "/"))
+	system.Socket = "/live/system.sock"
+	vpn := manifest("vpn", nav("System", "VPN", "/"))
+	vpn.Socket = "/dead/vpn.sock"
+	s := navServer(system, vpn)
+	s.probe = func(path string) bool { return path == "/live/system.sock" }
+
+	pages := s.systemPages("/plugins/system/")
+	if len(pages) != 5 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
+		t.Fatalf("System pages = %+v, want live General followed by four shell pages", pages)
+	}
+	for _, page := range pages {
+		if page.Label == "VPN" {
+			t.Fatal("stopped plugin registration remained in System pages")
 		}
 	}
 }

@@ -27,12 +27,9 @@ The result is a clean lesson:
   Its only real job — anchoring the auth requirement (`admin` declares
   `auth.login`) — is better done in middleware.
 
-Verso already embodies the good half of this: routing is flat (`/`, `/login`,
-`/plugins/<id>/…`, no prefix — routes.go), auth is middleware over the whole mux
-(`securityHeaders(hostGuard(requireAuth(mux)))` — server.go), and the sidebar is
-built from a hardcoded **Status** group plus plugin manifests (nav.go). What is
-*not* yet decided: which sections constitute Verso's core, in what order, whether
-"core" is a different mechanism from a plugin, and where the firewall lives.
+Verso embodies the good half of this: routing is flat (`/`, `/login`,
+`/plugins/<id>/…`, no prefix), auth is middleware over the whole mux, and the
+sidebar is built from shell-owned pages plus live plugin manifest registrations.
 
 This ADR fixes that, adopting LuCI's shape (small ordered core + extension) while
 dropping its accidents (the dead `admin/` prefix), and diverging on one product
@@ -120,18 +117,22 @@ call: **on a gateway the firewall is not optional, so it is core.**
    exactly one rendering path (the shell's widget renderer) and one privilege
    model; package and service operations are narrow administrative verbs, not an
    in-process fast path for interpreting device configuration.
-   What makes a section *core* is unchanged: a guaranteed slot in the fixed
-   taxonomy (2), always present — because the shell serves it (Status) or because a
-   first-party plugin implementing it **ships bundled and always installed**
-   (Network, Firewall, System). A plugin-backed core section whose plugin is
-   missing or unhealthy degrades to the ADR-006 "unavailable" card in its own slot
-   — never a 404 or a 500.
+   What makes a section *core* is its position in the fixed taxonomy (2), not a
+   hardcoded page list. The shell contributes only pages it owns; plugin pages
+   exist in navigation only through their live manifest registrations. Bundled
+   first-party plugins provide Network, Firewall, and System configuration on a
+   healthy image, but stopping one withdraws its navigation entries just like any
+   other plugin. Its direct URL remains mounted and degrades to the ADR-006
+   "unavailable" card — never a 500.
 
    A *section is a nav grouping, not a unit of ownership*: the shell may place its
    own pages into a section beside plugin pages. The **System** section holds the
-   shell-owned **Password**, **Packages**, and **Services** pages next to
-   plugin-owned pages (General, SSH, cron). Status is shell-only; Firewall is one
-   plugin end to end; System is mixed.
+   shell-owned **Access**, **Packages**, **Services**, and **Maintenance** pages
+   next to manifest-registered plugin pages (General, SSH, cron). The bundled
+   System plugin's manifest registers General; the shell neither predeclares nor
+   conditionally hides it. The System destination is the first live registered
+   page, falling back to Access when no System plugin page is available. Status is
+   shell-only; Firewall is one plugin end to end; System is mixed.
 
    **Page ownership is not exclusive composition.** Shell page templates publish a
    stable hook at every semantic seam between their sections (ADR-005, ADR-006). A
@@ -206,9 +207,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
 - Every template hook is a public compatibility point. The shell may redesign the
   page around it, but removing or renaming the hook needs manifest-version-aware
   degradation and migration.
-- "Always installed" core plugins are a packaging obligation: the image build must
-  guarantee the bundled first-party plugins are present and supervised, or a core
-  slot shows "unavailable" out of the box.
+- Bundled core plugins are a packaging obligation: the image build must guarantee
+  the first-party plugins are installed and supervised, or their pages are absent
+  from navigation out of the box. A direct request still gets the contained
+  "unavailable" state.
 - The root helper necessarily gains a small set of high-impact operations. Each one
   needs its own narrow argument schema, rpcd ACL, native validation, failure tests,
   and destructive-action confirmation; a generic command runner is never acceptable.
@@ -251,10 +253,11 @@ call: **on a gateway the firewall is not optional, so it is core.**
   bundled System plugin rather than in the shell. **Adopted.** General (hostname,
   timezone) writes device configuration, so it falls on the plugin side of §3's
   rule like Network and Firewall: it ships as a bundled first-party plugin filing
-  into the System section, and degrades to the ADR-006 "unavailable" card if its
-  process is absent. One configuration mechanism, and no shell route owns device
-  identity. Service-specific time synchronization joins General through the same
-  plugin.
+  into the System section. Its manifest registration is the sole source of the
+  General navigation entry; if the process is absent the entry is withdrawn, while
+  a direct plugin URL degrades to the ADR-006 "unavailable" card. One configuration
+  mechanism, and no shell route owns device identity. Service-specific time
+  synchronization joins General through the same plugin.
 - **Plugin management as a plugin.** Serve the install/enable/disable page through the
   ADR-006 gateway like everything else. Rejected for the same reasons the password page
   is shell-owned: bootstrap (a disabled or broken plugin must not be able to lock the

@@ -84,7 +84,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "The software installed on this router — every package, from every feed.",
-	}, "narrow", systemPages("packages"), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
@@ -299,7 +299,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "Browse your configured feeds — your own and the official ones together.",
-	}, "narrow", systemPages("packages"), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
 // freshnessLine is the honest age of the package index, beside the Refresh

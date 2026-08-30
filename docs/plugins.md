@@ -84,6 +84,13 @@ own `section`:
 ]
 ```
 
+These entries are registrations, not suggestions layered over a shell page list.
+For example, the bundled System plugin creates **System → General** solely through
+the first entry above. The shell contributes its own System pages separately and
+does not hardcode General. A registration appears while the plugin socket is live;
+stopping the service withdraws it on the next page render, while its direct
+`/plugins/<id>/…` URL remains available to show the contained unavailable state.
+
 Manifest v2 may declare `nav`, `contributions`, or both, but must declare at least
 one. A contribution-only plugin creates no sidebar entry.
 
