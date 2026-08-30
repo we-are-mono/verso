@@ -17,6 +17,7 @@ use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::mem;
 use std::os::fd::AsRawFd;
+use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
@@ -39,6 +40,7 @@ const STATUS_UNKNOWN_ERROR: i32 = 9;
 
 struct State {
     packages: Mutex<()>,
+    maintenance: Mutex<()>,
 }
 
 #[repr(C)]
@@ -125,6 +127,7 @@ fn serve(socket: &Path) -> Result<(), String> {
 
     let state = Arc::new(State {
         packages: Mutex::new(()),
+        maintenance: Mutex::new(()),
     });
     // Bound concurrent requests: each connection pins a thread for up to the read
     // timeout, so an unbounded thread-per-connection would let even an authorized
@@ -312,6 +315,29 @@ fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
             Ok(json!({"result": true, "output": output}))
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
+        "createBackup" | "restoreBackup" | "validateFirmware" | "installFirmware" => {
+            let path = argument(request, "path")?;
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("maintenance-operation lock poisoned"))?;
+            match method {
+                "createBackup" => create_backup(path)?,
+                "restoreBackup" => restore_backup(path)?,
+                "validateFirmware" => return validate_firmware(path),
+                "installFirmware" => install_firmware(path)?,
+                _ => unreachable!(),
+            }
+            Ok(json!({"result": true}))
+        }
+        "restart" => {
+            spawn_system_action("/sbin/reboot", &[])?;
+            Ok(json!({"result": true}))
+        }
+        "factoryReset" => {
+            spawn_system_action("/sbin/firstboot", &["-r", "-y"])?;
+            Ok(json!({"result": true}))
+        }
         _ => Err(Failure {
             status: STATUS_METHOD_NOT_FOUND,
             message: format!("unknown method {method}"),
@@ -329,6 +355,315 @@ fn root_has_password() -> bool {
         Ok(shadow) => shadow_root_has_password(&shadow),
         Err(_) => true, // fail safe: an unreadable /etc/shadow reads as "has one"
     }
+}
+
+// Backups stay in OpenWrt's native sysupgrade format. The unprivileged shell
+// creates the private temporary file; accepting only that exact shape keeps the
+// helper from becoming an arbitrary root file writer/reader.
+fn backup_path(path: &str, restore: bool) -> Result<&Path, Failure> {
+    let path = Path::new(path);
+    if path.parent() != Some(Path::new("/var/run/verso")) {
+        return Err(Failure::invalid(
+            "backup path is outside Verso's runtime directory",
+        ));
+    }
+    let name = path.file_name().and_then(|v| v.to_str()).unwrap_or("");
+    let prefix = if restore {
+        "verso-restore-"
+    } else {
+        "verso-backup-"
+    };
+    if !name.starts_with(prefix) || !name.ends_with(".tar.gz") {
+        return Err(Failure::invalid("invalid backup temporary file"));
+    }
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| Failure::invalid(format!("inspect backup file: {error}")))?;
+    if !metadata.file_type().is_file() || metadata.uid() != VERSO_UID {
+        return Err(Failure::invalid(
+            "backup temporary file has invalid ownership or type",
+        ));
+    }
+    Ok(path)
+}
+
+fn firmware_path(path: &str) -> Result<&Path, Failure> {
+    let path = Path::new(path);
+    if path.parent() != Some(Path::new("/var/run/verso")) {
+        return Err(Failure::invalid(
+            "firmware path is outside Verso's runtime directory",
+        ));
+    }
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
+    if !name.starts_with("verso-firmware-") || !name.ends_with(".bin") {
+        return Err(Failure::invalid("invalid firmware temporary file"));
+    }
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| Failure::invalid(format!("inspect firmware file: {error}")))?;
+    if !metadata.file_type().is_file() || metadata.uid() != VERSO_UID {
+        return Err(Failure::invalid(
+            "firmware temporary file has invalid ownership or type",
+        ));
+    }
+    if metadata.len() == 0 || metadata.len() > 128 * 1024 * 1024 {
+        return Err(Failure::invalid(
+            "firmware must be between 1 byte and 128 MiB",
+        ));
+    }
+    Ok(path)
+}
+
+fn command_failure(name: &str, output: std::process::Output) -> Failure {
+    let message = if output.stderr.is_empty() {
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    } else {
+        String::from_utf8_lossy(&output.stderr).trim().to_string()
+    };
+    Failure::unknown(format!("{name} failed: {message}"))
+}
+
+fn create_backup(path: &str) -> Result<(), Failure> {
+    let path = backup_path(path, false)?;
+    let output = Command::new("/sbin/sysupgrade")
+        .arg("-b")
+        .arg(path)
+        .env_clear()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|error| Failure::unknown(format!("create backup: {error}")))?;
+    if !output.status.success() {
+        return Err(command_failure("sysupgrade backup", output));
+    }
+    Ok(())
+}
+
+fn restore_backup(path: &str) -> Result<(), Failure> {
+    let path = backup_path(path, true)?;
+    let metadata = fs::metadata(path)
+        .map_err(|error| Failure::invalid(format!("inspect backup size: {error}")))?;
+    if metadata.len() == 0 || metadata.len() > 32 * 1024 * 1024 {
+        return Err(Failure::invalid("backup must be between 1 byte and 32 MiB"));
+    }
+
+    // Listing first rejects corrupt/non-gzip input before sysupgrade extracts
+    // anything. Absolute and parent-traversal members are refused explicitly.
+    let mut listing = Command::new("/bin/tar")
+        .args(["-tzf"])
+        .arg(path)
+        .env_clear()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| Failure::unknown(format!("inspect backup archive: {error}")))?;
+    let mut names = Vec::new();
+    listing
+        .stdout
+        .take()
+        .ok_or_else(|| Failure::unknown("backup listing stdout unavailable"))?
+        .take(8 * 1024 * 1024 + 1)
+        .read_to_end(&mut names)
+        .map_err(|error| Failure::unknown(format!("read backup listing: {error}")))?;
+    if names.len() > 8 * 1024 * 1024 {
+        let _ = listing.kill();
+        let _ = listing.wait();
+        return Err(Failure::invalid("backup contains too many paths"));
+    }
+    let status = listing
+        .wait()
+        .map_err(|error| Failure::unknown(format!("wait for backup listing: {error}")))?;
+    if !status.success() {
+        return Err(Failure::invalid(
+            "the selected file is not a valid OpenWrt backup",
+        ));
+    }
+    let names = String::from_utf8_lossy(&names);
+    if names
+        .lines()
+        .any(|name| name.starts_with('/') || name.split('/').any(|part| part == ".."))
+    {
+        return Err(Failure::invalid("backup contains an unsafe path"));
+    }
+
+    let output = Command::new("/sbin/sysupgrade")
+        .arg("-r")
+        .arg(path)
+        .env_clear()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|error| Failure::unknown(format!("restore backup: {error}")))?;
+    if !output.status.success() {
+        let mountinfo = fs::read_to_string("/proc/self/mountinfo").unwrap_or_default();
+        if restore_failed_only_on_container_mounts(&output.stdout, &output.stderr, &mountinfo) {
+            eprintln!(
+                "verso-rpcd: restore skipped Docker-managed mount: {}",
+                command_output(&output)
+            );
+        } else {
+            return Err(command_failure("sysupgrade restore", output));
+        }
+    }
+    spawn_system_action("/sbin/reboot", &[])?;
+    Ok(())
+}
+
+fn firmware_test(path: &Path) -> Result<std::process::Output, Failure> {
+    Command::new("/sbin/sysupgrade")
+        .arg("--test")
+        .arg(path)
+        .env_clear()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|error| Failure::unknown(format!("validate firmware: {error}")))
+}
+
+fn firmware_metadata(path: &Path) -> Value {
+    let Ok(output) = Command::new("/usr/bin/fwtool")
+        .args(["-q", "-i", "-"])
+        .arg(path)
+        .env_clear()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+    else {
+        return Value::Null;
+    };
+    if !output.status.success() {
+        return Value::Null;
+    }
+    serde_json::from_slice(&output.stdout).unwrap_or(Value::Null)
+}
+
+fn firmware_version_field<'a>(metadata: &'a Value, field: &str) -> &'a str {
+    metadata
+        .get("version")
+        .and_then(|version| version.get(field))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+}
+
+fn validate_firmware(path: &str) -> Result<Value, Failure> {
+    let path = firmware_path(path)?;
+    let output = firmware_test(path)?;
+    let metadata = firmware_metadata(path);
+    Ok(json!({
+        "valid": output.status.success(),
+        "version": firmware_version_field(&metadata, "version"),
+        "revision": firmware_version_field(&metadata, "revision"),
+        "target": firmware_version_field(&metadata, "target"),
+        "board": firmware_version_field(&metadata, "board"),
+        "error": if output.status.success() { String::new() } else { command_output(&output) },
+    }))
+}
+
+fn install_firmware(path: &str) -> Result<(), Failure> {
+    let path = firmware_path(path)?;
+    let validation = firmware_test(path)?;
+    if !validation.status.success() {
+        return Err(Failure::invalid(format!(
+            "firmware validation failed: {}",
+            command_output(&validation)
+        )));
+    }
+
+    // The shell removes its pending upload once this method returns. Rename the
+    // image within tmpfs first so the detached sysupgrade process owns a stable
+    // path for the rest of the upgrade.
+    let install_path = Path::new("/tmp/verso-firmware-install.bin");
+    match fs::remove_file(install_path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(Failure::unknown(format!(
+                "remove previous firmware image: {error}"
+            )))
+        }
+    }
+    fs::rename(path, install_path)
+        .map_err(|error| Failure::unknown(format!("prepare firmware install: {error}")))?;
+    if let Err(error) = Command::new("/sbin/sysupgrade")
+        .arg(install_path)
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        if let Err(restore_error) = fs::rename(install_path, path) {
+            return Err(Failure::unknown(format!(
+                "start firmware install: {error}; restore verified image: {restore_error}"
+            )));
+        }
+        return Err(Failure::unknown(format!("start firmware install: {error}")));
+    }
+    Ok(())
+}
+
+// Docker supplies these three files as immutable bind mounts. A native OpenWrt
+// device does not. Accept BusyBox tar's failure only when every reported path is
+// one of those files and mountinfo proves it is a mount in this process; any
+// other extraction error remains fatal.
+fn command_output(output: &std::process::Output) -> String {
+    [output.stdout.as_slice(), output.stderr.as_slice()]
+        .into_iter()
+        .flat_map(|bytes| {
+            String::from_utf8_lossy(bytes)
+                .lines()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .filter(|line| !line.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn restore_failed_only_on_container_mounts(stdout: &[u8], stderr: &[u8], mountinfo: &str) -> bool {
+    let mut found = false;
+    let output = [stdout, stderr].into_iter().flat_map(|bytes| {
+        String::from_utf8_lossy(bytes)
+            .lines()
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    });
+    for line in output.filter(|line| !line.trim().is_empty()) {
+        if line.ends_with("upgrade: Restoring config files...") {
+            continue;
+        }
+        let Some(path) = line
+            .strip_prefix("tar: can't remove old file ")
+            .and_then(|line| line.strip_suffix(": Resource busy"))
+        else {
+            return false;
+        };
+        if !matches!(path, "etc/hosts" | "etc/hostname" | "etc/resolv.conf") {
+            return false;
+        }
+        let target = format!("/{path}");
+        if !mountinfo
+            .lines()
+            .any(|mount| mount.split_whitespace().nth(4) == Some(target.as_str()))
+        {
+            return false;
+        }
+        found = true;
+    }
+    found
+}
+
+fn spawn_system_action(program: &str, args: &[&str]) -> Result<(), Failure> {
+    Command::new(program)
+        .args(args)
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| Failure::unknown(format!("start {program}: {error}")))?;
+    Ok(())
 }
 
 // shadow_root_has_password parses an /etc/shadow body for root's password field.
@@ -513,6 +848,56 @@ mod tests {
         // no root line and an empty file both fail safe to "has one"
         assert!(shadow_root_has_password("daemon:*:0:::\nnobody:*:0:::\n"));
         assert!(shadow_root_has_password(""));
+    }
+
+    #[test]
+    fn only_verified_container_mount_conflicts_are_ignorable() {
+        let mounts = "123 1 0:1 / / rw - overlay overlay rw\n124 123 0:2 /hosts /etc/hosts rw - tmpfs tmpfs rw\n";
+        assert!(restore_failed_only_on_container_mounts(
+            b"Sun Aug 30 22:24:37 CEST 2026 upgrade: Restoring config files...\n",
+            b"tar: can't remove old file etc/hosts: Resource busy\n",
+            mounts
+        ));
+        assert!(restore_failed_only_on_container_mounts(
+            b"Sun Aug 30 22:24:37 CEST 2026 upgrade: Restoring config files...\ntar: can't remove old file etc/hosts: Resource busy\n",
+            b"",
+            mounts
+        ));
+        assert!(!restore_failed_only_on_container_mounts(
+            b"",
+            b"tar: can't remove old file etc/config/system: Resource busy\n",
+            mounts
+        ));
+        assert!(!restore_failed_only_on_container_mounts(
+            b"",
+            b"tar: short read\n",
+            mounts
+        ));
+        assert!(!restore_failed_only_on_container_mounts(
+            b"",
+            b"tar: can't remove old file etc/hosts: Resource busy\n",
+            ""
+        ));
+    }
+
+    #[test]
+    fn firmware_metadata_fields_are_optional_and_bounded_to_version_object() {
+        let metadata = json!({
+            "version": {
+                "version": "25.12.5",
+                "revision": "r123-abc",
+                "target": "layerscape/armv8_64b",
+                "board": "mono_gateway-dk"
+            },
+            "board": "wrong-level"
+        });
+        assert_eq!(firmware_version_field(&metadata, "version"), "25.12.5");
+        assert_eq!(
+            firmware_version_field(&metadata, "board"),
+            "mono_gateway-dk"
+        );
+        assert_eq!(firmware_version_field(&metadata, "missing"), "");
+        assert_eq!(firmware_version_field(&Value::Null, "version"), "");
     }
 
     #[test]

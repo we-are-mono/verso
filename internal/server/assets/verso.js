@@ -119,11 +119,24 @@ document.addEventListener("alpine:init", function () {
   Alpine.data("modal", function () {
     return {
       open: false,
+      idle: true,
+      busy: false,
       _return: null,
       _dirty: false,
+      init: function () {
+        this.open = this.$el && this.$el.dataset.open === "true";
+        if (this.open) {
+          var self = this;
+          this.$nextTick(function () {
+            if (self.$refs.dialog) self.$refs.dialog.focus();
+          });
+        }
+      },
       show: function () {
         this._return = document.activeElement;
         this._dirty = false;
+        this.idle = true;
+        this.busy = false;
         this.open = true;
         var self = this;
         this.$nextTick(function () {
@@ -137,12 +150,18 @@ document.addEventListener("alpine:init", function () {
         this._dirty = true;
       },
       hide: function () {
+		if (this.busy) return;
         if (this._dirty && !window.confirm("You have unsaved changes. Close without saving?")) {
           return;
         }
         this._dirty = false;
         this.open = false;
         if (this._return && this._return.focus) this._return.focus();
+      },
+      startBusy: function () {
+        this._dirty = false;
+        this.idle = false;
+        this.busy = true;
       },
       // A table row as trigger: open the drawer unless the click landed on a
       // control inside the row (a toggle's label, a link, a button) — those keep
@@ -1319,6 +1338,18 @@ document.addEventListener(
       el.disabled = false;
       el.checked = !el.checked;
     });
+  });
+})();
+
+// Auto-submit file forms: choosing a file in a form marked data-verso-autosubmit
+// submits it immediately, anywhere on the page — not only inside a modal. These
+// upload forms carry NoSubmit, so this is their only submit path.
+(function () {
+  document.addEventListener("change", function (e) {
+    var input = e.target;
+    if (!input || input.type !== "file" || !input.files || input.files.length === 0) return;
+    var form = input.closest("form[data-verso-autosubmit]");
+    if (form && form.requestSubmit) form.requestSubmit();
   });
 })();
 

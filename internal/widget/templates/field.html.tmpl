@@ -38,7 +38,7 @@
   {{/* The native input covers the drop surface invisibly: dropping works without
        plugin JavaScript, and clicking the emphasized phrase opens the OS picker. */}}
   <label for="{{.Name}}" class="relative flex min-h-40 cursor-pointer items-center justify-center rounded-xl border-2 border-dotted {{if .Error}}border-red-400 bg-red-50/40{{else}}border-slate-300 bg-slate-50/60 hover:border-sky-400 hover:bg-sky-50/50{{end}} px-8 py-12 text-center transition-colors">
-    <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
+    <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
     <span class="pointer-events-none text-sm text-slate-500">
       <span class="mx-auto mb-4 block w-fit text-slate-400">{{icon "upload" "size-10"}}</span>
       <span class="block">{{if .Prompt}}{{.Prompt}}{{else}}Drop a file here{{end}}</span>

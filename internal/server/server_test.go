@@ -39,8 +39,14 @@ type fakeBackend struct {
 	deletes        *[]string                 // records "config.section" per UCIDelete
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
-	setPassword   func(ctx context.Context, sid, username, password string) error
-	setSystemTime func(ctx context.Context, sid, datetime, timezone string) error
+	setPassword      func(ctx context.Context, sid, username, password string) error
+	setSystemTime    func(ctx context.Context, sid, datetime, timezone string) error
+	createBackup     func(ctx context.Context, sid, path string) error
+	restoreBackup    func(ctx context.Context, sid, path string) error
+	validateFirmware func(ctx context.Context, sid, path string) (openwrt.FirmwareInfo, error)
+	installFirmware  func(ctx context.Context, sid, path string) error
+	restart          func(ctx context.Context, sid string) error
+	factoryReset     func(ctx context.Context, sid string) error
 	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
 	// of what the shell committed, applied, confirmed, or reverted.
 	changes    map[string][][]string
@@ -254,6 +260,48 @@ func (f fakeBackend) RootHasPassword(context.Context, string) (bool, error) {
 	return !f.rootNoPassword, nil
 }
 
+func (f fakeBackend) CreateBackup(ctx context.Context, sid, path string) error {
+	if f.createBackup != nil {
+		return f.createBackup(ctx, sid, path)
+	}
+	return nil
+}
+
+func (f fakeBackend) RestoreBackup(ctx context.Context, sid, path string) error {
+	if f.restoreBackup != nil {
+		return f.restoreBackup(ctx, sid, path)
+	}
+	return nil
+}
+
+func (f fakeBackend) ValidateFirmware(ctx context.Context, sid, path string) (openwrt.FirmwareInfo, error) {
+	if f.validateFirmware != nil {
+		return f.validateFirmware(ctx, sid, path)
+	}
+	return openwrt.FirmwareInfo{}, nil
+}
+
+func (f fakeBackend) InstallFirmware(ctx context.Context, sid, path string) error {
+	if f.installFirmware != nil {
+		return f.installFirmware(ctx, sid, path)
+	}
+	return nil
+}
+
+func (f fakeBackend) Restart(ctx context.Context, sid string) error {
+	if f.restart != nil {
+		return f.restart(ctx, sid)
+	}
+	return nil
+}
+
+func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
+	if f.factoryReset != nil {
+		return f.factoryReset(ctx, sid)
+	}
+	return nil
+}
+
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a
 // canned envelope or error and records the request the gateway forwarded, so the
 // gateway is testable with no plugin process and no socket.
@@ -303,6 +351,7 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 		return nil, errors.New("no neighbour table in tests")
 	}
 	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb in tests") }
+	s.maintenanceDir = t.TempDir()
 	return s
 }
 

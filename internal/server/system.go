@@ -4,12 +4,9 @@
 package server
 
 import (
-	"html/template"
 	"net/http"
-	"strings"
 
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // systemPages is the shell-owned System frame. Ownership of the pages behind
@@ -53,19 +50,4 @@ func (s *Server) handleSystemGeneral(w http.ResponseWriter, r *http.Request) {
 	body, status := s.pluginBodyAt(r, m, "", &hdr, &width, &ignored)
 	hdr.Heading = "System"
 	s.renderPage(w, r, status, hdr, width, systemPages("general"), !hdr.Immediate, body)
-}
-
-// Maintenance has its permanent route and place in the System frame now; its
-// real operations are intentionally left for the Maintenance pass.
-func (s *Server) handleSystemMaintenance(w http.ResponseWriter, r *http.Request) {
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Empty{
-		Icon: "wrench", Title: "Maintenance is coming next",
-		Body: "Firmware, backups, restart, and factory reset will be wired on this page.",
-	}, s.sessionCSRF(r)); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "System"}, "narrow",
-		systemPages("maintenance"), false, template.HTML(body.String()))
 }

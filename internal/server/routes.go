@@ -40,6 +40,13 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/services", s.handleServicesPage)
 	s.mux.HandleFunc("POST /system/services", s.handleServicesAction)
 	s.mux.HandleFunc("GET /system/maintenance", s.handleSystemMaintenance)
+	s.mux.HandleFunc("GET /system/maintenance/backup", s.handleBackupDownload)
+	s.mux.HandleFunc("POST /system/maintenance/restore", s.handleRestoreInspect)
+	s.mux.HandleFunc("POST /system/maintenance/restore/apply", s.handleRestoreApply)
+	s.mux.HandleFunc("POST /system/maintenance/firmware", s.handleFirmwareInspect)
+	s.mux.HandleFunc("POST /system/maintenance/firmware/apply", s.handleFirmwareApply)
+	s.mux.HandleFunc("POST /system/maintenance/restart", s.handleRestart)
+	s.mux.HandleFunc("POST /system/maintenance/factory-reset", s.handleFactoryReset)
 
 	// The overview stream (SSE): the browser's EventSource holds this open and
 	// the shell pushes fresh readings into it (events.go). Read-only, behind

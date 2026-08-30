@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/we-are-mono/verso/internal/ubus"
 )
@@ -66,6 +68,19 @@ type Backend interface {
 	// cannot read it), carrying the operator's sid. It returns only the boolean,
 	// never the hash.
 	RootHasPassword(ctx context.Context, sid string) (bool, error)
+	// CreateBackup asks OpenWrt's sysupgrade machinery to write its native
+	// configuration archive to path. RestoreBackup applies that same format.
+	// The path is a shell-created, private temporary file; archive bytes never
+	// cross the helper's JSON protocol.
+	CreateBackup(ctx context.Context, sid, path string) error
+	RestoreBackup(ctx context.Context, sid, path string) error
+	// ValidateFirmware runs OpenWrt's own sysupgrade compatibility check against
+	// an uploaded image and returns its signed metadata. InstallFirmware repeats
+	// that check in the privileged helper immediately before starting sysupgrade.
+	ValidateFirmware(ctx context.Context, sid, path string) (FirmwareInfo, error)
+	InstallFirmware(ctx context.Context, sid, path string) error
+	Restart(ctx context.Context, sid string) error
+	FactoryReset(ctx context.Context, sid string) error
 	// The rest of the uci two-phase lifecycle (ADR-010). Staged edits live in
 	// UCI's own stage; these four let the shell read it, discard it, and apply it
 	// with rpcd's native device-side rollback — all sid-gated like every write.
@@ -228,10 +243,23 @@ type SystemInfo struct {
 // release ("OpenWrt 25.12.4"), the kernel version ("Linux 6.12.101"), the
 // board_name that selects a hardware profile, and the human model string.
 type Board struct {
-	Firmware  string
-	Kernel    string
-	BoardName string
-	Model     string
+	Firmware    string
+	Kernel      string
+	KernelBuild string
+	Target      string
+	BoardName   string
+	Model       string
+}
+
+// FirmwareInfo is the device-side verdict for one uploaded sysupgrade image.
+// Invalid images are a normal result (Valid=false), not a transport failure.
+type FirmwareInfo struct {
+	Valid    bool   `json:"valid"`
+	Version  string `json:"version"`
+	Revision string `json:"revision"`
+	Target   string `json:"target"`
+	Board    string `json:"board"`
+	Error    string `json:"error"`
 }
 
 // V6Lease is one odhcpd DHCPv6 lease: the client DUID (its stable DHCPv6
@@ -268,6 +296,9 @@ type (
 	passwdFn       func(ctx context.Context, sid, username, password string) error
 	setTimeFn      func(ctx context.Context, sid, datetime, timezone string) error
 	rootPasswdFn   func(ctx context.Context, sid string) (bool, error)
+	backupFn       func(ctx context.Context, sid, path string) error
+	firmwareFn     func(ctx context.Context, sid, path string) (FirmwareInfo, error)
+	maintenanceFn  func(ctx context.Context, sid string) error
 	uciChangesFn   func(ctx context.Context, sid string) (map[string][][]string, error)
 	uciRevertFn    func(ctx context.Context, sid, config string) error
 	uciApplyFn     func(ctx context.Context, sid string, timeout int) error
@@ -288,53 +319,73 @@ type (
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
 type NativeBackend struct {
-	hostname     hostnameFn
-	systemInfo   systemInfoFn
-	systemBoard  systemBoardFn
-	ipv6Leases   ipv6LeasesFn
-	wanConn      wanConnFn
-	access       accessFn
-	uciSet       uciSetFn
-	uciCommit    uciCommitFn
-	uciConfig    uciConfigFn
-	uciAdd       uciAddFn
-	uciDelete    uciDeleteFn
-	setPassword  passwdFn
-	setTime      setTimeFn
-	rootPasswd   rootPasswdFn
-	uciChanges   uciChangesFn
-	uciRevert    uciRevertFn
-	uciApply     uciApplyFn
-	uciConfirm   uciConfirmFn
-	rcList       rcListFn
-	rcInit       rcInitFn
-	pkgStatus    pkgStatusFn
-	pkgUpdate    pkgUpdateFn
-	pkgSearch    pkgSearchFn
-	pkgInstalled pkgInstalledFn
-	pkgInstall   pkgActFn
-	pkgRemove    pkgActFn
-	wanStatus    wanStatusFn
-	deviceStats  deviceStatsFn
+	hostname      hostnameFn
+	systemInfo    systemInfoFn
+	systemBoard   systemBoardFn
+	ipv6Leases    ipv6LeasesFn
+	wanConn       wanConnFn
+	access        accessFn
+	uciSet        uciSetFn
+	uciCommit     uciCommitFn
+	uciConfig     uciConfigFn
+	uciAdd        uciAddFn
+	uciDelete     uciDeleteFn
+	setPassword   passwdFn
+	setTime       setTimeFn
+	rootPasswd    rootPasswdFn
+	createBackup  backupFn
+	restoreBackup backupFn
+	firmwareCheck firmwareFn
+	firmwareFlash backupFn
+	restart       maintenanceFn
+	factoryReset  maintenanceFn
+	kernelBuild   func() string
+	uciChanges    uciChangesFn
+	uciRevert     uciRevertFn
+	uciApply      uciApplyFn
+	uciConfirm    uciConfirmFn
+	rcList        rcListFn
+	rcInit        rcInitFn
+	pkgStatus     pkgStatusFn
+	pkgUpdate     pkgUpdateFn
+	pkgSearch     pkgSearchFn
+	pkgInstalled  pkgInstalledFn
+	pkgInstall    pkgActFn
+	pkgRemove     pkgActFn
+	wanStatus     wanStatusFn
+	deviceStats   deviceStatsFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:     dialHostname(""),
-		systemInfo:   dialSystemInfo(""),
-		systemBoard:  dialSystemBoard(""),
-		ipv6Leases:   dialIPv6Leases(""),
-		wanConn:      dialWANConn(""),
-		access:       dialAccess(""),
-		uciSet:       dialUCISet(""),
-		uciCommit:    dialUCICommit(""),
-		uciConfig:    dialUCIConfig(""),
-		uciAdd:       dialUCIAdd(""),
-		uciDelete:    dialUCIDelete(""),
-		setPassword:  dialSetPassword(""),
-		setTime:      dialSetSystemTime(""),
-		rootPasswd:   dialRootHasPassword(""),
+		hostname:      dialHostname(""),
+		systemInfo:    dialSystemInfo(""),
+		systemBoard:   dialSystemBoard(""),
+		ipv6Leases:    dialIPv6Leases(""),
+		wanConn:       dialWANConn(""),
+		access:        dialAccess(""),
+		uciSet:        dialUCISet(""),
+		uciCommit:     dialUCICommit(""),
+		uciConfig:     dialUCIConfig(""),
+		uciAdd:        dialUCIAdd(""),
+		uciDelete:     dialUCIDelete(""),
+		setPassword:   dialSetPassword(""),
+		setTime:       dialSetSystemTime(""),
+		rootPasswd:    dialRootHasPassword(""),
+		createBackup:  dialBackupAct("", "createBackup"),
+		restoreBackup: dialBackupAct("", "restoreBackup"),
+		firmwareCheck: dialFirmwareValidate(""),
+		firmwareFlash: dialBackupAct("", "installFirmware"),
+		restart:       dialMaintenanceAct("", "restart"),
+		factoryReset:  dialMaintenanceAct("", "factoryReset"),
+		kernelBuild: func() string {
+			data, err := os.ReadFile("/proc/version")
+			if err != nil {
+				return ""
+			}
+			return strings.TrimSpace(string(data))
+		},
 		uciChanges:   dialUCIChanges(""),
 		uciRevert:    dialUCIRevert(""),
 		uciApply:     dialUCIApply(""),
@@ -373,7 +424,16 @@ func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
 	if err != nil {
 		return Board{}, err
 	}
-	return parseBoard(m), nil
+	board := parseBoard(m)
+	if board.KernelBuild == "" && board.Kernel != "" {
+		board.KernelBuild = board.Kernel
+	}
+	if b.kernelBuild != nil {
+		if full := b.kernelBuild(); full != "" {
+			board.KernelBuild = full
+		}
+	}
+	return board, nil
 }
 
 // Access reports whether rpcd grants the session object.function in scope.
@@ -424,6 +484,30 @@ func (b *NativeBackend) SetSystemTime(ctx context.Context, sid, datetime, timezo
 // itself), gated by the sid.
 func (b *NativeBackend) RootHasPassword(ctx context.Context, sid string) (bool, error) {
 	return b.rootPasswd(ctx, sid)
+}
+
+func (b *NativeBackend) CreateBackup(ctx context.Context, sid, path string) error {
+	return b.createBackup(ctx, sid, path)
+}
+
+func (b *NativeBackend) RestoreBackup(ctx context.Context, sid, path string) error {
+	return b.restoreBackup(ctx, sid, path)
+}
+
+func (b *NativeBackend) ValidateFirmware(ctx context.Context, sid, path string) (FirmwareInfo, error) {
+	return b.firmwareCheck(ctx, sid, path)
+}
+
+func (b *NativeBackend) InstallFirmware(ctx context.Context, sid, path string) error {
+	return b.firmwareFlash(ctx, sid, path)
+}
+
+func (b *NativeBackend) Restart(ctx context.Context, sid string) error {
+	return b.restart(ctx, sid)
+}
+
+func (b *NativeBackend) FactoryReset(ctx context.Context, sid string) error {
+	return b.factoryReset(ctx, sid)
 }
 
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
@@ -719,6 +803,29 @@ func dialRootHasPassword(socket string) rootPasswdFn {
 	}
 }
 
+// dialBackupAct brokers OpenWrt-native backup operations without carrying the
+// archive through JSON. The helper accepts only Verso's private temporary-file
+// naming convention and invokes sysupgrade directly, never through a shell.
+func dialBackupAct(socket, method string) backupFn {
+	return func(ctx context.Context, sid, path string) error {
+		return callHelper(ctx, socket, method, sid, map[string]string{"path": path}, nil)
+	}
+}
+
+func dialFirmwareValidate(socket string) firmwareFn {
+	return func(ctx context.Context, sid, path string) (FirmwareInfo, error) {
+		var result FirmwareInfo
+		err := callHelper(ctx, socket, "validateFirmware", sid, map[string]string{"path": path}, &result)
+		return result, err
+	}
+}
+
+func dialMaintenanceAct(socket, method string) maintenanceFn {
+	return func(ctx context.Context, sid string) error {
+		return callHelper(ctx, socket, method, sid, nil, nil)
+	}
+}
+
 // dialUCIDelete returns a uciDeleteFn that removes a section via rpcd's `uci`
 // object (method `delete`), carrying the sid. The caller commits afterwards.
 func dialUCIDelete(socket string) uciDeleteFn {
@@ -980,8 +1087,9 @@ func leaseV6Addrs(lease map[string]any) []string {
 	return out
 }
 
-// parseBoard folds `system board` to the firmware release (distribution +
-// version, e.g. "OpenWrt 25.12.4") and the kernel version ("Linux 6.12.101").
+// parseBoard keeps OpenWrt's complete release description (including revision)
+// and target. Short distribution/version fields are only a compatibility
+// fallback for older board responses.
 func parseBoard(m map[string]any) Board {
 	str := func(v any) string { s, _ := v.(string); return s }
 	var b Board
@@ -991,17 +1099,17 @@ func parseBoard(m map[string]any) Board {
 		b.Kernel = "Linux " + k
 	}
 	if rel, ok := m["release"].(map[string]any); ok {
+		b.Target = str(rel["target"])
+		b.Firmware = str(rel["description"])
 		dist, ver := str(rel["distribution"]), str(rel["version"])
 		switch {
+		case b.Firmware != "":
 		case dist != "" && ver != "":
 			b.Firmware = dist + " " + ver
 		case dist != "":
 			b.Firmware = dist
 		default:
 			b.Firmware = ver
-		}
-		if b.Firmware == "" {
-			b.Firmware = str(rel["description"])
 		}
 	}
 	return b

@@ -104,6 +104,13 @@ type Server struct {
 	// wanHist accumulates the WAN device's throughput history from the same
 	// stream's once-a-second counter observations (wan_history.go).
 	wanHist *wanHistory
+	// pendingRestores bind a verified, private upload to the session that chose
+	// it. Browser forms carry only the opaque token, never a server path.
+	pendingRestoreMu  sync.Mutex
+	pendingRestores   map[string]pendingRestore
+	pendingFirmwareMu sync.Mutex
+	pendingFirmwares  map[string]pendingFirmware
+	maintenanceDir    string
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -128,26 +135,29 @@ func New(
 	interfaceSampler := telemetry.NewSampler()
 	interfaceSampler.Start()
 	s := &Server{
-		mux:           http.NewServeMux(),
-		widgets:       widgets,
-		backend:       backend,
-		transport:     transport,
-		manifests:     manifests,
-		pluginByID:    indexByID(manifests),
-		auth:          auth,
-		sessions:      newSessions(),
-		loginLimiter:  newLoginLimiter(time.Now),
-		page:          page,
-		css:           template.CSS(cssText),
-		probe:         probeSocket,
-		stats:         sysstat.New(),
-		telemetry:     interfaceSampler,
-		telemetryStop: interfaceSampler.Stop,
-		eventInterval: time.Second,
-		readLeases:    func() ([]byte, error) { return os.ReadFile(leasesPath) },
-		neighbors:     sysstat.Neighbors,
-		bridgePorts:   sysstat.BridgePorts,
-		wanHist:       newWanHistory(time.Now),
+		mux:              http.NewServeMux(),
+		widgets:          widgets,
+		backend:          backend,
+		transport:        transport,
+		manifests:        manifests,
+		pluginByID:       indexByID(manifests),
+		auth:             auth,
+		sessions:         newSessions(),
+		loginLimiter:     newLoginLimiter(time.Now),
+		page:             page,
+		css:              template.CSS(cssText),
+		probe:            probeSocket,
+		stats:            sysstat.New(),
+		telemetry:        interfaceSampler,
+		telemetryStop:    interfaceSampler.Stop,
+		eventInterval:    time.Second,
+		readLeases:       func() ([]byte, error) { return os.ReadFile(leasesPath) },
+		neighbors:        sysstat.Neighbors,
+		bridgePorts:      sysstat.BridgePorts,
+		wanHist:          newWanHistory(time.Now),
+		pendingRestores:  make(map[string]pendingRestore),
+		pendingFirmwares: make(map[string]pendingFirmware),
+		maintenanceDir:   "/var/run/verso",
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
@@ -163,6 +173,18 @@ func (s *Server) Close() {
 	if s.telemetryStop != nil {
 		s.telemetryStop()
 	}
+	s.pendingRestoreMu.Lock()
+	for token, pending := range s.pendingRestores {
+		_ = os.Remove(pending.path)
+		delete(s.pendingRestores, token)
+	}
+	s.pendingRestoreMu.Unlock()
+	s.pendingFirmwareMu.Lock()
+	for token, pending := range s.pendingFirmwares {
+		_ = os.Remove(pending.path)
+		delete(s.pendingFirmwares, token)
+	}
+	s.pendingFirmwareMu.Unlock()
 }
 
 // currentCSS is the stylesheet to inline: the live dev file (read fresh each render) in
@@ -220,7 +242,26 @@ func (s *Server) manifestByID(id string) (plugin.Manifest, bool) {
 // Handler returns the root HTTP handler for the shell: security headers, then
 // the session/CSRF gate, wrapping the routing mux.
 func (s *Server) Handler() http.Handler {
-	return securityHeaders(s.hostGuard(s.requireAuth(s.mux)))
+	// Bound every request body before requireAuth's CSRF check parses it:
+	// validCSRF reads multipart fields for any multipart POST, and an unbounded
+	// multipart part spills to tmpfs (TMPDIR). Forms are tiny, so a small default
+	// caps them all; the two upload routes lift the cap to their archive/image
+	// size, where the handler then applies the tighter check.
+	next := s.hostGuard(s.requireAuth(s.mux))
+	bounded := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !safeMethod(r.Method) {
+			limit := int64(2 << 20)
+			switch r.URL.Path {
+			case "/system/maintenance/restore":
+				limit = maxRestoreSize + (1 << 20)
+			case "/system/maintenance/firmware":
+				limit = maxFirmwareSize + (1 << 20)
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+		}
+		next.ServeHTTP(w, r)
+	})
+	return securityHeaders(bounded)
 }
 
 // assets serves the shell's embedded client-side JS (ADR-004) under /assets. The

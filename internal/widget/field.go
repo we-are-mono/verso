@@ -16,12 +16,13 @@ type Field struct {
 	Autocomplete string   `json:"autocomplete,omitempty"` // optional browser autofill purpose, e.g. "current-password"
 	Accept       string   `json:"accept,omitempty"`       // kind "file": native accepted file types/extensions
 	Prompt       string   `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link
-	Value        string   `json:"value"`                  // current/submitted value
-	Values       []string `json:"values"`                 // kind "checks": the checked option values
-	Datatype     string   `json:"datatype"`               // tier-1 datatype name, e.g. "hostname"
-	Options      []Option `json:"options"`                // choices when kind is "select" or "checks"
-	Error        string   `json:"error"`                  // inline validation error (set on 422)
-	Help         string   `json:"help"`                   // optional helper text
+	Required     bool     `json:"required,omitempty"`
+	Value        string   `json:"value"`    // current/submitted value
+	Values       []string `json:"values"`   // kind "checks": the checked option values
+	Datatype     string   `json:"datatype"` // tier-1 datatype name, e.g. "hostname"
+	Options      []Option `json:"options"`  // choices when kind is "select" or "checks"
+	Error        string   `json:"error"`    // inline validation error (set on 422)
+	Help         string   `json:"help"`     // optional helper text
 }
 
 // Option is one choice in a select or checks field.

@@ -16,14 +16,18 @@ import (
 // recursively through Decode, so a form composes the closed set — typically
 // fields and lists, but any widget nests.
 type Form struct {
-	Style   string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row) | "inline-compact" — the same row, tighter
-	Icon    string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
-	Note    string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
-	Submit  string       // submit button label (default "Save")
-	Success string       // optional message shown after a successful save
-	Error   string       // optional error not tied to a single field, shown above the fields
-	Actions []FormAction // secondary submit buttons besides Save (below)
-	Fields  []Widget     // form contents
+	Action     string       `json:"-"`               // shell-owned route; plugin forms always post to their own page
+	Multipart  bool         `json:"-"`               // shell-owned file-transfer encoding
+	NoSubmit   bool         `json:"-"`               // shell-owned forms may be driven by a child control
+	AutoSubmit bool         `json:"-"`               // submit when a file is selected
+	Style      string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row) | "inline-compact" — the same row, tighter
+	Icon       string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
+	Note       string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
+	Submit     string       // submit button label (default "Save")
+	Success    string       // optional message shown after a successful save
+	Error      string       // optional error not tied to a single field, shown above the fields
+	Actions    []FormAction // secondary submit buttons besides Save (below)
+	Fields     []Widget     // form contents
 }
 
 // FormAction is a secondary submit button: it submits the form — all its fields —
@@ -76,17 +80,20 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 // formView is the form template's model: its fields pre-rendered to trusted HTML,
 // plus the resolved submit label and the CSRF token threaded in by the renderer.
 type formView struct {
-	Inline    bool
-	Compact   bool
-	Page      bool
-	Icon      string
-	Note      template.HTML
-	Submit    string
-	Success   string
-	Error     string
-	CSRFToken string
-	Actions   []FormAction
-	Fields    []template.HTML
+	Action     string
+	Multipart  bool
+	AutoSubmit bool
+	Inline     bool
+	Compact    bool
+	Page       bool
+	Icon       string
+	Note       template.HTML
+	Submit     string
+	Success    string
+	Error      string
+	CSRFToken  string
+	Actions    []FormAction
+	Fields     []template.HTML
 }
 
 // renderInto renders each field through the renderer, keeping composition in Go and
@@ -97,7 +104,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	submit := f.Submit
-	if submit == "" && f.Style != "page" {
+	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit {
 		submit = "Save"
 	}
 	var note template.HTML
@@ -109,6 +116,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		note = template.HTML(buf.String())
 	}
 	return r.execute(out, "form.html.tmpl", formView{
+		Action: f.Action, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Page: f.Style == "page", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,

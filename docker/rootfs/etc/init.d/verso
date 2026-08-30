@@ -9,7 +9,10 @@ STOP=10
 start_service() {
 	procd_open_instance verso
 	procd_set_param command /usr/bin/verso
-	procd_set_param env VERSO_ADDR=:8080
+	# Multipart uploads spill to a private, group-protected runtime directory.
+	# This keeps large backup/firmware bodies out of the shared system /tmp and
+	# works even on images whose tmpfs is not writable by unprivileged services.
+	procd_set_param env VERSO_ADDR=:8080 TMPDIR=/var/run/verso
 	# De-privilege the shell (ADR-007): run as the non-root `verso` user so it
 	# cannot write /etc/config directly and does not get ubusd's uid-0 ACL
 	# exemption — every backend op is then bounded by rpcd + the verso acl.d

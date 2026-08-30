@@ -9,7 +9,12 @@ STOP=11
 start_service() {
 	mkdir -p /var/run/verso
 	chown root:verso /var/run/verso
-	chmod 0750 /var/run/verso
+	# Shared runtime dir: the shell stages bounded upload temps (0600, owner-only)
+	# and plugins bind their sockets here. The sticky bit lets a group member
+	# create its own entries but never rename or remove another account's, so a
+	# plugin cannot swap the shell's staged archive; the helper still validates
+	# file type, owner, and basename. Matches the mode the plugin init scripts set.
+	chmod 1770 /var/run/verso
 
 	procd_open_instance verso-rpcd
 	procd_set_param command /usr/sbin/verso-rpcd --socket /var/run/verso/verso-rpcd.sock

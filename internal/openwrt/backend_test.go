@@ -40,6 +40,35 @@ func TestSystemInfoMapsFields(t *testing.T) {
 	}
 }
 
+func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
+	b := &NativeBackend{
+		systemBoard: func(context.Context, string) (map[string]any, error) {
+			return map[string]any{
+				"kernel": "6.12.101",
+				"release": map[string]any{
+					"distribution": "OpenWrt", "version": "25.12.4",
+					"description": "OpenWrt 25.12.4 r32933-4ccb782af7",
+					"target":      "qualcommax/ipq807x",
+				},
+			}, nil
+		},
+		kernelBuild: func() string { return "Linux version 6.12.101 (builder@host) #1 SMP" },
+	}
+	got, err := b.Board(context.Background(), "sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Firmware != "OpenWrt 25.12.4 r32933-4ccb782af7" {
+		t.Errorf("firmware = %q", got.Firmware)
+	}
+	if got.KernelBuild != "Linux version 6.12.101 (builder@host) #1 SMP" {
+		t.Errorf("kernel build = %q", got.KernelBuild)
+	}
+	if got.Target != "qualcommax/ipq807x" {
+		t.Errorf("target = %q", got.Target)
+	}
+}
+
 func TestSystemInfoError(t *testing.T) {
 	b := &NativeBackend{systemInfo: fakeSystemInfo(nil, errors.New("boom"))}
 	if _, err := b.SystemInfo(context.Background(), "sid"); err == nil {

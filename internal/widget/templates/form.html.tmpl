@@ -8,7 +8,7 @@
      row and sizes to its content. The submit glues onto the last field (one
      instrument: the button acts on the field): the field's input squares its
      right corners and the buttons row pulls back across the gap. */}}
-<form method="post"{{if .Page}} data-verso-page-form{{end}} class="{{if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}space-y-6{{end}}">
+<form method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}} class="{{if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}space-y-6{{end}}">
   {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
   {{if .Success}}
   <div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-600">

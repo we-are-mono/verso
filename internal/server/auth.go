@@ -138,7 +138,16 @@ func validCSRF(r *http.Request, want string) bool {
 	if want == "" {
 		return false
 	}
-	if err := r.ParseForm(); err != nil {
+	var err error
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		// Keep file uploads off the router's heap; only ordinary form fields stay
+		// in memory and the multipart package spills the archive to /tmp.
+		err = r.ParseMultipartForm(1 << 20)
+	} else {
+		err = r.ParseForm()
+	}
+	if err != nil {
+		log.Printf("verso: parse CSRF form: %v", err)
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(r.PostForm.Get("_csrf")), []byte(want)) == 1

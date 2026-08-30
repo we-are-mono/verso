@@ -55,3 +55,20 @@ func TestPageFormUsesCapsuleInsteadOfOwnSubmit(t *testing.T) {
 		t.Fatalf("page form must not render a competing submit button: %s", got)
 	}
 }
+
+func TestShellFormCanOmitGeneratedSubmitAndAutoSubmitFile(t *testing.T) {
+	f := &Form{
+		Action: "/system/maintenance/restore", Multipart: true,
+		NoSubmit: true, AutoSubmit: true,
+		Fields: []Widget{&Field{Name: "backup", Kind: "file"}},
+	}
+	got := render(t, newRenderer(t), f)
+	for _, want := range []string{`action="/system/maintenance/restore"`, `enctype="multipart/form-data"`, `data-verso-autosubmit`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("form render missing %q", want)
+		}
+	}
+	if strings.Contains(got, ">Save</button>") {
+		t.Fatalf("NoSubmit form rendered a generated Save button: %s", got)
+	}
+}

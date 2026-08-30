@@ -40,6 +40,14 @@ deploy_acls() {
 		"chown root:root ${names[*]}; chmod 0644 ${names[*]}; kill -HUP \$(pidof ubusd) 2>/dev/null || true"
 }
 
+# Keep the shell's procd definition in sync too. Runtime environment changes
+# (such as its private multipart scratch directory) are part of the service,
+# not the Go binary, and must be exercised by the dev container before release.
+deploy_shell_init() {
+	docker cp docker/rootfs/etc/init.d/verso "$CONTAINER":/etc/init.d/.verso.new
+	docker exec "$CONTAINER" sh -c 'chown root:root /etc/init.d/.verso.new; chmod 0755 /etc/init.d/.verso.new; mv /etc/init.d/.verso.new /etc/init.d/verso'
+}
+
 # deploy_helper builds and atomically replaces the persistent Rust companion.
 # Its rpcd ACL remains the source of session.access policy, so ACL edits still
 # reload rpcd without discarding live login sessions.
@@ -114,6 +122,7 @@ reload() {
 	# Privileged surface deploys first, unconditionally: an ACL or helper edit
 	# should land even when the shell build below fails and we keep the old binary.
 	deploy_acls
+	deploy_shell_init
 	deploy_helper
 	deploy_bundled_plugins
 	log "building…"
@@ -138,6 +147,7 @@ code_sig() {
 		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.js' \) -printf '%T@ %p\n'
 		find internal/server/assets/fonts -type f -printf '%T@ %p\n'
 		find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n'
+		find docker/rootfs/etc/init.d/verso -printf '%T@ %p\n'
 		find plugins/verso-plugin-sdk -type f -printf '%T@ %p\n'
 		for marker in $BUNDLED_PLUGIN_GLOB; do
 			[ -e "$marker" ] || continue
