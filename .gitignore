@@ -18,6 +18,9 @@
 # Rust build artifacts
 /verso-rpcd/target/
 
+# Per-machine Makefile overrides (OPENWRT_DIR, KEY, VERSO_REPO_DIR, …)
+/local.mk
+
 # Editor / OS / tooling
 .DS_Store
 *.swp
