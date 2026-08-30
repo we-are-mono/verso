@@ -18,9 +18,8 @@ import (
 )
 
 // Raw is the governed bridge (ADR-005 §4): display-only Markdown for when no
-// widget fits. It is never interactive, is rendered through Verso's tokens with
-// a visible "raw" affordance, and its usage is instrumented (Renderer.RawUsage)
-// as the demand signal for the next widget.
+// widget fits. It is never interactive, and is rendered through Verso's tokens
+// with a visible "raw" affordance — the demand signal for the next widget.
 type Raw struct {
 	Markdown string `json:"markdown"`
 }
@@ -30,10 +29,8 @@ func (*Raw) isWidget() {}
 type rawView struct{ HTML template.HTML }
 
 // renderInto converts the plugin's Markdown through the sanitising engine and
-// wraps it in the raw affordance. It bumps the usage counter first: raw usage is
-// the demand signal for the next widget (ADR-005 §5).
+// wraps it in the raw affordance (ADR-005 §5).
 func (w *Raw) renderInto(r *Renderer, out io.Writer, _ string) error {
-	r.rawUses.Add(1)
 	var buf bytes.Buffer
 	if err := r.md.Convert([]byte(w.Markdown), &buf); err != nil {
 		return fmt.Errorf("widget: render raw: %w", err)

@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -21,11 +22,6 @@ import (
 // (ADR-003): a fake in tests, the native rpcd implementation in production.
 type Authenticator interface {
 	Login(ctx context.Context, username, password string) (sid string, err error)
-}
-
-// Security answers host security questions that drive in-app warnings.
-type Security interface {
-	RootHasPassword() bool
 }
 
 func isPublicPath(p string) bool {
@@ -47,8 +43,9 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 		// CSRF: every state-changing request must carry the session's token
-		// (VS-04). GET/HEAD are safe; /login is public and covered by the Origin
-		// check instead (it has no session yet).
+		// (VS-04). GET/HEAD are safe. /login is public (isPublicPath handles it
+		// above), so it never reaches this gate — it holds no session and no token
+		// yet; there is no separate Origin check on it.
 		if !safeMethod(r.Method) && !validCSRF(r, sess.csrf) {
 			http.Error(w, "invalid CSRF token", http.StatusForbidden)
 			return
@@ -107,6 +104,36 @@ func (s *Server) takeFlash(r *http.Request) (variant, message string) {
 	return s.sessions.TakeFlash(cookie.Value)
 }
 
+// crossSiteLogin reports whether a login POST is a genuine cross-site request —
+// the CSRF defense for /login, which is pre-session and so carries no token. The
+// attack it guards against is another site auto-submitting to /login, which the
+// browser marks Sec-Fetch-Site: cross-site. same-origin, same-site (a request
+// from the same registrable domain — routers are reached by bare IP/hostname and
+// legitimately report this), and none are all allowed. For a client that sends
+// no Sec-Fetch-Site (a non-browser, or an older one), fall back to comparing the
+// Origin header's host to the request Host, refusing only a clear mismatch.
+//
+// Origin: null is explicitly allowed. Our own responses carry Referrer-Policy:
+// no-referrer (VS-07), which makes some browsers — notably Safari, which here
+// also omits Sec-Fetch-Site — send Origin: null on the login page's own POST.
+// "null" is the opaque-origin marker, not a named cross-site origin, so it is not
+// a mismatch; a real attacker's page still presents either Sec-Fetch-Site:
+// cross-site or a named Origin whose host differs, both refused.
+func crossSiteLogin(r *http.Request) bool {
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "cross-site":
+		return true
+	case "same-origin", "same-site", "none":
+		return false
+	}
+	if origin := r.Header.Get("Origin"); origin != "" && origin != "null" {
+		if u, err := url.Parse(origin); err != nil || !strings.EqualFold(u.Host, r.Host) {
+			return true
+		}
+	}
+	return false
+}
+
 func validCSRF(r *http.Request, want string) bool {
 	if want == "" {
 		return false
@@ -153,6 +180,12 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 // handleLogin authenticates and, on success, stores the session server-side and
 // hands the browser the opaque cookie.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// /login is pre-session, so it can carry no CSRF token; a same-origin check
+	// is its CSRF defense against a cross-site auto-submit (VS-04).
+	if crossSiteLogin(r) {
+		s.renderLogin(w, http.StatusForbidden, "That request didn’t come from this page — reload and try again.")
+		return
+	}
 	key := clientIP(r)
 	if !s.loginLimiter.allowed(key) {
 		s.renderLogin(w, http.StatusTooManyRequests, "Too many attempts — wait a minute and try again.")

@@ -34,8 +34,8 @@ func newRenderer(t *testing.T) *Renderer {
 func render(t *testing.T, r *Renderer, w Widget) string {
 	t.Helper()
 	var b strings.Builder
-	if err := r.Render(&b, w); err != nil {
-		t.Fatalf("Render: %v", err)
+	if err := r.RenderWithToken(&b, w, ""); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
 	}
 	return normalizeHTML(b.String())
 }
@@ -897,7 +897,7 @@ func TestRenderFieldError(t *testing.T) {
 		"dark:text-red-400",
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("errored field missing dark Access danger colour %q: %s", want, got)
+			t.Errorf("errored field missing dark danger colour %q: %s", want, got)
 		}
 	}
 }
@@ -1043,19 +1043,6 @@ func TestRenderRawSanitizes(t *testing.T) {
 	}
 }
 
-// TestRawUsageInstrumented proves the demand-signal counter (ADR-005 §5).
-func TestRawUsageInstrumented(t *testing.T) {
-	r := newRenderer(t)
-	if r.RawUsage() != 0 {
-		t.Fatalf("initial RawUsage = %d, want 0", r.RawUsage())
-	}
-	_ = render(t, r, &Raw{Markdown: "a"})
-	_ = render(t, r, &Raw{Markdown: "b"})
-	if r.RawUsage() != 2 {
-		t.Errorf("RawUsage = %d, want 2", r.RawUsage())
-	}
-}
-
 // TestRenderWithTokenInjectsCSRF: a form rendered with a token carries a hidden
 // _csrf field; plain Render omits it (VS-04).
 func TestRenderWithTokenInjectsCSRF(t *testing.T) {
@@ -1071,11 +1058,11 @@ func TestRenderWithTokenInjectsCSRF(t *testing.T) {
 	}
 
 	var plain strings.Builder
-	if err := r.Render(&plain, form); err != nil {
-		t.Fatalf("Render: %v", err)
+	if err := r.RenderWithToken(&plain, form, ""); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
 	}
 	if strings.Contains(plain.String(), "_csrf") {
-		t.Errorf("plain Render must not inject a csrf field: %s", plain.String())
+		t.Errorf("empty-token render must not inject a csrf field: %s", plain.String())
 	}
 }
 

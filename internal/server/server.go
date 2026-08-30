@@ -75,7 +75,6 @@ type Server struct {
 	// tests that never install). Its result replaces the served set.
 	rescan       func() []plugin.Manifest
 	auth         Authenticator
-	security     Security
 	sessions     *Sessions
 	loginLimiter *loginLimiter
 	allowedHosts map[string]bool
@@ -89,8 +88,6 @@ type Server struct {
 	// stats reads local machine health (CPU busy share, root fullness) for the
 	// overview meters; a seam so tests need no kernel.
 	stats statSource
-	// wan holds the throughput tracker behind the overview's speed meter.
-	wan *wanRate
 	// eventInterval paces the overview stream's readings clock; tests shrink it.
 	eventInterval time.Duration
 	// readLeases and neighbors feed the device roster and its detail drawer
@@ -117,7 +114,6 @@ func New(
 	transport plugin.Transport,
 	manifests []plugin.Manifest,
 	auth Authenticator,
-	security Security,
 ) (*Server, error) {
 	page, err := template.New("page").Funcs(template.FuncMap{"icon": widget.Icon}).ParseFS(templateFS, "templates/*.tmpl")
 	if err != nil {
@@ -133,7 +129,6 @@ func New(
 		manifests:     manifests,
 		pluginByID:    indexByID(manifests),
 		auth:          auth,
-		security:      security,
 		sessions:      newSessions(),
 		loginLimiter:  newLoginLimiter(time.Now),
 		page:          page,
@@ -142,7 +137,6 @@ func New(
 		stats:         sysstat.New(),
 		telemetry:     interfaceSampler,
 		telemetryStop: interfaceSampler.Stop,
-		wan:           &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
 		eventInterval: time.Second,
 		readLeases:    func() ([]byte, error) { return os.ReadFile(leasesPath) },
 		neighbors:     sysstat.Neighbors,
@@ -322,6 +316,12 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 			headingDetail = p.Label
 		}
 	}
+	// Whether root has a password is read from /etc/shadow by verso-rpcd (the
+	// shell can't); a helper miss fails safe to "has one" so it never falsely warns.
+	hasPassword, hpErr := s.backend.RootHasPassword(r.Context(), s.sessionSID(r))
+	if hpErr != nil {
+		hasPassword = true
+	}
 	var buf bytes.Buffer
 	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
 		Title:         "Verso",
@@ -335,7 +335,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		CSS:           s.currentCSS(),
 		Nav:           s.buildSidebar(r.URL.Path),
 		Body:          body,
-		NoPassword:    !s.security.RootHasPassword(),
+		NoPassword:    !hasPassword,
 		Banner:        hdr.Banner,
 		CSRFToken:     s.sessionCSRF(r),
 		Dev:           s.devCSS != "",

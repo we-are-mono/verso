@@ -22,19 +22,20 @@ import (
 // fakeBackend is a Backend seam double: no ubus/uci, no device needed. access and
 // accessErr drive the plugin-write authorization gate (ADR-007) in tests.
 type fakeBackend struct {
-	si         openwrt.SystemInfo
-	board      openwrt.Board
-	v6Leases   []openwrt.V6Lease
-	hn         string
-	err        error
-	access     bool
-	accessErr  error
-	uciErr     error                     // returned by UCISet/UCICommit
-	writes     *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
-	uci        map[string]map[string]any // per-config read snapshots UCIConfig returns
-	addReturns string                    // section id UCIAdd returns
-	adds       *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
-	deletes    *[]string                 // records "config.section" per UCIDelete
+	si             openwrt.SystemInfo
+	board          openwrt.Board
+	v6Leases       []openwrt.V6Lease
+	hn             string
+	rootNoPassword bool // RootHasPassword returns !rootNoPassword (default: root has a password)
+	err            error
+	access         bool
+	accessErr      error
+	uciErr         error                     // returned by UCISet/UCICommit
+	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
+	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
+	addReturns     string                    // section id UCIAdd returns
+	adds           *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
+	deletes        *[]string                 // records "config.section" per UCIDelete
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword func(ctx context.Context, sid, username, password string) error
@@ -236,6 +237,10 @@ func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password st
 	return nil
 }
 
+func (f fakeBackend) RootHasPassword(context.Context, string) (bool, error) {
+	return !f.rootNoPassword, nil
+}
+
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a
 // canned envelope or error and records the request the gateway forwarded, so the
 // gateway is testable with no plugin process and no socket.
@@ -252,8 +257,7 @@ func (f *fakeTransport) Fetch(_ context.Context, socket string, req plugin.Reque
 	return f.env, f.err
 }
 
-// fakeAuth / fakeSecurity are the auth seam doubles (ADR-003): no ubus, no shadow
-// file, no device.
+// fakeAuth is the authenticator seam double (ADR-003): no ubus, no device.
 type fakeAuth struct {
 	sid string
 	err error
@@ -261,17 +265,13 @@ type fakeAuth struct {
 
 func (f fakeAuth) Login(context.Context, string, string) (string, error) { return f.sid, f.err }
 
-type fakeSecurity struct{ hasPassword bool }
-
-func (f fakeSecurity) RootHasPassword() bool { return f.hasPassword }
-
-func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest, auth Authenticator, sec Security) *Server {
+func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest, auth Authenticator) *Server {
 	t.Helper()
 	r, err := widget.NewRenderer()
 	if err != nil {
 		t.Fatalf("widget.NewRenderer: %v", err)
 	}
-	s, err := New(r, backend, tr, manifests, auth, sec)
+	s, err := New(r, backend, tr, manifests, auth)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -292,7 +292,7 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 }
 
 func newServerWith(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest) *Server {
-	return newServerFull(t, backend, tr, manifests, fakeAuth{sid: "test-sid"}, fakeSecurity{hasPassword: true})
+	return newServerFull(t, backend, tr, manifests, fakeAuth{sid: "test-sid"})
 }
 
 func newServer(t *testing.T, backend openwrt.Backend) *Server {
@@ -612,7 +612,7 @@ func TestPluginRepeaterRemoveRealized(t *testing.T) {
 
 // TestPluginRepeaterRefusedForUndeclaredConfig: a repeater op naming a config the
 // plugin never declared in acl.write is refused, and nothing is written — the same
-// bound brokerCommit enforces.
+// bound brokerStage enforces.
 func TestPluginRepeaterRefusedForUndeclaredConfig(t *testing.T) {
 	adds, dels := []string{}, []string{}
 	tr := repeaterTransport()
@@ -1162,7 +1162,7 @@ func TestLoginPageIsPublic(t *testing.T) {
 }
 
 func TestLoginSuccessSetsHttpOnlyCookieAndRedirects(t *testing.T) {
-	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "rpcd-sid"}, fakeSecurity{hasPassword: true})
+	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "rpcd-sid"})
 
 	rec := postForm(t, srv, "/login", url.Values{"username": {"root"}, "password": {"pw"}})
 	if rec.Code != http.StatusSeeOther {
@@ -1178,7 +1178,7 @@ func TestLoginSuccessSetsHttpOnlyCookieAndRedirects(t *testing.T) {
 }
 
 func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
-	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{err: errors.New("denied")}, fakeSecurity{hasPassword: true})
+	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{err: errors.New("denied")})
 
 	rec := postForm(t, srv, "/login", url.Values{"username": {"root"}, "password": {"bad"}})
 	if rec.Code != http.StatusOK {
@@ -1205,7 +1205,7 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 // with 429 (VS-06).
 func TestLoginThrottled(t *testing.T) {
 	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil,
-		fakeAuth{err: errors.New("denied")}, fakeSecurity{hasPassword: true})
+		fakeAuth{err: errors.New("denied")})
 	bad := url.Values{"username": {"root"}, "password": {"wrong"}}
 
 	for i := 0; i < loginMaxFailures; i++ {
@@ -1253,10 +1253,51 @@ func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 	}
 }
 
+// TestCrossSiteLogin: the pre-session CSRF guard on POST /login refuses only a
+// genuine cross-site submit. same-site is allowed — routers reached by bare
+// IP/hostname legitimately report it, and blocking it breaks real logins. So is
+// Origin: null — our own no-referrer page produces it in Safari, and it is the
+// opaque-origin marker, not a named cross-site origin.
+func TestCrossSiteLogin(t *testing.T) {
+	cases := []struct {
+		name    string
+		fetch   string
+		origin  string
+		host    string
+		blocked bool
+	}{
+		{"same-origin fetch", "same-origin", "", "", false},
+		{"same-site fetch (routers report this)", "same-site", "", "", false},
+		{"none fetch (typed URL / direct nav)", "none", "", "", false},
+		{"cross-site fetch (the attack)", "cross-site", "", "", true},
+		{"no fetch, matching origin", "", "http://box:8080", "box:8080", false},
+		{"no fetch, mismatched origin", "", "http://evil.example", "box:8080", true},
+		{"no fetch, Origin null (Safari + no-referrer, our own page)", "", "null", "box:8080", false},
+		{"no headers at all (non-browser)", "", "", "box:8080", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/login", nil)
+			if c.host != "" {
+				r.Host = c.host
+			}
+			if c.fetch != "" {
+				r.Header.Set("Sec-Fetch-Site", c.fetch)
+			}
+			if c.origin != "" {
+				r.Header.Set("Origin", c.origin)
+			}
+			if got := crossSiteLogin(r); got != c.blocked {
+				t.Errorf("crossSiteLogin = %v, want %v", got, c.blocked)
+			}
+		})
+	}
+}
+
 // TestNoPasswordBanner: the full-width security warning shows only when root
 // has no password and sits at the navigation seam rather than inside content.
 func TestNoPasswordBanner(t *testing.T) {
-	warn := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: false})
+	warn := newServerFull(t, fakeBackend{rootNoPassword: true}, &fakeTransport{}, nil, fakeAuth{sid: "s"})
 	body := get(t, warn, "/").Body.String()
 	for _, want := range []string{
 		"No administrator password is set.",
@@ -1282,7 +1323,7 @@ func TestNoPasswordBanner(t *testing.T) {
 		SchemaVersion: 1, Title: "System", Pages: []plugin.PageTab{{Label: "Access", Path: "access"}},
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 	}}
-	withPages := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: false})
+	withPages := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
 	body = get(t, withPages, "/plugins/demo/access").Body.String()
 	navAt := strings.Index(body, `aria-label="Subpages"`)
 	warnAt := strings.Index(body, "No administrator password is set.")
@@ -1304,7 +1345,7 @@ func TestNoPasswordBanner(t *testing.T) {
 			Body: "Anyone who can reach this router can change its settings."},
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 	}}
-	pageBanner := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: true})
+	pageBanner := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
 	body = get(t, pageBanner, "/plugins/demo/access").Body.String()
 	navAt = strings.Index(body, `aria-label="Subpages"`)
 	warnAt = strings.Index(body, "No administrator password is set.")

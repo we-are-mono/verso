@@ -7,7 +7,6 @@ import (
 	"context"
 	"log"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -250,21 +249,4 @@ func leaseFact(l lease, hasLease bool, now time.Time) string {
 		return "No DHCP lease"
 	}
 	return leaseIn(l.expiry, now)
-}
-
-// trafficFact renders a device's totals as "12.4 GB down · 3.1 GB up"; a device
-// with no observed traffic yields "" so its row shows a dash.
-func trafficFact(t sysstat.DeviceTraffic) string {
-	if t.RxBytes == 0 && t.TxBytes == 0 {
-		return ""
-	}
-	return gb(t.RxBytes) + " GB down · " + gb(t.TxBytes) + " GB up"
-}
-
-// countFact renders a non-zero count, or "" so the row reads as a dash.
-func countFact(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	return strconv.Itoa(n)
 }

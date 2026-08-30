@@ -84,6 +84,7 @@ internal/
   datatype/           declarative datatype validation (ADR-008)
   plugin/             plugin transport: unix-socket schema gateway (ADR-006)
   sysstat/ sensors/ telemetry/   host stat, sensor, and metric sources
+  deviceicon/ version/   device-type icon by MAC OUI/hostname · build version stamp
 verso-rpcd/           persistent privileged Rust companion (ADR-007): src/ + Cargo
 docs/
   ADR/                architecture decision records (001–011)

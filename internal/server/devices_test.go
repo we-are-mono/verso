@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -54,40 +53,6 @@ func rosterServer(t *testing.T) *Server {
 	return s
 }
 
-func rosterDevices(t *testing.T, s *Server) []deviceEntry {
-	t.Helper()
-	return s.deviceList(context.Background(), "test-sid")
-}
-
-// TestDeviceList: leases become friendly entries — presence from the
-// kernel's confidence across all the MAC's addresses, the zone from the
-// firewall config, and the port from the bridge FDB.
-func TestDeviceList(t *testing.T) {
-	devices := rosterDevices(t, rosterServer(t))
-	if len(devices) != 3 {
-		t.Fatalf("got %d devices, want 3: %+v", len(devices), devices)
-	}
-	online := devices[0]
-	if online.Name != "toms-iphone" || online.IP != "192.168.77.102" ||
-		online.Presence != presenceOnline || online.Icon != "phone" {
-		t.Errorf("online device = %+v", online)
-	}
-	if online.Zone != "lan" || online.Port != "lan0" || online.LeaseExpiry != 1787825263 {
-		t.Errorf("online device enrichment = %+v", online)
-	}
-	if v6 := online.ipv6(); len(v6) != 2 || v6[0] != "fd42:7ea:aa00:0:1::66" || v6[1] != "fe80::44:11" {
-		t.Errorf("online device v6 = %v, want global first then link-local", v6)
-	}
-	idle := devices[1]
-	if idle.Name != "Device 0e:57" || idle.Presence != presenceIdle || idle.Icon != "device" {
-		t.Errorf("idle device = %+v", idle)
-	}
-	offline := devices[2]
-	if offline.Name != "old-printer" || offline.Presence != presenceOffline {
-		t.Errorf("offline device = %+v", offline)
-	}
-}
-
 func TestConnectedDevicesUseKernelInterfaceWithUCIFallback(t *testing.T) {
 	devices := rosterServer(t).connectedDevices(context.Background(), "test-sid")
 	byName := map[string]widget.OverviewDevice{}
@@ -99,40 +64,6 @@ func TestConnectedDevicesUseKernelInterfaceWithUCIFallback(t *testing.T) {
 	}
 	if got := byName["old-printer"]; got.Interface != "br-lan" || got.Zone != "lan" {
 		t.Errorf("lease-only UCI fallback = %+v", got)
-	}
-}
-
-// TestDeviceListDegrades: no lease file means no roster; every other source
-// failing keeps the roster with the facts that remain.
-func TestDeviceListDegrades(t *testing.T) {
-	s := rosterServer(t)
-	s.readLeases = func() ([]byte, error) { return nil, errors.New("no dnsmasq") }
-	if devices := rosterDevices(t, s); devices != nil {
-		t.Fatalf("no leases: got %+v, want none", devices)
-	}
-
-	s = rosterServer(t)
-	s.backend = rosterBackend()
-	s.neighbors = func() ([]sysstat.Neighbor, error) { return nil, errors.New("no netlink") }
-	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb") }
-	for _, d := range rosterDevices(t, s) {
-		if d.Presence != presenceOffline || d.Port != "" || d.Traffic.Conns != 0 {
-			t.Fatalf("kernel down: %+v, want bare lease facts", d)
-		}
-	}
-}
-
-// TestDeviceIcon: the silhouette is a hostname hint, generic when nothing
-// matches.
-func TestDeviceIcon(t *testing.T) {
-	cases := map[string]string{
-		"Galaxy-S24": "phone", "living-room-tv": "tv", "MacBook-Pro": "laptop",
-		"ap-attic": "router", "mystery-box": "device",
-	}
-	for host, want := range cases {
-		if got := deviceIcon(host); got != want {
-			t.Errorf("deviceIcon(%q) = %q, want %q", host, got, want)
-		}
 	}
 }
 
@@ -150,8 +81,3 @@ func TestLeaseIn(t *testing.T) {
 		}
 	}
 }
-
-// The overview's live device data (deviceList and the aggregation behind it) is
-// covered by TestDeviceList above; the landing page now renders the hardcoded
-// Overview/ConnectedDevices widgets (tested in internal/widget), so there is no
-// roster-on-"/" assertion here.

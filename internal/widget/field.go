@@ -12,7 +12,7 @@ import "io"
 type Field struct {
 	Name         string   `json:"name"`
 	Label        string   `json:"label"`
-	Kind         string   `json:"kind"`                   // "text" (default) | "select" | "checks" | "password" | "file" | "textarea" | "datetime-local"
+	Kind         string   `json:"kind"`                   // "text" (default) | "select" | "checks" | "password" | "file" | "textarea" | "datetime-local" | "hidden"
 	Autocomplete string   `json:"autocomplete,omitempty"` // optional browser autofill purpose, e.g. "current-password"
 	Accept       string   `json:"accept,omitempty"`       // kind "file": native accepted file types/extensions
 	Prompt       string   `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link

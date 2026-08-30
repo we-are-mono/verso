@@ -57,6 +57,11 @@ type Backend interface {
 	// rpcd before acting; the shell itself is unprivileged and cannot write
 	// /etc/shadow (ADR-007).
 	SetPassword(ctx context.Context, sid, username, password string) error
+	// RootHasPassword reports whether root has a password set — read from
+	// /etc/shadow by the persistent root helper (the shell is unprivileged and
+	// cannot read it), carrying the operator's sid. It returns only the boolean,
+	// never the hash.
+	RootHasPassword(ctx context.Context, sid string) (bool, error)
 	// The rest of the uci two-phase lifecycle (ADR-010). Staged edits live in
 	// UCI's own stage; these four let the shell read it, discard it, and apply it
 	// with rpcd's native device-side rollback — all sid-gated like every write.
@@ -220,6 +225,7 @@ type (
 	uciAddFn       func(ctx context.Context, sid, config, secType string) (string, error)
 	uciDeleteFn    func(ctx context.Context, sid, config, section string) error
 	passwdFn       func(ctx context.Context, sid, username, password string) error
+	rootPasswdFn   func(ctx context.Context, sid string) (bool, error)
 	uciChangesFn   func(ctx context.Context, sid string) (map[string][][]string, error)
 	uciRevertFn    func(ctx context.Context, sid, config string) error
 	uciApplyFn     func(ctx context.Context, sid string, timeout int) error
@@ -252,6 +258,7 @@ type NativeBackend struct {
 	uciAdd       uciAddFn
 	uciDelete    uciDeleteFn
 	setPassword  passwdFn
+	rootPasswd   rootPasswdFn
 	uciChanges   uciChangesFn
 	uciRevert    uciRevertFn
 	uciApply     uciApplyFn
@@ -283,6 +290,7 @@ func NewNativeBackend() *NativeBackend {
 		uciAdd:       dialUCIAdd(""),
 		uciDelete:    dialUCIDelete(""),
 		setPassword:  dialSetPassword(""),
+		rootPasswd:   dialRootHasPassword(""),
 		uciChanges:   dialUCIChanges(""),
 		uciRevert:    dialUCIRevert(""),
 		uciApply:     dialUCIApply(""),
@@ -359,6 +367,13 @@ func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section stri
 // helper (the setPassword verb), gated by the sid.
 func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
 	return b.setPassword(ctx, sid, username, password)
+}
+
+// RootHasPassword reports whether root has a system password, read from
+// /etc/shadow by the privileged `verso-rpcd` helper (the shell cannot read it
+// itself), gated by the sid.
+func (b *NativeBackend) RootHasPassword(ctx context.Context, sid string) (bool, error) {
+	return b.rootPasswd(ctx, sid)
 }
 
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
@@ -623,6 +638,23 @@ func dialSetPassword(socket string) passwdFn {
 			"username": username,
 			"password": password,
 		}, nil)
+	}
+}
+
+// dialRootHasPassword returns a rootPasswdFn that asks the resident Rust helper
+// whether root has a password (the rootHasPassword verb). The helper reads
+// /etc/shadow as root and self-gates on session.access, so the shell needs no
+// shadow-read capability of its own (ADR-007); only the boolean crosses the
+// socket, never the hash.
+func dialRootHasPassword(socket string) rootPasswdFn {
+	return func(ctx context.Context, sid string) (bool, error) {
+		var result struct {
+			HasPassword bool `json:"has_password"`
+		}
+		if err := callHelper(ctx, socket, "rootHasPassword", sid, nil, &result); err != nil {
+			return false, err
+		}
+		return result.HasPassword, nil
 	}
 }
 

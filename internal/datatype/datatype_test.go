@@ -98,12 +98,3 @@ func TestValidateUnknownDatatypeFailsClosed(t *testing.T) {
 		t.Error("unknown datatype must return an error")
 	}
 }
-
-func TestKnown(t *testing.T) {
-	if !Known("hostname") {
-		t.Error("hostname should be known")
-	}
-	if Known("bogus") {
-		t.Error("bogus should not be known")
-	}
-}

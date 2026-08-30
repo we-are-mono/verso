@@ -4,9 +4,7 @@
 package server
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,33 +31,6 @@ const (
 	presenceIdle
 	presenceOnline
 )
-
-// deviceEntry is one device: the lease identity, enriched with everything
-// the kernel ties to its MAC.
-type deviceEntry struct {
-	Name        string
-	IP          string
-	MAC         string
-	Icon        string
-	Presence    presence
-	Zone        string             // firewall zone its subnet sits behind
-	Port        string             // bridge port the MAC was learned on ("" unknown)
-	LeaseExpiry int64              // unix; when the DHCP lease runs out
-	Addrs       []sysstat.Neighbor // every address the kernel ties to the MAC, states included
-	Traffic     sysstat.DeviceTraffic
-	Down, Up    []float64 // last-minute rate history in Mbps (traffic_history.go)
-}
-
-// ipv6 lists the device's v6 addresses (already ordered globals-first).
-func (d deviceEntry) ipv6() []string {
-	var out []string
-	for _, a := range d.Addrs {
-		if strings.Contains(a.Addr, ":") {
-			out = append(out, a.Addr)
-		}
-	}
-	return out
-}
 
 // aggregateNeighbors folds the neighbour table per MAC (lowercased): every
 // entry, v4 first, then v6 globals, link-locals last. An entry without a MAC
@@ -107,56 +78,6 @@ func bestPresence(entries []sysstat.Neighbor) presence {
 	return best
 }
 
-// deviceList reads the roster. No lease file (dnsmasq not serving) means no
-// roster — the page then carries no section; every other source degrades to
-// its own absence.
-func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
-	raw, err := s.readLeases()
-	if err != nil {
-		log.Printf("verso: devices: leases unavailable: %v", err)
-		return nil
-	}
-	leases := parseLeases(raw)
-
-	neigh, err := s.neighbors()
-	if err != nil {
-		log.Printf("verso: devices: neighbour table unavailable: %v", err)
-	}
-	agg := aggregateNeighbors(neigh)
-
-	ports, err := s.bridgePorts()
-	if err != nil {
-		log.Printf("verso: devices: fdb unavailable: %v", err)
-	}
-	zones := s.zoneMap(ctx, sid)
-
-	var devices []deviceEntry
-	for _, l := range leases {
-		mac := strings.ToLower(l.mac)
-		entries := agg[mac]
-		devices = append(devices, deviceEntry{
-			Name:        deviceName(l.host, l.mac),
-			IP:          l.ip,
-			MAC:         mac,
-			Icon:        deviceIcon(l.host),
-			Presence:    bestPresence(entries),
-			Zone:        zoneForAddr(zones, l.ip),
-			Port:        ports[mac],
-			LeaseExpiry: l.expiry,
-			Addrs:       entries,
-			Down:        []float64{0, 0},
-			Up:          []float64{0, 0},
-		})
-	}
-	sort.Slice(devices, func(i, j int) bool {
-		if devices[i].Presence != devices[j].Presence {
-			return devices[i].Presence > devices[j].Presence
-		}
-		return devices[i].Name < devices[j].Name
-	})
-	return devices
-}
-
 // leaseIn says when the lease runs out the way a person would.
 func leaseIn(expiry int64, now time.Time) string {
 	d := time.Unix(expiry, 0).Sub(now)
@@ -199,26 +120,4 @@ func deviceName(host, mac string) string {
 		return "Device " + strings.Join(parts[len(parts)-2:], ":")
 	}
 	return "Device"
-}
-
-// deviceIcon guesses a silhouette from the hostname — a hint, not a claim;
-// anything unrecognised is the generic device.
-func deviceIcon(host string) string {
-	h := strings.ToLower(host)
-	switch {
-	case strings.Contains(h, "phone"), strings.Contains(h, "android"),
-		strings.Contains(h, "pixel"), strings.Contains(h, "galaxy"),
-		strings.Contains(h, "ipad"):
-		return "phone"
-	case strings.Contains(h, "tv"), strings.Contains(h, "roku"),
-		strings.Contains(h, "chromecast"), strings.Contains(h, "shield"):
-		return "tv"
-	case strings.Contains(h, "book"), strings.Contains(h, "laptop"),
-		strings.Contains(h, "desktop"), strings.Contains(h, "pc"):
-		return "laptop"
-	case strings.Contains(h, "router"), strings.Contains(h, "switch"),
-		strings.Contains(h, "ap-"):
-		return "router"
-	}
-	return "device"
 }

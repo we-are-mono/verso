@@ -80,18 +80,6 @@ func TestZonesByDeviceCoversAddresslessNeighbors(t *testing.T) {
 }
 
 func TestDeviceFactHelpers(t *testing.T) {
-	if got := trafficFact(sysstat.DeviceTraffic{}); got != "" {
-		t.Errorf("no-traffic should be blank, got %q", got)
-	}
-	if got := trafficFact(sysstat.DeviceTraffic{RxBytes: 1 << 30, TxBytes: 2 << 30}); got != "1 GB down · 2 GB up" {
-		t.Errorf("trafficFact = %q", got)
-	}
-	if got := countFact(0); got != "" {
-		t.Errorf("zero count should be blank, got %q", got)
-	}
-	if got := countFact(42); got != "42" {
-		t.Errorf("countFact = %q", got)
-	}
 	if got := presenceWord(presenceOnline); got != "online" {
 		t.Errorf("presenceWord(online) = %q", got)
 	}

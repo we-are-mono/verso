@@ -45,6 +45,10 @@ CSS_OUT          := internal/server/assets/verso.css
 GOLANGCI         := $(BUILDDIR)/tools/golangci-lint
 GOLANGCI_VERSION := v1.64.8
 
+# Whole-program Go dead-code analysis, also pinned + cached on the build host.
+DEADCODE         := $(BUILDDIR)/tools/deadcode
+DEADCODE_VERSION := v0.39.0
+
 # ── apk packaging ────────────────────────────────────────────────────────────
 # `make apk` cross-builds one arch, assembles a clean payload, and produces a
 # signed .apk under build/apk/. It is portable: the only machine-specific input
@@ -84,7 +88,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint hooks tidy rpcd clean apk apk-publish apk-preflight
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight
 
 all: lint test build
 
@@ -103,7 +107,7 @@ css: $(TAILWIND)
 # toolchain + musl targets are provisioned by verso-rpcd/rust-toolchain.toml, and
 # rust-lld (bundled with rustc) is the cross-linker — no host cross-gcc needed
 # (.cargo/config.toml). A fresh checkout builds with only Go, rustup, and make.
-build: css $(addprefix build-,$(ARCHES))
+build: lint css $(addprefix build-,$(ARCHES))
 
 # build-<arch>: one architecture's pair of binaries. Runnable on its own, e.g.
 # `make build-arm64` for just the device target.
@@ -132,7 +136,24 @@ $(GOLANGCI):
 		| tar -xz -C $(dir $@) --strip-components=1 golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64/golangci-lint
 	@chmod +x $@
 
-lint: $(GOLANGCI)
+$(DEADCODE):
+	@mkdir -p $(dir $@)
+	GOBIN=$(abspath $(dir $@)) go install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
+
+# Analyze the production executables for every architecture we ship. deadcode
+# reports findings on stdout without failing, so turn non-empty output into a
+# lint failure while preserving genuine tool errors and their exit status.
+deadcode: $(DEADCODE)
+	@status=0; for arch in $(ARCHES); do \
+		output="$$(CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$$arch $(DEADCODE) ./...)"; tool_status=$$?; \
+		if [ $$tool_status -ne 0 ]; then printf '%s\n' "$$output"; exit $$tool_status; fi; \
+		if [ -n "$$output" ]; then \
+			printf 'dead code found for %s/%s:\n%s\n' "$(GOOS)" "$$arch" "$$output"; \
+			status=1; \
+		fi; \
+	done; exit $$status
+
+lint: deadcode $(GOLANGCI)
 	$(GOLANGCI) run ./...
 	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
 

@@ -68,50 +68,6 @@ func ifaceForAddr(nets []ifaceNet, addr string) string {
 	return ""
 }
 
-// vlanMember is one port's membership in a bridge VLAN — tagged (a trunk) or
-// untagged (an access port).
-type vlanMember struct {
-	port   string
-	tagged bool
-}
-
-// bridgeVLAN is one `config bridge-vlan`: the bridge it sits on, its 802.1Q id,
-// and its member ports.
-type bridgeVLAN struct {
-	bridge  string
-	id      string
-	members []vlanMember
-}
-
-// parseBridgeVLANs reads every `config bridge-vlan` (the DSA VLAN model).
-func parseBridgeVLANs(cfg map[string]any) []bridgeVLAN {
-	var out []bridgeVLAN
-	for _, v := range cfg {
-		s, ok := v.(map[string]any)
-		if !ok || s[".type"] != "bridge-vlan" {
-			continue
-		}
-		bridge, _ := s["device"].(string)
-		bv := bridgeVLAN{bridge: bridge, id: uciScalar(s["vlan"])}
-		for _, p := range uciList(s["ports"]) {
-			name, tagged := parseVLANPort(p)
-			bv.members = append(bv.members, vlanMember{port: name, tagged: tagged})
-		}
-		out = append(out, bv)
-	}
-	return out
-}
-
-// parseVLANPort splits a DSA port spec ("lan1", "lan2:t", "lan1:u*") into the
-// port name and whether the VLAN is tagged on it ("t").
-func parseVLANPort(spec string) (name string, tagged bool) {
-	name = spec
-	if i := strings.IndexByte(spec, ':'); i >= 0 {
-		name, tagged = spec[:i], strings.Contains(spec[i+1:], "t")
-	}
-	return name, tagged
-}
-
 // deviceVLAN splits an interface's device into its bridge and VLAN id: "br-lan.20"
 // → ("br-lan", "20"); a plain device → (device, "").
 func deviceVLAN(device string) (bridge, id string) {
@@ -121,26 +77,6 @@ func deviceVLAN(device string) (bridge, id string) {
 		}
 	}
 	return device, ""
-}
-
-// portVLANs maps each port to the VLAN ids it carries (for the Interfaces
-// column): "20, 30" or "" when the port carries no tagged VLAN.
-func portVLANs(vlans []bridgeVLAN) map[string]string {
-	byPort := map[string][]string{}
-	for _, bv := range vlans {
-		if bv.id == "" {
-			continue
-		}
-		for _, m := range bv.members {
-			byPort[m.port] = append(byPort[m.port], bv.id)
-		}
-	}
-	out := make(map[string]string, len(byPort))
-	for port, ids := range byPort {
-		sort.Slice(ids, func(i, j int) bool { return numLess(ids[i], ids[j]) })
-		out[port] = strings.Join(ids, ", ")
-	}
-	return out
 }
 
 // networkZones maps each network name to its firewall zone.
@@ -401,25 +337,4 @@ func trimOneDecimal(value float64) string {
 func asSection(v any) map[string]any {
 	s, _ := v.(map[string]any)
 	return s
-}
-
-// uciScalar reads a uci option as a single string (a list yields its first).
-func uciScalar(v any) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	if l := uciList(v); len(l) > 0 {
-		return l[0]
-	}
-	return ""
-}
-
-// numLess orders VLAN id strings numerically ("2" before "10").
-func numLess(a, b string) bool {
-	ai, aerr := strconv.Atoi(a)
-	bi, berr := strconv.Atoi(b)
-	if aerr == nil && berr == nil {
-		return ai < bi
-	}
-	return a < b
 }

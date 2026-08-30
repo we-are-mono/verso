@@ -10,7 +10,7 @@ import (
 
 // TestRenderOverview: the overview draws every section — verdict, tiles, IPv4/IPv6
 // facts (with copy), the injected traffic chart, System, and the injected flat-Table
-// listings (Interfaces, DHCP leases) — with the headline in the serif display face.
+// listings (Interfaces, Connected devices) — with the headline in the serif display face.
 // The live System facts are filled from the fields; an empty Overview shows them as
 // "unavailable".
 func TestRenderOverview(t *testing.T) {

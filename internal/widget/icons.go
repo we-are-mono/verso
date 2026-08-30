@@ -97,14 +97,6 @@ var lucideIcons = map[string]string{
 // vanishing. It is registered as the "icon" template function on both the widget
 // renderer and the server's page templates. Plugin-supplied names reach it only as a
 // map key (never emitted), and the class is escaped, so it stays XSS-safe.
-// HasIcon reports whether name is a registered icon. It lets other packages
-// (e.g. internal/deviceicon) validate, in a test, that every icon name they can
-// emit actually renders.
-func HasIcon(name string) bool {
-	_, ok := lucideIcons[name]
-	return ok
-}
-
 func Icon(name, class string) template.HTML {
 	inner, ok := lucideIcons[name]
 	if !ok {

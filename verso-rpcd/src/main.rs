@@ -21,6 +21,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -125,14 +126,28 @@ fn serve(socket: &Path) -> Result<(), String> {
     let state = Arc::new(State {
         packages: Mutex::new(()),
     });
+    // Bound concurrent requests: each connection pins a thread for up to the read
+    // timeout, so an unbounded thread-per-connection would let even an authorized
+    // but buggy shell exhaust the root helper (ADR-007 wants a compromised shell
+    // bounded). Over the cap we shed the connection — dropping the stream closes
+    // it — rather than queue work that also holds a thread.
+    const MAX_INFLIGHT: usize = 16;
+    let inflight = Arc::new(AtomicUsize::new(0));
     for connection in listener.incoming() {
         match connection {
             Ok(stream) => {
+                if inflight.fetch_add(1, Ordering::AcqRel) >= MAX_INFLIGHT {
+                    inflight.fetch_sub(1, Ordering::AcqRel);
+                    eprintln!("verso-rpcd: at capacity ({MAX_INFLIGHT}), shedding connection");
+                    continue;
+                }
                 let state = Arc::clone(&state);
+                let inflight = Arc::clone(&inflight);
                 std::thread::spawn(move || {
                     if let Err(error) = handle(stream, &state) {
                         eprintln!("verso-rpcd: request: {error}");
                     }
+                    inflight.fetch_sub(1, Ordering::AcqRel);
                 });
             }
             Err(error) => eprintln!("verso-rpcd: accept: {error}"),
@@ -290,11 +305,37 @@ fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
             .map_err(Failure::unknown)?;
             Ok(json!({"result": true, "output": output}))
         }
+        "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
         _ => Err(Failure {
             status: STATUS_METHOD_NOT_FOUND,
             message: format!("unknown method {method}"),
         }),
     }
+}
+
+// root_has_password reports whether the root account has a password set — the
+// /etc/shadow read the de-privileged shell cannot do itself (ADR-007), brokered
+// here instead of widening the shell's capabilities. It returns only this
+// boolean, never the hash. Fails safe to true (an unreadable file or a missing
+// root line reads as "has one"), so the shell never falsely warns.
+fn root_has_password() -> bool {
+    match fs::read_to_string("/etc/shadow") {
+        Ok(shadow) => shadow_root_has_password(&shadow),
+        Err(_) => true, // fail safe: an unreadable /etc/shadow reads as "has one"
+    }
+}
+
+// shadow_root_has_password parses an /etc/shadow body for root's password field.
+// The hash field being non-empty counts as "has a password" (a locked `!`/`*`
+// included); a missing root line reads as "has one" — fail safe, never a false
+// warning.
+fn shadow_root_has_password(shadow: &str) -> bool {
+    for line in shadow.lines() {
+        if let Some(rest) = line.strip_prefix("root:") {
+            return !rest.split(':').next().unwrap_or("").is_empty();
+        }
+    }
+    true
 }
 
 fn package_guard(state: &State) -> Result<std::sync::MutexGuard<'_, ()>, Failure> {
@@ -322,7 +363,12 @@ fn argument<'a>(request: &'a Value, name: &str) -> Result<&'a str, Failure> {
 }
 
 fn set_password(username: &str, password: &str) -> Result<(), Failure> {
-    if !valid_username(username) || password.len() > 1024 {
+    // A control character (newline especially) can't survive passwd's two-line
+    // stdin protocol, so reject it up front rather than silently fail to set it.
+    if !valid_username(username)
+        || password.len() > 1024
+        || password.chars().any(char::is_control)
+    {
         return Err(Failure::invalid("invalid username or password"));
     }
     let mut child = Command::new("passwd")
@@ -364,6 +410,20 @@ fn valid_username(username: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_password_detection() {
+        // empty hash field = no password (a fresh boot)
+        assert!(!shadow_root_has_password("root::0:99999:7:::\n"));
+        // a hashed (or locked) password = has one
+        assert!(shadow_root_has_password("root:$1$abc$xyz0:0:99999:7:::\n"));
+        assert!(shadow_root_has_password("root:!:0:99999:7:::\n"));
+        // root need not be the first line
+        assert!(shadow_root_has_password("daemon:*:0:::\nroot:$6$h$h:0:::\n"));
+        // no root line and an empty file both fail safe to "has one"
+        assert!(shadow_root_has_password("daemon:*:0:::\nnobody:*:0:::\n"));
+        assert!(shadow_root_has_password(""));
+    }
 
     #[test]
     fn response_shape_preserves_status() {

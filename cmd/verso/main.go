@@ -43,7 +43,6 @@ func main() {
 		plugin.NewSocketTransport(),
 		manifests,
 		openwrt.NewRPCDAuthenticator(),
-		openwrt.NewShadowSecurity(),
 	)
 	if err != nil {
 		log.Fatalf("verso: %v", err)
@@ -69,10 +68,11 @@ func main() {
 }
 
 // allowedHosts is the DNS-rebinding Host allowlist. It is OPT-IN: unset means an
-// empty list, i.e. any Host is accepted (dev convenience) — the same-origin
-// check still blocks cross-site writes. Setting $VERSO_ALLOWED_HOSTS (comma-sep)
-// turns the rebinding guard on for production, with loopback and the device
-// hostname added automatically.
+// empty list, i.e. any Host is accepted (dev convenience). Cross-site writes are
+// blocked by the per-session CSRF token (see middleware.go), not by a Host or
+// Origin comparison. Setting $VERSO_ALLOWED_HOSTS (comma-sep) turns the rebinding
+// guard on for production, with loopback and the device hostname added
+// automatically.
 func allowedHosts() []string {
 	extra := os.Getenv("VERSO_ALLOWED_HOSTS")
 	if extra == "" {

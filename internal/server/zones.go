@@ -4,8 +4,6 @@
 package server
 
 import (
-	"context"
-	"log"
 	"net"
 )
 
@@ -18,23 +16,6 @@ import (
 type zoneNet struct {
 	cidr *net.IPNet
 	zone string
-}
-
-// zoneMap builds the address→zone lookup from live config. Empty on any
-// trouble — a chip is decoration, never worth an error.
-func (s *Server) zoneMap(ctx context.Context, sid string) []zoneNet {
-	netCfg, err := s.backend.UCIConfig(ctx, sid, "network")
-	if err != nil {
-		log.Printf("verso: zones: network config unavailable: %v", err)
-		return nil
-	}
-	fwCfg, err := s.backend.UCIConfig(ctx, sid, "firewall")
-	if err != nil {
-		log.Printf("verso: zones: firewall config unavailable: %v", err)
-		return nil
-	}
-
-	return zoneNets(netCfg, fwCfg)
 }
 
 func zoneNets(netCfg, fwCfg map[string]any) []zoneNet {

@@ -27,7 +27,6 @@ var templateFS embed.FS
 type Renderer struct {
 	tmpl     *template.Template
 	md       goldmark.Markdown
-	rawUses  atomic.Int64
 	tabSeq   atomic.Int64 // per-render unique id, so multiple tabs groups never collide
 	wizSeq   atomic.Int64 // ditto for wizards
 	cfmSeq   atomic.Int64 // ditto for confirm widgets
@@ -44,15 +43,10 @@ func NewRenderer() (*Renderer, error) {
 	return &Renderer{tmpl: tmpl, md: newMarkdown()}, nil
 }
 
-// Render writes the HTML for w. The widget set is closed, so an unknown type is
-// a programming error, not an extension point.
-func (r *Renderer) Render(out io.Writer, w Widget) error {
-	return r.render(out, w, "")
-}
-
 // RenderWithToken renders w, injecting csrfToken as a hidden field into any form
 // it produces, so state-changing plugin submissions carry the caller's CSRF
-// token (VS-04). Plain Render omits it.
+// token (VS-04). An empty token omits it. The widget set is closed, so an
+// unknown type is a programming error, not an extension point.
 func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken string) error {
 	return r.render(out, w, csrfToken)
 }
@@ -87,10 +81,6 @@ func joinHTML(parts []template.HTML) template.HTML {
 	}
 	return template.HTML(b.String())
 }
-
-// RawUsage reports how many raw blocks this renderer has rendered — the demand
-// signal that tells us which widget to build next (ADR-005 §5).
-func (r *Renderer) RawUsage() int64 { return r.rawUses.Load() }
 
 func (r *Renderer) execute(out io.Writer, name string, data any) error {
 	if err := r.tmpl.ExecuteTemplate(out, name, data); err != nil {

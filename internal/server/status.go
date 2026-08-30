@@ -31,16 +31,3 @@ func formatUptime(sec int64) string {
 func formatLoad(raw int64) string {
 	return fmt.Sprintf("%.2f", float64(raw)/65536.0)
 }
-
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
-}

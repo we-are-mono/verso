@@ -8,8 +8,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"os"
-	"strings"
 
 	"github.com/we-are-mono/verso/internal/ubus"
 )
@@ -118,34 +116,6 @@ func decoyPassword() string {
 	return "verso-login-probe-" + hex.EncodeToString(b[:])
 }
 
-// ShadowSecurity answers security questions from the shadow file. The shell is
-// granted CAP_DAC_READ_SEARCH to read /etc/shadow (a read-only question); it does
-// not write it — setting the password is a privileged rpcd call (Backend.
-// SetPassword), since the shell holds no ambient write privilege (ADR-007).
-type ShadowSecurity struct {
-	path string // "" = /etc/shadow
-}
-
-// NewShadowSecurity reads the default /etc/shadow.
-func NewShadowSecurity() *ShadowSecurity { return &ShadowSecurity{} }
-
-// RootHasPassword reports whether root has a password set. It fails safe (assumes
-// yes) on a read error or a missing root line, so a transient failure never nags
-// the operator with a false "no password" warning.
-func (s *ShadowSecurity) RootHasPassword() bool {
-	path := s.path
-	if path == "" {
-		path = "/etc/shadow"
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return true
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, "root:") {
-			fields := strings.SplitN(line, ":", 3)
-			return len(fields) >= 2 && fields[1] != ""
-		}
-	}
-	return true
-}
+// Root's password status is answered by verso-rpcd (Backend.RootHasPassword):
+// the shell is unprivileged and cannot read /etc/shadow, so the root helper reads
+// it and returns only the boolean — no shadow-read capability on the shell.

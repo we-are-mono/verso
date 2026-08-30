@@ -58,23 +58,6 @@ func Resolve(mac, hostname string) string {
 	return Fallback
 }
 
-// Icons returns every icon name the tables can emit, plus the fallback —
-// deduplicated. It lets a test confirm each one is a real, renderable glyph.
-func Icons() []string {
-	set := map[string]struct{}{Fallback: {}}
-	for _, icon := range ouiIcons {
-		set[icon] = struct{}{}
-	}
-	for _, r := range hostRules {
-		set[r.icon] = struct{}{}
-	}
-	out := make([]string, 0, len(set))
-	for icon := range set {
-		out = append(out, icon)
-	}
-	return out
-}
-
 // ouiOf normalizes a MAC to its uppercase 6-hex OUI. It reports ok=false for a
 // malformed MAC and — crucially — for a locally-administered (randomized)
 // address: the second-least-significant bit of the first octet marks a MAC that

@@ -13,9 +13,10 @@ import (
 
 // The overview stream: one long-lived GET (Server-Sent Events) the browser's
 // EventSource holds open, into which the shell pushes fresh truth — the
-// server owns the sampling clock, the client just renders what arrives. Two
-// event types ride it: system meters, WAN traffic, and sensors. Further types
-// join the same stream without creating a sampler per browser tab.
+// server owns the sampling clock, the client just renders what arrives. Four
+// event types ride it: system meters, kernel interfaces, WAN traffic, and
+// sensors. Further types join the same stream without creating a sampler per
+// browser tab.
 
 // handleOverviewEvents serves the stream. The session is re-checked every
 // tick: a stream must not outlive its session the way a one-shot poll could

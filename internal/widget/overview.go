@@ -14,7 +14,7 @@ import (
 // Overview is the advanced overview page, transferred hardcoded from the design:
 // a verdict line with a Basic/Advanced toggle, a strip of four status tiles, the
 // IPv4/IPv6 connection facts, the internet-traffic graph, the System panel, and
-// the Interfaces / Connected devices / DHCP leases listings. It is the shell's own
+// the Interfaces and Connected-devices listings. It is the shell's own
 // page content — not part of the plugin-facing vocabulary, so it never appears in
 // Decode — a faithful transfer that later steps wire to live data.
 //

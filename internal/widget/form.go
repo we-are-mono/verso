@@ -16,7 +16,7 @@ import (
 // recursively through Decode, so a form composes the closed set — typically
 // fields and lists, but any widget nests.
 type Form struct {
-	Style   string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row)
+	Style   string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row) | "inline-compact" — the same row, tighter
 	Icon    string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
 	Note    string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
 	Submit  string       // submit button label (default "Save")
@@ -43,7 +43,10 @@ func (*Form) isWidget() {}
 // field type fails loudly rather than vanishing.
 func (f *Form) UnmarshalJSON(data []byte) error {
 	var raw struct {
+		Style   string            `json:"style"`
 		Submit  string            `json:"submit"`
+		Icon    string            `json:"icon"`
+		Note    string            `json:"note"`
 		Success string            `json:"success"`
 		Error   string            `json:"error"`
 		Actions []FormAction      `json:"actions"`
@@ -52,7 +55,10 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	f.Style = raw.Style
 	f.Submit = raw.Submit
+	f.Icon = raw.Icon
+	f.Note = raw.Note
 	f.Success = raw.Success
 	f.Error = raw.Error
 	f.Actions = raw.Actions

@@ -15,7 +15,7 @@ import (
 // The privileged write goes through the Backend (rpcd), not the shell (ADR-007).
 func passwordServer(t *testing.T, backend fakeBackend) *Server {
 	t.Helper()
-	return newServerFull(t, backend, &fakeTransport{}, nil, fakeAuth{sid: "test-sid"}, fakeSecurity{hasPassword: true})
+	return newServerFull(t, backend, &fakeTransport{}, nil, fakeAuth{sid: "test-sid"})
 }
 
 func TestPasswordFormRenders(t *testing.T) {

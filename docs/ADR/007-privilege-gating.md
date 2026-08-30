@@ -46,13 +46,14 @@ broken socket.**
 1. **Verso acts as a credential-presenting client, not ambient root.** Privileged
    and ACL-gated operations — config writes, and any ubus call a restricted
    operator might not be permitted — are performed by calling rpcd's ACL-gated
-   ubus objects (`uci`, `file`, …) with the session's `sid` in the payload. rpcd
+   ubus objects (`uci`, `rc`, and the sid-gated read objects) with the session's
+   `sid` in the payload. rpcd
    is the single component that both **authorizes and executes**; Verso never
    decides its own privilege.
 
 2. **The `Backend` seam absorbs the swap (ADR-003).** The interface stays; its
    implementation moves from go-uci-direct + no-argument native invoke to
-   rpcd-object calls (`uci.get/set/commit/apply`, `file.*`) carrying the sid. The
+   rpcd-object calls (`uci.get/set/commit/apply`, `rc.init`, …) carrying the sid. The
    sid is plumbed from the session into backend calls (via context or an explicit
    parameter). Tests, which use fakes, stay valid — the seam pays off again.
 

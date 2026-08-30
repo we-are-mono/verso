@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* settings: a card of option rows — plain name, one-line description, the
+{{/* settings: a list of option rows — plain name, one-line description, the
      underlying option as a mono code chip, and the state on the right (a shared
-     switch, value pills, or a mono read-out value). Same quiet card as the table
-     widget; the plain style drops the card chrome for embedding inside a drawer
-     or form. A seam folds the card's long tail of options inside the same card. */}}
+     switch, value pills, or a mono read-out value). Bare hairline rows by
+     default; the "card" style adds the quiet boxed frame (the same card as the
+     table widget). A seam folds the long tail of options inside the same block. */}}
 {{define "settings.row"}}
   {{/* has(+details): the row before the seam drops its inset border — the seam's
        full-bleed border-t is the one divider there. */}}

@@ -39,18 +39,6 @@ func Validate(name, value string) error {
 	return v(value)
 }
 
-// Get returns the validator for a datatype name, or false if unknown.
-func Get(name string) (Validator, bool) {
-	v, ok := registry[name]
-	return v, ok
-}
-
-// Known reports whether name is a registered datatype.
-func Known(name string) bool {
-	_, ok := registry[name]
-	return ok
-}
-
 func hostname(v string) error {
 	if v == "" || len(v) > 253 {
 		return fmt.Errorf("must be a valid hostname")

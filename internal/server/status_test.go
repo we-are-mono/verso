@@ -39,20 +39,3 @@ func TestFormatLoad(t *testing.T) {
 		}
 	}
 }
-
-func TestFormatBytes(t *testing.T) {
-	cases := []struct {
-		b    int64
-		want string
-	}{
-		{512, "512 B"},
-		{1024, "1.0 KiB"},
-		{1536, "1.5 KiB"},
-		{64883740672, "60.4 GiB"},
-	}
-	for _, c := range cases {
-		if got := formatBytes(c.b); got != c.want {
-			t.Errorf("formatBytes(%d) = %q, want %q", c.b, got, c.want)
-		}
-	}
-}
