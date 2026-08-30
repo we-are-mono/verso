@@ -16,6 +16,7 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -68,11 +69,15 @@ type fakeBackend struct {
 	wan      openwrt.WANState
 	wanConn  openwrt.WANConn
 	wanErr   error
+	wanCalls *int
 	devStats *[]openwrt.DeviceStats
 	devErr   error
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
+	if f.wanCalls != nil {
+		*f.wanCalls++
+	}
 	return f.wan, f.wanErr
 }
 
@@ -450,13 +455,34 @@ func TestHealthzReturnsOK(t *testing.T) {
 // verdict, the traffic section, the System panel with live firmware/kernel/uptime
 // from the backend, and the lease table.
 func TestIndexRendersOverview(t *testing.T) {
+	wanCalls := 0
 	backend := fakeBackend{
 		hn:    "verso-lab",
 		board: openwrt.Board{Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101"},
 		si:    openwrt.SystemInfo{Uptime: 3661},
-		wan:   openwrt.WANState{Up: true, Device: "wan0", Uptime: 8040},
+		uci: map[string]map[string]any{
+			"network": {
+				"upstream": map[string]any{
+					".type": "interface", ".name": "upstream", "device": "eth4.3900", "proto": "pppoe",
+				},
+			},
+			"firewall": {
+				"uplink_zone": map[string]any{".type": "zone", "name": "uplink", "network": []any{"upstream"}},
+			},
+		},
+		wan: openwrt.WANState{Devices: []openwrt.WANDevice{{
+			Device: "pppoe-upstream", Transport: "eth4.3900", Networks: []string{"upstream"}, Uptime: 8040,
+			Routes: []openwrt.WANRoute{{Family: 4, Table: 254, Metric: 10, Main: true}},
+		}}},
+		wanCalls: &wanCalls,
 	}
-	rec := get(t, newServer(t, backend), "/")
+	s := newServer(t, backend)
+	s.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{Interfaces: []telemetry.Interface{
+		{Name: "eth4", Kind: "port", Physical: true, Operstate: "up"},
+		{Name: "eth4.3900", Kind: "vlan", Parent: "eth4", Operstate: "up"},
+		{Name: "pppoe-upstream", Kind: "pppoe", Operstate: "unknown"},
+	}}}
+	rec := get(t, s, "/")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
@@ -465,11 +491,17 @@ func TestIndexRendersOverview(t *testing.T) {
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces", "Connected devices",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
-		"Connected", "for 2h 14m", // live WAN state and connection uptime
+		"Connected", "for 2h 14m", "live · pppoe-upstream", // live WAN state, device, and uptime
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
 		}
+	}
+	if wanCalls != 1 {
+		t.Errorf("WAN discovery calls = %d, want one consistent page snapshot", wanCalls)
+	}
+	if got := strings.Count(body, ">WAN</span>"); got != 1 {
+		t.Errorf("WAN badges = %d, want only the exact pppoe-upstream L3 row", got)
 	}
 }
 

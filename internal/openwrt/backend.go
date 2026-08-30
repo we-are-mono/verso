@@ -101,13 +101,12 @@ type Backend interface {
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
 	PkgInstall(ctx context.Context, sid, name string) error
 	PkgRemove(ctx context.Context, sid, name string) error
-	// WANStatus reads the uplink's live condition from netifd
-	// (network.interface.wan status) — whether it is up and which l3 device
-	// carries it — gated on the session's access to that object.
+	// WANStatus discovers every live uplink from netifd's active default routes
+	// and the kernel FIB. Roles attach to exact L3 devices; logical-interface
+	// names and transport ancestry are never used as classifiers.
 	WANStatus(ctx context.Context, sid string) (WANState, error)
-	// WANConn reads the uplink's connection facts (address, gateway, DNS,
-	// protocol) from the wan and wan6 interfaces — the overview's IPv4/IPv6
-	// panel — sid-gated like WANStatus.
+	// WANConn reads the preferred main-table IPv4 and IPv6 uplinks' connection
+	// facts for the overview panel, without assuming wan/wan6 names.
 	WANConn(ctx context.Context, sid string) (WANConn, error)
 	// IPv6Leases reads odhcpd's DHCPv6 leases (`dhcp ipv6leases`) — the client
 	// DUID, hostname, and assigned addresses — sid-gated. DHCPv6 keys on the DUID,
@@ -119,17 +118,55 @@ type Backend interface {
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
 }
 
-// WANState is the uplink's live condition, from network.interface.wan status.
+// WANState is the set of live L3 devices that own an active default route.
 type WANState struct {
-	Up     bool
-	Device string // the l3 device carrying the uplink, e.g. "wan0"
-	Addr   string // the uplink's IPv4 address, "" until the protocol is up
-	Uptime int64  // seconds since netifd brought this WAN interface up
+	Devices []WANDevice
 }
 
-// WANConn is the uplink's connection facts as the overview lists them: the IPv4
-// side from the wan interface, the IPv6 side from wan6. Every string is empty
-// when the protocol doesn't carry it (a v4-only uplink leaves the v6 fields bare).
+// WANDevice is one exact kernel L3 device participating in a reachable default
+// route. Networks are its netifd logical owners; unmanaged devices have none.
+type WANDevice struct {
+	Device    string
+	Transport string
+	Networks  []string
+	Routes    []WANRoute
+	Uptime    int64
+}
+
+// WANRoute retains the routing facts that made a device a WAN candidate.
+type WANRoute struct {
+	Family int // 4 or 6
+	Table  uint32
+	Metric uint32
+	Main   bool
+	Policy bool
+	Owner  string // logical netifd interface; empty for an unmanaged route
+}
+
+// Up reports whether at least one live default-route device exists.
+func (s WANState) Up() bool { return len(s.Devices) != 0 }
+
+// Primary selects one device for legacy single-uplink presentations such as the
+// overview graph. Prefer main-table IPv4, then main-table IPv6, then policy-only
+// candidates; discovery itself remains plural.
+func (s WANState) Primary() (WANDevice, bool) {
+	var best WANDevice
+	bestRank, bestMetric := 4, ^uint32(0)
+	found := false
+	for _, device := range s.Devices {
+		rank, metric := deviceRank(device)
+		if rank == 3 {
+			continue
+		}
+		if rank < bestRank || (rank == bestRank && (metric < bestMetric || (metric == bestMetric && device.Device < best.Device))) {
+			best, bestRank, bestMetric, found = device, rank, metric, true
+		}
+	}
+	return best, found
+}
+
+// WANConn is the preferred main-table uplinks' connection facts as the overview
+// lists them. IPv4 and IPv6 may come from different logical interfaces.
 type WANConn struct {
 	V4Proto   string // "DHCP" | "PPPoE" | "Static" | …
 	V4Addr    string // "172.30.1.171/24"
@@ -1070,147 +1107,61 @@ func dialRCInit(socket string) rcInitFn {
 	}
 }
 
-// dialWANStatus reads network.interface.wan status through netifd, after
-// probing the session's access to the object. Only the shell-rendered facts
-// are mapped: up, and the l3 device carrying the uplink.
+// dialWANStatus reads one plural netifd dump and supplements it with the kernel
+// route/rule view. Kernel discovery is best-effort: stock netifd discovery still
+// works if the platform refuses a route-netlink dump.
 func dialWANStatus(socket string) wanStatusFn {
 	return func(_ context.Context, sid string) (WANState, error) {
-		c, err := ubus.Dial(socket)
+		dump, err := fetchNetworkDump(socket, sid)
 		if err != nil {
 			return WANState{}, err
 		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "network.interface.wan", "status"); err != nil || !ok {
-			return WANState{}, ErrAccessDenied
-		}
-		id, err := c.Lookup("network.interface.wan")
-		if err != nil {
-			return WANState{}, err
-		}
-		res, err := c.Invoke(id, "status")
-		if err != nil {
-			return WANState{}, err
-		}
-		return parseWANState(res), nil
+		routes, _ := kernelDefaultRoutes()
+		return discoverWAN(dump, routes), nil
 	}
 }
 
-// parseWANState maps netifd's interface status onto WANState. netifd reports
-// l3_device once the protocol is up; device is the configured fallback. The
-// address is the first entry of ipv4-address, present only while up.
-func parseWANState(m map[string]any) WANState {
-	ws := WANState{Up: asBool(m["up"]), Uptime: asInt64(m["uptime"])}
-	if d, ok := m["l3_device"].(string); ok && d != "" {
-		ws.Device = d
-	} else if d, ok := m["device"].(string); ok {
-		ws.Device = d
-	}
-	if addrs, ok := m["ipv4-address"].([]any); ok && len(addrs) > 0 {
-		if entry, ok := addrs[0].(map[string]any); ok {
-			ws.Addr, _ = entry["address"].(string)
-		}
-	}
-	return ws
-}
-
-// dialWANConn reads netifd's interface dump and discovers the IPv6 side attached
-// to wan. This covers explicit wan6, automatically-created wan_6, custom names
-// sharing wan's L3 device, and protocols that put both families directly on wan.
+// dialWANConn reads the same plural netifd dump and chooses the preferred
+// main-table route owner independently for IPv4 and IPv6.
 func dialWANConn(socket string) wanConnFn {
 	return func(_ context.Context, sid string) (WANConn, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return WANConn{}, err
-		}
-		defer c.Close()
-		if ok, err := probeAccess(c, sid, "ubus", "network.interface", "dump"); err != nil || !ok {
-			return WANConn{}, ErrAccessDenied
-		}
-		id, err := c.Lookup("network.interface")
-		if err != nil {
-			return WANConn{}, err
-		}
-		dump, err := c.Invoke(id, "dump")
+		dump, err := fetchNetworkDump(socket, sid)
 		if err != nil {
 			return WANConn{}, err
 		}
 		wan, wan6 := wanStatuses(dump)
-		if wan == nil {
-			return WANConn{}, ErrAccessDenied
-		}
 		return parseWANConn(wan, wan6), nil
 	}
 }
 
-// wanStatuses returns the configured wan status and the best IPv6 companion in
-// a netifd dump. A matching L3 device is the authoritative relationship; the
-// conventional names only rank otherwise-equivalent candidates.
+func fetchNetworkDump(socket, sid string) (map[string]any, error) {
+	c, err := ubus.Dial(socket)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	if ok, err := probeAccess(c, sid, "ubus", "network.interface", "dump"); err != nil || !ok {
+		return nil, ErrAccessDenied
+	}
+	id, err := c.Lookup("network.interface")
+	if err != nil {
+		return nil, err
+	}
+	return c.Invoke(id, "dump")
+}
+
+// wanStatuses returns the preferred active main-table default-route owner for
+// each family. Names are used only as a deterministic final tie-breaker.
 func wanStatuses(dump map[string]any) (map[string]any, map[string]any) {
 	entries, _ := dump["interface"].([]any)
-	var wan map[string]any
-	for _, value := range entries {
-		entry, _ := value.(map[string]any)
-		if name, _ := entry["interface"].(string); name == "wan" {
-			wan = entry
-			break
-		}
-	}
-	if wan == nil {
-		return nil, nil
-	}
-
-	wanDevice := interfaceDevice(wan)
-	var best map[string]any
-	bestScore := 0
-	for _, value := range entries {
-		entry, _ := value.(map[string]any)
-		name, _ := entry["interface"].(string)
-		if name == "" || name == "wan" || !interfaceCarriesIPv6(entry) {
-			continue
-		}
-		score := 0
-		if wanDevice != "" && interfaceDevice(entry) == wanDevice {
-			score = 100
-		}
-		switch name {
-		case "wan6":
-			score += 20
-		case "wan_6":
-			score += 10
-		}
-		if score > bestScore {
-			best, bestScore = entry, score
-		}
-	}
-	return wan, best
+	return preferredStatus(entries, 4), preferredStatus(entries, 6)
 }
 
-func interfaceDevice(status map[string]any) string {
-	if device, _ := status["l3_device"].(string); device != "" {
-		return device
-	}
-	device, _ := status["device"].(string)
-	return device
-}
-
-func interfaceCarriesIPv6(status map[string]any) bool {
-	if proto, _ := status["proto"].(string); proto == "dhcpv6" {
-		return true
-	}
-	for _, key := range []string{"ipv6-address", "ipv6-prefix"} {
-		if values, ok := status[key].([]any); ok && len(values) != 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// parseWANConn maps the wan/wan6 interface status onto WANConn: the first
+// parseWANConn maps the selected IPv4/IPv6 interface statuses onto WANConn: the first
 // address (with its mask), the default route's nexthop as the gateway, the DNS
 // list, the delegated IPv6 prefix, and the prefix's valid lifetime as the lease
-// time left. Some netifd protocols expose both families directly on wan, so wan
-// is also the fallback source for IPv6 fields when there is no separate wan6.
+// time left. Some netifd protocols expose both families on one logical owner,
+// so the IPv4-selected status is also the fallback IPv6 source.
 func parseWANConn(v4, v6 map[string]any) WANConn {
 	var wc WANConn
 	str := func(v any) string { s, _ := v.(string); return s }
@@ -1241,7 +1192,7 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		}
 		for _, r := range routes {
 			e, ok := r.(map[string]any)
-			if ok && str(e["target"]) == wantTarget && asInt64(e["mask"]) == 0 {
+			if ok && str(e["target"]) == wantTarget && asInt64(e["mask"]) == 0 && routeTable(e["table"]) == mainRouteTable {
 				return str(e["nexthop"])
 			}
 		}

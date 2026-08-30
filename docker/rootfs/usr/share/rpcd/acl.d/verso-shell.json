@@ -6,7 +6,6 @@
 				"system": [ "info", "board" ],
 				"rc": [ "list" ],
 				"network.interface": [ "dump" ],
-				"network.interface.wan": [ "status" ],
 				"network.device": [ "status" ],
 				"dhcp": [ "ipv6leases" ]
 			},

@@ -33,6 +33,7 @@ type Overview struct {
 	Uptime      string
 	WANKnown    bool
 	WANUp       bool
+	WANDevice   string
 	WANUptime   string
 	WiFiPresent bool
 
@@ -286,6 +287,10 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		ohTile{Label: "SOFTWARE", Icon: "download", Variant: "warning", Status: "Update available", Caption: "Security fixes"},
 	)
 
+	chartMeta := "live · WAN"
+	if o.WANDevice != "" {
+		chartMeta = "live · " + o.WANDevice
+	}
 	v := overviewView{
 		Kicker:      "ALL GOOD",
 		Lead:        "Your network is ",
@@ -294,7 +299,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		HasWiFi:     o.WiFiPresent,
 		Facts:       o.factCols(),
 		ChartTitle:  "Internet traffic",
-		ChartMeta:   "live · WAN",
+		ChartMeta:   chartMeta,
 		DownVal:     o.DownVal,
 		UpVal:       o.UpVal,
 		RateUnit:    "Mbps",

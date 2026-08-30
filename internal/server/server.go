@@ -379,18 +379,20 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// can still use the low-cost netifd device counters if sampling fails.
 	var d, u float64
 	wan, wanErr := s.backend.WANStatus(r.Context(), sid)
+	primaryWAN, primaryWANOK := wan.Primary()
 	if wanErr == nil {
-		ov.WANKnown, ov.WANUp = true, wan.Up
-		if wan.Up {
-			ov.WANUptime = formatUptime(wan.Uptime)
+		ov.WANKnown, ov.WANUp = true, wan.Up()
+		if primaryWANOK {
+			ov.WANDevice = primaryWAN.Device
+			ov.WANUptime = formatUptime(primaryWAN.Uptime)
 		}
 	} else {
 		log.Printf("verso: overview: wan status unavailable: %v", wanErr)
 	}
 	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
 	ov.WiFiPresent = telemetryOK && len(snapshot.WirelessPHYs) != 0
-	if telemetryOK && wanErr == nil {
-		if device, found := snapshot.Interface(wan.Device); found {
+	if telemetryOK && wanErr == nil && primaryWANOK {
+		if device, found := snapshot.Interface(primaryWAN.Device); found {
 			ov.DownSeries, ov.UpSeries = telemetryInterfaceRates(device.History)
 			if len(ov.DownSeries) != 0 {
 				d = ov.DownSeries[len(ov.DownSeries)-1]
@@ -419,7 +421,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology; clients follow them.
 	ov.Devices = s.connectedDevices(r.Context(), sid)
-	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot)
+	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {

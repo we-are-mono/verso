@@ -45,7 +45,10 @@ func TestInterfaceListUsesTelemetryAsItsRowSource(t *testing.T) {
 				"wan_zone": map[string]any{".type": "zone", "name": "wan", "network": []any{"wan"}},
 			},
 		},
-		wan: openwrt.WANState{Device: "pppoe-wan"},
+		wan: openwrt.WANState{Devices: []openwrt.WANDevice{{
+			Device: "pppoe-wan", Transport: "eth4.3900", Networks: []string{"wan"},
+			Routes: []openwrt.WANRoute{{Family: 4, Table: 254, Main: true}},
+		}}},
 	}
 	snapshot := telemetry.Snapshot{Interfaces: []telemetry.Interface{
 		{Name: "eth0", Kind: "port", Physical: true, Operstate: "down", History: []telemetry.Point{{}}},
@@ -60,7 +63,7 @@ func TestInterfaceListUsesTelemetryAsItsRowSource(t *testing.T) {
 		{Name: "tailscale0", Kind: "tunnel", Operstate: "unknown", History: []telemetry.Point{{}}},
 	}}
 
-	rows := newServer(t, be).interfaceList(context.Background(), "test-sid", snapshot)
+	rows := newServer(t, be).interfaceList(context.Background(), "test-sid", snapshot, be.wan)
 	if len(rows) != len(snapshot.Interfaces) {
 		t.Fatalf("rows = %d, want every one of %d telemetry interfaces", len(rows), len(snapshot.Interfaces))
 	}
@@ -80,8 +83,11 @@ func TestInterfaceListUsesTelemetryAsItsRowSource(t *testing.T) {
 	if row := byName["pppoe-wan"]; !row.WAN || len(row.Networks) != 1 || row.Networks[0] != "wan" || row.Proto != "pppoe" {
 		t.Errorf("pppoe-wan = %+v", row)
 	}
-	if !byName["eth4"].WAN || !byName["eth4.3900"].WAN {
-		t.Errorf("WAN ancestry not mapped: eth4=%+v vlan=%+v", byName["eth4"], byName["eth4.3900"])
+	if byName["eth4"].WAN || byName["eth4.3900"].WAN {
+		t.Errorf("WAN role leaked to transports: eth4=%+v vlan=%+v", byName["eth4"], byName["eth4.3900"])
+	}
+	if len(byName["eth4.3900"].Networks) != 0 || byName["eth4.3900"].VLAN != "3900" {
+		t.Errorf("transport metadata not moved cleanly: %+v", byName["eth4.3900"])
 	}
 	if byName["eth4"].RxRate != "13.9 Mbps" || byName["eth2"].TxRate != "14 Mbps" {
 		t.Errorf("rates: eth4=%q eth2=%q", byName["eth4"].RxRate, byName["eth2"].TxRate)

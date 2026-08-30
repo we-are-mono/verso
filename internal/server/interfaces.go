@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -99,7 +100,7 @@ func networkZones(fwCfg map[string]any) map[string]string {
 }
 
 type interfaceMeaning struct {
-	name, proto, subnet, zone, vlan string
+	name, proto, subnet, zone string
 }
 
 // interfaceMeanings indexes UCI's logical networks by their configured kernel
@@ -124,10 +125,9 @@ func interfaceMeanings(cfg, fwCfg map[string]any) map[string][]interfaceMeaning 
 		if cidr := subnetOf(ipaddr, netmask); cidr != nil {
 			subnet = cidr.String()
 		}
-		_, vlan := deviceVLAN(device)
 		out[device] = append(out[device], interfaceMeaning{
 			name: name, proto: proto, subnet: subnet,
-			zone: zoneOf[name], vlan: vlan,
+			zone: zoneOf[name],
 		})
 	}
 	return out
@@ -135,7 +135,7 @@ func interfaceMeanings(cfg, fwCfg map[string]any) map[string][]interfaceMeaning 
 
 // interfaceList builds one row per kernel netdev from the process-wide
 // telemetry snapshot, then enriches those rows with UCI and WAN topology.
-func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemetry.Snapshot) []widget.OverviewInterface {
+func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemetry.Snapshot, wan openwrt.WANState) []widget.OverviewInterface {
 	cfg, err := s.backend.UCIConfig(ctx, sid, "network")
 	if err != nil {
 		log.Printf("verso: interfaces: network config unavailable: %v", err)
@@ -153,37 +153,18 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 		physical[iface.Name], parents[iface.Name] = iface.Physical, iface.Parent
 	}
 
-	// A protocol-created L3 device (notably pppoe-wan) inherits the configured
-	// WAN device's UCI meaning and points back to that underlay.
-	wanDevice := ""
-	if wan, wanErr := s.backend.WANStatus(ctx, sid); wanErr == nil {
-		wanDevice = wan.Device
-	}
-	configuredWAN := ""
-	for device, list := range meanings {
-		for _, meaning := range list {
-			if meaning.name == "wan" {
-				configuredWAN = device
-				break
-			}
+	// Runtime logical ownership follows netifd's exact L3 device. Move (do not
+	// copy) each discovered logical network's metadata from its configured
+	// transport, while retaining that transport as a topology relationship.
+	wanDevices := map[string]bool{}
+	for _, device := range wan.Devices {
+		wanDevices[device.Device] = true
+		for _, network := range device.Networks {
+			moveInterfaceMeaning(meanings, network, device.Device)
 		}
-		if configuredWAN != "" {
-			break
+		if parents[device.Device] == "" && device.Transport != "" && device.Transport != device.Device {
+			parents[device.Device] = device.Transport
 		}
-	}
-	if wanDevice != "" && configuredWAN != "" && wanDevice != configuredWAN {
-		for _, meaning := range meanings[configuredWAN] {
-			if meaning.name == "wan" {
-				meanings[wanDevice] = append(meanings[wanDevice], meaning)
-				break
-			}
-		}
-		if parents[wanDevice] == "" {
-			parents[wanDevice] = configuredWAN
-		}
-	}
-	if wanDevice == "" {
-		wanDevice = configuredWAN
 	}
 
 	// Relationships are bidirectional in the presentation: a VLAN names its
@@ -210,16 +191,14 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 		}
 	}
 
-	wanPath := map[string]bool{}
-	for current, seen := wanDevice, map[string]bool{}; current != "" && !seen[current]; current = parents[current] {
-		seen[current], wanPath[current] = true, true
-	}
-
 	out := make([]widget.OverviewInterface, 0, len(snapshot.Interfaces))
 	for _, iface := range snapshot.Interfaces {
 		row := widget.OverviewInterface{
 			Name: iface.Name, Kind: iface.Kind, State: normalOperstate(iface.Operstate),
-			Physical: iface.Physical, WAN: wanPath[iface.Name],
+			Physical: iface.Physical, WAN: wanDevices[iface.Name],
+		}
+		if iface.Kind == "vlan" {
+			_, row.VLAN = deviceVLAN(iface.Name)
 		}
 		if len(iface.History) != 0 {
 			point := iface.History[len(iface.History)-1]
@@ -242,9 +221,6 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 			if row.Zone == "" {
 				row.Zone = meaning.zone
 			}
-			if row.VLAN == "" {
-				row.VLAN = meaning.vlan
-			}
 		}
 		sort.Strings(row.Networks)
 		for name := range relations[iface.Name] {
@@ -266,6 +242,25 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+func moveInterfaceMeaning(meanings map[string][]interfaceMeaning, network, destination string) {
+	if network == "" || destination == "" {
+		return
+	}
+	for device, list := range meanings {
+		for index := 0; index < len(list); index++ {
+			if list[index].name != network {
+				continue
+			}
+			meaning := list[index]
+			if device != destination {
+				meanings[device] = append(list[:index], list[index+1:]...)
+				meanings[destination] = append(meanings[destination], meaning)
+			}
+			return
+		}
+	}
 }
 
 func normalOperstate(state string) string {

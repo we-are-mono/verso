@@ -58,20 +58,21 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return true // no uplink is a page-render concern, not a stream killer
 		}
+		primary, found := ws.Primary()
 		write := func(down, up float64) bool {
-			_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f,\"uptime\":%d}\n\n", down, up, ws.Uptime)
+			_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f,\"uptime\":%d}\n\n", down, up, primary.Uptime)
 			return err == nil
 		}
-		if ws.Device == "" {
+		if !found || primary.Device == "" {
 			return write(0, 0)
 		}
 		if snapshot, ok := s.telemetrySnapshot(r.Context()); ok {
-			if device, found := snapshot.Interface(ws.Device); found && len(device.History) != 0 {
+			if device, found := snapshot.Interface(primary.Device); found && len(device.History) != 0 {
 				point := device.History[len(device.History)-1]
 				return write(rateMbps(point.RxBPS), rateMbps(point.TxBPS))
 			}
 		}
-		st := s.deviceStats(r.Context(), sid, ws.Device)
+		st := s.deviceStats(r.Context(), sid, primary.Device)
 		s.wanHist.Observe(st.RxBytes, st.TxBytes)
 		down, up := s.wanHist.Latest()
 		return write(down, up)
