@@ -12,7 +12,7 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 )
 
-// TestServicesTable: procd's whole table renders lined (not striped), all
+// TestServicesTable: procd's whole table renders flush-edged (not striped), all
 // facts as columns, no drawers — service, providing package, state, boot as
 // a checkmark, switch; the keep-list shows state but no switch.
 func TestServicesTable(t *testing.T) {
@@ -21,19 +21,27 @@ func TestServicesTable(t *testing.T) {
 			"dnsmasq":           {Enabled: true, Running: true},
 			"cron":              {Enabled: true, Running: false},
 			"verso":             {Enabled: true, Running: true},
+			"verso-rpcd":        {Enabled: true, Running: false}, // helper round-trip corrects stale rc state
 			"verso-plugin-demo": {Enabled: true, Running: true},
 		},
-		pkgInstalledList: []openwrt.Package{{Name: "dnsmasq", Version: "2.91-r1", Feed: "base", Installed: true}},
+		pkgInstalledList: []openwrt.Package{
+			{Name: "dnsmasq", Version: "2.91-r1", Feed: "base", Installed: true, Services: []string{"dnsmasq"}},
+			{Name: "verso", Version: "0.0.11-r1", Feed: "mono", Installed: true, Services: []string{"verso", "verso-rpcd"}},
+		},
 	}
 	s := pluginsServer(t, b, true, mgmtManifest())
 
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
-		`name="svc:dnsmasq"`, // a plain service's switch
-		">dnsmasq</td>",      // …and its providing package in the Package column
-		`name="on:demo"`,     // the plugin's switch, manifest-addressed
-		"text-green-600",     // the boot checkmark
-		"running",            // the state pill
+		`name="svc:dnsmasq"`,                // a plain service's switch
+		">dnsmasq</td>",                     // …and its providing package in the Package column
+		`name="on:demo"`,                    // the plugin's switch, manifest-addressed
+		"text-green-600",                    // the boot checkmark
+		"running",                           // the state pill
+		">Enabled</th>",                     // the switch column names the action
+		">verso</td>",                       // APK ownership joins verso-rpcd to the verso package
+		"font-mono text-base font-semibold", // package ownership uses fixed 16px/600 mono type
+		"max-w-4xl",                         // the service inventory uses the focused content width
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
@@ -42,11 +50,40 @@ func TestServicesTable(t *testing.T) {
 	if strings.Contains(body, `name="svc:verso"`) {
 		t.Error("the keep-list service must not offer its own off switch")
 	}
+	if strings.Contains(body, `name="svc:verso-rpcd"`) {
+		t.Error("Verso's required privileged companion must not offer an off switch")
+	}
 	if strings.Contains(body, "odd:bg-slate-50") {
-		t.Error("the services table is lined, never striped")
+		t.Error("the services table is flat, never striped")
+	}
+	if strings.Contains(body, "[&_td:first-child]:pl-3") || strings.Contains(body, "[&_td:last-child]:pr-3") {
+		t.Error("the services table must align its outside columns with the content edges")
 	}
 	if strings.Contains(body, "Monitor — ") || strings.Contains(body, "Service — ") {
 		t.Error("the services table carries no drawers")
+	}
+	nameAt := strings.Index(body, ">verso-rpcd<")
+	if nameAt < 0 {
+		t.Fatal("verso-rpcd row missing")
+	}
+	rowAt := strings.LastIndex(body[:nameAt], "<tr")
+	if rowAt < 0 {
+		t.Fatal("verso-rpcd table row start missing")
+	}
+	rowEnd := strings.Index(body[rowAt:], "</tr>")
+	if rowEnd < 0 || !strings.Contains(body[rowAt:rowAt+rowEnd], "running") || strings.Contains(body[rowAt:rowAt+rowEnd], "stopped") {
+		t.Errorf("successful helper call must show verso-rpcd running: %s", body[rowAt:])
+	}
+}
+
+func TestPackageOfUsesAPKOwnership(t *testing.T) {
+	owners := map[string]string{"sysntpd": "busybox", "verso-rpcd": "verso"}
+	for service, want := range map[string]string{
+		"sysntpd": "busybox", "verso-rpcd": "verso", "verso-plugin-demo": "verso-plugin-demo", "unmanaged": "—",
+	} {
+		if got := packageOf(service, owners); got != want {
+			t.Errorf("packageOf(%q) = %q, want %q", service, got, want)
+		}
 	}
 }
 
@@ -102,6 +139,9 @@ func TestServicesRefusals(t *testing.T) {
 
 	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"verso"}, "_primary": {"restart"}}); rec.Code != http.StatusOK {
 		t.Errorf("keep-list restart should re-render the refusal, got %d", rec.Code)
+	}
+	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"verso-rpcd"}, "_primary": {"stop"}}); rec.Code != http.StatusOK {
+		t.Errorf("verso-rpcd stop should be refused, got %d", rec.Code)
 	}
 	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"dnsmasq"}, "_action": {"reboot-the-moon"}}); rec.Code != http.StatusBadRequest {
 		t.Errorf("unknown verb: got %d, want 400", rec.Code)

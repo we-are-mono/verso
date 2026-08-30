@@ -39,7 +39,7 @@ var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "e
 // severing them severs the surface itself (the shell, its privileged path,
 // the bus). Everything else — network included — is the operator's call,
 // exactly as it is over SSH.
-var svcKeep = map[string]bool{"verso": true, "rpcd": true, "ubus": true}
+var svcKeep = map[string]bool{"verso": true, "verso-rpcd": true, "rpcd": true, "ubus": true}
 
 // svcNameRe is the shape of an init-script name — the only thing that reaches
 // procd's rc object.
@@ -203,17 +203,26 @@ func lifecycleWord(actions []string) string {
 	}
 }
 
-// renderServices composes the page: procd's whole table, lined like the
-// process list it corresponds to; errMsg leads as a danger callout.
+// renderServices composes the page: procd's whole table, using the same
+// flush-edged table treatment as the rest of Verso; errMsg leads as a danger callout.
 func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg string) {
 	sid := s.sessionSID(r)
 	rc, rcErr := s.backend.RCList(r.Context(), sid)
-	// The providing package, by exact name match; mismatches (busybox
-	// applets, firewall4's "firewall") honestly read as none.
-	pkgNames := map[string]bool{}
+	// APK reports the init scripts each package owns. This is the authoritative
+	// join: service and package names are often different (verso-rpcd belongs to
+	// verso, for example), so matching names would silently discard real owners.
+	owners := map[string]string{}
 	if pkgs, err := s.backend.PkgInstalled(r.Context(), sid); err == nil {
 		for _, p := range pkgs {
-			pkgNames[p.Name] = true
+			for _, service := range p.Services {
+				owners[service] = p.Name
+			}
+		}
+		// A successful helper round-trip is stronger evidence of its live state
+		// than rc.list on systems where the daemon was launched outside procd.
+		if st, ok := rc["verso-rpcd"]; ok {
+			st.Running = true
+			rc["verso-rpcd"] = st
 		}
 	}
 
@@ -225,7 +234,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Service table unavailable",
 			Body: fmt.Sprintf("procd could not be read (%v).", rcErr)})
 	} else {
-		children = append(children, servicesTable(s.pluginStates(rc), rc, pkgNames))
+		children = append(children, servicesTable(s.pluginStates(rc), rc, owners))
 	}
 
 	var body strings.Builder
@@ -238,20 +247,20 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "Services",
 		Subheading: "The processes this router runs — procd's service table, live.",
-	}, "", nil, false, template.HTML(body.String()))
+	}, "narrow", nil, false, template.HTML(body.String()))
 }
 
-// servicesTable is procd's table, one lined row per service: name, the
-// providing package (exact name match; none reads as a dash), live state,
+// servicesTable is procd's table, one flush-edged row per service: name, the
+// APK-reported providing package, live state,
 // boot as a checkmark, and the on/off switch. No drawers — every fact is a
 // column, the switch is the act, and off→on covers what restart did.
-func servicesTable(states []pluginState, rc map[string]openwrt.RCState, pkgNames map[string]bool) widget.Widget {
+func servicesTable(states []pluginState, rc map[string]openwrt.RCState, owners map[string]string) widget.Widget {
 	cols := []widget.TableColumn{
 		{Label: "Service", Kind: "name"},
 		{Label: "Package", Kind: "mono"},
 		{Label: "State", Kind: "pill"},
 		{Label: "Starts at boot", Kind: "check"},
-		{Kind: "toggle"},
+		{Label: "Enabled", Kind: "toggle"},
 	}
 	byService := make(map[string]pluginState, len(states))
 	for _, st := range states {
@@ -260,24 +269,31 @@ func servicesTable(states []pluginState, rc map[string]openwrt.RCState, pkgNames
 	rows := make([]widget.TableRow, 0, len(rc))
 	for name, st := range rc {
 		if ps, ok := byService[name]; ok {
-			rows = append(rows, pluginServiceRow(ps, pkgNames))
+			rows = append(rows, pluginServiceRow(ps, owners))
 			continue
 		}
-		rows = append(rows, serviceRow(name, st, pkgNames))
+		rows = append(rows, serviceRow(name, st, owners))
 	}
 	// A dev-deployed plugin procd cannot see still shows, honestly unmanaged.
 	for _, ps := range states {
 		if _, ok := rc[ps.Service]; !ok {
-			rows = append(rows, pluginServiceRow(ps, pkgNames))
+			rows = append(rows, pluginServiceRow(ps, owners))
 		}
 	}
 	sort.Slice(rows, func(a, b int) bool { return rows[a].ID < rows[b].ID })
-	return &widget.Table{Style: "lined", Columns: cols, Rows: rows}
+	return &widget.Table{Style: "flat", Columns: cols, Rows: rows}
 }
 
-// packageOf is the Package column: the exact-name provider or a dash.
-func packageOf(service string, pkgNames map[string]bool) string {
-	if pkgNames[service] {
+// packageOf is the Package column: APK file ownership first, then the two
+// development-deploy conventions whose files are copied rather than installed.
+func packageOf(service string, owners map[string]string) string {
+	if owner := owners[service]; owner != "" {
+		return owner
+	}
+	if service == "verso" || service == "verso-rpcd" {
+		return "verso"
+	}
+	if strings.HasPrefix(service, pluginServicePrefix) {
 		return service
 	}
 	return "—"
@@ -292,14 +308,14 @@ func svcSwitch(name string, running bool) widget.TableCell {
 }
 
 // serviceRow is one plain procd service.
-func serviceRow(name string, st openwrt.RCState, pkgNames map[string]bool) widget.TableRow {
+func serviceRow(name string, st openwrt.RCState, owners map[string]string) widget.TableRow {
 	pill := widget.TableCell{Text: "stopped", Variant: "neutral"}
 	if st.Running {
 		pill = widget.TableCell{Text: "running", Variant: "success"}
 	}
 	return widget.TableRow{ID: name, Cells: []widget.TableCell{
 		{Text: name},
-		{Text: packageOf(name, pkgNames)},
+		{Text: packageOf(name, owners), Emphasis: true},
 		pill,
 		{On: st.Enabled},
 		svcSwitch(name, st.Running),
@@ -308,7 +324,7 @@ func serviceRow(name string, st openwrt.RCState, pkgNames map[string]bool) widge
 
 // pluginServiceRow is a Verso plugin's service: procd's truth sharpened by
 // the socket probe.
-func pluginServiceRow(st pluginState, pkgNames map[string]bool) widget.TableRow {
+func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow {
 	m := st.Manifest
 	pill := widget.TableCell{Text: "stopped", Variant: "neutral"}
 	switch {
@@ -321,7 +337,7 @@ func pluginServiceRow(st pluginState, pkgNames map[string]bool) widget.TableRow 
 	}
 	return widget.TableRow{ID: st.Service, Cells: []widget.TableCell{
 		{Text: st.Service},
-		{Text: packageOf(st.Service, pkgNames)},
+		{Text: packageOf(st.Service, owners), Emphasis: true},
 		pill,
 		{On: st.Enabled},
 		{On: st.Running, Name: "on:" + m.ID},
