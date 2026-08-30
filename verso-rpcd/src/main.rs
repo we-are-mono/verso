@@ -18,11 +18,12 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::mem;
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -424,20 +425,156 @@ fn command_failure(name: &str, output: std::process::Output) -> Failure {
     Failure::unknown(format!("{name} failed: {message}"))
 }
 
+// Maintenance uploads live in a group-writable runtime dir, so under ADR-007's
+// compromised-shell model the staged file could be swapped between a check and
+// its use. Each op first copies the upload into a root-owned working file in
+// sticky /tmp — root clears any pre-planted entry, then O_EXCL|O_NOFOLLOW create
+// so a racing plant loses rather than redirects — and then validates and acts on
+// that immutable copy. No other account can rename, unlink, or follow it. The
+// maintenance mutex serializes callers, so fixed working names are safe.
+const O_NOFOLLOW: i32 = 0o400000;
+const MAINTENANCE_TIMEOUT: Duration = Duration::from_secs(120);
+
+fn root_open_new(work: &str) -> Result<(fs::File, PathBuf), Failure> {
+    let dest = Path::new("/tmp").join(work);
+    match fs::remove_file(&dest) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(Failure::unknown(format!("clear staging {work}: {error}"))),
+    }
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .custom_flags(O_NOFOLLOW)
+        .mode(0o600)
+        .open(&dest)
+        .map_err(|error| Failure::unknown(format!("create staging {work}: {error}")))?;
+    Ok((file, dest))
+}
+
+fn root_stage(src: &Path, work: &str) -> Result<PathBuf, Failure> {
+    let (mut out, dest) = root_open_new(work)?;
+    let mut input =
+        fs::File::open(src).map_err(|error| Failure::unknown(format!("open upload: {error}")))?;
+    std::io::copy(&mut input, &mut out)
+        .map_err(|error| Failure::unknown(format!("stage upload: {error}")))?;
+    Ok(dest)
+}
+
+// write_back hands a root-produced archive to the shell's file without following
+// a symlink swapped in at that path.
+fn write_back(work: &Path, dest: &Path) -> Result<(), Failure> {
+    let mut input = fs::File::open(work)
+        .map_err(|error| Failure::unknown(format!("open staged backup: {error}")))?;
+    let mut out = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .custom_flags(O_NOFOLLOW)
+        .open(dest)
+        .map_err(|error| Failure::unknown(format!("write backup to upload path: {error}")))?;
+    std::io::copy(&mut input, &mut out)
+        .map_err(|error| Failure::unknown(format!("copy backup to upload path: {error}")))?;
+    Ok(())
+}
+
+fn remove_quietly(path: &Path) {
+    let _ = fs::remove_file(path);
+}
+
+// run_bounded runs a maintenance child under a wall-clock cap so a stalled tool
+// cannot pin the maintenance mutex and its worker thread indefinitely, and caps
+// captured stdout so a hostile archive listing cannot exhaust memory. On the
+// deadline a kill ends the child and the call reports a timeout.
+fn run_bounded(
+    mut command: Command,
+    name: &str,
+    max_stdout: usize,
+) -> Result<std::process::Output, Failure> {
+    command
+        .env_clear()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command
+        .spawn()
+        .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+    let mut child_stdout = child.stdout.take();
+    let mut child_stderr = child.stderr.take();
+    let over = Arc::new(AtomicBool::new(false));
+    let stdout_reader = {
+        let over = Arc::clone(&over);
+        std::thread::spawn(move || {
+            let mut buffer = Vec::new();
+            if let Some(stream) = child_stdout.as_mut() {
+                let _ = stream.take((max_stdout as u64) + 1).read_to_end(&mut buffer);
+                if buffer.len() > max_stdout {
+                    over.store(true, Ordering::Release);
+                }
+            }
+            buffer
+        })
+    };
+    let stderr_reader = std::thread::spawn(move || {
+        let mut buffer = Vec::new();
+        if let Some(stream) = child_stderr.as_mut() {
+            let _ = stream.take(64 * 1024).read_to_end(&mut buffer);
+        }
+        buffer
+    });
+    let deadline = std::time::Instant::now() + MAINTENANCE_TIMEOUT;
+    let mut timed_out = false;
+    let status = loop {
+        if over.load(Ordering::Acquire) {
+            let _ = child.kill();
+            break child
+                .wait()
+                .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    timed_out = true;
+                    break child
+                        .wait()
+                        .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(error) => return Err(Failure::unknown(format!("{name}: {error}"))),
+        }
+    };
+    let stdout = stdout_reader.join().unwrap_or_default();
+    let stderr = stderr_reader.join().unwrap_or_default();
+    if timed_out {
+        return Err(Failure::unknown(format!("{name} timed out")));
+    }
+    if over.load(Ordering::Acquire) {
+        return Err(Failure::invalid(format!("{name} produced too much output")));
+    }
+    Ok(std::process::Output {
+        status,
+        stdout,
+        stderr,
+    })
+}
+
 fn create_backup(path: &str) -> Result<(), Failure> {
     let path = backup_path(path, false)?;
-    let output = Command::new("/sbin/sysupgrade")
-        .arg("-b")
-        .arg(path)
-        .env_clear()
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|error| Failure::unknown(format!("create backup: {error}")))?;
+    // sysupgrade writes into a root-owned working file, so a symlink swapped in at
+    // the shell's path cannot redirect the archive write; then hand it back.
+    let (_file, work) = root_open_new("verso-backup-work.tar.gz")?;
+    let mut command = Command::new("/sbin/sysupgrade");
+    command.arg("-b").arg(&work);
+    let output = run_bounded(command, "sysupgrade backup", 1 << 20)?;
     if !output.status.success() {
+        remove_quietly(&work);
         return Err(command_failure("sysupgrade backup", output));
     }
-    Ok(())
+    let result = write_back(&work, path);
+    remove_quietly(&work);
+    result
 }
 
 fn restore_backup(path: &str) -> Result<(), Failure> {
@@ -447,39 +584,27 @@ fn restore_backup(path: &str) -> Result<(), Failure> {
     if metadata.len() == 0 || metadata.len() > 32 * 1024 * 1024 {
         return Err(Failure::invalid("backup must be between 1 byte and 32 MiB"));
     }
+    // Copy into a root-owned working file, then list members and extract from that
+    // same immutable copy: a swap between the safety scan and the restore cannot
+    // substitute a malicious archive.
+    let work = root_stage(path, "verso-restore-work.tar.gz")?;
+    let result = restore_staged(&work);
+    remove_quietly(&work);
+    result
+}
 
-    // Listing first rejects corrupt/non-gzip input before sysupgrade extracts
-    // anything. Absolute and parent-traversal members are refused explicitly.
-    let mut listing = Command::new("/bin/tar")
-        .args(["-tzf"])
-        .arg(path)
-        .env_clear()
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|error| Failure::unknown(format!("inspect backup archive: {error}")))?;
-    let mut names = Vec::new();
-    listing
-        .stdout
-        .take()
-        .ok_or_else(|| Failure::unknown("backup listing stdout unavailable"))?
-        .take(8 * 1024 * 1024 + 1)
-        .read_to_end(&mut names)
-        .map_err(|error| Failure::unknown(format!("read backup listing: {error}")))?;
-    if names.len() > 8 * 1024 * 1024 {
-        let _ = listing.kill();
-        let _ = listing.wait();
-        return Err(Failure::invalid("backup contains too many paths"));
-    }
-    let status = listing
-        .wait()
-        .map_err(|error| Failure::unknown(format!("wait for backup listing: {error}")))?;
-    if !status.success() {
+fn restore_staged(work: &Path) -> Result<(), Failure> {
+    // List first, rejecting corrupt/non-gzip input and absolute/parent-traversal
+    // members before sysupgrade extracts anything.
+    let mut listing = Command::new("/bin/tar");
+    listing.arg("-tzf").arg(work);
+    let listed = run_bounded(listing, "inspect backup archive", 8 * 1024 * 1024)?;
+    if !listed.status.success() {
         return Err(Failure::invalid(
             "the selected file is not a valid OpenWrt backup",
         ));
     }
-    let names = String::from_utf8_lossy(&names);
+    let names = String::from_utf8_lossy(&listed.stdout);
     if names
         .lines()
         .any(|name| name.starts_with('/') || name.split('/').any(|part| part == ".."))
@@ -487,14 +612,9 @@ fn restore_backup(path: &str) -> Result<(), Failure> {
         return Err(Failure::invalid("backup contains an unsafe path"));
     }
 
-    let output = Command::new("/sbin/sysupgrade")
-        .arg("-r")
-        .arg(path)
-        .env_clear()
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|error| Failure::unknown(format!("restore backup: {error}")))?;
+    let mut restore = Command::new("/sbin/sysupgrade");
+    restore.arg("-r").arg(work);
+    let output = run_bounded(restore, "sysupgrade restore", 1 << 20)?;
     if !output.status.success() {
         let mountinfo = fs::read_to_string("/proc/self/mountinfo").unwrap_or_default();
         if restore_failed_only_on_container_mounts(&output.stdout, &output.stderr, &mountinfo) {
@@ -511,25 +631,15 @@ fn restore_backup(path: &str) -> Result<(), Failure> {
 }
 
 fn firmware_test(path: &Path) -> Result<std::process::Output, Failure> {
-    Command::new("/sbin/sysupgrade")
-        .arg("--test")
-        .arg(path)
-        .env_clear()
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|error| Failure::unknown(format!("validate firmware: {error}")))
+    let mut command = Command::new("/sbin/sysupgrade");
+    command.arg("--test").arg(path);
+    run_bounded(command, "validate firmware", 1 << 20)
 }
 
 fn firmware_metadata(path: &Path) -> Value {
-    let Ok(output) = Command::new("/usr/bin/fwtool")
-        .args(["-q", "-i", "-"])
-        .arg(path)
-        .env_clear()
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-    else {
+    let mut command = Command::new("/usr/bin/fwtool");
+    command.args(["-q", "-i", "-"]).arg(path);
+    let Ok(output) = run_bounded(command, "firmware metadata", 1 << 20) else {
         return Value::Null;
     };
     if !output.status.success() {
@@ -548,8 +658,10 @@ fn firmware_version_field<'a>(metadata: &'a Value, field: &str) -> &'a str {
 
 fn validate_firmware(path: &str) -> Result<Value, Failure> {
     let path = firmware_path(path)?;
-    let output = firmware_test(path)?;
-    let metadata = firmware_metadata(path);
+    let work = root_stage(path, "verso-firmware-verify.bin")?;
+    let output = firmware_test(&work)?;
+    let metadata = firmware_metadata(&work);
+    remove_quietly(&work);
     Ok(json!({
         "valid": output.status.success(),
         "version": firmware_version_field(&metadata, "version"),
@@ -562,42 +674,27 @@ fn validate_firmware(path: &str) -> Result<Value, Failure> {
 
 fn install_firmware(path: &str) -> Result<(), Failure> {
     let path = firmware_path(path)?;
-    let validation = firmware_test(path)?;
+    // Copy into a root-owned image the shell cannot swap, then validate and flash
+    // that same copy. It also gives the detached sysupgrade a stable path after
+    // the shell removes its pending upload.
+    let install_path = root_stage(path, "verso-firmware-install.bin")?;
+    let validation = firmware_test(&install_path)?;
     if !validation.status.success() {
+        remove_quietly(&install_path);
         return Err(Failure::invalid(format!(
             "firmware validation failed: {}",
             command_output(&validation)
         )));
     }
-
-    // The shell removes its pending upload once this method returns. Rename the
-    // image within tmpfs first so the detached sysupgrade process owns a stable
-    // path for the rest of the upgrade.
-    let install_path = Path::new("/tmp/verso-firmware-install.bin");
-    match fs::remove_file(install_path) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(Failure::unknown(format!(
-                "remove previous firmware image: {error}"
-            )))
-        }
-    }
-    fs::rename(path, install_path)
-        .map_err(|error| Failure::unknown(format!("prepare firmware install: {error}")))?;
     if let Err(error) = Command::new("/sbin/sysupgrade")
-        .arg(install_path)
+        .arg(&install_path)
         .env_clear()
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
     {
-        if let Err(restore_error) = fs::rename(install_path, path) {
-            return Err(Failure::unknown(format!(
-                "start firmware install: {error}; restore verified image: {restore_error}"
-            )));
-        }
+        remove_quietly(&install_path);
         return Err(Failure::unknown(format!("start firmware install: {error}")));
     }
     Ok(())
