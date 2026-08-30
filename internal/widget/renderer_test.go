@@ -83,6 +83,14 @@ func TestRenderStackDivided(t *testing.T) {
 	if !strings.Contains(div, "divide-y") {
 		t.Errorf("divided stack should draw hairlines:\n%s", div)
 	}
+	compact := render(t, r, &Stack{Compact: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
+	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-4") {
+		t.Errorf("compact stack should use tighter spacing: %s", compact)
+	}
+	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
+	if !strings.Contains(inline, "flex flex-wrap items-center gap-3") || !strings.Contains(inline, ">or</p>") {
+		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
+	}
 	if strings.Contains(div, "space-y-4") {
 		t.Errorf("divided stack should not also space:\n%s", div)
 	}
@@ -197,14 +205,18 @@ func TestRenderFieldSelectMarksSelected(t *testing.T) {
 func TestRenderBadge(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
-	for _, want := range []string{"Connected", "green", "rounded-full"} {
+	for _, want := range []string{
+		"Connected", "rounded-full",
+		"bg-green-50 text-green-700 ring-green-600/20", // light treatment is unchanged
+		"dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("success badge missing %q in: %s", want, got)
 		}
 	}
 	// An unknown/neutral variant falls back to slate, never leaks the variant name.
 	neutral := render(t, r, &Badge{Variant: "neutral", Text: "Offline"})
-	if !strings.Contains(neutral, "slate") {
+	if !strings.Contains(neutral, "dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20") {
 		t.Errorf("neutral badge should use slate: %s", neutral)
 	}
 	if strings.Contains(neutral, "size-1.5") {
@@ -474,8 +486,8 @@ func TestRenderProperties(t *testing.T) {
 	}
 }
 
-// TestRenderPropertiesStyles: the row style resolves to hairlines (default), zebra
-// shading, or no separators.
+// TestRenderPropertiesStyles: the row style resolves to hairlines (default),
+// no separators, or the larger single-identity treatment.
 func TestRenderPropertiesStyles(t *testing.T) {
 	r := newRenderer(t)
 	items := []Property{{Label: "A", Value: "1"}, {Label: "B", Value: "2"}}
@@ -497,15 +509,44 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-slate-50") {
 		t.Errorf("plain properties should have no separators:\n%s", bare)
 	}
+	identity := render(t, r, &Properties{Style: "identity", Items: []Property{{
+		Label: "Username", Value: "root", Mono: true, Emphasis: true, Help: "Main system username cannot be changed.",
+	}}})
+	for _, want := range []string{"text-base", ">Username:<", "text-lg", "font-semibold", "font-mono", ">root<", "Main system username cannot be changed."} {
+		if !strings.Contains(identity, want) {
+			t.Errorf("identity properties missing %q:\n%s", want, identity)
+		}
+	}
+	if strings.Contains(identity, "divide-y") {
+		t.Errorf("identity properties must not look like a table:\n%s", identity)
+	}
+	emphasised := render(t, r, &Properties{Items: []Property{
+		{Label: "Installed", Value: "Mono OpenWrt 25.12", Emphasis: true},
+		{Label: "Target", Value: "aarch64_generic", Mono: true, Emphasis: true},
+	}})
+	for _, want := range []string{
+		`<dt class="shrink-0 text-slate-500">Installed</dt>`,
+		`<dd class="text-right text-base font-medium text-slate-700">`,
+		`class="font-mono font-semibold">aarch64_generic</span>`,
+	} {
+		if !strings.Contains(emphasised, want) {
+			t.Errorf("emphasised properties missing %q:\n%s", want, emphasised)
+		}
+	}
 }
 
 func TestRenderConfirm(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it"})
+	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it", RequirePassword: true})
 	for _, want := range []string{
 		"verso-confirm", "verso-confirm-toggle", "verso-confirm-panel", "verso-confirm-trigger",
 		"Remove device", "Remove this device?", "Remove", "Keep it", `type="checkbox"`,
-		"text-red-700", "<svg", // the prompt is red with a warning icon
+		"text-base text-red-800", "text-red-400", "<svg", // dark warning copy and a quieter icon follow the red alert palette
+		"mt-6 ml-6 flex items-center justify-start", "text-red-600", "hover:text-red-800 hover:underline", // actions align with the message; cancel is the lighter contextual link
+		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
+		"dark:border-red-500/20 dark:bg-red-500/10", "dark:text-red-300",
+		"dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900",
+		"dark:text-red-400 dark:hover:text-red-300",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)
@@ -514,6 +555,9 @@ func TestRenderConfirm(t *testing.T) {
 	// Pure CSS: no script, no Alpine.
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
 		t.Errorf("confirm must be pure CSS: %s", got)
+	}
+	if strings.Contains(got, `for="verso-confirm-1" class="cursor-pointer rounded-md border`) {
+		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
 	}
 	// Labels default when unset.
 	def := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"})
@@ -529,19 +573,37 @@ func TestRenderConfirm(t *testing.T) {
 func TestRenderCallout(t *testing.T) {
 	r := newRenderer(t)
 	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
-	for _, want := range []string{"green", "Reachable", "Verified from the internet.", "<svg"} {
+	for _, want := range []string{
+		"border-green-200 bg-green-50 text-green-800", // light palette remains unchanged
+		"dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300",
+		"dark:text-green-400", "Reachable", "Verified from the internet.", "<svg",
+	} {
 		if !strings.Contains(ok, want) {
 			t.Errorf("success callout missing %q in: %s", want, ok)
 		}
 	}
 	// Unknown/default variant falls back to info (sky), never leaks the variant name.
 	def := render(t, r, &Callout{Body: "heads up"})
-	if !strings.Contains(def, "sky") {
+	if !strings.Contains(def, "border-sky-200 bg-sky-50 text-sky-800") ||
+		!strings.Contains(def, "dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300") {
 		t.Errorf("default callout should use the info palette: %s", def)
 	}
 	warn := render(t, r, &Callout{Variant: "warning", Body: "x"})
 	if !strings.Contains(warn, "amber") {
 		t.Errorf("warning callout should use amber: %s", warn)
+	}
+	neutral := render(t, r, &Callout{Variant: "neutral", Compact: true, Body: "Quiet context."})
+	if !strings.Contains(neutral, "border-slate-200 bg-slate-50 text-slate-700") || !strings.Contains(neutral, "text-slate-400") {
+		t.Errorf("neutral callout should use the quiet slate palette: %s", neutral)
+	}
+	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
+	for _, want := range []string{"items-center", "gap-2", "px-3", "py-2", "size-4", "A short note."} {
+		if !strings.Contains(compact, want) {
+			t.Errorf("compact callout missing %q in: %s", want, compact)
+		}
+	}
+	if strings.Contains(compact, "p-4") || strings.Contains(compact, "size-5") {
+		t.Errorf("compact callout should not retain full callout padding: %s", compact)
 	}
 }
 
@@ -553,10 +615,32 @@ func TestRenderLink(t *testing.T) {
 			t.Errorf("link missing %q in: %s", want, dl)
 		}
 	}
+	if !strings.Contains(dl, "dark:border-gray-700 dark:bg-transparent dark:text-gray-300") || !strings.Contains(dl, "dark:active:bg-gray-900") {
+		t.Errorf("ghost link missing dark secondary-button treatment: %s", dl)
+	}
 	// A plain link carries no download attribute.
 	plain := render(t, r, &Link{Label: "Docs", Href: "/help"})
 	if strings.Contains(plain, "download=") {
 		t.Errorf("non-download link must not carry a download attribute: %s", plain)
+	}
+}
+
+func TestRenderButton(t *testing.T) {
+	r := newRenderer(t)
+	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
+	for _, want := range []string{`type="button"`, "bg-sky-600", "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900", "size-4", "Choose firmware…"} {
+		if !strings.Contains(inert, want) {
+			t.Errorf("inert button missing %q: %s", want, inert)
+		}
+	}
+	if strings.Contains(inert, "name=") || strings.Contains(inert, "value=") {
+		t.Errorf("inert button must not submit anything: %s", inert)
+	}
+	submit := render(t, r, &Button{Label: "Apply", Style: "secondary", Name: "_action", Value: "apply"})
+	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-slate-300", "dark:bg-gray-800 dark:text-gray-200"} {
+		if !strings.Contains(submit, want) {
+			t.Errorf("submitting button missing %q: %s", want, submit)
+		}
 	}
 }
 
@@ -640,6 +724,9 @@ func TestRenderModal(t *testing.T) {
 	if strings.Contains(got, "<script") {
 		t.Errorf("modal must not emit a script tag: %s", got)
 	}
+	if strings.Contains(got, `<header class="flex items-center justify-between border-b`) {
+		t.Errorf("modal title and content should not be divided by a hairline: %s", got)
+	}
 }
 
 // TestRenderModalAddTrigger: the "add" trigger style renders a full-width dashed
@@ -655,6 +742,55 @@ func TestRenderModalAddTrigger(t *testing.T) {
 	solid := render(t, r, &Modal{Trigger: "Open", Title: "T"})
 	if strings.Contains(solid, "border-dashed") {
 		t.Errorf("default modal trigger should be solid, not dashed: %s", solid)
+	}
+}
+
+func TestRenderModalPreview(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Canvas{Children: []Widget{&Modal{
+		Preview: true, Title: "Add a device", Children: []Widget{&Text{Markdown: "Always visible."}},
+	}}})
+	for _, want := range []string{"rounded-2xl", "bg-slate-50", "flex items-start justify-center", "max-w-md", "Add a device", "Always visible."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("modal preview missing %q: %s", want, got)
+		}
+	}
+	for _, unwanted := range []string{`x-data="modal"`, `x-teleport="body"`, "backdrop-blur-xs"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("modal preview should not render interactive overlay chrome %q: %s", unwanted, got)
+		}
+	}
+}
+
+func TestRenderModalDangerPreview(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Modal{
+		Preview: true, Variant: "danger", Title: "Factory reset this router?",
+		Body: "All settings will be erased.", Confirm: "Erase and reset", Cancel: "Cancel",
+	})
+	for _, want := range []string{
+		"bg-red-100 text-red-600", "size-6 -translate-y-px", "Factory reset this router?", "All settings will be erased.",
+		"bg-red-600", ">Erase and reset<", ">Cancel<", "sm:ml-14 sm:flex-row",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("danger modal preview missing %q: %s", want, got)
+		}
+	}
+	if strings.Contains(got, `aria-label="Close"`) {
+		t.Errorf("danger confirmation should use its explicit cancel action, not a close icon: %s", got)
+	}
+}
+
+func TestRenderProgress(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Progress{Title: "Verifying firmware", Body: "Checking the image signature."})
+	for _, want := range []string{
+		`role="status"`, `aria-live="polite"`, "size-10 animate-spin",
+		"Verifying firmware", "Checking the image signature.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("progress state missing %q: %s", want, got)
+		}
 	}
 }
 
@@ -676,6 +812,25 @@ func TestRenderPasswordField(t *testing.T) {
 	}
 }
 
+func TestRenderFileField(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{
+		Name: "firmware_image", Kind: "file", Accept: ".bin,.img",
+		Prompt: "Drop a firmware image here, or",
+	})
+	for _, want := range []string{
+		`type="file"`, `accept=".bin,.img"`, "border-dotted", "rounded-xl", "px-8", "py-12",
+		"size-10", "Drop a firmware image here", "mt-1 block", "whitespace-nowrap", "choose one from your computer",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("file field missing %q: %s", want, got)
+		}
+	}
+	if !strings.Contains(got, `for="firmware_image"`) || !strings.Contains(got, `id="firmware_image"`) {
+		t.Errorf("file picker phrase must label the native input: %s", got)
+	}
+}
+
 func TestRenderFieldError(t *testing.T) {
 	r := newRenderer(t)
 
@@ -685,6 +840,11 @@ func TestRenderFieldError(t *testing.T) {
 	}
 	if !strings.Contains(got, "border-red-600") {
 		t.Errorf("errored field should carry the danger token: %s", got)
+	}
+	for _, want := range []string{"dark:border-red-400", "dark:text-red-400"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("errored field missing dark Access danger colour %q: %s", want, got)
+		}
 	}
 }
 
@@ -751,6 +911,9 @@ func TestRenderFormSuccess(t *testing.T) {
 	}
 	if !strings.Contains(got, ">Apply<") {
 		t.Errorf("custom submit label missing: %s", got)
+	}
+	if !strings.Contains(got, "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900") {
+		t.Errorf("form submit missing dark primary-button treatment: %s", got)
 	}
 }
 

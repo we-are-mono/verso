@@ -21,9 +21,10 @@ func attr(data []byte, atype uint16, payload []byte) []byte {
 
 // neighMsg builds one RTM_NEWNEIGH wire message: the 12-byte ndmsg with the
 // state at offset 8, then NDA_DST and (optionally) NDA_LLADDR attributes.
-func neighMsg(state uint16, dst []byte, mac []byte) syscall.NetlinkMessage {
+func neighMsg(ifindex int, state uint16, dst []byte, mac []byte) syscall.NetlinkMessage {
 	data := make([]byte, ndmsgLen)
 	data[0] = syscall.AF_INET
+	binary.NativeEndian.PutUint32(data[4:8], uint32(ifindex))
 	binary.NativeEndian.PutUint16(data[8:10], state)
 	data = attr(data, ndaDST, dst)
 	if mac != nil {
@@ -40,18 +41,23 @@ func neighMsg(state uint16, dst []byte, mac []byte) syscall.NetlinkMessage {
 func TestParseNeighbors(t *testing.T) {
 	v6 := make([]byte, 16)
 	v6[0], v6[1], v6[15] = 0xfd, 0x42, 0x99
-	neigh := parseNeighbors([]syscall.NetlinkMessage{
-		neighMsg(0x02, []byte{192, 168, 77, 138}, []byte{0xa2, 0xba, 0xa6, 0x35, 0x2b, 0xb8}), // reachable
-		neighMsg(0x04, []byte{192, 168, 77, 120}, nil),                                        // stale, unresolved
-		neighMsg(0x02, v6, []byte{0xa2, 0xba, 0xa6, 0x35, 0x2b, 0xb8}),
+	neigh := parseNeighborsWithInterfaceName([]syscall.NetlinkMessage{
+		neighMsg(7, 0x02, []byte{192, 168, 77, 138}, []byte{0xa2, 0xba, 0xa6, 0x35, 0x2b, 0xb8}), // reachable
+		neighMsg(7, 0x04, []byte{192, 168, 77, 120}, nil),                                        // stale, unresolved
+		neighMsg(7, 0x02, v6, []byte{0xa2, 0xba, 0xa6, 0x35, 0x2b, 0xb8}),
 		{Header: syscall.NlMsghdr{Type: syscall.NLMSG_DONE}},
+	}, func(index int) string {
+		if index == 7 {
+			return "br-lan.10"
+		}
+		return ""
 	})
 	if len(neigh) != 3 {
 		t.Fatalf("got %d entries, want 3: %+v", len(neigh), neigh)
 	}
 	first := neigh[0]
 	if first.Addr != "192.168.77.138" || first.MAC != "a2:ba:a6:35:2b:b8" ||
-		!first.State.Active() || first.State.Recent() {
+		first.Interface != "br-lan.10" || !first.State.Active() || first.State.Recent() {
 		t.Errorf("reachable v4 = %+v", first)
 	}
 	second := neigh[1]

@@ -61,7 +61,9 @@ func main() {
 	srv.SetAllowedHosts(allowedHosts())
 
 	log.Printf("verso listening on %s", addr)
-	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
+	err = http.ListenAndServe(addr, srv.Handler())
+	srv.Close()
+	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
 }

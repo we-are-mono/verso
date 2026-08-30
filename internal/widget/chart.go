@@ -86,24 +86,24 @@ func chartDimsFor(size string) chartDims {
 }
 
 type chartView struct {
-	Label   string
-	Name    string // live handle (data-verso-chart), empty for a static chart
-	Class   string // size class on the svg root: verso-chart--full | verso-chart--panel | verso-chart--spark
-	Stretch bool   // preserveAspectRatio="none": the CSS fixes the height, the width flexes
+	Label    string
+	Name     string // live handle (data-verso-chart), empty for a static chart
+	Class    string // size class on the svg root: verso-chart--full | verso-chart--panel | verso-chart--spark
+	Stretch  bool   // preserveAspectRatio="none": the CSS fixes the height, the width flexes
 	W, H     float64
 	GridYs   []float64
 	Baseline float64 // y of the value-0 line; 0 = none (full/panel draw it)
-	HasAxis  bool     // wrap the plot so the HTML axis labels can overlay it
+	HasAxis  bool    // wrap the plot so the HTML axis labels can overlay it
 	HTMLDots []chartHTMLDot
-	YLabels []chartYLabel
-	XStart  string
-	XEnd    string
-	Series  []chartSeriesView
-	Readout bool // draw the status/rates panel beside the graph
-	Title   string
-	Live    bool
-	Note    string
-	Rates   []chartRate
+	YLabels  []chartYLabel
+	XStart   string
+	XEnd     string
+	Series   []chartSeriesView
+	Readout  bool // draw the status/rates panel beside the graph
+	Title    string
+	Live     bool
+	Note     string
+	Rates    []chartRate
 }
 
 // chartYLabel is one value label riding a gridline, positioned by percent of
@@ -306,7 +306,9 @@ func chartPoints(vals []float64, w, h, max, pad float64) [][2]float64 {
 
 // chartSegments appends the cubic-bezier segments of a smooth curve through the points
 // (a Catmull-Rom spline, tension 1/6): each segment eases into the next so the line
-// reads as a curve, not a run of straight hops. The opening "M" is written by the caller.
+// reads as a curve, not a run of straight hops. Constraining each control point's y
+// coordinate to its segment endpoints prevents the spline from inventing negative
+// traffic between non-negative samples. The opening "M" is written by the caller.
 func chartSegments(b *strings.Builder, pts [][2]float64) {
 	for i := 0; i < len(pts)-1; i++ {
 		p0 := pts[i]
@@ -318,9 +320,12 @@ func chartSegments(b *strings.Builder, pts [][2]float64) {
 		if i+2 < len(pts) {
 			p3 = pts[i+2]
 		}
+		lo, hi := min(p1[1], p2[1]), max(p1[1], p2[1])
+		c1y := max(lo, min(hi, p1[1]+(p2[1]-p0[1])/6))
+		c2y := max(lo, min(hi, p2[1]-(p3[1]-p1[1])/6))
 		fmt.Fprintf(b, " C%.1f %.1f %.1f %.1f %.1f %.1f",
-			p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6,
-			p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6,
+			p1[0]+(p2[0]-p0[0])/6, c1y,
+			p2[0]-(p3[0]-p1[0])/6, c2y,
 			p2[0], p2[1])
 	}
 }

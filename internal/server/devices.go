@@ -18,9 +18,8 @@ import (
 // Connected devices: the roster, from the router's own truth. dnsmasq's
 // lease file names who holds an address; the kernel supplies everything
 // else, joined by MAC — neighbour entries both families (with real NUD
-// confidence), the bridge port the MAC was learned on, and conntrack's
-// per-connection byte counters. Friendly names lead; each row opens the
-// device's full story in a wide drawer.
+// confidence) and the bridge port the MAC was learned on. Friendly names lead;
+// each row opens the device's full story in a wide drawer.
 
 const leasesPath = "/tmp/dhcp.leases"
 
@@ -131,24 +130,10 @@ func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
 	}
 	zones := s.zoneMap(ctx, sid)
 
-	// Conntrack totals arrive per address (through the helper — the flow
-	// table is root's to read); every address of a device keys back to its
-	// MAC, folding both families into one total.
-	traffic := map[string]sysstat.DeviceTraffic{}
-	if byAddr, err := s.backend.ConnStats(ctx, sid); err != nil {
-		log.Printf("verso: devices: conntrack unavailable: %v", err)
-	} else {
-		traffic = foldTraffic(leases, agg, byAddr)
-	}
-
 	var devices []deviceEntry
 	for _, l := range leases {
 		mac := strings.ToLower(l.mac)
 		entries := agg[mac]
-		down, up := s.trafHist.Series(deviceAddrs(l, entries))
-		if down == nil { // no history yet: a flat baseline the live layer can grow
-			down, up = []float64{0, 0}, []float64{0, 0}
-		}
 		devices = append(devices, deviceEntry{
 			Name:        deviceName(l.host, l.mac),
 			IP:          l.ip,
@@ -159,9 +144,8 @@ func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
 			Port:        ports[mac],
 			LeaseExpiry: l.expiry,
 			Addrs:       entries,
-			Traffic:     traffic[mac],
-			Down:        down,
-			Up:          up,
+			Down:        []float64{0, 0},
+			Up:          []float64{0, 0},
 		})
 	}
 	sort.Slice(devices, func(i, j int) bool {
@@ -171,80 +155,6 @@ func (s *Server) deviceList(ctx context.Context, sid string) []deviceEntry {
 		return devices[i].Name < devices[j].Name
 	})
 	return devices
-}
-
-// foldTraffic groups per-address conntrack totals by device MAC — both
-// families of a device summing into one figure.
-func foldTraffic(leases []lease, agg map[string][]sysstat.Neighbor, byAddr map[string]sysstat.DeviceTraffic) map[string]sysstat.DeviceTraffic {
-	traffic := make(map[string]sysstat.DeviceTraffic)
-	for _, l := range leases {
-		mac := strings.ToLower(l.mac)
-		for _, addr := range deviceAddrs(l, agg[mac]) {
-			if at, ok := byAddr[addr]; ok {
-				t := traffic[mac]
-				t.TxBytes += at.TxBytes
-				t.RxBytes += at.RxBytes
-				t.Conns += at.Conns
-				traffic[mac] = t
-			}
-		}
-	}
-	return traffic
-}
-
-// deviceAddrs is every address a device answers to: the lease's v4 plus each
-// neighbour entry on its MAC.
-func deviceAddrs(l lease, entries []sysstat.Neighbor) []string {
-	addrs := make([]string, 0, 1+len(entries))
-	addrs = append(addrs, l.ip)
-	for _, n := range entries {
-		if n.Addr != l.ip {
-			addrs = append(addrs, n.Addr)
-		}
-	}
-	return addrs
-}
-
-// deviceSeries is one device's frame on the overview stream — the same
-// series the drawer's panel chart was rendered from (so the live layer
-// redraws exactly what the static layer drew), plus its running totals for
-// the stat tiles.
-type deviceSeries struct {
-	Key     string    `json:"key"`
-	Down    []float64 `json:"down"`
-	Up      []float64 `json:"up"`
-	RxBytes int64     `json:"rx"`
-	TxBytes int64     `json:"tx"`
-	Conns   int       `json:"conns"`
-}
-
-// deviceTrafficSeries builds the per-device frames the stream pushes each
-// tick, from the tick's own conntrack snapshot. Devices with no observed
-// history yet send nothing.
-func (s *Server) deviceTrafficSeries(byAddr map[string]sysstat.DeviceTraffic) []deviceSeries {
-	raw, err := s.readLeases()
-	if err != nil {
-		return nil
-	}
-	leases := parseLeases(raw)
-	neigh, _ := s.neighbors()
-	agg := aggregateNeighbors(neigh)
-	traffic := foldTraffic(leases, agg, byAddr)
-	var out []deviceSeries
-	for _, l := range leases {
-		mac := strings.ToLower(l.mac)
-		down, up := s.trafHist.Series(deviceAddrs(l, agg[mac]))
-		if down == nil {
-			continue
-		}
-		t := traffic[mac]
-		out = append(out, deviceSeries{
-			Key: mac, Down: down, Up: up,
-			RxBytes: t.RxBytes, TxBytes: t.TxBytes, Conns: t.Conns,
-		})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
-	return out
 }
 
 // leaseIn says when the lease runs out the way a person would.

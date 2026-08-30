@@ -54,12 +54,14 @@ func (s NeighState) String() string {
 }
 
 // Neighbor is one neighbour-table entry: the address, the MAC it resolved to
-// (empty while unresolved), and the kernel's confidence. The MAC is the join
-// key that groups a device's v4 and v6 addresses into one identity.
+// (empty while unresolved), the kernel interface carrying it, and the kernel's
+// confidence. The MAC is the join key that groups a device's v4 and v6 addresses
+// into one identity.
 type Neighbor struct {
-	Addr  string
-	MAC   string
-	State NeighState
+	Addr      string
+	MAC       string
+	Interface string
+	State     NeighState
 }
 
 // Neighbors dumps the kernel's neighbour table over rtnetlink — both
@@ -173,12 +175,30 @@ const (
 )
 
 func parseNeighbors(msgs []syscall.NetlinkMessage) []Neighbor {
+	return parseNeighborsWithInterfaceName(msgs, func(index int) string {
+		if iface, err := net.InterfaceByIndex(index); err == nil {
+			return iface.Name
+		}
+		return ""
+	})
+}
+
+func parseNeighborsWithInterfaceName(msgs []syscall.NetlinkMessage, resolve func(int) string) []Neighbor {
 	var neigh []Neighbor
+	interfaceNames := map[int]string{}
 	for _, m := range msgs {
 		if m.Header.Type != syscall.RTM_NEWNEIGH || len(m.Data) < ndmsgLen {
 			continue
 		}
 		n := Neighbor{State: NeighState(binary.NativeEndian.Uint16(m.Data[8:10]))}
+		if index := int(int32(binary.NativeEndian.Uint32(m.Data[4:8]))); index > 0 {
+			name, known := interfaceNames[index]
+			if !known {
+				name = resolve(index)
+				interfaceNames[index] = name
+			}
+			n.Interface = name
+		}
 		for rest := m.Data[ndmsgLen:]; len(rest) >= 4; {
 			alen := int(binary.NativeEndian.Uint16(rest[0:2]))
 			atype := binary.NativeEndian.Uint16(rest[2:4])

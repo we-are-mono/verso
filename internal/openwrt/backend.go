@@ -9,9 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/ubus"
 )
 
@@ -54,12 +52,10 @@ type Backend interface {
 	// UCIDelete removes a section from config through rpcd, carrying the sid. It
 	// realizes the "remove" of a uci-backed repeater (ADR-005 §7).
 	UCIDelete(ctx context.Context, sid, config, section string) error
-	// SetPassword sets username's system password through rpcd's ACL-gated `luci`
-	// object (method setPassword), carrying the operator's sid. rpcd authorizes and
-	// executes the change as root; the shell itself is unprivileged and cannot
-	// write /etc/shadow (ADR-007). It backs the shell-owned password page (ADR-009
-	// §3) — the shell owns the credential surface, but the privileged write, like
-	// every other, goes through rpcd with the session.
+	// SetPassword asks the persistent root helper to set username's system
+	// password, carrying the operator's sid. The helper verifies the sid through
+	// rpcd before acting; the shell itself is unprivileged and cannot write
+	// /etc/shadow (ADR-007).
 	SetPassword(ctx context.Context, sid, username, password string) error
 	// The rest of the uci two-phase lifecycle (ADR-010). Staged edits live in
 	// UCI's own stage; these four let the shell read it, discard it, and apply it
@@ -87,9 +83,9 @@ type Backend interface {
 	// session's ubus/rc/init access. Callers constrain the name to services
 	// they own; the backend adds no policy of its own beyond the session gate.
 	RCInit(ctx context.Context, sid, name, action string) error
-	// The package verbs (ADR-011 §4) ride the privileged helper's ubus object
-	// ("verso"), which self-gates on the sid; the helper validates names and
-	// queries again on its side. PkgStatus reports when the feed indexes were
+	// The package verbs (ADR-011 §4) ride the persistent privileged helper's Unix
+	// socket. It self-gates on the sid and validates names and queries again on
+	// its side. PkgStatus reports when the feed indexes were
 	// last refreshed (unix seconds; 0 = never); PkgUpdate refreshes them;
 	// PkgSearch lists matching packages plus the uncapped total; PkgInstall
 	// and PkgRemove act on one exact package name.
@@ -116,11 +112,6 @@ type Backend interface {
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
-	// ConnStats reads per-address traffic totals aggregated from conntrack,
-	// through the helper's connStats verb — the flow table is root's to read
-	// (ADR-007), the helper folds it so one small row per address crosses the
-	// bus.
-	ConnStats(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error)
 }
 
 // WANState is the uplink's live condition, from network.interface.wan status.
@@ -128,6 +119,7 @@ type WANState struct {
 	Up     bool
 	Device string // the l3 device carrying the uplink, e.g. "wan0"
 	Addr   string // the uplink's IPv4 address, "" until the protocol is up
+	Uptime int64  // seconds since netifd brought this WAN interface up
 }
 
 // WANConn is the uplink's connection facts as the overview lists them: the IPv4
@@ -158,14 +150,14 @@ type DeviceStats struct {
 // Package is one row of a package search or listing, as the helper reports
 // it; the detail fields are filled where the source provides them in bulk.
 type Package struct {
-	Name        string
-	Version     string
-	Feed        string
-	Description string
-	License     string
-	Webpage     string
-	Size        int64 // package file size, bytes
-	Installed   bool
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Feed        string `json:"feed"`
+	Description string `json:"description"`
+	License     string `json:"license"`
+	Webpage     string `json:"webpage"`
+	Size        int64  `json:"size"` // package file size, bytes
+	Installed   bool   `json:"installed"`
 }
 
 // RCState is one procd service's rc snapshot: enabled is the boot symlink,
@@ -238,7 +230,6 @@ type (
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
 	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
-	connStatsFn    func(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -272,7 +263,6 @@ type NativeBackend struct {
 	pkgRemove    pkgActFn
 	wanStatus    wanStatusFn
 	deviceStats  deviceStatsFn
-	connStats    connStatsFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -304,7 +294,6 @@ func NewNativeBackend() *NativeBackend {
 		pkgRemove:    dialPkgAct("", "pkgRemove"),
 		wanStatus:    dialWANStatus(""),
 		deviceStats:  dialDeviceStats(""),
-		connStats:    dialConnStats(""),
 	}
 }
 
@@ -432,10 +421,6 @@ func (b *NativeBackend) WANConn(ctx context.Context, sid string) (WANConn, error
 
 func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
 	return b.deviceStats(ctx, sid, device)
-}
-
-func (b *NativeBackend) ConnStats(ctx context.Context, sid string) (map[string]sysstat.DeviceTraffic, error) {
-	return b.connStats(ctx, sid)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -625,29 +610,16 @@ func dialUCIAdd(socket string) uciAddFn {
 	}
 }
 
-// dialSetPassword returns a passwdFn that sets a user's password via Verso's own
-// `verso` rpcd helper (method `setPassword`), carrying the sid. The helper runs
-// as root under rpcd and self-gates on the session's ACL (it verifies
-// session.access for verso.setPassword before acting), so no LuCI dependency and
-// no ambient privilege in the shell (ADR-007). The password travels only in the
-// ubus payload over the local socket, never as a process argument.
+// dialSetPassword returns a passwdFn that asks the resident Rust helper to set a
+// user's password. The helper runs as root and self-gates on session.access for
+// verso.setPassword, so the shell keeps no ambient privilege. The password
+// travels only over the protected local socket, never in a process argument.
 func dialSetPassword(socket string) passwdFn {
-	return func(_ context.Context, sid, username, password string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("verso")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeArgs(id, "setPassword", map[string]string{
-			"ubus_rpc_session": sid,
-			"username":         username,
-			"password":         password,
-		})
-		return err
+	return func(ctx context.Context, sid, username, password string) error {
+		return callHelper(ctx, socket, "setPassword", sid, map[string]string{
+			"username": username,
+			"password": password,
+		}, nil)
 	}
 }
 
@@ -997,134 +969,46 @@ func dialRCList(socket string) rcListFn {
 	}
 }
 
-// pkgCallTimeout is the widened per-message deadline for helper package
-// calls: an index refresh or an install does real network and disk work on
-// the far side.
-const pkgCallTimeout = 90 * time.Second
-
-// dialVerso opens a ubus client aimed at the privileged helper's object with
-// the package-call deadline. The helper self-gates on the sid it is handed.
-func dialVerso(socket string) (*ubus.Client, uint32, error) {
-	c, err := ubus.Dial(socket)
-	if err != nil {
-		return nil, 0, err
-	}
-	c.SetTimeout(pkgCallTimeout)
-	id, err := c.Lookup("verso")
-	if err != nil {
-		c.Close()
-		return nil, 0, err
-	}
-	return c, id, nil
-}
-
 func dialPkgStatus(socket string) pkgStatusFn {
-	return func(_ context.Context, sid string) (int64, error) {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return 0, err
+	return func(ctx context.Context, sid string) (int64, error) {
+		var result struct {
+			CheckedAt int64 `json:"checked_at"`
 		}
-		defer c.Close()
-		res, err := c.InvokeArgs(id, "pkgStatus", map[string]string{"ubus_rpc_session": sid})
-		if err != nil {
-			return 0, err
-		}
-		return asInt64(res["checked_at"]), nil
+		err := callHelper(ctx, socket, "pkgStatus", sid, nil, &result)
+		return result.CheckedAt, err
 	}
 }
 
 func dialPkgUpdate(socket string) pkgUpdateFn {
-	return func(_ context.Context, sid string) error {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		_, err = c.InvokeArgs(id, "pkgUpdate", map[string]string{"ubus_rpc_session": sid})
-		return err
+	return func(ctx context.Context, sid string) error {
+		return callHelper(ctx, socket, "pkgUpdate", sid, nil, nil)
 	}
 }
 
 func dialPkgSearch(socket string) pkgSearchFn {
-	return func(_ context.Context, sid, query string) ([]Package, int, error) {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return nil, 0, err
+	return func(ctx context.Context, sid, query string) ([]Package, int, error) {
+		var result struct {
+			Packages []Package `json:"packages"`
+			Total    int       `json:"total"`
 		}
-		defer c.Close()
-		res, err := c.InvokeArgs(id, "pkgSearch", map[string]string{
-			"ubus_rpc_session": sid,
-			"query":            query,
-		})
-		if err != nil {
-			return nil, 0, err
-		}
-		raw, _ := res["packages"].([]any)
-		pkgs := make([]Package, 0, len(raw))
-		for _, r := range raw {
-			t, ok := r.(map[string]any)
-			if !ok {
-				continue
-			}
-			name, _ := t["name"].(string)
-			version, _ := t["version"].(string)
-			feed, _ := t["feed"].(string)
-			desc, _ := t["description"].(string)
-			pkgs = append(pkgs, Package{
-				Name: name, Version: version, Feed: feed, Description: desc,
-				Installed: asBool(t["installed"]),
-			})
-		}
-		return pkgs, int(asInt64(res["total"])), nil
+		err := callHelper(ctx, socket, "pkgSearch", sid, map[string]string{"query": query}, &result)
+		return result.Packages, result.Total, err
 	}
 }
 
 func dialPkgInstalled(socket string) pkgInstalledFn {
-	return func(_ context.Context, sid string) ([]Package, error) {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return nil, err
+	return func(ctx context.Context, sid string) ([]Package, error) {
+		var result struct {
+			Packages []Package `json:"packages"`
 		}
-		defer c.Close()
-		res, err := c.InvokeArgs(id, "pkgInstalled", map[string]string{"ubus_rpc_session": sid})
-		if err != nil {
-			return nil, err
-		}
-		raw, _ := res["packages"].([]any)
-		pkgs := make([]Package, 0, len(raw))
-		for _, r := range raw {
-			t, ok := r.(map[string]any)
-			if !ok {
-				continue
-			}
-			name, _ := t["name"].(string)
-			version, _ := t["version"].(string)
-			feed, _ := t["feed"].(string)
-			desc, _ := t["description"].(string)
-			license, _ := t["license"].(string)
-			webpage, _ := t["webpage"].(string)
-			pkgs = append(pkgs, Package{
-				Name: name, Version: version, Feed: feed,
-				Description: desc, License: license, Webpage: webpage,
-				Size: asInt64(t["size"]), Installed: true,
-			})
-		}
-		return pkgs, nil
+		err := callHelper(ctx, socket, "pkgInstalled", sid, nil, &result)
+		return result.Packages, err
 	}
 }
 
 func dialPkgAct(socket, methodName string) pkgActFn {
-	return func(_ context.Context, sid, name string) error {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		_, err = c.InvokeArgs(id, methodName, map[string]string{
-			"ubus_rpc_session": sid,
-			"package":          name,
-		})
-		return err
+	return func(ctx context.Context, sid, name string) error {
+		return callHelper(ctx, socket, methodName, sid, map[string]string{"package": name}, nil)
 	}
 }
 
@@ -1181,7 +1065,7 @@ func dialWANStatus(socket string) wanStatusFn {
 // l3_device once the protocol is up; device is the configured fallback. The
 // address is the first entry of ipv4-address, present only while up.
 func parseWANState(m map[string]any) WANState {
-	ws := WANState{Up: asBool(m["up"])}
+	ws := WANState{Up: asBool(m["up"]), Uptime: asInt64(m["uptime"])}
 	if d, ok := m["l3_device"].(string); ok && d != "" {
 		ws.Device = d
 	} else if d, ok := m["device"].(string); ok {
@@ -1195,9 +1079,9 @@ func parseWANState(m map[string]any) WANState {
 	return ws
 }
 
-// dialWANConn reads the wan (IPv4) and wan6 (IPv6) interface status and folds
-// both into the connection facts. Each read is sid-gated; a missing wan6 (a
-// v4-only uplink) leaves the v6 fields empty rather than failing.
+// dialWANConn reads netifd's interface dump and discovers the IPv6 side attached
+// to wan. This covers explicit wan6, automatically-created wan_6, custom names
+// sharing wan's L3 device, and protocols that put both families directly on wan.
 func dialWANConn(socket string) wanConnFn {
 	return func(_ context.Context, sid string) (WANConn, error) {
 		c, err := ubus.Dial(socket)
@@ -1205,29 +1089,93 @@ func dialWANConn(socket string) wanConnFn {
 			return WANConn{}, err
 		}
 		defer c.Close()
-		read := func(iface string) map[string]any {
-			if ok, err := probeAccess(c, sid, "ubus", "network.interface."+iface, "status"); err != nil || !ok {
-				return nil
-			}
-			id, err := c.Lookup("network.interface." + iface)
-			if err != nil {
-				return nil
-			}
-			res, _ := c.Invoke(id, "status")
-			return res
+		if ok, err := probeAccess(c, sid, "ubus", "network.interface", "dump"); err != nil || !ok {
+			return WANConn{}, ErrAccessDenied
 		}
-		wan := read("wan")
+		id, err := c.Lookup("network.interface")
+		if err != nil {
+			return WANConn{}, err
+		}
+		dump, err := c.Invoke(id, "dump")
+		if err != nil {
+			return WANConn{}, err
+		}
+		wan, wan6 := wanStatuses(dump)
 		if wan == nil {
 			return WANConn{}, ErrAccessDenied
 		}
-		return parseWANConn(wan, read("wan6")), nil
+		return parseWANConn(wan, wan6), nil
 	}
+}
+
+// wanStatuses returns the configured wan status and the best IPv6 companion in
+// a netifd dump. A matching L3 device is the authoritative relationship; the
+// conventional names only rank otherwise-equivalent candidates.
+func wanStatuses(dump map[string]any) (map[string]any, map[string]any) {
+	entries, _ := dump["interface"].([]any)
+	var wan map[string]any
+	for _, value := range entries {
+		entry, _ := value.(map[string]any)
+		if name, _ := entry["interface"].(string); name == "wan" {
+			wan = entry
+			break
+		}
+	}
+	if wan == nil {
+		return nil, nil
+	}
+
+	wanDevice := interfaceDevice(wan)
+	var best map[string]any
+	bestScore := 0
+	for _, value := range entries {
+		entry, _ := value.(map[string]any)
+		name, _ := entry["interface"].(string)
+		if name == "" || name == "wan" || !interfaceCarriesIPv6(entry) {
+			continue
+		}
+		score := 0
+		if wanDevice != "" && interfaceDevice(entry) == wanDevice {
+			score = 100
+		}
+		switch name {
+		case "wan6":
+			score += 20
+		case "wan_6":
+			score += 10
+		}
+		if score > bestScore {
+			best, bestScore = entry, score
+		}
+	}
+	return wan, best
+}
+
+func interfaceDevice(status map[string]any) string {
+	if device, _ := status["l3_device"].(string); device != "" {
+		return device
+	}
+	device, _ := status["device"].(string)
+	return device
+}
+
+func interfaceCarriesIPv6(status map[string]any) bool {
+	if proto, _ := status["proto"].(string); proto == "dhcpv6" {
+		return true
+	}
+	for _, key := range []string{"ipv6-address", "ipv6-prefix"} {
+		if values, ok := status[key].([]any); ok && len(values) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // parseWANConn maps the wan/wan6 interface status onto WANConn: the first
 // address (with its mask), the default route's nexthop as the gateway, the DNS
 // list, the delegated IPv6 prefix, and the prefix's valid lifetime as the lease
-// time left.
+// time left. Some netifd protocols expose both families directly on wan, so wan
+// is also the fallback source for IPv6 fields when there is no separate wan6.
 func parseWANConn(v4, v6 map[string]any) WANConn {
 	var wc WANConn
 	str := func(v any) string { s, _ := v.(string); return s }
@@ -1296,12 +1244,16 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 	wc.V4Gateway = gateway(v4, "0.0.0.0")
 	wc.V4DNS = dns(v4)
 
-	if v6 != nil {
-		wc.V6Proto = proto(str(v6["proto"]))
-		wc.V6Addr = addr(v6, "ipv6-address")
-		wc.V6Gateway = gateway(v6, "::")
-		wc.V6DNS = dns(v6)
-		if pfx, ok := v6["ipv6-prefix"].([]any); ok && len(pfx) > 0 {
+	v6Source := v6
+	if v6Source == nil {
+		v6Source = v4
+	}
+	if v6Source != nil {
+		wc.V6Proto = proto(str(v6Source["proto"]))
+		wc.V6Addr = addr(v6Source, "ipv6-address")
+		wc.V6Gateway = gateway(v6Source, "::")
+		wc.V6DNS = dns(v6Source)
+		if pfx, ok := v6Source["ipv6-prefix"].([]any); ok && len(pfx) > 0 {
 			if e, ok := pfx[0].(map[string]any); ok {
 				if a := str(e["address"]); a != "" {
 					wc.V6Prefix = fmt.Sprintf("%s/%d", a, asInt64(e["mask"]))
@@ -1358,42 +1310,4 @@ func parseDeviceStats(m map[string]any) DeviceStats {
 		ds.TxBytes = asInt64(st["tx_bytes"])
 	}
 	return ds
-}
-
-// dialConnStats reads per-address traffic totals through the helper's
-// connStats verb (the conntrack table is root's to read, ADR-007).
-func dialConnStats(socket string) connStatsFn {
-	return func(_ context.Context, sid string) (map[string]sysstat.DeviceTraffic, error) {
-		c, id, err := dialVerso(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-		res, err := c.InvokeArgs(id, "connStats", map[string]string{"ubus_rpc_session": sid})
-		if err != nil {
-			return nil, err
-		}
-		return parseConnStats(res), nil
-	}
-}
-
-// parseConnStats maps the helper's addrs table onto per-address totals.
-func parseConnStats(m map[string]any) map[string]sysstat.DeviceTraffic {
-	totals := make(map[string]sysstat.DeviceTraffic)
-	addrs, ok := m["addrs"].(map[string]any)
-	if !ok {
-		return totals
-	}
-	for addr, v := range addrs {
-		t, ok := v.(map[string]any)
-		if !ok {
-			continue
-		}
-		totals[addr] = sysstat.DeviceTraffic{
-			TxBytes: asInt64(t["TxBytes"]),
-			RxBytes: asInt64(t["RxBytes"]),
-			Conns:   int(asInt64(t["Conns"])),
-		}
-	}
-	return totals
 }

@@ -1,0 +1,16 @@
+[package]
+name = "verso-rpcd"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only"
+publish = false
+
+[dependencies]
+serde_json = "1.0.151"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

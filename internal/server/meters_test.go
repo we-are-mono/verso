@@ -184,7 +184,7 @@ func TestOverviewEventsStream(t *testing.T) {
 		t.Fatalf("Content-Type = %q, want text/event-stream", ct)
 	}
 
-	// The stream carries several event types now (meters, ports, traffic, wan);
+	// The stream carries several event types now (meters, interfaces, wan);
 	// collect the two meters payloads, tracking the current event.
 	var payloads []string
 	var event string

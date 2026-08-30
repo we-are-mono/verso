@@ -35,3 +35,42 @@ func TestRenderSectionSub(t *testing.T) {
 		t.Errorf("section without sub should keep its original title spacing:\n%s", plain)
 	}
 }
+
+func TestRenderSectionMeta(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Section{
+		Title:     "Time and region",
+		MetaLabel: "Current time",
+		Meta:      "2026-08-29 22:14:08",
+		MetaIcon:  "clock",
+		Children:  []Widget{&Text{Markdown: "body"}},
+	})
+	for _, want := range []string{
+		"justify-between",
+		"Current time",
+		"font-semibold text-slate-700",
+		"2026-08-29 22:14:08",
+		lucideIcons["clock"],
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("section meta missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderSectionHairline(t *testing.T) {
+	r := newRenderer(t)
+	plain := render(t, r, &Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})
+	if strings.Contains(plain, "border-slate-200") {
+		t.Errorf("section should omit its hairline by default:\n%s", plain)
+	}
+
+	divided := render(t, r, &Section{
+		Title:    "Divided",
+		Hairline: true,
+		Children: []Widget{&Text{Markdown: "body"}},
+	})
+	if !strings.Contains(divided, "border-slate-200") {
+		t.Errorf("section with hairline=true should include divider styling:\n%s", divided)
+	}
+}

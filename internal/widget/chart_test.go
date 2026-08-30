@@ -136,6 +136,18 @@ func TestChartScalesToMax(t *testing.T) {
 	}
 }
 
+// TestChartCurveDoesNotOvershootEndpoints: a flat zero followed by a rise used
+// to pull the preceding spline segment below the graph's zero baseline.
+func TestChartCurveDoesNotOvershootEndpoints(t *testing.T) {
+	got := chartCurve([][2]float64{{0, 100}, {1, 100}, {2, 0}})
+	if strings.Contains(got, "116.7") {
+		t.Fatalf("curve crossed below the zero baseline: %s", got)
+	}
+	if !strings.Contains(got, "C0.2 100.0 0.7 100.0 1.0 100.0") {
+		t.Fatalf("first segment's controls were not constrained to its endpoints: %s", got)
+	}
+}
+
 // TestChartSkipsShortSeries: a series with fewer than two points can't be a line — it is
 // skipped, not a panic or a broken path.
 func TestChartSkipsShortSeries(t *testing.T) {

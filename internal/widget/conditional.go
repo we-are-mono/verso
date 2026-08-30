@@ -10,16 +10,18 @@ import (
 	"io"
 )
 
-// Conditional is a behavioural widget: a field-set shown only when its controlling
-// toggle is on (ADR-005 §7). The plugin declares the intent — this toggle gates
-// these fields — and the shell realizes it in pure CSS (no JavaScript, no
-// round-trip), because show/hide has no state to persist. The toggle posts its own
-// value, so the plugin can read it when interpreting a save.
+// Conditional is a behavioural widget: one field-set shown when its controlling
+// toggle is on, with an optional alternate field-set shown when it is off
+// (ADR-005 §7). The plugin declares the branches and the shell realizes them in
+// pure CSS (no JavaScript, no round-trip), because show/hide has no state to
+// persist. The toggle posts its own value, so the plugin can read it when
+// interpreting a save.
 type Conditional struct {
-	Name    string   // form field name of the controlling toggle
-	Label   string   // the toggle's label
-	Checked bool     // whether the toggle starts on (the field-set starts visible)
-	Fields  []Widget // the field-set revealed when the toggle is on
+	Name      string   // form field name of the controlling toggle
+	Label     string   // the toggle's label
+	Checked   bool     // whether the toggle starts on
+	Fields    []Widget // the field-set revealed when the toggle is on
+	Otherwise []Widget // optional field-set revealed when the toggle is off
 }
 
 func (*Conditional) isWidget() {}
@@ -28,10 +30,11 @@ func (*Conditional) isWidget() {}
 // field type fails loudly rather than vanishing.
 func (c *Conditional) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Name    string            `json:"name"`
-		Label   string            `json:"label"`
-		Checked bool              `json:"checked"`
-		Fields  []json.RawMessage `json:"fields"`
+		Name      string            `json:"name"`
+		Label     string            `json:"label"`
+		Checked   bool              `json:"checked"`
+		Fields    []json.RawMessage `json:"fields"`
+		Otherwise []json.RawMessage `json:"otherwise"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -39,15 +42,26 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 	c.Name = raw.Name
 	c.Label = raw.Label
 	c.Checked = raw.Checked
-	c.Fields = make([]Widget, 0, len(raw.Fields))
-	for i, rf := range raw.Fields {
-		w, err := Decode(rf)
-		if err != nil {
-			return fmt.Errorf("conditional field %d: %w", i, err)
-		}
-		c.Fields = append(c.Fields, w)
+	var err error
+	if c.Fields, err = decodeConditionalBranch(raw.Fields, "field"); err != nil {
+		return err
+	}
+	if c.Otherwise, err = decodeConditionalBranch(raw.Otherwise, "otherwise field"); err != nil {
+		return err
 	}
 	return nil
+}
+
+func decodeConditionalBranch(raw []json.RawMessage, label string) ([]Widget, error) {
+	widgets := make([]Widget, 0, len(raw))
+	for i, item := range raw {
+		w, err := Decode(item)
+		if err != nil {
+			return nil, fmt.Errorf("conditional %s %d: %w", label, i, err)
+		}
+		widgets = append(widgets, w)
+	}
+	return widgets, nil
 }
 
 // conditionalView is the conditional template's model: the toggle plus the gated
@@ -56,6 +70,7 @@ type conditionalView struct {
 	Name, Label string
 	Checked     bool
 	Fields      []template.HTML
+	Otherwise   []template.HTML
 }
 
 // renderInto renders the gated field-set through the renderer, then hands the
@@ -66,7 +81,12 @@ func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error 
 	if err != nil {
 		return err
 	}
+	otherwise, err := r.renderChildren(c.Otherwise, csrf)
+	if err != nil {
+		return err
+	}
 	return r.execute(out, "conditional.html.tmpl", conditionalView{
-		Name: c.Name, Label: c.Label, Checked: c.Checked, Fields: fields,
+		Name: c.Name, Label: c.Label, Checked: c.Checked,
+		Fields: fields, Otherwise: otherwise,
 	})
 }

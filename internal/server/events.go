@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,12 +14,8 @@ import (
 // The overview stream: one long-lived GET (Server-Sent Events) the browser's
 // EventSource holds open, into which the shell pushes fresh truth — the
 // server owns the sampling clock, the client just renders what arrives. Two
-// event types ride it: `meters` every second; `ports` whenever the panel's
-// truth moves (a cable, a renegotiation, traffic starting or stopping) —
-// sampled on its own faster clock so the activity LEDs feel live; and
-// `traffic`, the per-device rate history behind the drawer charts, sent on
-// the readings tick while it changes. Further types (an uplink going down, a
-// lease appearing) join the same stream.
+// event types ride it: system meters, WAN traffic, and sensors. Further types
+// join the same stream without creating a sampler per browser tab.
 
 // handleOverviewEvents serves the stream. The session is re-checked every
 // tick: a stream must not outlive its session the way a one-shot poll could
@@ -38,34 +33,20 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	meters := time.NewTicker(s.eventInterval)
 	defer meters.Stop()
-	// Ports run their own, faster clock: the amber activity LED wants a
-	// livelier signal than the once-a-second readings, and a port sample is
-	// one cheap device read.
-	ports := time.NewTicker(s.portsInterval)
-	defer ports.Stop()
 
-	var lastPorts, lastTraffic []byte
-	var prevCounters map[string]int64
 	sendMeters := func() bool {
 		return writeMetersEvent(w, s.systemMeters(r.Context(), sid)) == nil
 	}
-	// Per-device frames follow the same change-driven shape as ports: a fully
-	// quiet minute stops them until traffic moves again. The tick's conntrack
-	// snapshot serves twice — the rate history behind the charts, and the
-	// running totals on the tiles. The stream is the traffic historian: it
-	// holds a session and a steady clock.
-	sendTraffic := func() bool {
-		byAddr, err := s.backend.ConnStats(r.Context(), sid)
-		if err != nil {
-			return true // conntrack down is a logged page-render concern, not a stream killer
-		}
-		s.trafHist.Observe(byAddr)
-		payload, changed := marshalIfChanged(s.deviceTrafficSeries(byAddr), lastTraffic)
-		if !changed {
+	sendInterfaces := func() bool {
+		snapshot, ok := s.telemetrySnapshot(r.Context())
+		if !ok {
 			return true
 		}
-		lastTraffic = payload
-		_, err = fmt.Fprintf(w, "event: traffic\ndata: {\"devices\":%s}\n\n", payload)
+		payload, err := json.Marshal(map[string]any{"interfaces": telemetryInterfaceReadings(snapshot)})
+		if err != nil {
+			return true
+		}
+		_, err = fmt.Fprintf(w, "event: interfaces\ndata: %s\n\n", payload)
 		return err == nil
 	}
 	// The WAN throughput frame: sample the uplink device's counters once a
@@ -73,14 +54,26 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// and stream the newest down/up so the live graph scrolls in real values.
 	sendWan := func() bool {
 		ws, err := s.backend.WANStatus(r.Context(), sid)
-		if err != nil || ws.Device == "" {
-			return true // no uplink device is a page-render concern, not a stream killer
+		if err != nil {
+			return true // no uplink is a page-render concern, not a stream killer
+		}
+		write := func(down, up float64) bool {
+			_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f,\"uptime\":%d}\n\n", down, up, ws.Uptime)
+			return err == nil
+		}
+		if ws.Device == "" {
+			return write(0, 0)
+		}
+		if snapshot, ok := s.telemetrySnapshot(r.Context()); ok {
+			if device, found := snapshot.Interface(ws.Device); found && len(device.History) != 0 {
+				point := device.History[len(device.History)-1]
+				return write(rateMbps(point.RxBPS), rateMbps(point.TxBPS))
+			}
 		}
 		st := s.deviceStats(r.Context(), sid, ws.Device)
 		s.wanHist.Observe(st.RxBytes, st.TxBytes)
 		down, up := s.wanHist.Latest()
-		_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f}\n\n", down, up)
-		return err == nil
+		return write(down, up)
 	}
 	// The hardware-sensor frame: CPU temperature, fan speed, power draw, resolved
 	// through the board profile and pushed each readings tick so the System panel's
@@ -98,23 +91,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprintf(w, "event: sensors\ndata: %s\n\n", payload)
 		return err == nil
 	}
-	// The panel frame goes out only when the truth moved (a cable, a
-	// renegotiation, the amber LED flipping) — the change-driven shape every
-	// event type after meters follows.
-	sendPorts := func() bool {
-		items, counters := s.portList(r.Context(), sid)
-		markPortActivity(items, counters, prevCounters)
-		prevCounters = counters
-		payload, changed := marshalIfChanged(items, lastPorts)
-		if !changed {
-			return true
-		}
-		lastPorts = payload
-		_, err := fmt.Fprintf(w, "event: ports\ndata: {\"ports\":%s}\n\n", payload)
-		return err == nil
-	}
-
-	if !sendMeters() || !sendPorts() || !sendTraffic() || !sendWan() || !sendSensors() {
+	if !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
 		return
 	}
 	flusher.Flush()
@@ -123,30 +100,12 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if s.sessionUser(r) == "" || !sendMeters() || !sendTraffic() || !sendWan() || !sendSensors() {
-				return
-			}
-			flusher.Flush()
-		case <-ports.C:
-			if !sendPorts() {
+			if s.sessionUser(r) == "" || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
 				return
 			}
 			flusher.Flush()
 		}
 	}
-}
-
-// marshalIfChanged encodes a non-empty value and reports whether it differs
-// from the previous encoding — the skip-unchanged-frames helper.
-func marshalIfChanged[T any](items []T, last []byte) ([]byte, bool) {
-	if len(items) == 0 {
-		return last, false
-	}
-	payload, err := json.Marshal(items)
-	if err != nil || bytes.Equal(payload, last) {
-		return last, false
-	}
-	return payload, true
 }
 
 // writeMetersEvent frames one readings snapshot as an SSE `meters` event:

@@ -368,14 +368,14 @@ document.addEventListener(
 })();
 
 // The overview stream: one EventSource the shell pushes fresh truth into —
-// `meters` readings every second, `ports` panel state when it changes. Each
-// type updates its rendered widget in place (the CSS transitions do the
+// system meters, interface rates, WAN traffic, and sensors. Each type updates
+// its rendered widget in place (the CSS transitions do the
 // glides). Reconnection after a drop is EventSource's own; when the session
 // ends the reconnect lands on the login redirect — not an event stream —
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-port]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
   var BANDS = {
     good: "stroke-green-600",
     warn: "stroke-amber-500",
@@ -420,15 +420,24 @@ document.addEventListener(
     var svg = root.querySelector("svg");
     if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
-  function applyPort(port) {
-    var root = document.querySelector('[data-verso-port="' + port.iface + '"]');
+  function applyInterface(iface) {
+    var rows = document.querySelectorAll("[data-verso-row]");
+    var root = null, key = "interface:" + iface.name;
+    rows.forEach(function (row) {
+      if (row.getAttribute("data-verso-row") === key) root = row;
+    });
     if (!root) return;
-    root.classList.toggle("is-linked", port.linked);
-    root.classList.toggle("is-empty", !port.linked);
-    root.classList.toggle("is-active", port.active);
-    setText(root, ".verso-port-speed", port.speed);
-    setText(root, "[data-verso-port-link]", port.speed);
-    setText(root, "[data-verso-port-addr]", port.addr);
+    var state = root.querySelector('[data-verso-cell="state"]');
+    if (state) {
+      setText(state, "[data-verso-value]", iface.state);
+      var dot = state.querySelector("[data-verso-dot]");
+      if (dot) {
+        ["bg-emerald-500", "bg-amber-500", "bg-red-500", "bg-slate-300"].forEach(function (c) { dot.classList.remove(c); });
+        dot.classList.add(iface.variant === "success" ? "bg-emerald-500" : iface.variant === "warning" ? "bg-amber-500" : iface.variant === "danger" ? "bg-red-500" : "bg-slate-300");
+      }
+    }
+    setText(root, '[data-verso-cell="rx-rate"]', iface.rx_rate);
+    setText(root, '[data-verso-cell="tx-rate"]', iface.tx_rate);
   }
   // applyChart redraws a named chart from fresh series — the same geometry
   // the server drew (viewBox coordinates from the svg itself), so the live
@@ -535,12 +544,20 @@ document.addEventListener(
   }
   var es = new EventSource("/overview/events");
   listen(es, "meters", "meters", applyMeter);
-  listen(es, "ports", "ports", applyPort);
+  listen(es, "interfaces", "interfaces", applyInterface);
   listen(es, "traffic", "devices", applyChart);
   // The WAN throughput sample hands off to the traffic-graph animator, if present.
   es.addEventListener("wan", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
+    var uptime = document.querySelector('[data-verso-tile-caption="internet-uptime"]');
+    if (uptime && d && typeof d.uptime === "number") {
+      var total = Math.max(0, Math.floor(d.uptime));
+      var days = Math.floor(total / 86400);
+      var hours = Math.floor(total / 3600) % 24;
+      var minutes = Math.floor(total / 60) % 60;
+      uptime.textContent = "for " + (days > 0 ? days + "d " + hours + "h " + minutes + "m" : hours > 0 ? hours + "h " + minutes + "m" : minutes + "m");
+    }
     if (d && window.__versoWanSample) window.__versoWanSample(d.down, d.up);
   });
   // The hardware-sensor frame updates the System panel's temperature/fan/power
@@ -606,7 +623,7 @@ document.addEventListener(
 // as fresh samples arrive on the overview stream's `wan` event (window.__verso-
 // WanSample). Each frame the curves translate by a fraction of one sample; when a
 // sample lands the value is committed and the translate resets — a seamless
-// treadmill drawing the same smooth curve and fixed 300 Mbps scale the server
+// treadmill drawing the same smooth curve and dynamic shared scale the server
 // drew. A clip hides what scrolls past the edges. Reduced-motion still updates,
 // just in discrete steps instead of a glide.
 (function () {
@@ -618,7 +635,7 @@ document.addEventListener(
 
   var NS = "http://www.w3.org/2000/svg";
   var vb = svg.viewBox.baseVal;
-  var W = vb.width, H = vb.height, PAD = 8, MAX = 300, INTERVAL = 1000;
+  var W = vb.width, H = vb.height, PAD = 8, INTERVAL = 1000;
   var groups = svg.querySelectorAll("g.verso-chart-series");
   var dots = host.querySelectorAll(".verso-chart-dot-html");
   var downEl = document.querySelector("[data-verso-traffic-down]");
@@ -633,6 +650,36 @@ document.addEventListener(
   down.push(down[N - 1]); up.push(up[N - 1]); // one extra, off-right, until a sample lands
   var step = W / (N - 1);
   var series = [down, up];
+
+  // Download and upload share one domain so their relative sizes remain
+  // truthful. Recalculate it from the whole visible minute whenever a sample
+  // arrives; the 15% headroom matches the server-rendered chart and keeps the
+  // tallest point clear of the top edge. Including the off-right point grows
+  // the scale just before that new value scrolls into view.
+  var max = 1;
+  function scaleMax() {
+    var peak = 0;
+    series.forEach(function (vals) {
+      vals.forEach(function (v) {
+        if (typeof v === "number" && isFinite(v) && v > peak) peak = v;
+      });
+    });
+    return peak > 0 ? peak * 1.15 : 1;
+  }
+  function axisValue(v) {
+    return v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
+  }
+  function updateScale() {
+    max = scaleMax();
+    host.querySelectorAll(".verso-chart-yl").forEach(function (el, i) {
+      var frac = [1, 0.75, 0.5, 0.25][i];
+      if (frac === undefined) return;
+      if (el.dataset.unit === undefined) {
+        el.dataset.unit = (el.textContent.match(/[\d.]+\s*(.*)$/) || ["", ""])[1];
+      }
+      el.textContent = axisValue(max * frac) + (el.dataset.unit ? " " + el.dataset.unit : "");
+    });
+  }
 
   // Clip each series to the plot rect so the treadmill's off-edge content hides.
   var clip = document.createElementNS(NS, "clipPath");
@@ -649,24 +696,29 @@ document.addEventListener(
     areas.push(g.querySelector(".verso-chart-area"));
   });
 
-  function y(v) { return H - PAD - (v / MAX) * (H - 2 * PAD); }
+  function y(v) { return H - PAD - (v / max) * (H - 2 * PAD); }
   function points(vals) { return vals.map(function (v, j) { return [j * step, y(v)]; }); }
   // The same Catmull-Rom spline the server draws, so the live curve matches.
   function segments(p) {
     var s = "";
     for (var k = 0; k < p.length - 1; k++) {
       var p0 = k > 0 ? p[k - 1] : p[k], p1 = p[k], p2 = p[k + 1], p3 = k + 2 < p.length ? p[k + 2] : p2;
-      s += " C" + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + " " + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) +
-        " " + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + " " + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) +
+      var lo = Math.min(p1[1], p2[1]), hi = Math.max(p1[1], p2[1]);
+      var c1y = Math.max(lo, Math.min(hi, p1[1] + (p2[1] - p0[1]) / 6));
+      var c2y = Math.max(lo, Math.min(hi, p2[1] - (p3[1] - p1[1]) / 6));
+      s += " C" + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + " " + c1y.toFixed(1) +
+        " " + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + " " + c2y.toFixed(1) +
         " " + p2[0].toFixed(1) + " " + p2[1].toFixed(1);
     }
     return s;
   }
   function draw() {
+    updateScale();
     series.forEach(function (vals, idx) {
       var p = points(vals), head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
       if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].setAttribute("transform", "translate(0 0)"); }
       if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].setAttribute("transform", "translate(0 0)"); }
+      if (dots[idx]) dots[idx].style.top = ((y(vals[N - 1]) / H) * 100).toFixed(1) + "%";
     });
   }
 

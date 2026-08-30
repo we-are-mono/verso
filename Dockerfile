@@ -9,18 +9,23 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
+COPY profiles/ ./profiles/
 RUN CGO_ENABLED=0 go build -trimpath -o /out/verso ./cmd/verso
-# verso-rpcd is the privileged root helper rpcd runs (ADR-007); a separate,
-# single-responsibility binary, not folded into the shell.
-RUN CGO_ENABLED=0 go build -trimpath -o /out/verso-rpcd ./cmd/verso-rpcd
+
+# The privileged companion is a small persistent Rust daemon. Unlike an rpcd
+# exec plugin it is not respawned for every method invocation.
+FROM rust:1.98-alpine AS helper-build
+WORKDIR /src
+COPY verso-rpcd/Cargo.toml verso-rpcd/Cargo.lock ./
+COPY verso-rpcd/src/ ./src/
+RUN cargo build --locked --release
 
 # --- runtime: full OpenWrt (procd init), verso as a procd service ----------
 # 25.12 = the apk-based series the Mono image targets (25.12.5); the hub's
 # newest published rootfs tag is .4 — bump when .5 lands.
 FROM openwrt/rootfs:x86-64-25.12.4
 COPY --from=build /out/verso /usr/bin/verso
-# Installed as `verso` so rpcd names the ubus object "verso".
-COPY --from=build /out/verso-rpcd /usr/libexec/rpcd/verso
+COPY --from=helper-build /src/target/release/verso-rpcd /usr/sbin/verso-rpcd
 COPY docker/rootfs/ /
 # The full network stack runs (netifd, dnsmasq, odhcpd, fw4): /etc/config/network
 # declares eth0's Docker address as the static mgmt interface and the firewall's
@@ -34,13 +39,14 @@ RUN echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
  # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.
  && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json /usr/share/rpcd/acl.d/verso-shell.json \
- && chmod 0755 /usr/libexec/rpcd/verso \
- && chmod +x /etc/init.d/verso /etc/init.d/netfix \
+ && chmod 0755 /usr/sbin/verso-rpcd \
+ && chmod +x /etc/init.d/verso /etc/init.d/verso-rpcd /etc/init.d/netfix \
  # No ujail in an unprivileged container: it cannot clone namespaces (EPERM),
  # which turns jailed services (dnsmasq) into crash loops. Without the binary,
  # procd runs every instance plain — the same skip verso's own jail params
  # already get here (see /etc/init.d/verso). Jails apply on real hardware.
  && rm -f /sbin/ujail \
+ && ( /etc/init.d/verso-rpcd enable || ln -sf ../init.d/verso-rpcd /etc/rc.d/S94verso-rpcd ) \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true
 EXPOSE 8080

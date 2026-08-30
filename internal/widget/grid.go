@@ -19,6 +19,7 @@ import (
 // collapsing to fewer columns as the viewport narrows (ADR-005). The shell owns the
 // gap too — a plugin never expresses spacing.
 type Grid struct {
+	Style    string
 	Columns  int
 	Children []Widget
 }
@@ -27,12 +28,14 @@ func (*Grid) isWidget() {}
 
 func (g *Grid) UnmarshalJSON(data []byte) error {
 	var raw struct {
+		Style    string            `json:"style"`
 		Columns  int               `json:"columns"`
 		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	g.Style = raw.Style
 	g.Columns = raw.Columns
 	g.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
@@ -49,6 +52,7 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 // the declared count, plus the pre-rendered children.
 type gridView struct {
 	Cols     string
+	Gap      string
 	Children []template.HTML
 }
 
@@ -57,14 +61,28 @@ func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "grid.html.tmpl", gridView{Cols: gridCols(g.Columns), Children: children})
+	gap := "gap-8"
+	if g.Style == "form" {
+		gap = "gap-6"
+	}
+	return r.execute(out, "grid.html.tmpl", gridView{Cols: gridCols(g.Columns, g.Style), Gap: gap, Children: children})
 }
 
 // gridCols maps a declared column count to responsive Tailwind classes — the shell's
 // job of turning semantic intent into pixels (ADR-005). Small tile/card grids go
 // two-up on phones (never a lonely full-width column) and widen on larger screens.
 // The strings are static literals so Tailwind's compiler retains the classes.
-func gridCols(n int) string {
+func gridCols(n int, style string) string {
+	if style == "form" {
+		switch {
+		case n <= 1:
+			return "grid-cols-1"
+		case n == 2:
+			return "grid-cols-1 md:grid-cols-2"
+		default:
+			return "grid-cols-1 md:grid-cols-3"
+		}
+	}
 	switch {
 	case n <= 1:
 		return "grid-cols-1"

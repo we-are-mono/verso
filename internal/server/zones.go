@@ -34,22 +34,11 @@ func (s *Server) zoneMap(ctx context.Context, sid string) []zoneNet {
 		return nil
 	}
 
-	// interface name → zone name, from the firewall's zone sections.
-	zoneOf := make(map[string]string)
-	for _, v := range fwCfg {
-		section, ok := v.(map[string]any)
-		if !ok || section[".type"] != "zone" {
-			continue
-		}
-		zone, _ := section["name"].(string)
-		if zone == "" {
-			continue
-		}
-		for _, network := range uciList(section["network"]) {
-			zoneOf[network] = zone
-		}
-	}
+	return zoneNets(netCfg, fwCfg)
+}
 
+func zoneNets(netCfg, fwCfg map[string]any) []zoneNet {
+	zoneOf := networkZones(fwCfg)
 	var zones []zoneNet
 	for _, v := range netCfg {
 		section, ok := v.(map[string]any)
@@ -68,6 +57,26 @@ func (s *Server) zoneMap(ctx context.Context, sid string) []zoneNet {
 		}
 	}
 	return zones
+}
+
+// zonesByDevice maps kernel interface names to their firewall zone through the
+// UCI interface's configured device. It covers link-local and delegated IPv6
+// neighbours that cannot be classified by a static address subnet.
+func zonesByDevice(netCfg, fwCfg map[string]any) map[string]string {
+	zoneOf := networkZones(fwCfg)
+	out := map[string]string{}
+	for _, value := range netCfg {
+		section, ok := value.(map[string]any)
+		if !ok || section[".type"] != "interface" {
+			continue
+		}
+		name, _ := section[".name"].(string)
+		device, _ := section["device"].(string)
+		if device != "" && zoneOf[name] != "" {
+			out[device] = zoneOf[name]
+		}
+	}
+	return out
 }
 
 // zoneForAddr names the zone whose subnet holds addr, or "".

@@ -10,7 +10,8 @@ import (
 
 func TestConditionalDecodeAndRender(t *testing.T) {
 	js := `{"type":"conditional","name":"use_psk","label":"Use a pre-shared key","checked":true,
-		"fields":[{"type":"field","name":"psk","label":"Pre-shared key","value":"SECRET"}]}`
+		"fields":[{"type":"field","name":"psk","label":"Pre-shared key","value":"SECRET"}],
+		"otherwise":[{"type":"text","markdown":"No key will be used."}]}`
 	w, err := Decode([]byte(js))
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
@@ -19,7 +20,7 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 	if !ok {
 		t.Fatalf("Decode returned %T, want *Conditional", w)
 	}
-	if c.Name != "use_psk" || c.Label != "Use a pre-shared key" || !c.Checked || len(c.Fields) != 1 {
+	if c.Name != "use_psk" || c.Label != "Use a pre-shared key" || !c.Checked || len(c.Fields) != 1 || len(c.Otherwise) != 1 {
 		t.Fatalf("conditional = %+v", c)
 	}
 
@@ -30,10 +31,18 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 		"checked", "Use a pre-shared key",
 		"verso-conditional-body", // the gated field-set the CSS shows/hides
 		`name="psk"`,             // the gated field rendered
+		"verso-conditional-otherwise", "No key will be used.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditional render missing %q", want)
 		}
+	}
+}
+
+func TestConditionalUnknownOtherwiseFieldFails(t *testing.T) {
+	js := `{"type":"conditional","name":"t","label":"L","fields":[],"otherwise":[{"type":"bogus"}]}`
+	if _, err := Decode([]byte(js)); err == nil {
+		t.Fatal("Decode: want error for an unknown alternate field")
 	}
 }
 

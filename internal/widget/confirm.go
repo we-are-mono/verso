@@ -13,10 +13,11 @@ import (
 // confirm — no separate dialog, no leaving the spot. It is pure CSS (ADR-005 §7): a
 // hidden checkbox flips between the two states, so it needs no JavaScript.
 type Confirm struct {
-	Trigger string `json:"trigger"` // the danger button's label, e.g. "Remove device"
-	Message string `json:"message"` // the confirmation prompt
-	Confirm string `json:"confirm"` // confirm-button label (default "Confirm")
-	Cancel  string `json:"cancel"`  // cancel label (default "Cancel")
+	Trigger         string `json:"trigger"`          // the danger button's label, e.g. "Remove device"
+	Message         string `json:"message"`          // the confirmation prompt
+	Confirm         string `json:"confirm"`          // confirm-button label (default "Confirm")
+	Cancel          string `json:"cancel"`           // cancel label (default "Cancel")
+	RequirePassword bool   `json:"require_password"` // ask for the current administrator password
 }
 
 func (*Confirm) isWidget() {}
@@ -26,6 +27,7 @@ func (*Confirm) isWidget() {}
 type confirmView struct {
 	ID                                string
 	Trigger, Message, Confirm, Cancel string
+	RequirePassword                   bool
 }
 
 func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -38,7 +40,11 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 		cancel = "Cancel"
 	}
 	return r.execute(out, "confirm.html.tmpl", confirmView{
-		ID:      fmt.Sprintf("verso-confirm-%d", r.cfmSeq.Add(1)),
-		Trigger: c.Trigger, Message: c.Message, Confirm: confirm, Cancel: cancel,
+		ID:              fmt.Sprintf("verso-confirm-%d", r.cfmSeq.Add(1)),
+		Trigger:         c.Trigger,
+		Message:         c.Message,
+		Confirm:         confirm,
+		Cancel:          cancel,
+		RequirePassword: c.RequirePassword,
 	})
 }

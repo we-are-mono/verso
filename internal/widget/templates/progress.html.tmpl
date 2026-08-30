@@ -1,0 +1,7 @@
+{{/* progress: an indeterminate waiting state with a real Lucide spinner. It stays
+     calm and centred; the copy says what is happening while the motion says wait. */}}
+<div class="flex flex-col items-center px-4 py-8 text-center" role="status" aria-live="polite">
+  <span class="text-sky-600">{{icon "loader-circle" "size-10 animate-spin"}}</span>
+  {{if .Title}}<p class="mt-4 text-base font-semibold text-slate-900">{{.Title}}</p>{{end}}
+  {{if .Body}}<p class="mt-1.5 max-w-[36ch] text-sm text-slate-500">{{.Body}}</p>{{end}}
+</div>

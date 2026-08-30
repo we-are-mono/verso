@@ -54,14 +54,26 @@ type UCI map[string]map[string]any
 type Envelope struct {
 	SchemaVersion int             `json:"schema_version"`
 	Title         string          `json:"title"`
-	Kicker        string          `json:"kicker"`     // optional eyebrow above the heading, e.g. "Internet · live"
-	Live          bool            `json:"live"`       // optional pulsing dot on the kicker
-	Subheading    string          `json:"subheading"` // optional lede under the heading
-	Width         string          `json:"width"`      // page width preset: "narrow" | "normal" (default) | "wide"
-	Pages         []PageTab       `json:"pages"`      // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
+	Kicker        string          `json:"kicker"`        // optional eyebrow above the heading, e.g. "Styleguide"
+	KickerStatus  string          `json:"kicker_status"` // optional emerald completion/state label beside the kicker
+	Immediate     bool            `json:"immediate"`     // page actions are immediate; omit the clean staging capsule
+	Live          bool            `json:"live"`          // optional pulsing dot on the kicker
+	Subheading    string          `json:"subheading"`    // optional lede under the heading
+	Width         string          `json:"width"`         // page width preset: "narrow" | "normal" (default) | "wide"
+	Pages         []PageTab       `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
+	Banner        *Banner         `json:"banner"`        // optional full-width semantic notice beneath the subpage bar
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
 	Status        int             `json:"-"`
+}
+
+// Banner is a page-level notice rendered by the shell at the navigation seam.
+// It is reserved for state important enough to remain visible above the page
+// heading; ordinary contextual notes belong in a callout beside their content.
+type Banner struct {
+	Variant string `json:"variant"` // "info" | "warning" | "danger"
+	Title   string `json:"title"`
+	Body    string `json:"body"`
 }
 
 // PageTab is one subpage in a domain's top bar (the third navigation tier:

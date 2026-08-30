@@ -7,7 +7,8 @@
      optional seam folds extra rows (stock defaults) inside the same card. */}}
 {{/* table.tag: a small coloured label after a cell's value ("new", "WAN") — the
      badge vocabulary as a compact tag, not a full pill. */}}
-{{define "table.tag"}}<span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium {{if eq .TagVariant "info"}}bg-sky-100 text-sky-800{{else if eq .TagVariant "warning"}}bg-amber-100 text-amber-800{{else if eq .TagVariant "success"}}bg-emerald-100 text-emerald-800{{else if eq .TagVariant "danger"}}bg-red-100 text-red-800{{else}}bg-slate-100 text-slate-600{{end}}">{{.Tag}}</span>{{end}}
+{{define "table.tag"}}<span class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium whitespace-nowrap {{if .TagIcon}}ring-1 ring-inset {{if eq .TagVariant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/20{{else}}bg-slate-50 text-slate-600 ring-slate-200 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}{{else}}{{if eq .TagVariant "info"}}bg-sky-100 text-sky-800 dark:bg-sky-500/10 dark:text-sky-400{{else if eq .TagVariant "warning"}}bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400{{else if eq .TagVariant "success"}}bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400{{else if eq .TagVariant "danger"}}bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-400{{else}}bg-slate-100 text-slate-600 dark:bg-slate-400/10 dark:text-slate-700{{end}}{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-sky-600 dark:text-sky-400{{else}}text-slate-400{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{end}}{{.Tag}}</span>{{end}}
+{{define "table.chip"}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20">{{if .Icon}}<span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
 {{define "table.rows"}}
       {{range .}}
       {{/* Rows are inert: no whole-row click, so cell values stay selectable and
@@ -15,9 +16,9 @@
            it opens from the trailing "Details" link, never the row. The panel
            teleports to <body>. */}}
       {{if .Drawer}}
-      <tr x-data="modal" class="group">
+      <tr x-data="modal" class="group"{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{else}}
-      <tr class="group">
+      <tr class="group"{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "toggle"}}
@@ -36,37 +37,35 @@
             {{end}}
           </span>
         </td>
-        {{else if eq .Kind "name"}}
+        {{else if or (eq .Kind "name") (eq .Kind "reference")}}
         {{/* the identity column: the name in bold ink, with an optional small
              category chip inline after it (e.g. the device's zone). */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
           <span class="inline-flex items-center gap-2">
-            <span class="{{if .Primary}}text-base {{end}}font-semibold text-slate-900">{{.Text}}</span>
-            {{if .Chip}}<span class="inline-flex items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Chip}}</span>{{end}}
+            <span class="{{if .Primary}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{end}}text-slate-900">{{.Text}}</span>
+            {{if .Chip}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20">{{if .ChipIcon}}<span class="text-slate-400">{{icon .ChipIcon "size-3.5"}}</span>{{end}}{{.Chip}}</span>{{end}}
+            {{range .Chips}}{{template "table.chip" .}}{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
         </td>
         {{else if eq .Kind "status"}}
         {{/* a link/state cell: a bare status dot in the cell's variant colour, the
              word calm beside it, and an optional tag (e.g. the WAN uplink). */}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
           <span class="inline-flex items-center gap-2">
-            <span class="size-2 shrink-0 rounded-full {{if eq .Variant "success"}}bg-emerald-500{{else if eq .Variant "warning"}}bg-amber-500{{else if eq .Variant "danger"}}bg-red-500{{else}}bg-slate-300{{end}}"></span>
-            <span>{{.Text}}</span>
-            {{/* a tag with an icon becomes a ring-chip (the WAN uplink) — the one
-                 identity chip that keeps its colour, so the uplink stands out;
-                 every other tag stays the flat coloured label. */}}
-            {{if .Tag}}{{if .TagIcon}}<span class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium whitespace-nowrap ring-1 ring-inset {{if eq .TagVariant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20{{else}}bg-slate-50 text-slate-600 ring-slate-200{{end}}"><span class="{{if eq .TagVariant "info"}}text-sky-600{{else}}text-slate-400{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{.Tag}}</span>{{else}}{{template "table.tag" .}}{{end}}{{end}}
+            <span class="size-2 shrink-0 rounded-full {{if eq .Variant "success"}}bg-emerald-500{{else if eq .Variant "warning"}}bg-amber-500{{else if eq .Variant "danger"}}bg-red-500{{else}}bg-slate-300{{end}}"{{if .Key}} data-verso-dot{{end}}></span>
+            <span{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>
+            {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
         </td>
         {{else if eq .Kind "link"}}
         {{/* a right-aligned action link (e.g. "Details") to the cell's Href. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 text-right align-middle whitespace-nowrap group-last:border-b-0">{{if .Text}}<a href="{{.Href}}" class="text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Text}}</a>{{end}}</td>
         {{else if eq .Kind "pill"}}
-        {{/* a status pill — or, when the cell carries a Button instead, a small
-             secondary button that opens the row's drawer (the reserve-vs-reserved
-             pattern: a badge once it's done, the action button until then). */}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else if .Button}}<button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">{{.Button}}</button>{{else}}<span class="text-slate-300">—</span>{{end}}</td>
+        {{/* a status pill, a drawer trigger, or a direct row action. A direct
+             destructive action opens a compact alert dialog and posts its
+             _action marker only after explicit confirmation. */}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else if .Button}}{{if .Drawer}}<button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>{{else if .Confirm}}<span x-data="modal" class="inline"><button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button><template x-teleport="body"><div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto"><div x-show="open" x-transition.opacity @click="hide" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"></div><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center"><div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ConfirmID}}-title" aria-describedby="{{.ConfirmID}}-body" class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-left shadow-xl focus:outline-none sm:p-6"><div class="sm:flex sm:items-start"><div class="mx-auto grid size-12 shrink-0 place-items-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div><div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left"><h3 id="{{.ConfirmID}}-title" class="text-base font-semibold text-slate-900">{{.ConfirmTitle}}</h3><p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm text-slate-500">{{.Confirm}}</p></div></div><div class="mt-6 flex flex-col gap-3 sm:flex-row"><form method="post"><input type="hidden" name="_csrf" value="{{.CSRFToken}}"><button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900 sm:w-auto">{{.Button}}</button></form><button type="button" @click="hide" class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 sm:w-auto">Cancel</button></div></div></div></div></template></span>{{else}}<form method="post" class="inline"><input type="hidden" name="_csrf" value="{{.CSRFToken}}"><button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button></form>{{end}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
@@ -78,17 +77,17 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
           {{if .Chips}}
           <span class="flex flex-wrap items-center gap-1.5">
-            {{range .Chips}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap"><span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{.Label}}</span>{{end}}
+            {{range .Chips}}{{template "table.chip" .}}{{end}}
           </span>
           {{else}}<span class="text-slate-300">—</span>{{end}}
         </td>
         {{else if eq .Kind "mono"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono {{if .Primary}}text-base{{else}}text-[0.9rem]{{end}} tabular-nums whitespace-nowrap {{if .Muted}}text-slate-500{{else}}text-slate-900{{end}} group-last:border-b-0">{{.Text}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono {{if and .Primary .Emphasis}}text-lg{{else if or .Primary .Emphasis}}text-base{{else}}text-[0.9rem]{{end}}{{if .Emphasis}} font-semibold{{end}} tabular-nums whitespace-nowrap {{if .Muted}}text-slate-500{{else}}text-slate-900{{end}} group-last:border-b-0">{{.Text}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds
              both families without a second column. */}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono text-[0.9rem] tabular-nums group-last:border-b-0">
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle font-mono {{if and .Primary .Emphasis}}text-lg{{else if or .Primary .Emphasis}}text-base{{else}}text-[0.9rem]{{end}}{{if .Emphasis}} font-semibold{{end}} tabular-nums group-last:border-b-0">
           {{if .Text}}<div class="whitespace-nowrap text-slate-900">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
           {{if .Sub}}<div class="whitespace-nowrap text-slate-500">{{.Sub}}{{if .Copy}}{{template "verso-copy-inline" .Sub}}{{end}}</div>{{end}}
           {{if and (not .Text) (not .Sub)}}<span class="text-slate-300">—</span>{{end}}
@@ -97,8 +96,10 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle text-slate-500 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "rate"}}
+        <td class="w-32 min-w-32 max-w-32 border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 text-left align-middle whitespace-nowrap tabular-nums text-slate-500 group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "num"}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 text-right align-middle tabular-nums text-slate-500 group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 text-right align-middle tabular-nums text-slate-500 group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle {{if .Muted}}text-slate-500{{else}}text-slate-900{{end}} group-last:border-b-0">{{.Text}}</td>
         {{end}}
@@ -141,7 +142,7 @@
     <thead>
       <tr>
         {{range .Columns}}
-        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-sm font-light text-slate-500 {{if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-sm font-light text-slate-500 {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-slate-200"></th>{{end}}
       </tr>

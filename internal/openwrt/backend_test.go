@@ -182,15 +182,98 @@ func TestUCIDeleteThreadsArgs(t *testing.T) {
 // configured device as fallback, and a down interface reads honestly down.
 func TestParseWANState(t *testing.T) {
 	got := parseWANState(map[string]any{
-		"up": true, "l3_device": "wan0", "device": "wan0",
+		"up": true, "uptime": int64(8123), "l3_device": "wan0", "device": "wan0",
 		"ipv4-address": []any{map[string]any{"address": "172.30.1.178", "mask": int64(24)}},
 	})
-	if !got.Up || got.Device != "wan0" || got.Addr != "172.30.1.178" {
+	if !got.Up || got.Device != "wan0" || got.Addr != "172.30.1.178" || got.Uptime != 8123 {
 		t.Errorf("up wan = %+v", got)
 	}
 	got = parseWANState(map[string]any{"up": false, "device": "wan0"})
 	if got.Up || got.Device != "wan0" || got.Addr != "" {
 		t.Errorf("down wan = %+v", got)
+	}
+}
+
+func TestParseWANConnIPv6(t *testing.T) {
+	v4 := map[string]any{
+		"proto": "dhcp",
+		"ipv4-address": []any{
+			map[string]any{"address": "10.0.0.138", "mask": int64(24)},
+		},
+	}
+	v6 := map[string]any{
+		"proto": "dhcpv6",
+		"ipv6-address": []any{
+			map[string]any{"address": "2001:db8::f7c", "mask": int64(128)},
+		},
+		"ipv6-prefix": []any{
+			map[string]any{"address": "2001:db8:1::", "mask": int64(56), "valid": int64(690)},
+		},
+		"route": []any{
+			map[string]any{"target": "::", "mask": int64(0), "nexthop": "fe80::1"},
+		},
+		"dns-server": []any{"2001:4860:4860::8888"},
+	}
+
+	got := parseWANConn(v4, v6)
+	if got.V6Proto != "DHCPv6 client" || got.V6Addr != "2001:db8::f7c/128" ||
+		got.V6Prefix != "2001:db8:1::/56" || got.V6Gateway != "fe80::1" ||
+		len(got.V6DNS) != 1 || got.V6DNS[0] != "2001:4860:4860::8888" || got.V6Valid != 690 {
+		t.Errorf("wan6 facts = %+v", got)
+	}
+
+	// Some netifd protocols expose the IPv6 facts on wan itself instead of
+	// creating a separate wan6 object.
+	dualStack := map[string]any{}
+	for key, value := range v4 {
+		dualStack[key] = value
+	}
+	for key, value := range v6 {
+		dualStack[key] = value
+	}
+	got = parseWANConn(dualStack, nil)
+	if got.V6Addr != "2001:db8::f7c/128" || got.V6Prefix != "2001:db8:1::/56" {
+		t.Errorf("wan fallback facts = %+v", got)
+	}
+}
+
+func TestWANStatusesDiscoversDynamicIPv6Companion(t *testing.T) {
+	dump := map[string]any{"interface": []any{
+		map[string]any{
+			"interface": "lan6", "proto": "dhcpv6", "l3_device": "br-lan",
+			"ipv6-address": []any{map[string]any{"address": "fd00::1"}},
+		},
+		map[string]any{
+			"interface": "wan", "proto": "pppoe", "l3_device": "pppoe-wan",
+			"ipv4-address": []any{map[string]any{"address": "192.0.2.2"}},
+		},
+		map[string]any{
+			"interface": "wan_6", "proto": "dhcpv6", "dynamic": true,
+			"l3_device":   "pppoe-wan",
+			"ipv6-prefix": []any{map[string]any{"address": "2001:db8:1::", "mask": int64(56)}},
+		},
+	}}
+
+	wan, wan6 := wanStatuses(dump)
+	if name, _ := wan["interface"].(string); name != "wan" {
+		t.Fatalf("wan interface = %q", name)
+	}
+	if name, _ := wan6["interface"].(string); name != "wan_6" {
+		t.Fatalf("IPv6 companion = %q, want wan_6", name)
+	}
+}
+
+func TestWANStatusesAllowsIPv6DirectlyOnWAN(t *testing.T) {
+	wan := map[string]any{
+		"interface": "wan", "proto": "pppoe", "l3_device": "pppoe-wan",
+		"ipv6-address": []any{map[string]any{"address": "2001:db8::2"}},
+	}
+	gotWAN, gotV6 := wanStatuses(map[string]any{"interface": []any{wan}})
+	if gotWAN == nil || gotV6 != nil {
+		t.Fatalf("statuses = wan:%v v6:%v, want wan with direct IPv6 and no companion", gotWAN, gotV6)
+	}
+	if got := parseWANConn(gotWAN, gotV6).V6Addr; got != "2001:db8::2" {
+		t.Errorf("direct WAN IPv6 = %q", got)
 	}
 }
 

@@ -32,3 +32,26 @@ func TestRenderFieldChecks(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderFieldDateTimeLocal(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{
+		Name: "datetime", Label: "Date and time", Kind: "datetime-local",
+		Value: "2026-08-29T22:14:08",
+	})
+	for _, want := range []string{
+		`type="datetime-local"`, `step="1"`, `value="2026-08-29T22:14:08"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("datetime-local field missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderFieldCurrentPasswordAutocomplete(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{
+		Name: "current_password", Label: "Current password", Kind: "password", Autocomplete: "current-password",
+	})
+	if !strings.Contains(got, `autocomplete="current-password"`) {
+		t.Errorf("current password autocomplete missing:\n%s", got)
+	}
+}

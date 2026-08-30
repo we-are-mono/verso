@@ -73,6 +73,19 @@ func TestRenderTableKinds(t *testing.T) {
 	}
 }
 
+func TestRenderEmphasisedMonoCell(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "Address", Kind: "mono"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: "10.0.0.232", Emphasis: true}}}},
+	})
+	for _, want := range []string{"font-mono", "text-lg", "font-semibold", "10.0.0.232"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("emphasised mono cell missing %q:\n%s", want, got)
+		}
+	}
+}
+
 // TestRenderTableEndpoints: endpoints render as a type icon + label with one
 // treatment per kind — zone sans, device mono, router accented. No pills: the
 // grid contains the cells, so a badge would be redundant chrome.
@@ -125,6 +138,26 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestRenderTableReferenceWithZoneChip(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "reference"}},
+		Rows: []TableRow{{Cells: []TableCell{
+			{Text: "Laptop"},
+			{Text: "br-lan.10", Chips: []TableChip{{Icon: "zone", Label: "family"}}},
+		}}},
+	})
+	if !strings.Contains(got, `<span class="text-slate-900">br-lan.10</span>`) {
+		t.Errorf("referenced interface should use regular-weight identity text:\n%s", got)
+	}
+	if !strings.Contains(got, ">family</span>") || !strings.Contains(got, lucideIcons["zone"]) {
+		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
+	}
+	if !strings.Contains(got, "dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20") {
+		t.Errorf("reference chips should carry the shared dark treatment:\n%s", got)
 	}
 }
 
@@ -264,12 +297,12 @@ func TestRenderTableFlat(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, flatDevicesTable())
 	for _, want := range []string{
-		">Connected devices<",    // header band title
-		"12 online · 3 busy",     // header band detail
-		">View all<",             // header band action
-		`href="/devices"`,        // action link target
-		">Details<",              // the trailing "more" affordance
-		`@click="show"`,          // the Details link opens the drawer
+		">Connected devices<",       // header band title
+		"12 online · 3 busy",        // header band detail
+		">View all<",                // header band action
+		`href="/devices"`,           // action link target
+		">Details<",                 // the trailing "more" affordance
+		`@click="show"`,             // the Details link opens the drawer
 		"border-b border-slate-200", // hairline rows
 	} {
 		if !strings.Contains(got, want) {
@@ -277,10 +310,10 @@ func TestRenderTableFlat(t *testing.T) {
 		}
 	}
 	for _, absent := range []string{
-		"odd:bg-slate-50",       // stripes are retired in the flat style
-		`@click="showFromRow"`,  // the row itself is not clickable
-		"cursor-pointer",        // no pointer on inert rows
-		"<thead",                // no column labels → no header row
+		"odd:bg-slate-50",      // stripes are retired in the flat style
+		`@click="showFromRow"`, // the row itself is not clickable
+		"cursor-pointer",       // no pointer on inert rows
+		"<thead",               // no column labels → no header row
 	} {
 		if strings.Contains(got, absent) {
 			t.Errorf("flat table must not contain %q:\n%s", absent, got)
@@ -337,9 +370,9 @@ func TestRenderTableCellButton(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"reserved",                    // the badge state
+		"reserved",                      // the badge state
 		">Reserve IP<", `@click="show"`, // the action button opens the drawer
-		`x-data="modal"`,              // the button's row hosts the modal scope
+		`x-data="modal"`, // the button's row hosts the modal scope
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("cell-button table missing %q:\n%s", want, got)
@@ -347,6 +380,39 @@ func TestRenderTableCellButton(t *testing.T) {
 	}
 	if strings.Contains(got, ">Details<") {
 		t.Errorf("no trailing Details when the drawer opens from an in-cell button:\n%s", got)
+	}
+}
+
+// TestRenderTableDirectAction: an immediate row command posts its action marker
+// from the standard alert dialog without manufacturing an edit drawer.
+func TestRenderTableDirectAction(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Style:   "flat",
+		Columns: []TableColumn{{Label: "Session", Kind: "name"}, {Label: "Access", Kind: "pill"}},
+		Rows: []TableRow{{ID: "iphone", Cells: []TableCell{
+			{Text: "Safari · iPhone"},
+			{Button: "End session", Action: "end-session:iphone", ConfirmTitle: "End this session?", Confirm: "Anyone using it will be signed out."},
+		}}},
+	})
+	for _, want := range []string{
+		`method="post"`, `name="_action"`, `value="end-session:iphone"`,
+		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
+		"bg-red-100 text-red-600", `>End session<`, `>Cancel<`,
+		"text-slate-600 transition-colors hover:bg-slate-100", // link-style Cancel
+		"dark:border-gray-700 dark:bg-transparent dark:text-gray-300",
+		"dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900",
+		"dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("direct table action missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, `<aside`) {
+		t.Errorf("direct table action must not create a drawer:\n%s", got)
+	}
+	if strings.Contains(got, "sm:justify-end") {
+		t.Errorf("alert actions must stay left aligned:\n%s", got)
 	}
 }
 

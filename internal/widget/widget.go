@@ -109,6 +109,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode text: %w", err)
 		}
 		return &t, nil
+	case "progress":
+		var p Progress
+		if err := json.Unmarshal(data, &p); err != nil {
+			return nil, fmt.Errorf("widget: decode progress: %w", err)
+		}
+		return &p, nil
 	case "row":
 		var rw Row
 		if err := json.Unmarshal(data, &rw); err != nil {
@@ -193,6 +199,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode link: %w", err)
 		}
 		return &l, nil
+	case "button":
+		var b Button
+		if err := json.Unmarshal(data, &b); err != nil {
+			return nil, fmt.Errorf("widget: decode button: %w", err)
+		}
+		return &b, nil
 	case "copy":
 		var c Copy
 		if err := json.Unmarshal(data, &c); err != nil {

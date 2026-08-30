@@ -11,9 +11,9 @@ import "io"
 // used, when it was added) so they line up and scan cleanly.
 //
 // Style sets how rows are separated: a hairline between them ("divided", the
-// default) or nothing ("plain"). The shell owns the chrome; the template maps the
-// style to classes, and any unknown value (including the retired "striped") falls
-// back to "divided".
+// default), nothing ("plain"), or a larger inline identity with its explanation
+// beneath ("identity"). The shell owns the chrome; the template maps the style to
+// classes, and unknown values fall back to "divided".
 type Properties struct {
 	Style string     `json:"style"` // "divided" (default) | "plain"
 	Items []Property `json:"items"`
@@ -28,10 +28,12 @@ type Properties struct {
 // addresses, keys, and other machine text), and whether to offer an inline copy
 // button beside the value (for values a person needs to paste elsewhere).
 type Property struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
-	Mono  bool   `json:"mono"`
-	Copy  bool   `json:"copy"`
+	Label    string `json:"label"`
+	Value    string `json:"value"`
+	Help     string `json:"help,omitempty"` // optional explanation immediately beneath this fact
+	Mono     bool   `json:"mono"`
+	Emphasis bool   `json:"emphasis,omitempty"` // promote an important value one size; monospaced values also gain one weight step
+	Copy     bool   `json:"copy"`
 	// Chip renders the value as the small category chip — the same treatment
 	// a zone gets everywhere else, so one fact never wears two dresses.
 	Chip bool `json:"chip,omitempty"`

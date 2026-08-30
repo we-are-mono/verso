@@ -16,6 +16,7 @@ import (
 // the URL policy.
 type Link struct {
 	Label    string `json:"label"`
+	Icon     string `json:"icon,omitempty"`
 	Href     string `json:"href"`
 	Download string `json:"download"` // non-empty => a download with this filename
 	Style    string `json:"style"`    // "" (link) | "button" | "ghost"
@@ -27,6 +28,7 @@ func (*Link) isWidget() {}
 // template.URL by the shell's own policy (below), so it isn't re-neutralised.
 type linkView struct {
 	Label    string
+	Icon     string
 	Href     template.URL
 	Download string
 	Style    string
@@ -34,7 +36,7 @@ type linkView struct {
 
 func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "link.html.tmpl", linkView{
-		Label: l.Label, Href: safeHref(l.Href, l.Download != ""), Download: l.Download, Style: l.Style,
+		Label: l.Label, Icon: l.Icon, Href: safeHref(l.Href, l.Download != ""), Download: l.Download, Style: l.Style,
 	})
 }
 

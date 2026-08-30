@@ -37,6 +37,18 @@ func TestGridColumnsResponsive(t *testing.T) {
 	}
 }
 
+func TestRenderFormGrid(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 3, Children: []Widget{
+		&Field{Name: "password", Label: "New password", Kind: "password"},
+		&Field{Name: "confirm", Label: "Repeat password", Kind: "password"},
+	}})
+	for _, want := range []string{"grid-cols-1 md:grid-cols-3", "gap-6", "New password", "Repeat password"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("form grid missing %q:\n%s", want, got)
+		}
+	}
+}
+
 // TestDecodeGridChildren covers UnmarshalJSON: a grid decodes its children through
 // the shared Decode, so an unknown child fails loudly rather than vanishing.
 func TestDecodeGridChildren(t *testing.T) {

@@ -30,8 +30,6 @@ services:
     cap_add:
       - NET_ADMIN
     sysctls:
-      net.netfilter.nf_conntrack_acct: "1"  # per-connection byte counters — the
-                                            # device-traffic truth Verso reads
       net.ipv6.conf.all.forwarding: "1"     # a v6 router routes
     tmpfs:
       - /tmp

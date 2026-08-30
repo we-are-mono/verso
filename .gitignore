@@ -15,6 +15,9 @@
 *.test
 *.out
 
+# Rust build artifacts
+/verso-rpcd/target/
+
 # Editor / OS / tooling
 .DS_Store
 *.swp

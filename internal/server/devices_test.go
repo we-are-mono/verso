@@ -10,31 +10,22 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 const testLeases = "1787825263 42:e6:ad:ff:b7:af 192.168.77.102 toms-iphone 01:42:e6:ad:ff:b7:af\n" +
 	"1787825264 a2:8c:d7:4a:0e:57 192.168.77.120 * *\n" +
 	"1787825265 06:11:22:33:44:55 192.168.77.130 old-printer *\n"
 
-// testConnStats: what the helper's connStats verb reports — per-address
-// totals, one row per family for the same device.
-func testConnStats() map[string]sysstat.DeviceTraffic {
-	return map[string]sysstat.DeviceTraffic{
-		"192.168.77.102":        {TxBytes: 5000, RxBytes: 90000, Conns: 1},
-		"fd42:7ea:aa00:0:1::66": {TxBytes: 80, RxBytes: 200, Conns: 1},
-		"10.0.0.9":              {TxBytes: 1 << 40, RxBytes: 1 << 40, Conns: 9}, // nobody's — ignored
-	}
-}
-
 // testNeighbors: .102 is confirmed (reachable) and carries v6 entries on the
 // same MAC, .120 has a lapsed entry (stale), .130 has none at all.
 func testNeighbors() ([]sysstat.Neighbor, error) {
 	return []sysstat.Neighbor{
-		{Addr: "192.168.77.102", MAC: "42:e6:ad:ff:b7:af", State: 0x02},        // reachable
-		{Addr: "fd42:7ea:aa00:0:1::66", MAC: "42:e6:ad:ff:b7:af", State: 0x04}, // its v6, stale
-		{Addr: "fe80::44:11", MAC: "42:e6:ad:ff:b7:af", State: 0x04},           // its link-local
-		{Addr: "192.168.77.120", MAC: "a2:8c:d7:4a:0e:57", State: 0x04},        // stale
-		{Addr: "fe80::dead", MAC: "", State: 0x20},                             // failed, unresolved
+		{Addr: "192.168.77.102", MAC: "42:e6:ad:ff:b7:af", Interface: "br-lan", State: 0x02},        // reachable
+		{Addr: "fd42:7ea:aa00:0:1::66", MAC: "42:e6:ad:ff:b7:af", Interface: "br-lan", State: 0x04}, // its v6, stale
+		{Addr: "fe80::44:11", MAC: "42:e6:ad:ff:b7:af", Interface: "br-lan", State: 0x04},           // its link-local
+		{Addr: "192.168.77.120", MAC: "a2:8c:d7:4a:0e:57", Interface: "br-lan", State: 0x04},        // stale
+		{Addr: "fe80::dead", MAC: "", Interface: "br-lan", State: 0x20},                             // failed, unresolved
 	}, nil
 }
 
@@ -54,9 +45,7 @@ func rosterBackend() fakeBackend {
 
 func rosterServer(t *testing.T) *Server {
 	t.Helper()
-	be := rosterBackend()
-	be.connStats = testConnStats()
-	s := newServer(t, be)
+	s := newServer(t, rosterBackend())
 	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
 	s.neighbors = testNeighbors
 	s.bridgePorts = func() (map[string]string, error) {
@@ -72,8 +61,7 @@ func rosterDevices(t *testing.T, s *Server) []deviceEntry {
 
 // TestDeviceList: leases become friendly entries — presence from the
 // kernel's confidence across all the MAC's addresses, the zone from the
-// firewall config, the port from the bridge FDB, traffic folded across both
-// families from conntrack.
+// firewall config, and the port from the bridge FDB.
 func TestDeviceList(t *testing.T) {
 	devices := rosterDevices(t, rosterServer(t))
 	if len(devices) != 3 {
@@ -90,9 +78,6 @@ func TestDeviceList(t *testing.T) {
 	if v6 := online.ipv6(); len(v6) != 2 || v6[0] != "fd42:7ea:aa00:0:1::66" || v6[1] != "fe80::44:11" {
 		t.Errorf("online device v6 = %v, want global first then link-local", v6)
 	}
-	if online.Traffic.RxBytes != 90200 || online.Traffic.TxBytes != 5080 || online.Traffic.Conns != 2 {
-		t.Errorf("online device traffic = %+v, want both families folded", online.Traffic)
-	}
 	idle := devices[1]
 	if idle.Name != "Device 0e:57" || idle.Presence != presenceIdle || idle.Icon != "device" {
 		t.Errorf("idle device = %+v", idle)
@@ -100,6 +85,20 @@ func TestDeviceList(t *testing.T) {
 	offline := devices[2]
 	if offline.Name != "old-printer" || offline.Presence != presenceOffline {
 		t.Errorf("offline device = %+v", offline)
+	}
+}
+
+func TestConnectedDevicesUseKernelInterfaceWithUCIFallback(t *testing.T) {
+	devices := rosterServer(t).connectedDevices(context.Background(), "test-sid")
+	byName := map[string]widget.OverviewDevice{}
+	for _, device := range devices {
+		byName[device.Name] = device
+	}
+	if got := byName["toms-iphone"]; got.Interface != "br-lan" || got.Zone != "lan" {
+		t.Errorf("kernel-backed device = %+v", got)
+	}
+	if got := byName["old-printer"]; got.Interface != "br-lan" || got.Zone != "lan" {
+		t.Errorf("lease-only UCI fallback = %+v", got)
 	}
 }
 
@@ -113,9 +112,7 @@ func TestDeviceListDegrades(t *testing.T) {
 	}
 
 	s = rosterServer(t)
-	be := rosterBackend()
-	be.connErr = errors.New("no conntrack")
-	s.backend = be
+	s.backend = rosterBackend()
 	s.neighbors = func() ([]sysstat.Neighbor, error) { return nil, errors.New("no netlink") }
 	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb") }
 	for _, d := range rosterDevices(t, s) {

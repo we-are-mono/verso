@@ -12,14 +12,19 @@
  */
 @import "tailwindcss";
 
+/* Theme selection is explicit and persisted by the shell. Bind Tailwind's dark
+   utilities to that same root class instead of the browser media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
 
 /*
  * Self-hosted webfonts — no CDN (ADR-001), served first-party under /assets/fonts
  * (CSP default-src 'self' covers them). Fraunces (serif) sets the display/verdict
- * headlines; Hanken Grotesk (sans) carries all UI text and figures. Both are the
- * variable latin subset (weight 400–700), SIL OFL 1.1 — see assets/fonts/OFL.txt.
+ * headlines; Hanken Grotesk (sans) carries UI text; Inconsolata (mono) carries
+ * addresses, identifiers, and machine values. All are variable subsets covering
+ * the weights Verso uses and are SIL OFL 1.1 — see their files in assets/fonts.
  */
 @font-face {
   font-family: "Fraunces";
@@ -35,21 +40,49 @@
   font-display: optional;
   src: url("/assets/fonts/hanken.woff2") format("woff2");
 }
+@font-face {
+  font-family: "Inconsolata";
+  font-style: normal;
+  font-weight: 400 700;
+  font-stretch: 100%;
+  font-display: optional;
+  src: url("/assets/fonts/inconsolata-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inconsolata";
+  font-style: normal;
+  font-weight: 400 700;
+  font-stretch: 100%;
+  font-display: optional;
+  src: url("/assets/fonts/inconsolata-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* Point Tailwind's font utilities at the embedded faces: font-sans (the body default)
-   → Hanken Grotesk; font-serif (the hero verdict + page headings) → Fraunces. */
+   → Hanken Grotesk; font-serif (the hero verdict + page headings) → Fraunces;
+   font-mono (addresses and machine values) → Inconsolata. */
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --color-canvas: oklch(100% 0 0);
+  --color-surface-subtle: oklch(98.4% 0.003 247.858);
 }
 
-/* Dark mode: redefine the palette variables the utilities already read (Tailwind v4
-   compiles every colour to var(--color-*)), so bg-white / text-slate-* / border-slate-*
+/* Dark mode: the global canvas uses a semantic token whose dark value is Tailwind's
+   original slate-900 expressed in OKLCH. It remains independent because the slate
+   scale below is deliberately inverted for existing text and surface utilities. The palette
+   variables below keep existing surfaces and ink legible without duplicating dark
+   utilities throughout every component. Tailwind v4 compiles every colour to
+   var(--color-*), so bg-white / text-slate-* / border-slate-*
    all flip with zero template edits. Activated by `.dark` on <html> — set pre-paint by
    verso-boot.js from localStorage/system, toggled by the header button. Neutrals invert
    the slate scale + the surface; the light accent tints become dark tints; the accent
    mid-tones (sky/green/amber-600…) read fine on dark and are left alone. */
 :root.dark {
+  --color-canvas: oklch(20.8% 0.042 265.755);
+  --color-surface-subtle: oklch(27.9% 0.041 260.031);
   --color-white: #0f172a;      /* surfaces: cards, sidebar, panels */
   --color-slate-50: #020617;   /* app canvas */
   --color-slate-100: #1e293b;  /* hover / subtle fill */
@@ -184,10 +217,12 @@
   .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
 
-  /* conditional widget: reveal the gated field-set only while its toggle is
-     checked (ADR-005 §7). Pure CSS state — no JavaScript. */
+  /* conditional widget: switch between its primary and optional alternate
+     field-sets from the controlling toggle (ADR-005 §7). Pure CSS state — no JS. */
   .verso-conditional-body { display: none; }
-  .verso-conditional:has(.verso-conditional-toggle:checked) .verso-conditional-body { display: block; }
+  .verso-conditional-otherwise { display: block; }
+  .verso-conditional:has(> label > .verso-conditional-toggle:checked) > .verso-conditional-body { display: block; }
+  .verso-conditional:has(> label > .verso-conditional-toggle:checked) > .verso-conditional-otherwise { display: none; }
 
   /* confirm widget: an inline destructive confirmation (ADR-005 §7). A hidden
      checkbox flips between the danger trigger and the confirm panel — pure CSS.

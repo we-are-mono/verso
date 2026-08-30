@@ -1,4 +1,4 @@
 {{/* grid: responsive column layout of pre-rendered children. The shell chose the
      responsive column classes (.Cols) and owns the gap; the plugin declared only the
      target column count (ADR-005). */}}
-<div class="grid {{.Cols}} gap-8">{{range .Children}}{{.}}{{end}}</div>
+<div class="grid {{.Cols}} {{.Gap}}">{{range .Children}}{{.}}{{end}}</div>

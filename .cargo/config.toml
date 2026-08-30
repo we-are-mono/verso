@@ -1,0 +1,7 @@
+# rust-lld ships with rustc, so a static musl cross-build needs no host cross-gcc.
+# Keep one entry per musl target the Makefile's ARCHES can select.
+[target.aarch64-unknown-linux-musl]
+linker = "rust-lld"
+
+[target.x86_64-unknown-linux-musl]
+linker = "rust-lld"

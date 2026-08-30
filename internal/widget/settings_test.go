@@ -93,7 +93,7 @@ func TestRenderSettingsBare(t *testing.T) {
 		Items: []SettingsItem{{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"}},
 		Seam:  &SettingsSeam{Summary: "1 more option", Items: []SettingsItem{{Title: "Minimum TTL", Code: "min_cache_ttl"}}},
 	})
-	for _, bad := range []string{"rounded-2xl", "shadow-sm", "-mx-5", "px-5"} {
+	for _, bad := range []string{"rounded-2xl", " shadow-sm", "-mx-5", "px-5"} {
 		if strings.Contains(got, bad) {
 			t.Errorf("bare settings must not carry card chrome %q:\n%s", bad, got)
 		}

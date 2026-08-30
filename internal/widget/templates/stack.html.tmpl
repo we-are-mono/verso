@@ -1,3 +1,4 @@
-{{/* stack: vertical layout of pre-rendered children, no surface of its own. Divided
-     draws a hairline between entries (a list); the default spaces them (a page of cards). */}}
-<div class="{{if .Divided}}divide-y divide-slate-200{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>
+{{/* stack: layout of pre-rendered children, with no surface of its own. Inline forms
+     a wrapping row; Divided draws hairlines; Compact tightens the default vertical
+     rhythm. */}}
+<div class="{{if .Inline}}flex flex-wrap items-center gap-3{{else if .Divided}}divide-y divide-slate-200{{else if .Compact}}space-y-3{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>

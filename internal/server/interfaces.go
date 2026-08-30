@@ -5,12 +5,14 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -24,8 +26,9 @@ import (
 // ifaceNet is one interface's subnet and the interface name that owns it — the
 // finer-grained twin of zoneNet, used to name the network a device sits on.
 type ifaceNet struct {
-	cidr *net.IPNet
-	name string
+	cidr   *net.IPNet
+	name   string
+	device string
 }
 
 // interfaceNets builds the address→interface lookup from the network config: each
@@ -38,10 +41,11 @@ func interfaceNets(cfg map[string]any) []ifaceNet {
 			continue
 		}
 		name, _ := s[".name"].(string)
+		device, _ := s["device"].(string)
 		ipaddr, _ := s["ipaddr"].(string)
 		netmask, _ := s["netmask"].(string)
 		if c := subnetOf(ipaddr, netmask); c != nil {
-			out = append(out, ifaceNet{cidr: c, name: name})
+			out = append(out, ifaceNet{cidr: c, name: name, device: device})
 		}
 	}
 	return out
@@ -55,6 +59,9 @@ func ifaceForAddr(nets []ifaceNet, addr string) string {
 	}
 	for _, n := range nets {
 		if n.cidr.Contains(ip) {
+			if n.device != "" {
+				return n.device
+			}
 			return n.name
 		}
 	}
@@ -155,153 +162,239 @@ func networkZones(fwCfg map[string]any) map[string]string {
 	return out
 }
 
-// bridgePortsOf returns the member ports declared on a `config device` bridge.
-func bridgePortsOf(cfg map[string]any, bridge string) []string {
-	for _, v := range cfg {
-		s, ok := v.(map[string]any)
-		if !ok || s[".type"] != "device" {
-			continue
-		}
-		if name, _ := s["name"].(string); name == bridge {
-			return uciList(s["ports"])
-		}
-	}
-	return nil
+type interfaceMeaning struct {
+	name, proto, subnet, zone, vlan string
 }
 
-// interfaceList builds the Networks roster: one segment per addressed interface,
-// with its VLAN, subnet, zone, ports, and device count. devices is the roster
-// already read for the Connected-devices table, so the count needs no re-read.
-func (s *Server) interfaceList(ctx context.Context, sid string, devices []widget.OverviewDevice) []widget.OverviewInterface {
+// interfaceMeanings indexes UCI's logical networks by their configured kernel
+// device. Telemetry remains responsible for which interfaces exist.
+func interfaceMeanings(cfg, fwCfg map[string]any) map[string][]interfaceMeaning {
+	zoneOf := networkZones(fwCfg)
+	out := map[string][]interfaceMeaning{}
+	for _, value := range cfg {
+		section := asSection(value)
+		if section == nil || section[".type"] != "interface" {
+			continue
+		}
+		name, _ := section[".name"].(string)
+		device, _ := section["device"].(string)
+		proto, _ := section["proto"].(string)
+		if device == "" {
+			continue
+		}
+		ipaddr, _ := section["ipaddr"].(string)
+		netmask, _ := section["netmask"].(string)
+		subnet := ""
+		if cidr := subnetOf(ipaddr, netmask); cidr != nil {
+			subnet = cidr.String()
+		}
+		_, vlan := deviceVLAN(device)
+		out[device] = append(out[device], interfaceMeaning{
+			name: name, proto: proto, subnet: subnet,
+			zone: zoneOf[name], vlan: vlan,
+		})
+	}
+	return out
+}
+
+// interfaceList builds one row per kernel netdev from the process-wide
+// telemetry snapshot, then enriches those rows with UCI and WAN topology.
+func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemetry.Snapshot) []widget.OverviewInterface {
 	cfg, err := s.backend.UCIConfig(ctx, sid, "network")
 	if err != nil {
-		log.Printf("verso: networks: network config unavailable: %v", err)
-		return nil
+		log.Printf("verso: interfaces: network config unavailable: %v", err)
+		cfg = map[string]any{}
 	}
 	fwCfg, err := s.backend.UCIConfig(ctx, sid, "firewall")
 	if err != nil {
-		log.Printf("verso: networks: firewall config unavailable: %v", err)
+		log.Printf("verso: interfaces: firewall config unavailable: %v", err)
+		fwCfg = map[string]any{}
 	}
-	vlans := parseBridgeVLANs(cfg)
-	zoneOf := networkZones(fwCfg)
-
-	seen := map[string]bool{}
-	var out []widget.OverviewInterface
-	for _, v := range cfg {
-		s := asSection(v)
-		if s == nil || s[".type"] != "interface" {
-			continue
-		}
-		name, _ := s[".name"].(string)
-		device, _ := s["device"].(string)
-		proto, _ := s["proto"].(string)
-		ipaddr, _ := s["ipaddr"].(string)
-		netmask, _ := s["netmask"].(string)
-
-		// A network worth a row is an addressed segment — a static subnet or a
-		// dynamic uplink — never loopback, and only once per underlying device
-		// (so wan and its wan6 twin fold into one row).
-		if name == "loopback" || device == "" {
-			continue
-		}
-		if ipaddr == "" && !isUplinkProto(proto) {
-			continue
-		}
-		if seen[device] {
-			continue
-		}
-		seen[device] = true
-
-		bridge, id := deviceVLAN(device)
-		subnet := ""
-		if c := subnetOf(ipaddr, netmask); c != nil {
-			subnet = c.String()
-		}
-		portDetail := interfacePorts(cfg, vlans, bridge, id, device)
-
-		out = append(out, widget.OverviewInterface{
-			Name:       name,
-			VLAN:       id,
-			Subnet:     subnet,
-			Zone:       zoneOf[name],
-			Ports:      portSummary(portDetail),
-			Devices:    countFact(devicesInSubnet(devices, ipaddr, netmask)),
-			Proto:      proto,
-			Device:     device,
-			PortDetail: portDetail,
-		})
+	meanings := interfaceMeanings(cfg, fwCfg)
+	physical := make(map[string]bool, len(snapshot.Interfaces))
+	parents := make(map[string]string, len(snapshot.Interfaces))
+	for _, iface := range snapshot.Interfaces {
+		physical[iface.Name], parents[iface.Name] = iface.Physical, iface.Parent
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
-}
 
-// interfacePorts resolves a network's ports and their tagged/untagged membership:
-// from the bridge-VLAN when the interface is VLAN-tagged, from the bridge's plain
-// members otherwise, or the device itself when it is not a bridge.
-func interfacePorts(cfg map[string]any, vlans []bridgeVLAN, bridge, id, device string) []widget.OverviewInterfacePort {
-	if id != "" {
-		for _, bv := range vlans {
-			if bv.bridge == bridge && bv.id == id {
-				out := make([]widget.OverviewInterfacePort, 0, len(bv.members))
-				for _, m := range bv.members {
-					out = append(out, widget.OverviewInterfacePort{Port: m.port, Mode: tagMode(m.tagged)})
-				}
-				return out
+	// A protocol-created L3 device (notably pppoe-wan) inherits the configured
+	// WAN device's UCI meaning and points back to that underlay.
+	wanDevice := ""
+	if wan, wanErr := s.backend.WANStatus(ctx, sid); wanErr == nil {
+		wanDevice = wan.Device
+	}
+	configuredWAN := ""
+	for device, list := range meanings {
+		for _, meaning := range list {
+			if meaning.name == "wan" {
+				configuredWAN = device
+				break
 			}
 		}
+		if configuredWAN != "" {
+			break
+		}
 	}
-	members := bridgePortsOf(cfg, bridge)
-	if members == nil {
-		members = []string{device} // not a bridge: the device is its own port
+	if wanDevice != "" && configuredWAN != "" && wanDevice != configuredWAN {
+		for _, meaning := range meanings[configuredWAN] {
+			if meaning.name == "wan" {
+				meanings[wanDevice] = append(meanings[wanDevice], meaning)
+				break
+			}
+		}
+		if parents[wanDevice] == "" {
+			parents[wanDevice] = configuredWAN
+		}
 	}
-	out := make([]widget.OverviewInterfacePort, 0, len(members))
-	for _, p := range members {
-		out = append(out, widget.OverviewInterfacePort{Port: p, Mode: "untagged"})
+	if wanDevice == "" {
+		wanDevice = configuredWAN
 	}
+
+	// Relationships are bidirectional in the presentation: a VLAN names its
+	// parent, and the physical parent names that attached VLAN; bridge members
+	// likewise point back to their bridge.
+	relations := make(map[string]map[string]bool, len(snapshot.Interfaces))
+	addRelation := func(from, to string) {
+		if from == "" || to == "" || from == to {
+			return
+		}
+		if relations[from] == nil {
+			relations[from] = map[string]bool{}
+		}
+		relations[from][to] = true
+	}
+	for _, iface := range snapshot.Interfaces {
+		if parent := parents[iface.Name]; parent != "" {
+			addRelation(iface.Name, parent)
+			addRelation(parent, iface.Name)
+		}
+		for _, member := range iface.Members {
+			addRelation(iface.Name, member)
+			addRelation(member, iface.Name)
+		}
+	}
+
+	wanPath := map[string]bool{}
+	for current, seen := wanDevice, map[string]bool{}; current != "" && !seen[current]; current = parents[current] {
+		seen[current], wanPath[current] = true, true
+	}
+
+	out := make([]widget.OverviewInterface, 0, len(snapshot.Interfaces))
+	for _, iface := range snapshot.Interfaces {
+		row := widget.OverviewInterface{
+			Name: iface.Name, Kind: iface.Kind, State: normalOperstate(iface.Operstate),
+			Physical: iface.Physical, WAN: wanPath[iface.Name],
+		}
+		if len(iface.History) != 0 {
+			point := iface.History[len(iface.History)-1]
+			row.RxRate, row.TxRate = formatBitRate(point.RxBPS), formatBitRate(point.TxBPS)
+			row.RxPackets, row.TxPackets = formatPacketRate(point.RxPPS), formatPacketRate(point.TxPPS)
+			row.RxTotal, row.TxTotal = formatCounterBytes(point.RxBytes), formatCounterBytes(point.TxBytes)
+		}
+		seenNetworks := map[string]bool{}
+		for _, meaning := range meanings[iface.Name] {
+			if meaning.name != "" && !seenNetworks[meaning.name] {
+				row.Networks = append(row.Networks, meaning.name)
+				seenNetworks[meaning.name] = true
+			}
+			if row.Proto == "" {
+				row.Proto = meaning.proto
+			}
+			if row.Subnet == "" {
+				row.Subnet = meaning.subnet
+			}
+			if row.Zone == "" {
+				row.Zone = meaning.zone
+			}
+			if row.VLAN == "" {
+				row.VLAN = meaning.vlan
+			}
+		}
+		sort.Strings(row.Networks)
+		for name := range relations[iface.Name] {
+			row.Relations = append(row.Relations, widget.OverviewInterfaceRelation{Name: name, Physical: physical[name]})
+		}
+		sort.Slice(row.Relations, func(i, j int) bool {
+			if row.Relations[i].Physical != row.Relations[j].Physical {
+				return row.Relations[i].Physical
+			}
+			return row.Relations[i].Name < row.Relations[j].Name
+		})
+		out = append(out, row)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		left, right := interfaceKindRank(out[i].Kind), interfaceKindRank(out[j].Kind)
+		if left != right {
+			return left < right
+		}
+		return out[i].Name < out[j].Name
+	})
 	return out
 }
 
-// devicesInSubnet counts roster devices whose address sits in the network's
-// subnet. A dynamic network (no static subnet) counts none — its membership is
-// not derivable from config alone.
-func devicesInSubnet(devices []widget.OverviewDevice, ipaddr, netmask string) int {
-	cidr := subnetOf(ipaddr, netmask)
-	if cidr == nil {
+func normalOperstate(state string) string {
+	switch state {
+	case "up", "down":
+		return state
+	default:
+		return "unknown"
+	}
+}
+
+func interfaceKindRank(kind string) int {
+	switch kind {
+	case "port":
 		return 0
+	case "bridge":
+		return 1
+	case "vlan":
+		return 2
+	case "pppoe":
+		return 3
+	case "wifi":
+		return 4
+	case "tunnel":
+		return 5
+	case "virtual":
+		return 6
+	default:
+		return 7
 	}
-	n := 0
-	for _, d := range devices {
-		if ip := net.ParseIP(d.V4); ip != nil && cidr.Contains(ip) {
-			n++
-		}
-	}
-	return n
 }
 
-func tagMode(tagged bool) string {
-	if tagged {
-		return "tagged"
+func formatBitRate(bits uint64) string {
+	switch {
+	case bits >= 1_000_000_000:
+		return trimOneDecimal(float64(bits)/1_000_000_000) + " Gbps"
+	case bits >= 1_000_000:
+		return trimOneDecimal(float64(bits)/1_000_000) + " Mbps"
+	case bits >= 1_000:
+		return trimOneDecimal(float64(bits)/1_000) + " Kbps"
+	default:
+		return strconv.FormatUint(bits, 10) + " bps"
 	}
-	return "untagged"
 }
 
-// portSummary renders a network's port list for the row ("lan1, lan2, lan3").
-func portSummary(ports []widget.OverviewInterfacePort) string {
-	names := make([]string, 0, len(ports))
-	for _, p := range ports {
-		names = append(names, p.Port)
-	}
-	return strings.Join(names, ", ")
+func formatPacketRate(packets uint64) string {
+	return strconv.FormatUint(packets, 10) + " pkt/s"
 }
 
-// isUplinkProto reports whether a protocol is a dynamic uplink worth a network
-// row even with no static address.
-func isUplinkProto(proto string) bool {
-	switch proto {
-	case "dhcp", "dhcpv6", "pppoe":
-		return true
+func formatCounterBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
 	}
-	return false
+	value := float64(bytes)
+	index := 0
+	for value >= unit && index < len("KMGTPE") {
+		value /= unit
+		index++
+	}
+	return fmt.Sprintf("%.1f %ciB", value, "KMGTPE"[index-1])
+}
+
+func trimOneDecimal(value float64) string {
+	return strings.TrimSuffix(fmt.Sprintf("%.1f", value), ".0")
 }
 
 // asSection narrows a uci config value to a section map.

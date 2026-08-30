@@ -26,7 +26,7 @@
      honours the choice made in the app, with no toggle of its own and no flash. */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
-<body class="m-0 bg-white text-slate-900 antialiased text-sm leading-normal">
+<body class="m-0 bg-canvas text-slate-900 antialiased text-sm leading-normal">
   {{/* Left-aligned and width-capped to the app's total footprint — the 70rem
        content area plus the 16rem sidebar the login doesn't have (86rem) — never
        centred, so it never drifts to the far edge of an ultrawide, and the hero
@@ -87,7 +87,7 @@
               class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
           </div>
           <button type="submit"
-            class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:outline-none">
+            class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-sky-700 active:bg-sky-800 focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">
             Sign in
           </button>
         </form>

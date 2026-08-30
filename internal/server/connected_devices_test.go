@@ -59,6 +59,26 @@ func TestDeviceAddressesV6Only(t *testing.T) {
 	}
 }
 
+func TestNeighborInterface(t *testing.T) {
+	entries := []sysstat.Neighbor{
+		{Addr: "2001:db8::5", Interface: "br-lan.10"},
+		{Addr: "192.168.10.25", Interface: "br-lan.10"},
+	}
+	if got := neighborInterface(entries, "192.168.10.25"); got != "br-lan.10" {
+		t.Errorf("interface = %q", got)
+	}
+	if got := neighborInterface(entries, ""); got != "br-lan.10" {
+		t.Errorf("fallback interface = %q", got)
+	}
+}
+
+func TestZonesByDeviceCoversAddresslessNeighbors(t *testing.T) {
+	cfg := rosterBackend().uci
+	if got := zonesByDevice(cfg["network"], cfg["firewall"])["br-lan"]; got != "lan" {
+		t.Errorf("br-lan zone = %q", got)
+	}
+}
+
 func TestDeviceFactHelpers(t *testing.T) {
 	if got := trafficFact(sysstat.DeviceTraffic{}); got != "" {
 		t.Errorf("no-traffic should be blank, got %q", got)

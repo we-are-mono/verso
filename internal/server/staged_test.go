@@ -79,6 +79,11 @@ func TestCapsuleInertWhenClean(t *testing.T) {
 	for _, want := range []string{
 		"No pending changes",
 		`id="verso-capsule-apply" disabled`,
+		"verso-capsule mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle", // in-flow footer band
+		"dark:border-gray-700",
+		"dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900",
+		"dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950",
+		`class="ml-auto inline-flex items-center`, // status balances actions on the right
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("clean staging page missing %q", want)
@@ -87,9 +92,35 @@ func TestCapsuleInertWhenClean(t *testing.T) {
 	if strings.Contains(body, "verso-capsule-review") {
 		t.Error("a clean page has nothing to review")
 	}
+	if strings.Contains(body, "fixed inset-x-0 bottom-0") {
+		t.Error("the staged-changes footer must follow content, not pin to the viewport")
+	}
 
 	if home := get(t, s, "/").Body.String(); strings.Contains(home, `id="verso-capsule"`) {
 		t.Error("a clean immediate-action page must not carry the bar")
+	}
+}
+
+// TestImmediatePluginPageOmitsCleanCapsule: direct-command pages do not imply
+// a second Save & Apply step. The flag changes chrome only; existing shared
+// staged changes are still shown by renderPage's capsule count.
+func TestImmediatePluginPageOmitsCleanCapsule(t *testing.T) {
+	env := &plugin.Envelope{
+		SchemaVersion: 1, Title: "Access", Immediate: true, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}
+	tr := &fakeTransport{env: env}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	if body := get(t, s, "/plugins/demo/").Body.String(); strings.Contains(body, `id="verso-capsule"`) {
+		t.Error("a clean immediate-command plugin page must not carry the capsule")
+	}
+
+	dirty := newServerWith(t, fakeBackend{changes: map[string][][]string{
+		"system": {{"set", "@system[0]", "hostname", "pending"}},
+	}}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
+	if body := get(t, dirty, "/plugins/demo/").Body.String(); !strings.Contains(body, "1 staged change") {
+		t.Error("an immediate-command page must still reveal pending changes from elsewhere")
 	}
 }
 

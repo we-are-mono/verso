@@ -28,9 +28,13 @@ import (
 // by the shell from the backend before rendering; the rest is placeholder pending
 // its own wiring.
 type Overview struct {
-	Firmware string
-	Kernel   string
-	Uptime   string
+	Firmware    string
+	Kernel      string
+	Uptime      string
+	WANKnown    bool
+	WANUp       bool
+	WANUptime   string
+	WiFiPresent bool
 
 	DownSeries []float64
 	UpSeries   []float64
@@ -59,49 +63,38 @@ type Overview struct {
 	Power         string
 	SensorSummary string
 
-	// Ports, Interfaces, and Devices are the live listings — the physical ports,
-	// the logical network interfaces (with VLANs) riding them, and the clients on
-	// them; the shell fills them from the backend. Empty renders the table with
-	// its header and no rows rather than a stale placeholder.
-	Ports      []OverviewPort
+	// Interfaces and Devices are the live listings — every kernel interface,
+	// enriched with its topology/UCI meaning, and the clients on those networks.
 	Interfaces []OverviewInterface
 	Devices    []OverviewDevice
 }
 
-// OverviewInterface is one Interfaces-table row and its drawer: a logical network
-// interface — its name, VLAN id (blank when untagged), subnet, firewall zone, the
-// ports it spans, and how many devices sit on it. The drawer opens the per-port
-// tagged/untagged membership and the interface's protocol/device facts.
+// OverviewInterface is one kernel interface enriched with runtime topology and
+// any matching UCI network meaning.
 type OverviewInterface struct {
-	Name    string
-	VLAN    string
-	Subnet  string
-	Zone    string
-	Ports   string
-	Devices string
-
-	Proto      string
-	Device     string
-	PortDetail []OverviewInterfacePort
+	Name      string
+	Kind      string
+	State     string
+	Physical  bool
+	WAN       bool
+	Networks  []string
+	Relations []OverviewInterfaceRelation
+	VLAN      string
+	Subnet    string
+	Zone      string
+	Proto     string
+	RxRate    string
+	TxRate    string
+	RxTotal   string
+	TxTotal   string
+	RxPackets string
+	TxPackets string
 }
 
-// OverviewInterfacePort is one port's membership in an interface: the port and
-// whether the interface rides it tagged (a trunk) or untagged (an access port).
-type OverviewInterfacePort struct {
-	Port string
-	Mode string
-}
-
-// OverviewPort is one Ports-table row: the physical port device, its link state
-// (Up when carrier is present, Wan tags the uplink), the VLANs it carries,
-// negotiated speed, and RX/TX totals — all pre-formatted by the shell.
-type OverviewPort struct {
-	Port    string
-	Up      bool
-	Wan     bool
-	VLANs   string
-	Speed   string
-	Traffic string
+// OverviewInterfaceRelation is a parent or member shown in the topology cell.
+type OverviewInterfaceRelation struct {
+	Name     string
+	Physical bool
 }
 
 // OverviewDevice is one Connected-devices row and its drawer: the device name,
@@ -170,6 +163,7 @@ type ohTile struct {
 	Variant string // "good" | "warning"
 	Status  string
 	Caption string
+	Key     string
 }
 
 // ohRow is one label/value fact; the value is machine text set in mono, with an
@@ -202,11 +196,12 @@ type ohProp struct {
 }
 
 type overviewView struct {
-	Kicker string
-	Lead   string
-	Accent string
-	Tiles  []ohTile
-	Facts  []ohFactCol
+	Kicker  string
+	Lead    string
+	Accent  string
+	Tiles   []ohTile
+	HasWiFi bool
+	Facts   []ohFactCol
 
 	ChartTitle  string
 	ChartMeta   string
@@ -221,7 +216,6 @@ type overviewView struct {
 	SysLeft  []ohProp
 	SysRight []ohProp
 
-	Ports      template.HTML
 	Interfaces template.HTML
 	Devices    template.HTML
 }
@@ -245,7 +239,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	chart := &Chart{
 		Size:      "panel",
 		Axis:      true,
-		Max:       300,
+		Unit:      "Mbps",
 		AxisStart: "60 seconds ago",
 		AxisEnd:   "now",
 		Label:     "Internet traffic — download and upload, last minute",
@@ -259,10 +253,6 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	seed, err := json.Marshal(map[string][]float64{"down": down, "up": up})
-	if err != nil {
-		return err
-	}
-	ports, err := renderToHTML(r, o.portsTable(), csrf)
 	if err != nil {
 		return err
 	}
@@ -286,16 +276,21 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		metrics = append(metrics, html)
 	}
 
+	tiles := []ohTile{o.internetTile()}
+	if o.WiFiPresent {
+		tiles = append(tiles, ohTile{Label: "WI-FI", Icon: "wifi", Variant: "good", Status: "Both bands active", Caption: "2.4 & 5 GHz"})
+	}
+	tiles = append(tiles,
+		ohTile{Label: "SECURITY", Icon: "shield", Variant: "good", Status: "Protected", Caption: "Firewall on"},
+		ohTile{Label: "SOFTWARE", Icon: "download", Variant: "warning", Status: "Update available", Caption: "Security fixes"},
+	)
+
 	v := overviewView{
-		Kicker: "ALL GOOD",
-		Lead:   "Your network is ",
-		Accent: "healthy",
-		Tiles: []ohTile{
-			{Label: "INTERNET", Icon: "globe", Variant: "good", Status: "Connected", Caption: "for 2h 14m"},
-			{Label: "WI-FI", Icon: "wifi", Variant: "good", Status: "Both bands active", Caption: "2.4 & 5 GHz"},
-			{Label: "SECURITY", Icon: "shield", Variant: "good", Status: "Protected", Caption: "Firewall on"},
-			{Label: "SOFTWARE", Icon: "download", Variant: "warning", Status: "Update available", Caption: "Security fixes"},
-		},
+		Kicker:      "ALL GOOD",
+		Lead:        "Your network is ",
+		Accent:      "healthy",
+		Tiles:       tiles,
+		HasWiFi:     o.WiFiPresent,
 		Facts:       o.factCols(),
 		ChartTitle:  "Internet traffic",
 		ChartMeta:   "live · WAN",
@@ -315,11 +310,26 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		},
 		SysRight: o.sysRight(),
 
-		Ports:      ports,
 		Interfaces: interfaces,
 		Devices:    devices,
 	}
 	return r.execute(out, "overview.html.tmpl", v)
+}
+
+func (o *Overview) internetTile() ohTile {
+	tile := ohTile{Label: "INTERNET", Icon: "globe", Variant: "warning", Status: "Unavailable", Key: "internet-uptime"}
+	if !o.WANKnown {
+		return tile
+	}
+	if !o.WANUp {
+		tile.Status, tile.Caption = "Not connected", "WAN is down"
+		return tile
+	}
+	tile.Variant, tile.Status = "good", "Connected"
+	if o.WANUptime != "" {
+		tile.Caption = "for " + o.WANUptime
+	}
+	return tile
 }
 
 // sysMeters builds the System gauges from the live fields, each a named bar meter
@@ -382,39 +392,6 @@ func renderToHTML(r *Renderer, w interface {
 	return template.HTML(b.String()), nil
 }
 
-// portsTable is the physical-ports listing as a flat table: the port (mono,
-// greyed when down), its link state as a status dot + word (the WAN uplink
-// tagged), the VLANs it carries, the negotiated speed, and RX/TX totals — built
-// from the live Ports.
-func (o *Overview) portsTable() *Table {
-	rows := make([]TableRow, 0, len(o.Ports))
-	for _, r := range o.Ports {
-		link := TableCell{Text: "No link", Variant: "neutral"}
-		if r.Up {
-			link = TableCell{Text: "Up", Variant: "success"}
-		}
-		if r.Wan {
-			link.Tag, link.TagVariant, link.TagIcon = "WAN", "info", "globe"
-		}
-		rows = append(rows, TableRow{Cells: []TableCell{
-			{Text: r.Port, Muted: !r.Up},
-			link,
-			{Text: orDash(r.VLANs), Muted: r.VLANs == ""},
-			{Text: orDash(r.Speed), Muted: !r.Up},
-			{Text: orDash(r.Traffic)},
-		}})
-	}
-	return &Table{
-		Style: "flat", Title: "Ports", Detail: countLabel(len(rows), "port"),
-		Columns: []TableColumn{
-			{Label: "Port", Kind: "mono"}, {Label: "Link", Kind: "status"},
-			{Label: "VLANs", Kind: "text"}, {Label: "Speed", Kind: "text"},
-			{Label: "RX / TX", Kind: "num"},
-		},
-		Rows: rows,
-	}
-}
-
 // devicesTable is the Connected-devices roster: one row per device the box has
 // seen — name + zone chip, MAC, both address families stacked in one cell, and
 // presence. Each row's Details opens a drawer with the full story. This is the
@@ -425,9 +402,9 @@ func (o *Overview) devicesTable() *Table {
 		rows = append(rows, TableRow{
 			Cells: []TableCell{
 				{Text: d.Name},
-				{Chips: interfaceChip(d.Interface)},
-				{Text: d.MAC, Copy: true},
-				{Text: d.V4, Sub: d.V6, Copy: true},
+				{Text: d.Interface, Chips: zoneChip(d.Zone)},
+				{Text: d.MAC, Copy: true, Emphasis: true},
+				{Text: d.V4, Sub: d.V6, Copy: true, Emphasis: true},
 				presenceCell(d.Presence),
 			},
 			Drawer: o.deviceDrawer(d),
@@ -436,7 +413,7 @@ func (o *Overview) devicesTable() *Table {
 	return &Table{
 		Style: "flat", Align: "top", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
 		Columns: []TableColumn{
-			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "entity"},
+			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "reference"},
 			{Label: "MAC", Kind: "mono"}, {Label: "Addresses", Kind: "addr"},
 			{Label: "Status", Kind: "status"},
 		},
@@ -464,7 +441,7 @@ func (o *Overview) deviceDrawer(d OverviewDevice) *RowDrawer {
 	addrRows := make([]TableRow, 0, len(d.Addresses))
 	for _, a := range d.Addresses {
 		addrRows = append(addrRows, TableRow{Cells: []TableCell{
-			{Text: a.Addr, Copy: true},
+			{Text: a.Addr, Copy: true, Emphasis: true},
 			{Text: a.Family, Variant: family(a.Family)},
 			{Text: orDash(a.State), Muted: true},
 		}})
@@ -509,83 +486,128 @@ func family(fam string) string {
 	return "neutral"
 }
 
-// interfacesTable is the logical-network map between the physical ports and the
-// clients: one row per interface — name, VLAN id, subnet, firewall-zone chip, the
-// ports it spans, and its device count. Each row's Details opens the per-port
-// tagged/untagged membership.
+// interfacesTable is the kernel's complete network topology: physical ports,
+// bridges, VLANs and tunnels share one listing, enriched with UCI meaning.
 func (o *Overview) interfacesTable() *Table {
 	rows := make([]TableRow, 0, len(o.Interfaces))
 	for _, n := range o.Interfaces {
+		name := TableCell{Text: n.Name}
+		if n.Physical {
+			name.Chips = append(name.Chips, TableChip{Icon: "ethernet-port", Label: "port"})
+		}
+		if n.Kind == "wifi" {
+			name.Chips = append(name.Chips, TableChip{Icon: "wifi", Label: "Wi-Fi"})
+		}
+		if n.Zone != "" {
+			name.Chips = append(name.Chips, TableChip{Icon: "zone", Label: n.Zone})
+		}
+		if n.WAN {
+			name.Tag, name.TagVariant, name.TagIcon = "WAN", "info", "globe"
+		}
 		rows = append(rows, TableRow{
+			Key: "interface:" + n.Name,
 			Cells: []TableCell{
-				{Text: n.Name},
-				{Text: orDash(n.VLAN), Muted: n.VLAN == ""},
-				{Text: orDash(n.Subnet)},
-				{Chips: zoneChip(n.Zone)},
-				{Chips: portChips(n.PortDetail)},
-				{Text: orDash(n.Devices)},
+				name,
+				{Text: interfaceKindLabel(n.Kind)},
+				interfaceStateCell(n, "state"),
+				{Chips: interfaceRelationChips(n.Relations)},
+				{Text: n.RxRate, Key: "rx-rate"},
+				{Text: n.TxRate, Key: "tx-rate"},
 			},
 			Drawer: o.interfaceDrawer(n),
 		})
 	}
 	return &Table{
-		Style: "flat", Title: "Interfaces", Detail: countLabel(len(rows), "interface"),
+		Style: "flat", Align: "top", Title: "Interfaces", Detail: countLabel(len(rows), "interface"),
 		Columns: []TableColumn{
-			{Label: "Interface", Kind: "name"}, {Label: "VLAN", Kind: "mono"},
-			{Label: "Subnet", Kind: "mono"}, {Label: "Zone", Kind: "entity"},
-			{Label: "Ports", Kind: "entity"}, {Label: "Devices", Kind: "num"},
+			{Label: "Interface", Kind: "name"}, {Label: "Type", Kind: "keyword"},
+			{Label: "State", Kind: "status"}, {Label: "Topology", Kind: "entity"},
+			{Label: "RX", Kind: "rate"}, {Label: "TX", Kind: "rate"},
 		},
 		Rows: rows,
 	}
 }
 
-// interfaceDrawer builds an interface's Details panel: the per-port membership
-// (tagged/untagged) and the interface's device/protocol facts.
+func interfaceStateCell(n OverviewInterface, key string) TableCell {
+	state := n.State
+	if state == "" {
+		state = "unknown"
+	}
+	cell := TableCell{Text: strings.ToUpper(state[:1]) + state[1:], Variant: "neutral", Key: key}
+	if state == "up" {
+		cell.Variant = "success"
+	}
+	return cell
+}
+
+func interfaceRelationChips(relations []OverviewInterfaceRelation) []TableChip {
+	out := make([]TableChip, 0, len(relations))
+	for _, relation := range relations {
+		icon := "network"
+		if relation.Physical {
+			icon = "ethernet-port"
+		}
+		out = append(out, TableChip{Icon: icon, Label: relation.Name})
+	}
+	return out
+}
+
+func interfaceKindLabel(kind string) string {
+	switch kind {
+	case "port":
+		return "Ethernet"
+	case "wifi":
+		return "Wi-Fi"
+	case "vlan":
+		return "VLAN"
+	case "pppoe":
+		return "PPPoE"
+	case "tunnel":
+		return "Tunnel"
+	case "loopback":
+		return "Loopback"
+	case "bridge":
+		return "Bridge"
+	default:
+		return "Virtual"
+	}
+}
+
+// interfaceDrawer carries the complete counters and UCI facts without widening
+// the main topology table.
 func (o *Overview) interfaceDrawer(n OverviewInterface) *RowDrawer {
-	portRows := make([]TableRow, 0, len(n.PortDetail))
-	for _, p := range n.PortDetail {
-		portRows = append(portRows, TableRow{Cells: []TableCell{
-			{Chips: []TableChip{{Icon: "ethernet-port", Label: p.Port}}},
-			{Text: p.Mode, Variant: portMode(p.Mode)},
-		}})
-	}
-	ports := &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{{Label: "Port", Kind: "entity"}, {Label: "Mode", Kind: "pill"}},
-		Rows:    portRows,
-	}
 	facts := &Table{
 		Style: "flat", Condensed: true,
 		Columns: []TableColumn{{Kind: "keyword"}, {Kind: "text"}},
 		Rows: []TableRow{
-			factRow("Device", orDash(n.Device)),
+			factRow("Type", interfaceKindLabel(n.Kind)),
+			factRow("State", orDash(n.State)),
+			factRow("Network", orDash(strings.Join(n.Networks, ", "))),
+			factRow("Role", map[bool]string{true: "WAN", false: "—"}[n.WAN]),
 			factRow("Protocol", orDash(n.Proto)),
 			factRow("Subnet", orDash(n.Subnet)),
 			factRow("Zone", orDash(n.Zone)),
 			factRow("VLAN", orDash(n.VLAN)),
-			factRow("Devices", orDash(n.Devices)),
+			factRow("RX rate", n.RxRate),
+			factRow("TX rate", n.TxRate),
+			factRow("RX packets", n.RxPackets),
+			factRow("TX packets", n.TxPackets),
+			factRow("RX total", n.RxTotal),
+			factRow("TX total", n.TxTotal),
 		},
 	}
-	return &RowDrawer{Title: n.Name, Size: "wide", Children: []Widget{ports, facts}}
-}
-
-// portMode tints a membership pill — tagged (a trunk) reads sky, untagged calm.
-func portMode(mode string) string {
-	if mode == "tagged" {
-		return "info"
+	children := []Widget{facts}
+	if len(n.Relations) != 0 {
+		topology := &Table{
+			Style: "flat", Condensed: true,
+			Columns: []TableColumn{{Label: "Related interface", Kind: "entity"}},
+		}
+		for _, relation := range n.Relations {
+			topology.Rows = append(topology.Rows, TableRow{Cells: []TableCell{{Chips: interfaceRelationChips([]OverviewInterfaceRelation{relation})}}})
+		}
+		children = append([]Widget{topology}, children...)
 	}
-	return "neutral"
-}
-
-// interfaceChip / zoneChip / portChips render a network entity as reference chips
-// — the shared icon+label treatment so an interface, a zone, and a physical port
-// are never confused wherever one is cited inside another entity's row. An empty
-// name yields no chip (the cell shows a quiet dash).
-func interfaceChip(name string) []TableChip {
-	if name == "" {
-		return nil
-	}
-	return []TableChip{{Icon: "network", Label: name}}
+	return &RowDrawer{Title: n.Name, Size: "wide", Children: children}
 }
 
 func zoneChip(name string) []TableChip {
@@ -593,14 +615,6 @@ func zoneChip(name string) []TableChip {
 		return nil
 	}
 	return []TableChip{{Icon: "zone", Label: name}}
-}
-
-func portChips(ports []OverviewInterfacePort) []TableChip {
-	out := make([]TableChip, 0, len(ports))
-	for _, p := range ports {
-		out = append(out, TableChip{Icon: "ethernet-port", Label: p.Port})
-	}
-	return out
 }
 
 // orDash falls a missing cell value back to a quiet dash.

@@ -69,13 +69,6 @@ type fakeBackend struct {
 	wanErr   error
 	devStats *[]openwrt.DeviceStats
 	devErr   error
-	// Per-address conntrack totals the helper's connStats verb would return.
-	connStats map[string]sysstat.DeviceTraffic
-	connErr   error
-}
-
-func (f fakeBackend) ConnStats(context.Context, string) (map[string]sysstat.DeviceTraffic, error) {
-	return f.connStats, f.connErr
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
@@ -282,6 +275,7 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
+	t.Cleanup(s.Close)
 	// Tests have no real plugin sockets; default to alive so nav and pages
 	// render fully. Liveness-specific tests override s.probe themselves.
 	s.probe = func(string) bool { return true }
@@ -393,6 +387,23 @@ func TestPluginSubpageBar(t *testing.T) {
 	}
 }
 
+// TestPluginKickerStatus: a page may mark a styleguide/reference state beside
+// its kicker without burying that state in the lede.
+func TestPluginKickerStatus(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "System", Kicker: "Styleguide", KickerStatus: "Complete",
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	body := get(t, s, "/plugins/demo/").Body.String()
+	for _, want := range []string{"Styleguide", "· Complete", "text-emerald-600"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("kicker status missing %q", want)
+		}
+	}
+}
+
 func demoACLManifest() plugin.Manifest {
 	m := demoManifest()
 	m.ACL = plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "system", Function: "write"}}}
@@ -440,6 +451,7 @@ func TestIndexRendersOverview(t *testing.T) {
 		hn:    "verso-lab",
 		board: openwrt.Board{Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101"},
 		si:    openwrt.SystemInfo{Uptime: 3661},
+		wan:   openwrt.WANState{Up: true, Device: "wan0", Uptime: 8040},
 	}
 	rec := get(t, newServer(t, backend), "/")
 
@@ -448,8 +460,9 @@ func TestIndexRendersOverview(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"ALL GOOD", "healthy", "Internet traffic", "System", "Ports", "Interfaces", "Connected devices",
+		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces", "Connected devices",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
+		"Connected", "for 2h 14m", // live WAN state and connection uptime
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
@@ -1223,14 +1236,62 @@ func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 	}
 }
 
-// TestNoPasswordBanner: the in-app warning shows only when root has no password.
+// TestNoPasswordBanner: the full-width security warning shows only when root
+// has no password and sits at the navigation seam rather than inside content.
 func TestNoPasswordBanner(t *testing.T) {
 	warn := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: false})
-	if !strings.Contains(get(t, warn, "/").Body.String(), "No root password") {
-		t.Errorf("expected the no-password banner")
+	body := get(t, warn, "/").Body.String()
+	for _, want := range []string{
+		"No administrator password is set.",
+		"Anyone who can reach this router can change its settings.",
+		"border-red-200 bg-red-50",
+		"text-red-600",
+		"dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300",
+		"dark:text-red-400",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("no-password warning missing %q", want)
+		}
+	}
+	if strings.Contains(body, "passwd</code> over SSH") {
+		t.Error("the warning must point at the Access experience, not require SSH")
 	}
 	safe := newServer(t, fakeBackend{}) // hasPassword true
-	if strings.Contains(get(t, safe, "/").Body.String(), "No root password") {
+	if strings.Contains(get(t, safe, "/").Body.String(), "No administrator password") {
 		t.Errorf("must not warn when a password is set")
+	}
+
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "System", Pages: []plugin.PageTab{{Label: "Access", Path: "access"}},
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	withPages := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: false})
+	body = get(t, withPages, "/plugins/demo/access").Body.String()
+	navAt := strings.Index(body, `aria-label="Subpages"`)
+	warnAt := strings.Index(body, "No administrator password is set.")
+	if navAt < 0 || warnAt < navAt {
+		t.Errorf("password warning must sit below the secondary menu: nav=%d warning=%d", navAt, warnAt)
+	}
+	if !strings.Contains(body, "after:bg-red-600") || !strings.Contains(body, "dark:text-red-400 dark:after:bg-red-500") ||
+		!strings.Contains(body, "-mt-px flex h-12") || !strings.Contains(body, "border-b border-red-200 dark:border-red-500/20") {
+		t.Error("password warning and active subpage must form one red, menu-height seam")
+	}
+
+	// A page may declare another important state at the same seam. The shell's
+	// own password warning takes precedence when active, so notices never stack.
+	tr = &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1,
+		Title:         "System",
+		Pages:         []plugin.PageTab{{Label: "Access", Path: "access"}},
+		Banner: &plugin.Banner{Variant: "danger", Title: "No administrator password is set.",
+			Body: "Anyone who can reach this router can change its settings."},
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	pageBanner := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"}, fakeSecurity{hasPassword: true})
+	body = get(t, pageBanner, "/plugins/demo/access").Body.String()
+	navAt = strings.Index(body, `aria-label="Subpages"`)
+	warnAt = strings.Index(body, "No administrator password is set.")
+	if navAt < 0 || warnAt < navAt || !strings.Contains(body, "border-red-200 bg-red-50") || !strings.Contains(body, "after:bg-red-600") {
+		t.Errorf("declared danger banner must sit below the secondary menu: nav=%d warning=%d", navAt, warnAt)
 	}
 }

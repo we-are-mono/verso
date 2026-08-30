@@ -6,8 +6,8 @@
 		"system": { "methods": [ "info", "board" ] },
 		"dhcp": { "methods": [ "ipv6leases" ] },
 		"rc": { "methods": [ "list", "init" ] },
+		"network.interface": { "methods": [ "dump" ] },
 		"network.interface.wan": { "methods": [ "status" ] },
-		"network.device": { "methods": [ "status" ] },
-		"verso": { "methods": [ "setPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove", "connStats" ] }
+		"network.device": { "methods": [ "status" ] }
 	}
 }

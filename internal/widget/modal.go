@@ -18,7 +18,12 @@ import (
 type Modal struct {
 	Trigger      string   // label of the button that opens the dialog
 	TriggerStyle string   // "" (default solid button) | "add" (full-width dashed add affordance)
+	Preview      bool     // render the open window in-flow without trigger/backdrop/behaviour (styleguide use)
+	Variant      string   // "" (standard composed modal) | "danger" (destructive confirmation)
 	Title        string   // dialog heading
+	Body         string   // destructive confirmation explanation
+	Confirm      string   // destructive confirmation action label
+	Cancel       string   // destructive confirmation cancel label
 	Children     []Widget // dialog body
 }
 
@@ -30,7 +35,12 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Trigger      string            `json:"trigger"`
 		TriggerStyle string            `json:"trigger_style"`
+		Preview      bool              `json:"preview"`
+		Variant      string            `json:"variant"`
 		Title        string            `json:"title"`
+		Body         string            `json:"body"`
+		Confirm      string            `json:"confirm"`
+		Cancel       string            `json:"cancel"`
 		Children     []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -38,7 +48,12 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	}
 	m.Trigger = raw.Trigger
 	m.TriggerStyle = raw.TriggerStyle
+	m.Preview = raw.Preview
+	m.Variant = raw.Variant
 	m.Title = raw.Title
+	m.Body = raw.Body
+	m.Confirm = raw.Confirm
+	m.Cancel = raw.Cancel
 	m.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
 		w, err := Decode(rc)
@@ -55,7 +70,12 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 type modalView struct {
 	Trigger      string
 	TriggerStyle string
+	Preview      bool
+	Variant      string
 	Title        string
+	Body         string
+	Confirm      string
+	Cancel       string
 	Children     []template.HTML
 }
 
@@ -68,6 +88,7 @@ func (m *Modal) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	return r.execute(out, "modal.html.tmpl", modalView{
-		Trigger: m.Trigger, TriggerStyle: m.TriggerStyle, Title: m.Title, Children: children,
+		Trigger: m.Trigger, TriggerStyle: m.TriggerStyle, Preview: m.Preview, Variant: m.Variant,
+		Title: m.Title, Body: m.Body, Confirm: m.Confirm, Cancel: m.Cancel, Children: children,
 	})
 }

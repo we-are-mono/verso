@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 #
 # Dev loop: watch Go sources + templates + ACLs, rebuild the shell binary and the
-# privileged rpcd helper (verso-rpcd), hot-swap both into the running OpenWrt
+# persistent privileged Rust helper (verso-rpcd), hot-swap both into OpenWrt
 # container, restart the verso service, and (re)deploy the ubusd + rpcd ACLs. No
 # image rebuild, no OpenWrt reboot — refresh the browser to see changes (~3s).
 set -euo pipefail
@@ -40,20 +40,15 @@ deploy_acls() {
 		"chown root:root ${names[*]}; chmod 0644 ${names[*]}; kill -HUP \$(pidof ubusd) 2>/dev/null || true"
 }
 
-# deploy_helper builds and deploys the privileged rpcd helper (verso-rpcd) and its
-# rpcd sid-ACL, so its behaviour tracks the source like the shell binary does.
-# rpcd execs the helper fresh per call, so a logic change needs no restart; the
-# method list and ACL are picked up by `rpcd reload`, which preserves live
-# sessions (so the dev browser is not logged out).
+# deploy_helper builds and atomically replaces the persistent Rust companion.
+# Its rpcd ACL remains the source of session.access policy, so ACL edits still
+# reload rpcd without discarding live login sessions.
 deploy_helper() {
-	if CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o build/verso-rpcd ./cmd/verso-rpcd 2>&1; then
-		# A fresh container has no rpcd plugin dir until something installs one.
-		docker exec "$CONTAINER" mkdir -p /usr/libexec/rpcd
-		# Land beside the live helper and rename into place: docker cp is not
-		# atomic, and rpcd execs this path per call — an exec mid-copy runs a
-		# truncated binary and surfaces as a garbage ubus status.
-		docker cp build/verso-rpcd "$CONTAINER":/usr/libexec/rpcd/.verso.new
-		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/rpcd/.verso.new; chmod 0755 /usr/libexec/rpcd/.verso.new; mv /usr/libexec/rpcd/.verso.new /usr/libexec/rpcd/verso'
+	if cargo build --locked --release --manifest-path verso-rpcd/Cargo.toml 2>&1; then
+		docker exec "$CONTAINER" /etc/init.d/verso-rpcd stop >/dev/null 2>&1 || true
+		docker cp verso-rpcd/target/release/verso-rpcd "$CONTAINER":/usr/sbin/.verso-rpcd.new
+		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
+		docker exec "$CONTAINER" sh -c 'chown root:root /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
 	else
 		log "verso-rpcd build failed — keeping the running helper"
 	fi
@@ -107,12 +102,14 @@ reload() {
 	log "reloaded → $URL"
 }
 
-# code_sig hashes the sources compiled into the binary (Go, templates, embedded JS)
-# plus the ACLs — a change here needs a full rebuild. input.css is deliberately excluded:
-# it takes the fast CSS path below. css_sig tracks input.css alone.
+# code_sig hashes the sources compiled into the binary (Go, templates, embedded JS
+# and fonts) plus the ACLs — a change here needs a full rebuild. input.css is
+# deliberately excluded: it takes the fast CSS path below. css_sig tracks input.css
+# alone.
 code_sig() {
 	{
 		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.js' \) -printf '%T@ %p\n'
+		find internal/server/assets/fonts -type f -printf '%T@ %p\n'
 		find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum
 }

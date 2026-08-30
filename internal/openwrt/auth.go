@@ -55,7 +55,7 @@ func (a *RPCDAuthenticator) Login(_ context.Context, username, password string) 
 	// authenticates, the account grants any password (passwordless/permissive),
 	// so this login is not trustworthy.
 	if password != "" {
-		if probe, err := a.call(username, decoyPassword(password)); err == nil && probe != "" {
+		if probe, err := a.call(username, decoyPassword()); err == nil && probe != "" {
 			a.destroy(sid)
 			a.destroy(probe)
 			return "", ErrInvalidCredentials
@@ -106,13 +106,16 @@ func (a *RPCDAuthenticator) destroy(sid string) {
 	_, _ = c.InvokeArgs(id, "destroy", map[string]string{"ubus_rpc_session": sid})
 }
 
-// decoyPassword derives a password that is guaranteed to differ from the given
-// one (and thus be wrong on any account that actually checks it) by appending a
-// random token.
-func decoyPassword(password string) string {
-	var b [16]byte
+// decoyPassword returns a random wrong password to probe whether an account
+// accepts anything. It is NOT derived from the real password: a suffix approach
+// once used a NUL separator, which rpcd/crypt truncated at — making the decoy
+// collapse back onto the real password and falsely flag every real login as
+// permissive. A fresh random string can't collide with a real credential and
+// carries no NUL to be truncated at.
+func decoyPassword() string {
+	var b [24]byte
 	_, _ = rand.Read(b[:])
-	return password + "\x00decoy-" + hex.EncodeToString(b[:])
+	return "verso-login-probe-" + hex.EncodeToString(b[:])
 }
 
 // ShadowSecurity answers security questions from the shadow file. The shell is

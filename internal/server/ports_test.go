@@ -4,17 +4,11 @@
 package server
 
 import (
-	"bufio"
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
-	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -126,68 +120,5 @@ func TestLinkSpeed(t *testing.T) {
 		if got := linkSpeed(st); got != want {
 			t.Errorf("linkSpeed(%+v) = %q, want %q", st, got, want)
 		}
-	}
-}
-
-// TestOverviewStreamCarriesPorts: the stream sends a `ports` frame when the
-// panel's truth exists, and not again while it is unchanged — the
-// change-driven shape event types after meters follow.
-func TestOverviewStreamCarriesPorts(t *testing.T) {
-	be := portsBackend()
-	be.si = metersBackend().si
-	// One repeating snapshot: every tick reads identical state, so a second
-	// ports frame would only ever come from broken dedup.
-	stats := []openwrt.DeviceStats{{Carrier: true, SpeedMbps: 1000}}
-	be.devStats = &stats
-	s := newServer(t, be)
-	s.stats = fakeStats{cpu: 18, root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}}
-	s.eventInterval = 5 * time.Millisecond
-	s.portsInterval = 5 * time.Millisecond
-
-	ts := httptest.NewServer(s.Handler())
-	defer ts.Close()
-	token, err := s.sessions.Create("test-sid", "root")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/overview/events", nil)
-	if err != nil {
-		t.Fatalf("request: %v", err)
-	}
-	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("GET /overview/events: %v", err)
-	}
-	defer res.Body.Close()
-
-	// Read event/data pairs until three meters frames have passed — enough
-	// ticks for a second ports frame to have appeared were it not deduped.
-	counts := map[string]int{}
-	var portsPayload, event string
-	scanner := bufio.NewScanner(res.Body)
-	for scanner.Scan() && counts["meters"] < 3 {
-		line := scanner.Text()
-		if name, ok := strings.CutPrefix(line, "event: "); ok {
-			event = name
-			continue
-		}
-		if data, ok := strings.CutPrefix(line, "data: "); ok {
-			counts[event]++
-			if event == "ports" {
-				portsPayload = data
-			}
-		}
-	}
-	if counts["meters"] < 3 {
-		t.Fatalf("stream ended early (%v): %v", counts, scanner.Err())
-	}
-	if counts["ports"] != 1 {
-		t.Fatalf("ports frames = %d, want exactly 1 while unchanged", counts["ports"])
-	}
-	if !strings.Contains(portsPayload, `"iface":"lan0"`) || !strings.Contains(portsPayload, `"iface":"wan0"`) {
-		t.Fatalf("ports payload = %s", portsPayload)
 	}
 }

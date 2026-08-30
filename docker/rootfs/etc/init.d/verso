@@ -7,7 +7,7 @@ START=95
 STOP=10
 
 start_service() {
-	procd_open_instance
+	procd_open_instance verso
 	procd_set_param command /usr/bin/verso
 	procd_set_param env VERSO_ADDR=:8080
 	# De-privilege the shell (ADR-007): run as the non-root `verso` user so it

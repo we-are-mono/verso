@@ -19,10 +19,12 @@ import (
 //
 //	"text"     — plain ink text (the default)
 //	"name"     — the row's identity (a zone, an interface): bold ink
+//	"reference"— name-cell anatomy with regular-weight text (an interface cited elsewhere)
 //	"mono"     — verbatim machine strings: addresses, ports, device names
 //	"keyword"  — closed-vocabulary words (tcp, udp, icmpv6): sans, muted
 //	"comment"  — optional free text (e.g. a UCI name), muted, blank when absent
 //	"num"      — right-aligned tabular figures (counters); muted
+//	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
 //	"toggle"   — an on/off switch (a section's enabled state)
 //	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
 //	"endpoint" — one or more traffic endpoints, each a type icon + label
@@ -85,6 +87,7 @@ type TableColumn struct {
 // pointer; controls inside the row keep their own meaning).
 type TableRow struct {
 	ID     string      `json:"id,omitempty"`
+	Key    string      `json:"key,omitempty"` // optional stable live-update hook; not displayed
 	Cells  []TableCell `json:"cells"`
 	Drawer *RowDrawer  `json:"drawer,omitempty"`
 }
@@ -137,23 +140,29 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 // the column's kind (Text for text/name/mono/keyword/comment/num, Text+Variant
 // for pill, On/Name for toggle, Endpoints for endpoint).
 type TableCell struct {
-	Text       string          `json:"text,omitempty"`
-	Variant    string          `json:"variant,omitempty"`     // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
-	Dot        bool            `json:"dot,omitempty"`         // pill cells: leading status dot — the same cue the badge carries elsewhere
-	Icon       string          `json:"icon,omitempty"`        // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
-	Copy       bool            `json:"copy,omitempty"`        // mono cells: offer the inline copy button beside the value
-	Chip       string          `json:"chip,omitempty"`        // name cells: a small category chip inline after the name (e.g. its zone)
-	Muted      bool            `json:"muted,omitempty"`       // text/mono cells: render the value as secondary ink (a quiet or absent value)
-	Sub        string          `json:"sub,omitempty"`         // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
-	Tag        string          `json:"tag,omitempty"`         // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
-	TagVariant string          `json:"tag_variant,omitempty"` // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
-	TagIcon    string          `json:"tag_icon,omitempty"`    // status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
-	Href       string          `json:"href,omitempty"`        // link cells: the destination of the row's action link
-	Button     string          `json:"button,omitempty"`      // an in-cell button that opens the row's drawer (label is the text); replaces the auto trailing "Details" link for that row
-	On         bool            `json:"on,omitempty"`
-	Name       string          `json:"name,omitempty"` // form name the toggle posts under
-	Endpoints  []TableEndpoint `json:"endpoints,omitempty"`
-	Chips      []TableChip     `json:"chips,omitempty"` // entity cells: one or more icon+label reference chips
+	Text         string          `json:"text,omitempty"`
+	Variant      string          `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
+	Dot          bool            `json:"dot,omitempty"`           // pill cells: leading status dot — the same cue the badge carries elsewhere
+	Icon         string          `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
+	Copy         bool            `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
+	Emphasis     bool            `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
+	Chip         string          `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
+	ChipIcon     string          `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
+	Key          string          `json:"key,omitempty"`           // optional stable live-update hook; not displayed
+	Muted        bool            `json:"muted,omitempty"`         // text/mono cells: render the value as secondary ink (a quiet or absent value)
+	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
+	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
+	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
+	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
+	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link
+	Button       string          `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
+	Action       string          `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
+	ConfirmTitle string          `json:"confirm_title,omitempty"` // direct-action confirmation heading (default "Are you sure?")
+	Confirm      string          `json:"confirm,omitempty"`       // direct-action consequence copy; enables the confirmation dialog
+	On           bool            `json:"on,omitempty"`
+	Name         string          `json:"name,omitempty"` // form name the toggle posts under
+	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
+	Chips        []TableChip     `json:"chips,omitempty"` // entity/name/reference cells: one or more icon+label reference chips
 }
 
 // TableChip is one entity-reference chip: a Lucide type icon (naming the kind —
@@ -208,6 +217,7 @@ type tableView struct {
 
 type tableRowView struct {
 	ID          string
+	Key         string
 	Cells       []tableCellView
 	HasDetail   bool // table-wide flag, copied so the rows sub-template needs no second argument
 	Drawer      bool // this row has a drawer (hosts the modal scope)
@@ -218,8 +228,12 @@ type tableRowView struct {
 }
 
 type tableCellView struct {
-	Kind    string
-	Primary bool // the first column — the row's identity, set one step larger
+	Kind      string
+	Primary   bool // the first column — the row's identity, set one step larger
+	RowID     string
+	CSRFToken string
+	Drawer    bool
+	ConfirmID string
 	TableCell
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -290,7 +304,7 @@ func hasColumnLabels(cols []TableColumn) bool {
 func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bool) ([]tableRowView, error) {
 	out := make([]tableRowView, 0, len(rows))
 	for _, row := range rows {
-		rv := tableRowView{ID: row.ID, HasDetail: hasDetail, Inline: rowHasButton(row), Cells: make([]tableCellView, 0, len(t.Columns))}
+		rv := tableRowView{ID: row.ID, Key: row.Key, HasDetail: hasDetail, Inline: rowHasButton(row), Cells: make([]tableCellView, 0, len(t.Columns))}
 		if row.Drawer != nil {
 			body, err := r.renderChildren(row.Drawer.Children, csrf)
 			if err != nil {
@@ -306,9 +320,15 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Primary: i == 0}
+			cv := tableCellView{Kind: kind, Primary: i == 0, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
+				if cv.Confirm != "" {
+					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.cfmSeq.Add(1))
+					if cv.ConfirmTitle == "" {
+						cv.ConfirmTitle = "Are you sure?"
+					}
+				}
 				for _, ep := range row.Cells[i].Endpoints {
 					icon, ok := endpointIcons[ep.Kind]
 					if !ok {

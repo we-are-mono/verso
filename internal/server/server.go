@@ -25,6 +25,7 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -34,9 +35,9 @@ var templateFS embed.FS
 //go:embed assets/verso.css
 var cssText string
 
-// scriptFS holds the shell's client-side JS, served under /assets and loaded by
-// the page chrome (ADR-004). htmx drives server round-trips; Alpine (CSP build)
-// drives client behaviour; verso.js registers the shell's Alpine components.
+// scriptFS holds the shell's client-side JS and self-hosted fonts, served under
+// /assets. The page chrome loads the scripts (ADR-004); CSS loads the embedded
+// font subsets without a third-party request.
 //
 //go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js assets/verso-boot.js assets/login.js
 //go:embed assets/fonts
@@ -56,6 +57,14 @@ type Server struct {
 	widgets   *widget.Renderer
 	backend   openwrt.Backend
 	transport plugin.Transport
+	// telemetry is the shell's process-wide interface sampler. It owns one
+	// sampling clock and one bounded history regardless of viewer count.
+	telemetry     telemetrySource
+	telemetryStop func()
+	telemetryMu   sync.Mutex
+	telemetryAt   time.Time
+	telemetrySnap telemetry.Snapshot
+	telemetryErr  error
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
 	// remove (ADR-011 §7), so every read goes through the accessors below.
@@ -82,20 +91,13 @@ type Server struct {
 	stats statSource
 	// wan holds the throughput tracker behind the overview's speed meter.
 	wan *wanRate
-	// eventInterval paces the overview stream's readings clock and
-	// portsInterval its faster panel clock (events.go); tests shrink both.
+	// eventInterval paces the overview stream's readings clock; tests shrink it.
 	eventInterval time.Duration
-	portsInterval time.Duration
-	// readLeases, neighbors, and conntrack feed the device roster and its
-	// detail drawer (devices.go) — dnsmasq's lease file, the kernel's
-	// rtnetlink neighbour table, and the conntrack flow table, behind seams
-	// so tests need none of them.
+	// readLeases and neighbors feed the device roster and its detail drawer
+	// (devices.go), behind seams so tests need none of them.
 	readLeases  func() ([]byte, error)
 	neighbors   func() ([]sysstat.Neighbor, error)
 	bridgePorts func() (map[string]string, error)
-	// trafHist accumulates per-address rate history from the overview
-	// stream's once-a-second conntrack observations (traffic_history.go).
-	trafHist *trafficHistory
 	// wanHist accumulates the WAN device's throughput history from the same
 	// stream's once-a-second counter observations (wan_history.go).
 	wanHist *wanHistory
@@ -121,6 +123,8 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
+	interfaceSampler := telemetry.NewSampler()
+	interfaceSampler.Start()
 	s := &Server{
 		mux:           http.NewServeMux(),
 		widgets:       widgets,
@@ -136,13 +140,13 @@ func New(
 		css:           template.CSS(cssText),
 		probe:         probeSocket,
 		stats:         sysstat.New(),
+		telemetry:     interfaceSampler,
+		telemetryStop: interfaceSampler.Stop,
 		wan:           &wanRate{now: time.Now, wait: func() { time.Sleep(150 * time.Millisecond) }},
 		eventInterval: time.Second,
-		portsInterval: 250 * time.Millisecond,
 		readLeases:    func() ([]byte, error) { return os.ReadFile(leasesPath) },
 		neighbors:     sysstat.Neighbors,
 		bridgePorts:   sysstat.BridgePorts,
-		trafHist:      newTrafficHistory(time.Now),
 		wanHist:       newWanHistory(time.Now),
 	}
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
@@ -152,6 +156,13 @@ func New(
 	}
 	s.routes()
 	return s, nil
+}
+
+// Close stops background services owned by the shell.
+func (s *Server) Close() {
+	if s.telemetryStop != nil {
+		s.telemetryStop()
+	}
 }
 
 // currentCSS is the stylesheet to inline: the live dev file (read fresh each render) in
@@ -254,6 +265,7 @@ type pageData struct {
 	Heading       string
 	HeadingDetail string // the active subpage's name, muted beside the heading
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
+	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
 	Subheading    string // optional lede under the heading
 	Width         string // content-column width preset: "narrow" | "normal" (default) | "wide"
@@ -261,6 +273,7 @@ type pageData struct {
 	Nav           navModel
 	Body          template.HTML
 	NoPassword    bool
+	Banner        *plugin.Banner
 	CSRFToken     string
 	Dev           bool        // dev session: inject the CSS hot-reload script
 	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
@@ -289,10 +302,13 @@ type pageTab struct {
 // lede subheading to get the fuller "your connection, live" header, otherwise it stays a
 // plain heading.
 type pageHeader struct {
-	Heading    string
-	Kicker     string
-	Live       bool
-	Subheading string
+	Heading      string
+	Kicker       string
+	KickerStatus string
+	Immediate    bool
+	Live         bool
+	Subheading   string
+	Banner       *plugin.Banner
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -318,6 +334,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Heading:       hdr.Heading,
 		HeadingDetail: headingDetail,
 		Kicker:        hdr.Kicker,
+		KickerStatus:  hdr.KickerStatus,
 		Live:          hdr.Live,
 		Subheading:    hdr.Subheading,
 		Width:         width,
@@ -325,6 +342,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Nav:           s.buildSidebar(r.URL.Path),
 		Body:          body,
 		NoPassword:    !s.security.RootHasPassword(),
+		Banner:        hdr.Banner,
 		CSRFToken:     s.sessionCSRF(r),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
@@ -345,9 +363,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 // plugin page, this is the shell's own content, so a render failure is a real
 // 500, not a contained notice.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// The gateway's rear panel leads, bare on the canvas with a hairline rule
-	// under it; the box-health donuts follow (both live — the overview stream
-	// keeps them current), then the status table in a headerless card.
 	// The advanced overview, transferred hardcoded from the design: verdict,
 	// status tiles, IPv4/IPv6 facts, the traffic graph, System, and the Interfaces
 	// / DHCP leases listings (each a flat Table). It opens on the verdict, so the
@@ -366,10 +381,33 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("verso: overview: system info unavailable: %v", err)
 	}
-	// The traffic graph draws the real WAN throughput minute the stream has
-	// accumulated; the live layer scrolls fresh samples in after load.
-	ov.DownSeries, ov.UpSeries = s.wanHist.Series()
-	d, u := s.wanHist.Latest()
+	// The process-wide sampler normally supplies an already-warm minute. WAN data
+	// can still use the low-cost netifd device counters if sampling fails.
+	var d, u float64
+	wan, wanErr := s.backend.WANStatus(r.Context(), sid)
+	if wanErr == nil {
+		ov.WANKnown, ov.WANUp = true, wan.Up
+		if wan.Up {
+			ov.WANUptime = formatUptime(wan.Uptime)
+		}
+	} else {
+		log.Printf("verso: overview: wan status unavailable: %v", wanErr)
+	}
+	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
+	ov.WiFiPresent = telemetryOK && len(snapshot.WirelessPHYs) != 0
+	if telemetryOK && wanErr == nil {
+		if device, found := snapshot.Interface(wan.Device); found {
+			ov.DownSeries, ov.UpSeries = telemetryInterfaceRates(device.History)
+			if len(ov.DownSeries) != 0 {
+				d = ov.DownSeries[len(ov.DownSeries)-1]
+				u = ov.UpSeries[len(ov.UpSeries)-1]
+			}
+		}
+	}
+	if len(ov.DownSeries) == 0 {
+		ov.DownSeries, ov.UpSeries = s.wanHist.Series()
+		d, u = s.wanHist.Latest()
+	}
 	ov.DownVal, ov.UpVal = fmt.Sprintf("%.1f", d), fmt.Sprintf("%.1f", u)
 	// The IPv4/IPv6 panel reads the uplink's live connection facts.
 	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
@@ -384,11 +422,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
 	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
 	s.applySensors(ov, board.BoardName)
-	// The Ports, Interfaces, and Connected-devices listings, read live from the
-	// backend. Interfaces reuses the device roster for its per-segment count.
-	ov.Ports = s.overviewPorts(r.Context(), sid)
+	// Kernel interfaces come from the same process-wide telemetry snapshot as
+	// the WAN graph and are enriched with UCI topology; clients follow them.
 	ov.Devices = s.connectedDevices(r.Context(), sid)
-	ov.Interfaces = s.interfaceList(r.Context(), sid, ov.Devices)
+	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot)
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {

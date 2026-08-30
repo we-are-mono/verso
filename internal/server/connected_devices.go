@@ -41,15 +41,24 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 	if err != nil {
 		log.Printf("verso: devices: fdb unavailable: %v", err)
 	}
-	zones := s.zoneMap(ctx, sid)
-
 	// The interface a device sits on — the finer segment label the row shows,
 	// derived from its address the same way the zone is.
 	var nets []ifaceNet
-	if cfg, err := s.backend.UCIConfig(ctx, sid, "network"); err == nil {
-		nets = interfaceNets(cfg)
+	var zones []zoneNet
+	zoneOfDevice := map[string]string{}
+	netCfg, netErr := s.backend.UCIConfig(ctx, sid, "network")
+	fwCfg, fwErr := s.backend.UCIConfig(ctx, sid, "firewall")
+	if netErr == nil {
+		nets = interfaceNets(netCfg)
 	} else {
-		log.Printf("verso: devices: network config unavailable: %v", err)
+		log.Printf("verso: devices: network config unavailable: %v", netErr)
+	}
+	if fwErr != nil {
+		log.Printf("verso: devices: firewall config unavailable: %v", fwErr)
+	}
+	if netErr == nil && fwErr == nil {
+		zones = zoneNets(netCfg, fwCfg)
+		zoneOfDevice = zonesByDevice(netCfg, fwCfg)
 	}
 
 	// DHCPv6 DUIDs, keyed by an assigned address — DHCPv6 carries no MAC, so a
@@ -63,13 +72,6 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 				duidByAddr[a] = l.DUID
 			}
 		}
-	}
-
-	byAddr := map[string]sysstat.DeviceTraffic{}
-	if bt, err := s.backend.ConnStats(ctx, sid); err != nil {
-		log.Printf("verso: devices: conntrack unavailable: %v", err)
-	} else {
-		byAddr = bt
 	}
 
 	// The device set is the union of every MAC the kernel knows and every MAC
@@ -97,22 +99,26 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 		if hasLease {
 			host = l.host
 		}
-		tr := deviceTrafficTotal(all, byAddr)
-
+		iface := neighborInterface(entries, zoneAddr)
+		if iface == "" {
+			iface = ifaceForAddr(nets, zoneAddr)
+		}
+		zone := zoneForAddr(zones, zoneAddr)
+		if zone == "" {
+			zone = zoneOfDevice[iface]
+		}
 		out = append(out, widget.OverviewDevice{
 			Name:       deviceName(host, mac),
 			MAC:        mac,
 			DUID:       duidFor(all, duidByAddr),
 			V4:         v4,
 			V6:         v6,
-			Interface:  ifaceForAddr(nets, zoneAddr),
-			Zone:       zoneForAddr(zones, zoneAddr),
+			Interface:  iface,
+			Zone:       zone,
 			Presence:   presenceWord(bestPresence(entries)),
 			Addresses:  all,
 			Connection: ports[mac],
 			Lease:      leaseFact(l, hasLease, now),
-			Traffic:    trafficFact(tr),
-			Conns:      countFact(tr.Conns),
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -122,6 +128,23 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+// neighborInterface returns the kernel interface that owns a device's primary
+// address. This is stronger than inferring it from UCI and also works for
+// delegated IPv6 prefixes; another known address is the fallback.
+func neighborInterface(entries []sysstat.Neighbor, primaryAddr string) string {
+	for _, entry := range entries {
+		if entry.Addr == primaryAddr && entry.Interface != "" {
+			return entry.Interface
+		}
+	}
+	for _, entry := range entries {
+		if entry.Interface != "" {
+			return entry.Interface
+		}
+	}
+	return ""
 }
 
 // deviceAddresses returns the device's primary v4 and primary global v6 (for the
@@ -216,20 +239,6 @@ func presenceRank(word string) int {
 	default:
 		return 0
 	}
-}
-
-// deviceTrafficTotal sums a device's conntrack byte counters across every address
-// it answers to.
-func deviceTrafficTotal(addrs []widget.OverviewAddr, byAddr map[string]sysstat.DeviceTraffic) sysstat.DeviceTraffic {
-	var t sysstat.DeviceTraffic
-	for _, a := range addrs {
-		if at, ok := byAddr[a.Addr]; ok {
-			t.RxBytes += at.RxBytes
-			t.TxBytes += at.TxBytes
-			t.Conns += at.Conns
-		}
-	}
-	return t
 }
 
 // leaseFact renders the DHCP-lease line for the drawer: the time remaining, or a

@@ -38,9 +38,10 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	width := ""
 	var pages []pageTab
 	body, status := s.pluginBody(r, m, &hdr, &width, &pages)
-	// Plugin pages are the staging surface (ADR-010): their Saves stage, so
-	// the bar is a fixture there even when clean.
-	s.renderPage(w, r, status, hdr, width, pages, true, body)
+	// Configuration pages keep the staging capsule at rest. A page made only of
+	// immediate commands may omit the clean capsule; an existing stage still
+	// follows the operator here as shared state.
+	s.renderPage(w, r, status, hdr, width, pages, !hdr.Immediate, body)
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -147,8 +148,11 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 		hdr.Heading = env.Title
 	}
 	hdr.Kicker = env.Kicker
+	hdr.KickerStatus = env.KickerStatus
+	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
 	hdr.Subheading = env.Subheading
+	hdr.Banner = env.Banner
 	*width = env.Width
 	*pages = subpageTabs(m, r, env.Pages)
 	return template.HTML(b.String()), status
