@@ -14,16 +14,26 @@ first: they hold the decisions and rationale. This file is the short "how we wor
   and tested.
 - **SOLID.** Small, focused types; small, role-specific interfaces; depend on interfaces,
   not concretions.
-- **Minimal dependencies, single static binary.** Stdlib first; **no CGo, no runtime
-  deps, no Node/npm.** A new dependency needs a real justification and a GPL-2.0-compatible
-  license (MIT/BSD/ISC yes; **Apache-2.0 is incompatible** with GPL-2.0-only).
+- **Minimal dependencies, static binaries.** The Go shell is stdlib-first — **no CGo, no
+  runtime deps, no Node/npm** — and ships as one static binary; the privileged companion
+  (`verso-rpcd`) is a small static Rust daemon (ADR-007). A new dependency needs a real
+  justification and a GPL-2.0-compatible license (MIT/BSD/ISC yes; **Apache-2.0 is
+  incompatible** with GPL-2.0-only).
 
 ## Architecture (short version)
 
-- Go, one static binary. `net/http` + `ServeMux` (routes in `internal/server/routes.go`,
-  no framework); `html/template` + HTMX; Tailwind v4 (build-time, embedded CSS).
-- Backend is native, no subprocess: `internal/ubus` (pure-Go ubus blob/blobmsg client),
-  `internal/openwrt` (the `Backend` interface — go-uci for config, ubus for live state).
+- **The shell** is a Go static binary. `net/http` + `ServeMux` (routes in
+  `internal/server/routes.go`, no framework); `html/template` + HTMX; Tailwind v4
+  (build-time, embedded CSS). It runs **unprivileged** (ADR-007).
+- **Backend, sid-gated.** `internal/openwrt` is the `Backend` interface; every method
+  carries the operator's rpcd session id (`sid`) and acts through rpcd's ACL-gated objects
+  — rpcd, not Verso, authorizes and executes. `internal/ubus` is the pure-Go ubus
+  blob/blobmsg client underneath. The shell holds no ambient root: a restricted operator is
+  limited to exactly what their ACLs allow.
+- **The privileged companion.** `verso-rpcd` (Rust, at repo root) is a persistent root
+  daemon on a group-protected Unix socket, owning the few actions rpcd's `uci`/`session`
+  objects can't cover (system password, package verbs). Every request re-verifies the
+  operator's `sid` via native ubus `session.access` before acting (ADR-007, ADR-011).
 - `internal/widget` renders a JSON widget schema to auto-escaped, token-styled HTML.
 - The plugin/consistency model — closed widget set, **semantic** props (never colors),
   design tokens as the substrate, and the governed **`raw`** bridge — is **ADR-005**. Read
@@ -44,13 +54,21 @@ first: they hold the decisions and rationale. This file is the short "how we wor
 - **Commits:** first line `context: summary because why`; imperative mood, **no temporal
   words** ("now/today"); keep messages short (≤ 25 lines); make small, logically-ordered
   commits that each build.
-- **Prototype build target is arm64** (`make build`); override `GOARCH` for other targets.
+- **`make build` cross-compiles both targets** — arm64 (the device) and amd64 (the docker
+  testbed) — for the Go shell and the Rust helper alike. Narrow it with `make build-arm64`
+  or `make build ARCHES=arm64`.
 
 ## Build · test · run
 
+A fresh checkout needs only Go 1.24+, `rustup`, Docker, and `make` — no host cross-gcc.
+`rustup` provisions the Rust toolchain + musl targets from `verso-rpcd/rust-toolchain.toml`
+on first build, and `rust-lld` (bundled with rustc) links every arch; the Tailwind CLI is
+auto-fetched (pinned). Nothing machine-specific is baked in.
+
 ```
-make test     # go test ./...   — hermetic, no device needed
-make build    # static binary; compiles CSS via the pinned Tailwind CLI first
+make test     # go test ./... + cargo test — hermetic, no device needed
+make build    # cross-compiles verso + verso-rpcd for amd64 and arm64 (CSS first)
+              #   -> build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64}
 make dev      # hot-reload loop against the running container
 docker compose up -d --build     # boots OpenWrt + verso; serves on :8080
 ```
@@ -63,8 +81,13 @@ The dev container boots real OpenWrt (procd) so the shell can reach live ubus/uc
 can grab the host's hardware watchdog and **hard-reboot the host** when the container
 stops. The committed `docker-compose.yml` is already set up correctly; do not loosen it.
 
-## Security status
+## Security model (ADR-007)
 
-The prototype runs as root and shells out with no ACLs — a deliberate spike shortcut (see
-README). Don't build anything real on that assumption; privilege gating will land behind
-the `Backend` interface and rpcd's ACL model.
+Verso does not act as ambient root. The Go shell runs as the non-root `verso` user with
+`no_new_privs` and a single capability (`CAP_NET_BIND_SERVICE`, to bind :80/:443), so it
+gets no ubusd uid-0 ACL exemption and cannot write `/etc/config` directly. Every backend
+operation carries the operator's rpcd session and is authorized by rpcd's sid-based ACLs —
+an authenticated but read-only operator stays read-only through Verso. The few genuine root
+actions live in the `verso-rpcd` companion, which re-checks the session via `session.access`
+before each one. Read ADR-007 before touching auth, the `Backend` seam, or the ACL files
+under `docker/rootfs/usr/share/`.

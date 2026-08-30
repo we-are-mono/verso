@@ -9,9 +9,12 @@ Verso's differentiator is its **plugin system**: third parties ship a page or se
 that register with the shell and look native — **without writing HTML or CSS**, and
 **without being able to take the shell down**.
 
-> **Status:** exploratory prototype, built to production quality (test-first). Today it
-> serves a live system-status page reading real `ubus`/`uci` from a booted OpenWrt, styled
-> with a design-token system. The plugin transport and most widgets are still ahead.
+> **Status:** exploratory prototype, built to production quality (test-first). It serves a
+> multi-page admin UI over live `ubus`/`uci` from a booted OpenWrt — login/session, staged
+> config changes with device-side rollback, package/service management — styled with a
+> design-token system and privilege-gated through rpcd (ADR-007). The plugin transport and
+> a broad widget set are in place; the open question is still whether a *third-party* plugin
+> renders native through the schema alone.
 
 **Minimum target: 128 MB flash** (NAND-class). Flash is the binding constraint, not RAM:
 the shell is a single, deliberately unconstrained Go binary, and it plus its plugins fit
@@ -46,36 +49,46 @@ See `docs/ADR/005-ui-consistency-contract.md` for the full model.
 
 ## Architecture
 
-- **Language/runtime:** Go, a single statically-linked binary (~11 MB arm64), assets via
-  `embed.FS`, **no CGo, no runtime dependencies.**
+- **Language/runtime:** the shell is Go, a single statically-linked binary (~11 MB arm64),
+  assets via `embed.FS`, **no CGo, no runtime dependencies.** Its privileged companion,
+  `verso-rpcd`, is a small static Rust daemon (ADR-007).
 - **Web layer:** stdlib `net/http` + `ServeMux` (routing table in `routes.go`, no
   framework), `html/template` (contextual auto-escaping — the safety net for
   plugin-supplied data), and **HTMX** for interactivity (no SPA, no npm/Node build).
 - **Styling:** **Tailwind v4** standalone CLI (no Node) compiles `@theme` design tokens +
   component classes to an embedded stylesheet. Tokens are the consistency substrate; the
   generated CSS is committed so a bare `go build` stays self-contained.
-- **Backend (native, no subprocess):**
+- **Backend (native transport, rpcd-authorized):**
   - `internal/ubus` — a hand-written **pure-Go ubus client** speaking the native
-    blob/blobmsg protocol over `/var/run/ubus/ubus.sock` (live state, e.g. `system info`).
-    Wire format documented in `docs/ubus-protocol.md`.
-  - `internal/openwrt` — the `Backend` interface (the ADR-003 test seam); config is read
-    straight from `/etc/config` via `go-uci`, live state via the ubus client.
+    blob/blobmsg protocol over `/var/run/ubus/ubus.sock`. Wire format documented in
+    `docs/ubus-protocol.md`.
+  - `internal/openwrt` — the `Backend` interface (the ADR-003 test seam). Every method
+    carries the operator's rpcd session id and acts through rpcd's **ACL-gated** ubus/uci
+    objects — the shell reads and writes with no ambient root, so a restricted operator is
+    bounded by their ACLs (ADR-007), not by Verso.
+  - `verso-rpcd` — the persistent Rust root companion for the few actions rpcd's objects
+    can't cover (system password, package verbs), each re-checked via `session.access`.
 - **Rendering:** `internal/widget` decodes the JSON schema and renders it to auto-escaped,
-  token-styled HTML. `table` exists today.
+  token-styled HTML through the closed widget set (`table`, `card`, `form`, `stat`, `chart`,
+  `hero`, `badge`, `raw`, …).
 
 ## Repository layout
 
 ```
 cmd/verso/            thin entrypoint (wire deps, serve)
 internal/
-  server/             HTTP shell: routes.go, handlers, page template, Tailwind assets
-  widget/             widget schema model + renderer (table)
-  openwrt/            Backend interface: go-uci (config) + ubus client (state)
+  server/             HTTP shell: routes, handlers, page/nav, auth/session, Tailwind assets
+  widget/             widget schema model + renderer (the closed widget set)
+  openwrt/            Backend interface: rpcd-authorized ubus/uci, sid-carried (ADR-007)
   ubus/               pure-Go ubus blob/blobmsg client
+  datatype/           declarative datatype validation (ADR-008)
+  plugin/             plugin transport: unix-socket schema gateway (ADR-006)
+  sysstat/ sensors/ telemetry/   host stat, sensor, and metric sources
+verso-rpcd/           persistent privileged Rust companion (ADR-007): src/ + Cargo
 docs/
-  ADR/                architecture decision records (001–005)
+  ADR/                architecture decision records (001–011)
   ubus-protocol.md    reverse-engineered ubus wire-format reference
-docker/rootfs/        OpenWrt overlay: verso init.d service, netfix, default config
+docker/rootfs/        OpenWrt overlay: verso + verso-rpcd services, netfix, ACLs, config
 Dockerfile, docker-compose.yml
 scripts/dev.sh        hot-reload dev loop
 sources/              reference clones (openwrt, luci, libubox, ubus) — gitignored
@@ -83,12 +96,15 @@ sources/              reference clones (openwrt, luci, libubox, ubus) — gitign
 
 ## Build & run
 
-Requires Go 1.24+, Docker, and `make`. The Tailwind CLI is auto-fetched (pinned) on first
-`make css`/`build`.
+Requires Go 1.24+, `rustup` (for the `verso-rpcd` helper), Docker, and `make`. The Rust
+toolchain and musl targets are provisioned automatically from `verso-rpcd/rust-toolchain.toml`;
+the Tailwind CLI is auto-fetched (pinned) on first `make css`/`build`.
 
 ```sh
-make test           # go test ./... (unit-tested with fakes; no device needed)
-make build          # static arm64 binary -> build/verso  (compiles CSS first)
+make test           # go test ./... + cargo test (unit-tested with fakes; no device needed)
+make build          # cross-compiles both arches (compiles CSS first) ->
+                    #   build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64}
+make build-arm64    # just the device target (amd64 is the docker testbed's arch)
 ```
 
 Run it against a real, booted OpenWrt in a container:
@@ -98,11 +114,12 @@ docker compose up -d --build      # boots OpenWrt (procd/ubus) + verso as a serv
 # -> http://<docker-host-ip>:8080   (LAN-reachable; the container hostname is verso-lab)
 ```
 
-The container runs full OpenWrt so verso talks to live `ubus`/`uci`. It is **deliberately
-non-privileged with no `/dev/watchdog`** (a privileged procd boot can grab the host
-watchdog and reboot the machine), OpenWrt's network stack/firewall are stripped and a
-static IP is re-applied (`netfix`) so Docker port-publishing survives, and a default
-`/etc/config/system` is injected. Never add `privileged: true`.
+The container boots full OpenWrt (procd, netifd, dnsmasq, odhcpd, fw4) so verso talks to
+live `ubus`/`uci`. `docker-compose.yml` wires it as a real router: a `wan-sim` ISP serves
+it DHCP/DHCPv6-PD and a `lan-client` sits behind it, so Verso reads real WAN state, leases,
+and routed traffic. It is **deliberately non-privileged with no `/dev/watchdog`** (a
+privileged procd boot can grab the host watchdog and reboot the machine); `netfix` re-applies
+the management IP so Docker port-publishing survives. Never add `privileged: true`.
 
 Fast inner loop:
 
@@ -122,24 +139,29 @@ Edit a `.go`/`.tmpl`/`.css`, save, refresh the browser (~3 s). No image rebuild.
 | 005 | UI consistency: design tokens + closed widget set + governed `raw` bridge |
 | 006 | Plugin contract: manifest + unix-socket schema gateway + crash isolation |
 | 007 | Privilege gating: act through rpcd ACLs with the session, not ambient root |
+| 008 | Validation: shell enforces declarative datatypes, plugin owns semantic checks |
+| 009 | Core navigation and the shell/plugin ownership boundary |
+| 010 | Coordinated changes: prepare every owner, stage once, apply once |
+| 011 | Plugin management: the shell's trust surface |
 
 ## Roadmap
 
-Done: language/license/testing/stack/consistency ADRs · native ubus/uci backend · live
-system-status page · `table` widget · Tailwind · OpenWrt-in-Docker harness · hot-reload.
+Done: the ADRs through 011 · native rpcd-authorized ubus/uci backend · login/session ·
+staged changes with device-side rollback · package/service management · privilege gating
+and the `verso-rpcd` companion · the closed widget set and the plugin transport · Tailwind ·
+OpenWrt-in-Docker router harness · hot-reload.
 
-Next: `card` (container — proves **nesting**, still the unexercised core of the schema
-bet) · `badge`/`form`/`raw` widgets · the mechanical plugin contract (manifest + socket +
-schema versioning) and the first out-of-process plugin · login/session against
-`session.login`.
+Open: the load-bearing bet — a *third-party* plugin rendering native through the schema
+alone — and the widgets that bet still needs (e.g. live chart rendering).
 
 ## Caveats
 
-This is a prototype. It currently runs **as root and shells out freely with no ACLs** —
-a known, deliberate spike shortcut that must be replaced before any real deployment. The
-`Backend` interface and rpcd's ACL model are where privilege gating will land.
+This is an exploratory prototype: interfaces move, and not every page is built out. It is
+**not** the old root-and-shell-out spike — privilege gating landed (ADR-007): the shell
+runs unprivileged and every operation is authorized by rpcd's ACLs against the operator's
+session. See `CONTRIBUTING.md` for the security model.
 
 ## License
 
-GPL-2.0-only — the same license as OpenWrt itself, to ease eventual upstreaming. See
+GPL-2.0-only — the same license as OpenWrt itself, to ease upstreaming. See
 `LICENSE`.
