@@ -363,9 +363,11 @@ func TestParseV6Leases(t *testing.T) {
 
 func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 	states := map[string]RCState{
-		"boot": {}, "dnsmasq": {Running: true}, "firewall": {}, "urandom_seed": {},
+		"boot": {}, "dnsmasq": {Running: true}, "firewall": {}, "urandom_seed": {}, "uhttpd": {},
 	}
-	managed := map[string]bool{"boot": false, "dnsmasq": true, "firewall": true, "urandom_seed": true}
+	// uhttpd is a daemon procd has never tracked (no `running` key) — an
+	// installed-but-disabled daemon that must still classify as a daemon.
+	managed := map[string]bool{"boot": false, "dnsmasq": true, "firewall": true, "urandom_seed": true, "uhttpd": false}
 	details := map[string]serviceDetail{
 		"dnsmasq":      {Instances: []serviceInstance{{PID: 42, Running: true, HasCommand: true, Respawn: true}}},
 		"firewall":     {},
@@ -382,6 +384,7 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 		"/etc/init.d/dnsmasq":      "USE_PROCD=1\nprocd_set_param command /usr/sbin/dnsmasq\n",
 		"/etc/init.d/firewall":     "USE_PROCD=1\nstart_service() { fw4 start; }\n",
 		"/etc/init.d/urandom_seed": "USE_PROCD=1\nprocd_set_param command /sbin/urandom_seed\n",
+		"/etc/init.d/uhttpd":       "USE_PROCD=1\nprocd_set_param command /usr/sbin/uhttpd\n",
 		"/proc/42/status":          "Name:\tdnsmasq\nVmRSS:\t2048 kB\n",
 		"/proc/42/stat":            "42 (dns masq) " + strings.Join(procFields, " ") + "\n",
 	}
@@ -398,6 +401,9 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 	}
 	if states["dnsmasq"].Kind != ServiceDaemon || states["firewall"].Kind != ServiceSubsystem {
 		t.Errorf("managed classification = dnsmasq:%q firewall:%q", states["dnsmasq"].Kind, states["firewall"].Kind)
+	}
+	if states["uhttpd"].Kind != ServiceDaemon {
+		t.Errorf("never-tracked daemon must class as daemon, got %q", states["uhttpd"].Kind)
 	}
 	dns := states["dnsmasq"]
 	if len(dns.PIDs) != 1 || dns.PIDs[0] != 42 || dns.MemoryBytes != 2*1024*1024 || dns.Uptime != 75 {

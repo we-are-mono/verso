@@ -1273,12 +1273,23 @@ func enrichRCStates(
 }
 
 func classifyService(managed bool, script []byte, detail serviceDetail) ServiceKind {
+	daemonScript := bytes.Contains(script, []byte("procd_set_param command"))
 	if !managed {
+		// A never-tracked service (no `running` key in rc.list) is a boot task —
+		// unless its init script declares a procd command, which marks a daemon
+		// procd simply hasn't started yet (an installed-but-disabled daemon). That
+		// daemon still needs an on/off switch, so it must not read as a task.
+		if daemonScript {
+			return ServiceDaemon
+		}
 		return ServiceTask
 	}
 	// A procd one-shot leaves a successful, non-respawning instance behind after
-	// it completes (urandom_seed is the stock example). That is a task even
-	// though its script uses the procd instance API.
+	// it completes (urandom_seed is the stock example). That is a task even though
+	// its script uses the procd instance API — so this check must precede the
+	// daemon-script check below. Accepted edge: a daemon that clean-exits without
+	// respawn is indistinguishable from a one-shot and reads as a task; procd drops
+	// a daemon's instance on stop and respawns a crashed one, so it does not arise.
 	if len(detail.Instances) > 0 {
 		completed := true
 		for _, instance := range detail.Instances {
@@ -1291,7 +1302,7 @@ func classifyService(managed bool, script []byte, detail serviceDetail) ServiceK
 			return ServiceTask
 		}
 	}
-	if bytes.Contains(script, []byte("procd_set_param command")) {
+	if daemonScript {
 		return ServiceDaemon
 	}
 	for _, instance := range detail.Instances {

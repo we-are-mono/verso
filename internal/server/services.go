@@ -131,8 +131,15 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if svcKeep[svc] {
-		s.renderServices(w, r, fmt.Sprintf(
-			"%s keeps this page alive — manage it over SSH if you really mean it.", svc))
+		msg := fmt.Sprintf("%s keeps this page alive — manage it over SSH if you really mean it.", svc)
+		if switchRequest {
+			// A switch POST reads res.ok as success and reloads (verso.js), so a
+			// refusal must be an error status, not a 200 re-render — parity with the
+			// svcMustStayEnabled branch below.
+			http.Error(w, msg, http.StatusConflict)
+			return
+		}
+		s.renderServices(w, r, msg)
 		return
 	}
 	if svcMustStayEnabled[svc] && (slices.Contains(actions, "stop") || slices.Contains(actions, "disable")) {
