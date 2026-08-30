@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 244" width="1024" height="244">
+  <!--
+    Mono Gateway (mono_gateway-dk) — back-panel render, dark/black finish.
+    Coordinate space is the 1024x244 viewBox; ports run left→right:
+    USB-C, RST, then the ethernet ports. Cages are drawn in physical left→right
+    order; each cage's text label is its silicon name (eth1, eth2, eth0, eth3,
+    eth4 — matching profile.json "ports"), so a cage's position and its name
+    differ. Each port's two status LEDs (link, traffic) are drawn in their OFF
+    state: #173a25 (dark green) and #3a2e12 (dark amber).
+
+    WAN is a runtime role, not fixed hardware, so this art asserts no WAN port.
+    Each ethernet group is tagged data-verso-port="<iface>" with the silicon
+    name (eth0 … eth4). Verso marks whichever port UCI assigns to WAN by injecting
+    one style rule at render time, e.g.:
+      [data-verso-port="eth0"] > path { stroke: #38bdf8; stroke-width: 1.8; }
+    The two LEDs in each port carry class="led-link" and class="led-traffic";
+    Verso lights and blinks them the same way (fill + injected ledLink/ledTraffic
+    keyframes) from live link and traffic state.
+  -->
+
+  <!-- Chassis -->
+  <rect x="3" y="4" width="1018" height="236" rx="16" fill="#1f232a" stroke="#363b44" stroke-width="1.5" />
+  <rect x="5" y="5.5" width="1014" height="1.5" rx="1" fill="#ffffff" opacity="0.05" />
+
+  <!-- USB-C (three contacts) -->
+  <rect x="116" y="82" width="18" height="51" rx="9" fill="#2b313a" stroke="#4c5563" stroke-width="1.4" />
+  <rect x="119" y="86" width="12" height="43" rx="6" fill="#171b21" />
+  <rect x="158" y="82" width="18" height="51" rx="9" fill="#2b313a" stroke="#4c5563" stroke-width="1.4" />
+  <rect x="161" y="86" width="12" height="43" rx="6" fill="#171b21" />
+  <rect x="200" y="82" width="18" height="51" rx="9" fill="#2b313a" stroke="#4c5563" stroke-width="1.4" />
+  <rect x="203" y="86" width="12" height="43" rx="6" fill="#171b21" />
+  <text x="167" y="192" text-anchor="middle" fill="#8b93a0" font-family="'JetBrains Mono', monospace" font-size="12">USB-C</text>
+
+  <!-- Reset button -->
+  <circle cx="275" cy="108" r="9" fill="#2b313a" stroke="#4c5563" stroke-width="1.4" />
+  <circle cx="275" cy="108" r="3.4" fill="#12151a" />
+  <text x="275" y="192" text-anchor="middle" fill="#8b93a0" font-family="'JetBrains Mono', monospace" font-size="12">RST</text>
+
+  <!-- eth1 (leftmost cage) -->
+  <g data-verso-port="eth1" class="port">
+    <path d="M338,68 H422 A6,6 0 0 1 428,74 V142 A6,6 0 0 1 422,148 H403 V156 A3,3 0 0 1 400,159 H360 A3,3 0 0 1 357,156 V148 H338 A6,6 0 0 1 332,142 V74 A6,6 0 0 1 338,68 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1.5" stroke-linejoin="round" />
+    <rect x="356" y="80" width="48" height="7" rx="1" fill="#3a424f" opacity="0.5" />
+    <rect x="335" y="151" width="19" height="8" rx="1.5" fill="#173a25" class="led-link" />
+    <rect x="406" y="151" width="19" height="8" rx="1.5" fill="#3a2e12" class="led-traffic" />
+    <text x="380" y="192" text-anchor="middle" fill="#7b828c" font-family="'JetBrains Mono', monospace" font-size="11.5">eth1</text>
+  </g>
+
+  <!-- eth2 -->
+  <g data-verso-port="eth2" class="port">
+    <path d="M452,68 H536 A6,6 0 0 1 542,74 V142 A6,6 0 0 1 536,148 H517 V156 A3,3 0 0 1 514,159 H474 A3,3 0 0 1 471,156 V148 H452 A6,6 0 0 1 446,142 V74 A6,6 0 0 1 452,68 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1.5" stroke-linejoin="round" />
+    <rect x="470" y="80" width="48" height="7" rx="1" fill="#3a424f" opacity="0.5" />
+    <rect x="449" y="151" width="19" height="8" rx="1.5" fill="#173a25" class="led-link" />
+    <rect x="520" y="151" width="19" height="8" rx="1.5" fill="#3a2e12" class="led-traffic" />
+    <text x="494" y="192" text-anchor="middle" fill="#e2e8f0" font-family="'JetBrains Mono', monospace" font-size="11.5">eth2</text>
+  </g>
+
+  <!-- eth0 -->
+  <g data-verso-port="eth0" class="port">
+    <path d="M566,68 H650 A6,6 0 0 1 656,74 V142 A6,6 0 0 1 650,148 H631 V156 A3,3 0 0 1 628,159 H588 A3,3 0 0 1 585,156 V148 H566 A6,6 0 0 1 560,142 V74 A6,6 0 0 1 566,68 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1.5" stroke-linejoin="round" />
+    <rect x="584" y="80" width="48" height="7" rx="1" fill="#3a424f" opacity="0.5" />
+    <rect x="563" y="151" width="19" height="8" rx="1.5" fill="#173a25" class="led-link" />
+    <rect x="634" y="151" width="19" height="8" rx="1.5" fill="#3a2e12" class="led-traffic" />
+    <text x="608" y="192" text-anchor="middle" fill="#e2e8f0" font-family="'JetBrains Mono', monospace" font-size="11.5">eth0</text>
+  </g>
+
+  <!-- eth3 (SFP cage) -->
+  <g data-verso-port="eth3" class="port">
+    <path d="M710,71 H788 A6,6 0 0 1 794,77 V139 A6,6 0 0 1 788,145 H769 V153 A3,3 0 0 1 766,156 H732 A3,3 0 0 1 729,153 V145 H710 A6,6 0 0 1 704,139 V77 A6,6 0 0 1 710,71 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1.5" stroke-linejoin="round" />
+    <rect x="712" y="79" width="74" height="58" rx="3" fill="#12151a" />
+    <rect x="707" y="148" width="19" height="8" rx="1.5" fill="#173a25" class="led-link" />
+    <rect x="772" y="148" width="19" height="8" rx="1.5" fill="#3a2e12" class="led-traffic" />
+    <text x="749" y="192" text-anchor="middle" fill="#e2e8f0" font-family="'JetBrains Mono', monospace" font-size="11.5">eth3</text>
+  </g>
+
+  <!-- eth4 (SFP cage) -->
+  <g data-verso-port="eth4" class="port">
+    <path d="M812,71 H890 A6,6 0 0 1 896,77 V139 A6,6 0 0 1 890,145 H871 V153 A3,3 0 0 1 868,156 H834 A3,3 0 0 1 831,153 V145 H812 A6,6 0 0 1 806,139 V77 A6,6 0 0 1 812,71 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1.5" stroke-linejoin="round" />
+    <rect x="814" y="79" width="74" height="58" rx="3" fill="#12151a" />
+    <rect x="809" y="148" width="19" height="8" rx="1.5" fill="#173a25" class="led-link" />
+    <rect x="874" y="148" width="19" height="8" rx="1.5" fill="#3a2e12" class="led-traffic" />
+    <text x="851" y="192" text-anchor="middle" fill="#e2e8f0" font-family="'JetBrains Mono', monospace" font-size="11.5">eth4</text>
+  </g>
+</svg>

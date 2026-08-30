@@ -175,11 +175,13 @@ fan.
 
 A board folder may carry a **`back.svg`** — artwork of the device's rear that the
 dashboard shows to non-technical users in place of the generic port strip. It is a
-**skin over the live ports layer, not a static picture**: tag each connector with
-`data-verso-port="<iface>"` (and its LEDs with the port classes), and the shell
-lights link/activity on it exactly as it does the generated panel — no code per
-board. `ports` gives the left-to-right order the generic strip uses when there is no
-`back.svg`. No `back.svg` → the generic ports panel is drawn instead.
+**skin over the live ports layer, not a static picture**: tag each connector group
+with `data-verso-port="<iface>"` and its two LEDs with `class="led-link"` and
+`class="led-traffic"`, and the shell lights link/activity on it exactly as it does
+the generated panel — no code per board. It styles a tagged group's outline to mark
+a runtime role (the WAN port), so the role never lives in the art. `ports` gives the
+left-to-right order the generic strip uses when there is no `back.svg`. No `back.svg`
+→ the generic ports panel is drawn instead.
 
 **A submitted SVG is untrusted content and is sanitized before it renders:** inline
 only, no `<script>`, no event handlers (`on*`), no remote refs (`href`/`<image>`),
@@ -206,4 +208,6 @@ the exact key to paste, and validate a profile against the hardware — planned.
 See `mono_gateway-dk/profile.json` for a worked example: the LS1046A's TMU names the
 CPU site `cluster-thermal` (not `cpu-thermal`), fans come from a multi-channel
 `emc2305`, "Power" is the input rail, and the ports enumerate out of silk-screen
-order.
+order. Its `mono_gateway-dk/back.svg` is a worked back panel: five
+`data-verso-port` groups in that left-to-right order, each with `led-link` and
+`led-traffic` LEDs drawn dark, and no WAN asserted.
