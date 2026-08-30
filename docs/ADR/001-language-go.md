@@ -28,8 +28,11 @@ The shipping architecture is out-of-process plugins over unix sockets, which is
 Write the Verso shell in **Go**, compiled to a **single statically-linked binary** with
 assets embedded via `embed.FS`.
 
-For the spike, the shell reaches the backend by **shelling out to the `ubus`/`uci` CLIs**
-rather than linking libubus — keeping the binary free of CGo and runtime deps.
+The shell reaches the backend through a **native, pure-Go `ubus` client** — it speaks the
+binary blob/blobmsg protocol over the ubus socket directly (`internal/ubus`), with no CGo,
+no `libubus` link, and no shelling out. The privileged root actions the shell cannot take
+itself live in a separate Rust companion, `verso-rpcd` (ADR-007); this decision governs the
+Go shell.
 
 ## Consequences
 
@@ -42,16 +45,16 @@ rather than linking libubus — keeping the binary free of CGo and runtime deps.
   nothing to lay on the filesystem, nothing to version-skew.
 - `html/template` gives contextual auto-escaping — important because the shell renders
   plugin-supplied schema data, which is an injection surface into the shell's own origin.
-- Standard library (`net/http`, `os/exec`, `encoding/json`) covers the whole MVP with no
-  third-party framework.
+- Standard library (`net/http`, `encoding/json`, `net` for the ubus socket) covers the
+  shell with no third-party framework.
 - Precedent: AdGuard Home ships exactly this way (Go, single binary) on OpenWrt-class
   hardware.
 
 ### Costs / negatives (recorded honestly)
-- **CGo tension:** a *native* Go ubus client is not free — the ubus socket speaks binary
-  blobmsg, not JSON. Going native later means reimplementing blobmsg in pure Go or
-  CGo-binding libubus, which breaks "single static binary, no runtime deps." We accept
-  shelling out for the spike and flag native ubus as a later, non-trivial decision.
+- **A native ubus client was the cost paid.** The ubus socket speaks binary blobmsg, not
+  JSON, so talking to it natively meant reimplementing blob/blobmsg in pure Go rather than
+  CGo-binding libubus. That work landed (`internal/ubus`) and kept the property intact: the
+  shell stays a single static binary with no CGo and no runtime deps.
 - Larger binary and a GC vs C/Lua — acceptable **only because** of the high floor spec.
   This decision is coupled to that floor spec; if the floor drops, revisit.
 - Go is not an OpenWrt-native contributor language the way Lua/C/ucode are; contributors
@@ -67,7 +70,9 @@ rather than linking libubus — keeping the binary free of CGo and runtime deps.
 - **Rust** — also a single static binary, stronger compile-time safety. Rejected for the
   spike: slower iteration and heavier onboarding, with no clear win over Go for an
   I/O-bound web shell at this floor spec. Reconsider only under a hard memory-ceiling or
-  real-time requirement (absent at 2 GB).
+  real-time requirement (absent at 2 GB). Rust does appear in the system, but not as the
+  shell: the privileged companion `verso-rpcd` is Rust — a small, memory-safe root daemon
+  (ADR-007) — which leaves this shell-language choice intact.
 - **C** — native to OpenWrt, tiny. Rejected: memory-unsafe and slow to build a web UI in;
   LuCI itself moved *away* from C for its UI layer.
 - **PHP** — Rejected: needs a PHP interpreter on the device, and its natural CGI/FPM

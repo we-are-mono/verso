@@ -6,7 +6,9 @@
 - **Relates to:** ADR-001 (single static binary; supersedes its "runs as root,
   acts freely" spike posture for the privileged surface), ADR-003 (the `Backend`
   seam, where this swap lands), ADR-006 (plugin contract; adds manifest ACL
-  declarations and a read-snapshot channel). Closes the privilege-gating gap
+  declarations and a read-snapshot channel), ADR-009 (shell-owned platform
+  administration and recovery), ADR-011 (package and service management). Closes
+  the privilege-gating gap
   from the prototype security review: the session is authenticated but never used
   to authorize anything.
 
@@ -72,25 +74,36 @@ broken socket.**
    privilege surface instead of ambient root, and never read `/etc/config` or hold
    a write path.
 
-5. **A first-party rpcd helper performs privileged root actions that are not uci
-   config.** Some operations the shell must not do itself are not `uci` writes —
-   setting the root password is the first, and more will follow (reboot, service
-   control). Rather than depend on `rpcd-mod-luci` (a LuCI component this shell
-   exists to replace), Verso ships its own rpcd **exec plugin**, `verso-rpcd`: a
-   small, single-responsibility binary — kept **separate from the shell** so the
-   root-run process carries minimal code — that rpcd runs as root and exposes as
-   the ubus object `verso`. rpcd does **not** enforce the session ACL on exec
-   plugins, so the helper **self-gates**: each method probes `session.access` for
-   its own `{ubus, verso, <method>}` and refuses, fail-closed, a missing or invalid
-   sid. The shell calls it through the `Backend` seam carrying the operator's sid,
-   exactly as it calls `uci`. Extending it is adding a method (its arg schema plus
-   one rpcd-ACL grant); gating and protocol are shared. Its logic lives behind
-   seams (ADR-003) in `internal/rpcdhelper`, unit-tested with fakes.
+5. **A first-party persistent helper performs privileged root actions that are not uci
+   config.** Two operations the shell owns but must not perform itself are not `uci`
+   writes: setting the root password, and the apk package operations (index refresh,
+   search, list-installed, install, remove). procd service lifecycle is *not* one of them —
+   it rides rpcd's native `rc` object, sid-gated like `uci` (the `rc` grant in the shell's
+   `acl.d`). Rather than depend
+   on `rpcd-mod-luci` (a LuCI component this shell
+   exists to replace), Verso ships `verso-rpcd`: a small, single-responsibility
+   Rust daemon kept **separate from the shell** so the root-run process carries
+   minimal code. It stays resident instead of making rpcd spawn a fresh helper
+   for every browser call, and accepts requests only on a `root:verso` Unix
+   socket. The helper **self-gates** every request through native ubus
+   `session.access` for `{ubus, verso, <method>}` and refuses, fail-closed, a
+   missing or invalid sid. The shell calls it through the `Backend` seam carrying
+   the operator's sid, exactly as it calls `uci`. Extending it is adding a method
+   plus one rpcd-ACL grant; gating and protocol are shared. Each method accepts only
+   the structured arguments required for that operation and invokes the corresponding
+   native OpenWrt mechanism; the protocol exposes no command string or general process
+   execution primitive. Firmware validation, target compatibility, and destructive
+   operation checks are enforced again at this privileged boundary rather than relying
+   only on browser or shell validation.
 
-6. **Staged, not big-bang.** This is the target architecture, implemented
-   incrementally behind the `Backend` seam and the manifest — not in one cut. The
-   security review rates this a device blocker; shipping to real hardware waits
-   on it.
+   Explicit confirmation belongs to the shell interaction; the sid check at the helper is
+   mandatory regardless of any UI confirmation.
+
+6. **Enforcement is unified at rpcd.** The privilege model lives behind the `Backend`
+   seam and the manifest: the shell holds no ambient root, and every privileged action —
+   uci writes, service control through the `rc` object, and the helper's own methods — is
+   authorized by rpcd against the operator's sid. A Verso compromise is bounded by that
+   operator's ACLs.
 
 ## Consequences
 
@@ -111,8 +124,8 @@ broken socket.**
   plugins' reads (its last use). Every uci operation is re-expressed as an rpcd ubus
   call carrying the sid, and rpcd becomes a hard runtime dependency for reads and
   writes (it already is for login).
-- A per-operation authorization/execution **round-trip** (cacheable per sid
-  within its lifetime).
+- A per-operation authorization **round-trip** to rpcd remains. The root helper
+  itself is persistent, so this no longer includes an exec-plugin process spawn.
 - The native-ubus investment (`internal/ubus`) is **not** wasted — it is exactly
   what carries the sid-bearing calls — but the go-uci write path built for the
   spike is superseded.
@@ -161,16 +174,20 @@ ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubu
   capability-stripped root still bypasses ubusd entirely. Only a non-root uid is
   gated.
 - **The shell has its own ubusd `acl.d` grant** (`/usr/share/acl.d/verso.json`)
-  for the objects it brokers (`session`, `uci`, `system`, and its `verso`
-  root-action helper — Decision 5), because ubusd
+  for the objects it brokers (`session`, `uci`, `system`, and related read
+  objects), because ubusd
   ACL-checks non-root callers; rpcd still applies the per-operator sid gating on
   top. That file must be root-owned and not group/world-writable, or ubusd skips
   it (`ubusd_acl.c` `ubusd_acl_load`). The shell keeps only `CAP_NET_BIND_SERVICE`
-  (to bind :80/:443) and `no_new_privs`.
+  (to bind :80/:443) and `no_new_privs`. A separate rpcd grant,
+  `/usr/share/rpcd/acl.d/verso-shell.json`, gives the operator's *session* the reads the
+  overview needs (network interfaces, devices, dhcp) — a sid grant, distinct from the ubusd
+  `verso.json` and the helper's `verso-helper.json`.
 
-Plugins are confined the same way, and further isolated by uid: **each plugin runs
-under its own non-root uid** (`verso-plugin-<name>`, e.g. hostname `6001`,
-wireguard `6002`), sharing only the `verso` group. A plugin holds no session and
+Plugins are confined the same way, and the isolation model separates each by uid: **each
+plugin gets its own non-root uid** (`verso-plugin-<name>`), sharing only the `verso` group.
+The current image runs the shell alone under uid `6000`; the per-plugin uids are how a
+packaged plugin is isolated, not testbed state. A plugin holds no session and
 touches config in **neither** direction directly. For
 **reads**, the shell reads each config the plugin declares in `acl.read` through
 rpcd's `uci get` carrying the operator's sid — one whole-config call — and injects
@@ -190,9 +207,9 @@ ACL.
 The distinct per-plugin uid is the isolation boundary. `ptrace` and signals are
 uid-scoped, so a plugin can reach neither the shell nor a peer's memory. ubusd
 grants ACLs per username, so a plugin's uid — having no `acl.d` file — has **zero**
-bus access (verified: `ubus list` as the plugin uid shows nothing): it cannot reach
+bus access: it cannot reach
 the shell's brokered objects (`uci`, `system`, `session`) nor the privileged
-`verso` root-action helper (Decision 5). Plugins need none — the shell brokers every
+`verso-rpcd` root-action socket (Decision 5). Plugins need none — the shell brokers every
 read and write. The shared `verso` group serves one purpose only: the shell (in
 that group) reaches each plugin's socket (`0660`, in a `1770` sticky dir so a
 plugin creates its own socket but cannot remove a peer's). The one remaining
@@ -201,14 +218,15 @@ an HTTP-only surface with no memory or `ptrace` access — is a lesser residual 
 to tighten (a per-plugin socket group) if a plugin ever handles a secret a peer
 must never reach.
 
-The `verso` root-action helper (Decision 5) installs at `/usr/libexec/rpcd/verso`
-(rpcd names the object after the file). Two ACLs gate it, mirroring the rest of
-this ADR: the ubusd **uid** grant (`/usr/share/acl.d/verso.json`) lets only the
-shell's uid reach the object, and the rpcd **sid** grant
+The root-action helper (Decision 5) installs at `/usr/sbin/verso-rpcd` and runs
+under procd. Its socket is `/var/run/verso/verso-rpcd.sock`: the containing
+directory and socket permit only root and the `verso` group; the daemon then
+uses Linux `SO_PEERCRED` to accept only root or the shell's uid 6000, keeping
+plugins that merely share the group out. The rpcd **sid** grant
 (`/usr/share/rpcd/acl.d/verso-helper.json`) names the group that authorizes each
-method, which the operator's session must hold. The self-gate is what actually
-enforces the sid, since rpcd does not gate exec plugins; a denial reaches the shell
-as a ubus error, which the calling page renders as a notice. `passwd` is fed the
-new secret on stdin only (never argv/env). Deploying the helper or its ACLs needs
-`rpcd reload` (session-preserving) for the plugin and its sid-ACL, and a `SIGHUP`
-to ubusd for the uid-ACL — `make dev` automates both.
+method, which the operator's session must hold; the Rust daemon probes that ACL
+over native ubus before every action. A denial reaches the shell as
+`ErrAccessDenied`, which the calling page renders as a notice. `passwd` is fed
+the new secret on stdin only (never argv/env). Deploying an ACL edit needs an
+`rpcd reload` (session-preserving); deploying the daemon restarts only
+`verso-rpcd`, not rpcd or the browser sessions — `make dev` automates both.

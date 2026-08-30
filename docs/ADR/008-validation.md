@@ -56,9 +56,9 @@ duplicated (every plugin re-writes hostname/ip/port checks with its own wording)
    validation dependency.** Plugin authors never call the validator — they declare
    a datatype *name* in their JSON schema, in any language, and the shell
    validates. So the barrier to entry is the *name vocabulary*, not a library, and
-   the vocabulary OpenWrt authors already know is LuCI's (`hostname`, `ipaddr`,
-   `host`, `port`). `internal/datatype` exposes exactly those, backed by stdlib
-   (`net/netip` plus small label checks). A general validation library is rejected:
+   the vocabulary OpenWrt authors already know is LuCI's (`hostname`, `fqdn`,
+   `ipaddr`, `ip4addr`, `ip6addr`, `host`, `port`). `internal/datatype` implements
+   that set, backed by stdlib (`net/netip` plus small label checks). A general validation library is rejected:
    it is invisible to plugin authors (who see only the declared name), its names do
    not match LuCI's, its accept/reject rules drift from LuCI's, and it adds a
    dependency for a small, closed set the stdlib already covers — the glue is less

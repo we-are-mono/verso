@@ -102,6 +102,19 @@ over a local socket**, exchanging *data*, not markup.
    page heading. There is exactly one rendering path: the shell always just
    renders the tree it is handed.
 
+   Beyond `widget`, the envelope carries optional page chrome the shell owns and
+   the plugin only requests: `kicker` (an eyebrow above the heading) with
+   `kicker_status` and `live` (a state label and a pulsing dot beside it),
+   `subheading` (a lede under the heading), `width` (`narrow` | `normal` | `wide`),
+   and `immediate` (the page's actions apply at once, so the staging capsule is
+   omitted — ADR-010). `pages` is the **third navigation tier**: a domain's subpages
+   rendered as the shell's top bar (sidebar → domain, top bar → kind of visit). Each
+   entry is `{label, path}` relative to the plugin's mount; the shell builds the href
+   and marks the active tab, so a plugin cannot aim the bar outside itself. `banner`
+   is a full-width `{variant, title, body}` notice the shell renders at the navigation
+   seam. Every field is optional: a plugin that sends only `schema_version`, `title`,
+   and `widget` gets a plain page.
+
 5. **The plugin is authoritative for its own writes and validation, and says so
    in-band.** A POST that fails validation returns HTTP **422** with the *same*
    envelope — the form re-rendered, each offending field carrying its `error` and
@@ -113,12 +126,12 @@ over a local socket**, exchanging *data*, not markup.
    (declarative `datatype`) validation is expressed in the schema and can be
    checked on both ends.
 
-6. **Two independent version numbers, both refuse-don't-crash.** `schema_version`
-   (widget vocabulary) and `manifest_version` (manifest format) evolve
-   separately. The shell supports a known set of each; a value it does not
-   support yields a **degradation card in the chrome** ("plugin needs a newer
-   Verso"), never a load failure or a 500. Additive vocabulary changes bump a
-   minor; removals/renames bump a major.
+6. **Two independent version numbers.** `schema_version` (widget vocabulary) and
+   `manifest_version` (manifest format) evolve separately. `schema_version` is the
+   enforced gate: a version the shell does not support yields a **degradation card
+   in the chrome** ("plugin needs a newer Verso"), never a load failure or a 500.
+   `manifest_version` is carried for the same purpose as the manifest shape grows.
+   Additive vocabulary changes bump a minor; removals/renames bump a major.
 
 7. **Crash isolation is a contract, not a hope.** Any transport failure — dial
    refused, timeout, non-JSON body, a schema the shell can't decode, a 5xx from

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-23
 - **Deciders:** tomaz@zaman.io
-- **Relates to:** ADR-001 (the shell-out backend becomes the testability seam)
+- **Relates to:** ADR-001 (the ubus/uci backend is the testability seam)
 
 ## Context
 
@@ -30,23 +30,23 @@ dependencies sit behind seams from day one. That seam is a structural decision.
 2. **Design for testability via dependency seams — the architectural core.**
    Side-effecting dependencies sit behind small Go interfaces, injected into the
    components that use them; never bare package-level side effects:
-   - the **backend** (`ubus`/`uci` access — shelling out per ADR-001) behind a `Backend`
-     interface;
+   - the **backend** (`ubus`/`uci` access — a native pure-Go ubus client per ADR-001)
+     behind a `Backend` interface;
    - the **plugin transport** (unix-socket dial + schema fetch) behind an interface;
    - clock / filesystem wherever they would otherwise make a test non-hermetic.
 
-   Real implementations in production, fakes in tests. **Bonus:** the `Backend` interface
-   is the *same* seam ADR-001 needs to later swap shell-out for a native Go ubus client —
-   testability and the future-native-ubus swap are one seam, so the indirection is not
-   wasted.
+   Real implementations in production, fakes in tests. The `Backend` interface is the
+   *same* seam that keeps the native pure-Go ubus client (ADR-001) behind an abstraction —
+   testability and the native-ubus client are one seam, so the indirection is not wasted.
 
 3. **Test at the right level:**
    - **Pure logic** (validation datatypes, schema model, renderer): fast, table-driven
-     unit tests; **golden files** for schema-JSON → HTML.
-   - **Plugin contract**: a **conformance suite** that runs a plugin through the contract
-     and asserts it conforms. It doubles as *executable `PLUGIN.md`* and the mechanical
-     form of the definition of done ("a second dev builds a plugin from the docs"), and
-     ships as a kit third-party authors self-check against.
+     unit tests; the renderer is checked with inline exact-string and substring
+     assertions. **Golden files** cover the ubus wire format (`internal/ubus`).
+   - **Plugin contract**: a **conformance suite** — one that runs a plugin through the
+     contract and asserts it conforms, doubling as *executable `PLUGIN.md`* and a kit
+     third-party authors self-check against — is not built. It is recorded in
+     `docs/BACKLOG.md`.
    - **Wiring** (HTTP handlers, session, transport adapters): integration tests against
      the fakes; keep adapters thin.
 
@@ -57,28 +57,30 @@ dependencies sit behind seams from day one. That seam is a structural decision.
 5. **Coverage is an outcome, not a target.** TDD yields coverage as a side effect; we do
    not chase a percentage or write tests to game a number.
 
+6. **The privileged companion is Rust, tested with `cargo test`.** `verso-rpcd/` is a
+   separate Rust binary with its own `#[test]` suite across
+   `verso-rpcd/src/{packages,ubus,main}.rs`. The seam-and-fake philosophy above governs
+   the Go shell; the Rust companion is tested in its own toolchain.
+
 ## Consequences
 
 ### Positive
 - No retrofit debt: a successful experiment continues on trustworthy code instead of a
   rewrite — the whole point.
-- The native-ubus swap (ADR-001) becomes a drop-in behind the `Backend` interface, with
-  existing tests still valid.
-- The conformance suite directly serves the definition of done and gives plugin authors a
-  self-check.
+- The native ubus client (ADR-001) sits behind the `Backend` interface, with the existing
+  tests still valid.
 - Fakes mean the suite runs on any dev machine — no device in the loop.
 
 ### Costs / negatives (honest)
 - Interface seams add a little upfront indirection. Accepted — it is also the exact seam
-  the native-ubus swap needs, so it pays for itself.
+  the native-ubus client uses, so it pays for itself.
 - TDD over a still-forming schema means editing tests as the contract changes. Accepted:
   the test **is** the spec, not a frozen regression. Redesign = re-express the test first,
   then the code — never "add tests afterward." (This answers the usual "tests calcify an
   exploratory design" objection: they don't, if you edit them as spec.)
 
 ### Neutral
-- Applies to the first-party shell and plugins. Third-party plugins own their tests; the
-  conformance kit is offered.
+- Applies to the first-party shell and plugins. Third-party plugins own their tests.
 
 ## Alternatives considered
 - **Test-after / retrofit once it pans out** — rejected: wrong order, incurs debt, and

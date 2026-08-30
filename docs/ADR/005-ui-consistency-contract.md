@@ -39,11 +39,13 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    rendered with a visible "raw" affordance, and instrumented — its usage is the demand
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →
    author migrates. Health metric: raw usage *declines* for recurring needs.
-6. **Tailwind v4, its default palette adopted directly.** The templates use Tailwind's
-   default utility classes; there is no custom design-token layer to maintain. The
-   stylesheet compiles via the standalone CLI (no Node) to an embedded file. This is an
-   engine choice, not a contract change: plugins never see classes, so the styling stays
-   reversible with zero plugin impact. Shell templates use utilities; plugins never do.
+6. **Tailwind v4, built on its default palette.** The templates use Tailwind's
+   default utility classes as the base, over a small custom `@theme` — a few semantic
+   tokens (`--color-canvas`, `--color-surface-subtle`) and a dark-mode palette that remaps
+   the neutrals and state tints under `:root.dark`. The stylesheet compiles via the
+   standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
+   change: plugins never see classes, so the styling stays reversible with zero plugin
+   impact. Shell templates use utilities; plugins never do.
 7. **Behaviour is declared as intent; the shell realizes it.** The closed widget set
    includes *behavioural* widgets — the first is `repeater`, a repeatable group of
    widgets backed by a set of uci sections — but they obey the same rule as every other
@@ -61,10 +63,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    controlling toggle; it follows the same rule, but its realization is *pure CSS*
    (`:has()`) rather than a round-trip, because show/hide has no state to persist —
    the shell still owns every line of it, and the plugin still only declares the
-   intent. Behavioural widgets whose interaction never touches the server — `modal`
-   first, with `drawer`/`tabs` to follow — are realized in **shell-owned client JS**
-   (Alpine's CSP build, ADR-004): the plugin emits only `{type:"modal", …}`, and the
-   shell owns the open/close, focus-trap, and transition. Pure CSS, a round-trip,
+   intent. Behavioural widgets whose interaction never touches the server are realized
+   without a round-trip: `modal` and `drawer` in **shell-owned client JS** (Alpine's CSP
+   build, ADR-004) — the plugin emits only `{type:"modal", …}` and the shell owns the
+   open/close, focus-trap, and transition — while `tabs` needs no JS at all, a pure-CSS
+   radio group (`:has()`) driving which panel shows. Pure CSS, a round-trip,
    and shell JS are all just realizations of a declared intent.
    A realization is chosen per widget for what it does — the repeater's rpcd
    round-trip, the conditional's CSS, and a form's secondary *action*, which submits
@@ -91,9 +94,9 @@ looks — while still offering a legitimate bridge when no widget yet fits.
   the realization (round-trip now, client-side later) is swappable behind it.
 
 ### Costs / negatives
-- Appearance is tied to Tailwind's palette. Adopting it wholesale means no bespoke token
-  system to build or keep complete, but the look is Tailwind's defaults until the shell
-  overrides them — a deliberate trade of bespoke control for zero maintenance.
+- Appearance is tied to the shell's Tailwind palette. Building on Tailwind's defaults
+  keeps the token layer small — a few semantic tokens plus the dark-mode remap — rather
+  than a full bespoke system, and plugins carry none of it.
 - Any author need not yet covered forces a raw stopgap until a widget lands; if the
   widget roadmap lags, raw accretes. The instrumentation and the visible affordance are
   what hold this in check — they are not optional extras.

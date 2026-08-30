@@ -1,11 +1,13 @@
-# ADR-009 — Core navigation: a flat, shell-owned section taxonomy that plugins extend; Firewall is core
+# ADR-009 — Core navigation and the shell/plugin ownership boundary
 
 - **Status:** Accepted
 - **Date:** 2026-08-24
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-005 (the visual/UI contract the nav chrome is part of),
   ADR-006 (the plugin contract — every section, core or not, is served through it),
-  ADR-007 (privilege gating — core sections are privileged like any plugin).
+  ADR-007 (privilege gating — core sections are privileged like any plugin),
+  ADR-010 (UCI staging does not govern immediate platform operations),
+  ADR-011 (shell-owned package, plugin, and service management).
 
 ## Context
 
@@ -45,8 +47,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
    and records *why* (LuCI's prefix is a historical no-op whose only real function
    belongs in middleware).
 
-2. **The shell owns a fixed, ordered core section taxonomy.** The top-level nav
-   groups Verso guarantees, in this canonical order, are:
+2. **The shell owns a fixed, ordered core section taxonomy.** The core sections
+   Verso guarantees, in this canonical order, are:
 
    | Order | Section  | Covers (illustrative)                                        |
    |-------|----------|--------------------------------------------------------------|
@@ -56,14 +58,19 @@ call: **on a gateway the firewall is not optional, so it is core.**
    | 4     | System   | general/time, admin (password/SSH), startup, cron, backup, reboot |
 
    This ordered list is data the shell owns — the analog of `luci-base` declaring
-   the top-level slots. Core sections always render in this order, ahead of any
-   non-core section, so the chrome is coherent and deterministic regardless of
-   plugin discovery order.
+   the top-level slots — but it does not drive the top-level chrome directly. The
+   sidebar is device-first: a few everyday, plain-language rows (Home, Internet,
+   Devices, Wi-Fi, Family, Safety — several still `#` placeholders) sit up top for
+   the least-technical operator, and the core sections sit below them under a
+   collapsible **Advanced settings** seam. Status is not one of those groups; it is
+   the **Home** overview at the head of the everyday rows, so status never appears
+   twice and the nav carries no live state. Within Advanced the sections render in
+   this canonical order, ahead of any non-core section, so the seam is coherent and
+   deterministic regardless of plugin discovery order.
 
-3. **The shell serves its own machinery directly; every section that configures the
-   device is a plugin.** The shell renders in-process only the read-only baseline and
-   its own machinery — never a device operation. Three kinds of page qualify, each the
-   shell's own concern rather than the device's:
+3. **The shell serves its own machinery and generic platform administration
+   directly; feature-specific device configuration is a plugin.** Four bounded
+   kinds of page qualify for in-process ownership:
    - **The read-only status baseline** (the Status overview). The shell must
      render a coherent first screen on a freshly-flashed device *before any plugin
      is up*, and this page only *reads* state — it has nothing to crash, nothing to
@@ -75,7 +82,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
      credential that gates the entire shell must never be held or mutated by an
      out-of-process plugin. First boot is passwordless (`root:::`), so setting the
      first password is onboarding the shell owns, independent of any plugin.
-   - **Plugin (extension) management** — the shell owns its own extension mechanism:
+   - **Package and plugin (extension) management** — the shell owns the package
+     substrate and its own extension mechanism: package inventory and acquisition,
      which plugins exist, whether each is enabled and healthy, and the rpcd ACLs it is
      granted. This must not itself be a plugin, for the two reasons that make the auth
      surface shell-owned. *Bootstrap:* a disabled or broken plugin could otherwise lock
@@ -83,25 +91,35 @@ call: **on a gateway the firewall is not optional, so it is core.**
      plugin set before and without any plugin being healthy. *Trust:* enabling a plugin
      grants it write ACLs, and the shell is the write-enforcement point (ADR-007), so
      control over the plugin set and its permissions cannot be delegated to a plugin
-     without inverting the trust model. It lives in the System section beside Password.
-     The underlying package install/remove still flows through rpcd like any privileged
-     write — the shell owns the *authority* over its plugin set, not a bespoke installer.
+     without inverting the trust model. Because plugins are packages and may depend on
+     non-plugin packages, the same shell-owned package surface handles the complete
+     package set rather than inventing an incomplete plugin-only view (ADR-011).
+   - **Generic service management** — the shell owns the complete procd service
+     inventory and the narrow lifecycle operations start, stop, restart, enable, and
+     disable (ADR-011). This is platform administration, not ownership of any service's
+     feature semantics: the shell may change whether `dnsmasq` runs, but it does not
+     understand or edit DHCP/DNS configuration. Keeping the generic service table in
+     the shell also preserves the recovery path when a plugin or its service is broken.
+     An owning plugin may request the required lifecycle action while applying its
+     configuration, but the privileged act still passes through the shell's broker and
+     helper rather than giving the plugin ambient service-control authority.
 
-   The test for what the shell serves in-process is not "is it important" or "is it
-   read-only" but: *is it the shell's own machinery — authentication, or control of its
-   own plugin set — or the baseline that must exist before plugins?* Anything that
-   **operates or configures the device is a plugin**, including restarting device
-   services (network, dnsmasq, a VPN, the firewall): a service restart is a device
-   operation, done contextually inside the owning plugin's rpcd commit, with a general
-   services/startup list living in the **System** plugin (§2) — never a shell "service
-   manager." The one service-shaped thing the shell owns is restarting a *plugin's own
-   process* and reporting its health — part of plugin management (the shell supervises
-   plugin sockets), not device service control.
+   The test for what the shell serves in-process is not "is it important" or merely
+   "is it read-only." The shell owns its authentication and extension machinery, the
+   always-present status baseline, and the explicitly bounded generic platform
+   primitives: packages and procd services. These actions
+   require no knowledge of a particular feature's configuration. Anything that
+   interprets or changes
+   **feature-specific device configuration** is a plugin: network, DHCP/DNS, Wi-Fi,
+   firewall, VPN, SSH, hostname/timezone, NTP policy, and similar domains all stay
+   outside the shell.
 
-   Everything else — every page that *configures the device* — is served by an
-   out-of-process bundled plugin through the ADR-006 gateway. There is still
+   Everything else — every capability that configures a device feature — is served by
+   an out-of-process bundled plugin through the ADR-006 gateway, either as its own page
+   or as a contribution to a shell page. There is still
    exactly one rendering path (the shell's widget renderer) and one privilege
-   model; the shell grows **no** in-process fast path for device configuration.
+   model; package and service operations are narrow administrative verbs, not an
+   in-process fast path for interpreting device configuration.
    What makes a section *core* is unchanged: a guaranteed slot in the fixed
    taxonomy (2), always present — because the shell serves it (Status) or because a
    first-party plugin implementing it **ships bundled and always installed**
@@ -111,9 +129,20 @@ call: **on a gateway the firewall is not optional, so it is core.**
 
    A *section is a nav grouping, not a unit of ownership*: the shell may place its
    own pages into a section beside plugin pages. The **System** section holds the
-   shell-owned **Password** page next to plugin-owned pages (hostname, time, SSH,
-   startup). Status is shell-only; Firewall is one plugin end to end; System is
-   mixed.
+   shell-owned **Password**, **Packages**, and **Services** pages next to
+   plugin-owned pages (General, SSH, cron). Status is shell-only; Firewall is one
+   plugin end to end; System is mixed.
+
+   **Page ownership is not exclusive composition.** Shell page templates publish a
+   stable hook at every semantic seam between their sections (ADR-005, ADR-006). A
+   plugin may choose any published hook and contribute a native widget fragment there
+   without claiming a navigation row. A shell-owned page therefore composes its own
+   fields with, for example, a plugin-owned fragment contributed at a published hook
+   on the same page.
+   The shell owns section placement and the one Save & Apply transaction; each plugin
+   retains ownership of its fragment's semantics, validation, ACL, and declarative
+   write intent. A missing or failed contribution degrades only its hook and never
+   removes or blocks unchanged shell content.
 
 4. **Firewall is core, and — because it configures the device — it is a plugin.**
    In LuCI the firewall is `luci-app-firewall`, an optional app. In Verso it is a
@@ -130,12 +159,14 @@ call: **on a gateway the firewall is not optional, so it is core.**
 5. **Plugins extend the taxonomy; unknown sections sort after core.** A plugin's
    `nav[].section` (ADR-006) either names a core section — its links join that
    section in place — or names a new one. New (non-core) sections render **after**
-   all core sections, ordered deterministically (by section title, then plugin id).
+   all core sections within the Advanced-settings seam, ordered deterministically
+   (by section title, then plugin id).
    This is the direct analog of a LuCI app filling the **Services** or **VPN**
-   slot, and it is the flexibility the design requires: anything LuCI delivers as a
-   `luci-app-*` (VPN, DDNS, statistics, a package manager) arrives in Verso as a
+   slot, and it is the flexibility the design requires: feature applications LuCI
+   delivers as `luci-app-*` (VPN, DDNS, statistics) arrive in Verso as a
    plugin that either enriches a core section or opens its own — with no shell
-   change, exactly as ADR-006 §2 intends.
+   change, exactly as ADR-006 §2 intends. Package and service management are the
+   shell-owned platform exceptions defined in (3), not extension sections.
 
 6. **Core sections are privileged like any plugin.** Being core grants no ambient
    authority. `verso-plugin-firewall` declares its rpcd write scopes in its
@@ -146,20 +177,25 @@ call: **on a gateway the firewall is not optional, so it is core.**
 ## Consequences
 
 ### Positive
-- One mechanism for all device configuration: every configuring section — core or
-  third-party — shares the ADR-006 gateway, the ADR-005 rendering path, and the
-  ADR-007 privilege model. The shell serves only the read-only baseline and its own
-  auth surface directly, so there is no second *configuration* code path to build,
-  test, or keep visually consistent.
+- One plugin mechanism for all feature-specific configuration: every contributed or
+  standalone capability shares the ADR-006 gateway, ADR-005 rendering path, and
+  ADR-007 privilege model. The bounded shell-owned settings use the same widget,
+  validation, intent-merge, and Save & Apply transaction, so mixed ownership does not
+  produce a mixed user experience.
 - A freshly-flashed device shows a working overview and can set its first password
   with **zero plugins running**: the shell's baseline and auth surface never depend
   on a plugin being up. Onboarding is impossible to brick by a plugin failure.
+- Package repair and service recovery remain available with **zero healthy
+  plugins**. A failed extension cannot take the shell's own administrative tools
+  down with it.
 - The most dangerous surface (firewall) is crash-isolated and privilege-gated by
   the same contract as everything else — core status buys it *no* shortcut around
   isolation.
 - Deterministic, coherent chrome: a fixed core order with extensions appended
   means the sidebar reads the same on every device, and a new plugin can never
   displace Status from the top.
+- Contributions can deepen an existing task page without creating sidebar clutter;
+  a plugin process can fail without taking the surrounding shell page with it.
 - Verso improves on LuCI's shape: same small-core-plus-extension model, minus the
   vestigial `admin/` prefix, with the auth boundary where it belongs.
 
@@ -167,11 +203,18 @@ call: **on a gateway the firewall is not optional, so it is core.**
 - The core taxonomy (2) is now a shell-owned constant. Adding or reordering a core
   section is a shell change and an ADR amendment — intentional friction, so the
   core surface stays small and deliberate rather than accreting.
+- Every template hook is a public compatibility point. The shell may redesign the
+  page around it, but removing or renaming the hook needs manifest-version-aware
+  degradation and migration.
 - "Always installed" core plugins are a packaging obligation: the image build must
   guarantee the bundled first-party plugins are present and supervised, or a core
   slot shows "unavailable" out of the box.
-- nav.go must change from pure discovery-order grouping to core-first ordering
-  with an extension tail — a small, well-scoped change to `buildNav`.
+- The root helper necessarily gains a small set of high-impact operations. Each one
+  needs its own narrow argument schema, rpcd ACL, native validation, failure tests,
+  and destructive-action confirmation; a generic command runner is never acceptable.
+- nav.go carries the core-first ordering (`buildNav`) beneath a device-first
+  sidebar (`buildSidebar`) — everyday rows plus the Advanced-settings seam — so the
+  chrome is a shell concern a plugin cannot rearrange.
 
 ### Neutral
 - Whether Verso pre-declares *empty* core slots (LuCI's Services/VPN-style 404
@@ -193,9 +236,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
   firewall — the surface most deserving of isolation — inside the shell's own
   address space. The per-request socket cost (ADR-006) is negligible at admin-UI
   rates and not worth this. The shell's in-process surfaces (§3) are the bounded,
-  principled exception — the read-only baseline, and the shell's own machinery (the
-  auth/credential surface and control of its own plugin set). None *operates or
-  configures the device*, so none reopens this fork.
+  principled exception — the read-only baseline, the shell's own machinery (the
+  auth/credential surface and control of its own plugin set), and the explicitly
+  bounded package and service surfaces. Those generic operations do not interpret
+  feature configuration, so they do not create a second configuration mechanism.
 - **Password change as a plugin (LuCI parity).** LuCI serves the router password
   under its System module like any other page. Rejected for Verso: the shell is the
   authentication authority (ADR-007) and plugins hold no credentials, so delegating
@@ -203,25 +247,33 @@ call: **on a gateway the firewall is not optional, so it is core.**
   model — and first-boot onboarding must set a password before any plugin is
   guaranteed up. Password stays a shell-owned page, displayed within the System
   section (§3).
+- **Basic identity as a System plugin.** Put hostname and timezone behind a
+  bundled System plugin rather than in the shell. **Adopted.** General (hostname,
+  timezone) writes device configuration, so it falls on the plugin side of §3's
+  rule like Network and Firewall: it ships as a bundled first-party plugin filing
+  into the System section, and degrades to the ADR-006 "unavailable" card if its
+  process is absent. One configuration mechanism, and no shell route owns device
+  identity. Service-specific time synchronization joins General through the same
+  plugin.
 - **Plugin management as a plugin.** Serve the install/enable/disable page through the
   ADR-006 gateway like everything else. Rejected for the same reasons the password page
   is shell-owned: bootstrap (a disabled or broken plugin must not be able to lock the
   operator out of repairing plugins) and trust (enabling a plugin grants it ACLs, and
   the shell is the write-enforcement point, so it cannot delegate control of its own
-  plugin set). It is the shell's own machinery, not device configuration — a third
-  in-process surface (§3), not an exception to the rule.
-- **A general service manager in the shell.** Add a shell page to start/stop/restart
-  device services. Rejected: a service restart is a *device operation*, not the shell's
-  own machinery — it belongs in the owning plugin's rpcd commit (contextually) or the
-  System plugin's startup/services page. Pulling it in-shell reopens the very
-  device-configuration-in-shell fork this ADR rejects. The shell only ever restarts a
-  *plugin's own process* (part of plugin management), never device services.
+  plugin set). It is the shell's own machinery, not feature configuration — one of
+  the bounded in-process surfaces (§3), not an exception to the rule.
+- **Service management as a plugin.** Put the complete procd table and generic
+  lifecycle controls in a System plugin. Rejected: the shell must be able to inspect
+  and recover plugin services when no plugin is healthy, and delegating control of
+  peer plugins to one plugin would invert the extension trust model. The shell owns
+  only the narrow generic lifecycle verbs; each service's configuration and semantic
+  apply logic remain with its owning plugin.
 - **Firewall as an optional plugin (LuCI parity).** Keep the firewall a
   non-bundled `luci-app-firewall` equivalent. Rejected: a gateway ships firewall
   management as a baseline capability; making it optional is a worse default and
   buys nothing, since "core" already costs no extra mechanism (3).
 - **Fully dynamic taxonomy (no fixed core order).** Let every section, including
-  Status, sort purely by discovery — the current nav.go behavior. Rejected: the
+  Status, sort purely by discovery — nav.go's original behavior. Rejected: the
   chrome would reorder as plugins come and go, and there would be no guaranteed
   home for the baseline surface. LuCI's central top-level taxonomy is the part
   worth keeping.

@@ -17,8 +17,8 @@ deliberately tiny (plugins emit a widget schema, not markup or JS).
 
 1. **HTTP + routing: stdlib `net/http` with `ServeMux`** (Go 1.22+ method/pattern
    routing). No web framework. The routing table lives in one scannable `routes.go`
-   per server; handlers live in their feature files. Middleware (session, logging,
-   recovery) is plain `http.Handler` wrappers.
+   per server; handlers live in their feature files. Middleware (session/auth,
+   security headers, host guard) is plain `http.Handler` wrappers.
 2. **Rendering: `html/template`** (stdlib), assets via `embed.FS`. Its contextual
    auto-escaping is load-bearing — it is what makes rendering plugin-supplied schema
    data safe.
@@ -36,7 +36,8 @@ deliberately tiny (plugins emit a widget schema, not markup or JS).
    vendored files, not a build pipeline; Alpine is a small, bounded behaviour layer
    (a deliberate exception to "no framework"), not an SPA runtime — rendering stays
    server-side and shell-owned.
-5. **CSP: `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`.** The shell
+5. **CSP: `script-src 'self'` — no `unsafe-inline`, no `unsafe-eval` on scripts**
+   (`style-src` keeps `unsafe-inline` for the inlined first-paint stylesheet). The shell
    serves its own JS from `/assets`; injected or plugin-supplied markup still
    cannot execute (html/template escaping blocks tag injection, the CSP blocks
    inline and external scripts). This replaced the earlier `script-src 'none'`
