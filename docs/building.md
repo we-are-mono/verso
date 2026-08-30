@@ -114,6 +114,10 @@ One command. What it does, and why each part matters:
   (committed, not `/tmp`): it creates the de-privileged `verso` user, reloads the
   ACLs (`-HUP ubusd`), and (re)starts the services.
 
+- **Depends on OpenWrt's `ca-bundle` package.** Discover refreshes the official
+  HTTPS feed indexes through `apk update`; declaring the trust bundle prevents a
+  minimal image from failing every refresh with TLS verification errors.
+
 - **Versions from the `VERSION` file** + a revision. `VER = <VERSION>-r<REVISION>`
   (default `REVISION=1`). Bump `VERSION` in a commit for a new version so `apk`
   sees an upgrade; pass `REVISION=2` to repackage the same version.
@@ -169,22 +173,34 @@ apk add verso
 ```
 
 (Any `sysupgrade.mono.si` errors during `apk update` are the router's *own* feed,
-unrelated — ignore them.) Verso listens on **`:8080`** (coexists with LuCI on 80).
-Browse `http://<router-ip>:8080`.
+unrelated — ignore them, or scope the command to just Verso's feed as §5 does.)
+Verso listens on **`:8080`** (coexists with LuCI on 80). Browse
+`http://<router-ip>:8080`.
 
 ---
 
 ## 5. The fast iteration loop (re-deploy)
 
-On the dev box, `make apk-publish REVISION=<n>` (bump the revision, or `VERSION`,
-so `apk` sees an upgrade). Then on the router:
+On the dev box, `make apk-publish REVISION=<n>` (bump `REVISION`, or `VERSION`, so
+`apk` sees an upgrade). Then on the router — reading **only Verso's own feed**, so
+no upstream feeds are touched:
 
 ```sh
-apk update && apk add --upgrade verso && killall -HUP ubusd && /etc/init.d/verso-rpcd restart && /etc/init.d/verso restart
+apk upgrade verso -U --repositories-file /etc/apk/repositories.d/verso-dev.list
 ```
 
-The `-HUP ubusd` reloads the ACLs; the restart runs the new binary. The login
-rate-limiter is in-memory, so a restart also clears any lockout.
+- `--repositories-file` replaces the system repo set with just Verso's (that file
+  is one line, one URL), so upstream feeds are never contacted — no wasted
+  requests, and none of their errors (`sysupgrade.mono.si`) in the output.
+- `-U` (`--update-cache`) forces a fresh index of that one repo, so a separate
+  `apk update` isn't needed. verso declares no dependencies, so the single feed
+  resolves on its own.
+
+The `post-upgrade` hook does the rest: it reloads the ubusd + rpcd ACLs
+(`killall -HUP ubusd`, `rpcd reload`) and restarts verso + verso-rpcd. The login
+rate-limiter is in-memory, so the restart also clears any lockout. **An ACL or
+manifest change lands here** — through a real reinstall — not via `make dev`'s
+binary hot-swap.
 
 ---
 
