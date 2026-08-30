@@ -34,7 +34,12 @@ COPY docker/rootfs/ /
 # router's ports, IPv6 included (DHCPv6-PD in, RA + DHCPv6 out).
 # Create the non-root `verso` user/group the service drops to (ADR-007). In a
 # real .apk this is the package's USERID; here it is baked into the image.
-RUN echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
+# The minimal OpenWrt rootfs omits its CA bundle even though the distribution
+# feeds use HTTPS. Bootstrap the signed ca-bundle package with transport
+# verification disabled for this one transaction; apk still verifies the
+# repository and package signatures against OpenWrt's bundled signing keys.
+RUN apk add --no-check-certificate ca-bundle \
+ && echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
  && echo 'verso:x:6000:' >> /etc/group \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
  # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.

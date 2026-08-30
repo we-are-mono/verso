@@ -44,9 +44,12 @@ deploy_acls() {
 # Its rpcd ACL remains the source of session.access policy, so ACL edits still
 # reload rpcd without discarding live login sessions.
 deploy_helper() {
-	if cargo build --locked --release --manifest-path verso-rpcd/Cargo.toml 2>&1; then
+	local cargo_bin="${CARGO:-$HOME/.cargo/bin/cargo}"
+	# Build from the crate directory so rustup honors its pinned toolchain file;
+	# the host's distro cargo otherwise emits a glibc binary OpenWrt cannot run.
+	if (cd verso-rpcd && "$cargo_bin" build --locked --release --target x86_64-unknown-linux-musl) 2>&1; then
 		docker exec "$CONTAINER" /etc/init.d/verso-rpcd stop >/dev/null 2>&1 || true
-		docker cp verso-rpcd/target/release/verso-rpcd "$CONTAINER":/usr/sbin/.verso-rpcd.new
+		docker cp verso-rpcd/target/x86_64-unknown-linux-musl/release/verso-rpcd "$CONTAINER":/usr/sbin/.verso-rpcd.new
 		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
 		docker exec "$CONTAINER" sh -c 'chown root:root /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
 	else
