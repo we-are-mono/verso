@@ -48,5 +48,24 @@ func TestLoginStrictAccount(t *testing.T) {
 	}
 }
 
+func TestVerifyDestroysProbeSession(t *testing.T) {
+	var destroyed string
+	a := &RPCDAuthenticator{
+		loginFn: func(_, password string) (string, error) {
+			if password == "correct" {
+				return "VERIFY-SID", nil
+			}
+			return "", nil
+		},
+		destroyFn: func(sid string) { destroyed = sid },
+	}
+	if err := a.Verify(context.Background(), "root", "correct"); err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if destroyed != "VERIFY-SID" {
+		t.Errorf("verification sid was not destroyed: %q", destroyed)
+	}
+}
+
 // Root-password detection now lives in verso-rpcd (it reads /etc/shadow as
 // root); its cases are covered by shadow_root_has_password's Rust unit test.

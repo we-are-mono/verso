@@ -58,7 +58,7 @@ func TestOverviewEventsStream(t *testing.T) {
 
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
-	token, err := s.sessions.Create("test-sid", "root")
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	if err != nil {
 		t.Fatalf("session: %v", err)
 	}

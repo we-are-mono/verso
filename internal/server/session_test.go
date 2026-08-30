@@ -16,7 +16,7 @@ func (c *fakeClock) advance(d time.Duration) { c.t = c.t.Add(d) }
 func TestSessionIdleExpiry(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	tok, _ := s.Create("sid", "root")
+	tok, _ := s.CreateWithMetadata("sid", "root", "", "")
 
 	clk.advance(s.idle - time.Second) // just inside the idle window
 	if _, ok := s.get(tok); !ok {
@@ -31,7 +31,7 @@ func TestSessionIdleExpiry(t *testing.T) {
 func TestSessionAbsoluteExpiry(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	tok, _ := s.Create("sid", "root")
+	tok, _ := s.CreateWithMetadata("sid", "root", "", "")
 
 	// Keep touching within the idle window; the absolute cap must still fire.
 	expired := false
@@ -50,10 +50,10 @@ func TestSessionAbsoluteExpiry(t *testing.T) {
 func TestSessionSweepOnCreate(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	old, _ := s.Create("a", "root")
+	old, _ := s.CreateWithMetadata("a", "root", "", "")
 
 	clk.advance(s.absolute + time.Hour) // old is now well past the absolute cap
-	if _, err := s.Create("b", "root"); err != nil {
+	if _, err := s.CreateWithMetadata("b", "root", "", ""); err != nil {
 		t.Fatalf("Create: %v", err) // Create sweeps expired entries
 	}
 

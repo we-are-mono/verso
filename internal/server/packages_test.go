@@ -95,7 +95,7 @@ func TestFlashConfirmsActions(t *testing.T) {
 	s := pluginsServer(t, b, true, mgmtManifest())
 
 	// One session across POST and the two GETs, unlike the per-call helpers.
-	token, err := s.sessions.Create("test-sid", "root")
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	if err != nil {
 		t.Fatalf("session: %v", err)
 	}

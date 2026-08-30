@@ -62,6 +62,16 @@ func (a *RPCDAuthenticator) Login(_ context.Context, username, password string) 
 	return sid, nil
 }
 
+// Verify checks a credential without retaining the short-lived rpcd session it
+// creates. The Access page uses this before changing an existing password.
+func (a *RPCDAuthenticator) Verify(ctx context.Context, username, password string) error {
+	sid, err := a.Login(ctx, username, password)
+	if sid != "" {
+		a.destroy(sid)
+	}
+	return err
+}
+
 // call runs rpcd's session.login, returning the sid ("" when rejected) — through
 // the test seam when set, else the real ubus socket.
 func (a *RPCDAuthenticator) call(username, password string) (string, error) {

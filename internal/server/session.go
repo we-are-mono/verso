@@ -20,11 +20,14 @@ const (
 // held here and never sent to the browser — unlike LuCI, which exposes the sid
 // because the browser calls ubus directly (FINDINGS F1).
 type session struct {
+	id       string // non-secret management handle; unlike the cookie token, safe in the sessions table
 	sid      string
 	username string
 	csrf     string
 	created  time.Time
 	lastSeen time.Time
+	address  string
+	agent    string
 	// flash is the one-shot confirmation carried across a POST→redirect→GET:
 	// set by the action, shown by the next render, gone after (VS: server-side,
 	// so nothing user-visible rides the URL).
@@ -54,9 +57,11 @@ func newSessionsClock(now func() time.Time) *Sessions {
 	}
 }
 
-// Create mints a fresh opaque token for a session and returns it, opportunistically
-// sweeping expired entries.
-func (s *Sessions) Create(sid, username string) (string, error) {
+// CreateWithMetadata mints a fresh opaque token for a session and returns it,
+// opportunistically sweeping expired entries. It records the browser and peer
+// address shown on System → Access; the separate management id can end a session
+// without ever exposing its bearer cookie or rpcd sid to another browser.
+func (s *Sessions) CreateWithMetadata(sid, username, address, agent string) (string, error) {
 	token, err := randomToken()
 	if err != nil {
 		return "", err
@@ -65,10 +70,14 @@ func (s *Sessions) Create(sid, username string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	id, err := randomToken()
+	if err != nil {
+		return "", err
+	}
 	now := s.now()
 	s.mu.Lock()
 	s.sweep(now)
-	s.items[token] = session{sid: sid, username: username, csrf: csrf, created: now, lastSeen: now}
+	s.items[token] = session{id: id, sid: sid, username: username, csrf: csrf, created: now, lastSeen: now, address: address, agent: agent}
 	s.mu.Unlock()
 	return token, nil
 }
@@ -122,6 +131,33 @@ func (s *Sessions) destroy(token string) {
 	s.mu.Lock()
 	delete(s.items, token)
 	s.mu.Unlock()
+}
+
+// list returns a point-in-time copy of the live sessions without touching their
+// idle clocks. Merely viewing the table must not keep every browser signed in.
+func (s *Sessions) list() []session {
+	now := s.now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sweep(now)
+	out := make([]session, 0, len(s.items))
+	for _, sess := range s.items {
+		out = append(out, sess)
+	}
+	return out
+}
+
+// destroyID removes the session carrying a non-secret management id.
+func (s *Sessions) destroyID(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for token, sess := range s.items {
+		if sess.id == id {
+			delete(s.items, token)
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Sessions) expired(sess session, now time.Time) bool {

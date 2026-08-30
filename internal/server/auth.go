@@ -207,7 +207,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginLimiter.success(key)
-	token, err := s.sessions.Create(sid, username)
+	token, err := s.sessions.CreateWithMetadata(sid, username, clientIP(r), r.UserAgent())
 	if err != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return

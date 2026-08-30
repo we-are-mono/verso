@@ -272,11 +272,13 @@ func (f *fakeTransport) Fetch(_ context.Context, socket string, req plugin.Reque
 
 // fakeAuth is the authenticator seam double (ADR-003): no ubus, no device.
 type fakeAuth struct {
-	sid string
-	err error
+	sid       string
+	err       error
+	verifyErr error
 }
 
 func (f fakeAuth) Login(context.Context, string, string) (string, error) { return f.sid, f.err }
+func (f fakeAuth) Verify(context.Context, string, string) error          { return f.verifyErr }
 
 func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, manifests []plugin.Manifest, auth Authenticator) *Server {
 	t.Helper()
@@ -325,7 +327,7 @@ func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	// Authenticate by default: mint a session and attach its cookie, so the
 	// behavior tests exercise the page rather than the login redirect.
-	token, err := srv.sessions.Create("test-sid", "root")
+	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	if err != nil {
 		t.Fatalf("session: %v", err)
 	}
@@ -349,7 +351,7 @@ func postForm(t *testing.T, srv *Server, path string, form url.Values) *httptest
 // end rather than short-circuited by the auth or CSRF middleware.
 func postPlugin(t *testing.T, srv *Server, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
-	token, err := srv.sessions.Create("test-sid", "root")
+	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	if err != nil {
 		t.Fatalf("session: %v", err)
 	}
@@ -1133,7 +1135,7 @@ func TestHostGuardRejectsUnknownHost(t *testing.T) {
 func TestHostGuardAllowsConfiguredHost(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	srv.SetAllowedHosts([]string{"verso.lan"})
-	token, _ := srv.sessions.Create("sid", "root")
+	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Host = "verso.lan:8080" // port is stripped before the check
@@ -1260,7 +1262,7 @@ func TestLoginThrottled(t *testing.T) {
 
 func TestLogoutClearsSession(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
-	token, _ := srv.sessions.Create("sid", "root")
+	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 	sess, _ := srv.sessions.get(token)
 
 	form := url.Values{"_csrf": {sess.csrf}}
@@ -1282,7 +1284,7 @@ func TestLogoutClearsSession(t *testing.T) {
 // CSRF token is refused (VS-04).
 func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
-	token, _ := srv.sessions.Create("sid", "root")
+	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil) // no _csrf
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
