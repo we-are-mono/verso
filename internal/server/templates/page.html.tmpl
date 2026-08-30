@@ -7,6 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {{if .CSRFToken}}<meta name="verso-csrf" content="{{.CSRFToken}}">{{end}}
 <title>{{.Title}}</title>
+<link rel="preload" href="/assets/fonts/hanken.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>{{.CSS}}</style>
 {{/* Synchronous, pre-paint: restores the Advanced-settings seam's saved state so it
      never flashes or re-animates on navigation (CSP-safe, first-party). */}}
@@ -24,15 +27,15 @@
       {{/* Light/dark toggle — flips .dark on <html> and persists it (verso.js
            toggleTheme); the palette vars under :root.dark do the rest, and
            verso-boot.js re-applies the choice pre-paint on every page. */}}
-      <button type="button" @click="toggleTheme" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
-      <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden">{{icon "x" "size-5"}}</button>
+      <button type="button" @click="toggleTheme" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
+      <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction md:hidden">{{icon "x" "size-5"}}</button>
     </div>
   </div>
   <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
     {{/* Everyday rows — plain labels + icons, no status (the homepage owns that). */}}
     <ul class="space-y-0.5">
       {{range .Nav.Basic}}
-      <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50{{else}}hover:bg-slate-50{{end}}">
+      <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50 dark:bg-menu-interaction{{else}}hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
         <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
         <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
         {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "good"}}text-green-700{{else}}text-slate-400{{end}}">
@@ -43,7 +46,7 @@
     {{/* Advanced settings — a collapsible seam; verso.js toggles aria-expanded + persists
          it, the grid-rows CSS drives the reveal. Groups are the real manifest sections. */}}
     <div x-data="advseam" class="mt-2.5 border-t border-slate-100 pt-2.5">
-      <button type="button" @click="toggle" :aria-expanded="open" aria-controls="verso-adv" class="verso-seam group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-slate-50">
+      <button type="button" @click="toggle" :aria-expanded="open" aria-controls="verso-adv" class="verso-seam group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
         <span class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-600">{{icon "sliders-horizontal" "size-5"}}</span>
         <span class="text-sm font-medium text-slate-700 transition group-hover:translate-x-1 group-hover:text-slate-900">Advanced settings</span>
         <span class="verso-chev ml-auto text-slate-400">{{icon "chevron-down" "size-4"}}</span>
@@ -55,7 +58,7 @@
             <div class="px-3 pb-0.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
             <ul class="space-y-0.5">
               {{range .Links}}
-              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900{{end}}">
+              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600 dark:bg-menu-interaction{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
                 <span class="size-1 shrink-0 rounded-full transition {{if .Active}}bg-sky-600{{else}}bg-slate-300 group-hover:translate-x-1 group-hover:bg-sky-600{{end}}"></span><span class="transition {{if not .Active}}group-hover:translate-x-1{{end}}">{{.Label}}</span></a></li>
               {{end}}
             </ul>
@@ -67,7 +70,7 @@
   </nav>
   {{/* Bottom: the "update ready" device row, then sign out. */}}
   <div class="space-y-1 border-t border-slate-100 p-3">
-    <a href="/plugins/hostname/" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+    <a href="/plugins/hostname/" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
       <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
         {{icon "settings" "size-5"}}
         <span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>
@@ -84,7 +87,7 @@
       </div>
       <form method="post" action="/logout">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <button type="submit" aria-label="Sign out" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">{{icon "log-out" "size-5"}}</button>
+        <button type="submit" aria-label="Sign out" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "log-out" "size-5"}}</button>
       </form>
     </div>
   </div>
@@ -101,7 +104,7 @@
   <nav class="z-30 flex h-12 items-center gap-1 border-b {{if or .NoPassword (and .Banner (eq .Banner.Variant "danger"))}}border-red-200 dark:border-red-500/20{{else}}border-slate-200{{end}} bg-white px-5 md:sticky md:top-0" aria-label="Subpages">
     {{range .Pages}}
     <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}
-      class="relative flex h-full items-center px-3 text-sm font-medium transition-colors {{if .Active}}{{if or $.NoPassword (and $.Banner (eq $.Banner.Variant "danger"))}}text-red-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-red-600 dark:text-red-400 dark:after:bg-red-500{{else}}text-slate-900 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-sky-600{{end}}{{else}}text-slate-500 hover:text-slate-900{{end}}">{{.Label}}</a>
+      class="relative flex h-full items-center px-3 text-sm font-medium transition-colors {{if .Active}}dark:bg-menu-interaction {{if or $.NoPassword (and $.Banner (eq $.Banner.Variant "danger"))}}text-red-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-red-600 dark:text-red-400 dark:after:bg-red-500{{else}}text-slate-900 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-sky-600{{end}}{{else}}text-slate-500 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">{{.Label}}</a>
     {{end}}
   </nav>
   {{end}}
@@ -125,14 +128,14 @@
   {{end}}
   {{/* Mobile top bar: the hamburger opens the drawer. */}}
   <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
-    <button type="button" @click="toggle" aria-label="Open menu" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100">{{icon "menu" "size-5"}}</button>
+    <button type="button" @click="toggle" aria-label="Open menu" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "menu" "size-5"}}</button>
     <a href="/" class="text-base font-semibold tracking-tight">Verso</a>
   </div>
   {{/* Content width is a per-page preset the page declares (default normal),
        left-aligned against the rail (no centring — better on wide monitors).
        The outer width also governs the staged-changes footer: its rules touch
        the rail on the left and stop at this same page boundary on the right. */}}
-  <div class="{{if eq .Width "narrow"}}max-w-[52rem]{{else if eq .Width "wide"}}max-w-[80rem]{{else}}max-w-[70rem]{{end}}">
+  <div class="{{if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{/* pt equals px, so the masthead sits as far from the top edge as from the
          left one. The bottom padding becomes the natural gap before the footer. */}}
     <div class="px-8 pt-8 pb-10">
@@ -150,7 +153,7 @@
     {{/* The PRG flash: the one-shot confirmation of the action that just
          redirected here. Rendered once by the chrome, gone on the next view. */}}
     {{if .FlashMessage}}
-    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700{{else}}border-green-200 bg-green-50 text-green-700{{end}}">
+    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700{{else}}border-green-200 bg-green-50 text-green-700 dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300{{end}}">
       {{if eq .FlashVariant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
       <span>{{.FlashMessage}}</span>
     </div>

@@ -25,7 +25,7 @@
   </g>
   {{end}}
 </svg>{{end}}
-{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot{{if .YLabels}} verso-chart-plot--gutter{{end}}">
+{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot{{if and .YLabels (not .Stretch)}} verso-chart-plot--gutter{{end}}">
   {{template "verso-chart-svg" .}}
   {{range .YLabels}}<span class="verso-chart-yl{{if .Mid}} verso-chart-yl--mid{{end}}" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
   {{range .HTMLDots}}<span class="verso-chart-dot-html verso-chart--{{.RoleClass}}" style="top:{{printf "%.1f" .TopPct}}%"></span>{{end}}

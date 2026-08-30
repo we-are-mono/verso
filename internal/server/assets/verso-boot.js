@@ -7,6 +7,30 @@
 // the same class and storage key. CSP-safe: served first-party, no inline script.
 (function () {
   var el = document.documentElement;
+
+  // Hold the first paint until the self-hosted UI faces are ready. The timeout is
+  // deliberately defensive: a missing or corrupt font must never strand the UI.
+  el.classList.add("verso-fonts-loading");
+  var fontsRevealed = false;
+  var revealFonts = function () {
+    if (fontsRevealed) return;
+    fontsRevealed = true;
+    window.clearTimeout(fontFallback);
+    el.classList.remove("verso-fonts-loading");
+  };
+  var fontFallback = window.setTimeout(revealFonts, 3000);
+  if (document.fonts && typeof document.fonts.load === "function") {
+    Promise.all([
+      document.fonts.load('1em "Hanken Grotesk"'),
+      document.fonts.load('1em "Fraunces"'),
+      document.fonts.load('1em "Inconsolata"'),
+    ]).then(function () {
+      return document.fonts.ready;
+    }).then(revealFonts, revealFonts);
+  } else {
+    revealFonts();
+  }
+
   try {
     if (localStorage.getItem("verso-adv") === "1") {
       el.classList.add("verso-adv-open");

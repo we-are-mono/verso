@@ -30,14 +30,14 @@
   font-family: "Fraunces";
   font-style: normal;
   font-weight: 400 700;
-  font-display: optional;
+  font-display: swap;
   src: url("/assets/fonts/fraunces.woff2") format("woff2");
 }
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
   font-weight: 400 700;
-  font-display: optional;
+  font-display: swap;
   src: url("/assets/fonts/hanken.woff2") format("woff2");
 }
 @font-face {
@@ -45,7 +45,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-stretch: 100%;
-  font-display: optional;
+  font-display: swap;
   src: url("/assets/fonts/inconsolata-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
@@ -54,7 +54,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-stretch: 100%;
-  font-display: optional;
+  font-display: swap;
   src: url("/assets/fonts/inconsolata-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -68,6 +68,16 @@
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --color-canvas: oklch(100% 0 0);
   --color-surface-subtle: oklch(98.4% 0.003 247.858);
+  --color-menu-interaction: oklch(98.4% 0.003 247.858);
+}
+
+/* verso-boot.js removes this pre-paint gate as soon as the three UI faces are
+   ready. Keep the canvas visible in the selected theme while the content waits. */
+html {
+  background-color: var(--color-canvas);
+}
+html.verso-fonts-loading body {
+  visibility: hidden;
 }
 
 /* Dark mode: the global canvas uses a semantic token whose dark value is Tailwind's
@@ -83,6 +93,7 @@
 :root.dark {
   --color-canvas: oklch(20.8% 0.042 265.755);
   --color-surface-subtle: oklch(27.9% 0.041 260.031);
+  --color-menu-interaction: oklch(27.9% 0.041 260.031); /* slate-800: one step above the canvas */
   --color-white: #0f172a;      /* surfaces: cards, sidebar, panels */
   --color-slate-50: #020617;   /* app canvas */
   --color-slate-100: #1e293b;  /* hover / subtle fill */
@@ -133,6 +144,25 @@
      initialized, so nothing flashes on load before x-show applies (ADR-004). */
   [x-cloak] { display: none !important; }
 
+  /* Drawers are persistent, narrow scroll surfaces, so give only their inner
+     scroller a quiet thumb that follows the shell palette in both themes. The
+     document scrollbar deliberately remains native. */
+  .verso-drawer-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
+  .verso-drawer-scrollbar::-webkit-scrollbar { width: 0.625rem; }
+  .verso-drawer-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .verso-drawer-scrollbar::-webkit-scrollbar-thumb {
+    border: 0.125rem solid transparent;
+    border-radius: 9999px;
+    background-color: var(--color-slate-300);
+    background-clip: padding-box;
+  }
+  .verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-slate-400);
+  }
+
   /* Every page's content settles in with a small fade + rise on load — a quiet "loaded"
      cue. It runs on each full navigation; the sidebar stays put, only the content moves.
      Honours reduced-motion. */
@@ -168,6 +198,41 @@
   /* Stateful selector + custom timing — no direct utility equivalent. */
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
+  /* A collapsed table row contributes its intrinsic cell widths without taking
+     vertical space, so revealing continuation rows never reshapes the columns. */
+  .verso-table-seam-row { visibility: collapse; }
+  tbody:has(.verso-table-seam-control details[open]) > .verso-table-seam-row { visibility: visible; }
+
+  /* Reorderable tables use a real placeholder in the source table and a fixed
+     visual copy while dragging. This keeps the column grid still and lets the
+     surrounding rows animate into the proposed destination. */
+  body.verso-reordering,
+  body.verso-reordering * { cursor: grabbing !important; user-select: none !important; }
+  .verso-reorder-placeholder > td {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--color-slate-200);
+    background: var(--color-slate-100);
+  }
+  .verso-reorder-placeholder > td > div { width: 100%; }
+  .verso-reorder-float {
+    position: fixed;
+    z-index: 70;
+    overflow: hidden;
+    pointer-events: none;
+    border: 1px solid var(--color-slate-300);
+    border-radius: 0.5rem;
+    background: var(--color-white);
+    box-shadow: 0 1.25rem 2.5rem -0.75rem rgb(15 23 42 / 0.28), 0 0.5rem 1rem -0.5rem rgb(15 23 42 / 0.22);
+    transform: scaleY(1.01);
+    transform-origin: center;
+    opacity: 0.98;
+    will-change: top, transform;
+  }
+  .verso-reorder-float table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+  .verso-reorder-float td { border-bottom-color: transparent; background: var(--color-white); }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-reorder-float { transform: none; }
+  }
 
   /* The dock's pin offset lives here (not as a utility, which would win the
      layer order): the viewport edge normally, below the subpage top bar when
@@ -221,8 +286,16 @@
      field-sets from the controlling toggle (ADR-005 §7). Pure CSS state — no JS. */
   .verso-conditional-body { display: none; }
   .verso-conditional-otherwise { display: block; }
-  .verso-conditional:has(> label > .verso-conditional-toggle:checked) > .verso-conditional-body { display: block; }
-  .verso-conditional:has(> label > .verso-conditional-toggle:checked) > .verso-conditional-otherwise { display: none; }
+  .verso-conditional:has(> label input[data-verso-switch]:checked) > .verso-conditional-body { display: block; }
+  .verso-conditional:has(> label input[data-verso-switch]:checked) > .verso-conditional-otherwise { display: none; }
+
+  /* An inline object-state switch reads as its current state, not as a static
+     field label. The unchecked state remains full-contrast: disabled is an
+     important fact, not unavailable text. */
+  .verso-inline-switch-on { display: none; }
+  .verso-inline-switch-off { display: inline; }
+  .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on { display: inline; }
+  .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off { display: none; }
 
   /* confirm widget: an inline destructive confirmation (ADR-005 §7). A hidden
      checkbox flips between the danger trigger and the confirm panel — pure CSS.
@@ -521,7 +594,9 @@
   .verso-chart-panel-note { font-size: 0.8125rem; color: var(--color-slate-400); }
   /* The panel's time captions: their own quiet row hugging the baseline (the
      plot's own bottom padding already keeps them clear of it). */
-  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; }
+  /* padding matches the y-value inset (.verso-chart-yl left) so "60 seconds ago"
+     sits under the values above it, and "now" pulls in by the same amount. */
+  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; padding: 0 0.3125rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; }
   .verso-chart-area { stroke: none; }
 
   .verso-chart--sky .verso-chart-line { stroke: var(--color-sky-600); }
@@ -560,13 +635,16 @@
      with the graph). Y values at the top and middle of the range; window captions at the
      bottom corners. */
   .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; pointer-events: none; }
-  .verso-chart-yl { left: 0.3125rem; }
+  /* a soft halo in the surface colour (theme-aware via --color-white) so the
+     values stay legible where they overlay the line and area fill. Stacked to
+     build enough opacity for a solid-but-soft ring. Inert in the gutter case,
+     where the label sits on the bare surface. */
+  .verso-chart-yl { left: 0.3125rem; text-shadow: 0 0 0.1875rem var(--color-white), 0 0 0.1875rem var(--color-white), 0 0 0.1875rem var(--color-white); }
   /* When a plot carries y-axis labels, indent the graph so the values fall into an
      exposed left gutter, hugging the border, instead of overlapping the line. */
   .verso-chart-plot--gutter { padding-left: 2.5rem; }
   .verso-chart-plot--gutter .verso-chart-yl { left: 0; }
-  /* the window captions below a guttered plot line up under the graph, not the gutter. */
-  .verso-chart-plot--gutter + .verso-chart-xrow { padding-left: 2.5rem; }
+  /* the window captions overlaid in a hero plot's bottom corners. */
   .verso-chart-xl-start { left: 0.3125rem; bottom: 0; }
   .verso-chart-xl-end { right: 0.3125rem; bottom: 0; }
   .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-slate-900); }
