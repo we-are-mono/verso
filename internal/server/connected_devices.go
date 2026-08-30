@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/deviceicon"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -109,6 +110,7 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Over
 		}
 		out = append(out, widget.OverviewDevice{
 			Name:       deviceName(host, mac),
+			Icon:       deviceicon.Resolve(mac, host),
 			MAC:        mac,
 			DUID:       duidFor(all, duidByAddr),
 			V4:         v4,

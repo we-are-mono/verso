@@ -105,6 +105,7 @@ type OverviewInterfaceRelation struct {
 // drawer, not the row (the interface already names the segment).
 type OverviewDevice struct {
 	Name      string
+	Icon      string // device-type Lucide glyph, resolved deterministically from MAC OUI / hostname (internal/deviceicon)
 	MAC       string
 	V4        string
 	V6        string
@@ -393,18 +394,19 @@ func renderToHTML(r *Renderer, w interface {
 }
 
 // devicesTable is the Connected-devices roster: one row per device the box has
-// seen — name + zone chip, MAC, both address families stacked in one cell, and
-// presence. Each row's Details opens a drawer with the full story. This is the
-// unified view (all devices, both families, DHCP or not), not a lease dump.
+// seen — a device-type icon + name + zone chip, MAC, the IPv4 address, and
+// presence. The row carries only the IPv4; each row's Details opens a drawer
+// with the full address list (both families) and the rest of the story. This is
+// the unified view (all devices, both families, DHCP or not), not a lease dump.
 func (o *Overview) devicesTable() *Table {
 	rows := make([]TableRow, 0, len(o.Devices))
 	for _, d := range o.Devices {
 		rows = append(rows, TableRow{
 			Cells: []TableCell{
-				{Text: d.Name},
+				{Text: d.Name, LeadIcon: d.Icon},
 				{Text: d.Interface, Chips: zoneChip(d.Zone)},
 				{Text: d.MAC, Copy: true, Emphasis: true},
-				{Text: d.V4, Sub: d.V6, Copy: true, Emphasis: true},
+				{Text: d.V4, Copy: true, Emphasis: true},
 				presenceCell(d.Presence),
 			},
 			Drawer: o.deviceDrawer(d),
@@ -414,7 +416,7 @@ func (o *Overview) devicesTable() *Table {
 		Style: "flat", Align: "top", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
 		Columns: []TableColumn{
 			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "reference"},
-			{Label: "MAC", Kind: "mono"}, {Label: "Addresses", Kind: "addr"},
+			{Label: "MAC", Kind: "mono"}, {Label: "IPv4", Kind: "addr"},
 			{Label: "Status", Kind: "status"},
 		},
 		Rows: rows,

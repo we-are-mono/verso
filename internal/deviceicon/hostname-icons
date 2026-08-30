@@ -1,0 +1,68 @@
+# Verso — device-type icons by hostname keyword.
+#
+# The companion to mac-oui-icons, and the primary signal for devices whose MAC
+# is randomized (modern phones/laptops), where the OUI identifies nothing but
+# the DHCP hostname still names the device ("Toms-iPhone", "living-room-sonos").
+#
+# Format:  <keyword> <icon>
+# The device's hostname is lowercased; the FIRST keyword found as a substring
+# wins, so list the more specific keywords first. <icon> must be a name defined
+# in internal/widget/icons.go. Blank lines and '#' comments are ignored.
+#
+# Keep keywords distinctive to avoid false matches on arbitrary names.
+
+# Apple
+iphone      phone
+ipad        tablet
+macbook     laptop
+imac        device
+apple-tv    tv
+appletv     tv
+apple-watch watch
+
+# Phones / tablets
+pixel       phone
+galaxy      phone
+oneplus     phone
+android     phone
+kindle      tablet
+
+# Media / streaming
+chromecast  tv
+firetv      tv
+fire-tv     tv
+shield-tv   tv
+bravia      tv
+roku        tv
+
+# Smart home
+echo        speaker
+alexa       speaker
+sonos       speaker
+homepod     speaker
+nest-hub    tv
+nest-cam    camera
+nest        thermometer
+ecobee      thermometer
+thermostat  thermometer
+hue         lightbulb
+
+# Cameras
+ring        camera
+wyze        camera
+camera      camera
+
+# Consoles
+playstation gamepad
+xbox        gamepad
+nintendo    gamepad
+
+# Computers / infrastructure
+raspberrypi cpu
+synology    server
+diskstation server
+qnap        server
+printer     printer
+
+# Watches
+watch       watch

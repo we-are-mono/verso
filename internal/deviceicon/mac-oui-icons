@@ -1,0 +1,467 @@
+# Verso — device-type icons keyed by MAC OUI (the IEEE Organizationally Unique
+# Identifier: the first three octets of a MAC address).
+#
+# Format mirrors nmap-mac-prefixes for familiarity and tooling compatibility:
+#   <OUI> <icon> <vendor>
+# OUI is six uppercase hex digits; <icon> must be a name defined in
+# internal/widget/icons.go; the trailing <vendor> is a human label the resolver
+# ignores. Blank lines and lines beginning with '#' are ignored.
+#
+# This is a deliberately TIGHT, curated seed: only vendors whose devices use a
+# real (non-randomized) MAC and map cleanly to a single device type. Multi-
+# product vendors (Apple, Samsung, Amazon, Google) are intentionally absent —
+# their OUI says nothing about the device kind, so they resolve via hostname
+# (see hostname-icons) or fall back to the generic icon. A locally-administered
+# (randomized) MAC never matches here by design.
+#
+# Contributions welcome: add a line for a vendor whose devices are one
+# recognisable kind. Seeded from the IEEE registry via nmap-mac-prefixes.
+#
+# OUID   icon        vendor
+000048 printer Seiko Epson
+00043C speaker Sonos
+00095B router Netgear
+0009BF gamepad Nintendo
+000D4B tv Roku
+000E58 speaker Sonos
+000FB5 router Netgear
+001132 server Synology Incorporated
+00146C router Netgear
+00156D router Ubiquiti
+001656 gamepad Nintendo
+001788 lightbulb Philips Lighting BV
+0017AB gamepad Nintendo
+00184D router Netgear
+00191D gamepad Nintendo
+0019FD gamepad Nintendo
+001AE9 gamepad Nintendo
+001B2F router Netgear
+001B7A gamepad Nintendo
+001BA9 printer Brother industries
+001BEA gamepad Nintendo
+001CBE gamepad Nintendo
+001DBC gamepad Nintendo
+001E2A router Netgear
+001E35 gamepad Nintendo
+001EA9 gamepad Nintendo
+001F32 gamepad Nintendo
+001F33 router Netgear
+001FC5 gamepad Nintendo
+002147 gamepad Nintendo
+0021BD gamepad Nintendo
+00223F router Netgear
+00224C gamepad Nintendo
+0022AA gamepad Nintendo
+0022D7 gamepad Nintendo
+002331 gamepad Nintendo
+0023CC gamepad Nintendo
+00241E gamepad Nintendo
+002444 gamepad Nintendo
+0024B2 router Netgear
+0024F3 gamepad Nintendo
+0025A0 gamepad Nintendo
+002659 gamepad Nintendo
+0026AB printer Seiko Epson
+0026F2 router Netgear
+002709 gamepad Nintendo
+002722 router Ubiquiti
+008077 printer Brother industries
+008EF2 router Netgear
+0403D6 gamepad Nintendo
+0418D6 router Ubiquiti
+04A151 router Netgear
+08028E router Netgear
+080581 tv Roku
+0836C9 router Netgear
+083A8D cpu Espressif
+083AF2 cpu Espressif
+08A6F7 cpu Espressif
+08B61F cpu Espressif
+08BD43 router Netgear
+08D1F9 cpu Espressif
+08F9E0 cpu Espressif
+0C8B95 cpu Espressif
+0CB815 cpu Espressif
+0CDC7E cpu Espressif
+10061C cpu Espressif
+100C6B router Netgear
+100D7F router Netgear
+10521C cpu Espressif
+105932 tv Roku
+1091A8 cpu Espressif
+1097BD cpu Espressif
+10DA43 router Netgear
+142B2F cpu Espressif
+1459C0 router Netgear
+182A7B gamepad Nintendo
+188B0E cpu Espressif
+18E829 router Ubiquiti
+18FE34 cpu Espressif
+1C4586 gamepad Nintendo
+1C9DC2 cpu Espressif
+200BCF gamepad Nintendo
+200CC8 router Netgear
+201C3A gamepad Nintendo
+204E7F router Netgear
+20E52A router Netgear
+20EFBD tv Roku
+240AC4 cpu Espressif
+244CAB cpu Espressif
+24587C cpu Espressif
+245A4C router Ubiquiti
+245EBE server Qnap Systems
+2462AB cpu Espressif
+246F28 cpu Espressif
+24A160 cpu Espressif
+24A43C router Ubiquiti
+24B2DE cpu Espressif
+24D7EB cpu Espressif
+24DCC3 cpu Espressif
+28704E router Ubiquiti
+288088 router Netgear
+289401 router Netgear
+28C68E router Netgear
+28CDC1 cpu Raspberry Pi Trading
+28CF51 gamepad Nintendo
+2C10C1 gamepad Nintendo
+2C3033 router Netgear
+2C3AE8 cpu Espressif
+2CAA8E camera Wyze Labs
+2CB05D router Netgear
+2CCF67 cpu Raspberry Pi (Trading)
+2CF432 cpu Espressif
+30055C printer Brother industries
+3030F9 cpu Espressif
+30469A router Netgear
+308398 cpu Espressif
+30AEA4 cpu Espressif
+30C6F7 cpu Espressif
+30C922 cpu Espressif
+342FBD gamepad Nintendo
+345E08 tv Roku
+347E5C speaker Sonos
+348518 cpu Espressif
+34865D cpu Espressif
+349454 cpu Espressif
+34987A cpu Espressif
+3498B5 router Netgear
+34AB95 cpu Espressif
+34AF2C gamepad Nintendo
+34B472 cpu Espressif
+34B7DA cpu Espressif
+381A52 printer Seiko Epson
+38420B speaker Sonos
+3894ED router Netgear
+389D92 printer Seiko Epson
+3C2AF4 printer Brother Industries
+3C3786 router Netgear
+3C6105 cpu Espressif
+3C71BF cpu Espressif
+3C8427 cpu Espressif
+3CE90E cpu Espressif
+4022D8 cpu Espressif
+404CCA cpu Espressif
+405D82 router Netgear
+409151 cpu Espressif
+40D28A gamepad Nintendo
+40F407 gamepad Nintendo
+40F520 cpu Espressif
+441793 cpu Espressif
+446132 thermometer ecobee
+4494FC router Netgear
+44A56E router Netgear
+44D244 printer Seiko Epson
+44D9E7 router Ubiquiti
+4827E2 cpu Espressif
+483177 gamepad Nintendo
+4831B7 cpu Espressif
+483FDA cpu Espressif
+485519 cpu Espressif
+48A5E7 gamepad Nintendo
+48A6B8 speaker Sonos
+48CA43 cpu Espressif
+48E729 cpu Espressif
+4C11AE cpu Espressif
+4C60DE router Netgear
+4C7525 cpu Espressif
+4CEBD6 cpu Espressif
+500291 cpu Espressif
+50236D gamepad Nintendo
+504A6E router Netgear
+50579C printer Seiko Epson
+506A03 router Netgear
+54077D router Netgear
+542A1B speaker Sonos
+543204 cpu Espressif
+5443B2 cpu Espressif
+545AA6 cpu Espressif
+582F40 gamepad Nintendo
+58B03E gamepad Nintendo
+58BDA3 gamepad Nintendo
+58BF25 cpu Espressif
+58CF79 cpu Espressif
+5C0CE6 gamepad Nintendo
+5C521E gamepad Nintendo
+5CAAFD speaker Sonos
+5CCF7F cpu Espressif
+600194 cpu Espressif
+601AC7 gamepad Nintendo
+602232 router Ubiquiti
+6055F9 cpu Espressif
+606BFF gamepad Nintendo
+64B5C6 gamepad Nintendo
+64B708 cpu Espressif
+64C6D2 printer Seiko Epson
+64E833 cpu Espressif
+64EB8C printer Seiko Epson
+6855D4 printer Seiko Epson
+686725 cpu Espressif
+687251 router Ubiquiti
+68B6B3 cpu Espressif
+68C63A cpu Espressif
+68D79A router Ubiquiti
+6CB0CE router Netgear
+6CB456 cpu Espressif
+6CCDD6 router Netgear
+70039F cpu Espressif
+70041D cpu Espressif
+702C09 gamepad Nintendo
+7048F7 gamepad Nintendo
+70A741 router Ubiquiti
+70B8F6 cpu Espressif
+70F088 gamepad Nintendo
+744401 router Netgear
+744DBD cpu Espressif
+7483C2 router Ubiquiti
+748469 gamepad Nintendo
+74ACB9 router Ubiquiti
+74CA60 speaker Sonos
+74F9CA gamepad Nintendo
+7820A5 gamepad Nintendo
+782184 cpu Espressif
+7828CA speaker Sonos
+784558 router Ubiquiti
+788A20 router Ubiquiti
+78A2A0 gamepad Nintendo
+78D294 router Netgear
+78E36D cpu Espressif
+7C67AB tv Roku
+7C7398 cpu Espressif
+7C78B2 camera Wyze Labs
+7C87CE cpu Espressif
+7C9EBD cpu Espressif
+7CBB8A gamepad Nintendo
+7CDFA1 cpu Espressif
+802AA8 router Ubiquiti
+803773 router Netgear
+80482C camera Wyze Labs
+804AF2 speaker Sonos
+80646F cpu Espressif
+806599 cpu Espressif
+807D3A cpu Espressif
+80CC9C router Netgear
+80D2E5 gamepad Nintendo
+840D8E cpu Espressif
+841B5E router Netgear
+84CCA8 cpu Espressif
+84EAED tv Roku
+84F3EB cpu Espressif
+84F703 cpu Espressif
+84FCE6 cpu Espressif
+88DEA9 tv Roku
+8C3BAD router Netgear
+8C4962 tv Roku
+8C4B14 cpu Espressif
+8C56C5 gamepad Nintendo
+8CAAB5 cpu Espressif
+8CCDE8 gamepad Nintendo
+8CCE4E cpu Espressif
+9009D0 server Synology Incorporated
+90380C cpu Espressif
+904528 gamepad Nintendo
+9097D5 cpu Espressif
+941865 router Netgear
+942A6F router Ubiquiti
+943CC6 cpu Espressif
+9458CB gamepad Nintendo
+949F3E speaker Sonos
+94A67E router Netgear
+94B555 cpu Espressif
+94B97E cpu Espressif
+94DDF8 printer Brother Industries
+94E686 cpu Espressif
+98415C gamepad Nintendo
+98B6E9 gamepad Nintendo
+98CDAC cpu Espressif
+98E8FA gamepad Nintendo
+98F4AB cpu Espressif
+9C05D6 router Ubiquiti
+9C3DCF router Netgear
+9C9C1F cpu Espressif
+9CAED3 printer Seiko Epson
+9CC9EB router Netgear
+9CD36D router Netgear
+9CE635 gamepad Nintendo
+9CF1D4 tv Roku
+A00460 router Netgear
+A020A6 cpu Espressif
+A021B7 router Netgear
+A040A0 router Netgear
+A06391 router Netgear
+A0764E cpu Espressif
+A0A3B3 cpu Espressif
+A0B765 cpu Espressif
+A0DD6C cpu Espressif
+A42B8C router Netgear
+A438CC gamepad Nintendo
+A45C27 gamepad Nintendo
+A47B9D cpu Espressif
+A4C0E1 gamepad Nintendo
+A4CF12 cpu Espressif
+A4D73C printer Seiko Epson
+A4E57C cpu Espressif
+A4EE57 printer Seiko Epson
+A8032A cpu Espressif
+A842E3 cpu Espressif
+A848FA cpu Espressif
+A8B57C tv Roku
+AC0BFB cpu Espressif
+AC1518 cpu Espressif
+AC1826 printer Seiko Epson
+AC3A7A tv Roku
+AC67B2 cpu Espressif
+AC8BA9 router Ubiquiti
+ACAE19 tv Roku
+ACD074 cpu Espressif
+B03956 router Netgear
+B07FB9 router Netgear
+B0A732 cpu Espressif
+B0A737 tv Roku
+B0B21C cpu Espressif
+B0B98A router Netgear
+B0E892 printer Seiko Epson
+B0EE7B tv Roku
+B42200 printer Brother Industries
+B48A0A cpu Espressif
+B4E62D cpu Espressif
+B4FBE4 router Ubiquiti
+B827EB cpu Raspberry Pi Foundation
+B83E59 tv Roku
+B87826 gamepad Nintendo
+B88AEC gamepad Nintendo
+B8A175 tv Roku
+B8AE6E gamepad Nintendo
+B8D61A cpu Espressif
+B8E937 speaker Sonos
+B8F009 cpu Espressif
+BC744B gamepad Nintendo
+BC9EBB gamepad Nintendo
+BCA511 router Netgear
+BCCE25 gamepad Nintendo
+BCD7D4 tv Roku
+BCDDC2 cpu Espressif
+BCFF4D cpu Espressif
+C03F0E router Netgear
+C049EF cpu Espressif
+C04E30 cpu Espressif
+C0FFD4 router Netgear
+C40415 router Netgear
+C42996 lightbulb Signify
+C43875 speaker Sonos
+C43DC7 router Netgear
+C44F33 cpu Espressif
+C45BBE cpu Espressif
+C4D8D5 cpu Espressif
+C4DD57 cpu Espressif
+C4DEE2 cpu Espressif
+C82B96 cpu Espressif
+C82E18 cpu Espressif
+C83A6B tv Roku
+C89E43 router Netgear
+C8C9A3 cpu Espressif
+C8F09E cpu Espressif
+CC40D0 router Netgear
+CC50E3 cpu Espressif
+CC5B31 gamepad Nintendo
+CC6DA0 tv Roku
+CC7B5C cpu Espressif
+CC8DA2 cpu Espressif
+CC9E00 gamepad Nintendo
+CCDBA7 cpu Espressif
+CCFB65 gamepad Nintendo
+D021F9 router Ubiquiti
+D03F27 camera Wyze Labs
+D04D2C tv Roku
+D05509 gamepad Nintendo
+D0EF76 cpu Espressif
+D48AFC cpu Espressif
+D4D4DA cpu Espressif
+D4E22F tv Roku
+D4F057 gamepad Nintendo
+D4F98D cpu Espressif
+D8132A cpu Espressif
+D83134 tv Roku
+D83ADD cpu Raspberry Pi Trading
+D86BF7 gamepad Nintendo
+D8A01D cpu Espressif
+D8B370 router Ubiquiti
+D8BC38 cpu Espressif
+D8BFC0 cpu Espressif
+D8F15B cpu Espressif
+DC3A5E tv Roku
+DC4F22 cpu Espressif
+DC5475 cpu Espressif
+DC68EB gamepad Nintendo
+DC9FDB router Ubiquiti
+DCA632 cpu Raspberry Pi Trading
+DCCD18 gamepad Nintendo
+DCCD2F printer Seiko Epson
+DCDA0C cpu Espressif
+DCEF09 router Netgear
+E00C7F gamepad Nintendo
+E0469A router Netgear
+E046EE router Netgear
+E05A1B cpu Espressif
+E063DA router Ubiquiti
+E091F5 router Netgear
+E09806 cpu Espressif
+E0BB9E printer Seiko Epson
+E0E2E6 cpu Espressif
+E0E751 gamepad Nintendo
+E0F6B5 gamepad Nintendo
+E43883 router Ubiquiti
+E45F01 cpu Raspberry Pi Trading
+E465B8 cpu Espressif
+E4F4C6 router Netgear
+E831CD cpu Espressif
+E843B6 server Qnap Systems
+E84ECE gamepad Nintendo
+E868E7 cpu Espressif
+E86BEA cpu Espressif
+E89F6D cpu Espressif
+E8A0CD gamepad Nintendo
+E8DA20 gamepad Nintendo
+E8DB84 cpu Espressif
+E8FCAF router Netgear
+EC6260 cpu Espressif
+EC64C9 cpu Espressif
+EC94CB cpu Espressif
+ECB5FA lightbulb Philips Lighting BV
+ECC40D gamepad Nintendo
+ECDA3B cpu Espressif
+ECFABC cpu Espressif
+F008D1 cpu Espressif
+F09FC2 router Ubiquiti
+F0F5BD cpu Espressif
+F0F6C1 speaker Sonos
+F412FA cpu Espressif
+F492BF router Ubiquiti
+F4CFA2 cpu Espressif
+F4E2C6 router Ubiquiti
+F82551 printer Seiko Epson
+F87394 router Netgear
+F8D027 printer Seiko Epson
+FCB467 cpu Espressif
+FCE8C0 cpu Espressif
+FCECDA router Ubiquiti
+FCF5C4 cpu Espressif
