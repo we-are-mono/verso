@@ -23,9 +23,17 @@ ARCHES ?= amd64 arm64
 rust_target_amd64 := x86_64-unknown-linux-musl
 rust_target_arm64 := aarch64-unknown-linux-musl
 
+# The release string, from the committed VERSION file, stamped into the binary
+# at link time (below) and shown on the login page. An un-stamped build (go run,
+# make dev) falls back to "dev". Defined here so LDFLAGS can reference it; the
+# apk section adds the -r<REVISION> suffix for the package name.
+VERSION  := $(file < VERSION)
+VERSION_PKG := github.com/we-are-mono/verso/internal/version.Version
+
 # Strip the symbol table (-s) and DWARF debug info (-w): a shipped runtime binary
-# needs neither, and dropping them cuts ~25-30% off its size.
-LDFLAGS  := -s -w
+# needs neither, and dropping them cuts ~25-30% off its size. -X stamps the
+# version into the binary without a source edit.
+LDFLAGS  := -s -w -X $(VERSION_PKG)=$(VERSION)
 
 # Tailwind v4 standalone CLI (no Node); runs on the build host, pinned + cached.
 TAILWIND         := $(BUILDDIR)/tools/tailwindcss
@@ -60,9 +68,8 @@ apk_arch_amd64 := x86_64
 APK_GOARCH ?= arm64
 APK_ARCH   := $(apk_arch_$(APK_GOARCH))
 
-# Version = the committed VERSION file + a rebuild revision. Bump VERSION in a
-# commit for a new version; override REVISION=2 to repackage the same version.
-VERSION  := $(file < VERSION)
+# VERSION (defined up top, stamped into the binary) + a rebuild revision. Bump
+# VERSION in a commit for a new version; override REVISION=2 to repackage the same.
 REVISION ?= 1
 VER      := $(VERSION)-r$(REVISION)
 
@@ -170,6 +177,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --info "description:Verso — a modern web UI for OpenWrt" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
+	  --info depends:ca-bundle \
 	  --files "$(APK_PAYLOAD)" \
 	  --script post-install:$(POSTINST) \
 	  --script post-upgrade:$(POSTINST) \

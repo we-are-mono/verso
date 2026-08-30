@@ -370,6 +370,8 @@ func TestPluginSubpageBar(t *testing.T) {
 	for _, want := range []string{
 		`aria-label="Subpages"`,
 		`bg-white px-5 md:sticky`,
+		`dark:bg-menu-interaction`,
+		`dark:hover:bg-menu-interaction dark:active:bg-menu-interaction`,
 		`href="/plugins/demo/dnsdhcp"`,
 		`href="/plugins/demo/dnsdhcp/config"`,
 		`aria-current="page"`,
@@ -1152,6 +1154,11 @@ func TestLoginPageIsPublic(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "Sign in") {
 		t.Errorf("login page missing the form")
 	}
+	for _, font := range []string{"hanken.woff2", "fraunces.woff2", "inconsolata-latin.woff2"} {
+		if !strings.Contains(rec.Body.String(), `rel="preload" href="/assets/fonts/`+font+`"`) {
+			t.Errorf("login page does not preload %s", font)
+		}
+	}
 }
 
 func TestLoginSuccessSetsHttpOnlyCookieAndRedirects(t *testing.T) {
@@ -1182,6 +1189,15 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "Invalid") {
 		t.Errorf("expected an error message")
+	}
+	for _, want := range []string{
+		"dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20",
+		"active:translate-y-px", "active:shadow-none", "motion-reduce:active:translate-y-0",
+		"dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900",
+	} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("login dark-mode styling missing %q", want)
+		}
 	}
 }
 

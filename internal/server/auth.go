@@ -13,6 +13,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/version"
 )
 
 // Authenticator verifies credentials and returns an rpcd session id. Injected
@@ -118,19 +120,8 @@ func validCSRF(r *http.Request, want string) bool {
 type loginData struct {
 	CSS      template.CSS
 	Error    string
-	Hostname string // the device's own name, a warm "sign in to THIS box" touch
+	Version  string // the deployed Verso build ("dev" when un-stamped), shown in the hero so the running version is verifiable without signing in
 	Firmware string // the OpenWrt release + revision, shown quietly in the hero
-}
-
-// loginHostname is the device's hostname for the login greeting — read locally
-// (no session needed, and it is broadcast on the LAN anyway). Empty on error, so
-// the page falls back to a plain heading.
-func loginHostname() string {
-	h, err := os.Hostname()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(h)
 }
 
 // loginFirmware reads the OpenWrt release + revision from /etc/openwrt_release
@@ -213,7 +204,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) renderLogin(w http.ResponseWriter, status int, errMsg string) {
 	var buf bytes.Buffer
-	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg, Hostname: loginHostname(), Firmware: loginFirmware()}); err != nil {
+	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg, Version: version.Version, Firmware: loginFirmware()}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return
 	}
