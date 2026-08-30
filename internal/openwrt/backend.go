@@ -352,8 +352,8 @@ func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section stri
 	return b.uciDelete(ctx, sid, config, section)
 }
 
-// SetPassword sets username's system password through rpcd's `luci` object, gated
-// by the sid.
+// SetPassword sets username's system password through the privileged `verso-rpcd`
+// helper (the setPassword verb), gated by the sid.
 func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
 	return b.setPassword(ctx, sid, username, password)
 }

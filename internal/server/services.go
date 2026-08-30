@@ -22,8 +22,8 @@ import (
 // the userspace half of `ps`. A service is a running (or stoppable) thing; a
 // package is files on disk — two natures, two pages (the Packages page owns
 // the other). Every row drives the procd lifecycle: the switch is the one
-// human concept (on = enable+start, off = stop+disable), Restart lives in the
-// drawer, and Verso plugins add their liveness probe and declared powers.
+// human concept (on = enable+start, off = stop+disable), and Verso plugins add a
+// liveness probe from their socket.
 // Nothing here stages (ADR-010 boundary); a keep-list refuses severing the
 // surface itself.
 
