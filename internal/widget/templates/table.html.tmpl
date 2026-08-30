@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* table: config sections as identical rows under kind-typed columns. The card is
      the quietest element (inset table, transparent header — typography alone marks
      it); pills and counters are the loudest. One treatment per element type:
@@ -65,7 +67,46 @@
         {{/* a status pill, a drawer trigger, or a direct row action. A direct
              destructive action opens a compact alert dialog and posts its
              _action marker only after explicit confirmation. */}}
-        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">{{if .Pill}}{{template "badge.html.tmpl" .Pill}}{{else if .Button}}{{if .Drawer}}<button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>{{else if .Confirm}}<span x-data="modal" class="inline"><button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button><template x-teleport="body"><div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto"><div x-show="open" x-transition.opacity @click="hide" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"></div><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center"><div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ConfirmID}}-title" aria-describedby="{{.ConfirmID}}-body" class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-left shadow-xl focus:outline-none sm:p-6"><div class="sm:flex sm:items-start"><div class="mx-auto grid size-12 shrink-0 place-items-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div><div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left"><h3 id="{{.ConfirmID}}-title" class="text-base font-semibold text-slate-900">{{.ConfirmTitle}}</h3><p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm text-slate-500">{{.Confirm}}</p></div></div><div class="mt-6 flex flex-col gap-3 sm:flex-row"><form method="post"><input type="hidden" name="_csrf" value="{{.CSRFToken}}"><button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900 sm:w-auto">{{.Button}}</button></form><button type="button" @click="hide" class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 sm:w-auto">Cancel</button></div></div></div></div></template></span>{{else}}<form method="post" class="inline"><input type="hidden" name="_csrf" value="{{.CSRFToken}}"><button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button></form>{{end}}{{else}}<span class="text-slate-300">—</span>{{end}}</td>
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">
+          {{if .Pill}}{{template "badge.html.tmpl" .Pill}}
+          {{else if .Button}}
+            {{if .Drawer}}
+              <button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>
+            {{else if .Confirm}}
+              <span x-data="modal" class="inline">
+                <button type="button" @click="show" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>
+                <template x-teleport="body">
+                  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
+                    <div x-show="open" x-transition.opacity @click="hide" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs dark:bg-black/60"></div>
+                    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
+                      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ConfirmID}}-title" aria-describedby="{{.ConfirmID}}-body" class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-left shadow-xl focus:outline-none sm:p-6">
+                        <div class="sm:flex sm:items-start">
+                          <div class="mx-auto grid size-12 shrink-0 place-items-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div>
+                          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 id="{{.ConfirmID}}-title" class="text-base font-semibold text-slate-900">{{.ConfirmTitle}}</h3>
+                            <p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm text-slate-500">{{.Confirm}}</p>
+                          </div>
+                        </div>
+                        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+                          <form method="post">
+                            <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+                            <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950 sm:w-auto">{{.Button}}</button>
+                          </form>
+                          <button type="button" @click="hide" class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 sm:w-auto">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </span>
+            {{else}}
+              <form method="post" class="inline">
+                <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+                <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>
+              </form>
+            {{end}}
+          {{else}}<span class="text-slate-300">—</span>{{end}}
+        </td>
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
@@ -115,7 +156,7 @@
         {{if .Drawer}}
         <template x-teleport="body">
           <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
-            <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+            <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs dark:bg-black/60"></div>
             <aside x-show="open" @input="markDirty" @change="markDirty"
               x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
               x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"

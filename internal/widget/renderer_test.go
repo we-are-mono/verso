@@ -390,6 +390,7 @@ func TestRenderDrawer(t *testing.T) {
 		`x-teleport="body"`, // panel escapes the content flow
 		`role="dialog"`,
 		"translate-x-full", // slides in from the right
+		"dark:bg-black/60", // dark overlay stays dark despite the inverted slate palette
 		"My Phone",         // trigger + title
 		"<svg",             // qr child rendered in the body
 		"Added",            // text child rendered in the body
@@ -545,7 +546,8 @@ func TestRenderConfirm(t *testing.T) {
 		"mt-6 ml-6 flex items-center justify-start", "text-red-600", "hover:text-red-800 hover:underline", // actions align with the message; cancel is the lighter contextual link
 		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
 		"dark:border-red-500/20 dark:bg-red-500/10", "dark:text-red-300",
-		"dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900",
+		"dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950",
+		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
 		"dark:text-red-400 dark:hover:text-red-300",
 	} {
 		if !strings.Contains(got, want) {
@@ -618,6 +620,13 @@ func TestRenderLink(t *testing.T) {
 	if !strings.Contains(dl, "dark:border-gray-700 dark:bg-transparent dark:text-gray-300") || !strings.Contains(dl, "dark:active:bg-gray-900") {
 		t.Errorf("ghost link missing dark secondary-button treatment: %s", dl)
 	}
+	if !strings.Contains(dl, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
+		t.Errorf("button-styled link missing tactile pressed state: %s", dl)
+	}
+	primary := render(t, r, &Link{Label: "Download backup", Href: "/backup", Style: "button"})
+	if !strings.Contains(primary, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
+		t.Errorf("primary button link missing tactile pressed state: %s", primary)
+	}
 	// A plain link carries no download attribute.
 	plain := render(t, r, &Link{Label: "Docs", Href: "/help"})
 	if strings.Contains(plain, "download=") {
@@ -628,7 +637,7 @@ func TestRenderLink(t *testing.T) {
 func TestRenderButton(t *testing.T) {
 	r := newRenderer(t)
 	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
-	for _, want := range []string{`type="button"`, "bg-sky-600", "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900", "size-4", "Choose firmware…"} {
+	for _, want := range []string{`type="button"`, "bg-sky-600", "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0", "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900", "size-4", "Choose firmware…"} {
 		if !strings.Contains(inert, want) {
 			t.Errorf("inert button missing %q: %s", want, inert)
 		}
@@ -715,6 +724,7 @@ func TestRenderModal(t *testing.T) {
 		`role="dialog"`,
 		"Add a device",       // trigger + title
 		`name="device_name"`, // the child widget is rendered inside
+		"dark:bg-black/60",   // dark overlay does not resolve through inverted slate ink
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("modal missing %q in: %s", want, got)
@@ -770,7 +780,8 @@ func TestRenderModalDangerPreview(t *testing.T) {
 	})
 	for _, want := range []string{
 		"bg-red-100 text-red-600", "size-6 -translate-y-px", "Factory reset this router?", "All settings will be erased.",
-		"bg-red-600", ">Erase and reset<", ">Cancel<", "sm:ml-14 sm:flex-row",
+		"bg-red-600", "dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950", ">Erase and reset<", ">Cancel<", "sm:ml-14 sm:flex-row",
+		"underline-offset-2 transition-colors hover:text-slate-900 hover:underline",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("danger modal preview missing %q: %s", want, got)
@@ -778,6 +789,9 @@ func TestRenderModalDangerPreview(t *testing.T) {
 	}
 	if strings.Contains(got, `aria-label="Close"`) {
 		t.Errorf("danger confirmation should use its explicit cancel action, not a close icon: %s", got)
+	}
+	if strings.Contains(got, "hover:bg-slate-100") {
+		t.Errorf("danger confirmation cancel must remain link-style on hover: %s", got)
 	}
 }
 
@@ -841,9 +855,26 @@ func TestRenderFieldError(t *testing.T) {
 	if !strings.Contains(got, "border-red-600") {
 		t.Errorf("errored field should carry the danger token: %s", got)
 	}
-	for _, want := range []string{"dark:border-red-400", "dark:text-red-400"} {
+	for _, want := range []string{
+		"focus:border-red-600 focus:ring-2 focus:ring-red-600/20",
+		"dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50",
+		"dark:text-red-400",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("errored field missing dark Access danger colour %q: %s", want, got)
+		}
+	}
+}
+
+func TestRenderFieldFocus(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "hostname", Label: "Hostname"})
+	for _, want := range []string{
+		"focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20",
+		"dark:focus:border-sky-400 dark:focus:ring-sky-400/50",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("valid field missing focus treatment %q: %s", want, got)
 		}
 	}
 }
@@ -868,7 +899,11 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 	if n := strings.Count(got, `name="server"`); n != 3 {
 		t.Errorf("want 3 inputs (2 items + 1 blank), got %d: %s", n, got)
 	}
-	for _, want := range []string{"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add"} {
+	for _, want := range []string{
+		"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add",
+		"focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20",
+		"dark:focus:border-sky-400 dark:focus:ring-sky-400/50",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("list missing %q", want)
 		}
@@ -884,6 +919,15 @@ func TestRenderListPerItemError(t *testing.T) {
 		Errors: map[string]string{"1": "must be a hostname or IP address"}})
 	if !strings.Contains(got, "must be a hostname or IP address") {
 		t.Errorf("per-item error missing: %s", got)
+	}
+	for _, want := range []string{
+		"focus:border-red-600 focus:ring-2 focus:ring-red-600/20",
+		"dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50",
+		"dark:text-red-400",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("errored list item missing focus treatment %q: %s", want, got)
+		}
 	}
 }
 
@@ -914,6 +958,9 @@ func TestRenderFormSuccess(t *testing.T) {
 	}
 	if !strings.Contains(got, "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900") {
 		t.Errorf("form submit missing dark primary-button treatment: %s", got)
+	}
+	if !strings.Contains(got, "active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0") {
+		t.Errorf("form submit missing tactile pressed state: %s", got)
 	}
 }
 

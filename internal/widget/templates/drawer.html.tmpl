@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* drawer: a slide-in detail panel. Shell-owned behaviour (ADR-005 §7) that reuses
      the modal Alpine component (ADR-004) — open/close/focus-trap/Escape are identical;
      only the layout differs (it slides from the right instead of centring). The plugin
@@ -13,7 +15,7 @@
   </button>
   <template x-teleport="body">
     <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
-      <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+      <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs dark:bg-black/60"></div>
       <aside x-show="open" @input="markDirty" @change="markDirty"
         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"

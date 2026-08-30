@@ -218,6 +218,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		`x-data="modal"`, `@click="show"`, ">Details<", // opens from the trailing link
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
+		"dark:bg-black/60",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -401,7 +402,8 @@ func TestRenderTableDirectAction(t *testing.T) {
 		"bg-red-100 text-red-600", `>End session<`, `>Cancel<`,
 		"text-slate-600 transition-colors hover:bg-slate-100", // link-style Cancel
 		"dark:border-gray-700 dark:bg-transparent dark:text-gray-300",
-		"dark:bg-red-700 dark:text-gray-100 dark:hover:bg-red-800 dark:active:bg-red-900",
+		"dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950",
+		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
 		"dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900",
 	} {
 		if !strings.Contains(got, want) {

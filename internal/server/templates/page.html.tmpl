@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -93,7 +95,10 @@
        offset past the sidebar by construction; sticky on desktop so switching
        stays one click from any depth. */}}
   {{if .Pages}}
-  <nav class="z-30 flex h-12 items-center gap-1 border-b {{if or .NoPassword (and .Banner (eq .Banner.Variant "danger"))}}border-red-200 dark:border-red-500/20{{else}}border-slate-200{{end}} bg-white px-8 md:sticky md:top-0" aria-label="Subpages">
+  {{/* Tabs keep 12px of internal horizontal padding for a comfortable target.
+       The bar therefore starts 12px before the 32px content gutter, placing
+       the first label and its active underline exactly on the content edge. */}}
+  <nav class="z-30 flex h-12 items-center gap-1 border-b {{if or .NoPassword (and .Banner (eq .Banner.Variant "danger"))}}border-red-200 dark:border-red-500/20{{else}}border-slate-200{{end}} bg-white px-5 md:sticky md:top-0" aria-label="Subpages">
     {{range .Pages}}
     <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}
       class="relative flex h-full items-center px-3 text-sm font-medium transition-colors {{if .Active}}{{if or $.NoPassword (and $.Banner (eq $.Banner.Variant "danger"))}}text-red-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-red-600 dark:text-red-400 dark:after:bg-red-500{{else}}text-slate-900 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-sky-600{{end}}{{else}}text-slate-500 hover:text-slate-900{{end}}">{{.Label}}</a>

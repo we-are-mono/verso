@@ -369,6 +369,7 @@ func TestPluginSubpageBar(t *testing.T) {
 	body := get(t, s, "/plugins/demo/dnsdhcp").Body.String()
 	for _, want := range []string{
 		`aria-label="Subpages"`,
+		`bg-white px-5 md:sticky`,
 		`href="/plugins/demo/dnsdhcp"`,
 		`href="/plugins/demo/dnsdhcp/config"`,
 		`aria-current="page"`,
