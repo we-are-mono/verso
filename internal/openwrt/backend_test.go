@@ -6,6 +6,8 @@ package openwrt
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -356,5 +358,49 @@ func TestParseV6Leases(t *testing.T) {
 	}
 	if len(l.Addrs) != 2 || l.Addrs[0] != "2001:db8::4f" || l.Addrs[1] != "fd00::4f" {
 		t.Errorf("lease addrs wrong: %+v", l.Addrs)
+	}
+}
+
+func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
+	states := map[string]RCState{
+		"boot": {}, "dnsmasq": {Running: true}, "firewall": {}, "urandom_seed": {},
+	}
+	managed := map[string]bool{"boot": false, "dnsmasq": true, "firewall": true, "urandom_seed": true}
+	details := map[string]serviceDetail{
+		"dnsmasq":      {Instances: []serviceInstance{{PID: 42, Running: true, HasCommand: true, Respawn: true}}},
+		"firewall":     {},
+		"urandom_seed": {Instances: []serviceInstance{{HasCommand: true, HasExitCode: true, ExitCode: 0}}},
+	}
+	procFields := append([]string{"S"}, make([]string, 19)...)
+	for i := 1; i < 19; i++ {
+		procFields[i] = "0"
+	}
+	procFields[19] = "2500" // 25 seconds after boot at USER_HZ=100
+	files := map[string]string{
+		"/proc/uptime":             "100.00 20.00\n",
+		"/etc/init.d/boot":         "START=10\n",
+		"/etc/init.d/dnsmasq":      "USE_PROCD=1\nprocd_set_param command /usr/sbin/dnsmasq\n",
+		"/etc/init.d/firewall":     "USE_PROCD=1\nstart_service() { fw4 start; }\n",
+		"/etc/init.d/urandom_seed": "USE_PROCD=1\nprocd_set_param command /sbin/urandom_seed\n",
+		"/proc/42/status":          "Name:\tdnsmasq\nVmRSS:\t2048 kB\n",
+		"/proc/42/stat":            "42 (dns masq) " + strings.Join(procFields, " ") + "\n",
+	}
+	readFile := func(path string) ([]byte, error) {
+		if value, ok := files[path]; ok {
+			return []byte(value), nil
+		}
+		return nil, fmt.Errorf("missing %s", path)
+	}
+
+	enrichRCStates(states, managed, details, readFile)
+	if states["boot"].Kind != ServiceTask || states["urandom_seed"].Kind != ServiceTask {
+		t.Errorf("task classification = boot:%q urandom:%q", states["boot"].Kind, states["urandom_seed"].Kind)
+	}
+	if states["dnsmasq"].Kind != ServiceDaemon || states["firewall"].Kind != ServiceSubsystem {
+		t.Errorf("managed classification = dnsmasq:%q firewall:%q", states["dnsmasq"].Kind, states["firewall"].Kind)
+	}
+	dns := states["dnsmasq"]
+	if len(dns.PIDs) != 1 || dns.PIDs[0] != 42 || dns.MemoryBytes != 2*1024*1024 || dns.Uptime != 75 {
+		t.Errorf("dnsmasq runtime = %+v", dns)
 	}
 }

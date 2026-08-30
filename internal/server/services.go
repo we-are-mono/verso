@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -41,6 +42,12 @@ var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "e
 // exactly as it is over SSH.
 var svcKeep = map[string]bool{"verso": true, "verso-rpcd": true, "rpcd": true, "ubus": true}
 
+// svcMustStayEnabled covers kernel-state loaders whose stop action is unsafe as
+// an everyday service control. firewall4 has no resident daemon: stopping it
+// flushes the router's nftables, NAT and forwarding rules. It may be restarted,
+// but the Services page never offers or accepts stop/disable.
+var svcMustStayEnabled = map[string]bool{"firewall": true}
+
 // svcNameRe is the shape of an init-script name — the only thing that reaches
 // procd's rc object.
 var svcNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._-]{0,63}$`)
@@ -71,6 +78,10 @@ type pluginState struct {
 	Enabled  bool   // starts at boot
 	Running  bool   // procd's live view
 	Alive    bool   // the socket accepted a connection just now
+	Kind     openwrt.ServiceKind
+	PIDs     []int
+	Memory   int64
+	Uptime   int64
 }
 
 // pluginStates assembles the plugin rows from the discovered manifests and
@@ -85,6 +96,7 @@ func (s *Server) pluginStates(rc map[string]openwrt.RCState) []pluginState {
 		st := pluginState{Manifest: m, Service: svc}
 		if r, ok := rc[svc]; ok {
 			st.Known, st.Enabled, st.Running = true, r.Enabled, r.Running
+			st.Kind, st.PIDs, st.Memory, st.Uptime = r.Kind, r.PIDs, r.MemoryBytes, r.Uptime
 		}
 		if st.Running {
 			st.Alive = s.probe(m.Socket)
@@ -104,6 +116,7 @@ func (s *Server) handleServicesPage(w http.ResponseWriter, r *http.Request) {
 // ("svc:<name>" or a plugin's "on:<id>") expanding to both procd facts, or a
 // drawer's Restart. Success flashes the completed act and redirects (PRG).
 func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
+	switchRequest := r.Header.Get("X-Verso-Interaction") == "switch"
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -122,6 +135,15 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 			"%s keeps this page alive — manage it over SSH if you really mean it.", svc))
 		return
 	}
+	if svcMustStayEnabled[svc] && (slices.Contains(actions, "stop") || slices.Contains(actions, "disable")) {
+		msg := svc + " must remain enabled; stopping it would remove the router's firewall and forwarding rules."
+		if switchRequest {
+			http.Error(w, msg, http.StatusConflict)
+			return
+		}
+		s.renderServices(w, r, msg)
+		return
+	}
 	for _, a := range actions {
 		if !rcActions[a] {
 			http.Error(w, "unknown action", http.StatusBadRequest)
@@ -130,11 +152,22 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, a := range actions {
 		if err := s.backend.RCInit(r.Context(), s.sessionSID(r), svc, a); err != nil {
+			if switchRequest {
+				http.Error(w, fmt.Sprintf("Could not %s %s: the device refused (%v).", a, svc, err), http.StatusBadGateway)
+				return
+			}
 			s.renderServices(w, r, fmt.Sprintf("Could not %s %s: the device refused (%v).", a, svc, err))
 			return
 		}
 	}
 	s.flash(r, "success", svc+" "+lifecycleWord(actions)+".")
+	if switchRequest {
+		// A fetch-based switch already reloads the page after this response.
+		// Returning 204 avoids following a 303 through one expensive service-list
+		// render only to discard it and perform the same render again.
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	http.Redirect(w, r, "/system/services", http.StatusSeeOther)
 }
 
@@ -234,6 +267,11 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Service table unavailable",
 			Body: fmt.Sprintf("procd could not be read (%v).", rcErr)})
 	} else {
+		children = append(children, &widget.Callout{
+			Variant: "warning",
+			Title:   "Proceed with care",
+			Body:    "Stopping or disabling system services can make OpenWrt unstable or inaccessible. Change only services you understand.",
+		})
 		children = append(children, servicesTable(s.pluginStates(rc), rc, owners))
 	}
 
@@ -247,19 +285,21 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "The processes this router runs — procd's service table, live.",
-	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "wide", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
-// servicesTable is procd's table, one flush-edged row per service: name, the
-// APK-reported providing package, live state,
-// boot as a checkmark, and the on/off switch. No drawers — every fact is a
-// column, the switch is the act, and off→on covers what restart did.
+// servicesTable is procd's table, one flush-edged row per service: name and
+// lifecycle type, APK-reported package, live state, compact process runtime,
+// restart, and the enabled switch. No drawers — every fact and immediate action
+// has its own column. The switch represents boot policy; runtime state remains a
+// separate fact and is only claimed where procd can establish it.
 func servicesTable(states []pluginState, rc map[string]openwrt.RCState, owners map[string]string) widget.Widget {
 	cols := []widget.TableColumn{
 		{Label: "Service", Kind: "name"},
 		{Label: "Package", Kind: "mono"},
 		{Label: "State", Kind: "pill"},
-		{Label: "Starts at boot", Kind: "check"},
+		{Label: "Runtime", Kind: "runtime"},
+		{Label: "Restart", Kind: "action"},
 		{Label: "Enabled", Kind: "toggle"},
 	}
 	byService := make(map[string]pluginState, len(states))
@@ -299,26 +339,66 @@ func packageOf(service string, owners map[string]string) string {
 	return "—"
 }
 
-// svcSwitch is the on/off cell; keep-listed services get none.
-func svcSwitch(name string, running bool) widget.TableCell {
-	if svcKeep[name] {
+// svcSwitch is the boot-policy cell; keep-listed services and one-shot tasks
+// get none. It intentionally reflects Enabled rather than Running: a daemon can
+// be enabled but crashed, while an action-based subsystem may have no PID at all.
+func svcSwitch(name string, st openwrt.RCState) widget.TableCell {
+	if svcMustStayEnabled[name] {
+		return widget.TableCell{Icon: "lock", Button: "Firewall must remain enabled"}
+	}
+	if svcKeep[name] || serviceKind(st.Kind) == openwrt.ServiceTask {
 		return widget.TableCell{}
 	}
-	return widget.TableCell{On: running, Name: "svc:" + name}
+	return widget.TableCell{On: st.Enabled, Name: "svc:" + name}
+}
+
+// svcRestart is the immediate restart action. Startup tasks do not have a
+// persistent process to restart, and keep-listed services cannot be safely
+// interrupted from the surface they sustain.
+func svcRestart(name string, kind openwrt.ServiceKind) widget.TableCell {
+	if svcKeep[name] || serviceKind(kind) == openwrt.ServiceTask {
+		return widget.TableCell{}
+	}
+	return widget.TableCell{
+		Text:   name,
+		Name:   "service",
+		Action: "restart",
+		Button: "Restart " + name,
+		Icon:   "refresh-cw",
+	}
 }
 
 // serviceRow is one plain procd service.
 func serviceRow(name string, st openwrt.RCState, owners map[string]string) widget.TableRow {
-	pill := widget.TableCell{Text: "stopped", Variant: "neutral"}
-	if st.Running {
-		pill = widget.TableCell{Text: "running", Variant: "success"}
+	kind := serviceKind(st.Kind)
+	pill := widget.TableCell{Muted: true}
+	switch kind {
+	case openwrt.ServiceTask:
+		pill.Text = "disabled"
+		pill.Variant = "neutral"
+		if st.Enabled {
+			pill = widget.TableCell{Text: "runs at boot", Variant: "info"}
+		}
+	case openwrt.ServiceDaemon:
+		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
+		if st.Running {
+			pill = runningStateCell(st.Uptime)
+		}
+	case openwrt.ServiceSubsystem:
+		// A subsystem such as firewall4 can apply persistent kernel state and
+		// exit. A false generic `running` result therefore proves nothing; only
+		// surface an active state when the init script positively reports it.
+		if st.Running {
+			pill = widget.TableCell{Text: "active", Variant: "success"}
+		}
 	}
 	return widget.TableRow{ID: name, Cells: []widget.TableCell{
-		{Text: name},
+		serviceNameCell(name, kind),
 		{Text: packageOf(name, owners), Emphasis: true},
 		pill,
-		{On: st.Enabled},
-		svcSwitch(name, st.Running),
+		serviceRuntimeCell(st.PIDs, st.MemoryBytes),
+		svcRestart(name, kind),
+		svcSwitch(name, st),
 	}}
 }
 
@@ -326,20 +406,100 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 // the socket probe.
 func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow {
 	m := st.Manifest
-	pill := widget.TableCell{Text: "stopped", Variant: "neutral"}
+	kind := serviceKind(st.Kind)
+	restart := svcRestart(st.Service, kind)
+	if !st.Known {
+		restart = widget.TableCell{}
+	}
+	pill := widget.TableCell{Muted: true}
 	switch {
 	case !st.Known:
 		pill = widget.TableCell{Text: "not managed", Variant: "warning"}
+	case kind == openwrt.ServiceTask:
+		pill = widget.TableCell{Text: "disabled", Variant: "neutral"}
+		if st.Enabled {
+			pill = widget.TableCell{Text: "runs at boot", Variant: "info"}
+		}
+	case kind == openwrt.ServiceSubsystem:
+		if st.Running {
+			pill = widget.TableCell{Text: "active", Variant: "success"}
+		}
 	case st.Running && st.Alive:
-		pill = widget.TableCell{Text: "running", Variant: "success"}
+		pill = runningStateCell(st.Uptime)
 	case st.Running:
 		pill = widget.TableCell{Text: "not responding", Variant: "danger"}
+	default:
+		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
 	}
 	return widget.TableRow{ID: st.Service, Cells: []widget.TableCell{
-		{Text: st.Service},
+		serviceNameCell(st.Service, kind),
 		{Text: packageOf(st.Service, owners), Emphasis: true},
 		pill,
-		{On: st.Enabled},
-		{On: st.Running, Name: "on:" + m.ID},
+		serviceRuntimeCell(st.PIDs, st.Memory),
+		restart,
+		svcPluginSwitch(m.ID, st, kind),
 	}}
+}
+
+func svcPluginSwitch(id string, st pluginState, kind openwrt.ServiceKind) widget.TableCell {
+	if svcKeep[st.Service] || kind == openwrt.ServiceTask || !st.Known {
+		return widget.TableCell{}
+	}
+	return widget.TableCell{On: st.Enabled, Name: "on:" + id}
+}
+
+func serviceKind(kind openwrt.ServiceKind) openwrt.ServiceKind {
+	if kind == "" {
+		return openwrt.ServiceDaemon
+	}
+	return kind
+}
+
+func serviceNameCell(name string, kind openwrt.ServiceKind) widget.TableCell {
+	icon := "server"
+	if kind == openwrt.ServiceSubsystem {
+		icon = "settings"
+	} else if kind == openwrt.ServiceTask {
+		icon = "clock"
+	}
+	return widget.TableCell{Text: name, Chips: []widget.TableChip{{Icon: icon, Label: string(kind)}}}
+}
+
+func runningStateCell(uptime int64) widget.TableCell {
+	text := "running"
+	if uptime > 0 {
+		text += " for " + compactServiceUptime(uptime)
+	}
+	return widget.TableCell{Text: text, Variant: "success"}
+}
+
+func serviceRuntimeCell(pids []int, memory int64) widget.TableCell {
+	if len(pids) == 0 {
+		return widget.TableCell{Text: "—", Muted: true}
+	}
+	parts := make([]string, 0, 2)
+	if len(pids) == 1 {
+		parts = append(parts, fmt.Sprintf("PID %d", pids[0]))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d processes", len(pids)))
+	}
+	if memory > 0 {
+		parts = append(parts, humanSize(memory))
+	}
+	return widget.TableCell{Text: strings.Join(parts, " · ")}
+}
+
+func compactServiceUptime(seconds int64) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+	minutes := seconds / 60
+	if minutes < 60 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds%60)
+	}
+	hours := minutes / 60
+	if hours < 24 {
+		return fmt.Sprintf("%dh %dm", hours, minutes%60)
+	}
+	return fmt.Sprintf("%dd %dh", hours/24, hours%24)
 }

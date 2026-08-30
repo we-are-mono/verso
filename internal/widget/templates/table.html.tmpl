@@ -45,7 +45,21 @@
         {{/* a toggle cell without a form name is an empty slot — rows whose
              thing has no on/off stay blank, not decorated with a dead switch. */}}
         <td class="w-11 border-b border-slate-200 py-3 pr-1 pl-3.5 align-middle first:pl-0 last:pr-0 group-last:border-b-0">
-          {{if .Name}}{{template "switch.html.tmpl" .}}{{end}}
+          {{if .Name}}{{template "switch.html.tmpl" .}}{{else if .Icon}}<span class="grid size-7 place-items-center text-slate-400" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}
+        </td>
+        {{else if eq .Kind "action"}}
+        {{/* a compact, immediately applied row action. Name/Text carry the
+             target field and value; Action is the lifecycle verb. */}}
+        <td class="w-11 border-b border-slate-200 py-3 pr-1 pl-3.5 align-middle first:pl-0 last:pr-0 group-last:border-b-0">
+          {{if and .Name .Text .Action}}
+          <form method="post" class="inline-flex">
+            <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+            <input type="hidden" name="{{.Name}}" value="{{.Text}}">
+            <button type="submit" name="_action" value="{{.Action}}" aria-label="{{.Button}}" title="{{.Button}}" class="grid size-8 cursor-pointer place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:translate-y-px active:bg-slate-200 active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-950">
+              {{icon .Icon "size-4"}}
+            </button>
+          </form>
+          {{end}}
         </td>
         {{else if eq .Kind "endpoint"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
@@ -125,7 +139,7 @@
                 <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{.Button}}</button>
               </form>
             {{end}}
-          {{else}}<span class="text-slate-300">—</span>{{end}}
+          {{else}}<span class="{{if .Muted}}text-slate-500{{else}}text-slate-300{{end}}">—</span>{{end}}
         </td>
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
@@ -155,6 +169,8 @@
         </td>
         {{else if eq .Kind "keyword"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap text-slate-600 group-last:border-b-0">{{.Text}}</td>
+        {{else if eq .Kind "runtime"}}
+        <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap tabular-nums text-slate-500 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle text-slate-500 group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "rate"}}

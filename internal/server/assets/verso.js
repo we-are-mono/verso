@@ -1324,7 +1324,10 @@ document.addEventListener(
     el.disabled = true; // one flip, one round-trip; the reload re-renders truth
     fetch(window.location.pathname, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Verso-Interaction": "switch",
+      },
       body: body.toString(),
       credentials: "same-origin",
     }).then(function (res) {

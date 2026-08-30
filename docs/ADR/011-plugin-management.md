@@ -77,11 +77,25 @@ rediscovery so the shell never restarts itself.**
 5. **Lifecycle is procd, on the Services page — plugins are not special
    there.** `/system/services` renders procd's whole rc table, lined like
    the process list it corresponds to: every service as one row of columns —
-   name, providing package (exact name match), live state, boot as a
-   checkmark, and the on/off switch (on = enable+start, off = stop+disable —
-   one human concept, both procd facts). No drawers: every fact is a column,
-   and off→on covers restart. A service keep-list (verso, rpcd, ubus)
+   name with an icon-bearing lifecycle chip (daemon, subsystem, or startup
+   task), providing package, live state (running includes oldest-process
+   uptime), compact runtime (PID/process count and aggregate RSS), an immediate icon-only restart
+   action, and an Enabled switch (on = enable+start, off = stop+disable — one
+   human concept, both procd facts). The switch reflects boot enablement, not
+   the presence of a process: enabled-but-crashed daemons and PID-less
+   subsystems must remain representable. Runtime comes from
+   procd's `service.list` PIDs and procfs;
+   it needs no periodic sampler. Completed startup tasks read "runs at boot"
+   rather than "stopped" and carry neither a meaningless switch nor restart.
+   Daemons may read running or stopped. PID-less subsystems never read stopped
+   merely because the generic procd process check is false; a positive status
+   may read active, while an indeterminate status remains blank. No drawers:
+   every fact and immediate action is a column. A service keep-list
+   (verso, verso-rpcd, rpcd, ubus)
    refuses lifecycle acts from the UI — severing them severs the surface;
+   firewall remains restartable but has a locked Enabled cell and rejects stop
+   or disable, because firewall4's stop action flushes the kernel firewall, NAT,
+   and forwarding rules rather than stopping a harmless resident process;
    the rest, network included, stays the operator's call. Verso plugin
    services sharpen the state with the socket probe (running / not
    responding). Turning a plugin off also withdraws its manifest-registered pages

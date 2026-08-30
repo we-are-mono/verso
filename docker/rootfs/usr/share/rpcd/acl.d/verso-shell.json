@@ -5,6 +5,7 @@
 			"ubus": {
 				"system": [ "info", "board" ],
 				"rc": [ "list" ],
+				"service": [ "list" ],
 				"network.interface": [ "dump" ],
 				"network.device": [ "status" ],
 				"dhcp": [ "ipv6leases" ]

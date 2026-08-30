@@ -6,6 +6,7 @@
 		"system": { "methods": [ "info", "board" ] },
 		"dhcp": { "methods": [ "ipv6leases" ] },
 		"rc": { "methods": [ "list", "init" ] },
+		"service": { "methods": [ "list" ] },
 		"network.interface": { "methods": [ "dump" ] },
 		"network.device": { "methods": [ "status" ] }
 	}

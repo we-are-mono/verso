@@ -6,10 +6,14 @@
 package openwrt
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/ubus"
@@ -224,12 +228,28 @@ type Package struct {
 	Removable   bool     `json:"removable"`
 }
 
-// RCState is one procd service's rc snapshot: enabled is the boot symlink,
-// running is procd's live view. procd omits `running` for scripts it has never
-// managed; that decodes as false, which is the honest reading.
+// ServiceKind describes an init script's lifecycle shape, not its current
+// state. Daemons own a process, subsystems are procd-managed without a resident
+// process, and startup tasks run to completion during boot.
+type ServiceKind string
+
+const (
+	ServiceDaemon    ServiceKind = "daemon"
+	ServiceSubsystem ServiceKind = "subsystem"
+	ServiceTask      ServiceKind = "startup task"
+)
+
+// RCState is one procd service's assembled snapshot: rc supplies boot/running,
+// service.list supplies instances and PIDs, and procfs supplies aggregate RSS
+// plus the oldest current process's age. Runtime fields stay empty for
+// process-less subsystems and completed startup tasks.
 type RCState struct {
-	Enabled bool
-	Running bool
+	Enabled     bool
+	Running     bool
+	Kind        ServiceKind
+	PIDs        []int
+	MemoryBytes int64
+	Uptime      int64
 }
 
 // SystemInfo is the subset of `ubus call system info` that Verso renders.
@@ -1139,9 +1159,22 @@ func asBool(v any) bool {
 	return false
 }
 
-// dialRCList reads procd's rc table — every init script with its boot-enabled
-// flag and procd's live running view — after probing the session's
-// ubus/rc/list access (ADR-011: plugin service state).
+type serviceInstance struct {
+	PID         int
+	Running     bool
+	HasCommand  bool
+	Respawn     bool
+	HasExitCode bool
+	ExitCode    int64
+}
+
+type serviceDetail struct {
+	Instances []serviceInstance
+}
+
+// dialRCList reads the cheap rc inventory first, then enriches it from procd's
+// service instances and procfs. The richer read is best-effort: an older ACL or
+// procd without service.list still gets the complete, controllable rc table.
 func dialRCList(socket string) rcListFn {
 	return func(_ context.Context, sid string) (map[string]RCState, error) {
 		c, err := ubus.Dial(socket)
@@ -1162,15 +1195,174 @@ func dialRCList(socket string) rcListFn {
 			return nil, err
 		}
 		out := make(map[string]RCState, len(res))
+		managed := make(map[string]bool, len(res))
 		for name, v := range res {
 			t, ok := v.(map[string]any)
 			if !ok {
 				continue
 			}
+			_, managed[name] = t["running"]
 			out[name] = RCState{Enabled: asBool(t["enabled"]), Running: asBool(t["running"])}
 		}
+
+		details := map[string]serviceDetail{}
+		if ok, _ := probeAccess(c, sid, "ubus", "service", "list"); ok {
+			if serviceID, lookupErr := c.Lookup("service"); lookupErr == nil {
+				if serviceRes, invokeErr := c.Invoke(serviceID, "list"); invokeErr == nil {
+					details = parseServiceDetails(serviceRes)
+				}
+			}
+		}
+		enrichRCStates(out, managed, details, os.ReadFile)
 		return out, nil
 	}
+}
+
+func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
+	out := make(map[string]serviceDetail, len(raw))
+	for name, value := range raw {
+		detail := serviceDetail{}
+		service, ok := value.(map[string]any)
+		if !ok {
+			out[name] = detail
+			continue
+		}
+		instances, _ := service["instances"].(map[string]any)
+		for _, value := range instances {
+			instance, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+			pid := int(asInt64(instance["pid"]))
+			_, hasCommand := instance["command"]
+			_, respawn := instance["respawn"]
+			exitCode, hasExitCode := instance["exit_code"]
+			detail.Instances = append(detail.Instances, serviceInstance{
+				PID: pid, Running: asBool(instance["running"]), HasCommand: hasCommand,
+				Respawn: respawn, HasExitCode: hasExitCode, ExitCode: asInt64(exitCode),
+			})
+		}
+		out[name] = detail
+	}
+	return out
+}
+
+func enrichRCStates(
+	states map[string]RCState,
+	managed map[string]bool,
+	details map[string]serviceDetail,
+	readFile func(string) ([]byte, error),
+) {
+	systemUptime := readProcUptime(readFile)
+	for name, state := range states {
+		detail := details[name]
+		var script []byte
+		if filepath.Base(name) == name && !strings.ContainsAny(name, `/\\`) {
+			script, _ = readFile(filepath.Join("/etc/init.d", name))
+		}
+		state.Kind = classifyService(managed[name], script, detail)
+		for _, instance := range detail.Instances {
+			if instance.Running && instance.PID > 0 {
+				state.PIDs = append(state.PIDs, instance.PID)
+			}
+		}
+		sort.Ints(state.PIDs)
+		state.MemoryBytes, state.Uptime = readProcessRuntime(state.PIDs, systemUptime, readFile)
+		states[name] = state
+	}
+}
+
+func classifyService(managed bool, script []byte, detail serviceDetail) ServiceKind {
+	if !managed {
+		return ServiceTask
+	}
+	// A procd one-shot leaves a successful, non-respawning instance behind after
+	// it completes (urandom_seed is the stock example). That is a task even
+	// though its script uses the procd instance API.
+	if len(detail.Instances) > 0 {
+		completed := true
+		for _, instance := range detail.Instances {
+			if instance.Running || instance.Respawn || !instance.HasExitCode || instance.ExitCode != 0 {
+				completed = false
+				break
+			}
+		}
+		if completed {
+			return ServiceTask
+		}
+	}
+	if bytes.Contains(script, []byte("procd_set_param command")) {
+		return ServiceDaemon
+	}
+	for _, instance := range detail.Instances {
+		if instance.HasCommand {
+			return ServiceDaemon
+		}
+	}
+	return ServiceSubsystem
+}
+
+func readProcUptime(readFile func(string) ([]byte, error)) float64 {
+	data, err := readFile("/proc/uptime")
+	if err != nil {
+		return 0
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return 0
+	}
+	uptime, _ := strconv.ParseFloat(fields[0], 64)
+	return uptime
+}
+
+func readProcessRuntime(pids []int, systemUptime float64, readFile func(string) ([]byte, error)) (memory, uptime int64) {
+	for _, pid := range pids {
+		base := filepath.Join("/proc", strconv.Itoa(pid))
+		if status, err := readFile(filepath.Join(base, "status")); err == nil {
+			memory += parseProcRSS(status)
+		}
+		if stat, err := readFile(filepath.Join(base, "stat")); err == nil {
+			if age := parseProcAge(stat, systemUptime); age > uptime {
+				uptime = age
+			}
+		}
+	}
+	return memory, uptime
+}
+
+func parseProcRSS(status []byte) int64 {
+	for _, line := range strings.Split(string(status), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == "VmRSS:" {
+			kib, _ := strconv.ParseInt(fields[1], 10, 64)
+			return kib * 1024
+		}
+	}
+	return 0
+}
+
+func parseProcAge(stat []byte, systemUptime float64) int64 {
+	// comm (field 2) may contain spaces and parentheses. Everything after its
+	// final ')' begins at state (field 3); starttime is therefore tail index 19.
+	end := bytes.LastIndexByte(stat, ')')
+	if end < 0 {
+		return 0
+	}
+	fields := strings.Fields(string(stat[end+1:]))
+	if len(fields) <= 19 {
+		return 0
+	}
+	startTicks, err := strconv.ParseUint(fields[19], 10, 64)
+	if err != nil || systemUptime <= 0 {
+		return 0
+	}
+	// Linux procfs exposes process starttime in USER_HZ, fixed at 100 for the
+	// OpenWrt Linux targets Verso supports (independent of CONFIG_HZ).
+	age := systemUptime - float64(startTicks)/100
+	if age < 0 {
+		return 0
+	}
+	return int64(age)
 }
 
 func dialPkgStatus(socket string) pkgStatusFn {

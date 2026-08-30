@@ -5,6 +5,7 @@ package server
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -13,16 +14,18 @@ import (
 )
 
 // TestServicesTable: procd's whole table renders flush-edged (not striped), all
-// facts as columns, no drawers — service, providing package, state, boot as
-// a checkmark, switch; the keep-list shows state but no switch.
+// facts as columns, no drawers — service/type, providing package, state,
+// runtime, restart and enabled switch; tasks and the keep-list have no switch.
 func TestServicesTable(t *testing.T) {
 	b := fakeBackend{access: true,
 		rcStates: map[string]openwrt.RCState{
-			"dnsmasq":           {Enabled: true, Running: true},
-			"cron":              {Enabled: true, Running: false},
-			"verso":             {Enabled: true, Running: true},
-			"verso-rpcd":        {Enabled: true, Running: false}, // helper round-trip corrects stale rc state
-			"verso-plugin-demo": {Enabled: true, Running: true},
+			"boot":              {Enabled: true, Kind: openwrt.ServiceTask},
+			"dnsmasq":           {Enabled: true, Running: true, Kind: openwrt.ServiceDaemon, PIDs: []int{1842}, MemoryBytes: 2411724, Uptime: 22440},
+			"cron":              {Enabled: true, Running: false, Kind: openwrt.ServiceDaemon},
+			"firewall":          {Enabled: true, Kind: openwrt.ServiceSubsystem},
+			"verso":             {Enabled: true, Running: true, Kind: openwrt.ServiceDaemon},
+			"verso-rpcd":        {Enabled: true, Running: false, Kind: openwrt.ServiceDaemon}, // helper round-trip corrects stale rc state
+			"verso-plugin-demo": {Enabled: true, Running: true, Kind: openwrt.ServiceDaemon},
 		},
 		pkgInstalledList: []openwrt.Package{
 			{Name: "dnsmasq", Version: "2.91-r1", Feed: "base", Installed: true, Services: []string{"dnsmasq"}},
@@ -33,15 +36,26 @@ func TestServicesTable(t *testing.T) {
 
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
-		`name="svc:dnsmasq"`,                // a plain service's switch
-		">dnsmasq</td>",                     // …and its providing package in the Package column
-		`name="on:demo"`,                    // the plugin's switch, manifest-addressed
-		"text-green-600",                    // the boot checkmark
-		"running",                           // the state pill
-		">Enabled</th>",                     // the switch column names the action
+		"Proceed with care",
+		"Stopping or disabling system services can make OpenWrt unstable or inaccessible.",
+		`name="svc:dnsmasq"`,           // a plain service's switch
+		">dnsmasq</td>",                // …and its providing package in the Package column
+		`name="on:demo"`,               // the plugin's switch, manifest-addressed
+		"running for 6h 14m",           // process age belongs with live state
+		">Runtime</th>",                // process facts share one compact column
+		"PID 1842 · 2.3 MiB",           // runtime keeps process identity and aggregate RSS
+		"tabular-nums text-slate-500",  // runtime matches the landing-page RX/TX ink
+		">Restart</th>",                // immediate restart sits before the switch
+		`aria-label="Restart dnsmasq"`, // the icon-only action remains accessible
+		`name="_action" value="restart"`,
+		">Enabled</th>", // the switch names and reflects persistent boot policy
+		"startup task",  // lifecycle type is carried beside the service name
+		"subsystem",
+		"runs at boot",                      // one-shot tasks are not misreported as stopped
+		"ring-slate-200 bg-slate-50 px-1.5", // type reuses the homepage topology-chip treatment
 		">verso</td>",                       // APK ownership joins verso-rpcd to the verso package
 		"font-mono text-base font-semibold", // package ownership uses fixed 16px/600 mono type
-		"max-w-4xl",                         // the service inventory uses the focused content width
+		"max-w-6xl",                         // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
@@ -53,6 +67,20 @@ func TestServicesTable(t *testing.T) {
 	if strings.Contains(body, `name="svc:verso-rpcd"`) {
 		t.Error("Verso's required privileged companion must not offer an off switch")
 	}
+	if strings.Contains(body, `name="svc:boot"`) {
+		t.Error("a completed startup task must not offer a meaningless on/off switch")
+	}
+	if strings.Contains(body, ">Starts at boot</th>") {
+		t.Error("boot policy must not be duplicated beside the Enabled switch")
+	}
+	if strings.Contains(body, `aria-label="Restart boot"`) {
+		t.Error("a completed startup task must not offer a meaningless restart action")
+	}
+	for _, service := range []string{"verso", "verso-rpcd"} {
+		if strings.Contains(body, `aria-label="Restart `+service+`"`) {
+			t.Errorf("keep-listed service %s must not offer a restart action", service)
+		}
+	}
 	if strings.Contains(body, "odd:bg-slate-50") {
 		t.Error("the services table is flat, never striped")
 	}
@@ -61,6 +89,34 @@ func TestServicesTable(t *testing.T) {
 	}
 	if strings.Contains(body, "Monitor — ") || strings.Contains(body, "Service — ") {
 		t.Error("the services table carries no drawers")
+	}
+	firewallAt := strings.Index(body, ">firewall<")
+	if firewallAt < 0 {
+		t.Fatal("firewall row missing")
+	}
+	firewallRowAt := strings.LastIndex(body[:firewallAt], "<tr")
+	if firewallRowAt < 0 {
+		t.Fatal("firewall table row malformed")
+	}
+	firewallRowEnd := strings.Index(body[firewallRowAt:], "</tr>")
+	if firewallRowEnd < 0 {
+		t.Fatal("firewall table row malformed")
+	}
+	firewallRow := body[firewallRowAt : firewallRowAt+firewallRowEnd]
+	if strings.Contains(firewallRow, "stopped") {
+		t.Errorf("a PID-less subsystem must not be called stopped: %s", firewallRow)
+	}
+	if !strings.Contains(firewallRow, `text-slate-500">—</span>`) {
+		t.Errorf("an indeterminate State must use the same secondary dash as Runtime: %s", firewallRow)
+	}
+	if strings.Contains(firewallRow, `name="svc:firewall"`) {
+		t.Errorf("firewall must not offer an enabled toggle: %s", firewallRow)
+	}
+	if !strings.Contains(firewallRow, `aria-label="Firewall must remain enabled"`) {
+		t.Errorf("firewall must explain its locked enablement: %s", firewallRow)
+	}
+	if !strings.Contains(firewallRow, `aria-label="Restart firewall"`) {
+		t.Errorf("firewall must remain restartable: %s", firewallRow)
 	}
 	nameAt := strings.Index(body, ">verso-rpcd<")
 	if nameAt < 0 {
@@ -119,8 +175,9 @@ func TestServicesSwitchCouplesBothFacts(t *testing.T) {
 		t.Fatalf("expected 303, got %d: %s", rec.Code, rec.Body.String())
 	}
 	postPlugin(t, s, "/system/services", url.Values{"on:demo": {"on"}})
+	postPlugin(t, s, "/system/services", url.Values{"service": {"dnsmasq"}, "_action": {"restart"}})
 	want := []string{"dnsmasq stop", "dnsmasq disable",
-		"verso-plugin-demo enable", "verso-plugin-demo start"}
+		"verso-plugin-demo enable", "verso-plugin-demo start", "dnsmasq restart"}
 	if len(inits) != len(want) {
 		t.Fatalf("rc actions = %v, want %v", inits, want)
 	}
@@ -128,6 +185,31 @@ func TestServicesSwitchCouplesBothFacts(t *testing.T) {
 		if inits[i] != want[i] {
 			t.Fatalf("rc actions = %v, want %v", inits, want)
 		}
+	}
+}
+
+func TestServicesSwitchFetchAvoidsRedirectRender(t *testing.T) {
+	var inits []string
+	s := pluginsServer(t, fakeBackend{access: true, rcInits: &inits}, true, mgmtManifest())
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	sess, _ := s.sessions.get(token)
+	form := url.Values{"svc:dnsmasq": {"off"}, "_csrf": {sess.csrf}}
+	req := httptest.NewRequest(http.MethodPost, "/system/services", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Verso-Interaction", "switch")
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("switch fetch status = %d, want 204: %s", rec.Code, rec.Body.String())
+	}
+	want := []string{"dnsmasq stop", "dnsmasq disable"}
+	if len(inits) != len(want) || inits[0] != want[0] || inits[1] != want[1] {
+		t.Fatalf("rc actions = %v, want %v", inits, want)
 	}
 }
 
@@ -142,6 +224,9 @@ func TestServicesRefusals(t *testing.T) {
 	}
 	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"verso-rpcd"}, "_primary": {"stop"}}); rec.Code != http.StatusOK {
 		t.Errorf("verso-rpcd stop should be refused, got %d", rec.Code)
+	}
+	if rec := postPlugin(t, s, "/system/services", url.Values{"svc:firewall": {"off"}}); rec.Code != http.StatusOK {
+		t.Errorf("firewall disable should be refused, got %d", rec.Code)
 	}
 	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"dnsmasq"}, "_action": {"reboot-the-moon"}}); rec.Code != http.StatusBadRequest {
 		t.Errorf("unknown verb: got %d, want 400", rec.Code)

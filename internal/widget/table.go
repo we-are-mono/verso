@@ -25,6 +25,8 @@ import (
 //	"comment"  — optional free text (e.g. a UCI name), muted, blank when absent
 //	"num"      — right-aligned tabular figures (counters); muted
 //	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
+//	"runtime"  — compact process facts; sans, muted, tabular and non-wrapping
+//	"action"   — a compact icon-only POST action
 //	"reorder"  — a compact drag handle; interaction is shell-owned
 //	"toggle"   — an on/off switch (a section's enabled state)
 //	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
@@ -166,7 +168,7 @@ type TableCell struct {
 	ChipIcon     string          `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
 	LeadIcon     string          `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
 	Key          string          `json:"key,omitempty"`           // optional stable live-update hook; not displayed
-	Muted        bool            `json:"muted,omitempty"`         // text/mono cells: render the value as secondary ink (a quiet or absent value)
+	Muted        bool            `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
 	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
 	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
