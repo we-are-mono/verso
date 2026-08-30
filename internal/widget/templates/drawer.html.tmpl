@@ -20,8 +20,8 @@
         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
         x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-        class="absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
-        <header class="flex items-center justify-between px-6 py-4">
+        class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+        <header class="flex shrink-0 items-center justify-between px-6 py-4">
           {{/* The title row can carry state: a status dot (pulsing when it marks
                something live) and the category chip the rows wear elsewhere. */}}
           <div class="flex min-w-0 items-center gap-2.5">
@@ -48,7 +48,7 @@
              would promise otherwise. */}}
         {{/* A fact list following other content gets double the stack's gap —
              the drawer's closing section starts as its own breath. */}}
-        <div class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+        <div class="space-y-6 overflow-x-hidden px-6 py-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
           {{range .Children}}{{.}}{{end}}
         </div>
       </aside>

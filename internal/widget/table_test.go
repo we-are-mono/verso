@@ -94,7 +94,8 @@ func TestRenderTableEndpoints(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		"guest", "10.0.0.30", "router",
-		"text-sky-700", // router (this device) carries the accent
+		"text-sky-700 dark:text-sky-400",    // router stays bright enough on dark surfaces
+		"font-mono text-base font-semibold", // device addresses use the standard mono table type
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("endpoints missing %q:\n%s", want, got)
@@ -109,6 +110,57 @@ func TestRenderTableEndpoints(t *testing.T) {
 	}
 	if !strings.Contains(got, lucideIcons["device"]) {
 		t.Errorf("device endpoint should use the device glyph:\n%s", got)
+	}
+}
+
+func TestRenderPrimaryEndpointOneStepLarger(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{{Cells: []TableCell{{Endpoints: []TableEndpoint{
+			{Kind: "zone", Label: "guest"},
+		}}}}},
+	})
+	if !strings.Contains(got, "whitespace-nowrap text-base font-semibold text-slate-900") {
+		t.Errorf("primary endpoint must use the larger identity treatment:\n%s", got)
+	}
+}
+
+func TestRenderReorderHandle(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{{ID: "allow-dns", Cells: []TableCell{
+			{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}},
+		}}},
+	})
+	for _, want := range []string{
+		"data-verso-reorder-table", "data-verso-reorder-row", "data-verso-reorder-handle",
+		`aria-label="Reorder allow-dns"`, "cursor-grab", "active:cursor-grabbing",
+		lucideIcons["grip-vertical"], "text-base font-semibold text-slate-900",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("reorderable table missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderTableGroupHeader(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{{ID: "allow-dns", Group: &TableGroup{
+			Label: "Guest → Router", Chain: "input_guest", Count: 3,
+		}, Cells: []TableCell{{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}}}}},
+	})
+	for _, want := range []string{
+		`colspan="2"`, "Guest → Router", "input_guest", "· 3 rules",
+		"verso-table-group bg-slate-50", "px-3 py-3",
+		"font-mono text-base font-semibold text-slate-500",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("grouped table missing %q:\n%s", want, got)
+		}
 	}
 }
 
@@ -150,8 +202,8 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 			{Text: "br-lan.10", Chips: []TableChip{{Icon: "zone", Label: "family"}}},
 		}}},
 	})
-	if !strings.Contains(got, `<span class="text-slate-900">br-lan.10</span>`) {
-		t.Errorf("referenced interface should use regular-weight identity text:\n%s", got)
+	if !strings.Contains(got, `<span class="font-mono text-base font-semibold text-slate-900">br-lan.10</span>`) {
+		t.Errorf("referenced interface should render mono at the MAC column's size and weight:\n%s", got)
 	}
 	if !strings.Contains(got, ">family</span>") || !strings.Contains(got, lucideIcons["zone"]) {
 		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
@@ -181,17 +233,18 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",     // the shared rotate-on-open affordance
 		lucideIcons["lock"], // the stock-rules padlock
-		"-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200", // full-bleed divider; hover wash clips to the card's bottom radius
+		`colspan="7"`, "border-t border-slate-200", "verso-table-seam-row",
+		"justify-start", "text-left", "group-hover:underline",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("seam missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Count(got, "rounded-2xl") != 1 {
-		t.Errorf("the seam must not add a second card:\n%s", got)
+	if strings.Contains(got, "hover:bg-slate-50") {
+		t.Errorf("the table seam must not gain a hover background:\n%s", got)
 	}
-	if strings.Count(got, "<thead>") != 2 {
-		t.Errorf("the seam repeats the column head:\n%s", got)
+	if strings.Count(got, "<table") != 1 || strings.Count(got, "<thead>") != 1 {
+		t.Errorf("the seam rows must share the original table and column head:\n%s", got)
 	}
 	if strings.Contains(render(t, r, redirectsTable()), "<details") {
 		t.Error("a table without a seam should render no details element")
@@ -216,9 +269,13 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		`x-data="modal"`, `@click="show"`, ">Details<", // opens from the trailing link
+		"dark:text-sky-400 dark:hover:text-sky-300", // stays legible on dark surfaces
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
 		"dark:bg-black/60",
+		`verso-drawer-scrollbar absolute inset-y-0`,
+		`<header class="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">`,
+		`class="space-y-6 px-5 pt-2.5 pb-5"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -227,6 +284,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	for _, absent := range []string{
 		`@click="showFromRow"`, // the row itself is not clickable
 		"m9 18 6-6-6-6",        // no row chevron — the "Details" link is the affordance
+		`<header class="flex items-center justify-between border-b`,
 	} {
 		if strings.Contains(got, absent) {
 			t.Errorf("inert row must not contain %q:\n%s", absent, got)
@@ -237,21 +295,53 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	}
 }
 
+func TestRenderTableRowDrawerCanHideVisibleTitle(t *testing.T) {
+	r := newRenderer(t)
+	tbl := redirectsTable()
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
+	got := render(t, r, tbl)
+	for _, want := range []string{`<h3 class="sr-only">Edit redirect</h3>`, "absolute top-5 right-5", "pt-5", `aria-label="Close"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("titleless drawer missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, `<h3 class="text-base font-medium text-slate-900">Edit redirect</h3>`) {
+		t.Errorf("hidden drawer title must not remain visible:\n%s", got)
+	}
+}
+
+func TestRenderTableCustomDrawerAction(t *testing.T) {
+	r := newRenderer(t)
+	tbl := redirectsTable()
+	tbl.DrawerLabel = "Edit"
+	tbl.DrawerIcon = "pencil"
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit rule"}
+	got := render(t, r, tbl)
+	for _, want := range []string{"gap-1.5", lucideIcons["pencil"], ">Edit</button>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("custom drawer action missing %q:\n%s", want, got)
+		}
+	}
+}
+
 // TestDecodeTableRowDrawer: the drawer's children decode recursively, and an
 // unknown child fails loudly.
 func TestDecodeTableRowDrawer(t *testing.T) {
 	w, err := Decode([]byte(`{
 		"type": "table",
 		"columns": [{"label":"A"}],
-		"rows": [{"id":"r1","cells":[{"text":"1"}],
-			"drawer": {"title":"Edit","children":[{"type":"text","markdown":"body"}]}}]
+		"rows": [{"id":"r1","group":{"label":"WAN → Router","chain":"input_wan","count":2},"cells":[{"text":"1"}],
+			"drawer": {"title":"Edit","hide_title":true,"children":[{"type":"text","markdown":"body"}]}}]
 	}`))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	tb := w.(*Table)
-	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || len(tb.Rows[0].Drawer.Children) != 1 {
+	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.HideTitle || len(tb.Rows[0].Drawer.Children) != 1 {
 		t.Errorf("row drawer not decoded: %+v", tb.Rows[0].Drawer)
+	}
+	if tb.Rows[0].Group == nil || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Count != 2 {
+		t.Errorf("row group not decoded: %+v", tb.Rows[0].Group)
 	}
 	if _, err := Decode([]byte(`{"type":"table","columns":[],"rows":[{"cells":[],"drawer":{"title":"x","children":[{"type":"nope"}]}}]}`)); err == nil {
 		t.Error("unknown drawer child should fail loudly")

@@ -208,6 +208,370 @@ document.addEventListener("alpine:init", function () {
   });
 })();
 
+// Compact multi-value inputs. Each chip owns a hidden input, preserving the same
+// repeated-field POST contract as the expanded list widget.
+(function () {
+  function addToken(input) {
+    var list = input.closest("[data-verso-token-list]");
+    var value = input.value.trim().replace(/,$/, "");
+    if (!list || !value) return;
+    var exists = [].some.call(list.querySelectorAll("[data-verso-token] input"), function (item) {
+      return item.value === value;
+    });
+    if (exists) {
+      input.value = "";
+      return;
+    }
+    var chip = document.createElement("span");
+    chip.dataset.versoToken = "";
+    chip.className = "inline-flex items-center gap-1 rounded-md bg-slate-100 py-1 pr-1 pl-2 font-mono text-sm font-semibold text-slate-700 dark:bg-gray-700 dark:text-gray-200";
+    var hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.name = list.dataset.versoTokenName;
+    hidden.value = value;
+    var label = document.createElement("span");
+    label.textContent = value;
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.dataset.versoTokenRemove = "";
+    remove.setAttribute("aria-label", "Remove " + value);
+    remove.className = "grid size-5 place-items-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:bg-gray-600 dark:hover:text-gray-100";
+    remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    chip.appendChild(hidden);
+    chip.appendChild(label);
+    chip.appendChild(remove);
+    list.insertBefore(chip, input);
+    input.value = "";
+  }
+
+  document.addEventListener("keydown", function (event) {
+    var input = event.target.closest && event.target.closest("[data-verso-token-input]");
+    if (!input || (event.key !== "Enter" && event.key !== ",")) return;
+    event.preventDefault();
+    addToken(input);
+  });
+  document.addEventListener("focusout", function (event) {
+    var input = event.target.closest && event.target.closest("[data-verso-token-input]");
+    if (input) addToken(input);
+  });
+  document.addEventListener("click", function (event) {
+    var remove = event.target.closest && event.target.closest("[data-verso-token-remove]");
+    if (remove) remove.closest("[data-verso-token]").remove();
+  });
+})();
+
+// Typed optional-condition builders. Plugins declare the full catalogue in
+// schema; the shell owns adding/removing the ordinary form widgets on demand.
+(function () {
+  function refresh(builder) {
+    var empty = builder.querySelector("[data-verso-condition-empty]");
+    var list = builder.querySelector("[data-verso-condition-list]");
+    if (empty && list) empty.classList.toggle("hidden", list.children.length !== 0);
+  }
+
+  document.addEventListener("click", function (event) {
+    var add = event.target.closest && event.target.closest("[data-verso-condition-add]");
+    if (add) {
+      var builder = add.closest("[data-verso-conditions]");
+      var select = builder && builder.querySelector("[data-verso-condition-select]");
+      var key = select && select.value;
+      var template = key && builder.querySelector('template[data-verso-condition-template="' + CSS.escape(key) + '"]');
+      var list = builder && builder.querySelector("[data-verso-condition-list]");
+      if (!template || !list) return;
+      list.appendChild(template.content.cloneNode(true));
+      var option = select.querySelector('option[value="' + CSS.escape(key) + '"]');
+      if (option) {
+        option.disabled = true;
+        option.hidden = true;
+      }
+      select.value = "";
+      refresh(builder);
+      return;
+    }
+
+    var remove = event.target.closest && event.target.closest("[data-verso-condition-remove]");
+    if (!remove) return;
+    var item = remove.closest("[data-verso-condition]");
+    var builder = remove.closest("[data-verso-conditions]");
+    if (!item || !builder) return;
+    var key = item.dataset.versoCondition;
+    var option = builder.querySelector('option[value="' + CSS.escape(key) + '"]');
+    if (option) {
+      option.disabled = false;
+      option.hidden = false;
+    }
+    item.remove();
+    refresh(builder);
+  });
+})();
+
+// Reorderable table rows. The shell owns the interaction so plugins only declare
+// a reorder column and stable row IDs. Dragging is constrained to the row's
+// evaluation group; this preview changes DOM order only, while a real form can
+// consume the emitted verso:reorder event and stage the returned ID sequence.
+(function () {
+  var drag = null;
+  var hoverTimer = 0;
+  var hoverRow = null;
+  var hoverBefore = false;
+  var hoverDelay = 80;
+
+  function clearHover() {
+    window.clearTimeout(hoverTimer);
+    hoverTimer = 0;
+    hoverRow = null;
+  }
+
+  function stripBehaviour(root) {
+    var nodes = [root].concat([].slice.call(root.querySelectorAll("*")));
+    nodes.forEach(function (node) {
+      [].slice.call(node.attributes || []).forEach(function (attr) {
+        if (attr.name === "id" || attr.name.indexOf("x-") === 0 || attr.name.charAt(0) === "@" || attr.name.charAt(0) === ":") {
+          node.removeAttribute(attr.name);
+        }
+      });
+      if (/^(BUTTON|INPUT|SELECT|TEXTAREA|A)$/.test(node.tagName)) {
+        node.setAttribute("tabindex", "-1");
+      }
+    });
+  }
+
+  function lockColumns(table, row) {
+    var group = document.createElement("colgroup");
+    [].forEach.call(row.cells, function (cell) {
+      var col = document.createElement("col");
+      col.style.width = cell.getBoundingClientRect().width + "px";
+      group.appendChild(col);
+    });
+    group.dataset.versoReorderLock = "";
+    table.insertBefore(group, table.firstChild);
+    var previousLayout = table.style.tableLayout;
+    table.style.tableLayout = "fixed";
+    return { group: group, layout: previousLayout };
+  }
+
+  function floatingRow(row, tableRect, rowRect) {
+    var shell = document.createElement("div");
+    shell.className = "verso-reorder-float";
+    shell.setAttribute("aria-hidden", "true");
+    shell.inert = true;
+    shell.style.left = tableRect.left + "px";
+    shell.style.top = rowRect.top + "px";
+    // Keep the cloned table on its original grid and extend only the card's
+    // trailing edge. The action remains aligned with the source row while the
+    // wider card gives it room inside the rounded border.
+    shell.style.width = tableRect.width + 16 + "px";
+    shell.style.height = rowRect.height + "px";
+
+    var table = document.createElement("table");
+    table.className = "text-sm";
+    table.style.width = tableRect.width + "px";
+    var body = document.createElement("tbody");
+    var copy = document.createElement("tr");
+    [].forEach.call(row.cells, function (cell) {
+      var cloned = cell.cloneNode(true);
+      cloned.style.width = cell.getBoundingClientRect().width + "px";
+      stripBehaviour(cloned);
+      copy.appendChild(cloned);
+    });
+    body.appendChild(copy);
+    table.appendChild(body);
+    shell.appendChild(table);
+    document.body.appendChild(shell);
+    return shell;
+  }
+
+  function placeholder(row, height) {
+    var tr = document.createElement("tr");
+    tr.className = "verso-reorder-placeholder";
+    tr.dataset.versoReorderGroup = row.dataset.versoReorderGroup || "";
+    var td = document.createElement("td");
+    td.colSpan = row.cells.length;
+    var space = document.createElement("div");
+    space.style.height = Math.max(0, height - 1) + "px";
+    td.appendChild(space);
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function rowsInGroup() {
+    if (!drag) return [];
+    return [].filter.call(drag.table.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
+      return row !== drag.row && row.dataset.versoReorderGroup === drag.group && row.style.display !== "none";
+    });
+  }
+
+  function animateRows(before) {
+    rowsInGroup().forEach(function (row) {
+      var oldTop = before.get(row);
+      if (oldTop === undefined) return;
+      var delta = oldTop - row.getBoundingClientRect().top;
+      if (!delta || typeof row.animate !== "function") return;
+      row.animate(
+        [{ transform: "translateY(" + delta + "px)" }, { transform: "translateY(0)" }],
+        { duration: 170, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+      );
+    });
+  }
+
+  function placeAt(target, beforeTarget) {
+    if (!drag || !target || target === drag.row) return;
+    var rows = rowsInGroup();
+    var before = new Map();
+    rows.forEach(function (row) { before.set(row, row.getBoundingClientRect().top); });
+
+    var reference = beforeTarget ? target : target.nextSibling;
+    if (reference === drag.row) reference = drag.row.nextSibling;
+    target.parentNode.insertBefore(drag.placeholder, reference);
+    target.parentNode.insertBefore(drag.row, drag.placeholder.nextSibling);
+    animateRows(before);
+  }
+
+  function scheduleAt(clientX, clientY) {
+    var hit = document.elementFromPoint(clientX, clientY);
+    var row = hit && hit.closest && hit.closest("tr[data-verso-reorder-row]");
+    if (!row || row === drag.row || row.closest("table") !== drag.table || row.dataset.versoReorderGroup !== drag.group) {
+      clearHover();
+      return;
+    }
+    var rect = row.getBoundingClientRect();
+    var before = clientY < rect.top + rect.height / 2;
+    if (row === hoverRow && before === hoverBefore) return;
+    clearHover();
+    hoverRow = row;
+    hoverBefore = before;
+    hoverTimer = window.setTimeout(function () {
+      placeAt(row, before);
+      hoverTimer = 0;
+    }, hoverDelay);
+  }
+
+  function move(clientX, clientY) {
+    if (!drag) return;
+    var top = clientY - drag.offsetY;
+    top = Math.max(8, Math.min(window.innerHeight - drag.height - 8, top));
+    drag.floating.style.top = top + "px";
+    if (clientY < 48) window.scrollBy(0, -10);
+    else if (clientY > window.innerHeight - 48) window.scrollBy(0, 10);
+    scheduleAt(clientX, clientY);
+  }
+
+  function restoreTable() {
+    if (!drag) return;
+    drag.lock.group.remove();
+    drag.table.style.tableLayout = drag.lock.layout;
+  }
+
+  function announceOrder() {
+    if (!drag) return;
+    var order = [].map.call(drag.table.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
+      return row.dataset.versoReorderId;
+    }).filter(Boolean);
+    drag.table.dispatchEvent(new CustomEvent("verso:reorder", {
+      bubbles: true,
+      detail: { group: drag.group, order: order },
+    }));
+  }
+
+  function complete() {
+    if (!drag) return;
+    drag.row.style.display = drag.display;
+    drag.row.removeAttribute("data-verso-reorder-active");
+    drag.placeholder.remove();
+    drag.origin.remove();
+    drag.floating.remove();
+    restoreTable();
+    document.body.classList.remove("verso-reordering");
+    announceOrder();
+    drag = null;
+  }
+
+  function drop() {
+    if (!drag) return;
+    clearHover();
+    var target = drag.placeholder.getBoundingClientRect();
+    var currentTop = parseFloat(drag.floating.style.top) || target.top;
+    if (typeof drag.floating.animate !== "function") {
+      complete();
+      return;
+    }
+    var animation = drag.floating.animate([
+      { top: currentTop + "px", transform: "scaleY(1.01)", opacity: 0.98 },
+      { top: target.top + "px", transform: "scaleY(1)", opacity: 1 },
+    ], { duration: 150, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "forwards" });
+    animation.onfinish = complete;
+    animation.oncancel = complete;
+  }
+
+  function cancel() {
+    if (!drag) return;
+    clearHover();
+    drag.origin.parentNode.insertBefore(drag.placeholder, drag.origin.nextSibling);
+    drag.origin.parentNode.insertBefore(drag.row, drag.placeholder.nextSibling);
+    complete();
+  }
+
+  document.addEventListener("pointerdown", function (event) {
+    var handle = event.target.closest && event.target.closest("[data-verso-reorder-handle]");
+    if (!handle || drag || event.button !== 0) return;
+    var row = handle.closest("tr[data-verso-reorder-row]");
+    var table = row && row.closest("table[data-verso-reorder-table]");
+    if (!row || !table) return;
+    event.preventDefault();
+
+    var rowRect = row.getBoundingClientRect();
+    var tableRect = table.getBoundingClientRect();
+    var origin = document.createComment("verso-reorder-origin");
+    row.parentNode.insertBefore(origin, row);
+    var gap = placeholder(row, rowRect.height);
+    row.parentNode.insertBefore(gap, row);
+    var lock = lockColumns(table, row);
+    var floating = floatingRow(row, tableRect, rowRect);
+    var display = row.style.display;
+    row.style.display = "none";
+    row.setAttribute("data-verso-reorder-active", "");
+    document.body.classList.add("verso-reordering");
+
+    drag = {
+      pointer: event.pointerId,
+      handle: handle,
+      row: row,
+      table: table,
+      group: row.dataset.versoReorderGroup || "",
+      placeholder: gap,
+      origin: origin,
+      lock: lock,
+      floating: floating,
+      display: display,
+      offsetY: event.clientY - rowRect.top,
+      height: rowRect.height,
+    };
+    try { handle.setPointerCapture(event.pointerId); } catch (e) { /* capture is optional */ }
+    move(event.clientX, event.clientY);
+  });
+
+  document.addEventListener("pointermove", function (event) {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    event.preventDefault();
+    move(event.clientX, event.clientY);
+  }, { passive: false });
+
+  document.addEventListener("pointerup", function (event) {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    try { drag.handle.releasePointerCapture(event.pointerId); } catch (e) { /* already released */ }
+    drop();
+  });
+
+  document.addEventListener("pointercancel", function (event) {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    cancel();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && drag) cancel();
+  });
+})();
+
 // Opening any <details> (a table seam, a disclosure) reveals content the browser
 // won't scroll to on its own — nudge it into view. Short content scrolls minimally
 // ("nearest"); content taller than the viewport aligns its summary to the top so
@@ -336,9 +700,13 @@ document.addEventListener(
       tr.classList.toggle("verso-filter-out", !!q && tr.textContent.toLowerCase().indexOf(q) === -1);
     });
     [].forEach.call(document.querySelectorAll("main details"), function (d) {
-      if (q && !d.open && d.querySelector("tbody tr:not(.verso-filter-out)")) {
+      var seam = d.closest("tbody");
+      var seamMatch = seam && seam.querySelector(".verso-table-seam-row:not(.verso-filter-out)");
+      if (q && !d.open && (d.querySelector("tbody tr:not(.verso-filter-out)") || seamMatch)) {
         d.dataset.versoQuietOpen = "1";
         d.open = true;
+        var control = d.closest(".verso-table-seam-control");
+        if (control) control.classList.remove("verso-filter-out");
       }
     });
     [].forEach.call(document.querySelectorAll("main section"), function (sec) {

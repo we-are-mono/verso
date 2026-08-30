@@ -13,28 +13,47 @@
 {{define "table.chip"}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20">{{if .Icon}}<span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
 {{define "table.rows"}}
       {{range .}}
+      {{if .Group}}
+      <tr class="verso-table-group bg-slate-50{{if .Seam}} verso-table-seam-row{{end}}">
+        <th colspan="{{.ColumnSpan}}" class="border-b border-slate-200 px-3 py-3 text-left font-normal">
+          <span class="flex items-baseline gap-3">
+            <span class="text-sm font-semibold text-slate-900">{{.Group.Label}}</span>
+            <span class="flex-1"></span>
+            <span class="font-mono text-base font-semibold text-slate-500">{{.Group.Chain}}</span>
+            <span class="text-sm text-slate-500">· {{.Group.Count}} {{if eq .Group.Count 1}}rule{{else}}rules{{end}}</span>
+          </span>
+        </th>
+      </tr>
+      {{end}}
       {{/* Rows are inert: no whole-row click, so cell values stay selectable and
            copy-pastable. A row with a drawer still hosts its own modal scope, but
            it opens from the trailing "Details" link, never the row. The panel
            teleports to <body>. */}}
       {{if .Drawer}}
-      <tr x-data="modal" class="group"{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
+      <tr x-data="modal" class="group{{if .Seam}} verso-table-seam-row{{end}}"{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{else}}
-      <tr class="group"{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
+      <tr class="group{{if .Seam}} verso-table-seam-row{{end}}"{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{end}}
         {{range .Cells}}
-        {{if eq .Kind "toggle"}}
+        {{if eq .Kind "reorder"}}
+        <td class="w-8 border-b border-slate-200 py-3 pr-2 pl-0 align-middle group-last:border-b-0">
+          <button type="button" data-verso-reorder-handle aria-label="Reorder {{.RowID}}" title="Drag to reorder" class="grid size-6 cursor-grab touch-none place-items-center text-slate-300 transition-colors select-none hover:text-slate-500 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
+            {{icon "grip-vertical" "size-4"}}
+          </button>
+        </td>
+        {{else if eq .Kind "toggle"}}
         {{/* a toggle cell without a form name is an empty slot — rows whose
              thing has no on/off stay blank, not decorated with a dead switch. */}}
-        <td class="w-11 border-b border-slate-200 py-3 pr-1 pl-3.5 align-middle first:pl-0 group-last:border-b-0">
+        <td class="w-11 border-b border-slate-200 py-3 pr-1 pl-3.5 align-middle first:pl-0 last:pr-0 group-last:border-b-0">
           {{if .Name}}{{template "switch.html.tmpl" .}}{{end}}
         </td>
         {{else if eq .Kind "endpoint"}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
+          {{$primary := .Primary}}
           <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
             {{range .Endpoints}}
-            <span class="inline-flex items-center gap-1.5 whitespace-nowrap {{if eq .Kind "router"}}font-semibold text-sky-700{{else if eq .Kind "device"}}font-mono text-[0.9rem] tabular-nums text-slate-900{{else if eq .Kind "any"}}text-slate-500{{else}}font-semibold text-slate-900{{end}}">
-              <span class="{{if eq .Kind "router"}}text-sky-600{{else}}text-slate-400{{end}}">{{icon .Icon "size-3.5"}}</span>{{.Label}}
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap {{if $primary}}text-base {{end}}{{if eq .Kind "router"}}font-semibold text-sky-700 dark:text-sky-400{{else if eq .Kind "device"}}font-mono text-base font-semibold tabular-nums text-slate-900{{else if eq .Kind "any"}}text-slate-500{{else}}font-semibold text-slate-900{{end}}">
+              <span class="{{if eq .Kind "router"}}text-sky-600 dark:text-sky-400{{else}}text-slate-400{{end}}">{{icon .Icon "size-3.5"}}</span>{{.Label}}
             </span>
             {{end}}
           </span>
@@ -44,7 +63,8 @@
              category chip inline after it (e.g. the device's zone). */}}
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle group-last:border-b-0">
           <span class="inline-flex items-center gap-2">
-            <span class="{{if .Primary}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{end}}text-slate-900">{{.Text}}</span>
+            {{if .LeadIcon}}<span class="shrink-0 text-slate-400">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
+            <span class="{{if .Primary}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-semibold {{end}}text-slate-900">{{.Text}}</span>
             {{if .Chip}}<span class="inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20">{{if .ChipIcon}}<span class="text-slate-400">{{icon .ChipIcon "size-3.5"}}</span>{{end}}{{.Chip}}</span>{{end}}
             {{range .Chips}}{{template "table.chip" .}}{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
@@ -150,7 +170,7 @@
              click target in the row. Blank when the row has nothing behind it,
              or when its drawer already opens from an in-cell button. */}}
         <td class="border-b border-slate-200 px-3.5 py-3 pr-1 text-right align-middle whitespace-nowrap last:pr-0 group-last:border-b-0">
-          {{if and .Drawer (not .Inline)}}<button type="button" @click="show" class="text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">Details</button>{{end}}
+          {{if and .Drawer (not .Inline)}}<button type="button" @click="show" class="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-sky-400 dark:hover:text-sky-300">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</button>{{end}}
         </td>
         {{end}}
         {{if .Drawer}}
@@ -161,15 +181,21 @@
               x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
               x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
               x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-              class="absolute inset-y-0 right-0 flex w-full {{if .DrawerWide}}max-w-2xl{{else}}max-w-md{{end}} flex-col border-l border-slate-200 bg-white shadow-xl focus:outline-none">
-              <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .DrawerWide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+              {{if .DrawerHideTitle}}
+              <h3 class="sr-only">{{.DrawerTitle}}</h3>
+              <button type="button" @click="hide" aria-label="Close"
+                class="absolute top-5 right-5 z-10 rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
+                {{icon "x" "size-5"}}
+              </button>
+              {{else}}<header class="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">
                 <h3 class="text-base font-medium text-slate-900">{{.DrawerTitle}}</h3>
                 <button type="button" @click="hide" aria-label="Close"
                   class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
                   {{icon "x" "size-5"}}
                 </button>
-              </header>
-              <div class="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+              </header>{{end}}
+              <div class="space-y-6 px-5 {{if .DrawerHideTitle}}pt-5{{else}}pt-2.5{{end}} pb-5">
                 {{range .DrawerBody}}{{.}}{{end}}
               </div>
             </aside>
@@ -183,7 +209,7 @@
     <thead>
       <tr>
         {{range .Columns}}
-        <th scope="col" class="whitespace-nowrap border-b border-slate-200 px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0 text-sm font-light text-slate-500 {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-slate-200 {{if eq .Kind "reorder"}}w-8 py-0 pr-2 pl-0{{else}}px-3.5 pt-4 pb-2.5 first:pl-0 last:pr-0{{end}} text-sm font-light text-slate-500 {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else}}text-left{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-slate-200"></th>{{end}}
       </tr>
@@ -214,32 +240,26 @@
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  <table class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
+  <table{{if .Reorderable}} data-verso-reorder-table{{end}} class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
 {{template "table.rows" .Rows}}
+      {{if .SeamSummary}}
+      {{/* A genuine spanning row keeps the collapsed affordance and every
+           revealed row in this table's single column-sizing context. */}}
+      <tr class="verso-table-seam-control">
+        <td colspan="{{.ColumnSpan}}" class="border-t border-slate-200 p-0 text-left">
+          <details>
+            <summary class="group flex w-full cursor-pointer items-center justify-start gap-1.5 py-3 text-left text-sm font-semibold text-sky-700 transition-colors select-none hover:text-sky-800 [&::-webkit-details-marker]:hidden">
+              {{icon "chevron-right" "verso-chevron size-4"}}
+              {{icon "lock" "size-4 text-slate-400"}}
+              <span class="underline-offset-2 group-hover:underline">{{.SeamSummary}}</span>
+            </summary>
+          </details>
+        </td>
+      </tr>
+{{template "table.rows" .SeamRows}}
+      {{end}}
     </tbody>
   </table>
-  {{if .SeamSummary}}
-  {{/* the seam: extra rows folded behind a native <details> — in a card, a
-       full-bleed divider inside the same box. verso.js nudges the opened
-       content into view. */}}
-  <details class="{{if .Card}}-mx-5 overflow-hidden rounded-b-2xl border-t border-slate-200{{end}}">
-    {{/* the fold affordance speaks the same voice as the settings seam:
-         chevron with the label, interactive sky; the lock marks stock rows. */}}
-    <summary class="flex cursor-pointer items-center gap-1.5 {{if .Card}}px-5{{else}}px-3{{end}} py-3 text-sm font-semibold text-sky-700 transition-colors select-none hover:bg-slate-50 hover:text-sky-800 [&::-webkit-details-marker]:hidden">
-      {{icon "chevron-right" "verso-chevron size-4"}}
-      {{icon "lock" "size-4 text-slate-400"}}
-      {{.SeamSummary}}
-    </summary>
-    <div class="{{if .Card}}px-5 pb-1{{end}}">
-      <table class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
-        {{if .HasLabels}}{{template "table.head" .}}{{end}}
-        <tbody>
-{{template "table.rows" .SeamRows}}
-        </tbody>
-      </table>
-    </div>
-  </details>
-  {{end}}
 </div>

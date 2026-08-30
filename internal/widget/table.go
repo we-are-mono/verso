@@ -25,6 +25,7 @@ import (
 //	"comment"  — optional free text (e.g. a UCI name), muted, blank when absent
 //	"num"      — right-aligned tabular figures (counters); muted
 //	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
+//	"reorder"  — a compact drag handle; interaction is shell-owned
 //	"toggle"   — an on/off switch (a section's enabled state)
 //	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
 //	"endpoint" — one or more traffic endpoints, each a type icon + label
@@ -36,10 +37,12 @@ import (
 //	             renders a faint dash — pills stay meaningful because most
 //	             cells in such a column are empty or quiet
 type Table struct {
-	Style   string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, flush edges, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "lined" — inset hairline rows, for a live listing like a process table | "card" — the framed box
-	Columns []TableColumn `json:"columns"`
-	Rows    []TableRow    `json:"rows"`
-	Seam    *TableSeam    `json:"seam,omitempty"`
+	Style       string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, flush edges, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "lined" — inset hairline rows, for a live listing like a process table | "card" — the framed box
+	Columns     []TableColumn `json:"columns"`
+	Rows        []TableRow    `json:"rows"`
+	Seam        *TableSeam    `json:"seam,omitempty"`
+	DrawerLabel string        `json:"drawer_label,omitempty"` // trailing drawer action; defaults to "Details"
+	DrawerIcon  string        `json:"drawer_icon,omitempty"`
 
 	// The flat style's optional header band — a top row aligned to the table's
 	// own edges: the listing's name, a quiet detail beside it (a count/summary),
@@ -87,9 +90,18 @@ type TableColumn struct {
 // pointer; controls inside the row keep their own meaning).
 type TableRow struct {
 	ID     string      `json:"id,omitempty"`
-	Key    string      `json:"key,omitempty"` // optional stable live-update hook; not displayed
+	Key    string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
+	Group  *TableGroup `json:"group,omitempty"` // optional evaluation-lane header before this row
 	Cells  []TableCell `json:"cells"`
 	Drawer *RowDrawer  `json:"drawer,omitempty"`
+}
+
+// TableGroup introduces a run of rows that share one effective evaluation lane.
+// Label is human-facing; Chain keeps firewall4's exact name visible to experts.
+type TableGroup struct {
+	Label string `json:"label"`
+	Chain string `json:"chain"`
+	Count int    `json:"count"`
 }
 
 // RowDrawer is a row's edit surface: a right slide-in panel — typically a form
@@ -98,9 +110,10 @@ type TableRow struct {
 // widens the panel ("" reading width | "wide") for detail views that carry
 // tables beside prose.
 type RowDrawer struct {
-	Title    string   `json:"title"`
-	Size     string   `json:"size,omitempty"`
-	Children []Widget `json:"children"`
+	Title     string   `json:"title"`
+	Size      string   `json:"size,omitempty"`
+	HideTitle bool     `json:"hide_title,omitempty"`
+	Children  []Widget `json:"children"`
 }
 
 // UnmarshalJSON decodes the drawer's children recursively through Decode, so an
@@ -108,23 +121,26 @@ type RowDrawer struct {
 func (tr *TableRow) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		ID     string      `json:"id"`
+		Group  *TableGroup `json:"group"`
 		Cells  []TableCell `json:"cells"`
 		Drawer *struct {
-			Title    string            `json:"title"`
-			Size     string            `json:"size"`
-			Children []json.RawMessage `json:"children"`
+			Title     string            `json:"title"`
+			Size      string            `json:"size"`
+			HideTitle bool              `json:"hide_title"`
+			Children  []json.RawMessage `json:"children"`
 		} `json:"drawer"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	tr.ID = raw.ID
+	tr.Group = raw.Group
 	tr.Cells = raw.Cells
 	tr.Drawer = nil
 	if raw.Drawer == nil {
 		return nil
 	}
-	d := &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, Children: make([]Widget, 0, len(raw.Drawer.Children))}
+	d := &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, HideTitle: raw.Drawer.HideTitle, Children: make([]Widget, 0, len(raw.Drawer.Children))}
 	for i, rc := range raw.Drawer.Children {
 		w, err := Decode(rc)
 		if err != nil {
@@ -148,6 +164,7 @@ type TableCell struct {
 	Emphasis     bool            `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
 	Chip         string          `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
 	ChipIcon     string          `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
+	LeadIcon     string          `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
 	Key          string          `json:"key,omitempty"`           // optional stable live-update hook; not displayed
 	Muted        bool            `json:"muted,omitempty"`         // text/mono cells: render the value as secondary ink (a quiet or absent value)
 	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
@@ -210,21 +227,31 @@ type tableView struct {
 	HasLabels   bool // any column carries a header label; a labelless table draws no <thead>
 	Columns     []TableColumn
 	HasDetail   bool
+	Reorderable bool
+	ColumnSpan  int
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
 }
 
 type tableRowView struct {
-	ID          string
-	Key         string
-	Cells       []tableCellView
-	HasDetail   bool // table-wide flag, copied so the rows sub-template needs no second argument
-	Drawer      bool // this row has a drawer (hosts the modal scope)
-	Inline      bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
-	DrawerWide  bool // the drawer opens at the wide detail width
-	DrawerTitle string
-	DrawerBody  []template.HTML
+	ID              string
+	Key             string
+	Group           *TableGroup
+	ColumnSpan      int
+	Reorder         bool
+	ReorderGroup    string
+	Cells           []tableCellView
+	HasDetail       bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Drawer          bool // this row has a drawer (hosts the modal scope)
+	Inline          bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
+	DrawerWide      bool // the drawer opens at the wide detail width
+	DrawerHideTitle bool
+	Seam            bool // this row belongs to the collapsible continuation block
+	DrawerLabel     string
+	DrawerIcon      string
+	DrawerTitle     string
+	DrawerBody      []template.HTML
 }
 
 type tableCellView struct {
@@ -277,6 +304,11 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		HasLabels: hasColumnLabels(t.Columns),
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 	}
+	v.Reorderable = len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+	v.ColumnSpan = len(v.Columns)
+	if v.HasDetail {
+		v.ColumnSpan++
+	}
 	var err error
 	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDetail); err != nil {
 		return v, err
@@ -285,6 +317,9 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		v.SeamSummary = t.Seam.Summary
 		if v.SeamRows, err = t.rowViews(r, csrf, t.Seam.Rows, v.HasDetail); err != nil {
 			return v, err
+		}
+		for i := range v.SeamRows {
+			v.SeamRows[i].Seam = true
 		}
 	}
 	return v, nil
@@ -303,8 +338,28 @@ func hasColumnLabels(cols []TableColumn) bool {
 
 func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bool) ([]tableRowView, error) {
 	out := make([]tableRowView, 0, len(rows))
+	drawerLabel := t.DrawerLabel
+	if drawerLabel == "" {
+		drawerLabel = "Details"
+	}
+	primary := 0
+	if len(t.Columns) > 0 && t.Columns[0].Kind == "reorder" {
+		primary = 1
+	}
+	reorderable := len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+	reorderGroup := ""
 	for _, row := range rows {
-		rv := tableRowView{ID: row.ID, Key: row.Key, HasDetail: hasDetail, Inline: rowHasButton(row), Cells: make([]tableCellView, 0, len(t.Columns))}
+		if row.Group != nil {
+			reorderGroup = row.Group.Chain
+			if reorderGroup == "" {
+				reorderGroup = row.Group.Label
+			}
+		}
+		columnSpan := len(t.Columns)
+		if hasDetail {
+			columnSpan++
+		}
+		rv := tableRowView{ID: row.ID, Key: row.Key, Group: row.Group, ColumnSpan: columnSpan, Reorder: reorderable, ReorderGroup: reorderGroup, HasDetail: hasDetail, Inline: rowHasButton(row), DrawerLabel: drawerLabel, DrawerIcon: t.DrawerIcon, Cells: make([]tableCellView, 0, len(t.Columns))}
 		if row.Drawer != nil {
 			body, err := r.renderChildren(row.Drawer.Children, csrf)
 			if err != nil {
@@ -312,6 +367,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 			rv.Drawer = true
 			rv.DrawerWide = row.Drawer.Size == "wide"
+			rv.DrawerHideTitle = row.Drawer.HideTitle
 			rv.DrawerTitle = row.Drawer.Title
 			rv.DrawerBody = body
 		}
@@ -320,7 +376,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Primary: i == 0, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
+			cv := tableCellView{Kind: kind, Primary: i == primary, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
 				if cv.Confirm != "" {

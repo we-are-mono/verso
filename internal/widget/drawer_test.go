@@ -12,7 +12,7 @@ import (
 func TestDrawerDefaults(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Drawer{Title: "Detail", Trigger: []Widget{&Row{Title: "open me"}}})
-	for _, want := range []string{"max-w-md", "rounded-xl", "open me", "Detail"} {
+	for _, want := range []string{"max-w-md", "rounded-xl", "open me", "Detail", "verso-drawer-scrollbar"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer missing %q:\n%s", want, got)
 		}
