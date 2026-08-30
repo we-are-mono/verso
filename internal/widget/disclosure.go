@@ -15,6 +15,7 @@ import (
 // (server keys, ports) — present and honest, but folded away so it never crowds the
 // common path. Native <details>, so it is pure HTML: no JavaScript.
 type Disclosure struct {
+	Style    string   `json:"style,omitempty"`
 	Summary  string   `json:"summary"`
 	Children []Widget `json:"children"`
 }
@@ -25,13 +26,14 @@ func (*Disclosure) isWidget() {}
 // child type fails loudly rather than vanishing.
 func (d *Disclosure) UnmarshalJSON(data []byte) error {
 	var raw struct {
+		Style    string            `json:"style"`
 		Summary  string            `json:"summary"`
 		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	d.Summary = raw.Summary
+	d.Style, d.Summary = raw.Style, raw.Summary
 	d.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
 		w, err := Decode(rc)
@@ -46,6 +48,7 @@ func (d *Disclosure) UnmarshalJSON(data []byte) error {
 // disclosureView is the template's model: the summary plus the contents already
 // rendered to trusted HTML.
 type disclosureView struct {
+	Style    string
 	Summary  string
 	Children []template.HTML
 }
@@ -55,5 +58,5 @@ func (d *Disclosure) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "disclosure.html.tmpl", disclosureView{Summary: d.Summary, Children: children})
+	return r.execute(out, "disclosure.html.tmpl", disclosureView{Style: d.Style, Summary: d.Summary, Children: children})
 }

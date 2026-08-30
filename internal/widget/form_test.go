@@ -36,6 +36,8 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 	for _, want := range []string{
 		">Save</button>",
 		`name="_action" value="generate-keypair"`, ">Generate keypair</button>",
+		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
+		"dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("form render missing %q", want)

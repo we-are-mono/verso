@@ -18,6 +18,7 @@ type Stack struct {
 	Divided  bool
 	Compact  bool
 	Inline   bool
+	Width    string
 	Children []Widget
 }
 
@@ -28,6 +29,7 @@ func (s *Stack) UnmarshalJSON(data []byte) error {
 		Divided  bool              `json:"divided"`
 		Compact  bool              `json:"compact"`
 		Inline   bool              `json:"inline"`
+		Width    string            `json:"width"`
 		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -36,6 +38,7 @@ func (s *Stack) UnmarshalJSON(data []byte) error {
 	s.Divided = raw.Divided
 	s.Compact = raw.Compact
 	s.Inline = raw.Inline
+	s.Width = raw.Width
 	s.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
 		w, err := Decode(rc)
@@ -51,6 +54,7 @@ type stackView struct {
 	Divided  bool
 	Compact  bool
 	Inline   bool
+	Width    string
 	Children []template.HTML
 }
 
@@ -61,5 +65,5 @@ func (s *Stack) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "stack.html.tmpl", stackView{Divided: s.Divided, Compact: s.Compact, Inline: s.Inline, Children: children})
+	return r.execute(out, "stack.html.tmpl", stackView{Divided: s.Divided, Compact: s.Compact, Inline: s.Inline, Width: s.Width, Children: children})
 }

@@ -2,12 +2,12 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* disclosure: a native <details> expand/collapse. The chevron rotates via the
      shared .verso-chevron rule (details[open] > summary .verso-chevron). No JS. */}}
-<details class="verso-disclosure rounded-lg border border-slate-200 bg-white">
-  <summary class="flex cursor-pointer select-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-700 [&::-webkit-details-marker]:hidden">
+<details class="verso-disclosure rounded-lg border border-slate-200 {{if eq .Style "condition"}}bg-slate-50/70 dark:border-gray-700 dark:bg-gray-800/50{{else}}bg-white{{end}}">
+  <summary class="flex cursor-pointer select-none items-center justify-between gap-2 px-4 {{if eq .Style "condition"}}pt-3.5 pb-3 text-sm font-semibold text-slate-900 dark:text-gray-100{{else}}py-3 text-sm font-medium text-slate-700{{end}} [&::-webkit-details-marker]:hidden">
     {{.Summary}}
     {{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}
   </summary>
-  <div class="space-y-4 border-t border-slate-200 px-4 py-4">
+  <div class="{{if eq .Style "condition"}}space-y-5 dark:border-gray-700{{else}}space-y-4{{end}} border-t border-slate-200 px-4 py-4">
     {{range .Children}}{{.}}{{end}}
   </div>
 </details>

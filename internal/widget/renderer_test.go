@@ -94,6 +94,10 @@ func TestRenderStackDivided(t *testing.T) {
 	if strings.Contains(div, "space-y-4") {
 		t.Errorf("divided stack should not also space:\n%s", div)
 	}
+	bounded := render(t, r, &Stack{Width: "compact", Children: []Widget{&Badge{Text: "a"}}})
+	if !strings.Contains(bounded, "max-w-md") {
+		t.Errorf("compact-width stack must remain visually bounded: %s", bounded)
+	}
 }
 
 func TestRenderCardChrome(t *testing.T) {
@@ -521,6 +525,18 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	if strings.Contains(identity, "divide-y") {
 		t.Errorf("identity properties must not look like a table:\n%s", identity)
 	}
+	system := render(t, r, &Properties{Style: "system", Items: []Property{
+		{Label: "Firmware", Value: "Verso 1.3.2"},
+		{Label: "Kernel", Value: "Linux 6.12", Mono: true},
+	}})
+	for _, want := range []string{
+		"space-y-0", "border-t border-slate-100 py-3", "text-sm text-slate-500",
+		"text-base font-medium text-slate-900", "font-mono font-semibold",
+	} {
+		if !strings.Contains(system, want) {
+			t.Errorf("system properties missing %q:\n%s", want, system)
+		}
+	}
 	emphasised := render(t, r, &Properties{Items: []Property{
 		{Label: "Installed", Value: "Mono OpenWrt 25.12", Emphasis: true},
 		{Label: "Target", Value: "aarch64_generic", Mono: true, Emphasis: true},
@@ -599,7 +615,7 @@ func TestRenderCallout(t *testing.T) {
 		t.Errorf("neutral callout should use the quiet slate palette: %s", neutral)
 	}
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-center", "gap-2", "px-3", "py-2", "size-4", "A short note."} {
+	for _, want := range []string{"items-start", "mt-0.5", "gap-2", "px-3", "py-2", "size-4", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
@@ -627,10 +643,24 @@ func TestRenderLink(t *testing.T) {
 	if !strings.Contains(primary, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
 		t.Errorf("primary button link missing tactile pressed state: %s", primary)
 	}
+	secondary := render(t, r, &Link{Label: "Restart router", Href: "/restart", Style: "secondary"})
+	for _, want := range []string{
+		"hover:border-sky-600 hover:text-sky-600",
+		"dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200",
+		"active:translate-y-px",
+	} {
+		if !strings.Contains(secondary, want) {
+			t.Errorf("secondary link missing %q: %s", want, secondary)
+		}
+	}
 	// A plain link carries no download attribute.
 	plain := render(t, r, &Link{Label: "Docs", Href: "/help"})
 	if strings.Contains(plain, "download=") {
 		t.Errorf("non-download link must not carry a download attribute: %s", plain)
+	}
+	external := render(t, r, &Link{Label: "Project website", Href: "https://example.com", NewTab: true})
+	if !strings.Contains(external, `target="_blank" rel="noopener noreferrer"`) {
+		t.Errorf("new-tab links must isolate the opener: %s", external)
 	}
 }
 
@@ -676,6 +706,12 @@ func TestRenderDisclosure(t *testing.T) {
 	}
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
 		t.Errorf("disclosure must be pure HTML/CSS: %s", got)
+	}
+	condition := render(t, r, &Disclosure{Style: "condition", Summary: "Advanced"})
+	for _, want := range []string{"bg-slate-50/70", "dark:bg-gray-800/50", "text-sm font-semibold text-slate-900"} {
+		if !strings.Contains(condition, want) {
+			t.Errorf("condition disclosure missing %q: %s", want, condition)
+		}
 	}
 }
 
@@ -906,6 +942,21 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("list missing %q", want)
+		}
+	}
+}
+
+func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
+	got := render(t, newRenderer(t), &List{
+		Name: "dest_port", Label: "Ports", Style: "tokens", Prompt: "Port or range",
+		Items: []string{"53", "67", "547"},
+	})
+	if n := strings.Count(got, `type="hidden" name="dest_port"`); n != 3 {
+		t.Errorf("token values must share the field name: got %d\n%s", n, got)
+	}
+	for _, want := range []string{`data-verso-token-list`, `data-verso-token-input`, `placeholder="Port or range"`, `value="547"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("token list missing %q:\n%s", want, got)
 		}
 	}
 }

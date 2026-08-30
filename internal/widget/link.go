@@ -19,7 +19,8 @@ type Link struct {
 	Icon     string `json:"icon,omitempty"`
 	Href     string `json:"href"`
 	Download string `json:"download"` // non-empty => a download with this filename
-	Style    string `json:"style"`    // "" (link) | "button" | "ghost"
+	Style    string `json:"style"`    // "" (link) | "button" | "ghost" | "secondary"
+	NewTab   bool   `json:"new_tab,omitempty"`
 }
 
 func (*Link) isWidget() {}
@@ -32,11 +33,12 @@ type linkView struct {
 	Href     template.URL
 	Download string
 	Style    string
+	NewTab   bool
 }
 
 func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "link.html.tmpl", linkView{
-		Label: l.Label, Icon: l.Icon, Href: safeHref(l.Href, l.Download != ""), Download: l.Download, Style: l.Style,
+		Label: l.Label, Icon: l.Icon, Href: safeHref(l.Href, l.Download != ""), Download: l.Download, Style: l.Style, NewTab: l.NewTab,
 	})
 }
 

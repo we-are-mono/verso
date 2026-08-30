@@ -20,7 +20,7 @@
     <span x-show="done" x-cloak>Copied!</span>
   </span>
 </button>{{end}}
-<dl class="{{if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
+<dl class="{{if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
   {{range .Items}}
   {{if eq $.Style "identity"}}
   <div>
@@ -29,6 +29,13 @@
       <dd class="{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} text-slate-900{{if .Mono}} font-mono{{end}}">{{.Value}}</dd>
     </div>
     {{if .Help}}<p class="mt-1 text-sm text-slate-500">{{.Help}}</p>{{end}}
+  </div>
+  {{else if eq $.Style "system"}}
+  <div class="flex items-baseline justify-between gap-4 border-t border-slate-100 py-3">
+    <dt class="text-sm text-slate-500">{{.Label}}</dt>
+    <dd class="text-base font-medium text-slate-900{{if .Mono}} font-mono font-semibold{{end}}">
+      {{.Value}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+    </dd>
   </div>
   {{else}}
   <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">

@@ -71,6 +71,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 // plus the resolved submit label and the CSRF token threaded in by the renderer.
 type formView struct {
 	Inline    bool
+	Compact   bool
 	Icon      string
 	Note      template.HTML
 	Submit    string
@@ -101,7 +102,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		note = template.HTML(buf.String())
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Inline: f.Style == "inline", Icon: f.Icon, Note: note,
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

@@ -8,7 +8,7 @@
      row and sizes to its content. The submit glues onto the last field (one
      instrument: the button acts on the field): the field's input squares its
      right corners and the buttons row pulls back across the gap. */}}
-<form method="post" class="{{if .Inline}}flex flex-wrap items-end gap-3 [&>div:not(:last-of-type)]:w-72 [&>div:not(:last-of-type)_input]:rounded-r-none{{else}}space-y-6{{end}}">
+<form method="post" class="{{if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else}}space-y-6{{end}}">
   {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
   {{if .Success}}
   <div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-600">
@@ -29,7 +29,7 @@
          primary button — a form may be driven by its actions or by a confirm
          among its fields instead. */}}
     {{if .Submit}}<button type="submit" class="inline-flex cursor-pointer items-center gap-1.5 border border-transparent bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900 {{if .Inline}}rounded-r-md{{else}}rounded-md{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
-    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if and .Note .Inline}}<span class="self-center text-sm text-slate-500 [&>p]:inline">{{.Note}}</span>{{end}}
   </div>
   {{if and .Note (not .Inline)}}<div class="text-sm text-slate-500 [&>p]:inline">{{.Note}}</div>{{end}}

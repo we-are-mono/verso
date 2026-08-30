@@ -11,11 +11,12 @@ import "io"
 // used, when it was added) so they line up and scan cleanly.
 //
 // Style sets how rows are separated: a hairline between them ("divided", the
-// default), nothing ("plain"), or a larger inline identity with its explanation
-// beneath ("identity"). The shell owns the chrome; the template maps the style to
-// classes, and unknown values fall back to "divided".
+// default), nothing ("plain"), a larger inline identity with its explanation
+// beneath ("identity"), or the overview's strong System fact rows ("system").
+// The shell owns the chrome; the template maps the style to classes, and unknown
+// values fall back to "divided".
 type Properties struct {
-	Style string     `json:"style"` // "divided" (default) | "plain"
+	Style string     `json:"style"` // "divided" (default) | "plain" | "identity" | "system"
 	Items []Property `json:"items"`
 	// Align: "" keeps values on the right edge (the default fact sheet);
 	// "left" sets them beside a fixed-width label column — the reading order
