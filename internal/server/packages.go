@@ -92,7 +92,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "Packages",
 		Subheading: "The software installed on this router — every package, from every feed.",
-	}, "wide", packagesTabs("installed"), false, template.HTML(body.String()))
+	}, "narrow", packagesTabs("installed"), false, template.HTML(body.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
@@ -118,11 +118,6 @@ func packageRow(p openwrt.Package) widget.TableRow {
 	if desc == "" {
 		desc = "No description in the package."
 	}
-	// The website rides inline at the description's end — a block link would
-	// crowd the Remove below.
-	if p.Webpage != "" {
-		desc += " [Project website](" + p.Webpage + ")"
-	}
 	props := []widget.Property{
 		{Label: "Version", Value: p.Version, Mono: true},
 		{Label: "Feed", Value: p.Feed, Mono: true},
@@ -133,16 +128,34 @@ func packageRow(p openwrt.Package) widget.TableRow {
 	if p.Size > 0 {
 		props = append(props, widget.Property{Label: "Size", Value: humanSize(p.Size)})
 	}
-	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
-		{Text: p.Name}, {Text: p.Version}, {Text: p.Feed},
-	}, Drawer: &widget.RowDrawer{Title: p.Name, Children: []widget.Widget{
-		&widget.Text{Markdown: desc},
-		&widget.Properties{Items: props},
-		&widget.Form{Submit: "Remove", Fields: []widget.Widget{
+	if len(p.RequiredBy) > 0 {
+		props = append(props, widget.Property{Label: "Required by", Value: strings.Join(p.RequiredBy, ", "), Mono: true})
+	} else if !p.Removable {
+		props = append(props, widget.Property{Label: "Removal", Value: "Protected system package"})
+	}
+	drawer := []widget.Widget{
+		&widget.Callout{Variant: "neutral", Compact: true, Body: desc,
+			Link: packageWebsite(p.Webpage)},
+	}
+	drawer = append(drawer,
+		&widget.Properties{Style: "system", Items: props},
+	)
+	if p.Removable {
+		drawer = append(drawer, &widget.Form{Submit: "Remove", Fields: []widget.Widget{
 			&widget.Field{Kind: "hidden", Name: "package", Value: p.Name},
 			&widget.Field{Kind: "hidden", Name: "_primary", Value: "remove"},
-		}},
-	}}}
+		}})
+	}
+	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
+		{Text: p.Name}, {Text: p.Version, Emphasis: true}, {Text: p.Feed},
+	}, Drawer: &widget.RowDrawer{Title: p.Name, Children: drawer}}
+}
+
+func packageWebsite(href string) *widget.Link {
+	if href == "" {
+		return nil
+	}
+	return &widget.Link{Label: "Project website", Href: href, NewTab: true}
 }
 
 // humanSize renders bytes at package scale.
@@ -256,7 +269,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	// the row's right end as a quiet fact.
 	checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
 	children = append(children,
-		&widget.Form{Style: "inline", Icon: "search", Submit: "Search",
+		&widget.Form{Style: "inline-compact", Icon: "search", Submit: "Search",
 			Note:    freshnessLine(checkedAt, statusErr),
 			Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
 			Fields: []widget.Widget{
@@ -293,7 +306,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "Packages",
 		Subheading: "Browse your configured feeds — your own and the official ones together.",
-	}, "wide", packagesTabs("discover"), false, template.HTML(body.String()))
+	}, "narrow", packagesTabs("discover"), false, template.HTML(body.String()))
 }
 
 // freshnessLine is the honest age of the package index, beside the Refresh
@@ -341,7 +354,7 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
 			{Text: p.Name},
 			{Text: p.Description},
-			{Text: p.Version},
+			{Text: p.Version, Emphasis: true},
 			{Text: p.Feed},
 			state,
 		}, Drawer: discoverDrawer(p, q)})
@@ -356,22 +369,34 @@ func discoverDrawer(p openwrt.Package, q string) *widget.RowDrawer {
 	verb, label := "install", "Install"
 	if p.Installed {
 		verb, label = "remove", "Remove"
+		if !p.Removable {
+			label = "Installed"
+		}
 	}
 	desc := p.Description
 	if desc == "" {
 		desc = "No description in the feed."
 	}
-	return &widget.RowDrawer{Title: label + " — " + p.Name, Children: []widget.Widget{
+	props := []widget.Property{
+		{Label: "Package", Value: p.Name, Mono: true},
+		{Label: "Version", Value: p.Version, Mono: true},
+		{Label: "Feed", Value: p.Feed, Mono: true},
+	}
+	if len(p.RequiredBy) > 0 {
+		props = append(props, widget.Property{Label: "Required by", Value: strings.Join(p.RequiredBy, ", "), Mono: true})
+	} else if p.Installed && !p.Removable {
+		props = append(props, widget.Property{Label: "Removal", Value: "Protected system package"})
+	}
+	children := []widget.Widget{
 		&widget.Text{Markdown: desc},
-		&widget.Properties{Items: []widget.Property{
-			{Label: "Package", Value: p.Name, Mono: true},
-			{Label: "Version", Value: p.Version, Mono: true},
-			{Label: "Feed", Value: p.Feed, Mono: true},
-		}},
-		&widget.Form{Submit: label, Fields: []widget.Widget{
+		&widget.Properties{Items: props},
+	}
+	if !p.Installed || p.Removable {
+		children = append(children, &widget.Form{Submit: label, Fields: []widget.Widget{
 			&widget.Field{Kind: "hidden", Name: "package", Value: p.Name},
 			&widget.Field{Kind: "hidden", Name: "_primary", Value: verb},
 			&widget.Field{Kind: "hidden", Name: "q", Value: q},
-		}},
-	}}
+		}})
+	}
+	return &widget.RowDrawer{Title: label + " — " + p.Name, Children: children}
 }

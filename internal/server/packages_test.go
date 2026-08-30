@@ -39,7 +39,7 @@ func TestPackagesInventory(t *testing.T) {
 	var removes []string
 	b := fakeBackend{access: true,
 		pkgInstalledList: []openwrt.Package{
-			{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer", License: "GPL-2.0", Installed: true},
+			{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer", License: "GPL-2.0", Webpage: "https://htop.dev", Installed: true, Removable: true},
 		},
 		pkgRemoves: &removes,
 	}
@@ -48,7 +48,13 @@ func TestPackagesInventory(t *testing.T) {
 	body := get(t, s, "/system/packages").Body.String()
 	for _, want := range []string{
 		"htop", "3.5.1-r1", "packages", // the row
+		"font-mono text-base font-semibold",             // package versions use the fixed 16px/600 mono treatment
 		"Process viewer", "GPL-2.0", ">Remove</button>", // the drawer's story and act
+		"max-w-4xl", // package management uses the focused content width
+		"border-slate-200 bg-slate-50 text-slate-700",                       // description uses the neutral callout
+		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link stays in the callout and opens safely outside Verso
+		"space-y-0", "border-t border-slate-100 py-3", // facts match the Overview System DL
+		`<header class="flex items-center justify-between px-5 pt-4 pb-2">`, // modal-like header, no divider
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("inventory missing %q", want)
@@ -64,12 +70,26 @@ func TestPackagesInventory(t *testing.T) {
 	}
 }
 
+func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
+	b := fakeBackend{access: true, pkgInstalledList: []openwrt.Package{
+		{Name: "ca-bundle", Version: "20260601-r1", Feed: "base", Installed: true,
+			RequiredBy: []string{"verso"}},
+	}}
+	body := get(t, pluginsServer(t, b, true, mgmtManifest()), "/system/packages").Body.String()
+	if strings.Contains(body, ">Remove</button>") {
+		t.Error("a package required by another installed package must not offer Remove")
+	}
+	if !strings.Contains(body, "Required by") {
+		t.Error("the drawer should explain why the package cannot be removed")
+	}
+}
+
 // TestFlashConfirmsActions: an action's confirmation survives the redirect,
 // shows once on the next render, and is gone after — the PRG flash.
 func TestFlashConfirmsActions(t *testing.T) {
 	var removes []string
 	b := fakeBackend{access: true,
-		pkgInstalledList: []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Installed: true}},
+		pkgInstalledList: []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Installed: true, Removable: true}},
 		pkgRemoves:       &removes,
 	}
 	s := pluginsServer(t, b, true, mgmtManifest())
@@ -100,6 +120,8 @@ func TestFlashConfirmsActions(t *testing.T) {
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); !strings.Contains(body, "htop removed.") {
 		t.Error("the redirect target must show the confirmation")
+	} else if !strings.Contains(body, "dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300") {
+		t.Error("success flashes should match the verified modal's dark success palette")
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); strings.Contains(body, "htop removed.") {
 		t.Error("a flash shows once, not twice")
@@ -113,18 +135,25 @@ func TestDiscoverSearchRenders(t *testing.T) {
 		pkgCheckedAt: 1, pkgTotal: 2,
 		pkgFound: []openwrt.Package{
 			{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer"},
-			{Name: "htop-lang", Version: "3.5.1-r1", Feed: "packages", Installed: true},
+			{Name: "htop-lang", Version: "3.5.1-r1", Feed: "packages", Installed: true, Removable: true},
 		},
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover?q=htop").Body.String()
+	if !strings.Contains(body, "max-w-4xl") {
+		t.Error("Discover must use the narrow package-management width")
+	}
+	if !strings.Contains(body, "w-52") {
+		t.Error("Discover's search field should use the compact inline width")
+	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",
-		"installed",               // the already-present package carries its state
-		"Install — htop",          // drawer verb for the absent one
-		"Remove — htop-lang",      // drawer verb for the present one
-		"Feeds checked",           // freshness honesty
-		`href="/system/packages"`, // the top bar links the faces
+		"font-mono text-base font-semibold", // Discover versions match Installed
+		"installed",                         // the already-present package carries its state
+		"Install — htop",                    // drawer verb for the absent one
+		"Remove — htop-lang",                // drawer verb for the present one
+		"Feeds checked",                     // freshness honesty
+		`href="/system/packages"`,           // the top bar links the faces
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("discover missing %q", want)
