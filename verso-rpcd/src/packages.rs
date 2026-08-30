@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::process::Command;
 use std::time::UNIX_EPOCH;
@@ -29,8 +30,32 @@ pub fn update() -> Result<(), String> {
 }
 
 pub fn installed() -> Result<Value, String> {
+    let packages = installed_packages()?;
+    let required_by = dependency_graph(&packages);
+    Ok(Value::Array(
+        packages
+            .iter()
+            .map(|package| normalize_installed(package, &required_by))
+            .collect(),
+    ))
+}
+
+pub fn required_by(name: &str) -> Result<Vec<String>, String> {
+    let packages = installed_packages()?;
+    Ok(dependency_graph(&packages).remove(name).unwrap_or_default())
+}
+
+fn installed_packages() -> Result<Vec<Value>, String> {
     let output = Command::new("apk")
-        .args(["query", "--installed", "--format", "json", "*"])
+        .args([
+            "query",
+            "--installed",
+            "--fields",
+            "name,version,origin,description,license,url,file-size,contents,depends,provides",
+            "--format",
+            "json",
+            "*",
+        ])
         .output()
         .map_err(|error| format!("apk query --installed: {error}"))?;
     if !output.status.success() {
@@ -41,13 +66,10 @@ pub fn installed() -> Result<Value, String> {
     }
     let raw: Value = serde_json::from_slice(&output.stdout)
         .map_err(|error| format!("apk query --installed returned invalid JSON: {error}"))?;
-    let packages = raw
+    Ok(raw
         .as_array()
         .ok_or_else(|| "apk query --installed returned a non-array".to_string())?
-        .iter()
-        .map(normalize_installed)
-        .collect::<Vec<_>>();
-    Ok(Value::Array(packages))
+        .clone())
 }
 
 pub fn search(query: &str) -> Result<(Value, usize), String> {
@@ -78,6 +100,37 @@ pub fn search(query: &str) -> Result<(Value, usize), String> {
             );
         }
         packages.push(package);
+    }
+    if packages
+        .iter()
+        .any(|package| package.get("installed").and_then(Value::as_bool) == Some(true))
+    {
+        let inventory = installed()?;
+        let installed = inventory
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|package| {
+                package
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(|name| (name.to_string(), package))
+            })
+            .collect::<HashMap<_, _>>();
+        for package in &mut packages {
+            let Some(object) = package.as_object_mut() else {
+                continue;
+            };
+            let Some(found) = object
+                .get("name")
+                .and_then(Value::as_str)
+                .and_then(|name| installed.get(name))
+            else {
+                continue;
+            };
+            object.insert("removable".into(), found["removable"].clone());
+            object.insert("required_by".into(), found["required_by"].clone());
+        }
     }
     Ok((Value::Array(packages), total))
 }
@@ -124,7 +177,70 @@ pub fn protected(name: &str) -> bool {
     )
 }
 
-fn normalize_installed(package: &Value) -> Value {
+fn dependency_graph(packages: &[Value]) -> HashMap<String, Vec<String>> {
+    let mut providers: HashMap<String, Vec<String>> = HashMap::new();
+    for package in packages {
+        let Some(name) = package.get("name").and_then(Value::as_str) else {
+            continue;
+        };
+        providers
+            .entry(name.to_string())
+            .or_default()
+            .push(name.to_string());
+        for provided in string_array(package, "provides") {
+            providers
+                .entry(constraint_name(provided).to_string())
+                .or_default()
+                .push(name.to_string());
+        }
+    }
+
+    let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
+    for package in packages {
+        let Some(dependent) = package.get("name").and_then(Value::as_str) else {
+            continue;
+        };
+        for dependency in string_array(package, "depends") {
+            if dependency.starts_with('!') {
+                continue;
+            }
+            if let Some(matches) = providers.get(constraint_name(dependency)) {
+                for provider in matches {
+                    if provider != dependent {
+                        graph
+                            .entry(provider.clone())
+                            .or_default()
+                            .insert(dependent.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    graph
+        .into_iter()
+        .map(|(name, dependents)| {
+            let mut dependents = dependents.into_iter().collect::<Vec<_>>();
+            dependents.sort();
+            (name, dependents)
+        })
+        .collect()
+}
+
+fn string_array<'a>(value: &'a Value, key: &str) -> impl Iterator<Item = &'a str> {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+}
+
+fn constraint_name(value: &str) -> &str {
+    value.split(['<', '>', '=', '~']).next().unwrap_or(value)
+}
+
+fn normalize_installed(package: &Value, required_by: &HashMap<String, Vec<String>>) -> Value {
     let string = |key: &str| {
         package
             .get(key)
@@ -133,8 +249,20 @@ fn normalize_installed(package: &Value) -> Value {
             .to_string()
     };
     let origin = string("origin");
+    let name = string("name");
+    let dependents = required_by.get(&name).cloned().unwrap_or_default();
+    let removable = !protected(&name) && dependents.is_empty();
+    let services = package
+        .get("contents")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter_map(|path| path.strip_prefix("etc/init.d/"))
+        .filter(|name| !name.is_empty() && !name.contains('/'))
+        .collect::<Vec<_>>();
     json!({
-        "name": string("name"),
+        "name": name,
         "version": string("version"),
         "feed": feed_of(&origin),
         "description": string("description"),
@@ -142,6 +270,9 @@ fn normalize_installed(package: &Value) -> Value {
         "webpage": string("url"),
         "size": package.get("file-size").and_then(Value::as_i64).unwrap_or(0),
         "installed": true,
+        "services": services,
+        "required_by": dependents,
+        "removable": removable,
     })
 }
 
@@ -241,6 +372,51 @@ mod tests {
         assert_eq!(value["version"], "1.37.0-r6");
         assert_eq!(value["feed"], "base");
         assert_eq!(value["installed"], true);
+    }
+
+    #[test]
+    fn installed_package_exposes_only_its_init_scripts() {
+        let value = normalize_installed(
+            &json!({
+                "name": "verso",
+                "contents": [
+                    "etc/init.d/verso",
+                    "etc/init.d/verso-rpcd",
+                    "usr/bin/verso",
+                    "etc/init.d/nested/not-a-service"
+                ]
+            }),
+            &HashMap::new(),
+        );
+        assert_eq!(value["services"], json!(["verso", "verso-rpcd"]));
+    }
+
+    #[test]
+    fn installed_dependencies_are_not_removable() {
+        let packages = vec![
+            json!({"name": "verso", "depends": ["ca-bundle>=20260601"]}),
+            json!({"name": "ca-bundle", "depends": ["libc"], "provides": ["ca-certificates-any"]}),
+            json!({"name": "libc"}),
+            json!({"name": "htop"}),
+        ];
+        let graph = dependency_graph(&packages);
+        assert_eq!(graph["ca-bundle"], ["verso"]);
+        assert_eq!(graph["libc"], ["ca-bundle"]);
+        assert!(!normalize_installed(&packages[1], &graph)["removable"]
+            .as_bool()
+            .unwrap());
+        assert!(normalize_installed(&packages[3], &graph)["removable"]
+            .as_bool()
+            .unwrap());
+    }
+
+    #[test]
+    fn virtual_dependencies_protect_the_installed_provider() {
+        let packages = vec![
+            json!({"name": "downloader", "depends": ["ca-certificates-any"]}),
+            json!({"name": "ca-bundle", "provides": ["ca-certificates-any"]}),
+        ];
+        assert_eq!(dependency_graph(&packages)["ca-bundle"], ["downloader"]);
     }
 
     #[test]

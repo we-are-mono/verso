@@ -150,14 +150,17 @@ type DeviceStats struct {
 // Package is one row of a package search or listing, as the helper reports
 // it; the detail fields are filled where the source provides them in bulk.
 type Package struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Feed        string `json:"feed"`
-	Description string `json:"description"`
-	License     string `json:"license"`
-	Webpage     string `json:"webpage"`
-	Size        int64  `json:"size"` // package file size, bytes
-	Installed   bool   `json:"installed"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Feed        string   `json:"feed"`
+	Description string   `json:"description"`
+	License     string   `json:"license"`
+	Webpage     string   `json:"webpage"`
+	Size        int64    `json:"size"` // package file size, bytes
+	Installed   bool     `json:"installed"`
+	Services    []string `json:"services,omitempty"` // init scripts installed by this package
+	RequiredBy  []string `json:"required_by,omitempty"`
+	Removable   bool     `json:"removable"`
 }
 
 // RCState is one procd service's rc snapshot: enabled is the boot symlink,

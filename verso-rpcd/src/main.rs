@@ -267,12 +267,21 @@ fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
                     "package name contains unsupported characters",
                 ));
             }
+            let _guard = package_guard(state)?;
             if method == "pkgRemove" && packages::protected(name) {
                 return Err(Failure::invalid(format!(
                     "{name} is part of the device's base and stays"
                 )));
             }
-            let _guard = package_guard(state)?;
+            if method == "pkgRemove" {
+                let required_by = packages::required_by(name).map_err(Failure::unknown)?;
+                if !required_by.is_empty() {
+                    return Err(Failure::invalid(format!(
+                        "{name} is required by {}",
+                        required_by.join(", ")
+                    )));
+                }
+            }
             let output = if method == "pkgInstall" {
                 packages::install(name)
             } else {
