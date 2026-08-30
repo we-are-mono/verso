@@ -20,13 +20,13 @@ func TestRenderFieldChecks(t *testing.T) {
 			{Value: "lan", Label: "lan"}, {Value: "lan2", Label: "lan2"}, {Value: "guest", Label: "guest"},
 		},
 	})
-	if strings.Count(got, `name="network"`) != 3 {
+	if strings.Count(got, `<input type="checkbox" name="network"`) != 3 {
 		t.Errorf("all boxes must share the field name:\n%s", got)
 	}
 	if strings.Count(got, " checked") != 2 {
 		t.Errorf("exactly the current values should be checked:\n%s", got)
 	}
-	for _, want := range []string{`type="checkbox"`, ">Networks<", "guest"} {
+	for _, want := range []string{`data-verso-change-name="network"`, `data-verso-change-label="Networks"`, `type="checkbox"`, ">Networks<", "guest"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("checks field missing %q:\n%s", want, got)
 		}

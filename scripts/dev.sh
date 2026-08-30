@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 #
-# Dev loop: watch Go sources + templates + ACLs, rebuild the shell binary and the
-# persistent privileged Rust helper (verso-rpcd), hot-swap both into OpenWrt
-# container, restart the verso service, and (re)deploy the ubusd + rpcd ACLs. No
-# image rebuild, no OpenWrt reboot — refresh the browser to see changes (~3s).
+# Dev loop: watch the shell, helper, and bundled plugins; rebuild and hot-swap
+# them into the OpenWrt container; restart their procd services; and redeploy the
+# ubusd + rpcd ACLs. No image rebuild or OpenWrt reboot is needed.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -19,6 +18,7 @@ DEV_CSS=/usr/share/verso/verso-dev.css # in-container drop file the shell reads 
 ACL_SRC=docker/rootfs/usr/share/acl.d
 RPCD_ACL_SRC=docker/rootfs/usr/share/rpcd/acl.d
 URL="http://localhost:8080"
+BUNDLED_PLUGIN_GLOB=plugins/verso-plugin-*/bundled
 
 log() { printf '\033[36m[dev]\033[0m %s\n' "$*"; }
 
@@ -65,6 +65,29 @@ deploy_helper() {
 	docker exec "$CONTAINER" /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 }
 
+# deploy_bundled_plugins discovers plugins by a checked-in `bundled` marker.
+# Adding another bundled Rust plugin therefore makes `make dev` install and
+# activate it without teaching this script its name. Independent/reference
+# plugins have no marker and remain under their own deploy flow.
+deploy_bundled_plugins() {
+	local marker dir name id cargo_bin="${CARGO:-$HOME/.cargo/bin/cargo}"
+	for marker in $BUNDLED_PLUGIN_GLOB; do
+		[ -e "$marker" ] || continue
+		dir="$(dirname "$marker")"
+		name="$(basename "$dir")"
+		id="${name#verso-plugin-}"
+		if (cd "$dir" && "$cargo_bin" build --locked --release --target x86_64-unknown-linux-musl) 2>&1; then
+			docker exec "$CONTAINER" sh -c "mkdir -p /usr/share/verso/plugins/$id; /etc/init.d/$name stop >/dev/null 2>&1 || true"
+			docker cp "$dir/target/x86_64-unknown-linux-musl/release/$name" "$CONTAINER:/usr/bin/.$name.new"
+			docker cp "$dir/rootfs/etc/init.d/$name" "$CONTAINER:/etc/init.d/.$name.new"
+			docker cp "$dir/manifest.json" "$CONTAINER:/usr/share/verso/plugins/$id/.manifest.json.new"
+			docker exec "$CONTAINER" sh -c "chown root:root /usr/bin/.$name.new /etc/init.d/.$name.new /usr/share/verso/plugins/$id/.manifest.json.new; chmod 0755 /usr/bin/.$name.new /etc/init.d/.$name.new; chmod 0644 /usr/share/verso/plugins/$id/.manifest.json.new; mv /usr/bin/.$name.new /usr/bin/$name; mv /etc/init.d/.$name.new /etc/init.d/$name; mv /usr/share/verso/plugins/$id/.manifest.json.new /usr/share/verso/plugins/$id/manifest.json; /etc/init.d/$name enable; /etc/init.d/$name start"
+		else
+			log "$name build failed — keeping the running plugin"
+		fi
+	done
+}
+
 ensure_container() {
 	if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]; then
 		log "container not running — starting it (docker compose up -d --build)"
@@ -92,6 +115,7 @@ reload() {
 	# should land even when the shell build below fails and we keep the old binary.
 	deploy_acls
 	deploy_helper
+	deploy_bundled_plugins
 	log "building…"
 	compile_css
 	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$BIN" "$CMD" 2>&1; then
@@ -114,6 +138,11 @@ code_sig() {
 		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.js' \) -printf '%T@ %p\n'
 		find internal/server/assets/fonts -type f -printf '%T@ %p\n'
 		find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n'
+		find plugins/verso-plugin-sdk -type f -printf '%T@ %p\n'
+		for marker in $BUNDLED_PLUGIN_GLOB; do
+			[ -e "$marker" ] || continue
+			find "$(dirname "$marker")" -path '*/target' -prune -o -type f -printf '%T@ %p\n'
+		done
 	} 2>/dev/null | sha1sum
 }
 css_sig() { find "$CSS_IN" -printf '%T@\n' 2>/dev/null | sha1sum; }

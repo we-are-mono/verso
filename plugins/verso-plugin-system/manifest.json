@@ -1,0 +1,19 @@
+{
+  "manifest_version": 1,
+  "id": "system",
+  "name": "System",
+  "socket": "/var/run/verso/system.sock",
+  "schema_version": 1,
+  "nav": [
+    { "section": "System", "label": "General", "path": "/" }
+  ],
+  "acl": {
+    "read": [
+      { "scope": "uci", "object": "system", "function": "read" }
+    ],
+    "write": [
+      { "scope": "uci", "object": "system", "function": "write" },
+      { "scope": "ubus", "object": "verso", "function": "setSystemTime" }
+    ]
+  }
+}

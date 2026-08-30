@@ -8,7 +8,7 @@
      row and sizes to its content. The submit glues onto the last field (one
      instrument: the button acts on the field): the field's input squares its
      right corners and the buttons row pulls back across the gap. */}}
-<form method="post" class="{{if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else}}space-y-6{{end}}">
+<form method="post"{{if .Page}} data-verso-page-form{{end}} class="{{if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}space-y-6{{end}}">
   {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
   {{if .Success}}
   <div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-600">
@@ -23,6 +23,7 @@
   </div>
   {{end}}
   {{range .Fields}}{{.}}{{end}}
+  {{if or .Submit .Actions}}
   <div class="flex flex-wrap gap-3{{if .Inline}} -ml-3{{end}}">
     {{/* border-transparent: inputs carry a 1px border, so the button does too —
          inline rows sit at exactly the field's height. No Submit label, no
@@ -32,5 +33,6 @@
     {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if and .Note .Inline}}<span class="self-center text-sm text-slate-500 [&>p]:inline">{{.Note}}</span>{{end}}
   </div>
+  {{end}}
   {{if and .Note (not .Inline)}}<div class="text-sm text-slate-500 [&>p]:inline">{{.Note}}</div>{{end}}
 </form>

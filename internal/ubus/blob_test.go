@@ -152,11 +152,50 @@ func TestEncodeTableRoundTrip(t *testing.T) {
 	}
 }
 
+// TestEncodeTableApplyTypes anchors the two non-string types required by
+// rpcd's uci.apply policy: rollback is BLOBMSG_TYPE_BOOL (INT8 on the wire),
+// while timeout is BLOBMSG_TYPE_INT32.
+func TestEncodeTableApplyTypes(t *testing.T) {
+	body, err := encodeTable(map[string]any{"rollback": true, "timeout": 30})
+	if err != nil {
+		t.Fatalf("encodeTable: %v", err)
+	}
+	tbl, err := decodeTable(body)
+	if err != nil {
+		t.Fatalf("decodeTable: %v", err)
+	}
+	if got := tbl["rollback"]; got != int64(1) {
+		t.Errorf("rollback = %#v (%T), want int64(1)", got, got)
+	}
+	if got := tbl["timeout"]; got != int64(30) {
+		t.Errorf("timeout = %#v (%T), want int64(30)", got, got)
+	}
+
+	attrs, err := splitAttrs(body)
+	if err != nil {
+		t.Fatalf("splitAttrs: %v", err)
+	}
+	types := make(map[string]int, len(attrs))
+	for _, attr := range attrs {
+		name, _, err := decodeBlobmsg(attr)
+		if err != nil {
+			t.Fatalf("splitBlobmsg: %v", err)
+		}
+		types[name] = attr.id
+	}
+	if types["rollback"] != bmInt8 {
+		t.Errorf("rollback type = %d, want BLOBMSG_TYPE_BOOL/INT8 (%d)", types["rollback"], bmInt8)
+	}
+	if types["timeout"] != bmInt32 {
+		t.Errorf("timeout type = %d, want INT32 (%d)", types["timeout"], bmInt32)
+	}
+}
+
 // TestEncodeTableRejectsUnsupported: an unencodable value type is a hard error,
 // not silent corruption — a caller learns immediately it passed a bad arg.
 func TestEncodeTableRejectsUnsupported(t *testing.T) {
-	if _, err := encodeTable(map[string]any{"n": 42}); err == nil {
-		t.Fatal("encodeTable: want error for an int value, got nil")
+	if _, err := encodeTable(map[string]any{"n": 42.5}); err == nil {
+		t.Fatal("encodeTable: want error for a float value, got nil")
 	}
 }
 

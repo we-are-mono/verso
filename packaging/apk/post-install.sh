@@ -10,6 +10,8 @@ grep -q '^verso:' /etc/passwd 2>/dev/null || echo 'verso:x:6000:6000:verso:/var/
 killall -HUP ubusd 2>/dev/null
 /etc/init.d/verso enable 2>/dev/null
 /etc/init.d/verso-rpcd enable 2>/dev/null
+/etc/init.d/verso-plugin-system enable 2>/dev/null
 /etc/init.d/verso-rpcd restart 2>/dev/null
+/etc/init.d/verso-plugin-system restart 2>/dev/null
 /etc/init.d/verso restart 2>/dev/null
 exit 0

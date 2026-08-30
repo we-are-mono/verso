@@ -163,6 +163,38 @@ html.verso-fonts-loading body {
     background-color: var(--color-slate-400);
   }
 
+  /* The staged-change review is the capsule extending upward, not a floating
+     overlay. Clip it from its bottom edge and lift it into place so the action
+     row never moves while the review covers the content above. */
+  .verso-capsule-review {
+    /* The positioning context sits just inside the capsule border. Reach one
+       pixel through it on every edge so both surfaces read as one object. */
+    left: -1px;
+    right: -1px;
+    bottom: calc(100% - 1px);
+    clip-path: inset(100% 0 0 0);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.5rem);
+    transform-origin: bottom;
+    visibility: hidden;
+    transition: clip-path 0.22s ease-out, opacity 0.16s ease-out, transform 0.22s ease-out, visibility 0s linear 0.22s;
+  }
+  .verso-capsule-review.is-open {
+    clip-path: inset(0);
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+    visibility: visible;
+    transition-delay: 0s;
+  }
+  .verso-capsule.verso-review-open {
+    border-top-color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-capsule-review { transition: none; transform: none; }
+  }
+
   /* Every page's content settles in with a small fade + rise on load — a quiet "loaded"
      cue. It runs on each full navigation; the sidebar stays put, only the content moves.
      Honours reduced-motion. */
@@ -682,7 +714,7 @@ html.verso-fonts-loading body {
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
   /* With a flash above the body, the pull-up would slide the dock's white
      ground over the flash's bottom — the space it reclaims is occupied. */
-  .verso-flash ~ .verso-page-enter .verso-filter-dock { margin-top: 0; }
+  .verso-flash ~ .verso-page-body .verso-filter-dock { margin-top: 0; }
 }
 
 /* Live meters glide: a fresh reading lands as a stroke-dasharray change

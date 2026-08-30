@@ -68,9 +68,11 @@ the content renders from `uci changes`, and its Save & Apply is rpcd's
    expect the LuCI position. The bar is rendered server-side from truth: the
    shell asks rpcd for the pending changes across the configs plugins have
    declared and renders **Save & Apply · Discard · the count · Review** (the
-   change tuples in plain words). A clean page shows the same bar inert — "No
-   pending changes", actions disabled. It re-renders on page load and does not
-   poll.
+   change tuples in plain words). A composed page form also layers its current
+   browser-local diff over that server truth until Save & Apply validates and
+   stages it; this is unsaved form state, not a second durable stage. A clean
+   page shows the same bar inert — "No pending changes", actions disabled. It
+   re-renders on page load and does not poll.
 
 4. **The vocabulary is the LuCI pair.** A drawer's or form's submit says
    **Save** — true to what it does: the edit is kept (it survives navigation
@@ -159,7 +161,12 @@ the content renders from `uci changes`, and its Save & Apply is rpcd's
   signal.
 - Unsaved work is guarded at two levels, shell-owned: a dirty dialog (drawer,
   modal) asks before closing, and dirty on-page form fields arm the browser's
-  native leave-warning until a submit.
+  native leave-warning until a submit. Dirtiness is always a comparison with
+  the rendered baseline, not a history of input events, so reverting a field
+  to its original value makes the page clean again. Discard restores that
+  rendered baseline in JavaScript, including forms in drawers; when a real UCI
+  stage exists, the shell reverts it and fetches the authoritative form state
+  before restoring the clean capsule.
 - Review's plain-language rendering starts mechanical (config, section,
   option, old → new). Per-plugin humanization of change tuples is a widget
   vocabulary question and stays out of this ADR.

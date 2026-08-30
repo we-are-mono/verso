@@ -44,3 +44,14 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 		}
 	}
 }
+
+func TestPageFormUsesCapsuleInsteadOfOwnSubmit(t *testing.T) {
+	f := &Form{Style: "page", Fields: []Widget{&Field{Name: "hostname", Label: "Hostname"}}}
+	got := render(t, newRenderer(t), f)
+	if !strings.Contains(got, "data-verso-page-form") {
+		t.Fatalf("page form missing capsule hook: %s", got)
+	}
+	if strings.Contains(got, "<button") {
+		t.Fatalf("page form must not render a competing submit button: %s", got)
+	}
+}

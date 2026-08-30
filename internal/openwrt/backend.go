@@ -57,6 +57,10 @@ type Backend interface {
 	// rpcd before acting; the shell itself is unprivileged and cannot write
 	// /etc/shadow (ADR-007).
 	SetPassword(ctx context.Context, sid, username, password string) error
+	// SetSystemTime asks the persistent root helper to set the kernel clock from
+	// one validated local datetime and its POSIX timezone. It is the privileged,
+	// non-UCI tail of System → General's Save & Apply transaction.
+	SetSystemTime(ctx context.Context, sid, datetime, timezone string) error
 	// RootHasPassword reports whether root has a password set — read from
 	// /etc/shadow by the persistent root helper (the shell is unprivileged and
 	// cannot read it), carrying the operator's sid. It returns only the boolean,
@@ -262,6 +266,7 @@ type (
 	uciAddFn       func(ctx context.Context, sid, config, secType string) (string, error)
 	uciDeleteFn    func(ctx context.Context, sid, config, section string) error
 	passwdFn       func(ctx context.Context, sid, username, password string) error
+	setTimeFn      func(ctx context.Context, sid, datetime, timezone string) error
 	rootPasswdFn   func(ctx context.Context, sid string) (bool, error)
 	uciChangesFn   func(ctx context.Context, sid string) (map[string][][]string, error)
 	uciRevertFn    func(ctx context.Context, sid, config string) error
@@ -295,6 +300,7 @@ type NativeBackend struct {
 	uciAdd       uciAddFn
 	uciDelete    uciDeleteFn
 	setPassword  passwdFn
+	setTime      setTimeFn
 	rootPasswd   rootPasswdFn
 	uciChanges   uciChangesFn
 	uciRevert    uciRevertFn
@@ -327,6 +333,7 @@ func NewNativeBackend() *NativeBackend {
 		uciAdd:       dialUCIAdd(""),
 		uciDelete:    dialUCIDelete(""),
 		setPassword:  dialSetPassword(""),
+		setTime:      dialSetSystemTime(""),
 		rootPasswd:   dialRootHasPassword(""),
 		uciChanges:   dialUCIChanges(""),
 		uciRevert:    dialUCIRevert(""),
@@ -404,6 +411,12 @@ func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section stri
 // helper (the setPassword verb), gated by the sid.
 func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
 	return b.setPassword(ctx, sid, username, password)
+}
+
+// SetSystemTime updates the kernel clock through the helper's setSystemTime
+// verb, independently authorized against the operator's session.
+func (b *NativeBackend) SetSystemTime(ctx context.Context, sid, datetime, timezone string) error {
+	return b.setTime(ctx, sid, datetime, timezone)
 }
 
 // RootHasPassword reports whether root has a system password, read from
@@ -674,6 +687,17 @@ func dialSetPassword(socket string) passwdFn {
 		return callHelper(ctx, socket, "setPassword", sid, map[string]string{
 			"username": username,
 			"password": password,
+		}, nil)
+	}
+}
+
+// dialSetSystemTime returns the narrow helper client for setting the kernel
+// clock. The helper validates both fields again and invokes no shell.
+func dialSetSystemTime(socket string) setTimeFn {
+	return func(ctx context.Context, sid, datetime, timezone string) error {
+		return callHelper(ctx, socket, "setSystemTime", sid, map[string]string{
+			"datetime": datetime,
+			"timezone": timezone,
 		}, nil)
 	}
 }

@@ -58,6 +58,18 @@ func TestRenderSectionMeta(t *testing.T) {
 	}
 }
 
+func TestRenderSectionInlineMeta(t *testing.T) {
+	got := render(t, newRenderer(t), &Section{
+		Title: "Time and region", MetaLabel: "Current time",
+		Meta: "2026-08-30 12:30:00", MetaPosition: "inline",
+	})
+	for _, want := range []string{"Time and region", "Current time", "2026-08-30 12:30:00", `aria-hidden="true">·</span>`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("inline section meta missing %q:\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderSectionControl(t *testing.T) {
 	r := newRenderer(t)
 	w, err := Decode([]byte(`{"type":"section","title":"Rule","control":{"type":"switch","name":"enabled","label":"Enabled","off_label":"Disabled","style":"inline","on":true},"children":[]}`))

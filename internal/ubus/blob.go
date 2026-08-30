@@ -116,9 +116,9 @@ func encodeArgs(args map[string]string) []byte {
 }
 
 // encodeTable encodes named arguments that may include nested tables — the shape
-// uci.set needs for its values:{} — as a blobmsg table body. Values may be a
-// string, a map[string]string, or a map[string]any (nested table); any other
-// type is a hard error rather than silent corruption on the wire.
+// uci.set needs for its values:{} — as a blobmsg table body. Values may be
+// strings, booleans, signed integers, arrays, or nested tables; any other type
+// is a hard error rather than silent corruption on the wire.
 func encodeTable(args map[string]any) ([]byte, error) {
 	var body []byte
 	for name, val := range args {
@@ -136,6 +136,18 @@ func appendBlobmsgValue(dst []byte, name string, val any) ([]byte, error) {
 	switch v := val.(type) {
 	case string:
 		return appendBlobmsgAttr(dst, bmString, name, nulTerminated(v)), nil
+	case bool:
+		if v {
+			return appendBlobmsgAttr(dst, bmInt8, name, []byte{1}), nil
+		}
+		return appendBlobmsgAttr(dst, bmInt8, name, []byte{0}), nil
+	case int:
+		if v < math.MinInt32 || v > math.MaxInt32 {
+			return nil, fmt.Errorf("ubus: integer arg %q is outside int32 range", name)
+		}
+		return appendBlobmsgInt32(dst, name, int32(v)), nil
+	case int32:
+		return appendBlobmsgInt32(dst, name, v), nil
 	case map[string]string:
 		return appendBlobmsgAttr(dst, bmTable, name, encodeArgs(v)), nil
 	case map[string]any:
@@ -155,6 +167,12 @@ func appendBlobmsgValue(dst []byte, name string, val any) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("ubus: cannot encode arg %q of unsupported type %T", name, val)
 	}
+}
+
+func appendBlobmsgInt32(dst []byte, name string, value int32) []byte {
+	var encoded [4]byte
+	binary.BigEndian.PutUint32(encoded[:], uint32(value))
+	return appendBlobmsgAttr(dst, bmInt32, name, encoded[:])
 }
 
 // encodeStringArray encodes a blobmsg array body of strings. Array elements carry

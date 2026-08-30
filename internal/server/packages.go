@@ -24,15 +24,6 @@ import (
 // question. Package operations ride the helper's apk verbs; nothing here is a
 // uci write, so none of it stages (ADR-010 boundary).
 
-// packagesTabs is the domain's top bar: two kinds of visit, Installed (what
-// is here) and Discover (browse the feeds).
-func packagesTabs(active string) []pageTab {
-	return []pageTab{
-		{Label: "Installed", Href: "/system/packages", Active: active == "installed"},
-		{Label: "Discover", Href: "/system/packages/discover", Active: active == "discover"},
-	}
-}
-
 // handlePackagesPage renders the Installed inventory.
 func (s *Server) handlePackagesPage(w http.ResponseWriter, r *http.Request) {
 	s.renderPackages(w, r, "")
@@ -78,6 +69,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 			Body: fmt.Sprintf("The package database could not be read (%v).", pkgErr)})
 	}
 	children = append(children,
+		&widget.Link{Label: "Discover packages", Href: "/system/packages/discover", Style: "secondary"},
 		&widget.Filter{Placeholder: "Filter — package, feed, version…"},
 		packagesTable(pkgs),
 	)
@@ -90,9 +82,9 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	// Everything here is immediate (ADR-011 §8), so the staged-changes bar
 	// appears only when other pages' edits are pending.
 	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "Packages",
+		Heading:    "System",
 		Subheading: "The software installed on this router — every package, from every feed.",
-	}, "narrow", packagesTabs("installed"), false, template.HTML(body.String()))
+	}, "narrow", systemPages("packages"), false, template.HTML(body.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
@@ -263,6 +255,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
 	}
+	children = append(children, &widget.Link{Label: "Installed packages", Href: "/system/packages"})
 
 	// One toolbar: the search row carries Refresh as its secondary action (the
 	// same form, so the query survives a refresh), and the index's age sits at
@@ -304,9 +297,9 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		return
 	}
 	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "Packages",
+		Heading:    "System",
 		Subheading: "Browse your configured feeds — your own and the official ones together.",
-	}, "narrow", packagesTabs("discover"), false, template.HTML(body.String()))
+	}, "narrow", systemPages("packages"), false, template.HTML(body.String()))
 }
 
 // freshnessLine is the honest age of the package index, beside the Refresh

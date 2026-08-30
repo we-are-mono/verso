@@ -78,6 +78,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 type formView struct {
 	Inline    bool
 	Compact   bool
+	Page      bool
 	Icon      string
 	Note      template.HTML
 	Submit    string
@@ -96,7 +97,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	submit := f.Submit
-	if submit == "" {
+	if submit == "" && f.Style != "page" {
 		submit = "Save"
 	}
 	var note template.HTML
@@ -108,7 +109,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		note = template.HTML(buf.String())
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Icon: f.Icon, Note: note,
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Page: f.Style == "page", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

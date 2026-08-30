@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -79,7 +80,7 @@ func TestCapsuleInertWhenClean(t *testing.T) {
 	for _, want := range []string{
 		"No pending changes",
 		`id="verso-capsule-apply" disabled`,
-		"verso-capsule mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle", // in-flow footer band
+		"verso-capsule mr-8 mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle", // right edge aligns to content; left stays flush
 		"dark:border-gray-700",
 		"dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900",
 		"dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950",
@@ -89,7 +90,7 @@ func TestCapsuleInertWhenClean(t *testing.T) {
 			t.Errorf("clean staging page missing %q", want)
 		}
 	}
-	if strings.Contains(body, "verso-capsule-review") {
+	if strings.Contains(body, `id="verso-capsule-review"`) {
 		t.Error("a clean page has nothing to review")
 	}
 	if strings.Contains(body, "fixed inset-x-0 bottom-0") {
@@ -134,6 +135,107 @@ func TestUCIApplyRoute(t *testing.T) {
 	}
 	if len(applies) != 1 || applies[0] != uciRollbackTimeout {
 		t.Errorf("UCIApply calls = %v, want one with the %ds rollback window", applies, uciRollbackTimeout)
+	}
+}
+
+func TestPluginApplyActionRunsAfterUCIApply(t *testing.T) {
+	var sequence []string
+	manifest := demoACLManifest()
+	manifest.ACL.Write = append(manifest.ACL.Write, plugin.ACLScope{
+		Scope: "ubus", Object: "verso", Function: "setSystemTime",
+	})
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "router"}}},
+		Apply: []plugin.ApplyAction{{Name: "set-system-time", Args: map[string]string{
+			"datetime": "2026-08-30T12:34:56", "timezone": "CET-1CEST,M3.5.0,M10.5.0/3",
+		}}},
+	}}
+	s := newServerWith(t, fakeBackend{
+		access:  true,
+		applies: &[]int{},
+		setSystemTime: func(_ context.Context, sid, datetime, timezone string) error {
+			sequence = append(sequence, "time "+sid+" "+datetime+" "+timezone)
+			return nil
+		},
+	}, tr, []plugin.Manifest{manifest})
+
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"router"}}); rec.Code != http.StatusOK {
+		t.Fatalf("prepare status = %d, want 200", rec.Code)
+	}
+	if rec := postPlugin(t, s, "/uci/apply", nil); rec.Code != http.StatusOK {
+		t.Fatalf("apply status = %d, want 200", rec.Code)
+	}
+	if len(sequence) != 1 || sequence[0] != "time test-sid 2026-08-30T12:34:56 CET-1CEST,M3.5.0,M10.5.0/3" {
+		t.Fatalf("apply action calls = %v", sequence)
+	}
+	if len(s.takePendingApply("test-sid")) != 0 {
+		t.Fatal("successful apply must clear its one-shot action")
+	}
+}
+
+// TestPendingApplyIsSessionScoped: one session's armed apply tail is invisible to
+// another session's Save & Apply, an empty save never wipes it, and draining
+// clears it atomically.
+func TestPendingApplyIsSessionScoped(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	action := plugin.ApplyAction{Name: "set-system-time", Args: map[string]string{
+		"datetime": "2026-08-30T12:34:56", "timezone": "GMT0",
+	}}
+	s.setPendingApply("alice", []plugin.ApplyAction{action})
+
+	// Bob's Save & Apply drains only Bob's (empty) tail — never Alice's.
+	if got := s.takePendingApply("bob"); len(got) != 0 {
+		t.Fatalf("bob's apply drained %d actions from alice's tail", len(got))
+	}
+	s.setPendingApply("alice", nil) // an unrelated save with no tail must not wipe it
+	// Alice's own apply drains exactly her one action, then clears it atomically.
+	if got := s.takePendingApply("alice"); len(got) != 1 {
+		t.Fatalf("alice drained %d actions, want 1 (survived bob + empty save)", len(got))
+	}
+	if got := s.takePendingApply("alice"); len(got) != 0 {
+		t.Fatal("a drained tail must be cleared")
+	}
+}
+
+func TestPluginApplyActionRequiresDeclaredScope(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Apply: []plugin.ApplyAction{{Name: "set-system-time", Args: map[string]string{
+			"datetime": "2026-08-30T12:34:56", "timezone": "GMT0",
+		}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true}, tr, []plugin.Manifest{demoACLManifest()})
+	if rec := postPlugin(t, s, "/plugins/demo/", nil); rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestNestedAlternateFieldErrorBlocksTransaction(t *testing.T) {
+	called := false
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"form","style":"page","fields":[
+			{"type":"section","children":[{"type":"conditional","name":"enabled","checked":false,
+			"otherwise":[{"type":"stack","children":[{"type":"field","name":"datetime","error":"Invalid time"}]}]}]}
+		]}`),
+		Apply: []plugin.ApplyAction{{Name: "set-system-time", Args: map[string]string{
+			"datetime": "bad", "timezone": "GMT0",
+		}}},
+	}}
+	manifest := demoACLManifest()
+	manifest.ACL.Write = append(manifest.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "setSystemTime"})
+	s := newServerWith(t, fakeBackend{
+		access:        true,
+		setSystemTime: func(context.Context, string, string, string) error { called = true; return nil },
+	}, tr, []plugin.Manifest{manifest})
+	if rec := postPlugin(t, s, "/plugins/demo/", nil); rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+	if called || len(s.takePendingApply("test-sid")) != 0 {
+		t.Fatal("invalid alternate field must not prepare or execute an apply action")
 	}
 }
 

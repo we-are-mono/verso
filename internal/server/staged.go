@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // uciRollbackTimeout is the window rpcd holds an applied configuration before
@@ -108,12 +110,32 @@ func humanizeChange(config string, ch []string) string {
 // device-side rollback armed (ADR-010). The capsule then confirms from the
 // browser; no confirm within the window and the router reverts itself.
 func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
-	if err := s.backend.UCIApply(r.Context(), s.sessionSID(r), uciRollbackTimeout); err != nil {
+	sid := s.sessionSID(r)
+	if err := s.backend.UCIApply(r.Context(), sid, uciRollbackTimeout); err != nil {
 		log.Printf("verso: uci apply failed: %v", err)
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
+	// The staged UCI is applied; drain and clear this session's paired non-UCI
+	// tail atomically, so a failed action cannot linger to fire on an unrelated
+	// later apply — this session's or any other's.
+	for _, action := range s.takePendingApply(sid) {
+		if err := s.executeApplyAction(r.Context(), sid, action); err != nil {
+			log.Printf("verso: post-apply action %q failed: %v", action.Name, err)
+			http.Error(w, "apply action failed", http.StatusBadGateway)
+			return
+		}
+	}
 	writeOK(w)
+}
+
+func (s *Server) executeApplyAction(ctx context.Context, sid string, action plugin.ApplyAction) error {
+	switch action.Name {
+	case "set-system-time":
+		return s.backend.SetSystemTime(ctx, sid, action.Args["datetime"], action.Args["timezone"])
+	default:
+		return fmt.Errorf("unsupported apply action %q", action.Name)
+	}
 }
 
 // handleUCIConfirm disarms the pending rollback, keeping the applied
@@ -149,6 +171,7 @@ func (s *Server) handleUCIDiscard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	s.clearPendingApply(sid)
 	writeOK(w)
 }
 

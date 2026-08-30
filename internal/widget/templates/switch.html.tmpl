@@ -4,7 +4,7 @@
      rows. CSS-only (peer): the checkbox drives the track colour and knob travel.
      Callers pass any value with On (bool) and Name (form name, optional). */}}
 {{define "switch.control"}}<span class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center">
-  <input type="checkbox" data-verso-switch class="peer sr-only"{{if .On}} checked{{end}}{{if .Name}} name="{{.Name}}"{{end}}>
+  <input type="checkbox" data-verso-switch class="peer sr-only" value="1"{{if .On}} checked{{end}}{{if .Name}} name="{{.Name}}"{{end}}>
   <span class="absolute inset-0 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-600"></span>
   <span class="relative mx-0.5 size-3 rounded-full bg-white shadow transition peer-checked:translate-x-3"></span>
 </span>{{end}}

@@ -113,7 +113,9 @@ over a local socket**, exchanging *data*, not markup.
    and marks the active tab, so a plugin cannot aim the bar outside itself. `banner`
    is a full-width `{variant, title, body}` notice the shell renders at the navigation
    seam. Every field is optional: a plugin that sends only `schema_version`, `title`,
-   and `widget` gets a plain page.
+   and `widget` gets a plain page. A successful POST may also carry a closed-set
+   `apply` intent for a typed non-UCI operation that follows the UCI apply; the
+   shell accepts it only when the plugin declared its exact rpcd scope.
 
 5. **The plugin is authoritative for its own writes and validation, and says so
    in-band.** A POST that fails validation returns HTTP **422** with the *same*
@@ -200,7 +202,8 @@ over a local socket**, exchanging *data*, not markup.
   scopes, 503 when rpcd is unreachable). And the plugin no longer writes config
   itself: it returns a declarative `commit` intent in its envelope, and the shell
   executes it through rpcd with the operator's sid, refusing any op outside the
-  plugin's declared configs. §5 narrows accordingly — the plugin stays
+  plugin's declared configs. A typed `apply` intent is bounded the same way for
+  the small closed set of non-UCI operations the shell brokers. §5 narrows accordingly — the plugin stays
   authoritative for *validation* and for *deciding* what to write, but the
   privileged write is the shell's, so a de-privileged (non-root) plugin holds no
   write access and no session credential of its own.

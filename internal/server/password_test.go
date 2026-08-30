@@ -167,11 +167,11 @@ func TestPasswordLinkAlwaysInNav(t *testing.T) {
 	}
 	found := false
 	for _, l := range system.Links {
-		if l.Href == "/system/password" && l.Label == "Password" {
+		if l.Href == "/system/access" && l.Label == "Access" {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("Password link missing from System section")
+		t.Error("Access link missing from System section")
 	}
 }

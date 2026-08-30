@@ -39,7 +39,8 @@ type fakeBackend struct {
 	deletes        *[]string                 // records "config.section" per UCIDelete
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
-	setPassword func(ctx context.Context, sid, username, password string) error
+	setPassword   func(ctx context.Context, sid, username, password string) error
+	setSystemTime func(ctx context.Context, sid, datetime, timezone string) error
 	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
 	// of what the shell committed, applied, confirmed, or reverted.
 	changes    map[string][][]string
@@ -238,6 +239,13 @@ func (f fakeBackend) PkgRemove(_ context.Context, _ string, name string) error {
 func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
 	if f.setPassword != nil {
 		return f.setPassword(ctx, sid, username, password)
+	}
+	return nil
+}
+
+func (f fakeBackend) SetSystemTime(ctx context.Context, sid, datetime, timezone string) error {
+	if f.setSystemTime != nil {
+		return f.setSystemTime(ctx, sid, datetime, timezone)
 	}
 	return nil
 }
@@ -1094,8 +1102,8 @@ func TestNavListsPlugins(t *testing.T) {
 func TestNavMultipleEntriesPerPlugin(t *testing.T) {
 	m := demoManifest()
 	m.Nav = []plugin.NavEntry{
-		{Section: "System", Label: "General", Path: "/"},
-		{Section: "System", Label: "Time", Path: "/time"},
+		{Section: "Apps", Label: "General", Path: "/"},
+		{Section: "Apps", Label: "Time", Path: "/time"},
 	}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 

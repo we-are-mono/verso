@@ -145,6 +145,9 @@ envelope** back — `Content-Type: application/json`:
 - `commit` — optional; on a successful write, the uci changes for the shell to
   apply on your behalf (see [Writing config](#writing-config-the-commit-intent)).
   You never write config yourself.
+- `apply` — optional; a tightly typed non-UCI operation the shell performs after
+  the staged UCI transaction applies. Only shell-known operations are accepted,
+  and the manifest must declare the exact matching rpcd write scope.
 
 **GET** `<path>` → return the page as a schema envelope, HTTP 200.
 
@@ -264,6 +267,30 @@ not by your good behaviour:
 If any changed owner fails validation, authorization, or transport, no intent is
 staged. If staging itself fails partway through, the shell restores the stage that
 existed before the submission and does not apply. A `commit` on a GET is ignored.
+
+### Privileged post-apply actions
+
+Rare settings have a non-UCI tail. For example, disabling NTP is a UCI change,
+but setting the kernel clock is not. A successful POST may therefore return an
+`apply` array beside `commit`:
+
+```json
+"apply": [{
+  "name": "set-system-time",
+  "args": {
+    "datetime": "2026-08-30T12:34:56",
+    "timezone": "CET-1CEST,M3.5.0,M10.5.0/3"
+  }
+}]
+```
+
+This is not an extensible command channel. The shell recognizes a closed set of
+action names, verifies the plugin declared the corresponding ACL scope (for this
+one, `{ "scope":"ubus", "object":"verso",
+"function":"setSystemTime" }`), and passes only structured arguments to
+`verso-rpcd`. The helper validates them again at the root boundary and invokes no
+shell. A validation failure prepares neither UCI writes nor an action; Discard
+drops both; Save & Apply runs the action only after UCI apply.
 
 ### What the shell does when you misbehave
 

@@ -99,5 +99,5 @@ func (s *Server) renderPassword(w http.ResponseWriter, r *http.Request, status i
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Router Password"}, "narrow", nil, false, template.HTML(body.String()))
+	s.renderPage(w, r, status, pageHeader{Heading: "System"}, "narrow", systemPages("access"), false, template.HTML(body.String()))
 }

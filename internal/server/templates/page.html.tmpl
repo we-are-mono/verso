@@ -135,7 +135,7 @@
        left-aligned against the rail (no centring — better on wide monitors).
        The outer width also governs the staged-changes footer: its rules touch
        the rail on the left and stop at this same page boundary on the right. */}}
-  <div class="{{if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
+  <div class="verso-page-enter {{if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{/* pt equals px, so the masthead sits as far from the top edge as from the
          left one. The bottom padding becomes the natural gap before the footer. */}}
     <div class="px-8 pt-8 pb-10">
@@ -158,8 +158,7 @@
       <span>{{.FlashMessage}}</span>
     </div>
     {{end}}
-    {{/* Only the body settles in on load; the masthead above (kicker/heading/lede) stays put. */}}
-    <div class="verso-page-enter">{{.Body}}</div>
+    <div class="verso-page-body">{{.Body}}</div>
     </div>
 
     {{/* Staged-changes footer (shell-owned, verso.js "capsule"): it follows
@@ -171,25 +170,33 @@
          immediate-action pages only when the shared stage holds changes from
          elsewhere. Apply carries the auto-rollback promise. */}}
     {{if .ShowCapsule}}
-    <div id="verso-capsule" data-csrf="{{.CSRFToken}}"
-      class="verso-capsule mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle dark:border-gray-700">
+    <div id="verso-capsule" data-csrf="{{.CSRFToken}}" data-staged-count="{{.Capsule.Count}}"
+      class="verso-capsule mr-8 mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle dark:border-gray-700">
       <div class="relative flex flex-wrap items-center gap-3 px-8 py-5">
       <button type="button" id="verso-capsule-apply"{{if not .Capsule.Count}} disabled{{end}}
         class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:pointer-events-none disabled:opacity-40 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">Save &amp; Apply</button>
       <button type="button" id="verso-capsule-discard"{{if not .Capsule.Count}} disabled{{end}}
         class="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950">Discard</button>
-      <span class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 dark:text-gray-400">
+      {{if or .Capsule.Count .HasPageForm}}<button type="button" id="verso-capsule-review" aria-expanded="false"{{if not .Capsule.Count}} disabled{{end}}
+        class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 transition-colors enabled:cursor-pointer enabled:hover:text-slate-900 disabled:pointer-events-none dark:text-gray-400 dark:enabled:hover:text-gray-200">
         <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full {{if .Capsule.Count}}bg-sky-500{{else}}bg-slate-300 dark:bg-gray-600{{end}}"></span>
         <span id="verso-capsule-text">{{.Capsule.Label}}</span>
-      </span>
-      {{if .Capsule.Count}}
-      <button type="button" id="verso-capsule-review"
-        class="text-sm font-semibold text-sky-700 transition-colors hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300">Review</button>
-      <div id="verso-capsule-list" class="absolute bottom-full left-8 mb-2 hidden w-96 max-w-full rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900">
-        <ul class="max-h-60 space-y-1 overflow-y-auto font-mono text-xs text-slate-700 dark:text-gray-200">
+      </button>{{else}}<span class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 dark:text-gray-400">
+        <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full bg-slate-300 dark:bg-gray-600"></span>
+        <span id="verso-capsule-text">{{.Capsule.Label}}</span>
+      </span>{{end}}
+      {{if or .Capsule.Count .HasPageForm}}
+      <div id="verso-capsule-list" aria-hidden="true" class="verso-capsule-review absolute bottom-full z-10 rounded-t-sm border border-b-0 border-slate-200 bg-surface-subtle dark:border-gray-700">
+        <div class="flex items-center justify-between gap-4 px-8 pt-3 pb-2">
+          <div id="verso-capsule-list-title" class="text-sm font-semibold text-slate-900 dark:text-gray-100">{{.Capsule.Label}}</div>
+          <button type="button" id="verso-capsule-close" aria-label="Close change review" class="grid size-7 shrink-0 place-items-center rounded text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:text-gray-100">
+            {{icon "chevron-down" "size-4"}}
+          </button>
+        </div>
+        <div id="verso-capsule-local-changes" class="hidden px-8 pb-4"></div>
+        {{if .Capsule.Count}}<ul id="verso-capsule-staged-changes" class="verso-drawer-scrollbar max-h-80 space-y-1 overflow-y-auto px-8 pb-4 font-mono text-sm font-medium text-slate-700 dark:text-gray-200">
           {{range .Capsule.Items}}<li>{{.}}</li>{{end}}
-        </ul>
-        <p class="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500 dark:border-gray-700 dark:text-gray-400">Nothing is live yet. Save &amp; Apply commits and reloads the affected services — and auto-reverts if the router becomes unreachable for 30&nbsp;seconds.</p>
+        </ul>{{end}}
       </div>
       {{end}}
       </div>

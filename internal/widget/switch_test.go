@@ -15,7 +15,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	}
 	got := render(t, newRenderer(t), w)
 	for _, want := range []string{
-		`type="checkbox"`, `data-verso-switch`, `name="enabled"`, " checked",
+		`type="checkbox"`, `data-verso-switch`, `value="1"`, `name="enabled"`, " checked",
 		"Enabled", "Applies immediately.", "peer-checked:bg-emerald-500",
 		"items-center gap-2", "pl-9 text-sm text-slate-500",
 	} {

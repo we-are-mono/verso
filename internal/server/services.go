@@ -245,9 +245,9 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	// Immediate acts only (ADR-011 §8) — the staged-changes bar appears here
 	// solely when other pages' edits are pending.
 	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "Services",
+		Heading:    "System",
 		Subheading: "The processes this router runs — procd's service table, live.",
-	}, "narrow", nil, false, template.HTML(body.String()))
+	}, "narrow", systemPages("services"), false, template.HTML(body.String()))
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name, the

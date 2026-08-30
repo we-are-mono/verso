@@ -179,8 +179,8 @@ func (c *Client) InvokeArgs(objID uint32, method string, args map[string]string)
 
 // InvokeTable calls a method whose arguments may include nested tables — the
 // shape uci.set needs for values:{} — and returns the decoded result table.
-// Argument values may be string, map[string]string, or map[string]any; any other
-// type is rejected before anything is sent.
+// Argument values may be strings, booleans, signed integers, arrays, or nested
+// tables; any other type is rejected before anything is sent.
 func (c *Client) InvokeTable(objID uint32, method string, args map[string]any) (map[string]any, error) {
 	body, err := encodeTable(args)
 	if err != nil {

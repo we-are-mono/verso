@@ -182,27 +182,88 @@ document.addEventListener("alpine:init", function () {
   });
 });
 
-// Leaving the page with unsaved form edits loses them — warn first. Any edit to
-// a field inside a <form> marks the page dirty; submitting a form is intentional
-// navigation and clears the flag. The browser renders its native prompt.
+// Leaving the page with unsaved form edits loses them — warn first. Dirtiness is
+// a comparison with the rendered baseline, never a history of input events: a
+// toggle changed twice is clean again. The capsule contributes its composed page
+// form as a separate source below; ordinary forms (including drawer forms) are
+// tracked here. The browser renders its native prompt.
 (function () {
-  var dirty = false;
-  document.addEventListener(
-    "input",
-    function (e) {
-      if (e.target.closest && e.target.closest("form")) dirty = true;
+  var baselines = new Map();
+  var sources = Object.create(null);
+  var suppressed = false;
+
+  function signature(form) {
+    var values = [];
+    [].forEach.call(form.elements || [], function (control) {
+      if (!control.name || control.name === "_csrf" || control.disabled) return;
+      var type = (control.type || "").toLowerCase();
+      if (type === "submit" || type === "button" || type === "reset") return;
+      if ((type === "checkbox" || type === "radio") && !control.checked) return;
+      if (type === "file") {
+        var files = [].map.call(control.files || [], function (file) { return file.name; });
+        values.push([control.name, files]);
+        return;
+      }
+      values.push([control.name, control.value]);
+    });
+    return JSON.stringify(values);
+  }
+
+  function track(form) {
+    if (!form || baselines.has(form) || form.hasAttribute("data-verso-page-form")) return;
+    baselines.set(form, signature(form));
+  }
+
+  function refreshForms() {
+    var dirty = false;
+    baselines.forEach(function (baseline, form) {
+      if (form.isConnected && signature(form) !== baseline) dirty = true;
+    });
+    sources.forms = dirty;
+  }
+
+  [].forEach.call(document.querySelectorAll("form"), track);
+  new MutationObserver(function (records) {
+    records.forEach(function (record) {
+      [].forEach.call(record.addedNodes, function (node) {
+        if (!node.querySelectorAll) return;
+        if (node.matches && node.matches("form")) track(node);
+        [].forEach.call(node.querySelectorAll("form"), track);
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+
+  window.versoDirtyState = {
+    set: function (source, dirty) {
+      sources[source] = !!dirty;
     },
-    true
-  );
-  document.addEventListener(
-    "submit",
-    function () {
-      dirty = false;
+    suppress: function () {
+      suppressed = true;
     },
-    true
-  );
+    resume: function () {
+      suppressed = false;
+    },
+    reset: function () {
+      baselines.forEach(function (_, form) {
+        if (form.isConnected) form.reset();
+      });
+      sources.forms = false;
+    },
+  };
+
+  function changed(e) {
+    var form = e.target.closest && e.target.closest("form");
+    if (!form || form.hasAttribute("data-verso-page-form")) return;
+    track(form);
+    refreshForms();
+  }
+  document.addEventListener("input", changed, true);
+  document.addEventListener("change", changed, true);
+  document.addEventListener("submit", function () { suppressed = true; }, true);
   window.addEventListener("beforeunload", function (e) {
-    if (!dirty) return;
+    refreshForms();
+    var dirty = Object.keys(sources).some(function (key) { return sources[key]; });
+    if (suppressed || !dirty) return;
     e.preventDefault();
     e.returnValue = ""; // required by Chromium for the prompt to show
   });
@@ -242,6 +303,7 @@ document.addEventListener("alpine:init", function () {
     chip.appendChild(remove);
     list.insertBefore(chip, input);
     input.value = "";
+    list.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   document.addEventListener("keydown", function (event) {
@@ -256,7 +318,11 @@ document.addEventListener("alpine:init", function () {
   });
   document.addEventListener("click", function (event) {
     var remove = event.target.closest && event.target.closest("[data-verso-token-remove]");
-    if (remove) remove.closest("[data-verso-token]").remove();
+    if (remove) {
+      var list = remove.closest("[data-verso-token-list]");
+      remove.closest("[data-verso-token]").remove();
+      if (list) list.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   });
 })();
 
@@ -286,6 +352,7 @@ document.addEventListener("alpine:init", function () {
       }
       select.value = "";
       refresh(builder);
+      builder.dispatchEvent(new Event("input", { bubbles: true }));
       return;
     }
 
@@ -302,6 +369,7 @@ document.addEventListener("alpine:init", function () {
     }
     item.remove();
     refresh(builder);
+    builder.dispatchEvent(new Event("input", { bubbles: true }));
   });
 })();
 
@@ -605,9 +673,192 @@ document.addEventListener(
   var capsule = document.getElementById("verso-capsule");
   if (!capsule) return;
   var text = document.getElementById("verso-capsule-text");
-  var listWrap = document.getElementById("verso-capsule-list"); // absent on a clean page
+  var title = document.getElementById("verso-capsule-list-title");
+  var localWrap = document.getElementById("verso-capsule-local-changes");
+  var listWrap = document.getElementById("verso-capsule-list");
   var review = document.getElementById("verso-capsule-review");
+  var closeReview = document.getElementById("verso-capsule-close");
+  var applyButton = document.getElementById("verso-capsule-apply");
+  var discardButton = document.getElementById("verso-capsule-discard");
+  var dot = document.getElementById("verso-capsule-dot");
+  var stagedCount = parseInt(capsule.getAttribute("data-staged-count") || "0", 10);
   var csrf = capsule.getAttribute("data-csrf") || "";
+  var pageForm = document.querySelector("form[data-verso-page-form]");
+  var baseline = pageForm ? collect(pageForm) : new Map();
+  var pristinePageForm = pageForm ? pageForm.cloneNode(true) : null;
+  var localChanges = [];
+
+  function fieldState(wrapper) {
+    var name = wrapper.getAttribute("data-verso-change-name") || "";
+    var label = wrapper.getAttribute("data-verso-change-label") || name;
+    var kind = wrapper.getAttribute("data-verso-change-kind") || "text";
+    var controls = [].filter.call(wrapper.querySelectorAll("[name]"), function (control) {
+      return control.name === name && !control.disabled;
+    });
+    var values = [];
+    var displays = [];
+
+    controls.forEach(function (control) {
+      var type = (control.type || "").toLowerCase();
+      if ((type === "checkbox" || type === "radio") && !control.checked) return;
+      if (type === "file") {
+        [].forEach.call(control.files || [], function (file) {
+          values.push(file.name);
+          displays.push(file.name);
+        });
+        return;
+      }
+      var value = control.value;
+      if (kind === "list" && value.trim() === "") return;
+      values.push(value);
+      if (control.tagName === "SELECT") {
+        var option = control.options[control.selectedIndex];
+        displays.push(option ? option.textContent.trim() : value);
+      } else if (type === "checkbox" && kind === "checks") {
+        var optionLabel = control.closest("label");
+        displays.push(optionLabel ? optionLabel.textContent.trim() : value);
+      } else {
+        displays.push(value);
+      }
+    });
+
+    if (kind === "checks") {
+      values.sort();
+      displays.sort();
+    }
+    var display;
+    if (kind === "toggle") display = values.length ? "On" : "Off";
+    else if (kind === "password") display = values.some(Boolean) ? "Set" : "Not set";
+    else display = displays.filter(Boolean).join(", ") || "Not set";
+    return { name: name, label: label, kind: kind, key: JSON.stringify(values), display: display };
+  }
+
+  function collect(form) {
+    var fields = new Map();
+    if (!form) return fields;
+    [].forEach.call(form.querySelectorAll("[data-verso-change-field]"), function (wrapper) {
+      var state = fieldState(wrapper);
+      if (state.name && !fields.has(state.name)) fields.set(state.name, state);
+    });
+    return fields;
+  }
+
+  function pendingLabel(count) {
+    return count === 1 ? "1 pending change" : count + " pending changes";
+  }
+
+  function appendText(parent, tag, className, value) {
+    var el = document.createElement(tag);
+    el.className = className;
+    el.textContent = value;
+    parent.appendChild(el);
+    return el;
+  }
+
+  function renderChanges(changes) {
+    if (!localWrap) return;
+    localWrap.replaceChildren();
+    localWrap.classList.toggle("hidden", changes.length === 0);
+    if (!changes.length) return;
+
+    var scroll = document.createElement("div");
+    scroll.className = "verso-drawer-scrollbar max-h-80 overflow-y-auto pr-1";
+    var header = document.createElement("div");
+    header.className = "hidden grid-cols-3 gap-4 border-b border-slate-200 pb-2 text-xs font-medium text-slate-400 sm:grid dark:border-gray-700 dark:text-gray-500";
+    ["Field", "Previous", "New"].forEach(function (value) { appendText(header, "span", "", value); });
+    scroll.appendChild(header);
+    var list = document.createElement("ul");
+    list.className = "divide-y divide-slate-200 dark:divide-gray-700";
+    changes.forEach(function (change) {
+      var row = document.createElement("li");
+      row.className = "py-2 first:pt-1.5 last:pb-0 sm:grid sm:grid-cols-3 sm:gap-4";
+      appendText(row, "div", "text-sm font-medium text-slate-700 dark:text-gray-300", change.label);
+      var values = document.createElement("div");
+      values.className = "mt-2 grid grid-cols-2 gap-4 sm:contents";
+      var previous = document.createElement("div");
+      previous.className = "min-w-0";
+      appendText(previous, "div", "mb-1 text-xs font-medium text-slate-400 sm:hidden dark:text-gray-500", "Previous");
+      appendText(previous, "div", "break-words font-mono text-base font-medium text-slate-500 dark:text-gray-400", change.previous);
+      var next = document.createElement("div");
+      next.className = "min-w-0";
+      appendText(next, "div", "mb-1 text-xs font-medium text-slate-400 sm:hidden dark:text-gray-500", "New");
+      appendText(next, "div", "break-words font-mono text-base font-semibold text-slate-900 dark:text-gray-100", change.next);
+      values.appendChild(previous);
+      values.appendChild(next);
+      row.appendChild(values);
+      list.appendChild(row);
+    });
+    scroll.appendChild(list);
+    localWrap.appendChild(scroll);
+  }
+
+  function setReviewOpen(open) {
+    if (!listWrap) return;
+    listWrap.classList.toggle("is-open", !!open);
+    capsule.classList.toggle("verso-review-open", !!open);
+    listWrap.setAttribute("aria-hidden", open ? "false" : "true");
+    if (review) review.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function reviewIsOpen() {
+    return !!(listWrap && listWrap.classList.contains("is-open"));
+  }
+
+  function refresh() {
+    if (pageForm) {
+      var current = collect(pageForm);
+      localChanges = [];
+      var names = new Set();
+      baseline.forEach(function (_, name) { names.add(name); });
+      current.forEach(function (_, name) { names.add(name); });
+      names.forEach(function (name) {
+        var before = baseline.get(name) || { label: name, key: "[]", display: "Not set" };
+        var after = current.get(name) || { label: before.label, key: "[]", display: "Not set" };
+        if (before.key !== after.key) {
+          localChanges.push({ label: after.label || before.label, previous: before.display, next: after.display });
+        }
+      });
+    }
+    var total = stagedCount + localChanges.length;
+    var label = total ? pendingLabel(total) : "No pending changes";
+    text.textContent = label;
+    if (title) title.textContent = label;
+    applyButton.disabled = total === 0;
+    discardButton.disabled = total === 0;
+    if (review) review.disabled = total === 0;
+    if (dot) {
+      dot.classList.toggle("bg-sky-500", total > 0);
+      dot.classList.toggle("bg-slate-300", total === 0);
+      dot.classList.toggle("dark:bg-gray-600", total === 0);
+    }
+    if (!total) setReviewOpen(false);
+    renderChanges(localChanges);
+    if (window.versoDirtyState) window.versoDirtyState.set("capsule", localChanges.length > 0);
+  }
+
+  function bindPageForm() {
+    if (!pageForm) return;
+    pageForm.addEventListener("input", refresh);
+    pageForm.addEventListener("change", refresh);
+  }
+
+  function replacePageForm(replacement, makeBaseline) {
+    if (!pageForm || !replacement) return;
+    pageForm.replaceWith(replacement);
+    pageForm = replacement;
+    if (makeBaseline) {
+      baseline = collect(pageForm);
+      pristinePageForm = pageForm.cloneNode(true);
+    }
+    bindPageForm();
+    refresh();
+  }
+
+  function resetRenderedForms() {
+    if (window.versoDirtyState) window.versoDirtyState.reset();
+    if (pageForm && pristinePageForm) replacePageForm(pristinePageForm.cloneNode(true), false);
+    setReviewOpen(false);
+  }
 
   function post(path) {
     return fetch(path, {
@@ -619,16 +870,57 @@ document.addEventListener(
 
   if (review && listWrap) {
     review.addEventListener("click", function () {
-      listWrap.classList.toggle("hidden");
+      if (review.disabled) return;
+      setReviewOpen(!reviewIsOpen());
+    });
+    document.addEventListener("click", function (event) {
+      if (reviewIsOpen() && !capsule.contains(event.target)) setReviewOpen(false);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") setReviewOpen(false);
     });
   }
 
-  document.getElementById("verso-capsule-discard").addEventListener("click", function () {
+  if (closeReview && listWrap) {
+    closeReview.addEventListener("click", function () {
+      setReviewOpen(false);
+      if (review) review.focus();
+    });
+  }
+
+  bindPageForm();
+  refresh();
+
+  discardButton.addEventListener("click", function () {
+    if (discardButton.disabled) return;
+    if (!stagedCount) {
+      resetRenderedForms();
+      return;
+    }
     capsule.classList.add("verso-busy");
     post("/uci/discard")
       .then(function (res) {
         if (!res.ok) throw new Error("discard failed");
-        location.reload();
+        return fetch(location.href, { headers: { Accept: "text/html" } });
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error("refresh failed");
+        return res.text();
+      })
+      .then(function (html) {
+        var parsed = new DOMParser().parseFromString(html, "text/html");
+        var replacement = parsed.querySelector("form[data-verso-page-form]");
+        if (!replacement || !pageForm) {
+          if (window.versoDirtyState) window.versoDirtyState.suppress();
+          location.reload();
+          return;
+        }
+        stagedCount = 0;
+        var staged = document.getElementById("verso-capsule-staged-changes");
+        if (staged) staged.remove();
+        replacePageForm(replacement, true);
+        resetRenderedForms();
+        capsule.classList.remove("verso-busy");
       })
       .catch(function () {
         capsule.classList.remove("verso-busy");
@@ -636,45 +928,89 @@ document.addEventListener(
       });
   });
 
-  document.getElementById("verso-capsule-apply").addEventListener("click", function () {
+  applyButton.addEventListener("click", function () {
+    if (applyButton.disabled) return;
     capsule.classList.add("verso-busy");
-    if (listWrap) listWrap.classList.add("hidden");
-    text.textContent = "Applying — auto-reverts if the router is unreachable for 30 s…";
-    var deadline = Date.now() + 28000;
+    setReviewOpen(false);
 
-    function confirmLoop() {
-      post("/uci/confirm")
+    function apply() {
+      text.textContent = "Applying — auto-reverts if the router is unreachable for 30 s…";
+      var deadline = Date.now() + 28000;
+
+      function confirmLoop() {
+        post("/uci/confirm")
+          .then(function (res) {
+            if (res.ok) {
+              capsule.classList.add("verso-done");
+              text.textContent = "Applied";
+              setTimeout(function () {
+                if (window.versoDirtyState) window.versoDirtyState.suppress();
+                location.reload();
+              }, 900);
+              return;
+            }
+            retry();
+          })
+          .catch(retry);
+      }
+      function retry() {
+        if (Date.now() < deadline) {
+          setTimeout(confirmLoop, 500);
+          return;
+        }
+        capsule.classList.remove("verso-busy");
+        text.textContent = "Couldn’t confirm — the router may have rolled back";
+      }
+
+      post("/uci/apply")
         .then(function (res) {
-          if (res.ok) {
-            capsule.classList.add("verso-done");
-            text.textContent = "Applied";
-            setTimeout(function () {
-              location.reload();
-            }, 900);
+          if (!res.ok) {
+            capsule.classList.remove("verso-busy");
+            text.textContent = "Couldn’t apply — check the settings and try again";
             return;
           }
-          retry();
+          setTimeout(confirmLoop, 1000);
         })
-        .catch(retry);
-    }
-    function retry() {
-      if (Date.now() < deadline) {
-        setTimeout(confirmLoop, 500);
-        return;
-      }
-      capsule.classList.remove("verso-busy");
-      text.textContent = "Couldn’t confirm — the router may have rolled back";
+        .catch(function () {
+          // The apply itself may have severed our path (a network change); keep
+          // trying to confirm — reaching the router again is the success signal.
+          setTimeout(confirmLoop, 1000);
+        });
     }
 
-    post("/uci/apply")
+    // A composed page form has no competing Save button: prepare and validate
+    // its plugin intent first, then apply the resulting UCI stage. Validation
+    // replaces just the form so the fixed navigation and capsule stay put.
+    if (!pageForm || localChanges.length === 0) {
+      apply();
+      return;
+    }
+    text.textContent = "Saving changes…";
+    fetch(location.href, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(new FormData(pageForm)).toString(),
+    })
       .then(function (res) {
-        if (!res.ok) throw new Error("apply failed");
-        setTimeout(confirmLoop, 1000);
+        return res.text().then(function (html) { return { res: res, html: html }; });
+      })
+      .then(function (reply) {
+        if (reply.res.status === 422) {
+          var parsed = new DOMParser().parseFromString(reply.html, "text/html");
+          var replacement = parsed.querySelector("form[data-verso-page-form]");
+          if (replacement) {
+            replacePageForm(replacement, false);
+          }
+          capsule.classList.remove("verso-busy");
+          text.textContent = "Check the highlighted fields";
+          return;
+        }
+        if (!reply.res.ok) throw new Error("save failed");
+        apply();
       })
       .catch(function () {
-        // The apply itself may have severed our path (a network change); keep
-        // trying to confirm — reaching the router again is the success signal.
-        setTimeout(confirmLoop, 1000);
+        capsule.classList.remove("verso-busy");
+        text.textContent = "Couldn’t save — try again";
       });
   });
 })();
@@ -762,7 +1098,7 @@ document.addEventListener(
     if (el) el.textContent = text;
   }
   function applyMeter(reading) {
-    var root = document.querySelector('[data-verso-meter="' + reading.name + '"]');
+    var root = document.querySelector('[data-verso-meter="' + CSS.escape(reading.name) + '"]');
     if (!root) return;
     setText(root, "[data-verso-meter-value]", reading.value);
     setText(root, "[data-verso-meter-unit]", reading.unit);
@@ -814,7 +1150,7 @@ document.addEventListener(
   // when traffic starts.
   var CHART_ROLES = ["sky", "violet", "emerald", "amber", "idle"];
   function applyChart(dev) {
-    var svg = document.querySelector('svg[data-verso-chart="' + dev.key + '"]');
+    var svg = document.querySelector('svg[data-verso-chart="' + CSS.escape(dev.key) + '"]');
     if (!svg) return;
     var vb = svg.viewBox.baseVal;
     var W = vb.width, H = vb.height, PAD = 8;
@@ -866,7 +1202,7 @@ document.addEventListener(
     });
     // The readout above the plot shows each series' newest value — whole
     // numbers only, the readout stays calm.
-    var block = document.querySelector('[data-verso-chart-block="' + dev.key + '"]');
+    var block = document.querySelector('[data-verso-chart-block="' + CSS.escape(dev.key) + '"]');
     if (block) {
       block.querySelectorAll("[data-verso-chart-rate-v]").forEach(function (el, i) {
         var vals = series[i];
@@ -892,7 +1228,7 @@ document.addEventListener(
     return [n.toFixed(1), units[i]];
   }
   function setStat(name, parts) {
-    var tile = document.querySelector('[data-verso-stat="' + name + '"]');
+    var tile = document.querySelector('[data-verso-stat="' + CSS.escape(name) + '"]');
     if (!tile) return;
     var v = tile.querySelector("[data-verso-stat-v]");
     if (v) v.textContent = parts[0];

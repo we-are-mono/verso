@@ -6,7 +6,7 @@
      form must post but a person never edits (e.g. which object a button acts
      on). */}}
 {{if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
-<div class="space-y-1.5">
+<div class="space-y-1.5" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{if .Kind}}{{.Kind}}{{else}}text{{end}}">
   {{if .Label}}<label for="{{.Name}}" class="block text-sm font-medium text-slate-900">{{.Label}}</label>{{end}}
   {{if eq .Kind "select"}}
   {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —

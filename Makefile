@@ -15,6 +15,7 @@ GOOS     ?= linux
 BUILDDIR := build
 CARGO    ?= $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RPCD_MANIFEST := verso-rpcd/Cargo.toml
+SYSTEM_PLUGIN_MANIFEST := plugins/verso-plugin-system/Cargo.toml
 
 # `make build` cross-compiles every architecture in ARCHES; each maps to a Go
 # GOARCH and the matching Rust musl target triple below. Override to build one:
@@ -109,12 +110,14 @@ css: $(TAILWIND)
 # (.cargo/config.toml). A fresh checkout builds with only Go, rustup, and make.
 build: lint css $(addprefix build-,$(ARCHES))
 
-# build-<arch>: one architecture's pair of binaries. Runnable on its own, e.g.
+# build-<arch>: one architecture's runtime binaries. Runnable on its own, e.g.
 # `make build-arm64` for just the device target.
 build-%: css
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$* go build -trimpath -ldflags "$(LDFLAGS)" -o $(BUILDDIR)/$(BINARY)-$* $(CMD)
 	$(CARGO) build --locked --release --manifest-path $(RPCD_MANIFEST) --target $(rust_target_$*)
 	cp verso-rpcd/target/$(rust_target_$*)/release/verso-rpcd $(BUILDDIR)/verso-rpcd-$*
+	$(CARGO) build --locked --release --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --target $(rust_target_$*)
+	cp plugins/verso-plugin-system/target/$(rust_target_$*)/release/verso-plugin-system $(BUILDDIR)/verso-plugin-system-$*
 
 run:
 	go run $(CMD)
@@ -127,6 +130,7 @@ dev:
 test:
 	go test ./...
 	$(CARGO) test --locked --manifest-path $(RPCD_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST)
 
 # lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
 # defaults: no custom config, golangci-lint's default linter set.
@@ -156,6 +160,7 @@ deadcode: $(DEADCODE)
 lint: deadcode $(GOLANGCI)
 	$(GOLANGCI) run ./...
 	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --all-targets -- -D warnings
 
 # hooks points git at the tracked pre-commit hook so commits are gated on lint.
 hooks:
@@ -187,8 +192,11 @@ apk: apk-preflight build-$(APK_GOARCH)
 	rm -rf $(APK_PAYLOAD)
 	install -Dm755 $(BUILDDIR)/$(BINARY)-$(APK_GOARCH)                   $(APK_PAYLOAD)/usr/bin/verso
 	install -Dm755 $(BUILDDIR)/verso-rpcd-$(APK_GOARCH)                  $(APK_PAYLOAD)/usr/sbin/verso-rpcd
+	install -Dm755 $(BUILDDIR)/verso-plugin-system-$(APK_GOARCH)         $(APK_PAYLOAD)/usr/bin/verso-plugin-system
 	install -Dm755 docker/rootfs/etc/init.d/verso                       $(APK_PAYLOAD)/etc/init.d/verso
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
+	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
+	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json

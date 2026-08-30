@@ -76,8 +76,8 @@ broken socket.**
    a write path.
 
 5. **A first-party persistent helper performs privileged root actions that are not uci
-   config.** Two operations the shell owns but must not perform itself are not `uci`
-   writes: setting the root password, and the apk package operations (index refresh,
+   config.** The operations the shell owns but must not perform itself include
+   setting the root password, setting the kernel clock, and apk package operations (index refresh,
    search, list-installed, install, remove). procd service lifecycle is *not* one of them —
    it rides rpcd's native `rc` object, sid-gated like `uci` (the `rc` grant in the shell's
    `acl.d`). Rather than depend

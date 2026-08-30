@@ -17,11 +17,17 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
+	s.mux.HandleFunc("GET /system", s.handleSystemRoot)
+	s.mux.HandleFunc("GET /system/{$}", s.handleSystemRoot)
+	s.mux.HandleFunc("GET /system/general", s.handleSystemGeneral)
+	s.mux.HandleFunc("POST /system/general", s.handleSystemGeneral)
 
 	// Shell-owned auth surface (ADR-009 §3): the shell serves the password page
 	// itself, since it mutates the credential that gates the shell.
 	s.mux.HandleFunc("GET /system/password", s.handlePasswordForm)
 	s.mux.HandleFunc("POST /system/password", s.handlePassword)
+	s.mux.HandleFunc("GET /system/access", s.handlePasswordForm)
+	s.mux.HandleFunc("POST /system/access", s.handlePassword)
 
 	// Package + service management (ADR-011): shell-owned — installing or
 	// stopping things mutates the set the shell trusts. Packages are files on
@@ -33,6 +39,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/packages/discover", s.handleDiscoverAction)
 	s.mux.HandleFunc("GET /system/services", s.handleServicesPage)
 	s.mux.HandleFunc("POST /system/services", s.handleServicesAction)
+	s.mux.HandleFunc("GET /system/maintenance", s.handleSystemMaintenance)
 
 	// The overview stream (SSE): the browser's EventSource holds this open and
 	// the shell pushes fresh readings into it (events.go). Read-only, behind

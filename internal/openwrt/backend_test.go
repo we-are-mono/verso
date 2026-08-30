@@ -84,6 +84,20 @@ func TestAccessPassesProbe(t *testing.T) {
 	}
 }
 
+func TestSetSystemTimeThreadsStructuredArgs(t *testing.T) {
+	var got [3]string
+	b := &NativeBackend{setTime: func(_ context.Context, sid, datetime, timezone string) error {
+		got = [3]string{sid, datetime, timezone}
+		return nil
+	}}
+	if err := b.SetSystemTime(context.Background(), "s1", "2026-08-30T12:34:56", "GMT0"); err != nil {
+		t.Fatalf("SetSystemTime: %v", err)
+	}
+	if got != [3]string{"s1", "2026-08-30T12:34:56", "GMT0"} {
+		t.Errorf("args = %v", got)
+	}
+}
+
 // TestUCISetThreadsArgs checks UCISet passes the sid, config, section and values
 // to the seam — the real write brokers rpcd's uci.set carrying the operator's sid
 // (ADR-007: the shell writes on the plugin's behalf).

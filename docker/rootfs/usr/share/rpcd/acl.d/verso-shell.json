@@ -14,7 +14,8 @@
 		"write": {
 			"ubus": {
 				"rc": [ "init" ]
-			}
+			},
+			"uci": [ "system" ]
 		}
 	}
 }

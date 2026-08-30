@@ -64,6 +64,7 @@ type Envelope struct {
 	Banner        *Banner         `json:"banner"`        // optional full-width semantic notice beneath the subpage bar
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
+	Apply         []ApplyAction   `json:"apply"`
 	Status        int             `json:"-"`
 }
 
@@ -96,6 +97,16 @@ type CommitOp struct {
 	Section string         `json:"section"`
 	Type    string         `json:"type,omitempty"` // with an empty Section: create a new section of this type, then set Values on it
 	Values  map[string]any `json:"values"`         // option → value; a value may be a string or a list of strings (uci list option)
+}
+
+// ApplyAction is one tightly typed non-UCI operation a plugin asks the shell to
+// perform after its staged UCI writes have been applied. The shell accepts only
+// known names, verifies the plugin declared the matching rpcd scope, and sends
+// structured arguments to the persistent privileged helper; it is never a
+// command-execution escape hatch.
+type ApplyAction struct {
+	Name string            `json:"name"`
+	Args map[string]string `json:"args"`
 }
 
 // Transport exchanges a request with a plugin and returns its schema envelope.

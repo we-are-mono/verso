@@ -3,7 +3,7 @@
 		"description": "Verso persistent privileged helper actions",
 		"write": {
 			"ubus": {
-				"verso": [ "setPassword", "rootHasPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ]
+				"verso": [ "setPassword", "setSystemTime", "rootHasPassword", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ]
 			}
 		}
 	}

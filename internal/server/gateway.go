@@ -37,7 +37,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	hdr := pageHeader{Heading: m.Name}
 	width := ""
 	var pages []pageTab
-	body, status := s.pluginBody(r, m, &hdr, &width, &pages)
+	body, status := s.pluginBodyAt(r, m, r.PathValue("path"), &hdr, &width, &pages)
 	// Configuration pages keep the staging capsule at rest. A page made only of
 	// immediate commands may omit the clean capsule; an existing stage still
 	// follows the operator here as shared state.
@@ -53,7 +53,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 // Notices (version mismatch, unavailable) are 200 — the shell is fine, it is
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
-func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
+func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath string, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
 	if m.SchemaVersion != supportedSchemaVersion {
 		return s.notice("Plugin needs a newer Verso", fmt.Sprintf(
 			"%s speaks schema version %d; this shell supports version %d.",
@@ -95,7 +95,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 		}
 	}
 
-	req := plugin.Request{Method: method, Path: r.PathValue("path"), Query: r.URL.Query()}
+	req := plugin.Request{Method: method, Path: pluginPath, Query: r.URL.Query()}
 	if !safeMethod(method) {
 		req.Form = r.PostForm
 	}
@@ -132,10 +132,18 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 	if !safeMethod(method) {
 		if validateSchema(wdg) {
 			status = http.StatusUnprocessableEntity
-		} else if len(env.Commit) > 0 {
-			if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
-				return body, st
+		} else {
+			if err := validateApplyActions(m, env.Apply); err != nil {
+				log.Printf("verso: plugin %q returned an invalid apply action: %v", m.ID, err)
+				return s.notice("Not permitted", fmt.Sprintf(
+					"%s tried to perform an operation it did not declare.", m.Name)), http.StatusForbidden
 			}
+			if len(env.Commit) > 0 {
+				if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
+					return body, st
+				}
+			}
+			s.setPendingApply(s.sessionSID(r), env.Apply)
 		}
 	}
 
@@ -154,7 +162,7 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 	hdr.Subheading = env.Subheading
 	hdr.Banner = env.Banner
 	*width = env.Width
-	*pages = subpageTabs(m, r, env.Pages)
+	*pages = subpageTabsAt(m, pluginPath, env.Pages)
 	return template.HTML(b.String()), status
 }
 
@@ -162,11 +170,11 @@ func (s *Server) pluginBody(r *http.Request, m plugin.Manifest, hdr *pageHeader,
 // declared subpages. Paths are relative to the plugin's mount — the shell
 // builds every href and marks the active tab from the request, so the bar can
 // never point outside the plugin.
-func subpageTabs(m plugin.Manifest, r *http.Request, declared []plugin.PageTab) []pageTab {
+func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab) []pageTab {
 	if len(declared) == 0 {
 		return nil
 	}
-	cur := strings.Trim(r.PathValue("path"), "/")
+	cur := strings.Trim(pluginPath, "/")
 	tabs := make([]pageTab, 0, len(declared))
 	for _, p := range declared {
 		rel := strings.Trim(p.Path, "/")
@@ -188,6 +196,24 @@ func validateSchema(w widget.Widget) bool {
 	switch n := w.(type) {
 	case *widget.Card:
 		found := false
+		for _, c := range n.Children {
+			found = validateSchema(c) || found
+		}
+		return found
+	case *widget.Stack:
+		found := false
+		for _, c := range n.Children {
+			found = validateSchema(c) || found
+		}
+		return found
+	case *widget.Grid:
+		found := false
+		for _, c := range n.Children {
+			found = validateSchema(c) || found
+		}
+		return found
+	case *widget.Section:
+		found := n.Control != nil && validateSchema(n.Control)
 		for _, c := range n.Children {
 			found = validateSchema(c) || found
 		}
@@ -232,10 +258,92 @@ func validateSchema(w widget.Widget) bool {
 		for _, f := range n.Fields {
 			found = validateSchema(f) || found
 		}
+		for _, f := range n.Otherwise {
+			found = validateSchema(f) || found
+		}
 		return found
 	default:
 		return false
 	}
+}
+
+// validateApplyActions bounds the privileged tail of a plugin transaction to
+// named operations and to scopes the plugin declared in its manifest. Adding a
+// helper method is not enough: a plugin must opt into its exact permission.
+func validateApplyActions(m plugin.Manifest, actions []plugin.ApplyAction) error {
+	if len(actions) > 1 {
+		return fmt.Errorf("too many apply actions")
+	}
+	for _, action := range actions {
+		var required plugin.ACLScope
+		switch action.Name {
+		case "set-system-time":
+			required = plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "setSystemTime"}
+			if action.Args["datetime"] == "" || action.Args["timezone"] == "" {
+				return fmt.Errorf("set-system-time needs datetime and timezone")
+			}
+		default:
+			return fmt.Errorf("unknown action %q", action.Name)
+		}
+		declared := false
+		for _, scope := range m.ACL.Write {
+			if scope == required {
+				declared = true
+				break
+			}
+		}
+		if !declared {
+			return fmt.Errorf("action %q lacks declared scope", action.Name)
+		}
+	}
+	return nil
+}
+
+// setPendingApply records the non-UCI apply tail a plugin POST prepared, keyed by
+// the operator's session so one operator's tail can never fire under another's
+// Save & Apply. Actions merge by name within the session (a re-save replaces its
+// own), and an empty set is a no-op — an unrelated save on another page must not
+// wipe a tail already armed for this session.
+func (s *Server) setPendingApply(sid string, actions []plugin.ApplyAction) {
+	if sid == "" || len(actions) == 0 {
+		return
+	}
+	s.pendingApplyMu.Lock()
+	defer s.pendingApplyMu.Unlock()
+	if s.pendingApply == nil {
+		s.pendingApply = make(map[string][]plugin.ApplyAction)
+	}
+	merged := s.pendingApply[sid]
+	for _, action := range actions {
+		replaced := false
+		for i := range merged {
+			if merged[i].Name == action.Name {
+				merged[i] = action
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, action)
+		}
+	}
+	s.pendingApply[sid] = merged
+}
+
+// takePendingApply returns the session's apply tail and clears it in one step, so
+// a drained (or failed) action can never linger to fire on a later, unrelated apply.
+func (s *Server) takePendingApply(sid string) []plugin.ApplyAction {
+	s.pendingApplyMu.Lock()
+	defer s.pendingApplyMu.Unlock()
+	actions := s.pendingApply[sid]
+	delete(s.pendingApply, sid)
+	return actions
+}
+
+func (s *Server) clearPendingApply(sid string) {
+	s.pendingApplyMu.Lock()
+	defer s.pendingApplyMu.Unlock()
+	delete(s.pendingApply, sid)
 }
 
 type noticeData struct {

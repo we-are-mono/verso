@@ -1,0 +1,11 @@
+[package]
+name = "verso-plugin"
+version = "0.1.0"
+edition = "2021"
+
+# The Verso plugin SDK: the shared library crate every Rust plugin builds on —
+# the unix-socket HTTP server, the read-snapshot decode, the form decode, and the
+# widget/envelope builders. It re-declares Verso's wire contract (docs/plugins.md)
+# and shares nothing with the shell but that documented JSON.
+[dependencies]
+serde_json = "1"

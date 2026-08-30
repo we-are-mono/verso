@@ -58,19 +58,20 @@ func TestBuildNavCoreOrderIsFixed(t *testing.T) {
 	assertTitles(t, s.buildNav("/"), "Status", "Network", "Firewall", "System")
 }
 
-// The shell's own pages exist with zero plugins (ADR-009 §3): Status carries the
-// Overview baseline, System the Password auth surface and the plugin-management
-// surface (ADR-011).
+// The System frame exists with zero plugins: its stable five destinations are
+// shell navigation even though General's content is supplied by a plugin.
 func TestBuildNavShellOwnedPagesAreBuiltIn(t *testing.T) {
 	sections := navServer().buildNav("/")
 	assertTitles(t, sections, "Status", "System")
 	if got := sections[0].Links; len(got) != 1 || got[0].Label != "Overview" || got[0].Href != "/" {
 		t.Fatalf("Status links = %+v, want single Overview -> /", got)
 	}
-	if got := sections[1].Links; len(got) != 3 || got[0].Label != "Password" || got[0].Href != "/system/password" ||
-		got[1].Label != "Packages" || got[1].Href != "/system/packages" ||
-		got[2].Label != "Services" || got[2].Href != "/system/services" {
-		t.Fatalf("System links = %+v, want [Password, Packages, Services]", got)
+	if got := sections[1].Links; len(got) != 5 || got[0].Label != "General" || got[0].Href != "/system/general" ||
+		got[1].Label != "Access" || got[1].Href != "/system/access" ||
+		got[2].Label != "Packages" || got[2].Href != "/system/packages" ||
+		got[3].Label != "Services" || got[3].Href != "/system/services" ||
+		got[4].Label != "Maintenance" || got[4].Href != "/system/maintenance" {
+		t.Fatalf("System links = %+v, want [General, Access, Packages, Services, Maintenance]", got)
 	}
 }
 
@@ -103,12 +104,26 @@ func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
 	if system == nil {
 		t.Fatal("System section missing")
 	}
-	// Built-in Password and Plugins first, then plugin links in discovery
+	// The stable System frame comes first, then extension links in discovery
 	// (id-sorted) order.
-	if len(system.Links) != 5 || system.Links[0].Label != "Password" || system.Links[1].Label != "Packages" ||
-		system.Links[2].Label != "Services" ||
-		system.Links[3].Label != "General" || system.Links[4].Label != "Time" {
-		t.Fatalf("System links = %+v, want [Password, Packages, Services, General, Time]", system.Links)
+	if len(system.Links) != 7 || system.Links[0].Label != "General" || system.Links[1].Label != "Access" ||
+		system.Links[2].Label != "Packages" || system.Links[3].Label != "Services" ||
+		system.Links[4].Label != "Maintenance" || system.Links[5].Label != "General" ||
+		system.Links[6].Label != "Time" {
+		t.Fatalf("System links = %+v, want stable frame followed by plugin links", system.Links)
+	}
+}
+
+func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
+	s := navServer(manifest("net", nav("Network", "Interfaces", "/")))
+	model := s.buildSidebar("/system/general")
+	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/system/general" || !got.Active {
+		t.Fatalf("last basic row = %+v, want active System", got)
+	}
+	for _, group := range model.Advanced {
+		if group.Title == "System" {
+			t.Fatal("System must not also appear under Advanced settings")
+		}
 	}
 }
 

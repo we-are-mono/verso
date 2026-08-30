@@ -65,6 +65,12 @@ type Server struct {
 	telemetryAt   time.Time
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
+	// pendingApply is the non-UCI tail a plugin POST prepares, keyed by the
+	// operator's session. Save & Apply drains and clears the session's entry only
+	// after rpcd applies the UCI stage, so one operator's tail can never fire under
+	// another operator's apply, and a drained or failed action never lingers.
+	pendingApplyMu sync.Mutex
+	pendingApply   map[string][]plugin.ApplyAction
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
 	// remove (ADR-011 §7), so every read goes through the accessors below.
@@ -270,6 +276,9 @@ type pageData struct {
 	// (Plugins, Password, Overview) show it only when the shared stage holds
 	// changes from elsewhere — there it is a truth-carrier, not furniture.
 	ShowCapsule bool
+	// HasPageForm marks a page whose fields are submitted by the capsule's
+	// single Save & Apply action rather than by an extra in-content button.
+	HasPageForm bool
 	Pages       []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
 	// Flash is the one-shot confirmation from the last action (PRG): shown
 	// once at the top of the content, then gone.
@@ -307,6 +316,7 @@ type pageHeader struct {
 // get it only when the shared stage is non-empty.
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
 	capsule := s.capsule(r.Context(), s.sessionSID(r))
+	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
 	flashVariant, flashMessage := s.takeFlash(r)
 	// A page with a top bar names its face in the headline — "Plugins —
 	// Discover" — with the face in muted ink so the domain stays the title.
@@ -341,6 +351,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
 		ShowCapsule:   stages || capsule.Count > 0,
+		HasPageForm:   hasPageForm,
 		Pages:         pages,
 		FlashVariant:  flashVariant,
 		FlashMessage:  flashMessage,

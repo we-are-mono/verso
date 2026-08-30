@@ -50,11 +50,11 @@ type navLink struct {
 }
 
 // navModel is the device-first sidebar: a few everyday "basic" rows on top, then the
-// technical pages grouped under a collapsible "Advanced settings" seam. The advanced
-// groups are the real manifest-driven sections (buildNav) minus Status — which surfaces
-// as "Home" up top — so a bundled plugin's pages (the Styleguide today) appear in
-// Advanced with no extra classification. The everyday rows are the plain-language
-// destinations a non-technical person reaches for (placeholders until their pages exist).
+// technical pages grouped under a collapsible "Advanced settings" seam. System is a
+// stable top-level destination of its own: the shell owns its five-page frame while the
+// General page is supplied by the bundled System plugin. The remaining manifest-driven
+// sections live under Advanced. The everyday rows are the plain-language destinations a
+// non-technical person reaches for (placeholders until their pages exist).
 type navModel struct {
 	Basic    []navLink
 	Advanced []navGroup
@@ -79,10 +79,14 @@ func (s *Server) buildSidebar(active string) navModel {
 		basic("Wi-Fi", "wifi", "#"),
 		basic("Family", "users", "#"),
 		basic("Safety", "shield", "#"),
+		basic("System", "settings", "/system/general"),
 	}}
+	// System's default destination is General, but the row represents the whole
+	// five-page domain and remains selected while any System subpage is open.
+	m.Basic[len(m.Basic)-1].Active = active == "/system" || strings.HasPrefix(active, "/system/")
 	for _, sec := range s.buildNav(active) {
-		if sec.Title == "Status" {
-			continue // the read-only baseline is "Home" in the basic tier
+		if sec.Title == "Status" || sec.Title == "System" {
+			continue // Home and System are first-class destinations above the seam
 		}
 		m.Advanced = append(m.Advanced, navGroup{Title: sec.Title, Links: sec.Links})
 	}
@@ -113,9 +117,11 @@ func (s *Server) buildNav(active string) []navSection {
 	// Shell-owned pages (ADR-009 §3): the read-only baseline, the auth surface,
 	// and the plugin-management surface (ADR-011).
 	add("Status", "Overview", "/")
-	add("System", "Password", "/system/password")
+	add("System", "General", "/system/general")
+	add("System", "Access", "/system/access")
 	add("System", "Packages", "/system/packages")
 	add("System", "Services", "/system/services")
+	add("System", "Maintenance", "/system/maintenance")
 
 	// Plugin-contributed pages, in discovery (id-sorted) order. Only plugins
 	// whose socket answers contribute rows: a menu entry that leads to
@@ -127,6 +133,12 @@ func (s *Server) buildNav(active string) []navSection {
 			continue
 		}
 		for _, entry := range m.Nav {
+			// The bundled System plugin fills the shell's fixed General slot. Its
+			// manifest entry is needed for discovery, but must not duplicate the
+			// stable shell-owned navigation row above.
+			if m.ID == "system" && entry.Section == "System" {
+				continue
+			}
 			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path))
 		}
 	}

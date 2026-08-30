@@ -109,6 +109,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode modal: %w", err)
 		}
 		return &m, nil
+	case "capsule-preview":
+		var c CapsulePreview
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode capsule preview: %w", err)
+		}
+		return &c, nil
 	case "badge":
 		var b Badge
 		if err := json.Unmarshal(data, &b); err != nil {
@@ -193,6 +199,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode properties: %w", err)
 		}
 		return &p, nil
+	case "changes":
+		var c Changes
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode changes: %w", err)
+		}
+		return &c, nil
 	case "confirm":
 		var c Confirm
 		if err := json.Unmarshal(data, &c); err != nil {

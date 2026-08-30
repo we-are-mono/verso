@@ -491,6 +491,54 @@ func TestRenderProperties(t *testing.T) {
 	}
 }
 
+func TestRenderChanges(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Changes{Items: []Change{{
+		Label: "Device name", Previous: "OpenWrt", Next: "Mono Gateway",
+	}}})
+	for _, want := range []string{"Field", "Previous", "New", "Device name", "OpenWrt", "Mono Gateway", `font-mono`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("changes missing %q in: %s", want, got)
+		}
+	}
+}
+
+func TestRenderCompactChanges(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Changes{Compact: true, Items: []Change{{Label: "Timezone", Previous: "UTC", Next: "CET"}}})
+	if !strings.Contains(got, "py-2 first:pt-1.5") {
+		t.Errorf("compact changes should reduce row padding: %s", got)
+	}
+}
+
+func TestRenderGroupedChanges(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Changes{Groups: []ChangeGroup{{
+		Label: "Allow WireGuard", Operation: "Added", Summary: "WAN → Router · UDP · 51820 · Accept", Expanded: true,
+		Values: []ChangeValue{{Label: "Source zone", Value: "WAN"}, {Label: "Action", Value: "Accept"}},
+	}}})
+	for _, want := range []string{"verso-drawer-scrollbar", "Allow WireGuard", "Added", "WAN → Router", "2 settings", "Source zone", "Accept", " open"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("grouped changes missing %q in: %s", want, got)
+		}
+	}
+}
+
+func TestRenderCapsulePreview(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &CapsulePreview{Count: 2, Children: []Widget{&Text{Markdown: "Review body"}}})
+	for _, want := range []string{"2 pending changes", "Review body", "Save &amp; Apply", "Discard", "pt-96", "verso-capsule-review is-open", "verso-review-open", "bottom-full", "border-b-0", "border-y border-r", "rounded-r-sm", "mr-8", "bg-surface-subtle", "px-8 py-5", `aria-label="Close change review"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("capsule preview missing %q: %s", want, got)
+		}
+	}
+	for _, unwanted := range []string{"-bottom-2", "rotate-45", "max-w-2xl", "max-w-3xl", "shadow-lg"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("attached review tray must not retain tooltip pointer %q: %s", unwanted, got)
+		}
+	}
+}
+
 // TestRenderPropertiesStyles: the row style resolves to hairlines (default),
 // no separators, or the larger single-identity treatment.
 func TestRenderPropertiesStyles(t *testing.T) {
@@ -932,10 +980,11 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 
 	got := render(t, r, &List{Name: "server", Label: "NTP servers", Datatype: "host",
 		Items: []string{"0.pool.ntp.org", "1.pool.ntp.org"}})
-	if n := strings.Count(got, `name="server"`); n != 3 {
+	if n := strings.Count(got, `<input name="server"`); n != 3 {
 		t.Errorf("want 3 inputs (2 items + 1 blank), got %d: %s", n, got)
 	}
 	for _, want := range []string{
+		`data-verso-change-name="server"`, `data-verso-change-kind="list"`,
 		"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add",
 		"focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20",
 		"dark:focus:border-sky-400 dark:focus:ring-sky-400/50",
