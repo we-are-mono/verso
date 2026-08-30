@@ -231,18 +231,13 @@ func (s *Server) assets() http.Handler {
 	if err != nil {
 		return http.NotFoundHandler()
 	}
-	files := http.FileServerFS(sub)
-	return http.StripPrefix("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Fonts never change and are the one asset a re-fetch makes visible (a FOUT
-		// blink on every navigation), so cache them hard. Everything else stays
-		// no-cache, so a redeployed binary's JS/CSS is picked up immediately.
-		if strings.HasPrefix(r.URL.Path, "fonts/") {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-cache")
-		}
-		files.ServeHTTP(w, r)
-	}))
+	// No per-asset cache headers: securityHeaders sets Cache-Control: no-store on
+	// every response, so assets (JS, CSS, fonts) are refetched each load. Verso is
+	// a LAN-local app where a fetch is effectively free, and never caching means a
+	// redeployed binary is always what the browser shows (no stale asset, no hash
+	// in the URL to bust). The one cost is a possible font re-fetch flash on
+	// navigation; on a local network it is negligible.
+	return http.StripPrefix("/assets/", http.FileServerFS(sub))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -256,7 +251,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 // <style> in place. Fresh from disk in a dev session, embedded otherwise.
 func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write([]byte(s.currentCSS()))
 }
 

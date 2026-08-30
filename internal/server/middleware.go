@@ -26,6 +26,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
+		// Verso is a local application, not a website: every response is live
+		// state served over the LAN, where a fetch is effectively free. Nothing
+		// is ever cached, so a redeployed binary is what the browser shows on the
+		// next load — no stale page, no hard-refresh, no version confusion.
+		h.Set("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})
 }
