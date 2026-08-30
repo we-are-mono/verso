@@ -3,9 +3,11 @@
 This is the author's guide. If you can serve HTTP on a unix socket and emit JSON,
 you can write a Verso plugin — in any language, without touching the shell.
 
-> **Status:** grows with the widget set. The mechanical contract (manifest,
-> socket, envelope, isolation) is stable. The widget vocabulary section is filled
-> in as each widget lands; anything marked _(landing)_ is not yet renderable.
+> **Status:** grows with the widget set. Manifest v1 whole-page plugins are the
+> current implementation. Manifest v2 page contributions and coordinated Save &
+> Apply are the accepted target contract and are documented here before their
+> implementation. The widget vocabulary section is filled in as each widget lands;
+> anything marked _(landing)_ is not yet renderable.
 > The authority for design decisions is `docs/ADR/006-plugin-contract.md`
 > (mechanics) and `docs/ADR/005-ui-consistency-contract.md` (what you may emit).
 
@@ -28,13 +30,18 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 
 ```json
 {
-  "manifest_version": 1,
-  "id": "hostname",
-  "name": "System — General",
-  "socket": "/var/run/verso/hostname.sock",
+  "manifest_version": 2,
+  "id": "ntp",
+  "name": "Time synchronization",
+  "socket": "/var/run/verso/ntp.sock",
   "schema_version": 1,
-  "nav": [
-    { "section": "System", "label": "General", "path": "/" }
+  "contributions": [
+    {
+      "id": "general-time",
+      "hook": "system.general.after-time",
+      "path": "/contributions/general",
+      "order": 100
+    }
   ],
   "acl": {
     "read": [
@@ -49,15 +56,20 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 
 | field | meaning |
 |---|---|
-| `manifest_version` | manifest format version (currently `1`) |
+| `manifest_version` | manifest format version: `1` for whole-page plugins; `2` adds contributions |
 | `id` | stable, URL-safe; mounts your plugin at `/plugins/<id>/` |
 | `name` | display name |
 | `socket` | absolute path your process listens on |
 | `schema_version` | the widget vocabulary you emit (currently `1`) |
-| `nav` | a **list** of menu entries (below); one plugin may place several pages |
+| `nav` | optional list of menu entries; one plugin may place several standalone pages |
 | `nav[].section` | which shell nav group the entry appears under |
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
+| `contributions` | optional list of fragments inserted at published shell hooks |
+| `contributions[].id` | contribution id, unique within the plugin; namespaces its fields |
+| `contributions[].hook` | globally unique shell hook id |
+| `contributions[].path` | socket endpoint used to render and prepare the fragment |
+| `contributions[].order` | order within the hook; plugin id and contribution id break ties |
 | `acl` | the rpcd access scopes you need ([below](#declaring-your-acl-scopes)): `read` to render config, `write` to change it |
 | `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
@@ -72,10 +84,39 @@ own `section`:
 ]
 ```
 
+Manifest v2 may declare `nav`, `contributions`, or both, but must declare at least
+one. A contribution-only plugin creates no sidebar entry.
+
+### Contributing to a shell page
+
+Shell templates publish stable hooks at every semantic seam between their sections,
+for example:
+
+```text
+system.general.before-identity
+system.general.after-identity
+system.general.after-time
+system.general.end
+```
+
+Choose any published hook in the manifest. On page render the shell GETs the
+contribution's `path` and places its widget fragment there. A fragment uses the same
+closed widget vocabulary as a page, but must not contain a `form`: the shell wraps its
+own fields and all contributions in one outer page form. Field names are automatically
+namespaced on the browser side and stripped before your endpoint receives them.
+
+Several plugins may share a hook. `order`, then plugin id, then contribution id make
+the result deterministic. An unknown hook affects only that contribution and appears
+as a compatibility warning under Software. A missing plugin leaves no placeholder; a
+running plugin that fails produces a contained unavailable fragment without breaking
+the surrounding page.
+
 ## The socket contract
 
-Serve HTTP/1.1 on your `socket`. The shell forwards the browser's request path
-(below your mount), method, query, and form body to you — plus the read snapshot
+Serve HTTP/1.1 on your `socket`. For a standalone page the shell forwards the
+browser's request path (below your mount), method, query, and form body to you. For a
+contribution it calls the manifest path itself and forwards only that contribution's
+values during prepare. Both carry the read snapshot
 of the configs you declared, in the `X-Verso-UCI` header (see
 [Reading config](#reading-config-the-read-snapshot)) — and expects a **schema
 envelope** back — `Content-Type: application/json`:
@@ -88,25 +129,37 @@ envelope** back — `Content-Type: application/json`:
 }
 ```
 
-- `widget` — one root widget (usually a `card`) that is your whole page body.
-- `title` — the page heading the shell renders above it.
+- `widget` — one root widget: a whole page body or one contribution fragment.
+- `title` — the standalone page heading; omit it for a contribution.
+- `kicker` — optional eyebrow above a standalone page heading.
+- `kicker_status` — optional short emerald state beside the kicker, such as
+  `"Complete"` on a finished styleguide reference.
+- `banner` — optional page-level semantic notice rendered full-width directly
+  beneath the subpage bar (or in its place when there is no bar). Reserve it for
+  a state important enough to remain visible above the page heading; use an
+  in-content `callout` for ordinary context.
+- `immediate` — optional boolean for a page made only of direct commands rather
+  than staged configuration. It omits the capsule when the shared UCI stage is
+  clean; pending changes from elsewhere remain visible. It does not make a
+  returned `commit` immediate—commit intents always stage.
 - `commit` — optional; on a successful write, the uci changes for the shell to
   apply on your behalf (see [Writing config](#writing-config-the-commit-intent)).
   You never write config yourself.
 
 **GET** `<path>` → return the page as a schema envelope, HTTP 200.
 
-**POST** `<path>` (form submit) → run your **semantic** checks (the shell handles
-datatypes), then:
+**POST** `<path>` (standalone form or contribution prepare) → run your **semantic**
+checks without writing or causing another side effect (the shell handles datatypes),
+then:
 - **success:** HTTP 200 with the re-rendered page (a success note), plus a
-  `commit` intent for whatever changed. The shell — not you — performs the write,
-  after it has validated every datatype.
+  `commit` intent for whatever changed. The shell — not you — merges it with every
+  other changed owner and performs the write only after collective validation.
 - **semantic failure:** HTTP **422**, the *same* form re-rendered with each bad
   field carrying its `error` and the submitted `value`, and **no** `commit`. The
   shell merges any datatype errors into the same form (see Validation).
 
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
-request path like any HTTP server.
+request path like any HTTP server. You may likewise serve several contribution paths.
 
 ### Declaring your ACL scopes
 
@@ -170,12 +223,11 @@ config. A GET carries it too, so a fresh page render reads current state.
 
 Your plugin **does not write uci itself** — it runs unprivileged (the same
 non-root user as the shell) and holds no session (ADR-007). To change config,
-return a `commit` array next to your `widget` on a successful POST; the shell
-**stages** each entry through rpcd with the operator's session (ADR-010).
-Nothing goes live on Save: staged edits sit in UCI's own stage, the shell's
-staged-changes capsule shows them on every page, and the operator applies or
-discards the whole stage from there. Your reads reflect staged values (uci
-merges the stage), so your page re-renders coherently after a Save:
+return a `commit` array next to your `widget` on a successful POST. This is a
+declarative prepare result, not permission to write. The shell waits for every
+changed owner, validates datatypes and ACLs, rejects conflicting writes, merges the
+intents, stages the merged set through rpcd, and performs one UCI
+apply/rollback/confirm cycle (ADR-010):
 
 ```json
 {
@@ -183,8 +235,6 @@ merges the stage), so your page re-renders coherently after a Save:
   "title": "General",
   "widget": { "type": "card", "...": "..." },
   "commit": [
-    { "config": "system", "section": "@system[0]",
-      "values": { "hostname": "verso-lab" } },
     { "config": "system", "section": "ntp",
       "values": { "server": ["0.pool.ntp.org", "1.pool.ntp.org"] } }
   ]
@@ -194,23 +244,26 @@ merges the stage), so your page re-renders coherently after a Save:
 An entry may also **create** a section: with `section` empty and a `type`
 (`{ "config": "firewall", "section": "", "type": "rule", "values": { … } }`),
 the shell adds a new anonymous section of that type and sets `values` on it —
-one staged step, so an "Add" drawer's Save creates the row it promised.
+one staged operation, so an "Add" drawer creates the row it promised.
 
 Each entry is one `uci set`: `config` + `section` + a `values` map of
 option→value, where a value is a string (an option) or an array of strings (a
-list option). The shell stages every entry, then renders your `widget`; commit,
-service reload, and the rollback safety net belong to the capsule, never to a
-plugin. Two rules bound it, both enforced by the shell — not by your good
-behaviour:
+list option). Service reload and the rollback safety net belong to the shell and
+OpenWrt, never to a plugin. Three rules bound the merge, enforced by the shell —
+not by your good behaviour:
 
 - **You can only write configs you declared** in `acl.write` (`scope: "uci"`,
   `object: "<config>"`). A `commit` for any other config is refused and nothing
   is written.
 - **rpcd re-checks the operator** on every write, so a session that may not write
   that config is refused even if you ask.
+- **Two owners cannot silently overwrite one another.** Incompatible intents for
+  the same config/section/option reject the complete page submission; manifest order
+  never decides whose value wins.
 
-If the write is refused or fails, the shell shows a contained notice instead of
-your page. A `commit` on a GET is ignored.
+If any changed owner fails validation, authorization, or transport, no intent is
+staged. If staging itself fails partway through, the shell restores the stage that
+existed before the submission and does not apply. A `commit` on a GET is ignored.
 
 ### What the shell does when you misbehave
 
@@ -276,6 +329,36 @@ Nests other widgets. This is how you lay out a page.
   "children": [ /* any widgets */ ] }
 ```
 
+### grid — responsive columns
+
+Use `grid` to place related widgets beside one another. `columns` is the desktop
+target; the shell owns responsive collapse and spacing. `style:"form"` makes a
+field grid stack to one column on narrow screens and uses the form rhythm. A
+three-column form grid gives each field roughly 30% of the available width.
+
+```json
+{ "type": "grid", "style": "form", "columns": 3,
+  "children": [ /* one to three fields */ ] }
+```
+
+### properties — read-only facts
+
+`properties` renders label/value facts. The default uses hairlines, `plain`
+removes them, and `identity` renders one larger inline identity—useful for a
+fixed system username without making it look like a table. Pair a short
+explanation with a compact callout in a compact stack.
+
+```json
+{ "type": "stack", "compact": true, "children": [
+  { "type": "properties", "style": "identity", "items": [
+    { "label": "Username", "value": "root", "mono": true,
+      "emphasis": true }
+  ] },
+  { "type": "callout", "variant": "neutral", "compact": true,
+    "body": "Main system username cannot be changed." }
+] }
+```
+
 ### table — config sections as identical rows
 
 The Advanced-view listing: one row per config section under fixed columns. Every
@@ -326,6 +409,18 @@ Column kinds, one treatment each (never mix them per row):
   `"router"` (this device, accented), or `"any"` (muted globe).
 
 A row's `id` is its stable handle — use the UCI section name.
+
+**Direct row action.** A `pill` cell may carry a compact immediate action instead
+of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
+its standard alert dialog and posts `_action=<action>` back to the page only after
+the operator confirms. Use this for a command with no edit surface, such as ending
+a login session. Actions that need configuration still belong in a drawer.
+
+```json
+{ "button": "End session", "action": "end-session:iphone",
+  "confirm_title": "End this session?",
+  "confirm": "Anyone using this session will be signed out of Verso immediately." }
+```
 
 **Row drawer.** A row with a `drawer` is an object you can open: clicking the row
 slides in a right panel — typically a form prefilled with the section's values, a
@@ -399,35 +494,40 @@ vocabulary) for a row that reads rather than toggles.
   ] }
 ```
 
-### form — an interactive form
+### form — a standalone page form
 
-Renders its `fields` inside a `POST` form that submits **back to the same page**
-(you don't set an action — the shell owns the URL). On a successful save, set
-`success` to show a confirmation.
+On a standalone plugin page, renders its `fields` inside a `POST` form that submits
+**back to the same page** (you don't set an action — the shell owns the URL). A
+configurable page has one form and one Save & Apply action:
 
 ```json
-{ "type": "form", "submit": "Save", "success": "",
+{ "type": "form", "submit": "Save & Apply", "success": "",
   "fields": [ /* field and list widgets */ ] }
 ```
 
-`submit` defaults to `"Save"`.
+A contribution fragment must not emit `form`; emit its field-bearing `section`,
+`stack`, or other root directly. The shell places those fields inside the shell
+page's outer form and coordinates its Save & Apply with every other changed owner.
 
-**Secondary actions.** Besides Save, a form may declare `actions` — extra buttons
+`submit` currently defaults to `"Save"` for manifest-v1 pages. Manifest-v2 pages
+should state `"Save & Apply"` until the renderer changes its default.
+
+**Secondary actions.** Besides Save & Apply, a standalone form may declare `actions` — extra buttons
 that submit the form (all its fields) with an `_action` marker you read in your
 handler, so you can *compute* on the submitted values and re-render, without a save.
 This is the plugin-computed round-trip (ADR-005 §7): the shell renders the button and
 forwards the submission; you do the work and return fresh schema. The WireGuard
 plugin uses it to generate a keypair — the shell can't compute a WireGuard key, so
-the plugin does, fills the field, and re-renders; the operator then Saves.
+the plugin does, fills the field, and re-renders; the operator then uses Save & Apply.
 
 ```json
-{ "type": "form", "submit": "Save interface",
+{ "type": "form", "submit": "Save & Apply",
   "actions": [ { "label": "Generate keypair", "action": "generate-keypair" } ],
   "fields": [ /* … */ ] }
 ```
 
 On a POST, read `_action`: when it names one of your actions, compute and re-render
-(return no `commit`); otherwise treat it as the Save.
+(return no `commit`); otherwise treat it as Save & Apply's prepare request.
 
 ### field — one labelled control
 
@@ -437,9 +537,12 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
   "error": "", "help": "The device's hostname." }
 ```
 
-- `kind`: `"text"` (default), `"select"`, or `"checks"`.
+- `kind`: `"text"` (default), `"select"`, `"checks"`, `"password"`,
+  `"textarea"`, or `"datetime-local"`.
 - `value`: the current value; echo the submitted value back on a failed POST.
 - `datatype`: a datatype name the shell enforces (see [Datatypes](#datatypes)). Optional.
+- `autocomplete`: optional browser autofill purpose. Password fields default to
+  `new-password`; use `current-password` only for the existing credential.
 - `error`: an inline error to show under the field (you set this on a 422).
 - For `kind:"select"`, supply `options` and set `value` to the selected one:
 
@@ -521,17 +624,20 @@ see the add/remove request — you only ever render the sections that exist.
 
 ### conditional — a field-set behind a toggle
 
-A **behavioural** widget: a field-set the shell shows only when its toggle is on.
-You declare the intent — this toggle gates these fields — and the initial state; the
-shell owns the toggle and the show/hide, realized in **pure CSS** (no JavaScript, no
-round-trip). The toggle posts its own value, so your handler can read it to decide
-whether to write the gated option (ADR-005 §7).
+A **behavioural** widget: a field-set the shell shows when its toggle is on, with an
+optional alternate field-set shown when it is off. You declare the branches and the
+initial state; the shell owns the toggle and the show/hide, realized in **pure CSS**
+(no JavaScript, no round-trip). The toggle posts its own value, so your handler can
+read it to decide which branch to interpret (ADR-005 §7).
 
 ```json
 { "type": "conditional", "name": "use_psk", "label": "Use a pre-shared key",
   "checked": true,
   "fields": [
     { "type": "field", "name": "preshared_key", "label": "Pre-shared key", "value": "…" }
+  ],
+  "otherwise": [
+    { "type": "text", "markdown": "No pre-shared key will be used." }
   ] }
 ```
 
@@ -541,10 +647,12 @@ whether to write the gated option (ADR-005 §7).
 - `checked` — whether the field-set starts visible; derive it from state (e.g. "the
   pre-shared key is set").
 - `fields` — the field-set revealed when the toggle is on.
+- `otherwise` — an optional field-set revealed when the toggle is off.
 
-A hidden gated field still submits its value (it is only visually hidden), so decide
-from the toggle: when it is off, ignore or omit those options. (Gating on a `select`
-with several values is a later realization under the same declaration.)
+Hidden fields in either branch still submit their values (they are only visually
+hidden), so decide from the toggle which branch to interpret and ignore the other.
+(Gating on a `select` with several values is a later realization under the same
+declaration.)
 
 ### raw — the governed bridge
 
