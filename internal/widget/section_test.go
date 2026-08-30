@@ -58,6 +58,30 @@ func TestRenderSectionMeta(t *testing.T) {
 	}
 }
 
+func TestRenderSectionControl(t *testing.T) {
+	r := newRenderer(t)
+	w, err := Decode([]byte(`{"type":"section","title":"Rule","control":{"type":"switch","name":"enabled","label":"Enabled","off_label":"Disabled","style":"inline","on":true},"children":[]}`))
+	if err != nil {
+		t.Fatalf("decode section control: %v", err)
+	}
+	got := render(t, r, w)
+	for _, want := range []string{"Rule", "Enabled", "Disabled", `name="enabled"`, "verso-inline-switch inline-flex", "size-1 rounded-full", "gap-3"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("section control missing %q:\n%s", want, got)
+		}
+	}
+	if _, err := Decode([]byte(`{"type":"section","control":{"type":"nope"},"children":[]}`)); err == nil {
+		t.Error("unknown section control should fail loudly")
+	}
+}
+
+func TestRenderSectionFlush(t *testing.T) {
+	got := render(t, newRenderer(t), &Section{Title: "Rule", Flush: true})
+	if strings.Contains(got, `class="pt-6`) {
+		t.Errorf("flush section must rely on its parent's inset: %s", got)
+	}
+}
+
 func TestRenderSectionHairline(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})

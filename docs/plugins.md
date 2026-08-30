@@ -341,6 +341,19 @@ three-column form grid gives each field roughly 30% of the available width.
   "children": [ /* one to three fields */ ] }
 ```
 
+### stack — vertical or inline rhythm
+
+Use `stack` to group widgets without adding a surface. `compact:true` tightens
+the vertical rhythm, while `inline:true` creates a wrapping row. For a small
+settings group inside a wide editor, `width:"compact"` bounds it to the shell's
+standard compact reading width.
+
+### disclosure — optional detail
+
+Use `disclosure` for advanced content that should remain available without
+crowding the common path. `style:"condition"` gives it the same surface and
+heading treatment as an active item in the conditions editor.
+
 ### properties — read-only facts
 
 `properties` renders label/value facts. The default uses hairlines, `plain`
@@ -426,7 +439,11 @@ a login session. Actions that need configuration still belong in a drawer.
 slides in a right panel — typically a form prefilled with the section's values, a
 warning callout naming the blast radius, and a `confirm` for deletion (delete
 lives in the drawer, never on the row). The row gets a trailing chevron and the
-pointer; controls inside the row (toggles) keep their own meaning.
+pointer; controls inside the row (toggles) keep their own meaning. Set
+`hide_title:true` when the selected row and first section already establish the
+editor's identity; the title remains available to assistive technology and the
+close control remains visible. That first section may set `flush:true` so the
+drawer supplies the outer top inset instead of stacking two layers of padding.
 
 ```json
 { "id": "force_dns_guest", "cells": [ /* … */ ],
@@ -567,6 +584,22 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
                {"value":"guest","label":"guest"} ] }
 ```
 
+### switch — one persistent on/off setting
+
+Use a switch for binary object state, such as whether a firewall rule is enabled.
+It is the same compact control used in table toggle columns; checked switches post
+their `name` with the browser's standard `on` value, while unchecked switches omit it.
+
+```json
+{ "type": "switch", "name": "enabled", "label": "Enabled", "on": true,
+  "help": "Disabled rules remain configured but are not evaluated." }
+```
+
+For object-level state, a section may place an inline switch in its heading with
+`control`; set the switch's `style` to `"inline"` and provide `off_label`. The
+state label follows the switch and changes with it. This keeps identity and state
+together without turning the switch into a form field row.
+
 ### list — a repeating text field
 
 Several values under **one** `name`, each validated against the same `datatype`.
@@ -583,6 +616,17 @@ the list. Report a bad item with `errors` keyed by the item's index:
   "help": "One server per line." }
 ```
 
+For compact sets such as ports, addresses, or protocol names, set
+`"style":"tokens"`. Each token still posts as a repeated value under the same
+name; `prompt` labels the trailing add field. Enter, comma, or leaving the field
+commits a token, and every token can be removed independently:
+
+```json
+{ "type": "list", "name": "dest_port", "label": "Included ports",
+  "style": "tokens", "prompt": "Port or range",
+  "items": ["53", "67", "547"] }
+```
+
 > **The schema's edges are a finding.** A single value repeats with `list`; a group
 > of fields that maps to uci sections repeats with
 > [`repeater`](#repeater--a-repeatable-group-of-sections); a field-set appears on a
@@ -590,6 +634,37 @@ the list. Report a bad item with `errors` keyed by the item's index:
 > *computed* by a form [action](#form--an-interactive-form) that re-renders. What
 > still can't be expressed — a field-set gated on a multi-value `select` — is a
 > *finding*: tell us, so the next behavioural widget is the right one.
+
+### conditions — optional typed form blocks
+
+A complete editor may support many independent conditions while any one object
+uses only a few. Declare the entire catalogue once and mark the currently present
+items `active`. The shell renders active blocks and owns the Add/Remove interaction;
+each block contains ordinary widgets and therefore preserves their normal POST and
+validation contracts.
+
+```json
+{ "type": "conditions", "label": "Conditions",
+  "help": "Every condition must match; values inside one condition are alternatives.",
+  "items": [
+    { "key": "dest_port", "label": "Destination ports", "active": true,
+      "children": [
+        { "type": "list", "name": "dest_port", "label": "Include",
+          "style": "tokens", "items": ["53", "67", "547"] }
+      ] },
+    { "key": "rate", "label": "Rate limit",
+      "children": [
+        { "type": "field", "name": "limit", "label": "Packets", "value": "1000" }
+      ] }
+  ] }
+```
+
+- `key` uniquely identifies an optional block within this builder.
+- `active` means the backing object currently carries that condition.
+- Removing a block removes its child controls from the submitted form; adding one
+  inserts the declared controls with their supplied defaults.
+- The plugin remains responsible for interpreting the resulting fields and for
+  returning per-field validation errors on 422.
 
 ### repeater — a repeatable group of sections
 

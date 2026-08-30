@@ -1,0 +1,19 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* form switch: the labelled form companion to the compact switch shared by
+     table and settings rows. On/off state is always a switch; membership in a
+     set remains a checkbox field. */}}
+{{if eq .Style "inline"}}
+<label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium">
+  <span aria-hidden="true" class="size-1 rounded-full bg-slate-300"></span>
+  <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .}}</span>
+  <span class="verso-inline-switch-on ml-2 translate-y-px text-slate-900">{{.Label}}</span>
+  <span class="verso-inline-switch-off ml-2 translate-y-px text-slate-900">{{if .OffLabel}}{{.OffLabel}}{{else}}Disabled{{end}}</span>
+</label>
+{{else}}<div class="space-y-1.5">
+  <label class="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-slate-900">
+    {{template "switch.control" .}}
+    <span>{{.Label}}</span>
+  </label>
+  {{if .Help}}<p class="pl-9 text-sm text-slate-500">{{.Help}}</p>{{end}}
+</div>{{end}}

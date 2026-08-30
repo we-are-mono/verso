@@ -22,6 +22,9 @@ import (
 // another. Meta is optional, compact status text aligned opposite the title;
 // MetaLabel can identify that value without folding the label into it, and
 // MetaIcon names a shell-owned Lucide glyph rendered immediately before both.
+// Control is an optional compact interactive widget placed directly beside the
+// title, for object-level state such as an enabled switch. Flush removes the
+// section's own top inset when its parent already supplies the outer padding.
 // Hairline is opt-in: when true, a section following another section gets a
 // divider and additional breathing room above it.
 type Section struct {
@@ -31,6 +34,8 @@ type Section struct {
 	MetaLabel string   `json:"meta_label,omitempty"`
 	MetaIcon  string   `json:"meta_icon,omitempty"`
 	Hairline  bool     `json:"hairline,omitempty"`
+	Flush     bool     `json:"flush,omitempty"`
+	Control   Widget   `json:"-"`
 	Children  []Widget `json:"children"`
 }
 
@@ -46,6 +51,8 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		MetaLabel string            `json:"meta_label"`
 		MetaIcon  string            `json:"meta_icon"`
 		Hairline  bool              `json:"hairline"`
+		Flush     bool              `json:"flush"`
+		Control   json.RawMessage   `json:"control"`
 		Children  []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -57,6 +64,15 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 	s.MetaLabel = raw.MetaLabel
 	s.MetaIcon = raw.MetaIcon
 	s.Hairline = raw.Hairline
+	s.Flush = raw.Flush
+	s.Control = nil
+	if len(raw.Control) != 0 && string(raw.Control) != "null" {
+		control, err := Decode(raw.Control)
+		if err != nil {
+			return fmt.Errorf("section control: %w", err)
+		}
+		s.Control = control
+	}
 	s.Children = make([]Widget, 0, len(raw.Children))
 	for i, rc := range raw.Children {
 		w, err := Decode(rc)
@@ -75,6 +91,8 @@ type sectionView struct {
 	MetaLabel string
 	MetaIcon  string
 	Hairline  bool
+	Flush     bool
+	Control   template.HTML
 	Children  []template.HTML
 }
 
@@ -89,7 +107,15 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		MetaLabel: s.MetaLabel,
 		MetaIcon:  s.MetaIcon,
 		Hairline:  s.Hairline,
+		Flush:     s.Flush,
 		Children:  children,
+	}
+	if s.Control != nil {
+		var buf bytes.Buffer
+		if err := r.render(&buf, s.Control, csrf); err != nil {
+			return fmt.Errorf("widget: render section control: %w", err)
+		}
+		v.Control = template.HTML(buf.String())
 	}
 	if s.Sub != "" {
 		var buf bytes.Buffer

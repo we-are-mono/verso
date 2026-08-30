@@ -91,6 +91,18 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode conditional: %w", err)
 		}
 		return &c, nil
+	case "conditions":
+		var c Conditions
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode conditions: %w", err)
+		}
+		return &c, nil
+	case "switch":
+		var s Switch
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, fmt.Errorf("widget: decode switch: %w", err)
+		}
+		return &s, nil
 	case "modal":
 		var m Modal
 		if err := json.Unmarshal(data, &m); err != nil {

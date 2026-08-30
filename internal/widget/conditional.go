@@ -68,7 +68,7 @@ func decodeConditionalBranch(raw []json.RawMessage, label string) ([]Widget, err
 // fields, already rendered to trusted HTML.
 type conditionalView struct {
 	Name, Label string
-	Checked     bool
+	On          bool
 	Fields      []template.HTML
 	Otherwise   []template.HTML
 }
@@ -86,7 +86,7 @@ func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error 
 		return err
 	}
 	return r.execute(out, "conditional.html.tmpl", conditionalView{
-		Name: c.Name, Label: c.Label, Checked: c.Checked,
+		Name: c.Name, Label: c.Label, On: c.Checked,
 		Fields: fields, Otherwise: otherwise,
 	})
 }

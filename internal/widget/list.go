@@ -19,6 +19,8 @@ type List struct {
 	Name     string            `json:"name"`
 	Label    string            `json:"label"`
 	Kind     string            `json:"kind"`     // item kind; "text" for now
+	Style    string            `json:"style"`    // "" repeated inputs | "tokens" compact removable values
+	Prompt   string            `json:"prompt"`   // token input placeholder
 	Datatype string            `json:"datatype"` // tier-1 datatype for each item
 	Items    []string          `json:"items"`
 	Errors   map[string]string `json:"errors"` // index (string) -> error
