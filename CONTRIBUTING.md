@@ -73,6 +73,23 @@ make dev      # hot-reload loop against the running container
 docker compose up -d --build     # boots OpenWrt + verso; serves on :8080
 ```
 
+### Packaging for a real router (apk)
+
+```
+make apk          # build + sign a router .apk  -> build/apk/verso-<version>.apk
+make apk-publish  # also copy it into the local dev repo + rebuild the signed index
+```
+
+`make apk` is machine-agnostic: the one input that varies per host is the OpenWrt
+buildroot, from which it derives the `apk` tool and the signing key. It's auto-detected
+at `~/Mono/Gateway/openwrt/source`; point it elsewhere with `OPENWRT_DIR=/path/...` on
+the command line or in a gitignored `local.mk`. Root ownership of the packaged files
+(which ubusd requires) is recorded via `fakeroot` — no `sudo`. The version comes from
+the committed `VERSION` file; pass `REVISION=2` to repackage the same version. Ships
+arm64 by default (`APK_GOARCH=amd64` for the other). `make apk-publish` is the only
+dev-box-specific step — it writes to `VERSO_REPO_DIR` (default `/srv/verso`). See
+[docs/building.md](docs/building.md) for the full runbook and the router-side install.
+
 ## Running OpenWrt in Docker — safety
 
 The dev container boots real OpenWrt (procd) so the shell can reach live ubus/uci.
