@@ -1,12 +1,20 @@
 {
 	"verso-shell": {
-		"description": "Session read grants for Verso's shell-owned pages (the overview's wan meters + the connected-devices DUID). Self-contained: the shell never leans on another package's ACL files.",
+		"description": "Session grants for Verso's shell-owned pages: the overview meters + WAN graph, the Services table and its start/stop, connected devices, and the network/firewall/zone views. Declares every ubus object and uci config the shell reads or controls, so the shell depends on no other package's ACL files — in particular not LuCI's, which the dev image happens to ship but a production image need not.",
 		"read": {
 			"ubus": {
+				"system": [ "info", "board" ],
+				"rc": [ "list" ],
 				"network.interface": [ "dump" ],
 				"network.interface.wan": [ "status" ],
 				"network.device": [ "status" ],
 				"dhcp": [ "ipv6leases" ]
+			},
+			"uci": [ "network", "firewall", "system" ]
+		},
+		"write": {
+			"ubus": {
+				"rc": [ "init" ]
 			}
 		}
 	}
