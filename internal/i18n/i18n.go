@@ -4,12 +4,16 @@
 // Package i18n localizes Verso's user-facing text with a source-string-as-key
 // model (the gettext/LuCI shape): the English source string is the key, a
 // translation is a catalog lookup, and a missing key or language falls back to
-// the source. So English needs no catalog, plugins keep their English strings,
+// the source. So English needs no catalog, components keep their English strings,
 // and a partial catalog renders the rest in English.
 //
-// Catalogs are shipped as separate data packages (verso-i18n-base-<code>) that
-// drop a <code>.json map onto disk; the shell loads them at runtime the same way
-// it discovers plugin manifests, so adding a language needs no shell rebuild.
+// Catalogs are per-component (ADR-012): the shell owns "base", and each plugin
+// owns its own. They ship as separate data packages (verso-i18n-base-<code>,
+// verso-i18n-<plugin>-<code>) that drop <component>.json into a per-language
+// directory (<code>/<component>.json) on disk; the shell loads them at runtime the
+// same way it discovers plugin manifests, so adding a language — for the shell or
+// for one plugin — needs no rebuild. A plugin's catalog is applied by the shell
+// but never curated into the shell's own; it travels with the plugin.
 package i18n
 
 import (
@@ -23,23 +27,30 @@ import (
 	"strings"
 )
 
+// BaseComponent is the shell's own catalog within a language. Every other
+// component key is a plugin id.
+const BaseComponent = "base"
+
 // Catalog maps an English source string to its translation in one language.
 type Catalog map[string]string
 
-// Bundle is the set of loaded language catalogs, keyed by base language code
-// (e.g. "sl"). English is implicit: it has no catalog and is the fallback.
+// Bundle is the set of loaded catalogs, keyed by base language code (e.g. "sl")
+// and then by component ("base" or a plugin id). English is implicit: it has no
+// catalog and is the fallback.
 type Bundle struct {
-	catalogs map[string]Catalog
+	catalogs map[string]map[string]Catalog
 	codes    []string // installed codes, sorted — the negotiation candidate set
 }
 
-// Load reads every catalog matched by glob within fsys, keying each by its
-// filename base ("sl.json" → "sl", lowercased). Resilient by design, exactly like
-// plugin.Discover: a malformed or empty catalog is skipped and reported, never
-// fatal — one broken language file cannot break the shell. fsys is injected
-// (ADR-003), so loading is unit-tested against an in-memory filesystem.
+// Load reads every catalog matched by glob within fsys. Each file is one
+// component of one language, laid out as "<code>/<component>.json" ("sl/base.json",
+// "sl/firewall.json"): the parent directory is the language code, the filename base
+// is the component. Resilient by design, exactly like plugin.Discover: a malformed
+// or empty catalog is skipped and reported, never fatal — one broken file cannot
+// break the shell. fsys is injected (ADR-003), so loading is unit-tested against an
+// in-memory filesystem.
 func Load(fsys fs.FS, glob string) (*Bundle, []error) {
-	b := &Bundle{catalogs: make(map[string]Catalog)}
+	b := &Bundle{catalogs: make(map[string]map[string]Catalog)}
 	matches, err := fs.Glob(fsys, glob)
 	if err != nil {
 		return b, []error{fmt.Errorf("i18n: bad glob %q: %w", glob, err)}
@@ -48,9 +59,13 @@ func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 
 	var problems []error
 	for _, p := range matches {
-		code := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
-		if code == "" || code == "en" {
-			continue // English is the source; a catalog for it is redundant
+		code := strings.ToLower(path.Base(path.Dir(p)))
+		component := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
+		if code == "" || code == "." || code == "en" {
+			continue // no language dir, or English (the source needs no catalog)
+		}
+		if component == "" {
+			continue
 		}
 		if strings.ContainsRune(code, '-') {
 			// Base language codes only. Negotiate matches (and returns) the base
@@ -73,11 +88,16 @@ func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 			problems = append(problems, fmt.Errorf("i18n: %s: empty catalog, skipped", p))
 			continue
 		}
-		if _, dup := b.catalogs[code]; dup {
-			problems = append(problems, fmt.Errorf("i18n: %s: duplicate language %q, skipped", p, code))
+		if b.catalogs[code] == nil {
+			b.catalogs[code] = make(map[string]Catalog)
+		}
+		if _, dup := b.catalogs[code][component]; dup {
+			problems = append(problems, fmt.Errorf("i18n: %s: duplicate catalog for %q/%q, skipped", p, code, component))
 			continue
 		}
-		b.catalogs[code] = cat
+		b.catalogs[code][component] = cat
+	}
+	for code := range b.catalogs {
 		b.codes = append(b.codes, code)
 	}
 	sort.Strings(b.codes)
@@ -89,16 +109,37 @@ func (b *Bundle) Codes() []string {
 	return append([]string(nil), b.codes...)
 }
 
-// Translator returns the translate function for code: a catalog lookup with
-// English fallback. An empty or unknown code, or a missing/blank key, returns the
-// source string — so English and partial catalogs both render the source.
+// Translator returns the translate function for the shell's own strings in code:
+// a lookup of the base catalog with English fallback. An empty or unknown code, or
+// a missing/blank key, returns the source string.
 func (b *Bundle) Translator(code string) func(string) string {
-	cat := b.catalogs[strings.ToLower(code)]
-	if cat == nil {
+	return lookup(b.catalogs[strings.ToLower(code)][BaseComponent], nil)
+}
+
+// PluginTranslator returns the translate function for a plugin's page and manifest
+// labels: the plugin's catalog overlaid on the shell's base, so the plugin's own
+// text resolves from its catalog while shell-owned widget defaults (Save, Details)
+// still resolve from base. A key present in both resolves to the plugin's value.
+// English fallback throughout.
+func (b *Bundle) PluginTranslator(code, plugin string) func(string) string {
+	comps := b.catalogs[strings.ToLower(code)]
+	return lookup(comps[BaseComponent], comps[strings.ToLower(plugin)])
+}
+
+// lookup builds a source→translation function that tries the overlay first, then
+// the base, then the source itself. A nil catalog contributes nothing; two nil
+// catalogs yield the identity, so English (no catalogs) is a no-op.
+func lookup(base, overlay Catalog) func(string) string {
+	if base == nil && overlay == nil {
 		return func(s string) string { return s }
 	}
 	return func(s string) string {
-		if t, ok := cat[s]; ok && t != "" {
+		if overlay != nil {
+			if t, ok := overlay[s]; ok && t != "" {
+				return t
+			}
+		}
+		if t, ok := base[s]; ok && t != "" {
 			return t
 		}
 		return s

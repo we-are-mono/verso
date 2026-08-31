@@ -41,6 +41,10 @@ type navLink struct {
 	Href   string
 	Icon   string // sidebar basic rows carry an icon; advanced text links leave it empty
 	Active bool
+	// PluginID names the plugin that authored this entry's label ("" for a
+	// shell-owned link), so the label is localized from that plugin's catalog
+	// rather than the shell's base (ADR-012 §5).
+	PluginID string
 	// Optional trailing detail on the right of a basic row — a short word or count with an
 	// optional leading dot; Variant tints it ("good" = green). A couple of examples today;
 	// any row can grow one later.
@@ -68,9 +72,11 @@ type navGroup struct {
 
 // buildSidebar assembles the device-first sidebar for the current path: the everyday
 // basic rows, then the manifest-driven sections (via buildNav) as the Advanced groups.
-// tr localizes every label at the display edge (surface 2); the section titles that
-// buildNav uses for ordering and filtering stay English internally.
-func (s *Server) buildSidebar(active string, tr func(string) string) navModel {
+// Labels are localized at the display edge (ADR-012): shell-owned labels and the
+// section titles from base (tr), each plugin's label from that plugin's catalog
+// (pluginTr(id)). The section titles buildNav uses for ordering and filtering stay
+// English internally.
+func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string) navModel {
 	basic := func(label, icon, href string) navLink {
 		return navLink{Label: tr(label), Icon: icon, Href: href, Active: isActive(active, href)}
 	}
@@ -97,7 +103,11 @@ func (s *Server) buildSidebar(active string, tr func(string) string) navModel {
 		}
 		links := make([]navLink, len(sec.Links))
 		for i, l := range sec.Links {
-			l.Label = tr(l.Label)
+			if l.PluginID == "" {
+				l.Label = tr(l.Label)
+			} else {
+				l.Label = pluginTr(l.PluginID)(l.Label)
+			}
 			links[i] = l
 		}
 		m.Advanced = append(m.Advanced, navGroup{Title: tr(sec.Title), Links: links})
@@ -116,24 +126,26 @@ func (s *Server) buildSidebar(active string, tr func(string) string) navModel {
 func (s *Server) buildNav(active string) []navSection {
 	sections := make([]navSection, 0, len(coreSectionOrder))
 	index := map[string]int{}
-	add := func(section, label, href string) {
+	// pluginID is "" for a shell-owned link and the plugin id for a plugin's, so
+	// buildSidebar localizes each label from the right catalog (ADR-012 §5).
+	add := func(section, label, href, pluginID string) {
 		i, ok := index[section]
 		if !ok {
 			i = len(sections)
 			index[section] = i
 			sections = append(sections, navSection{Title: section})
 		}
-		sections[i].Links = append(sections[i].Links, navLink{Label: label, Href: href})
+		sections[i].Links = append(sections[i].Links, navLink{Label: label, Href: href, PluginID: pluginID})
 	}
 
 	// Shell-owned pages (ADR-009 §3): the read-only baseline, the auth surface,
 	// and the plugin-management surface (ADR-011). Plugin-owned System pages are
 	// added below from their manifests; General is not a shell-owned slot.
-	add("Status", "Overview", "/")
-	add("System", "Access", "/system/access")
-	add("System", "Packages", "/system/packages")
-	add("System", "Services", "/system/services")
-	add("System", "Maintenance", "/system/maintenance")
+	add("Status", "Overview", "/", "")
+	add("System", "Access", "/system/access", "")
+	add("System", "Packages", "/system/packages", "")
+	add("System", "Services", "/system/services", "")
+	add("System", "Maintenance", "/system/maintenance", "")
 
 	// Plugin-contributed pages, in discovery (id-sorted) order. Only plugins
 	// whose socket answers contribute rows: a menu entry that leads to
@@ -145,7 +157,7 @@ func (s *Server) buildNav(active string) []navSection {
 			continue
 		}
 		for _, entry := range m.Nav {
-			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path))
+			add(entry.Section, entry.Label, pluginHref(m.ID, entry.Path), m.ID)
 		}
 	}
 

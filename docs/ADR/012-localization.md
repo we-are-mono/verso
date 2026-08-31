@@ -28,8 +28,10 @@ Three facts about how Verso already works decide most of this:
   same walk can translate.
 - **Plugins emit English source, never rendered HTML.** Two plugins by two
   strangers render identically through the shell's templates (ADR-005/006). So a
-  plugin's strings can be translated *by the shell* at render time — the plugin
-  stays monolingual and English.
+  plugin's strings are translated *by the shell* at render time — the plugin binary
+  stays monolingual, English, and i18n-unaware. Its translations are a separate
+  data package that ships and is removed with it, so the shell applies them without
+  ever owning or curating them.
 - **Sessions are ephemeral** (in-memory, gone on restart — ADR-009's session
   store) and carry no preferences. There is nowhere to durably store a per-user
   language today, and no UI to set one.
@@ -42,15 +44,24 @@ source text with the source as the fallback; a language is a flat
 English all render the source. Plugins and shell code keep their English strings
 unchanged; localization is added around them, not woven through them.
 
-1. **Catalogs are data packages discovered at runtime.** A
-   `verso-i18n-base-<code>` apk drops `<code>.json` into `/usr/share/verso/i18n/`.
-   The shell loads them with the same resilient, injected-`fs.FS` glob it uses for
-   plugin manifests (ADR-006): a malformed catalog is skipped and reported, never
-   fatal, and installing one triggers the existing manifest rescan — no restart.
-   English ships in the binary as the source; it has no catalog. **Base language
-   codes only** (`sl`, `de`) — a region or script variant (`pt-br`, `zh-hant`) is
-   rejected with a reported problem rather than loaded into a slot negotiation
-   could never select; carrying full BCP-47 tags is a later scope expansion.
+1. **Catalogs are per-component data packages discovered at runtime.** A component
+   is the shell or one plugin, and each owns its own catalog of the same shape:
+   `verso-i18n-base-<code>` carries the shell's strings, `verso-i18n-<plugin>-<code>`
+   carries one plugin's strings. Each apk drops a JSON map into a per-language
+   directory keyed by component — `/usr/share/verso/i18n/<code>/base.json`,
+   `/usr/share/verso/i18n/<code>/<plugin-id>.json`. The shell loads them all with
+   the same resilient, injected-`fs.FS` glob it uses for plugin manifests (ADR-006):
+   a malformed catalog is skipped and reported, never fatal, and installing one
+   triggers the existing manifest rescan — no restart. English ships in each binary
+   as the source; it has no catalog. **Base language codes only** (`sl`, `de`) — a
+   region or script variant (`pt-br`, `zh-hant`) is rejected with a reported problem
+   rather than loaded into a slot negotiation could never select; carrying full
+   BCP-47 tags is a later scope expansion.
+
+   The split is by **ownership**: a plugin's translations live with the plugin,
+   authored by its author or a translator, installed and removed with it. The shell
+   never curates a plugin's strings into its own catalog. It *applies* the right
+   catalog per render (§5) but *owns* only `base`.
 
 2. **Language is negotiated per request from `Accept-Language`.** The shell picks
    the best *installed* catalog for the request header (quality values honored and
@@ -77,16 +88,36 @@ unchanged; localization is added around them, not woven through them.
    what lets a partial catalog, an untranslated plugin, and an English browser
    all work with no special casing.
 
+5. **The shell owns the render, so the shell applies the catalog — choosing it by
+   what it renders.** A plugin emits English schema and declares English manifest
+   metadata; nothing in the plugin is locale-aware. The translator the render uses
+   is picked from the string's owner:
+   - the shell's own chrome and pages → `base`;
+   - a plugin's page (the widget walk of §3) and that plugin's manifest labels
+     (`name`, each `nav[].label`, and `nav[].section` for display) →
+     `base ⊕ <plugin>` — the plugin's catalog overlaid on the shell's, so
+     shell-owned widget defaults (Save, Details, Close) still resolve while the
+     plugin's own text resolves from its catalog. A key collision resolves to the
+     plugin's value.
+   The manifest stays English and declarative; only its known label fields are
+   translated, and a `nav[].section` keeps its English value as the grouping and
+   ordering key while its display is localized. There is no guessing over arbitrary
+   plugin data — the manifest's translatable surface is a fixed, named set.
+
 ## Consequences
 
 - Adding a language is a data change (an apk), never a code change. A plugin
-  author writes only English and is localized for free.
-- Partial and stale catalogs degrade gracefully to English, per key.
+  author writes only English and is localized for free — its language is a
+  `verso-i18n-<plugin>-<code>` package anyone can author, ship, and remove
+  independently of the shell and of every other plugin.
+- Partial and stale catalogs degrade gracefully to English, per key. A plugin with
+  no catalog for the negotiated language renders English inside an otherwise
+  localized page, with no special casing.
 - **Editing English copy silently orphans its translation** (the key changed, so
   the lookup misses and reverts to English). This is the accepted cost of keyless
-  catalogs, and it is bounded — the string universe is small, closed, and
-  centrally authored. It is made *visible* rather than silent by the extraction
-  step below.
+  catalogs, and it is bounded per component — each catalog's string universe is
+  small, closed, and authored beside the code that emits it. It is made *visible*
+  rather than silent by the extraction step below.
 - **Homographs collapse.** One English "Free" or "Order" is one key and one forced
   translation; a language that distinguishes the senses will be wrong in one of
   them. Acceptable at Verso's scale (one copy author, a closed vocabulary);
@@ -119,16 +150,36 @@ unchanged; localization is added around them, not woven through them.
   a value into template text. A `%`-bearing value must never flow unchecked into a
   later `Sprintf`. This invariant is asserted at the boundary so the wiring stays
   escape-correct rather than retrofitted.
-- **Reload is an atomic snapshot swap.** A `*Bundle` is immutable after load, so
-  runtime rescan builds a fresh one and swaps the pointer *atomically*
-  (`atomic.Pointer`); request handlers read the current snapshot without a lock.
-- **Orphan/context drift is surfaced, not hidden.** A small extraction step emits
-  the current source set (the strings under `t(...)` and `{{ t }}`) so a catalog
-  can be diffed against reality — dead keys and missing keys become visible in
-  review rather than silent-forever.
+- **Reload is an atomic snapshot swap.** A `*Bundle` holds every component's
+  catalog for every installed language and is immutable after load, so a runtime
+  rescan builds a fresh one and swaps the pointer *atomically* (`atomic.Pointer`);
+  request handlers read the current snapshot without a lock. A render composes its
+  translator from that snapshot — `base` alone for the shell's own content, `base`
+  overlaid with the plugin's catalog for a plugin's — so the composition is a cheap
+  per-request read, never a mutation of shared state.
+- **Orphan/context drift is surfaced, not hidden.** A small extraction step emits a
+  component's current source set (its strings under `t(...)` and `{{ t }}`, and a
+  plugin's manifest label fields) so its catalog can be diffed against reality —
+  dead keys and missing keys become visible in review rather than silent-forever.
 
 ## Alternatives considered
 
+- **A single shell-owned catalog for every string.** One `verso-i18n-base-<code>`
+  carrying the shell's *and* every plugin's strings is simpler to load — one file,
+  no per-component merge. Rejected because it couples ownership to the shell: a
+  plugin author cannot extend a catalog the shell ships, plugin strings pile into a
+  file no one component owns, and installing or removing a plugin leaves its
+  translations orphaned in the base catalog. Per-component catalogs cost only a
+  keyed load and a per-render overlay, and keep each plugin's translations
+  self-contained and disposable with it.
+- **The plugin translates its own schema.** Pass the negotiated language into the
+  plugin request and have each plugin look up its own strings (via an SDK helper)
+  before emitting schema. It removes the shell's render-time walk over plugin
+  content, but it makes every plugin locale-aware, needs an SDK primitive and a
+  request field, and splits one page's translation across two processes for no
+  gain the per-component catalog does not already give. The shell already renders
+  the page; letting it apply the plugin's own catalog keeps the plugin a pure,
+  English, i18n-unaware emitter.
 - **Message IDs / keyed catalogs (`system.password.title`).** Stable keys
   decouple translations from English wording, so copy edits don't orphan anything.
   Rejected for now because it demands keying *every* string across the shell and

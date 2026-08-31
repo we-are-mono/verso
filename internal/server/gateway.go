@@ -62,9 +62,12 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
 func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath string, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
-	// The request's language, negotiated once: t localizes the widget tree at
-	// render, tr the shell-owned notices this gateway may return (ADR-012).
-	lang, t := s.localize(r)
+	// The request's language, negotiated once. This is a plugin render, so the
+	// translator is the plugin's catalog overlaid on base (ADR-012 §5): t localizes
+	// the widget tree at render, and tr localizes the envelope the shell copies out
+	// (heading, subheading, subpage labels) plus the notices this gateway may return
+	// — the plugin's own text from its catalog, shell-owned notices from base.
+	lang, t := s.pluginLocalize(r, m.ID)
 	tr := translatorOrIdentity(t)
 	if m.SchemaVersion != supportedSchemaVersion {
 		return s.notice(tr("Plugin needs a newer Verso"), fmt.Sprintf(
@@ -167,13 +170,20 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	if env.Title != "" {
 		hdr.Heading = env.Title
 	}
-	hdr.Kicker = env.Kicker
-	hdr.KickerStatus = env.KickerStatus
+	// Localize the envelope with the plugin's translator here, at the point the
+	// shell copies it out of the schema. renderPage re-runs the base translator over
+	// these, which is a no-op on an already-translated value (a translation is never
+	// an English base key), so the plugin's text survives (ADR-012 §5).
+	hdr.Heading = tr(hdr.Heading)
+	hdr.Kicker = tr(env.Kicker)
+	hdr.KickerStatus = tr(env.KickerStatus)
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
-	hdr.Subheading = env.Subheading
-	hdr.Banner = env.Banner
+	hdr.Subheading = tr(env.Subheading)
+	hdr.Banner = localizeBanner(env.Banner, tr)
 	*width = env.Width
+	// The subpage tabs carry the plugin id, so renderPage localizes their labels
+	// from the plugin's catalog (ADR-012 §5) — no need to pre-translate here.
 	*pages = subpageTabsAt(m, pluginPath, env.Pages)
 	return template.HTML(b.String()), status
 }
@@ -194,7 +204,7 @@ func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageT
 		if rel != "" {
 			href += rel
 		}
-		tabs = append(tabs, pageTab{Label: p.Label, Href: href, Active: cur == rel})
+		tabs = append(tabs, pageTab{Label: p.Label, Href: href, Active: cur == rel, PluginID: m.ID})
 	}
 	return tabs
 }

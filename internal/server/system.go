@@ -25,8 +25,9 @@ func (s *Server) systemPages(active string) []pageTab {
 				continue
 			}
 			tabs = append(tabs, pageTab{
-				Label: entry.Label,
-				Href:  pluginHref(m.ID, entry.Path),
+				Label:    entry.Label,
+				Href:     pluginHref(m.ID, entry.Path),
+				PluginID: m.ID,
 			})
 		}
 	}

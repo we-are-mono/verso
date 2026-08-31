@@ -102,6 +102,7 @@ func translateSchema(w Widget, t func(string) string) {
 	case *Field:
 		n.Label = t(n.Label)
 		n.Prompt = t(n.Prompt)
+		n.Placeholder = t(n.Placeholder)
 		n.Help = t(n.Help)
 		// A shell- or plugin-authored inline error is prose; a datatype-validation
 		// message (set by validateSchema, from the datatype package) simply misses
@@ -187,6 +188,10 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Title = t(n.Title)
 		n.Sub = t(n.Sub)
 		n.MetaLabel = t(n.MetaLabel)
+		// Meta is compact status text beside the title — prose ("Last synchronization
+		// not reported") in some sections, a live value (a timestamp, a subnet) in
+		// others; the latter simply misses the catalog and stays verbatim.
+		n.Meta = t(n.Meta)
 		if n.Control != nil {
 			translateSchema(n.Control, t)
 		}

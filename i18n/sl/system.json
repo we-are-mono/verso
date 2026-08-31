@@ -1,0 +1,21 @@
+{
+  "General": "Splošno",
+  "The name, place, and clock shared by everything on this router.": "Ime, kraj in ura, ki jih deli vse na tem usmerjevalniku.",
+  "Device identity": "Identiteta naprave",
+  "The name this router uses on your network and in Verso.": "Ime, ki ga ta usmerjevalnik uporablja v vašem omrežju in v Versu.",
+  "Hostname": "Ime gostitelja",
+  "Use letters, numbers, and hyphens. Devices may find it using the local network suffix.": "Uporabite črke, številke in vezaje. Naprave ga lahko najdejo prek lokalne omrežne pripone.",
+  "Time and region": "Čas in regija",
+  "Used for logs, schedules, certificates, and every time shown by the router.": "Uporablja se za dnevnike, urnike, potrdila in vsak čas, ki ga prikaže usmerjevalnik.",
+  "Timezone": "Časovni pas",
+  "Time synchronization": "Sinhronizacija časa",
+  "Keep the clock accurate automatically using trusted time servers.": "Samodejno ohranjajte točnost ure z zaupanja vrednimi časovnimi strežniki.",
+  "Last synchronization not reported": "Zadnja sinhronizacija ni sporočena",
+  "Set the time automatically": "Samodejno nastavi čas",
+  "Time servers": "Časovni strežniki",
+  "Servers are tried in order; leave several so time still works if one is unavailable.": "Strežniki se poskušajo po vrsti; pustite jih več, da čas deluje tudi, če eden ni na voljo.",
+  "Date and time": "Datum in ura",
+  "Interpreted in the selected timezone and applied to the router clock.": "Razlaga se v izbranem časovnem pasu in uporabi za uro usmerjevalnika.",
+  "Choose one of the available timezones.": "Izberite enega od razpoložljivih časovnih pasov.",
+  "Enter a valid local date and time, including seconds.": "Vnesite veljaven lokalni datum in uro, vključno s sekundami."
+}

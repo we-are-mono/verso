@@ -261,6 +261,15 @@ func translatorOrIdentity(t func(string) string) func(string) string {
 	return t
 }
 
+// localizeLabel localizes a label from its owner's catalog: base (tr) for a
+// shell-owned label, the plugin's catalog for a plugin's (ADR-012 §5).
+func localizeLabel(pluginID, label string, tr func(string) string, pluginTr func(string) func(string) string) string {
+	if pluginID == "" {
+		return tr(label)
+	}
+	return pluginTr(pluginID)(label)
+}
+
 // langAttr is the value for <html lang>: the negotiated code, or "en" for English.
 func langAttr(lang string) string {
 	if lang == "" {
@@ -280,6 +289,39 @@ func localizeBanner(b *plugin.Banner, tr func(string) string) *plugin.Banner {
 	c.Title = tr(c.Title)
 	c.Body = tr(c.Body)
 	return &c
+}
+
+// pluginLocalize is localize for a plugin render: the request's language and the
+// plugin's base⊕plugin translator, so the plugin's page and manifest labels resolve
+// from its own catalog while shell-owned widget defaults fall through to base
+// (ADR-012 §5). English (nil t) when no language is negotiated.
+func (s *Server) pluginLocalize(r *http.Request, pluginID string) (lang string, t func(string) string) {
+	b := s.bundle.Load()
+	if b == nil {
+		return "", nil
+	}
+	lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
+	if lang == "" {
+		return "", nil
+	}
+	return lang, b.PluginTranslator(lang, pluginID)
+}
+
+// pluginTranslators returns a function mapping a plugin id to its base⊕plugin
+// translator for the request's negotiated language, so the nav can localize each
+// plugin's label from that plugin's catalog (ADR-012 §5). Identity for English.
+func (s *Server) pluginTranslators(r *http.Request) func(pluginID string) func(string) string {
+	b := s.bundle.Load()
+	lang := ""
+	if b != nil {
+		lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
+	}
+	if b == nil || lang == "" {
+		return func(string) func(string) string { return identityTranslator }
+	}
+	return func(pluginID string) func(string) string {
+		return b.PluginTranslator(lang, pluginID)
+	}
 }
 
 // Close stops background services owned by the shell.
@@ -444,11 +486,13 @@ type pageData struct {
 }
 
 // pageTab is one entry in the top bar: the shell-built href and whether it is
-// the page being viewed.
+// the page being viewed. PluginID names the plugin that authored the label ("" for
+// a shell-owned tab), so it is localized from that plugin's catalog (ADR-012 §5).
 type pageTab struct {
-	Label  string
-	Href   string
-	Active bool
+	Label    string
+	Href     string
+	Active   bool
+	PluginID string
 }
 
 // pageHeader is the masthead the shell renders above a page body. Heading is always
@@ -475,16 +519,18 @@ type pageHeader struct {
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	pluginTr := s.pluginTranslators(r)
 	capsule := s.capsule(r.Context(), s.sessionSID(r))
 	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
 	flashVariant, flashMessage := s.takeFlash(r)
-	// The top bar's labels are shell/plugin chrome the shell copied out; localize
-	// them here (surface 2) and name the active face in the headline — "Plugins —
-	// Discover" — with the face in muted ink so the domain stays the title.
+	// The top bar mixes shell tabs and plugin tabs; localize each label from its
+	// owner's catalog (base for the shell's, the plugin's for a plugin's — ADR-012
+	// §5) and name the active face in the headline in muted ink so the domain stays
+	// the title.
 	headingDetail := ""
 	localizedPages := make([]pageTab, len(pages))
 	for i, p := range pages {
-		p.Label = tr(p.Label)
+		p.Label = localizeLabel(p.PluginID, p.Label, tr, pluginTr)
 		localizedPages[i] = p
 		if p.Active {
 			headingDetail = p.Label
@@ -513,7 +559,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Subheading:    tr(hdr.Subheading),
 		Width:         width,
 		CSS:           s.currentCSS(),
-		Nav:           s.buildSidebar(r.URL.Path, tr),
+		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr),
 		Body:          body,
 		NoPassword:    !hasPassword,
 		Banner:        localizeBanner(hdr.Banner, tr),

@@ -252,6 +252,8 @@ func pkgNameOK(name string) bool { return pkgNameRe.MatchString(name) }
 // Refresh, the search, and the results with install/remove drawers.
 func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg string) {
 	sid := s.sessionSID(r)
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		q = r.PostForm.Get("q")
@@ -288,7 +290,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, &widget.Empty{
 			Icon:  "search",
 			Title: "No packages found",
-			Body:  "No available packages match “" + q + "”. Check the spelling or refresh the package feeds.",
+			Body:  fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), q),
 		})
 	} else {
 		if total > len(pkgs) {
@@ -299,7 +301,6 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	lang, t := s.localize(r)
 	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return

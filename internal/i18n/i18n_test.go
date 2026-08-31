@@ -12,13 +12,14 @@ import (
 func testBundle(t *testing.T) *Bundle {
 	t.Helper()
 	b, problems := Load(fstest.MapFS{
-		"sl.json":     {Data: []byte(`{"Save & Apply":"Shrani in uveljavi","Discard":"Zavrzi"}`)},
-		"de.json":     {Data: []byte(`{"Discard":"Verwerfen"}`)},
-		"broken.json": {Data: []byte(`{not json`)},               // parse error
-		"empty.json":  {Data: []byte(`{}`)},                      // empty catalog
-		"en.json":     {Data: []byte(`{"Discard":"no"}`)},        // English is the source, skipped silently
-		"pt-br.json":  {Data: []byte(`{"Discard":"Descartar"}`)}, // region variant, rejected
-	}, "*.json")
+		"sl/base.json":     {Data: []byte(`{"Save & Apply":"Shrani in uveljavi","Discard":"Zavrzi","Zones":"cone-base"}`)},
+		"sl/firewall.json": {Data: []byte(`{"Zones":"Območja","Firewall":"Požarni zid"}`)},
+		"de/base.json":     {Data: []byte(`{"Discard":"Verwerfen"}`)},
+		"sl/broken.json":   {Data: []byte(`{not json`)},               // parse error
+		"sl/empty.json":    {Data: []byte(`{}`)},                      // empty catalog
+		"en/base.json":     {Data: []byte(`{"Discard":"no"}`)},        // English is the source, skipped silently
+		"pt-br/base.json":  {Data: []byte(`{"Discard":"Descartar"}`)}, // region variant, rejected
+	}, "*/*.json")
 
 	// broken (parse), empty, and pt-br (region) are reported; en is skipped silently.
 	if len(problems) != 3 {
@@ -28,7 +29,7 @@ func testBundle(t *testing.T) *Bundle {
 	for _, p := range problems {
 		joined += p.Error() + "\n"
 	}
-	for _, want := range []string{"broken.json", "empty.json", "pt-br.json"} {
+	for _, want := range []string{"broken.json", "empty.json", "pt-br"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("problems do not mention %q; got:\n%s", want, joined)
 		}
@@ -39,16 +40,16 @@ func testBundle(t *testing.T) *Bundle {
 func TestLoadDiscoversBaseCodesAndSkipsTheRest(t *testing.T) {
 	got := testBundle(t).Codes()
 	if len(got) != 2 || got[0] != "de" || got[1] != "sl" {
-		t.Fatalf("Codes() = %v, want [de sl] (en/broken/empty/pt-br excluded)", got)
+		t.Fatalf("Codes() = %v, want [de sl] (en/pt-br excluded)", got)
 	}
 }
 
-func TestLoadReportsDuplicateLanguage(t *testing.T) {
-	// Two files that fold to the same code — one loads, the other is reported.
+func TestLoadReportsDuplicateComponent(t *testing.T) {
+	// Two files that fold to the same code+component — one loads, the other is reported.
 	b, problems := Load(fstest.MapFS{
-		"DE.json": {Data: []byte(`{"Discard":"Verwerfen"}`)},
-		"de.json": {Data: []byte(`{"Discard":"other"}`)},
-	}, "*.json")
+		"DE/base.json": {Data: []byte(`{"Discard":"Verwerfen"}`)},
+		"de/base.json": {Data: []byte(`{"Discard":"other"}`)},
+	}, "*/*.json")
 	if got := b.Codes(); len(got) != 1 || got[0] != "de" {
 		t.Fatalf("Codes() = %v, want [de] once", got)
 	}
@@ -57,7 +58,7 @@ func TestLoadReportsDuplicateLanguage(t *testing.T) {
 	}
 }
 
-func TestTranslatorFallsBackToSource(t *testing.T) {
+func TestTranslatorIsBaseOnly(t *testing.T) {
 	b := testBundle(t)
 	sl := b.Translator("sl")
 	if got := sl("Save & Apply"); got != "Shrani in uveljavi" {
@@ -65,6 +66,11 @@ func TestTranslatorFallsBackToSource(t *testing.T) {
 	}
 	if got := sl("Untranslated string"); got != "Untranslated string" {
 		t.Errorf("missing key must fall back to source, got %q", got)
+	}
+	// The base translator must not see a plugin's catalog: "Zones" resolves to the
+	// base value, never the firewall plugin's.
+	if got := sl("Zones"); got != "cone-base" {
+		t.Errorf("base translator leaked a plugin catalog: sl(Zones) = %q", got)
 	}
 	if got := b.Translator("SL")("Discard"); got != "Zavrzi" {
 		t.Errorf("Translator must be case-insensitive on the code, got %q", got)
@@ -76,14 +82,43 @@ func TestTranslatorFallsBackToSource(t *testing.T) {
 	}
 }
 
+func TestPluginTranslatorOverlaysBase(t *testing.T) {
+	b := testBundle(t)
+	fw := b.PluginTranslator("sl", "firewall")
+	// The plugin's own key wins over base.
+	if got := fw("Zones"); got != "Območja" {
+		t.Errorf("plugin key must win: fw(Zones) = %q, want Območja", got)
+	}
+	// A key only the plugin has resolves from the plugin.
+	if got := fw("Firewall"); got != "Požarni zid" {
+		t.Errorf("fw(Firewall) = %q, want Požarni zid", got)
+	}
+	// A shell-owned key the plugin does not carry falls through to base.
+	if got := fw("Save & Apply"); got != "Shrani in uveljavi" {
+		t.Errorf("plugin translator must fall through to base: fw(Save & Apply) = %q", got)
+	}
+	// A key in neither falls back to the source.
+	if got := fw("Nothing here"); got != "Nothing here" {
+		t.Errorf("missing key must fall back to source, got %q", got)
+	}
+	// An unknown plugin still resolves base keys (base ⊕ nothing).
+	if got := b.PluginTranslator("sl", "no-such-plugin")("Discard"); got != "Zavrzi" {
+		t.Errorf("unknown plugin must still resolve base, got %q", got)
+	}
+	// English (no catalogs) is the identity.
+	if got := b.PluginTranslator("en", "firewall")("Discard"); got != "Discard" {
+		t.Errorf("English plugin translator must be identity, got %q", got)
+	}
+}
+
 // Translation values pass through the package verbatim — escaping is the render
 // layer's job (values must reach the browser only as html/template data, never as
 // template source or template.HTML). This pins that the package neither mangles
 // nor sanitizes them, so the invariant lives downstream, deliberately.
 func TestTranslatorReturnsValuesVerbatim(t *testing.T) {
 	b, _ := Load(fstest.MapFS{
-		"sl.json": {Data: []byte(`{"x":"<b>{{.}}</b> 100%"}`)},
-	}, "*.json")
+		"sl/base.json": {Data: []byte(`{"x":"<b>{{.}}</b> 100%"}`)},
+	}, "*/*.json")
 	if got := b.Translator("sl")("x"); got != "<b>{{.}}</b> 100%" {
 		t.Errorf("value not returned verbatim: %q", got)
 	}
