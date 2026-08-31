@@ -1,0 +1,21 @@
+{
+  "manifest_version": 1,
+  "id": "dnsdhcp",
+  "name": "DNS and DHCP",
+  "socket": "/var/run/verso/dnsdhcp.sock",
+  "schema_version": 1,
+  "nav": [
+    { "section": "Network", "label": "DNS", "path": "/dns" },
+    { "section": "Network", "label": "DHCP", "path": "/" }
+  ],
+  "acl": {
+    "read": [
+      { "scope": "uci", "object": "dhcp", "function": "read" },
+      { "scope": "uci", "object": "network", "function": "read" },
+      { "scope": "ubus", "object": "verso", "function": "dhcpLeases" }
+    ],
+    "write": [
+      { "scope": "uci", "object": "dhcp", "function": "write" }
+    ]
+  }
+}

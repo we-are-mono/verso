@@ -1,0 +1,1 @@
+Bundled core plugin, shipped as its own package. The shell build and dev loop ship it automatically.
