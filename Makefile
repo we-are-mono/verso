@@ -15,7 +15,10 @@ GOOS     ?= linux
 BUILDDIR := build
 CARGO    ?= $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RPCD_MANIFEST := verso-rpcd/Cargo.toml
+SDK_MANIFEST := plugins/verso-plugin-sdk/Cargo.toml
 SYSTEM_PLUGIN_MANIFEST := plugins/verso-plugin-system/Cargo.toml
+FIREWALL_PLUGIN_MANIFEST := plugins/verso-plugin-firewall/Cargo.toml
+DNSDHCP_PLUGIN_MANIFEST := plugins/verso-plugin-dnsdhcp/Cargo.toml
 
 # `make build` cross-compiles every architecture in ARCHES; each maps to a Go
 # GOARCH and the matching Rust musl target triple below. Override to build one:
@@ -89,7 +92,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-pot
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-i18n apk-i18n-publish i18n-pot
 
 all: lint test build
 
@@ -118,6 +121,10 @@ build-%: css
 	cp verso-rpcd/target/$(rust_target_$*)/release/verso-rpcd $(BUILDDIR)/verso-rpcd-$*
 	$(CARGO) build --locked --release --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --target $(rust_target_$*)
 	cp plugins/verso-plugin-system/target/$(rust_target_$*)/release/verso-plugin-system $(BUILDDIR)/verso-plugin-system-$*
+	$(CARGO) build --locked --release --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --target $(rust_target_$*)
+	cp plugins/verso-plugin-firewall/target/$(rust_target_$*)/release/verso-plugin-firewall $(BUILDDIR)/verso-plugin-firewall-$*
+	$(CARGO) build --locked --release --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --target $(rust_target_$*)
+	cp plugins/verso-plugin-dnsdhcp/target/$(rust_target_$*)/release/verso-plugin-dnsdhcp $(BUILDDIR)/verso-plugin-dnsdhcp-$*
 
 run:
 	go run $(CMD)
@@ -130,7 +137,10 @@ dev:
 test:
 	go test ./...
 	$(CARGO) test --locked --manifest-path $(RPCD_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(SDK_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST)
 
 # lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
 # defaults: no custom config, golangci-lint's default linter set.
@@ -160,7 +170,10 @@ deadcode: $(DEADCODE)
 lint: deadcode $(GOLANGCI)
 	$(GOLANGCI) run ./...
 	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(SDK_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --all-targets -- -D warnings
 
 # hooks points git at the tracked pre-commit hook so commits are gated on lint.
 hooks:
@@ -193,10 +206,13 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 $(BUILDDIR)/$(BINARY)-$(APK_GOARCH)                   $(APK_PAYLOAD)/usr/bin/verso
 	install -Dm755 $(BUILDDIR)/verso-rpcd-$(APK_GOARCH)                  $(APK_PAYLOAD)/usr/sbin/verso-rpcd
 	install -Dm755 $(BUILDDIR)/verso-plugin-system-$(APK_GOARCH)         $(APK_PAYLOAD)/usr/bin/verso-plugin-system
+	install -Dm755 $(BUILDDIR)/verso-plugin-firewall-$(APK_GOARCH)       $(APK_PAYLOAD)/usr/bin/verso-plugin-firewall
 	install -Dm755 docker/rootfs/etc/init.d/verso                       $(APK_PAYLOAD)/etc/init.d/verso
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
+	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
 	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
+	install -Dm644 plugins/verso-plugin-firewall/manifest.json           $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/manifest.json
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json
@@ -225,6 +241,45 @@ apk-publish: apk
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
+
+# ── DNS/DHCP plugin packaging ─────────────────────────────────────────────────
+# The DNS/DHCP plugin ships as its own package rather than inside the verso
+# payload: it is only useful where dnsmasq serves the network, and apk is what
+# states that — `depends:dnsmasq` alongside the shell it plugs into. Its layout
+# is the shell package's, narrowed to one plugin: the binary, the init script,
+# and the manifest the shell discovers on disk.
+DNSDHCP_PKG     := verso-plugin-dnsdhcp
+DNSDHCP_PAYLOAD := $(APK_DIR)/pkg-dnsdhcp
+DNSDHCP_OUT     := $(APK_DIR)/$(DNSDHCP_PKG)-$(VER).apk
+DNSDHCP_POSTINST := packaging/apk/post-install-dnsdhcp.sh
+
+apk-dnsdhcp: apk-preflight build-$(APK_GOARCH)
+	rm -rf $(DNSDHCP_PAYLOAD)
+	install -Dm755 $(BUILDDIR)/verso-plugin-dnsdhcp-$(APK_GOARCH)                       $(DNSDHCP_PAYLOAD)/usr/bin/verso-plugin-dnsdhcp
+	install -Dm755 plugins/verso-plugin-dnsdhcp/rootfs/etc/init.d/verso-plugin-dnsdhcp  $(DNSDHCP_PAYLOAD)/etc/init.d/verso-plugin-dnsdhcp
+	install -Dm644 plugins/verso-plugin-dnsdhcp/manifest.json                           $(DNSDHCP_PAYLOAD)/usr/share/verso/plugins/dnsdhcp/manifest.json
+	fakeroot -- sh -c 'chown -R 0:0 "$(DNSDHCP_PAYLOAD)" && "$(APK)" mkpkg \
+	  --info name:$(DNSDHCP_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \
+	  --info "description:Verso DNS and DHCP — dnsmasq and odhcpd, as pages" \
+	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
+	  --info origin:verso \
+	  --info "depends:verso dnsmasq" \
+	  --files "$(DNSDHCP_PAYLOAD)" \
+	  --script post-install:$(DNSDHCP_POSTINST) \
+	  --script post-upgrade:$(DNSDHCP_POSTINST) \
+	  --sign-key "$(KEY)" \
+	  --output "$(DNSDHCP_OUT)"'
+	@echo "built and signed: $(DNSDHCP_OUT)  (arch $(APK_ARCH), version $(VER))"
+
+# apk-dnsdhcp-publish drops the plugin package beside verso in the per-arch dev
+# repo and re-indexes what is present. Like the catalog publisher, it does not
+# clear the dir — run it after `apk-publish` to keep both in one index.
+apk-dnsdhcp-publish: apk-dnsdhcp
+	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
+	cp $(DNSDHCP_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
+	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
+	chmod -R a+rX $(VERSO_REPO_DIR)
+	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(DNSDHCP_OUT))  (index rebuilt)"
 
 # ── i18n catalog packaging ────────────────────────────────────────────────────
 # A catalog is a per-component data package, discovered on disk at runtime

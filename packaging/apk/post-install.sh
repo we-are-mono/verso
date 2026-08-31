@@ -11,7 +11,9 @@ killall -HUP ubusd 2>/dev/null
 /etc/init.d/verso enable 2>/dev/null
 /etc/init.d/verso-rpcd enable 2>/dev/null
 /etc/init.d/verso-plugin-system enable 2>/dev/null
+/etc/init.d/verso-plugin-firewall enable 2>/dev/null
 /etc/init.d/verso-rpcd restart 2>/dev/null
 /etc/init.d/verso-plugin-system restart 2>/dev/null
+/etc/init.d/verso-plugin-firewall restart 2>/dev/null
 /etc/init.d/verso restart 2>/dev/null
 exit 0
