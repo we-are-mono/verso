@@ -2,16 +2,42 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-# Backstop for the management address: if anything leaves eth0 bare between
-# preinit's flush and netifd applying the mgmt interface, re-apply the address
-# so Docker's published :8080 always has a target. No default route here — the
-# default route is wan's (see /etc/config/network). The address MUST match the
-# `vnet` static address in docker-compose.yml.
+# Backstops for the two pieces of the network Docker owns in this container and
+# OpenWrt therefore cannot finish for itself: the management address and the
+# resolver file. Both run after netifd and dnsmasq are up.
 START=91
 STOP=99
 
-start() {
+# If anything leaves eth0 bare between preinit's flush and netifd applying the
+# mgmt interface, re-apply the address so Docker's published :8080 always has a
+# target. No default route here — the default route is wan's (see
+# /etc/config/network). The address MUST match the `vnet` static address in
+# docker-compose.yml.
+mgmt_address() {
 	ip link set dev eth0 up 2>/dev/null
 	ip address add 172.20.0.10/16 dev eth0 2>/dev/null
+}
+
+# Docker bind-mounts /etc/resolv.conf and points it at its own embedded resolver
+# (127.0.0.11), which is reachable only through a redirect Docker installs in this
+# container's `ip nat` table. Stopping the firewall flushes the whole namespace's
+# ruleset — every table, Docker's among them — and only fw4's own table comes
+# back, so from the first firewall stop the address answers nothing and the box
+# has no DNS at all. The same bind mount blocks OpenWrt's /etc/resolv.conf ->
+# /tmp/resolv.conf symlink, so write what that symlink would have resolved to
+# straight into the file: the router asks its own dnsmasq, which forwards to the
+# DNS server wan-sim hands it over DHCP. That path owes Docker's ruleset nothing,
+# and it is what apk needs to reach the package feeds.
+resolver() {
+	cat >/etc/resolv.conf <<-EOF 2>/dev/null
+		search lan
+		nameserver 127.0.0.1
+		nameserver ::1
+	EOF
+}
+
+start() {
+	mgmt_address
+	resolver
 	return 0
 }

@@ -236,8 +236,10 @@ func TestDiscoverInstallRunsAndRescans(t *testing.T) {
 type refreshBackend struct {
 	fakeBackend
 	calls   *atomic.Int32
+	guarded *atomic.Int32 // guarded verbs the shell attempted mid-refresh
 	started chan struct{}
 	release chan error
+	blocked chan struct{} // never delivered: the queue behind the package guard
 }
 
 func (b refreshBackend) PkgUpdate(context.Context, string) error {
@@ -246,12 +248,45 @@ func (b refreshBackend) PkgUpdate(context.Context, string) error {
 	return <-b.release
 }
 
+// The guarded verbs model verso-rpcd's package mutex: while a refresh holds it,
+// any of them would queue behind apk for as long as the refresh runs. Here they
+// never come back, so a shell that calls one freezes the test the way it froze
+// the browser.
+func (b refreshBackend) PkgInstalled(ctx context.Context, sid string) ([]openwrt.Package, error) {
+	b.waitOnTheGuard()
+	return b.fakeBackend.PkgInstalled(ctx, sid)
+}
+
+func (b refreshBackend) PkgSearch(ctx context.Context, sid, query string) ([]openwrt.Package, int, error) {
+	b.waitOnTheGuard()
+	return b.fakeBackend.PkgSearch(ctx, sid, query)
+}
+
+func (b refreshBackend) PkgInstall(ctx context.Context, sid, name string) error {
+	b.waitOnTheGuard()
+	return b.fakeBackend.PkgInstall(ctx, sid, name)
+}
+
+func (b refreshBackend) PkgRemove(ctx context.Context, sid, name string) error {
+	b.waitOnTheGuard()
+	return b.fakeBackend.PkgRemove(ctx, sid, name)
+}
+
+func (b refreshBackend) waitOnTheGuard() {
+	if feedRefresh.running() {
+		b.guarded.Add(1)
+		<-b.blocked
+	}
+}
+
 func newRefreshBackend() refreshBackend {
 	return refreshBackend{
 		fakeBackend: fakeBackend{access: true, pkgCheckedAt: 1},
 		calls:       &atomic.Int32{},
+		guarded:     &atomic.Int32{},
 		started:     make(chan struct{}, 4),
 		release:     make(chan error, 4),
+		blocked:     make(chan struct{}),
 	}
 }
 
@@ -276,6 +311,102 @@ func waitFeedRefreshIdle(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 	}
+}
+
+// renderWithin fails the test if a page does not answer inside d — the freeze a
+// guarded helper call causes while apk belongs to the refresh.
+func renderWithin(t *testing.T, s *Server, path string, d time.Duration) string {
+	t.Helper()
+	rendered := make(chan string, 1)
+	go func() { rendered <- get(t, s, path).Body.String() }()
+	select {
+	case body := <-rendered:
+		return body
+	case <-time.After(d):
+		t.Fatalf("%s did not render while a feed refresh was running", path)
+		return ""
+	}
+}
+
+// TestPackagePagesRenderWhileTheFeedsRefresh: apk belongs to the refresh, so the
+// pages ask the helper for nothing and say so. Every guarded verb in this
+// backend blocks forever, so a page that still calls one never answers.
+func TestPackagePagesRenderWhileTheFeedsRefresh(t *testing.T) {
+	b := newRefreshBackend()
+	s := refreshServer(t, b)
+
+	postPlugin(t, s, "/system/packages/discover", url.Values{"_action": {"refresh"}})
+	<-b.started
+
+	for _, path := range []string{
+		"/system/packages",
+		"/system/packages/discover",
+		"/system/packages/discover?q=htop",
+		"/system/services",
+	} {
+		body := renderWithin(t, s, path, 5*time.Second)
+		if path == "/system/services" {
+			continue // the roster is procd's; only its package-ownership read is guarded
+		}
+		if !strings.Contains(body, "Refreshing the package feeds") {
+			t.Errorf("%s must say what the device is doing instead of listing", path)
+		}
+	}
+	if n := b.guarded.Load(); n != 0 {
+		t.Fatalf("%d guarded helper calls made while the refresh held apk", n)
+	}
+
+	b.release <- nil
+	waitFeedRefreshIdle(t)
+	if body := get(t, s, "/system/packages").Body.String(); strings.Contains(body, "Refreshing the package feeds") {
+		t.Error("the inventory must come back once the refresh is done")
+	}
+}
+
+// TestInstallWaitsForTheRefresh: installing would queue behind the same guard,
+// so the click is refused with a reason rather than holding the browser.
+func TestInstallWaitsForTheRefresh(t *testing.T) {
+	b := newRefreshBackend()
+	s := refreshServer(t, b)
+
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	sess, _ := s.sessions.get(token)
+	do := func(path string, form url.Values) *httptest.ResponseRecorder {
+		var req *http.Request
+		if form != nil {
+			form.Set("_csrf", sess.csrf)
+			req = httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else {
+			req = httptest.NewRequest(http.MethodGet, path, nil)
+		}
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec
+	}
+
+	do("/system/packages/discover", url.Values{"_action": {"refresh"}})
+	<-b.started
+
+	if rec := do("/system/packages/discover", url.Values{"package": {"htop"}, "_primary": {"install"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("a refused install still answers at once, got %d", rec.Code)
+	}
+	if rec := do("/system/packages", url.Values{"package": {"htop"}, "_primary": {"remove"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("a refused remove still answers at once, got %d", rec.Code)
+	}
+	if body := do("/system/packages", nil).Body.String(); !strings.Contains(body, "The feeds are being refreshed — try again in a moment.") {
+		t.Error("a refused package action must say why")
+	}
+	if n := b.guarded.Load(); n != 0 {
+		t.Fatalf("%d guarded helper calls made while the refresh held apk", n)
+	}
+
+	b.release <- nil
+	waitFeedRefreshIdle(t)
 }
 
 // TestFeedRefreshRunsInTheBackground: the POST answers while apk is still

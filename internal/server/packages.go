@@ -50,6 +50,11 @@ func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad package name", http.StatusBadRequest)
 		return
 	}
+	if feedRefresh.running() {
+		s.flash(r, "info", tr("The feeds are being refreshed — try again in a moment."))
+		http.Redirect(w, r, "/system/packages", http.StatusSeeOther)
+		return
+	}
 	if err := s.backend.PkgRemove(r.Context(), s.sessionSID(r), name); err != nil {
 		s.renderPackages(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
 		return
@@ -62,20 +67,24 @@ func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
 // renderPackages composes the inventory: the full installed set, the lens
 // keeping 100+ rows one page. errMsg, when set, leads as a danger callout.
 func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg string) {
-	pkgs, pkgErr := s.backend.PkgInstalled(r.Context(), s.sessionSID(r))
-
 	children := []widget.Widget{}
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
 	}
-	if pkgErr != nil {
-		children = append(children, &widget.Callout{Variant: "warning", Title: "Package list unavailable",
-			Body: fmt.Sprintf("The package database could not be read (%v).", pkgErr)})
+	if feedRefresh.running() {
+		children = append(children, refreshingInstead(
+			"The list returns as soon as the refresh finishes — reload the page in a moment."))
+	} else {
+		pkgs, pkgErr := s.backend.PkgInstalled(r.Context(), s.sessionSID(r))
+		if pkgErr != nil {
+			children = append(children, &widget.Callout{Variant: "warning", Title: "Package list unavailable",
+				Body: fmt.Sprintf("The package database could not be read (%v).", pkgErr)})
+		}
+		children = append(children,
+			&widget.Filter{Placeholder: "Filter — package, feed, version…"},
+			packagesTable(pkgs),
+		)
 	}
-	children = append(children,
-		&widget.Filter{Placeholder: "Filter — package, feed, version…"},
-		packagesTable(pkgs),
-	)
 
 	var body strings.Builder
 	lang, t := s.localize(r)
@@ -220,6 +229,11 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad package name", http.StatusBadRequest)
 			return
 		}
+		if feedRefresh.running() {
+			s.flash(r, "info", tr("The feeds are being refreshed — try again in a moment."))
+			http.Redirect(w, r, back, http.StatusSeeOther)
+			return
+		}
 		var err error
 		if verb == "install" {
 			err = s.backend.PkgInstall(r.Context(), sid, name)
@@ -275,6 +289,11 @@ func (j *feedRefreshJob) start(refresh func() error) bool {
 	return true
 }
 
+// running reports whether a refresh is under way — and so whether apk is holding
+// verso-rpcd's package guard. Every other package verb queues behind that guard,
+// so while this is true the surface asks the helper for nothing and states what
+// the device is doing instead: a page that answers at once and says the listing
+// is a moment away beats a page that is right in a minute.
 func (j *feedRefreshJob) running() bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -294,6 +313,11 @@ func (j *feedRefreshJob) takeFailure() error {
 // feedRefresh is that job. The package index is one file set the whole device
 // shares, so the refresh is one act device-wide, not one per operator.
 var feedRefresh feedRefreshJob
+
+// refreshingInstead stands where a listing would be while the refresh owns apk.
+func refreshingInstead(body string) widget.Widget {
+	return &widget.Empty{Icon: "refresh-cw", Title: "Refreshing the package feeds", Body: body}
+}
 
 // pkgNameRe mirrors the helper's package-name alphabet — refused here first
 // so a bad name never even reaches the bus.
@@ -327,9 +351,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	// the row's right end as a quiet fact. A refresh under way takes the button's
 	// place with what it is doing — the act cannot be started twice, so offering
 	// it again would be an offer the device would decline.
-	checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
 	toolbar := &widget.Form{Style: "search", Icon: "search", Submit: "Search",
-		Note:    freshnessLine(checkedAt, statusErr),
 		Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
 		Fields: []widget.Widget{
 			&widget.Field{Name: "q", Value: q, Placeholder: "Package name", Autofocus: true},
@@ -338,10 +360,16 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	if refreshing {
 		toolbar.Actions = nil
 		toolbar.Note = "Refreshing the feeds… **reload to see the result**."
+	} else {
+		checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
+		toolbar.Note = freshnessLine(checkedAt, statusErr)
 	}
 	children = append(children, toolbar, &widget.Divider{Tight: true})
 
-	if q == "" {
+	if refreshing {
+		children = append(children, refreshingInstead(
+			"Results come from the feed index this refresh is rebuilding — reload the page in a moment to search it."))
+	} else if q == "" {
 		children = append(children, &widget.Empty{
 			Icon:  "search",
 			Title: "Search available packages",

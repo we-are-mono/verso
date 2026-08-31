@@ -50,6 +50,12 @@ services:
     ports:
       - "8080:8080"                 # verso -> http://10.0.0.232:8080
       - "8081:80"                   # luci  -> http://10.0.0.232:8081 (reference UI, same live uci/ubus)
+    # DNS is deliberately not set here. On a user-defined network Docker always
+    # fronts the container with its own resolver (127.0.0.11) and treats `dns:`
+    # as that resolver's upstreams — and 127.0.0.11 stops answering the moment
+    # the firewall flushes the namespace's ruleset, so naming servers here would
+    # change nothing. The router points at its own dnsmasq instead, the way a
+    # router does: see resolver() in docker/rootfs/etc/init.d/netfix.
 
   # The fake ISP: answers the router's DHCP on wan-net and NATs its traffic out
   # through vnet, so the LAN reaches the real internet through two honest hops.

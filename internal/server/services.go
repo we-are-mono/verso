@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"net"
@@ -245,6 +246,15 @@ func lifecycleWord(actions []string) string {
 	}
 }
 
+// installedPackagesForOwnership reads the installed set for the service→package
+// join, and answers empty while a feed refresh owns apk.
+func (s *Server) installedPackagesForOwnership(ctx context.Context, sid string) ([]openwrt.Package, error) {
+	if feedRefresh.running() {
+		return nil, nil
+	}
+	return s.backend.PkgInstalled(ctx, sid)
+}
+
 // renderServices composes the page: procd's whole table, using the same
 // flush-edged table treatment as the rest of Verso; errMsg leads as a danger callout.
 func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg string) {
@@ -253,8 +263,11 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	// APK reports the init scripts each package owns. This is the authoritative
 	// join: service and package names are often different (verso-rpcd belongs to
 	// verso, for example), so matching names would silently discard real owners.
+	// The read waits on the helper's package guard, which a running feed refresh
+	// holds for as long as apk takes — and ownership is an enrichment, not the
+	// page, so it is left out rather than made worth waiting for.
 	owners := map[string]string{}
-	if pkgs, err := s.backend.PkgInstalled(r.Context(), sid); err == nil {
+	if pkgs, err := s.installedPackagesForOwnership(r.Context(), sid); err == nil {
 		for _, p := range pkgs {
 			for _, service := range p.Services {
 				owners[service] = p.Name
