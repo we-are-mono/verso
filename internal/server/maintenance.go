@@ -134,8 +134,10 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "System"}, "narrow",
-		s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	s.renderPage(w, r, status, pageHeader{
+		Heading:    "System",
+		Subheading: "Keep this router current, backed up, and recoverable.",
+	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

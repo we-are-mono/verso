@@ -173,8 +173,8 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	for _, want := range []string{
 		"Verso 0.0.23 is available", "this router runs 0.0.22",
 		"Updating also brings 4 other packages", "Checked", "just now",
-		"This router runs 2.91-r3", "2.93-r1", // the tail rows name both versions
-		"4 more packages", // the seam holds everything but the lead
+		"2.91-r3 → 2.93-r1",         // the manifest states each transition verbatim
+		"What changes — 5 packages", // the full manifest folds behind a disclosure
 		"Update now", `action="/system/maintenance/updates/install"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -195,13 +195,13 @@ func TestMaintenanceUpdatesVersoAlone(t *testing.T) {
 	if !strings.Contains(body, "Verso 0.0.23 is available") {
 		t.Errorf("Verso's own update should lead by name:\n%s", body)
 	}
-	if strings.Contains(body, "Updating also brings") || strings.Contains(body, "more package") {
-		t.Error("one package brings nothing else and needs no seam")
+	if strings.Contains(body, "Updating also brings") || strings.Contains(body, "What changes") {
+		t.Error("a lead that is the whole story needs no manifest behind it")
 	}
 }
 
 // TestMaintenanceUpdatesSoftwareLaneWithoutVerso: with Verso itself current, the
-// set speaks as a count and the first package still leads the card.
+// set speaks as a count and the manifest table carries the detail.
 func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 	idleUpdates(t)
 	knownUpdates(updateTruth{
@@ -213,8 +213,8 @@ func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 	if !strings.Contains(body, "1 package is newer in your feeds") {
 		t.Errorf("a single upgradable package should read as one:\n%s", body)
 	}
-	if strings.Contains(body, "more package") {
-		t.Error("one package needs no seam behind it")
+	if !strings.Contains(body, "2.91-r3 → 2.93-r1") {
+		t.Errorf("the manifest should state the one transition:\n%s", body)
 	}
 }
 

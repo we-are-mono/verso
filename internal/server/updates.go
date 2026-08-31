@@ -291,38 +291,53 @@ func otherPackages(n int) string {
 	return strconv.Itoa(n) + " other packages"
 }
 
-// upgradableList names every package the update would change: Verso's own first,
-// the rest folded away, because a person acts on the lead and audits the tail.
+// upgradableList names every package the update would change: Verso's own as
+// the lead when it is among them, and the full manifest folded behind a
+// disclosure as a condensed table — a person acts on the lead and audits the
+// tail, and the tail is tabular fact (name, version → version), not a run of
+// options.
 func upgradableList(packages []openwrt.PackageUpgrade) widget.Widget {
-	rows := make([]widget.SettingsItem, 0, len(packages))
-	var lead []widget.SettingsItem
+	var children []widget.Widget
 	for _, p := range packages {
-		row := widget.SettingsItem{
+		if p.Name != versoPackage {
+			continue
+		}
+		children = append(children, &widget.Settings{Style: "card", Items: []widget.SettingsItem{{
 			Title: p.Name,
 			Desc:  "This router runs " + p.Installed,
 			Value: p.Available,
-		}
-		if p.Name == versoPackage {
-			lead = append(lead, row)
-			continue
-		}
-		rows = append(rows, row)
+		}}})
 	}
-	card := &widget.Settings{Style: "card", Items: lead}
-	if len(card.Items) == 0 {
-		card.Items, rows = rows[:1], rows[1:]
+	// A lead that is the whole story needs no manifest behind it.
+	if len(children) != 0 && len(packages) == 1 {
+		return children[0]
 	}
-	if len(rows) != 0 {
-		card.Seam = &widget.SettingsSeam{Summary: seamSummary(len(rows)), Items: rows}
+	rows := make([]widget.TableRow, 0, len(packages))
+	for _, p := range packages {
+		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
+			{Text: p.Name},
+			{Text: p.Installed + " → " + p.Available},
+		}})
 	}
-	return card
+	children = append(children, &widget.Disclosure{
+		Summary: changesSummary(len(packages)),
+		Children: []widget.Widget{&widget.Table{
+			Condensed: true,
+			Columns: []widget.TableColumn{
+				{Label: "Package", Kind: "name"},
+				{Label: "Version", Kind: "mono"},
+			},
+			Rows: rows,
+		}},
+	})
+	return &widget.Stack{Children: children}
 }
 
-func seamSummary(n int) string {
+func changesSummary(n int) string {
 	if n == 1 {
-		return "1 more package"
+		return "What changes — 1 package"
 	}
-	return strconv.Itoa(n) + " more packages"
+	return "What changes — " + strconv.Itoa(n) + " packages"
 }
 
 func updatesInstallButton(checking bool) *widget.Button {
