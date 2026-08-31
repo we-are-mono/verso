@@ -1134,6 +1134,32 @@ func TestValidateSchemaAnnotatesAndPreservesPluginErrors(t *testing.T) {
 	}
 }
 
+// TestValidateSchemaCoversNestedContainers: the datatype gate reaches a field
+// no matter which container it nests in — a modal, a tab, a wizard step, a
+// conditions item, a drawer, or a table row's drawer. Each of these was once
+// outside the walk, letting an invalid value through to the commit.
+func TestValidateSchemaCoversNestedContainers(t *testing.T) {
+	bad := func() *widget.Field { return &widget.Field{Name: "p", Datatype: "port", Value: "nope"} }
+	cases := []struct {
+		name string
+		tree widget.Widget
+	}{
+		{"modal", &widget.Modal{Children: []widget.Widget{bad()}}},
+		{"tabs", &widget.Tabs{Tabs: []widget.Tab{{Children: []widget.Widget{bad()}}}}},
+		{"wizard", &widget.Wizard{Steps: []widget.WizardStep{{Children: []widget.Widget{bad()}}}}},
+		{"conditions", &widget.Conditions{Items: []widget.ConditionItem{{Key: "k", Children: []widget.Widget{bad()}}}}},
+		{"drawer", &widget.Drawer{Children: []widget.Widget{bad()}}},
+		{"table row drawer", &widget.Table{Rows: []widget.TableRow{{Drawer: &widget.RowDrawer{Children: []widget.Widget{bad()}}}}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !validateSchema(tc.tree) {
+				t.Fatalf("an invalid field inside a %s must block the write", tc.name)
+			}
+		})
+	}
+}
+
 // TestNavListsPlugins: a discovered plugin appears in the shell nav with no shell
 // change — the manifest drives it (ADR-006 §2).
 func TestNavListsPlugins(t *testing.T) {

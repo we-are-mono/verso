@@ -213,80 +213,47 @@ func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageT
 // declared datatype against its value (ADR-008), annotating any failure in place.
 // It does not overwrite an error a plugin already set — a semantic message is more
 // specific — and reports whether the tree carries any error after the walk, so the
-// caller blocks the write and re-renders as 422.
+// caller blocks the write and re-renders as 422. widget.Walk covers every
+// container — a field inside a modal, a tab, a wizard step, or a table row's
+// drawer is enforced the same as one directly in a form.
 func validateSchema(w widget.Widget) bool {
-	switch n := w.(type) {
-	case *widget.Card:
-		found := false
-		for _, c := range n.Children {
-			found = validateSchema(c) || found
-		}
-		return found
-	case *widget.Stack:
-		found := false
-		for _, c := range n.Children {
-			found = validateSchema(c) || found
-		}
-		return found
-	case *widget.Grid:
-		found := false
-		for _, c := range n.Children {
-			found = validateSchema(c) || found
-		}
-		return found
-	case *widget.Section:
-		found := n.Control != nil && validateSchema(n.Control)
-		for _, c := range n.Children {
-			found = validateSchema(c) || found
-		}
-		return found
-	case *widget.Form:
-		found := n.Error != ""
-		for _, f := range n.Fields {
-			found = validateSchema(f) || found
-		}
-		return found
-	case *widget.Field:
-		if n.Error == "" && n.Datatype != "" {
-			if err := datatype.Validate(n.Datatype, n.Value); err != nil {
-				n.Error = err.Error()
+	found := false
+	widget.Walk(w, func(n widget.Widget) {
+		switch n := n.(type) {
+		case *widget.Form:
+			if n.Error != "" {
+				found = true
 			}
-		}
-		return n.Error != ""
-	case *widget.List:
-		if n.Datatype != "" {
-			for i, item := range n.Items {
-				key := strconv.Itoa(i)
-				if _, has := n.Errors[key]; has {
-					continue
+		case *widget.Field:
+			if n.Error == "" && n.Datatype != "" {
+				if err := datatype.Validate(n.Datatype, n.Value); err != nil {
+					n.Error = err.Error()
 				}
-				if err := datatype.Validate(n.Datatype, item); err != nil {
-					if n.Errors == nil {
-						n.Errors = map[string]string{}
+			}
+			if n.Error != "" {
+				found = true
+			}
+		case *widget.List:
+			if n.Datatype != "" {
+				for i, item := range n.Items {
+					key := strconv.Itoa(i)
+					if _, has := n.Errors[key]; has {
+						continue
 					}
-					n.Errors[key] = err.Error()
+					if err := datatype.Validate(n.Datatype, item); err != nil {
+						if n.Errors == nil {
+							n.Errors = map[string]string{}
+						}
+						n.Errors[key] = err.Error()
+					}
 				}
 			}
+			if len(n.Errors) > 0 {
+				found = true
+			}
 		}
-		return len(n.Errors) > 0
-	case *widget.Repeater:
-		found := false
-		for _, it := range n.Items {
-			found = validateSchema(it.Widget) || found
-		}
-		return found
-	case *widget.Conditional:
-		found := false
-		for _, f := range n.Fields {
-			found = validateSchema(f) || found
-		}
-		for _, f := range n.Otherwise {
-			found = validateSchema(f) || found
-		}
-		return found
-	default:
-		return false
-	}
+	})
+	return found
 }
 
 // validateApplyActions bounds the privileged tail of a plugin transaction to
