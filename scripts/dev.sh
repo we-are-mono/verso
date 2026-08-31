@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 #
-# Dev loop: watch the shell, helper, and bundled plugins; rebuild and hot-swap
-# them into the OpenWrt container; restart their procd services; and redeploy the
-# ubusd + rpcd ACLs. No image rebuild or OpenWrt reboot is needed.
+# Dev loop: watch the shell, helper, bundled plugins, and ACLs independently;
+# rebuild and hot-swap only the component that changed. No image rebuild or
+# OpenWrt reboot is needed, and a shell/UI edit cannot interrupt an in-flight
+# verso-rpcd request.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -21,6 +22,16 @@ URL="http://localhost:8080"
 BUNDLED_PLUGIN_GLOB=plugins/verso-plugin-*/bundled
 
 log() { printf '\033[36m[dev]\033[0m %s\n' "$*"; }
+
+# Two watchers targeting the same container race over the same staging names
+# and can restart a component underneath an in-flight request. Keep one dev loop
+# per container; flock releases this automatically when the script exits.
+LOCK_FILE="${TMPDIR:-/tmp}/verso-dev-$CONTAINER.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+	log "another make dev process is already targeting $CONTAINER"
+	exit 1
+fi
 
 # deploy_acls copies the shell's ubusd ACLs into the running container so a grant
 # edit never goes stale against the hot-swapped binary (e.g. luci.setPassword for
@@ -48,9 +59,23 @@ deploy_shell_init() {
 	docker exec "$CONTAINER" sh -c 'chown root:root /etc/init.d/.verso.new; chmod 0755 /etc/init.d/.verso.new; mv /etc/init.d/.verso.new /etc/init.d/verso'
 }
 
+# deploy_rpcd_acls updates session.access policy without touching verso-rpcd.
+# rpcd reload preserves live login sessions.
+deploy_rpcd_acls() {
+	local f names=()
+	for f in "$RPCD_ACL_SRC"/*.json; do
+		[ -e "$f" ] || continue
+		docker cp "$f" "$CONTAINER":/usr/share/rpcd/acl.d/"$(basename "$f")"
+		names+=("/usr/share/rpcd/acl.d/$(basename "$f")")
+	done
+	[ ${#names[@]} -gt 0 ] || return 0
+	docker exec "$CONTAINER" sh -c "chown root:root ${names[*]}; chmod 0644 ${names[*]}"
+	docker exec "$CONTAINER" /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+}
+
 # deploy_helper builds and atomically replaces the persistent Rust companion.
-# Its rpcd ACL remains the source of session.access policy, so ACL edits still
-# reload rpcd without discarding live login sessions.
+# It is called only when the helper itself changes, so shell, plugin, and ACL
+# edits cannot sever a long-running package operation.
 deploy_helper() {
 	local cargo_bin="${CARGO:-$HOME/.cargo/bin/cargo}"
 	# Build from the crate directory so rustup honors its pinned toolchain file;
@@ -60,17 +85,10 @@ deploy_helper() {
 		docker cp verso-rpcd/target/x86_64-unknown-linux-musl/release/verso-rpcd "$CONTAINER":/usr/sbin/.verso-rpcd.new
 		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
 		docker exec "$CONTAINER" sh -c 'chown root:root /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
+		log "verso-rpcd reloaded"
 	else
 		log "verso-rpcd build failed — keeping the running helper"
 	fi
-	local f names=()
-	for f in "$RPCD_ACL_SRC"/*.json; do
-		[ -e "$f" ] || continue
-		docker cp "$f" "$CONTAINER":/usr/share/rpcd/acl.d/"$(basename "$f")"
-		names+=("/usr/share/rpcd/acl.d/$(basename "$f")")
-	done
-	[ ${#names[@]} -gt 0 ] && docker exec "$CONTAINER" sh -c "chown root:root ${names[*]}; chmod 0644 ${names[*]}"
-	docker exec "$CONTAINER" /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 }
 
 # deploy_bundled_plugins discovers plugins by a checked-in `bundled` marker.
@@ -90,6 +108,7 @@ deploy_bundled_plugins() {
 			docker cp "$dir/rootfs/etc/init.d/$name" "$CONTAINER:/etc/init.d/.$name.new"
 			docker cp "$dir/manifest.json" "$CONTAINER:/usr/share/verso/plugins/$id/.manifest.json.new"
 			docker exec "$CONTAINER" sh -c "chown root:root /usr/bin/.$name.new /etc/init.d/.$name.new /usr/share/verso/plugins/$id/.manifest.json.new; chmod 0755 /usr/bin/.$name.new /etc/init.d/.$name.new; chmod 0644 /usr/share/verso/plugins/$id/.manifest.json.new; mv /usr/bin/.$name.new /usr/bin/$name; mv /etc/init.d/.$name.new /etc/init.d/$name; mv /usr/share/verso/plugins/$id/.manifest.json.new /usr/share/verso/plugins/$id/manifest.json; /etc/init.d/$name enable; /etc/init.d/$name start"
+			log "$name reloaded"
 		else
 			log "$name build failed — keeping the running plugin"
 		fi
@@ -103,10 +122,17 @@ ensure_container() {
 	fi
 }
 
-# compile_css regenerates the embedded stylesheet from input.css (Tailwind, no Node).
+# compile_css regenerates the embedded stylesheet via `make css` — the one compile
+# definition, whose tool rule also downloads Tailwind on a fresh clone. A failure
+# is reported, not swallowed: the caller keeps the last-good stylesheet, matching
+# the helper/plugin "keep the running one" behavior.
 compile_css() {
-	[ -x build/tools/tailwindcss ] || return 0
-	build/tools/tailwindcss -i "$CSS_IN" -o "$CSS_OUT" --minify >/dev/null 2>&1 || true
+	local out
+	if ! out="$(make -s css 2>&1)"; then
+		log "css compile failed — keeping last stylesheet"
+		[ -z "$out" ] || printf '%s\n' "$out"
+		return 1
+	fi
 }
 
 # push_css drops the freshly-compiled stylesheet into the container at $DEV_CSS, where
@@ -118,19 +144,17 @@ push_css() {
 	docker exec "$CONTAINER" sh -c "chmod 0644 '$DEV_CSS.tmp' && mv '$DEV_CSS.tmp' '$DEV_CSS'" >/dev/null 2>&1 || true
 }
 
-reload() {
-	# Privileged surface deploys first, unconditionally: an ACL or helper edit
-	# should land even when the shell build below fails and we keep the old binary.
-	deploy_acls
-	deploy_shell_init
-	deploy_helper
-	deploy_bundled_plugins
-	log "building…"
-	compile_css
+# deploy_shell rebuilds and replaces only the Go shell. Keeping this separate is
+# important: this is by far the most frequent edit path and must not restart the
+# helper or any plugin.
+deploy_shell() {
+	log "building shell…"
+	compile_css || true # embedded CSS stays last-good; the failure is already logged
 	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0
 	fi
+	deploy_shell_init
 	docker exec "$CONTAINER" /etc/init.d/verso stop >/dev/null 2>&1 || true
 	docker cp "$BIN" "$CONTAINER":/usr/bin/verso
 	push_css # land the live stylesheet before start, so the shell boots in CSS hot-reload mode
@@ -138,16 +162,33 @@ reload() {
 	log "reloaded → $URL"
 }
 
-# code_sig hashes the sources compiled into the binary (Go, templates, embedded JS
-# and fonts) plus the ACLs — a change here needs a full rebuild. input.css is
-# deliberately excluded: it takes the fast CSS path below. css_sig tracks input.css
-# alone.
-code_sig() {
+# Bring a newly started container completely in sync once. Subsequent edits use
+# the component-specific paths below.
+sync_all() {
+	deploy_acls
+	deploy_rpcd_acls
+	deploy_helper
+	deploy_bundled_plugins
+	deploy_shell
+}
+
+# Signatures deliberately exclude build output directories. input.css also has
+# its own fast path, while a shell rebuild recompiles it before embedding assets.
+shell_sig() {
 	{
-		find cmd internal \( -name '*.go' -o -name '*.tmpl' -o -name '*.js' \) -printf '%T@ %p\n'
-		find internal/server/assets/fonts -type f -printf '%T@ %p\n'
-		find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n'
+		find cmd internal -type f ! -path "$CSS_IN" ! -path "$CSS_OUT" -printf '%T@ %p\n'
 		find docker/rootfs/etc/init.d/verso -printf '%T@ %p\n'
+	} 2>/dev/null | sha1sum
+}
+helper_sig() {
+	{
+		find verso-rpcd/src -type f -printf '%T@ %p\n'
+		find verso-rpcd/Cargo.toml verso-rpcd/Cargo.lock verso-rpcd/rust-toolchain.toml -printf '%T@ %p\n'
+		find docker/rootfs/etc/init.d/verso-rpcd -printf '%T@ %p\n'
+	} 2>/dev/null | sha1sum
+}
+plugins_sig() {
+	{
 		find plugins/verso-plugin-sdk -type f -printf '%T@ %p\n'
 		for marker in $BUNDLED_PLUGIN_GLOB; do
 			[ -e "$marker" ] || continue
@@ -155,24 +196,49 @@ code_sig() {
 		done
 	} 2>/dev/null | sha1sum
 }
+acl_sig() { find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 css_sig() { find "$CSS_IN" -printf '%T@\n' 2>/dev/null | sha1sum; }
 
 ensure_container
-reload
+# Capture the baseline before the initial synchronization. If a source changes
+# while that longer operation is running, the first watch tick deploys it again
+# rather than silently treating an undeployed edit as current.
+last_shell="$(shell_sig)"
+last_helper="$(helper_sig)"
+last_plugins="$(plugins_sig)"
+last_acl="$(acl_sig)"
+last_css="$(css_sig)"
+sync_all
 
-last_code="$(code_sig)"; last_css="$(css_sig)" # baseline before announcing, so no edit is missed
-log "watching for changes (Ctrl-C to stop)… CSS edits hot-swap in ~1s; code edits rebuild"
+log "watching for changes (Ctrl-C to stop)… components reload independently; CSS hot-swaps in ~1s"
 while sleep 1; do
-	cur_code="$(code_sig)"
-	if [ "$cur_code" != "$last_code" ]; then
-		last_code="$cur_code"
-		last_css="$(css_sig)" # a full reload re-embeds the css too, so track it here
-		reload
-	else
-		cur_css="$(css_sig)"
-		if [ "$cur_css" != "$last_css" ]; then
-			last_css="$cur_css"
-			compile_css
+	cur_shell="$(shell_sig)"
+	cur_helper="$(helper_sig)"
+	cur_plugins="$(plugins_sig)"
+	cur_acl="$(acl_sig)"
+	cur_css="$(css_sig)"
+
+	if [ "$cur_acl" != "$last_acl" ]; then
+		last_acl="$cur_acl"
+		deploy_acls
+		deploy_rpcd_acls
+		log "ACLs reloaded (services uninterrupted)"
+	fi
+	if [ "$cur_helper" != "$last_helper" ]; then
+		last_helper="$cur_helper"
+		deploy_helper
+	fi
+	if [ "$cur_plugins" != "$last_plugins" ]; then
+		last_plugins="$cur_plugins"
+		deploy_bundled_plugins
+	fi
+	if [ "$cur_shell" != "$last_shell" ]; then
+		last_shell="$cur_shell"
+		last_css="$cur_css" # deploy_shell recompiles and embeds the current CSS
+		deploy_shell
+	elif [ "$cur_css" != "$last_css" ]; then
+		last_css="$cur_css"
+		if compile_css; then
 			push_css
 			log "css hot-swapped (no rebuild)"
 		fi

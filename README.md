@@ -125,9 +125,11 @@ the management IP so Docker port-publishing survives. Never add `privileged: tru
 Fast inner loop:
 
 ```sh
-make dev            # watch sources -> rebuild + hot-swap the binary into the container
+make dev            # watch sources -> hot-swap only the component that changed
 ```
-Edit a `.go`/`.tmpl`/`.css`, save, refresh the browser (~3 s). No image rebuild.
+Edit, save, and refresh the browser. CSS hot-swaps without a restart; shell,
+`verso-rpcd`, bundled plugins, and ACLs reload independently. This keeps an
+in-flight helper operation alive while UI code is rebuilt. No image rebuild.
 
 ## Decisions (ADRs)
 

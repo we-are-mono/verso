@@ -122,8 +122,8 @@ build-%: css
 run:
 	go run $(CMD)
 
-# dev: hot-reload loop — rebuild + swap the binary into the running container on
-# every source change. Requires the container up (it will start one if needed).
+# dev: component-aware hot-reload loop — update only the shell, helper, bundled
+# plugin, ACL, or CSS that changed. Starts the container when needed.
 dev:
 	./scripts/dev.sh
 
