@@ -4,11 +4,15 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -224,6 +228,156 @@ func TestDiscoverInstallRunsAndRescans(t *testing.T) {
 	}
 	if len(installs) != 1 || installs[0] != "htop" || !rescanned {
 		t.Fatalf("installs=%v rescanned=%v", installs, rescanned)
+	}
+}
+
+// refreshBackend holds PkgUpdate open, so a test can read the page while a feed
+// refresh is still running and count how many runs the shell actually started.
+type refreshBackend struct {
+	fakeBackend
+	calls   *atomic.Int32
+	started chan struct{}
+	release chan error
+}
+
+func (b refreshBackend) PkgUpdate(context.Context, string) error {
+	b.calls.Add(1)
+	b.started <- struct{}{}
+	return <-b.release
+}
+
+func newRefreshBackend() refreshBackend {
+	return refreshBackend{
+		fakeBackend: fakeBackend{access: true, pkgCheckedAt: 1},
+		calls:       &atomic.Int32{},
+		started:     make(chan struct{}, 4),
+		release:     make(chan error, 4),
+	}
+}
+
+// refreshServer serves the Available face over a blocking backend. The refresh
+// job is device-wide state, so every test starts it from idle.
+func refreshServer(t *testing.T, b openwrt.Backend) *Server {
+	t.Helper()
+	feedRefresh.mu.Lock()
+	feedRefresh.active, feedRefresh.failure = false, nil
+	feedRefresh.mu.Unlock()
+	s := newServerWith(t, b, &fakeTransport{}, []plugin.Manifest{mgmtManifest()})
+	s.probe = func(string) bool { return true }
+	return s
+}
+
+func waitFeedRefreshIdle(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for feedRefresh.running() {
+		if time.Now().After(deadline) {
+			t.Fatal("the background refresh never finished")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// TestFeedRefreshRunsInTheBackground: the POST answers while apk is still
+// working, the page states the running act instead of offering it again, and the
+// next visit after it finishes is back to normal.
+func TestFeedRefreshRunsInTheBackground(t *testing.T) {
+	b := newRefreshBackend()
+	s := refreshServer(t, b)
+
+	rec := postPlugin(t, s, "/system/packages/discover", url.Values{"_action": {"refresh"}, "q": {"htop"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("refresh must answer at once, got %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/system/packages/discover?q=htop" {
+		t.Fatalf("redirect must keep the search, got %q", loc)
+	}
+	<-b.started // the helper call is still open: the browser was not held for it
+
+	body := get(t, s, "/system/packages/discover").Body.String()
+	if !strings.Contains(body, "Refreshing the feeds") {
+		t.Error("a running refresh must be stated on the page")
+	}
+	if strings.Contains(body, ">Refresh feeds</button>") {
+		t.Error("a refresh under way must not offer itself again")
+	}
+
+	b.release <- nil
+	waitFeedRefreshIdle(t)
+
+	body = get(t, s, "/system/packages/discover").Body.String()
+	if !strings.Contains(body, ">Refresh feeds</button>") {
+		t.Error("the finished refresh must return the button")
+	}
+	if strings.Contains(body, "Refreshing the feeds") {
+		t.Error("a finished refresh must not still read as running")
+	}
+	if calls := b.calls.Load(); calls != 1 {
+		t.Fatalf("one click, one apk update; got %d", calls)
+	}
+}
+
+// TestFeedRefreshRefusesASecondRun: the index is one file set device-wide, so a
+// click landing on a running refresh changes nothing and says so.
+func TestFeedRefreshRefusesASecondRun(t *testing.T) {
+	b := newRefreshBackend()
+	s := refreshServer(t, b)
+
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	sess, _ := s.sessions.get(token)
+	do := func(method string, form url.Values) *httptest.ResponseRecorder {
+		var req *http.Request
+		if form != nil {
+			form.Set("_csrf", sess.csrf)
+			req = httptest.NewRequest(method, "/system/packages/discover", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else {
+			req = httptest.NewRequest(method, "/system/packages/discover", nil)
+		}
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec
+	}
+
+	do(http.MethodPost, url.Values{"_action": {"refresh"}})
+	<-b.started
+	if rec := do(http.MethodPost, url.Values{"_action": {"refresh"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("a refused refresh still answers with the page, got %d", rec.Code)
+	}
+	if body := do(http.MethodGet, nil).Body.String(); !strings.Contains(body, "The feeds are already being refreshed.") {
+		t.Error("the second click must be told why nothing happened")
+	}
+
+	b.release <- nil
+	waitFeedRefreshIdle(t)
+	if calls := b.calls.Load(); calls != 1 {
+		t.Fatalf("the second click must start no second run; got %d", calls)
+	}
+}
+
+// TestFeedRefreshFailureIsStatedOnce: nobody is holding the page when the run
+// ends, so its failure waits for the next visit — and is gone after it.
+func TestFeedRefreshFailureIsStatedOnce(t *testing.T) {
+	b := newRefreshBackend()
+	s := refreshServer(t, b)
+
+	postPlugin(t, s, "/system/packages/discover", url.Values{"_action": {"refresh"}})
+	<-b.started
+	b.release <- errors.New("no route to the feed")
+	waitFeedRefreshIdle(t)
+
+	body := get(t, s, "/system/packages/discover").Body.String()
+	for _, want := range []string{"Feed refresh failed", "no route to the feed"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the failed refresh must be stated, missing %q", want)
+		}
+	}
+	if body := get(t, s, "/system/packages/discover").Body.String(); strings.Contains(body, "Feed refresh failed") {
+		t.Error("a stated failure is not repeated on every later visit")
 	}
 }
 

@@ -4,12 +4,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -206,11 +208,11 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	case "search":
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "refresh":
-		if err := s.backend.PkgUpdate(r.Context(), sid); err != nil {
-			s.renderDiscover(w, r, fmt.Sprintf(tr("Could not refresh the feeds: %v."), err))
-			return
+		// The run outlives this response, so it carries a context of its own;
+		// the helper client's deadline is what bounds the wait now.
+		if !feedRefresh.start(func() error { return s.backend.PkgUpdate(context.Background(), sid) }) {
+			s.flash(r, "info", tr("The feeds are already being refreshed."))
 		}
-		s.flash(r, "success", tr("Feeds refreshed."))
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "install", "remove":
 		name := r.PostForm.Get("package")
@@ -242,6 +244,57 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// feedRefreshJob is the feed refresh, detached from the browser. Reaching every
+// configured repository takes longer than a person will hold a page open for, so
+// the POST starts the work and answers; each render then states what the job is
+// doing. verso-rpcd's package mutex remains the serializer that keeps two apk
+// runs apart — this job's own guard is what makes the page honest about a refresh
+// already being under way, and what moves the helper call's wait off the request.
+type feedRefreshJob struct {
+	mu      sync.Mutex
+	active  bool
+	failure error
+}
+
+// start refreshes in the background unless a run is already under way, reporting
+// whether this call owns the new one.
+func (j *feedRefreshJob) start(refresh func() error) bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.active {
+		return false
+	}
+	j.active = true
+	j.failure = nil
+	go func() {
+		err := refresh()
+		j.mu.Lock()
+		j.active, j.failure = false, err
+		j.mu.Unlock()
+	}()
+	return true
+}
+
+func (j *feedRefreshJob) running() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.active
+}
+
+// takeFailure reports how the last finished run failed and forgets it, so a
+// failure nobody was waiting for is still stated once, on the next visit.
+func (j *feedRefreshJob) takeFailure() error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	failure := j.failure
+	j.failure = nil
+	return failure
+}
+
+// feedRefresh is that job. The package index is one file set the whole device
+// shares, so the refresh is one act device-wide, not one per operator.
+var feedRefresh feedRefreshJob
+
 // pkgNameRe mirrors the helper's package-name alphabet — refused here first
 // so a bad name never even reaches the bus.
 var pkgNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._+-]{0,63}$`)
@@ -262,20 +315,31 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
 	}
+	refreshing := feedRefresh.running()
+	if !refreshing {
+		if err := feedRefresh.takeFailure(); err != nil {
+			children = append(children, &widget.Callout{Variant: "danger", Title: "Feed refresh failed",
+				Body: fmt.Sprintf(tr("The package feeds could not be refreshed (%v)."), err)})
+		}
+	}
 	// One toolbar: the search row carries Refresh as its secondary action (the
 	// same form, so the query survives a refresh), and the index's age sits at
-	// the row's right end as a quiet fact.
+	// the row's right end as a quiet fact. A refresh under way takes the button's
+	// place with what it is doing — the act cannot be started twice, so offering
+	// it again would be an offer the device would decline.
 	checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
-	children = append(children,
-		&widget.Form{Style: "search", Icon: "search", Submit: "Search",
-			Note:    freshnessLine(checkedAt, statusErr),
-			Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
-			Fields: []widget.Widget{
-				&widget.Field{Name: "q", Value: q, Placeholder: "Package name", Autofocus: true},
-				&widget.Field{Kind: "hidden", Name: "_primary", Value: "search"},
-			}},
-		&widget.Divider{Tight: true},
-	)
+	toolbar := &widget.Form{Style: "search", Icon: "search", Submit: "Search",
+		Note:    freshnessLine(checkedAt, statusErr),
+		Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
+		Fields: []widget.Widget{
+			&widget.Field{Name: "q", Value: q, Placeholder: "Package name", Autofocus: true},
+			&widget.Field{Kind: "hidden", Name: "_primary", Value: "search"},
+		}}
+	if refreshing {
+		toolbar.Actions = nil
+		toolbar.Note = "Refreshing the feeds… **reload to see the result**."
+	}
+	children = append(children, toolbar, &widget.Divider{Tight: true})
 
 	if q == "" {
 		children = append(children, &widget.Empty{

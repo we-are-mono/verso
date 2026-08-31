@@ -83,23 +83,17 @@ pub fn search(query: &str) -> Result<(Value, usize), String> {
     }
 
     let text = String::from_utf8_lossy(&output.stdout);
-    let mut total = 0usize;
-    let mut packages = Vec::new();
-    for line in text.lines() {
-        let Some(mut package) = parse_list_line(line) else {
+    let mut packages = merge_by_name(&text);
+    let total = packages.len();
+    packages.truncate(SEARCH_LIMIT);
+    for package in &mut packages {
+        let Some(object) = package.as_object_mut() else {
             continue;
         };
-        total += 1;
-        if packages.len() >= SEARCH_LIMIT {
-            continue;
-        }
-        if let Some(object) = package.as_object_mut() {
-            object.insert(
-                "description".into(),
-                Value::String(description(object["name"].as_str().unwrap_or_default())),
-            );
-        }
-        packages.push(package);
+        object.insert(
+            "description".into(),
+            Value::String(description(object["name"].as_str().unwrap_or_default())),
+        );
     }
     if packages
         .iter()
@@ -133,6 +127,37 @@ pub fn search(query: &str) -> Result<(Value, usize), String> {
         }
     }
     Ok((Value::Array(packages), total))
+}
+
+// merge_by_name reduces an `apk list` listing to one entry per package name. apk
+// prints a line per package object it knows, and the repository index and the
+// installed database each hold their own copy of a package — the same name lands
+// twice, only one line carrying `[installed]`. A search result names a package,
+// not a source, so the copies collapse into one entry and the installed one wins:
+// it carries the state the row shows, and a row that says "installed" has to name
+// the version the device actually holds. Entries keep apk's order of first
+// appearance.
+fn merge_by_name(listing: &str) -> Vec<Value> {
+    let mut packages: Vec<Value> = Vec::new();
+    let mut position: HashMap<String, usize> = HashMap::new();
+    for line in listing.lines() {
+        let Some(package) = parse_list_line(line) else {
+            continue;
+        };
+        let name = package["name"].as_str().unwrap_or_default().to_string();
+        match position.get(&name) {
+            Some(&index) => {
+                if package["installed"] == true {
+                    packages[index] = package;
+                }
+            }
+            None => {
+                position.insert(name, packages.len());
+                packages.push(package);
+            }
+        }
+    }
+    packages
 }
 
 pub fn install(name: &str) -> Result<String, String> {
@@ -372,6 +397,41 @@ mod tests {
         assert_eq!(value["version"], "1.37.0-r6");
         assert_eq!(value["feed"], "base");
         assert_eq!(value["installed"], true);
+    }
+
+    // apk lists the index copy and the installed copy of one package as two
+    // lines; the search result is a package, so both collapse into the installed
+    // entry — the row the person sees says "installed" exactly once.
+    #[test]
+    fn a_package_held_by_both_sources_lists_once_as_installed() {
+        let listing = concat!(
+            "busybox-1.37.0-r6 x86_64 {feeds/base/utils/busybox} (GPL-2.0)\n",
+            "busybox-1.37.0-r6 x86_64 {feeds/base/utils/busybox} (GPL-2.0) [installed]\n",
+            "busybox-selinux-1.37.0-r6 x86_64 {feeds/base/utils/busybox} (GPL-2.0)\n",
+        );
+        let packages = merge_by_name(listing);
+        assert_eq!(packages.len(), 2);
+        assert_eq!(packages[0]["name"], "busybox");
+        assert_eq!(packages[0]["installed"], true);
+        assert_eq!(packages[1]["name"], "busybox-selinux");
+        assert_eq!(packages[1]["installed"], false);
+    }
+
+    // A newer version in the index is still the same package: one row, named at
+    // the version the device holds, because that is what "installed" describes.
+    #[test]
+    fn the_installed_version_wins_over_a_newer_index_copy() {
+        let listing = concat!(
+            "dnsmasq-2.91-r3 x86_64 {feeds/base/network/services/dnsmasq} (GPL-2.0) [installed]\n",
+            "dnsmasq-2.93-r1 x86_64 {feeds/base/network/services/dnsmasq} (GPL-2.0) [upgradable from: dnsmasq-2.91-r3]\n",
+            "dnsmasq-full-2.93-r1 x86_64 {feeds/base/network/services/dnsmasq} (GPL-2.0)\n",
+        );
+        let packages = merge_by_name(listing);
+        assert_eq!(packages.len(), 2);
+        assert_eq!(packages[0]["name"], "dnsmasq");
+        assert_eq!(packages[0]["version"], "2.91-r3");
+        assert_eq!(packages[0]["installed"], true);
+        assert_eq!(packages[1]["name"], "dnsmasq-full");
     }
 
     #[test]
