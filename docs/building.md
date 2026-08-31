@@ -114,7 +114,7 @@ One command. What it does, and why each part matters:
   (committed, not `/tmp`): it creates the de-privileged `verso` user, reloads the
   ACLs (`-HUP ubusd`), and (re)starts the services.
 
-- **Depends on OpenWrt's `ca-bundle` package.** Discover refreshes the official
+- **Depends on OpenWrt's `ca-bundle` package.** Available refreshes the official
   HTTPS feed indexes through `apk update`; declaring the trust bundle prevents a
   minimal image from failing every refresh with TLS verification errors.
 

@@ -33,7 +33,7 @@ server builds from). Plugins are not limited to Mono's feed.
 ## Decision
 
 **Two shell-owned surfaces, split by nature: `/system/packages` (files on
-disk — Installed inventory + Discover over the configured feeds) and
+disk — Installed inventory + Available search over the configured feeds) and
 `/system/services` (procd's live table, the userspace half of `ps`). A
 package is a group of files that may or may not provide a service; a service
 is a running, stoppable thing — too different to share one view. Each drives
@@ -44,12 +44,14 @@ rediscovery so the shell never restarts itself.**
 1. **Shell-owned, not a plugin.** The surface mutates the set of things the
    shell trusts and must exist before any plugin does — the ADR-009 §3
    reasoning that made the password page shell-owned. Routes are
-   `/system/packages` (Installed) and `/system/packages/discover`, rendered
-   through the shell's own renderer with the standard subpage top bar; the
+   `/system/packages` (Installed) and `/system/packages/discover` (Available),
+   rendered through the shell's own renderer. Installed is the default; a
+   compact Installed | Available switch beside the page heading changes the
+   package-local view without promoting Available into System navigation. The
    sidebar row ships with the shell.
 
 2. **The screen informs, it does not gate.** Each presentation of a package —
-   installed row or Discover drawer — shows its plain facts: name,
+   installed row or Available drawer — shows its plain facts: name,
    description, version, feed, license, size, and the install or remove
    action. Enforcement is unchanged and stays where it lives: the shell's
    write gate and rpcd's ACLs (ADR-007). Packages ship their own ACL files, so
@@ -59,11 +61,12 @@ rediscovery so the shell never restarts itself.**
 3. **A plugin is a package named `verso-plugin-*`; the surface handles every
    package.** The trailing segment is the plugin id: `verso-plugin-wireguard`
    installs id `wireguard`, mounted at `/plugins/wireguard/`; installed truth
-   is a manifest under `/usr/share/verso/plugins/<id>/`. Discover searches the
-   whole feed index and surfaces plugins first via the default `verso-plugin`
-   query; Installed lists the device's full package set as one flat table in
-   backend order, the page-wide lens keeping it one page. Any configured feed;
-   origin shown, never restricted.
+   is a manifest under `/usr/share/verso/plugins/<id>/`. Available searches the
+   whole feed index only after an explicit package-name search; its initial
+   state explains that results appear after Search rather than manufacturing a
+   default result set. Installed lists the device's full package set as one flat
+   table in backend order, the page-wide lens keeping it one page. Any
+   configured feed; origin shown, never restricted.
    A small keep-list (busybox, apk, procd, ubus, rpcd, …) refuses removal of
    what keeps the device and this surface alive.
 
@@ -102,7 +105,7 @@ rediscovery so the shell never restarts itself.**
    from navigation on the next render; the Services row remains available so it
    can be turned back on. The Packages inventory carries no lifecycle cells at all.
 
-6. **Discover reads a cached index; the network is touched only on request.**
+6. **Available reads a cached index; the network is touched only on request.**
    Opening the page never fetches; it shows when the index was last
    refreshed, and an explicit Refresh runs the index update through the
    helper. Navigation must never hang on a slow feed or phone out as a side

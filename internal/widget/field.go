@@ -16,6 +16,8 @@ type Field struct {
 	Autocomplete string   `json:"autocomplete,omitempty"` // optional browser autofill purpose, e.g. "current-password"
 	Accept       string   `json:"accept,omitempty"`       // kind "file": native accepted file types/extensions
 	Prompt       string   `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link
+	Placeholder  string   `json:"placeholder,omitempty"`  // text input hint; never substitutes for a visible label where one is required
+	Autofocus    bool     `json:"autofocus,omitempty"`    // focus this field when its task-specific page opens
 	Required     bool     `json:"required,omitempty"`
 	Value        string   `json:"value"`    // current/submitted value
 	Values       []string `json:"values"`   // kind "checks": the checked option values

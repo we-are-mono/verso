@@ -436,6 +436,7 @@ type pageData struct {
 	// single Save & Apply action rather than by an extra in-content button.
 	HasPageForm bool
 	Pages       []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
+	Modes       []pageTab // optional local views, rendered as a compact switch beside the heading
 	// Flash is the one-shot confirmation from the last action (PRG): shown
 	// once at the top of the content, then gone.
 	FlashVariant string // "success" | "danger" | "" (no flash)
@@ -462,6 +463,7 @@ type pageHeader struct {
 	Live         bool
 	Subheading   string
 	Banner       *plugin.Banner
+	Modes        []pageTab
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -487,6 +489,11 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		if p.Active {
 			headingDetail = p.Label
 		}
+	}
+	localizedModes := make([]pageTab, len(hdr.Modes))
+	for i, mode := range hdr.Modes {
+		mode.Label = tr(mode.Label)
+		localizedModes[i] = mode
 	}
 	// Whether root has a password is read from /etc/shadow by verso-rpcd (the
 	// shell can't); a helper miss fails safe to "has one" so it never falsely warns.
@@ -516,6 +523,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		ShowCapsule:   stages || capsule.Count > 0,
 		HasPageForm:   hasPageForm,
 		Pages:         localizedPages,
+		Modes:         localizedModes,
 		FlashVariant:  flashVariant,
 		FlashMessage:  tr(flashMessage),
 	}); err != nil {

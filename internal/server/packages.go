@@ -17,8 +17,8 @@ import (
 )
 
 // The package surface (ADR-011): shell-owned, because installing a package
-// mutates the set of things the shell trusts. Two faces behind the top bar:
-// Installed — the inventory of what is on disk — and Discover — the
+// mutates the set of things the shell trusts. Two faces behind one local mode
+// switch: Installed — the inventory of what is on disk — and Available — the
 // configured feeds, searched server-side. A package is a group of files; what
 // those files RUN lives on the Services page, which answers the other
 // question. Package operations ride the helper's apk verbs; nothing here is a
@@ -71,7 +71,6 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 			Body: fmt.Sprintf("The package database could not be read (%v).", pkgErr)})
 	}
 	children = append(children,
-		&widget.Link{Label: "Discover packages", Href: "/system/packages/discover", Style: "secondary"},
 		&widget.Filter{Placeholder: "Filter — package, feed, version…"},
 		packagesTable(pkgs),
 	)
@@ -87,7 +86,17 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "The software installed on this router — every package, from every feed.",
+		Modes:      packageModes(r.URL.Path),
 	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+}
+
+func packageModes(active string) []pageTab {
+	modes := []pageTab{
+		{Label: "Installed", Href: "/system/packages"},
+		{Label: "Available", Href: "/system/packages/discover"},
+	}
+	markActiveTab(modes, active)
+	return modes
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
@@ -165,17 +174,13 @@ func humanSize(b int64) string {
 	}
 }
 
-// discoverDefaultQuery is what Discover searches before the person types:
-// the plugin naming convention (ADR-011 §3), so real plugins surface first
-// and an empty feed says so honestly.
-const discoverDefaultQuery = "verso-plugin"
-
-// handleDiscoverPage renders the Discover face for ?q= (or the default query).
+// handleDiscoverPage renders the Available face. It remains intentionally
+// empty until the person submits a package name.
 func (s *Server) handleDiscoverPage(w http.ResponseWriter, r *http.Request) {
 	s.renderDiscover(w, r, "")
 }
 
-// handleDiscoverAction dispatches Discover's POSTs: refresh the feed index,
+// handleDiscoverAction dispatches Available's POSTs: refresh the feed index,
 // run a search (PRG to ?q=), or install/remove one package — after which the
 // manifest set is rescanned so a plugin package appears without a restart
 // (ADR-011 §7).
@@ -233,7 +238,7 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	default:
-		http.Error(w, "no discover action in form", http.StatusBadRequest)
+		http.Error(w, "no package action in form", http.StatusBadRequest)
 	}
 }
 
@@ -243,7 +248,7 @@ var pkgNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._+-]{0,63}$`)
 
 func pkgNameOK(name string) bool { return pkgNameRe.MatchString(name) }
 
-// renderDiscover composes the Discover face: the freshness line with its
+// renderDiscover composes the Available face: the freshness line with its
 // Refresh, the search, and the results with install/remove drawers.
 func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg string) {
 	sid := s.sessionSID(r)
@@ -251,17 +256,10 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	if q == "" {
 		q = r.PostForm.Get("q")
 	}
-	shown := q
-	if shown == "" {
-		shown = discoverDefaultQuery
-	}
-
 	children := []widget.Widget{}
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
 	}
-	children = append(children, &widget.Link{Label: "Installed packages", Href: "/system/packages"})
-
 	// One toolbar: the search row carries Refresh as its secondary action (the
 	// same form, so the query survives a refresh), and the index's age sits at
 	// the row's right end as a quiet fact.
@@ -271,24 +269,28 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 			Note:    freshnessLine(checkedAt, statusErr),
 			Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
 			Fields: []widget.Widget{
-				&widget.Field{Name: "q", Value: q},
+				&widget.Field{Name: "q", Value: q, Placeholder: "Package name", Autofocus: true},
 				&widget.Field{Kind: "hidden", Name: "_primary", Value: "search"},
 			}},
 		&widget.Divider{Tight: true},
 	)
 
-	pkgs, total, err := s.backend.PkgSearch(r.Context(), sid, shown)
-	switch {
-	case err != nil:
+	if q == "" {
+		children = append(children, &widget.Empty{
+			Icon:  "search",
+			Title: "Search available packages",
+			Body:  "Enter a package name, then select Search. Matching packages will appear here.",
+		})
+	} else if pkgs, total, err := s.backend.PkgSearch(r.Context(), sid, q); err != nil {
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Search unavailable",
 			Body: fmt.Sprintf("The package index could not be read (%v). Refresh the feeds and try again.", err)})
-	case len(pkgs) == 0 && q == "":
-		children = append(children, &widget.Empty{Icon: "search", Title: "No Verso plugins in your feeds yet",
-			Body: "Search above for any package — plugins appear here as feeds publish them."})
-	case len(pkgs) == 0:
-		children = append(children, &widget.Empty{Icon: "search", Title: "Nothing matches “" + q + "”",
-			Body: "Feeds are searched by package name."})
-	default:
+	} else if len(pkgs) == 0 {
+		children = append(children, &widget.Empty{
+			Icon:  "search",
+			Title: "No packages found",
+			Body:  "No available packages match “" + q + "”. Check the spelling or refresh the package feeds.",
+		})
+	} else {
 		if total > len(pkgs) {
 			children = append(children, &widget.Badge{Variant: "info", Icon: "info", Size: "lg", Text: fmt.Sprintf(
 				"Showing the first %d of %d matches — narrow the search to see the rest", len(pkgs), total)})
@@ -304,7 +306,8 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
-		Subheading: "Browse your configured feeds — your own and the official ones together.",
+		Subheading: "Search the packages available from your configured feeds.",
+		Modes:      packageModes(r.URL.Path),
 	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
 }
 
@@ -334,7 +337,7 @@ func humanAgo(d time.Duration) string {
 	}
 }
 
-// discoverTable lists the matches: name, what it does, version, feed origin,
+// discoverTable lists Available matches: name, what it does, version, feed origin,
 // installed state — the drawer carries the description and the act.
 func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 	cols := []widget.TableColumn{

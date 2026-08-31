@@ -47,6 +47,9 @@ func TestPackagesInventory(t *testing.T) {
 
 	body := get(t, s, "/system/packages").Body.String()
 	for _, want := range []string{
+		`href="/system/packages" aria-current="page"`,
+		`href="/system/packages/discover"`,
+		">Installed</a>", ">Available</a>",
 		"htop", "3.5.1-r1", "packages", // the row
 		"font-mono text-base font-semibold",             // package versions use the fixed 16px/600 mono treatment
 		"Process viewer", "GPL-2.0", ">Remove</button>", // the drawer's story and act
@@ -128,7 +131,7 @@ func TestFlashConfirmsActions(t *testing.T) {
 	}
 }
 
-// TestDiscoverSearchRenders: the Discover face lists the helper's matches with
+// TestDiscoverSearchRenders: the Available face lists the helper's matches with
 // state, freshness, and an install drawer per row.
 func TestDiscoverSearchRenders(t *testing.T) {
 	s := pluginsServer(t, fakeBackend{access: true,
@@ -141,22 +144,57 @@ func TestDiscoverSearchRenders(t *testing.T) {
 
 	body := get(t, s, "/system/packages/discover?q=htop").Body.String()
 	if !strings.Contains(body, "max-w-4xl") {
-		t.Error("Discover must use the narrow package-management width")
+		t.Error("Available must use the narrow package-management width")
 	}
 	if !strings.Contains(body, "w-52") {
-		t.Error("Discover's search field should use the compact inline width")
+		t.Error("Available's search field should use the compact inline width")
 	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",
-		"font-mono text-base font-semibold", // Discover versions match Installed
+		"font-mono text-base font-semibold", // Available versions match Installed
 		"installed",                         // the already-present package carries its state
 		"Install — htop",                    // drawer verb for the absent one
 		"Remove — htop-lang",                // drawer verb for the present one
 		"Feeds checked",                     // freshness honesty
-		`href="/system/packages"`,           // the top bar links the faces
+		`href="/system/packages"`,           // the local switch links the faces
+		`href="/system/packages/discover" aria-current="page"`,
+		">Installed</a>", ">Available</a>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("discover missing %q", want)
+		}
+	}
+}
+
+func TestAvailableWaitsForExplicitSearch(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true,
+		pkgFound: []openwrt.Package{{Name: "must-not-render-before-search"}},
+	}, true, mgmtManifest())
+
+	body := get(t, s, "/system/packages/discover").Body.String()
+	for _, want := range []string{
+		"Search available packages",
+		"Enter a package name, then select Search. Matching packages will appear here.",
+		`placeholder="Package name"`,
+		"autofocus",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("initial Available state missing %q", want)
+		}
+	}
+	if strings.Contains(body, "must-not-render-before-search") {
+		t.Error("Available must not manufacture results before an explicit search")
+	}
+}
+
+func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
+	body := get(t, pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest()), "/system/packages/discover?q=missing").Body.String()
+	for _, want := range []string{
+		"No packages found",
+		"No available packages match “missing”. Check the spelling or refresh the package feeds.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("no-results state missing %q", want)
 		}
 	}
 }
