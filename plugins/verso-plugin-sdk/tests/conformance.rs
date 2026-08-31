@@ -310,6 +310,7 @@ fn listing() -> Widget {
         condensed: true,
         align: "top".into(),
         reorder_config: "firewall".into(),
+        reorder_label: "Rule order".into(),
         columns: vec![
             TableColumn { kind: "reorder".into(), ..TableColumn::default() },
             TableColumn { label: "Zone".into(), kind: "name".into() },

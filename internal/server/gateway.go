@@ -144,6 +144,14 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return s.unavailable(m, tr), http.StatusOK
 	}
 
+	// The capsule binds to exactly one page form. A page composing more than
+	// one — a page-style form beside a reorderable listing, two reorderable
+	// listings — mis-wires silently in the browser, so the breach is at least
+	// named where an author will look.
+	if n := widget.PageFormCount(wdg); n > 1 {
+		log.Printf("verso: plugin %q page %q composes %d page forms; the capsule binds to one — drags or saves beyond the first are lost", m.ID, pluginPath, n)
+	}
+
 	// The raw gauge (ADR-005 §5): raw is instrumented because its usage is the
 	// demand signal for the next widget. Dev sessions log it; production pays
 	// nothing (s.devCSS is set only under scripts/dev.sh).

@@ -109,6 +109,7 @@ pub fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>) -> Widget {
         condensed: false,
         align: String::new(),
         reorder_config: String::new(),
+        reorder_label: String::new(),
         columns,
         rows,
         drawer_label: String::new(),

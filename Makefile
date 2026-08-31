@@ -168,6 +168,7 @@ deadcode: $(DEADCODE)
 	done; exit $$status
 
 lint: deadcode $(GOLANGCI)
+	@fmt_drift=$$(gofmt -l cmd internal); if [ -n "$$fmt_drift" ]; then echo "gofmt drift:"; echo "$$fmt_drift"; exit 1; fi
 	$(GOLANGCI) run ./...
 	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(SDK_MANIFEST) --all-targets -- -D warnings

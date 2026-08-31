@@ -312,6 +312,7 @@ func localizeAction(a *plugin.PageAction, tr func(string) string) *plugin.PageAc
 	}
 	c := *a
 	c.Label = tr(c.Label)
+	c.Href = widget.SafeHref(c.Href)
 	return &c
 }
 

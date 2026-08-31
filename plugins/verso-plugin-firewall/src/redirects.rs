@@ -42,7 +42,7 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
         vec![content(&forwards, counters)],
     ));
     page::envelope(SUBHEADING, Widget::stack(children))
-        .with_action("Add forward", &page::new_redirect_href())
+        .with_action("Add forward", &page::new_redirect_href(), "plus")
 }
 
 /// content is the listing, or — with nothing to list — the invitation to make
@@ -91,6 +91,7 @@ fn table(forwards: &[&Redirect], counters: &Counters) -> Widget {
         condensed: false,
         align: String::new(),
         reorder_config: String::new(),
+        reorder_label: String::new(),
         columns: columns(),
         rows: forwards
             .iter()
@@ -171,7 +172,8 @@ mod tests {
             body["action"],
             serde_json::json!({
                 "label": "Add forward",
-                "href": "/plugins/firewall/port-forwards/new"
+                "href": "/plugins/firewall/port-forwards/new",
+                "icon": "plus"
             })
         );
     }

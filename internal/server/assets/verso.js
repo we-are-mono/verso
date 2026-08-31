@@ -835,7 +835,13 @@ document.addEventListener(
         var before = baseline.get(name) || { label: name, key: "[]", display: "Not set" };
         var after = current.get(name) || { label: before.label, key: "[]", display: "Not set" };
         if (before.key !== after.key) {
-          localChanges.push({ label: after.label || before.label, previous: before.display, next: after.display });
+          // An order change's honest review is that the order changed — two
+          // runs of raw section ids answer nothing an operator asked.
+          if (after.kind === "order" || before.kind === "order") {
+            localChanges.push({ label: after.label || before.label, previous: "Original order", next: "New order" });
+          } else {
+            localChanges.push({ label: after.label || before.label, previous: before.display, next: after.display });
+          }
         }
       });
     }
@@ -940,7 +946,10 @@ document.addEventListener(
       .then(function (html) {
         var parsed = new DOMParser().parseFromString(html, "text/html");
         var replacement = parsed.querySelector("form[data-verso-page-form]");
-        if (!replacement || !pageForm) {
+        // A hidden order form is not the page's whole editable surface: staged
+        // state renders outside it (row toggles), so swapping only the form
+        // would leave the listing showing what was just discarded.
+        if (!replacement || !pageForm || pageForm.hasAttribute("data-verso-order-form")) {
           if (window.versoDirtyState) window.versoDirtyState.suppress();
           location.reload();
           return;
@@ -949,7 +958,6 @@ document.addEventListener(
         var staged = document.getElementById("verso-capsule-staged-changes");
         if (staged) staged.remove();
         replacePageForm(replacement, true);
-        announceRestored();
         resetRenderedForms();
         capsule.classList.remove("verso-busy");
       })
@@ -1331,6 +1339,11 @@ document.addEventListener(
     }).then(function (res) {
       if (res.ok || res.redirected) {
         window.location.reload();
+        // The flip is staged, but the reload can be declined: a pending drag
+        // arms the leave warning, and "Stay" leaves this page alive with a
+        // dead switch. The staged state is the checkbox's shown state, so
+        // re-enabling is honest either way; a granted reload outruns this.
+        setTimeout(function () { el.disabled = false; }, 2000);
       } else {
         el.disabled = false;
         el.checked = !el.checked; // the device said no; show the truth

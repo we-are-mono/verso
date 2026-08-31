@@ -271,10 +271,14 @@
      form. Discard restores the form's baseline and the rows follow it back.
      A page whose listing drags therefore already carries the page form — it must
      not compose a second one. */}}
-<form method="post" data-verso-page-form hidden>
+{{/* data-verso-order-form: the page form is a hidden order carrier, not the
+     page's whole editable surface — staged state renders outside it (row
+     toggles), so a staged discard must reload the page rather than swap only
+     the form. */}}
+<form method="post" data-verso-page-form data-verso-order-form hidden>
   {{template "verso-csrf" .CSRFToken}}
   <input type="hidden" name="_uci_order_config" value="{{.ReorderConfig}}">
-  <div data-verso-change-field data-verso-change-name="_uci_order" data-verso-change-label="{{ t "Rule order" }}" data-verso-change-kind="list">
+  <div data-verso-change-field data-verso-change-name="_uci_order" data-verso-change-label="{{if .ReorderLabel}}{{.ReorderLabel}}{{else}}{{ t "Order" }}{{end}}" data-verso-change-kind="order">
     {{range .ReorderIDs}}<input type="hidden" name="_uci_order" value="{{.}}">{{end}}
   </div>
 </form>

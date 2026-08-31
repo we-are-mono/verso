@@ -157,6 +157,7 @@ func TestRenderReorderOrderForm(t *testing.T) {
 	var b strings.Builder
 	table := &Table{
 		ReorderConfig: "firewall",
+		ReorderLabel:  "Rule order",
 		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{
 			{ID: "allow_dhcp_renew", Cells: []TableCell{{}, {}}},
@@ -171,15 +172,30 @@ func TestRenderReorderOrderForm(t *testing.T) {
 	}
 	got := normalizeHTML(b.String())
 	for _, want := range []string{
-		`<form method="post" data-verso-page-form hidden>`,
+		// data-verso-order-form marks a form that is not the page's whole
+		// editable surface, so a staged discard reloads rather than swapping it.
+		`<form method="post" data-verso-page-form data-verso-order-form hidden>`,
 		`<input type="hidden" name="_csrf" value="tok3n">`,
 		`<input type="hidden" name="` + ReorderConfigField + `" value="firewall">`,
 		`data-verso-change-field data-verso-change-name="` + ReorderIDField + `"`,
-		`data-verso-change-label="Rule order" data-verso-change-kind="list"`,
+		`data-verso-change-label="Rule order" data-verso-change-kind="order"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("order form missing %q:\n%s", want, got)
 		}
+	}
+	// A listing that names no label falls back to the shell's generic word.
+	var fallback strings.Builder
+	unlabeled := &Table{
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}},
+		Rows:          []TableRow{{ID: "r1", Cells: []TableCell{{}}}},
+	}
+	if err := r.RenderWithToken(&fallback, unlabeled, "tok3n", "", nil); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
+	}
+	if !strings.Contains(normalizeHTML(fallback.String()), `data-verso-change-label="Order"`) {
+		t.Errorf("unlabeled order form should fall back to the generic label:\n%s", fallback.String())
 	}
 	// The sequence is the render order, seam rows included: the file holds one
 	// order, so every draggable row is in it.
@@ -289,7 +305,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 	})
 	for _, want := range []string{
 		"font-semibold text-slate-900",          // the identity column is emphasised ink, no icon
-		"bg-emerald-50 text-emerald-700",            // accept pill through the badge palette
+		"bg-emerald-50 text-emerald-700",        // accept pill through the badge palette
 		"bg-amber-50 text-amber-700",            // reject pill
 		"bg-sky-50 text-sky-700",                // NAT carries the info accent
 		`<span class="text-slate-300">—</span>`, // empty pill cell is a faint dash

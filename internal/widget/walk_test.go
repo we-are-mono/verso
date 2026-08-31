@@ -93,3 +93,37 @@ func TestWalkReachesAttachedWidgets(t *testing.T) {
 		})
 	}
 }
+
+// TestPageFormCount: the capsule binds to one page form, so the count is what
+// the gateway holds a page's composition to — a page-style form and a
+// reorderable listing each bring one; a reorder column without its config
+// brings none.
+func TestPageFormCount(t *testing.T) {
+	reorderable := &Table{
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}},
+		Rows:          []TableRow{{ID: "r1", Cells: []TableCell{{}}}},
+	}
+	inert := &Table{
+		Columns: []TableColumn{{Kind: "reorder"}},
+		Rows:    []TableRow{{ID: "r1", Cells: []TableCell{{}}}},
+	}
+	pageForm := &Form{Style: "page"}
+	plain := &Form{}
+
+	cases := []struct {
+		name string
+		root Widget
+		want int
+	}{
+		{"one reorderable listing", &Stack{Children: []Widget{reorderable}}, 1},
+		{"reorder column without config", &Stack{Children: []Widget{inert}}, 0},
+		{"page form beside a reorderable listing", &Stack{Children: []Widget{pageForm, reorderable}}, 2},
+		{"a plain form counts nothing", &Stack{Children: []Widget{plain}}, 0},
+	}
+	for _, c := range cases {
+		if got := PageFormCount(c.root); got != c.want {
+			t.Errorf("%s: PageFormCount = %d, want %d", c.name, got, c.want)
+		}
+	}
+}

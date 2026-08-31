@@ -417,6 +417,16 @@ impl RedirectForm {
         if self.protocols().iter().any(|proto| !valid_protocol(proto)) {
             errors.field("proto", PROTOCOL_HELP);
         }
+        // A dnat redirect with no port and no destination renders a bare `dnat`
+        // statement nft refuses to parse — fw4 itself accepts the section, and
+        // the whole ruleset then fails to load. At least one of the three gives
+        // the rewrite something to say.
+        if self.src_dport.is_empty() && self.dest_ip.is_empty() && self.dest_port.is_empty() {
+            errors.field(
+                "src_dport",
+                "Give the forward something to rewrite: an incoming port, a destination address, or a destination port.",
+            );
+        }
         errors
     }
 }
@@ -668,6 +678,27 @@ mod tests {
                 "Choose the zone this traffic arrives on.",
                 "{src:?}"
             );
+        }
+    }
+
+    // A dnat section carrying only a source zone makes fw4 render `dnat` with no
+    // address and no port — a statement nft's parser rejects, taking the whole
+    // ruleset load down with it. fw4 accepts the section, so the editor is the
+    // last honest gate.
+    #[test]
+    fn a_forward_that_rewrites_nothing_is_refused() {
+        let model = fixture::firewall();
+        let body = serde_json::to_value(create(&model, &Form::parse("src=wan&proto=tcp")))
+            .expect("serialize");
+        assert!(body.get("commit").is_none());
+        assert_eq!(
+            control(&body, "src_dport")["error"],
+            "Give the forward something to rewrite: an incoming port, a destination address, or a destination port."
+        );
+        for accepted in ["src=wan&src_dport=8443", "src=wan&dest_ip=10.0.0.30", "src=wan&dest_port=443"] {
+            let body = serde_json::to_value(create(&model, &Form::parse(accepted)))
+                .expect("serialize");
+            assert!(body.get("commit").is_some(), "{accepted}");
         }
     }
 

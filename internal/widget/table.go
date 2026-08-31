@@ -68,6 +68,11 @@ type Table struct {
 	// sequence back and stages a `uci order` on that config. A table without it
 	// draws no handle — a grip the device would not remember is a lie.
 	ReorderConfig string `json:"reorder_config,omitempty"`
+
+	// ReorderLabel names the order in the operator's words in the capsule's
+	// review ("Rule order"); an empty label falls back to the shell's generic
+	// "Order". The listing knows what its rows are; the shell does not.
+	ReorderLabel string `json:"reorder_label,omitempty"`
 }
 
 // The form fields the shell's reorder interaction posts, and that the gateway
@@ -265,14 +270,15 @@ type tableView struct {
 	HasDetail     bool
 	Reorderable   bool
 	ReorderConfig string
+	ReorderLabel  string
 	// ReorderIDs is every draggable row's id in the sequence the table renders
 	// them: the order form's baseline, and what a drag rewrites.
-	ReorderIDs []string
-	CSRFToken  string
-	ColumnSpan int
-	Rows          []tableRowView
-	SeamSummary   string
-	SeamRows      []tableRowView
+	ReorderIDs  []string
+	CSRFToken   string
+	ColumnSpan  int
+	Rows        []tableRowView
+	SeamSummary string
+	SeamRows    []tableRowView
 }
 
 type tableRowView struct {
@@ -352,8 +358,16 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		HasLabels: hasColumnLabels(t.Columns),
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 	}
+	// A plugin's hrefs land in shell chrome; the link widget's URL policy
+	// applies here the same as there, and a reject reads "#", never ZgotmplZ.
+	if v.Action != nil {
+		action := *v.Action
+		action.Href = SafeHref(action.Href)
+		v.Action = &action
+	}
 	v.Reorderable = t.reorderable()
 	v.ReorderConfig = t.ReorderConfig
+	v.ReorderLabel = t.ReorderLabel
 	v.CSRFToken = csrf
 	v.ColumnSpan = len(v.Columns)
 	if v.HasDetail {
@@ -448,6 +462,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			cv := tableCellView{Kind: kind, Primary: i == primary, Draggable: reorderable, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
+				if cv.Href != "" {
+					cv.Href = SafeHref(cv.Href)
+				}
 				if cv.Confirm != "" {
 					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1))
 					if cv.ConfirmTitle == "" {

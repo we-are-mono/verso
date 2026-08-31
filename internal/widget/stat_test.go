@@ -34,7 +34,7 @@ func TestRenderStat(t *testing.T) {
 		"rounded-xl",     // the radius-scale step for a tile
 		"tabular-nums",   // figures align
 		"verso-live-dot", // the pulsing dot when success
-		"bg-emerald-500",   // dot tinted by the success variant
+		"bg-emerald-500", // dot tinted by the success variant
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stat missing %q:\n%s", want, got)

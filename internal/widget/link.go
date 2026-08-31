@@ -44,6 +44,14 @@ func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 	})
 }
 
+// SafeHref applies the link widget's URL policy to a plugin-supplied href that
+// lands in shell chrome (a page action, a table's link cell): relative routes,
+// http(s), and mailto pass; everything else collapses to a clean "#" rather
+// than html/template's visible ZgotmplZ junk.
+func SafeHref(raw string) string {
+	return string(safeHref(raw, false))
+}
+
 // safeHref applies the link widget's URL policy, since a download's href is a data:
 // URL that html/template would otherwise strip. Relative, http(s), and mailto are
 // always allowed; data: is allowed only for downloads and only for plain-text or

@@ -539,10 +539,13 @@ form** beside itself, carrying the config and the row sequence as hidden fields,
 so a dragged row counts in the staged-changes bar exactly like a dirty field,
 appears in its review list, and un-drags itself on Discard. That form is the
 page's only one: a page whose listing drags must not also compose a `"style":
-"page"` form of its own.
+"page"` form of its own — the gateway logs a page that breaks this, because
+the capsule binds to exactly one form and everything past the first is lost.
+`reorder_label` names the order in the operator's words for the capsule's
+review ("Rule order"); left empty it reads as the shell's generic "Order".
 
 ```json
-{ "type": "table", "reorder_config": "firewall",
+{ "type": "table", "reorder_config": "firewall", "reorder_label": "Rule order",
   "columns": [ { "kind": "reorder" }, { "label": "From", "kind": "endpoint" } ],
   "rows": [ { "id": "allow_ping", "cells": [ {}, /* … */ ] } ] }
 ```

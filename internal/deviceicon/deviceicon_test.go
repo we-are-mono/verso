@@ -52,7 +52,7 @@ func TestResolve(t *testing.T) {
 // TestLocallyAdministeredBit pins the bit test directly: every first octet whose
 // value & 0x02 is set is a randomized/local MAC and yields no OUI.
 func TestLocallyAdministeredBit(t *testing.T) {
-	universal := []string{"00", "AC", "08", "0C", "F0"} // bit clear → real OUI
+	universal := []string{"00", "AC", "08", "0C", "F0"}   // bit clear → real OUI
 	local := []string{"02", "06", "0A", "0E", "DA", "FE"} // bit set → randomized
 	for _, oct := range universal {
 		if _, ok := ouiOf(oct + ":00:00:00:00:00"); !ok {

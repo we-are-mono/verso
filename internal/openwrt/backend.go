@@ -994,8 +994,11 @@ func dialUCIChanges(socket string) uciChangesFn {
 	}
 }
 
-// parseChanges maps rpcd's generic changes table onto config → change tuples,
-// dropping anything that is not a list of strings.
+// parseChanges maps rpcd's generic changes table onto config → change tuples.
+// A tuple element may be a number — an order change carries the section's new
+// position (["order","cfg0792bd",5]) — so numeric fields render as their
+// decimal string rather than sinking the whole tuple; a staged reorder the
+// capsule cannot count is one it can neither review nor discard.
 func parseChanges(v any) map[string][][]string {
 	out := map[string][][]string{}
 	byConfig, ok := v.(map[string]any)
@@ -1014,12 +1017,19 @@ func parseChanges(v any) map[string][][]string {
 			}
 			change := make([]string, 0, len(tuple))
 			for _, f := range tuple {
-				s, ok := f.(string)
-				if !ok {
+				switch field := f.(type) {
+				case string:
+					change = append(change, field)
+				case int64:
+					change = append(change, strconv.FormatInt(field, 10))
+				case float64:
+					change = append(change, strconv.FormatFloat(field, 'f', -1, 64))
+				default:
 					change = nil
+				}
+				if change == nil {
 					break
 				}
-				change = append(change, s)
 			}
 			if change != nil {
 				out[config] = append(out[config], change)

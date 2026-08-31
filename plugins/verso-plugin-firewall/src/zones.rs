@@ -99,6 +99,7 @@ fn table(model: &Firewall) -> Widget {
         condensed: false,
         align: String::new(),
         reorder_config: String::new(),
+        reorder_label: String::new(),
         columns: columns(),
         rows: model.zones.iter().map(|zone| row(model, zone)).collect(),
         drawer_label: String::new(),

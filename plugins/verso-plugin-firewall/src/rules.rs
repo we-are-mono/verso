@@ -42,7 +42,7 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
         vec![table(model, counters)],
     ));
     page::envelope(SUBHEADING, Widget::stack(children))
-        .with_action("New rule", &page::new_rule_href())
+        .with_action("New rule", &page::new_rule_href(), "plus")
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -89,6 +89,7 @@ fn table(model: &Firewall, counters: &Counters) -> Widget {
         condensed: false,
         align: String::new(),
         reorder_config: "firewall".into(),
+        reorder_label: "Rule order".into(),
         columns: columns(),
         rows,
         drawer_label: String::new(),
@@ -277,7 +278,7 @@ mod tests {
         let body = body(&Counters::default());
         assert_eq!(
             body["action"],
-            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new"}),
+            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new", "icon": "plus"}),
             "adding a rule is the page's one doorway, not a control inside it"
         );
         assert!(

@@ -35,9 +35,9 @@ func TestRenderSettings(t *testing.T) {
 	for _, want := range []string{
 		"Default policies", "What happens to traffic no zone claims.",
 		"in: reject", "out: accept", // policy pills render through the badge
-		"bg-amber-50",      // reject carries the warning palette
-		"synflood_protect", // the underlying option is on the row
-		"font-mono",        // …as a mono code chip
+		"bg-amber-50",               // reject carries the warning palette
+		"synflood_protect",          // the underlying option is on the row
+		"font-mono",                 // …as a mono code chip
 		`type="checkbox"`,           // toggle rows carry the shared switch
 		"border-b border-slate-200", // bare rows divide with hairlines (stripes retired)
 	} {

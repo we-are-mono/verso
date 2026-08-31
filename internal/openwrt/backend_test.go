@@ -447,3 +447,32 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 		t.Errorf("dnsmasq runtime = %+v", dns)
 	}
 }
+
+// TestParseChangesKeepsNumericFields: an order change carries the section's new
+// position as a number; the tuple must survive with the number rendered as its
+// decimal string, or a staged reorder becomes invisible to the capsule.
+func TestParseChangesKeepsNumericFields(t *testing.T) {
+	got := parseChanges(map[string]any{
+		"firewall": []any{
+			[]any{"order", "cfg0792bd", int64(5)},
+			[]any{"order", "cfg0892bd", float64(6)},
+			[]any{"set", "cfg0992bd", "enabled", "0"},
+			[]any{"bogus", map[string]any{}},
+		},
+	})
+	want := [][]string{
+		{"order", "cfg0792bd", "5"},
+		{"order", "cfg0892bd", "6"},
+		{"set", "cfg0992bd", "enabled", "0"},
+	}
+	if len(got["firewall"]) != len(want) {
+		t.Fatalf("parseChanges kept %d tuples, want %d: %v", len(got["firewall"]), len(want), got)
+	}
+	for i, tuple := range want {
+		for j, field := range tuple {
+			if got["firewall"][i][j] != field {
+				t.Errorf("tuple %d field %d = %q, want %q", i, j, got["firewall"][i][j], field)
+			}
+		}
+	}
+}

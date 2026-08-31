@@ -591,6 +591,8 @@ pub enum Widget {
         align: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         reorder_config: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        reorder_label: String,
         columns: Vec<TableColumn>,
         rows: Vec<TableRow>,
         #[serde(skip_serializing_if = "String::is_empty")]
@@ -1264,11 +1266,11 @@ impl Envelope {
     }
 
     /// with_action gives the page its one primary doorway, beside the heading.
-    pub fn with_action(mut self, label: &str, href: &str) -> Envelope {
+    pub fn with_action(mut self, label: &str, href: &str, icon: &str) -> Envelope {
         self.action = Some(PageAction {
             label: label.into(),
             href: href.into(),
-            icon: String::new(),
+            icon: icon.into(),
         });
         self
     }
@@ -1562,11 +1564,18 @@ mod tests {
         assert!(json.get("action").is_none());
 
         let with_action = Envelope::page("Firewall", Widget::text("body"))
-            .with_action("New rule", "/plugins/firewall/rules/new");
+            .with_action("New rule", "/plugins/firewall/rules/new", "plus");
         let json = serde_json::to_value(&with_action).unwrap();
         assert_eq!(
             json["action"],
-            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new"}),
+            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new", "icon": "plus"})
+        );
+
+        let iconless =
+            Envelope::page("Firewall", Widget::text("body")).with_action("New rule", "/x", "");
+        let json = serde_json::to_value(&iconless).unwrap();
+        assert!(
+            json["action"].get("icon").is_none(),
             "an action without an icon carries no icon"
         );
     }

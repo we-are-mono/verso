@@ -6,6 +6,7 @@
   "condensed": true,
   "align": "top",
   "reorder_config": "firewall",
+  "reorder_label": "Rule order",
   "columns": [
     {
       "kind": "reorder"
