@@ -312,10 +312,14 @@ func (s *Server) reserveDoor() func(mac string) string {
 	}
 }
 
-// onlineDevices counts the devices the kernel confirms right now. The neighbour
-// dump alone answers it — no leases, no config, no helper call — so the sidebar
-// can carry the number on every page. An unreadable table reports no count
-// rather than a zero, since "nobody is here" is a different statement.
+// onlineDevices counts the devices on the network right now: everything the
+// kernel still holds a live neighbour mapping for. Strict reachability is the
+// wrong bar — a connected device's entry decays to stale within seconds of not
+// talking to the router itself, and bridge traffic never refreshes it, so a
+// reachable-only count reads one or two on a busy network. The neighbour dump
+// alone answers it — no leases, no config, no helper call — so the sidebar can
+// carry the number on every page. An unreadable table reports no count rather
+// than a zero, since "nobody is here" is a different statement.
 func (s *Server) onlineDevices() (int, bool) {
 	neigh, err := s.neighbors()
 	if err != nil {
@@ -324,7 +328,7 @@ func (s *Server) onlineDevices() (int, bool) {
 	}
 	online := 0
 	for _, entries := range aggregateNeighbors(neigh) {
-		if bestPresence(entries) == presenceOnline {
+		if bestPresence(entries) != presenceOffline {
 			online++
 		}
 	}

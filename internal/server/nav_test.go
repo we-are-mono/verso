@@ -209,8 +209,8 @@ func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 	s.neighbors = testNeighbors
 	model := s.buildSidebar(devicesPath, identityTranslator, func(string) func(string) string { return identityTranslator })
 	row := basicRow(t, model, "devices")
-	if row.Href != devicesPath || !row.Active || row.Detail != "1" {
-		t.Fatalf("Devices row = %+v, want the active roster row detailing one device online", row)
+	if row.Href != devicesPath || !row.Active || row.Detail != "2" {
+		t.Fatalf("Devices row = %+v, want the active roster row counting both kernel-vouched devices", row)
 	}
 	if elsewhere := basicRow(t, s.buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator }), "devices"); elsewhere.Active {
 		t.Errorf("Devices row = %+v, want inactive away from the roster", elsewhere)

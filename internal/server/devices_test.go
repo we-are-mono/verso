@@ -146,13 +146,14 @@ func TestDevicesReserveDoorClosesWithoutThePlugin(t *testing.T) {
 	}
 }
 
-// TestOnlineDevicesCountsFromTheNeighbourTable: the sidebar's number is the
-// kernel's own confirmation — and an unreadable table reports no count at all
-// rather than claiming nobody is here.
+// TestOnlineDevicesCountsFromTheNeighbourTable: the sidebar's number is every
+// device the kernel still vouches for — a stale entry is a connected device
+// that has been quiet toward the router, not an absent one — and an unreadable
+// table reports no count at all rather than claiming nobody is here.
 func TestOnlineDevicesCountsFromTheNeighbourTable(t *testing.T) {
 	s := rosterServer(t)
-	if online, ok := s.onlineDevices(); !ok || online != 1 {
-		t.Errorf("online devices = %d (known %v), want the one reachable device", online, ok)
+	if online, ok := s.onlineDevices(); !ok || online != 2 {
+		t.Errorf("online devices = %d (known %v), want the reachable and the stale device", online, ok)
 	}
 	s.neighbors = func() ([]sysstat.Neighbor, error) { return nil, errors.New("no netlink") }
 	if online, ok := s.onlineDevices(); ok || online != 0 {
