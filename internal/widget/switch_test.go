@@ -33,3 +33,25 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		}
 	}
 }
+
+// TestSwitchDeclaresChangeHooks: every switch style wraps itself in the
+// staged-changes hooks, so a page-form submission that flips only a switch
+// still arms the capsule — the same contract field, list, conditional, and
+// settings rows declare.
+func TestSwitchDeclaresChangeHooks(t *testing.T) {
+	for _, style := range []string{"", "inline", "hero"} {
+		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: style, On: true})
+		for _, want := range []string{
+			`data-verso-change-field`, `data-verso-change-name="enabled"`,
+			`data-verso-change-label="Enabled"`, `data-verso-change-kind="toggle"`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("style %q switch missing %q:\n%s", style, want, got)
+			}
+		}
+	}
+	nameless := render(t, newRenderer(t), &Switch{Label: "Enabled"})
+	if strings.Contains(nameless, "data-verso-change-field") {
+		t.Errorf("a nameless switch posts nothing and must declare no change hook:\n%s", nameless)
+	}
+}

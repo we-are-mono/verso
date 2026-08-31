@@ -85,6 +85,31 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 	}
 }
 
+// TestRenderSettingsTracksItsControls: a row that carries a control declares the
+// change-tracking hooks, so a settings block inside a page form is counted,
+// reviewed, and submitted by the staged-changes capsule like any other field. A
+// row that only reads declares none.
+func TestRenderSettingsTracksItsControls(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Settings{Items: []SettingsItem{
+		{Title: "Hand out addresses", Code: "ignore",
+			Toggle: &SettingsToggle{Name: "lan.ignore", On: true}},
+		{Title: "Lease length", Code: "leasetime", Value: "12h", Name: "lan.leasetime"},
+		{Title: "Address range", Code: "start · limit", Value: "10.0.0.100 – 10.0.0.249"},
+	}})
+	for _, want := range []string{
+		`data-verso-change-field data-verso-change-name="lan.ignore" data-verso-change-label="Hand out addresses" data-verso-change-kind="toggle"`,
+		`data-verso-change-field data-verso-change-name="lan.leasetime" data-verso-change-label="Lease length" data-verso-change-kind="text"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("settings row missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "data-verso-change-field") != 2 {
+		t.Errorf("a row with nothing to change must declare no hooks:\n%s", got)
+	}
+}
+
 // TestRenderSettingsBare: without style "card" the rows are bare — no box, no
 // card padding, the seam un-inset — so pages stay quiet by default.
 func TestRenderSettingsBare(t *testing.T) {

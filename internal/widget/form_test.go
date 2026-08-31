@@ -92,3 +92,25 @@ func TestShellFormCanOmitGeneratedSubmitAndAutoSubmitFile(t *testing.T) {
 		t.Fatalf("NoSubmit form rendered a generated Save button: %s", got)
 	}
 }
+
+// TestShellFormDrivenByItsConfirm: a form whose contents carry a confirm already
+// has its submit — the guarded one — so no Save is generated beside it. Naming a
+// submit label explicitly still yields both.
+func TestShellFormDrivenByItsConfirm(t *testing.T) {
+	fields := []Widget{
+		&Field{Name: "_delete", Kind: "hidden", Value: "1"},
+		&Stack{Children: []Widget{&Confirm{Trigger: "Delete rule", Message: "Delete this rule?"}}},
+	}
+	got := render(t, newRenderer(t), &Form{Fields: fields})
+	if strings.Contains(got, ">Save</button>") {
+		t.Errorf("a confirm-driven form rendered a generated Save button: %s", got)
+	}
+	if !strings.Contains(got, ">Delete rule</label>") {
+		t.Errorf("the confirm's own trigger is missing: %s", got)
+	}
+
+	both := render(t, newRenderer(t), &Form{Submit: "Save", Fields: fields})
+	if !strings.Contains(both, ">Save</button>") {
+		t.Errorf("an explicit submit label must still render its button: %s", both)
+	}
+}

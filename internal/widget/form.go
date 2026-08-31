@@ -44,6 +44,22 @@ func (*Form) isWidget() {}
 
 func (f *Form) children() []Widget { return f.Fields }
 
+// confirmDriven reports whether the form's own contents already carry its submit.
+// A confirm renders a submit button of its own, so a generated Save beside it
+// would offer the same action twice — once guarded, once not. A form that wants
+// both states its Save label explicitly.
+func (f *Form) confirmDriven() bool {
+	found := false
+	for _, field := range f.Fields {
+		Walk(field, func(n Widget) {
+			if _, ok := n.(*Confirm); ok {
+				found = true
+			}
+		})
+	}
+	return found
+}
+
 // UnmarshalJSON decodes a form's fields recursively through Decode, so an unknown
 // field type fails loudly rather than vanishing.
 func (f *Form) UnmarshalJSON(data []byte) error {
@@ -103,7 +119,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	submit := f.Submit
-	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit {
+	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit && !f.confirmDriven() {
 		submit = r.tr("Save")
 	}
 	var note template.HTML

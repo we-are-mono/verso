@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -129,19 +130,125 @@ func TestRenderPrimaryEndpointOneStepLarger(t *testing.T) {
 func TestRenderReorderHandle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
-		Columns: []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{{ID: "allow-dns", Cells: []TableCell{
 			{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}},
 		}}},
 	})
 	for _, want := range []string{
-		"data-verso-reorder-table", "data-verso-reorder-row", "data-verso-reorder-handle",
+		"data-verso-reorder-table", `data-verso-reorder-config="firewall"`,
+		"data-verso-reorder-row", "data-verso-reorder-handle",
 		`aria-label="Reorder allow-dns"`, "cursor-grab", "active:cursor-grabbing",
 		lucideIcons["grip-vertical"], "text-base font-semibold text-slate-900",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reorderable table missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// TestRenderReorderOrderForm: a reorderable table renders the page form the
+// dragged sequence lives in — the config, and one hidden input per row id in
+// render order, wrapped as a change field so the staged-changes bar counts and
+// reviews the pending order like any other edit.
+func TestRenderReorderOrderForm(t *testing.T) {
+	r := newRenderer(t)
+	var b strings.Builder
+	table := &Table{
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{
+			{ID: "allow_dhcp_renew", Cells: []TableCell{{}, {}}},
+			{ID: "allow_ping", Cells: []TableCell{{}, {}}},
+		},
+		Seam: &TableSeam{Summary: "Stock rules", Rows: []TableRow{
+			{ID: "block_telnet", Cells: []TableCell{{}, {}}},
+		}},
+	}
+	if err := r.RenderWithToken(&b, table, "tok3n", "", nil); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
+	}
+	got := normalizeHTML(b.String())
+	for _, want := range []string{
+		`<form method="post" data-verso-page-form hidden>`,
+		`<input type="hidden" name="_csrf" value="tok3n">`,
+		`<input type="hidden" name="` + ReorderConfigField + `" value="firewall">`,
+		`data-verso-change-field data-verso-change-name="` + ReorderIDField + `"`,
+		`data-verso-change-label="Rule order" data-verso-change-kind="list"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("order form missing %q:\n%s", want, got)
+		}
+	}
+	// The sequence is the render order, seam rows included: the file holds one
+	// order, so every draggable row is in it.
+	var ids []string
+	for _, part := range strings.Split(got, `name="`+ReorderIDField+`" value="`) {
+		if id, _, ok := strings.Cut(part, `"`); ok && !strings.Contains(id, "<") {
+			ids = append(ids, id)
+		}
+	}
+	if want := []string{"allow_dhcp_renew", "allow_ping", "block_telnet"}; !slices.Equal(ids, want) {
+		t.Errorf("order inputs = %v, want %v:\n%s", ids, want, got)
+	}
+}
+
+// TestRenderTableWithoutReorderCarriesNoOrderForm: a listing that does not drag
+// has no order to stage, so it composes no page form and cannot collide with one
+// the page's own editor renders.
+func TestRenderTableWithoutReorderCarriesNoOrderForm(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "From", Kind: "endpoint"}},
+		Rows:    []TableRow{{ID: "allow_ping", Cells: []TableCell{{}}}},
+	})
+	if strings.Contains(got, "data-verso-page-form") || strings.Contains(got, ReorderConfigField) {
+		t.Errorf("a table that does not drag must render no order form:\n%s", got)
+	}
+}
+
+// TestRenderReorderColumnWithoutConfigDrawsNoHandle: the drag persists through a
+// uci order on the declared config, so a table that names none offers no grip —
+// the column still holds its slot, keeping the grid identical to the live case.
+func TestRenderReorderColumnWithoutConfigDrawsNoHandle(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{{ID: "allow-dns", Cells: []TableCell{
+			{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}},
+		}}},
+	})
+	for _, unwanted := range []string{
+		"data-verso-reorder-table", "data-verso-reorder-config",
+		"data-verso-reorder-row", "data-verso-reorder-handle",
+		lucideIcons["grip-vertical"],
+	} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("table with no reorder_config still carries %q:\n%s", unwanted, got)
+		}
+	}
+	if !strings.Contains(got, `class="w-8 border-b border-slate-200`) {
+		t.Errorf("the reorder column should keep its slot:\n%s", got)
+	}
+}
+
+// TestDecodeTableReorderConfig pins the wire name a plugin declares the drag
+// under: the shell reads it to attach the interaction and to bound the uci
+// config the reorder is staged against.
+func TestDecodeTableReorderConfig(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","reorder_config":"firewall",` +
+		`"columns":[{"kind":"reorder"},{"label":"From","kind":"endpoint"}],` +
+		`"rows":[{"id":"allow-dns","cells":[{},{}]}]}`))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	table, ok := w.(*Table)
+	if !ok {
+		t.Fatalf("decoded %T, want *Table", w)
+	}
+	if table.ReorderConfig != "firewall" {
+		t.Errorf("ReorderConfig = %q, want %q", table.ReorderConfig, "firewall")
 	}
 }
 
@@ -310,6 +417,26 @@ func TestRenderTableRowDrawerCanHideVisibleTitle(t *testing.T) {
 	}
 }
 
+// TestRenderTableRowDrawerOpen: a drawer the plugin sent back open renders its
+// row's modal scope with data-open, which the shell's modal component reads on
+// init — how a refused submission comes back with the failed drawer in front of
+// the operator rather than closed.
+func TestRenderTableRowDrawerOpen(t *testing.T) {
+	r := newRenderer(t)
+	tbl := redirectsTable()
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", Open: true}
+	got := render(t, r, tbl)
+	if !strings.Contains(got, `<tr x-data="modal" data-open="true"`) {
+		t.Errorf("open drawer row missing data-open:\n%s", got)
+	}
+
+	tbl.Rows[0].Drawer.Open = false
+	closed := render(t, r, tbl)
+	if strings.Contains(closed, "data-open") {
+		t.Errorf("a closed drawer must claim nothing about opening:\n%s", closed)
+	}
+}
+
 func TestRenderTableCustomDrawerAction(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
@@ -331,13 +458,13 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 		"type": "table",
 		"columns": [{"label":"A"}],
 		"rows": [{"id":"r1","group":{"label":"WAN → Router","chain":"input_wan","count":2},"cells":[{"text":"1"}],
-			"drawer": {"title":"Edit","hide_title":true,"children":[{"type":"text","markdown":"body"}]}}]
+			"drawer": {"title":"Edit","hide_title":true,"open":true,"children":[{"type":"text","markdown":"body"}]}}]
 	}`))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	tb := w.(*Table)
-	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.HideTitle || len(tb.Rows[0].Drawer.Children) != 1 {
+	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.HideTitle || !tb.Rows[0].Drawer.Open || len(tb.Rows[0].Drawer.Children) != 1 {
 		t.Errorf("row drawer not decoded: %+v", tb.Rows[0].Drawer)
 	}
 	if tb.Rows[0].Group == nil || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Count != 2 {
@@ -474,6 +601,38 @@ func TestRenderTableCellButton(t *testing.T) {
 	}
 }
 
+// TestRenderTableDisabledRowButton: a Disabled cell button keeps the compact
+// row-button anatomy but is a real <button disabled> — muted ink, no hover, no
+// press, and no form, modal, or drawer behind it.
+func TestRenderTableDisabledRowButton(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Style:   "flat",
+		Columns: []TableColumn{{Label: "Zone", Kind: "name"}, {Kind: "pill"}},
+		Rows: []TableRow{{ID: "lan", Cells: []TableCell{
+			{Text: "lan"},
+			{Button: "Edit", Disabled: true},
+		}}},
+	})
+	for _, want := range []string{
+		`<button type="button" disabled`, ">Edit</button>",
+		"inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium", // the shared row-button anatomy
+		"cursor-not-allowed", "text-slate-400", "opacity-70",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("disabled row button missing %q:\n%s", want, got)
+		}
+	}
+	for _, absent := range []string{
+		"<form", `@click="show"`, `name="_action"`, `x-data="modal"`,
+		"hover:border-slate-400", "active:translate-y-px", // an action nobody can take offers no feedback
+	} {
+		if strings.Contains(got, absent) {
+			t.Errorf("disabled row button must not contain %q:\n%s", absent, got)
+		}
+	}
+}
+
 // TestRenderTableDirectAction: an immediate row command posts its action marker
 // from the standard alert dialog without manufacturing an edit drawer.
 func TestRenderTableDirectAction(t *testing.T) {
@@ -513,11 +672,12 @@ func TestRenderTableDirectAction(t *testing.T) {
 func TestDecodeTable(t *testing.T) {
 	w, err := Decode([]byte(`{
 		"type": "table",
-		"columns": [{"kind":"toggle"},{"label":"From","kind":"endpoint"},{"label":"Hits","kind":"num"}],
-		"rows": [{"id":"r1","cells":[
+		"columns": [{"kind":"toggle"},{"label":"From","kind":"endpoint"},{"label":"Hits","kind":"num"},{"kind":"pill"}],
+		"rows": [{"id":"r1","key":"rule:r1","cells":[
 			{"on":true,"name":"r1"},
 			{"endpoints":[{"kind":"zone","label":"guest"},{"kind":"device","label":"10.0.0.30"}]},
-			{"text":"28"}
+			{"text":"28","key":"hits:r1"},
+			{"button":"Edit","disabled":true}
 		]}]
 	}`))
 	if err != nil {
@@ -527,10 +687,16 @@ func TestDecodeTable(t *testing.T) {
 	if !ok {
 		t.Fatalf("decoded %T, want *Table", w)
 	}
-	if len(tb.Columns) != 3 || tb.Columns[1].Kind != "endpoint" {
+	if len(tb.Columns) != 4 || tb.Columns[1].Kind != "endpoint" {
 		t.Errorf("columns not decoded: %+v", tb.Columns)
 	}
 	if tb.Rows[0].ID != "r1" || len(tb.Rows[0].Cells[1].Endpoints) != 2 {
 		t.Errorf("rows not decoded: %+v", tb.Rows)
+	}
+	if tb.Rows[0].Key != "rule:r1" || tb.Rows[0].Cells[2].Key != "hits:r1" {
+		t.Errorf("live-update keys not decoded: %+v", tb.Rows[0])
+	}
+	if edit := tb.Rows[0].Cells[3]; edit.Button != "Edit" || !edit.Disabled {
+		t.Errorf("disabled row button not decoded: %+v", edit)
 	}
 }

@@ -26,7 +26,8 @@ import (
 //	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
 //	"runtime"  — compact process facts; sans, muted, tabular and non-wrapping
 //	"action"   — a compact icon-only POST action
-//	"reorder"  — a compact drag handle; interaction is shell-owned
+//	"reorder"  — a compact drag handle; interaction is shell-owned, and it draws
+//	             only on a table that declares ReorderConfig
 //	"toggle"   — an on/off switch (a section's enabled state)
 //	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
 //	"endpoint" — one or more traffic endpoints, each a type icon + label
@@ -61,7 +62,22 @@ type Table struct {
 	// cell that stacks two values (an IPv4 over an IPv6) keeps its first line on
 	// the shared top line with the single-value cells, the second dangling below.
 	Align string `json:"align,omitempty"`
+
+	// ReorderConfig names the uci config whose sections these rows are, and it is
+	// what makes a leading "reorder" column real: the shell posts the dragged id
+	// sequence back and stages a `uci order` on that config. A table without it
+	// draws no handle — a grip the device would not remember is a lie.
+	ReorderConfig string `json:"reorder_config,omitempty"`
 }
+
+// The form fields the shell's reorder interaction posts, and that the gateway
+// reads to stage the new section order. They live here because this package
+// renders the affordance; the gateway imports these same constants, so the two
+// never drift. verso.js builds the body from the table's own data attributes.
+const (
+	ReorderConfigField = "_uci_order_config"
+	ReorderIDField     = "_uci_order"
+)
 
 // TableAction is the flat header band's trailing link (e.g. "View all").
 type TableAction struct {
@@ -109,11 +125,14 @@ type TableGroup struct {
 // prefilled with the section's values, a blast-radius callout, and a confirm
 // for deletion. Same shell behaviour as the drawer widget (ADR-005 §7). Size
 // widens the panel ("" reading width | "wide") for detail views that carry
-// tables beside prose.
+// tables beside prose. Open renders the panel already open, which is how a
+// submission the plugin refused comes back with the failed drawer in front of
+// the operator instead of silently closed.
 type RowDrawer struct {
 	Title     string   `json:"title"`
 	Size      string   `json:"size,omitempty"`
 	HideTitle bool     `json:"hide_title,omitempty"`
+	Open      bool     `json:"open,omitempty"`
 	Children  []Widget `json:"children"`
 }
 
@@ -122,12 +141,14 @@ type RowDrawer struct {
 func (tr *TableRow) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		ID     string      `json:"id"`
+		Key    string      `json:"key"`
 		Group  *TableGroup `json:"group"`
 		Cells  []TableCell `json:"cells"`
 		Drawer *struct {
 			Title     string            `json:"title"`
 			Size      string            `json:"size"`
 			HideTitle bool              `json:"hide_title"`
+			Open      bool              `json:"open"`
 			Children  []json.RawMessage `json:"children"`
 		} `json:"drawer"`
 	}
@@ -135,6 +156,7 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	tr.ID = raw.ID
+	tr.Key = raw.Key
 	tr.Group = raw.Group
 	tr.Cells = raw.Cells
 	tr.Drawer = nil
@@ -145,7 +167,7 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	tr.Drawer = &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, HideTitle: raw.Drawer.HideTitle, Children: children}
+	tr.Drawer = &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, HideTitle: raw.Drawer.HideTitle, Open: raw.Drawer.Open, Children: children}
 	return nil
 }
 
@@ -170,6 +192,7 @@ type TableCell struct {
 	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
 	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link
 	Button       string          `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
+	Disabled     bool            `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
 	Action       string          `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
 	ConfirmTitle string          `json:"confirm_title,omitempty"` // direct-action confirmation heading (default "Are you sure?")
 	Confirm      string          `json:"confirm,omitempty"`       // direct-action consequence copy; enables the confirmation dialog
@@ -230,21 +253,26 @@ var endpointIcons = map[string]string{
 // in-cell button of its own, so the table carries a trailing "Details" column
 // and every row pads it to keep the grid aligned.
 type tableView struct {
-	Card        bool
-	Lined       bool
-	Condensed   bool
-	AlignTop    bool
-	Title       string
-	Detail      string
-	Action      *TableAction
-	HasLabels   bool // any column carries a header label; a labelless table draws no <thead>
-	Columns     []TableColumn
-	HasDetail   bool
-	Reorderable bool
-	ColumnSpan  int
-	Rows        []tableRowView
-	SeamSummary string
-	SeamRows    []tableRowView
+	Card          bool
+	Lined         bool
+	Condensed     bool
+	AlignTop      bool
+	Title         string
+	Detail        string
+	Action        *TableAction
+	HasLabels     bool // any column carries a header label; a labelless table draws no <thead>
+	Columns       []TableColumn
+	HasDetail     bool
+	Reorderable   bool
+	ReorderConfig string
+	// ReorderIDs is every draggable row's id in the sequence the table renders
+	// them: the order form's baseline, and what a drag rewrites.
+	ReorderIDs []string
+	CSRFToken  string
+	ColumnSpan int
+	Rows          []tableRowView
+	SeamSummary   string
+	SeamRows      []tableRowView
 }
 
 type tableRowView struct {
@@ -259,6 +287,7 @@ type tableRowView struct {
 	Drawer       bool // this row has a drawer (hosts the modal scope)
 	Inline       bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
 	Seam         bool // this row belongs to the collapsible continuation block
+	Open         bool // the row's drawer renders already open
 	DrawerLabel  string
 	DrawerIcon   string
 	Panel        drawerPanelView // the row's slide-in detail panel (shared with the drawer widget)
@@ -267,6 +296,7 @@ type tableRowView struct {
 type tableCellView struct {
 	Kind      string
 	Primary   bool // the first column — the row's identity, set one step larger
+	Draggable bool // reorder cells: the table persists an order, so draw the handle
 	RowID     string
 	CSRFToken string
 	Drawer    bool
@@ -306,6 +336,14 @@ func (t *Table) hasDetail() bool {
 	return need(t.Rows) || (t.Seam != nil && need(t.Seam.Rows))
 }
 
+// reorderable reports whether these rows really drag. The leading "reorder"
+// column asks for the handle and ReorderConfig names the config the new order is
+// staged against; only both together make the interaction persist, so only both
+// together draw it.
+func (t *Table) reorderable() bool {
+	return t.ReorderConfig != "" && len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+}
+
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	v := tableView{
 		Card: t.Style == "card", Lined: t.Style == "lined",
@@ -314,7 +352,9 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		HasLabels: hasColumnLabels(t.Columns),
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 	}
-	v.Reorderable = len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+	v.Reorderable = t.reorderable()
+	v.ReorderConfig = t.ReorderConfig
+	v.CSRFToken = csrf
 	v.ColumnSpan = len(v.Columns)
 	if v.HasDetail {
 		v.ColumnSpan++
@@ -332,7 +372,25 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 			v.SeamRows[i].Seam = true
 		}
 	}
+	if v.Reorderable {
+		v.ReorderIDs = reorderIDs(v.Rows, v.SeamRows)
+	}
 	return v, nil
+}
+
+// reorderIDs collects the draggable rows' ids in render order — the sequence the
+// order form carries, and the one the browser rewrites on a drop. A seam's rows
+// drag on the same terms as the rest, so they belong in the same sequence.
+func reorderIDs(runs ...[]tableRowView) []string {
+	var ids []string
+	for _, rows := range runs {
+		for _, row := range rows {
+			if row.ID != "" {
+				ids = append(ids, row.ID)
+			}
+		}
+	}
+	return ids
 }
 
 // hasColumnLabels reports whether any column carries a header label. A table
@@ -356,7 +414,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	if len(t.Columns) > 0 && t.Columns[0].Kind == "reorder" {
 		primary = 1
 	}
-	reorderable := len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+	reorderable := t.reorderable()
 	reorderGroup := ""
 	for _, row := range rows {
 		if row.Group != nil {
@@ -376,6 +434,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				return nil, err
 			}
 			rv.Drawer = true
+			rv.Open = row.Drawer.Open
 			rv.Panel = drawerPanelView{
 				Title: row.Drawer.Title, Wide: row.Drawer.Size == "wide",
 				HideTitle: row.Drawer.HideTitle, Body: body,
@@ -386,7 +445,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Primary: i == primary, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
+			cv := tableCellView{Kind: kind, Primary: i == primary, Draggable: reorderable, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
 				if cv.Confirm != "" {

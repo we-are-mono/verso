@@ -13,7 +13,11 @@
        control — switch, in-place field, or read-out — on the right edge. Rows
        divide with hairlines — bare rows flush to the edge, card rows inside the
        box's padding. */}}
-  <div class="flex items-center gap-3 py-2.5 border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0">
+  {{/* A row that carries a control is a field like any other: it declares its
+       change-tracking hooks so the staged-changes capsule counts it, reviews it,
+       and submits the page form it sits in. A row that only reads declares none —
+       there is nothing about it to change. */}}
+  <div class="flex items-center gap-3 py-2.5 border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
     <div class="shrink-0 text-[0.95rem] font-semibold text-slate-900">{{.Title}}</div>
     {{if .Code}}<span class="shrink-0 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
     <div class="min-w-0 flex-1 truncate text-sm text-slate-500"{{if .Desc}} title="{{.Desc}}"{{end}}>{{.Desc}}</div>

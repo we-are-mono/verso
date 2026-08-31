@@ -11,8 +11,10 @@
      badge vocabulary as a compact tag, not a full pill. */}}
 {{define "table.tag"}}<span class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium whitespace-nowrap {{if .TagIcon}}ring-1 ring-inset {{if eq .TagVariant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/20{{else}}bg-slate-50 text-slate-600 ring-slate-200 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}{{else}}{{if eq .TagVariant "info"}}bg-sky-100 text-sky-800 dark:bg-sky-500/10 dark:text-sky-400{{else if eq .TagVariant "warning"}}bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400{{else if eq .TagVariant "success"}}bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400{{else if eq .TagVariant "danger"}}bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-400{{else}}bg-slate-100 text-slate-600 dark:bg-slate-400/10 dark:text-slate-700{{end}}{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-sky-600 dark:text-sky-400{{else}}text-slate-400{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{end}}{{.Tag}}</span>{{end}}
 {{/* table.rowbtn-class: the compact bordered in-row action (a drawer trigger,
-     a confirmed or direct row action) — one treatment for all three. */}}
-{{define "table.rowbtn-class"}}inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900 {{template "verso-press"}}{{end}}
+     a confirmed or direct row action) — one treatment for all three, taking the
+     cell as its dot. A disabled cell keeps the anatomy and drops every
+     affordance: muted ink and no hover, press, or focus ring. */}}
+{{define "table.rowbtn-class"}}inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors {{if .Disabled}}cursor-not-allowed border-slate-200 bg-white text-slate-400 opacity-70 dark:border-gray-800 dark:bg-transparent dark:text-gray-500{{else}}border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900 {{template "verso-press"}}{{end}}{{end}}
 {{define "table.rows"}}
       {{range .}}
       {{if .Group}}
@@ -31,17 +33,24 @@
            copy-pastable. A row with a drawer still hosts its own modal scope, but
            it opens from the trailing "Details" link, never the row. The panel
            teleports to <body>. */}}
+      {{/* the modal scope reads data-open on init, so a drawer the plugin sent
+           back open (a refused submission) is in front of the operator on the
+           re-render instead of silently closed. */}}
       {{if .Drawer}}
-      <tr x-data="modal" class="group{{if .Seam}} verso-table-seam-row{{end}}"{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}} class="group{{if .Seam}} verso-table-seam-row{{end}}"{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{else}}
       <tr class="group{{if .Seam}} verso-table-seam-row{{end}}"{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "reorder"}}
+        {{/* the drag handle, drawn only where the table persists the new order —
+             the column keeps its width either way so the grid stays aligned. */}}
         <td class="w-8 border-b border-slate-200 py-3 pr-2 pl-0 align-middle group-last:border-b-0">
+          {{if .Draggable}}
           <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowID}}" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-slate-300 transition-colors select-none hover:text-slate-500 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
             {{icon "grip-vertical" "size-4"}}
           </button>
+          {{end}}
         </td>
         {{else if eq .Kind "toggle"}}
         {{/* a toggle cell without a form name is an empty slot — rows whose
@@ -106,11 +115,13 @@
         <td class="border-b border-slate-200 px-3.5 py-3 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0">
           {{if .Pill}}{{template "badge.html.tmpl" .Pill}}
           {{else if .Button}}
-            {{if .Drawer}}
-              <button type="button" @click="show" class="{{template "table.rowbtn-class"}}">{{.Button}}</button>
+            {{if .Disabled}}
+              <button type="button" disabled class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
+            {{else if .Drawer}}
+              <button type="button" @click="show" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
             {{else if .Confirm}}
               <span x-data="modal" class="inline">
-                <button type="button" @click="show" class="{{template "table.rowbtn-class"}}">{{.Button}}</button>
+                <button type="button" @click="show" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
                 <template x-teleport="body">
                   <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
                     {{template "verso-overlay-backdrop"}}
@@ -138,7 +149,7 @@
             {{else}}
               <form method="post" class="inline">
                 {{template "verso-csrf" .CSRFToken}}
-                <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="{{template "table.rowbtn-class"}}">{{.Button}}</button>
+                <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
               </form>
             {{end}}
           {{else}}<span class="{{if .Muted}}text-slate-500{{else}}text-slate-300{{end}}">—</span>{{end}}
@@ -230,7 +241,7 @@
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  <table{{if .Reorderable}} data-verso-reorder-table{{end}} class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
+  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}} class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
 {{template "table.rows" .Rows}}
@@ -253,3 +264,18 @@
     </tbody>
   </table>
 </div>
+{{if .Reorderable}}
+{{/* The dragged sequence is a pending change like any edited field, not a write:
+     the rows' current order rides in this page form, so the staged-changes bar
+     counts it, reviews it, and stages the uci order when Save & Apply posts the
+     form. Discard restores the form's baseline and the rows follow it back.
+     A page whose listing drags therefore already carries the page form — it must
+     not compose a second one. */}}
+<form method="post" data-verso-page-form hidden>
+  {{template "verso-csrf" .CSRFToken}}
+  <input type="hidden" name="_uci_order_config" value="{{.ReorderConfig}}">
+  <div data-verso-change-field data-verso-change-name="_uci_order" data-verso-change-label="{{ t "Rule order" }}" data-verso-change-kind="list">
+    {{range .ReorderIDs}}<input type="hidden" name="_uci_order" value="{{.}}">{{end}}
+  </div>
+</form>
+{{end}}

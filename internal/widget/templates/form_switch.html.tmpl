@@ -2,9 +2,11 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* form switch: the labelled form companion to the compact switch shared by
      table and settings rows. On/off state is always a switch; membership in a
-     set remains a checkbox field. */}}
+     set remains a checkbox field. Every style declares the change hooks on its
+     wrapper, so a page-form submission that flips only a switch still arms the
+     staged-changes capsule. */}}
 {{if eq .Style "inline"}}
-<label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium">
+<label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   <span aria-hidden="true" class="size-1 rounded-full bg-slate-300"></span>
   <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .}}</span>
   <span class="verso-inline-switch-on ml-2 translate-y-px text-slate-900">{{.Label}}</span>
@@ -15,7 +17,7 @@
      switch. Pure CSS — the checkbox's :checked drives the headline swap and
      the beacon via verso.css (.verso-toggle), never utilities, so the
      utility layer can't win the cascade. */}}
-<div class="verso-toggle flex items-center justify-between gap-6 rounded-md border border-slate-300 bg-white px-6 py-5 shadow-md">
+<div class="verso-toggle flex items-center justify-between gap-6 rounded-md border border-slate-300 bg-white px-6 py-5 shadow-md"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   <div class="flex min-w-0 items-center gap-4">
     <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xl">{{icon .Icon "size-6"}}</span>
     <div class="min-w-0">
@@ -31,7 +33,7 @@
     <span class="absolute left-[0.1875rem] size-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[1.375rem]"></span>
   </label>
 </div>
-{{else}}<div class="space-y-1.5">
+{{else}}<div class="space-y-1.5"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   {{template "switch.row" .}}
   {{if .Help}}<p class="pl-9 text-sm text-slate-500">{{.Help}}</p>{{end}}
 </div>{{end}}
