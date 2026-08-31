@@ -48,6 +48,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/maintenance/firmware/apply", s.handleFirmwareApply)
 	s.mux.HandleFunc("POST /system/maintenance/updates/check", s.handleUpdatesCheck)
 	s.mux.HandleFunc("POST /system/maintenance/updates/install", s.handleUpdatesInstall)
+	// The daily check's gate is a Verso setting (ADR-013), so this one stages
+	// into uci and the capsule applies it — unlike the two acts above.
+	s.mux.HandleFunc("POST /system/maintenance/updates/autocheck", s.handleUpdatesAutocheck)
 	s.mux.HandleFunc("POST /system/maintenance/restart", s.handleRestart)
 	s.mux.HandleFunc("POST /system/maintenance/factory-reset", s.handleFactoryReset)
 

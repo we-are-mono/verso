@@ -5,6 +5,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,10 +16,38 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/server"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 func main() {
+	// One binary, two jobs. `verso update-check` runs the check the daily cron
+	// line schedules and exits; with no arguments the same binary is the web
+	// shell. Both reach the same helper verbs and leave the same file behind
+	// (ADR-014 §5), which is precisely why they are one program.
+	if len(os.Args) > 1 && os.Args[1] == "update-check" {
+		if err := updateCheck(); err != nil {
+			fmt.Fprintf(os.Stderr, "verso: update-check: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	serve()
+}
+
+// updateCheck reads both update lanes as local root and records the answer where
+// every Verso surface reads it. The identity is rpcd's zero-session convention,
+// bounded by verso-rpcd to exactly these two read verbs (ADR-014 §3): nothing
+// here can install, apply, or write anything but the state file.
+func updateCheck() error {
+	truth, err := updatecheck.Run(context.Background(), openwrt.NewNativeBackend(), openwrt.ZeroSID)
+	if err != nil {
+		return err
+	}
+	return updatecheck.Write(updatecheck.DefaultDir, truth)
+}
+
+func serve() {
 	addr := os.Getenv("VERSO_ADDR")
 	if addr == "" {
 		addr = ":8080"

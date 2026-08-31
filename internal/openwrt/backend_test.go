@@ -190,20 +190,39 @@ func TestUCIConfigThreadsArgs(t *testing.T) {
 
 // TestUCIAddThreadsArgsAndReturnsSection checks UCIAdd passes sid/config/type
 // through and returns rpcd's new section id — the shell realizes a repeater's "add"
-// (ADR-005 §7).
+// (ADR-005 §7). An empty name is the anonymous section a repeater adds.
 func TestUCIAddThreadsArgsAndReturnsSection(t *testing.T) {
-	var gotSID, gotConfig, gotType string
-	b := &NativeBackend{uciAdd: func(_ context.Context, sid, config, secType string) (string, error) {
-		gotSID, gotConfig, gotType = sid, config, secType
+	var gotSID, gotConfig, gotType, gotName string
+	b := &NativeBackend{uciAdd: func(_ context.Context, sid, config, secType, name string) (string, error) {
+		gotSID, gotConfig, gotType, gotName = sid, config, secType, name
 		return "cfg123", nil
 	}}
 
-	sec, err := b.UCIAdd(context.Background(), "s1", "network", "wireguard_wg0")
+	sec, err := b.UCIAdd(context.Background(), "s1", "network", "wireguard_wg0", "")
 	if err != nil {
 		t.Fatalf("UCIAdd: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "network" || gotType != "wireguard_wg0" || sec != "cfg123" {
-		t.Errorf("args/return wrong: sid=%q config=%q type=%q sec=%q", gotSID, gotConfig, gotType, sec)
+	if gotSID != "s1" || gotConfig != "network" || gotType != "wireguard_wg0" || gotName != "" || sec != "cfg123" {
+		t.Errorf("args/return wrong: sid=%q config=%q type=%q name=%q sec=%q", gotSID, gotConfig, gotType, gotName, sec)
+	}
+}
+
+// TestUCIAddNamesASection checks the named shape rpcd's `uci add` also takes: a
+// typed section a config refers to by name (`config updates 'updates'`), which is
+// how Verso's own settings sections come into being.
+func TestUCIAddNamesASection(t *testing.T) {
+	var gotName string
+	b := &NativeBackend{uciAdd: func(_ context.Context, _, _, _, name string) (string, error) {
+		gotName = name
+		return name, nil
+	}}
+
+	sec, err := b.UCIAdd(context.Background(), "s1", "verso", "updates", "updates")
+	if err != nil {
+		t.Fatalf("UCIAdd: %v", err)
+	}
+	if gotName != "updates" || sec != "updates" {
+		t.Errorf("name not threaded: name=%q sec=%q", gotName, sec)
 	}
 }
 

@@ -23,6 +23,14 @@ import (
 // ErrAccessDenied is returned when rpcd's ACLs refuse the session the operation.
 var ErrAccessDenied = errors.New("openwrt: access denied by rpcd ACL")
 
+// ZeroSID is rpcd's local-root convention: an all-zero session id, presented by
+// automation that runs as root on the device itself and therefore has no
+// operator session to borrow (ADR-014 §3). It authorizes nothing on its own —
+// verso-rpcd grants it exactly the two update-check read verbs, and only when the
+// calling process is genuinely uid 0. Verso's shell never uses it: an operator's
+// action always rides that operator's own session (ADR-007).
+const ZeroSID = "00000000000000000000000000000000"
+
 // Backend reads live state from the OpenWrt system on behalf of a session. It is
 // the injected seam (ADR-003): callers depend on this interface, tests supply a
 // fake. Every method takes the rpcd session id (sid) so rpcd — not Verso —
@@ -51,11 +59,14 @@ type Backend interface {
 	// or reading /etc/config (ADR-007). rpcd scopes the read to the operator, so an
 	// unreadable config yields an empty snapshot rather than an error.
 	UCIConfig(ctx context.Context, sid, config string) (map[string]any, error)
-	// UCIAdd creates a new anonymous section of secType in config through rpcd's
-	// `uci` object, carrying the sid, and returns the new section's id. It realizes
-	// the "add" of a uci-backed repeater (ADR-005 §7): the shell — not the plugin —
-	// performs the structural change, within the plugin's declared write scope.
-	UCIAdd(ctx context.Context, sid, config, secType string) (string, error)
+	// UCIAdd creates a new section of secType in config through rpcd's `uci`
+	// object, carrying the sid, and returns the new section's id. An empty name
+	// asks for the anonymous section a uci-backed repeater adds (ADR-005 §7): the
+	// shell — not the plugin — performs the structural change, within the plugin's
+	// declared write scope. A name asks for the named typed section a config is
+	// meant to be read by (`config updates 'updates'`), which is the shape Verso's
+	// own settings take (ADR-013 §1).
+	UCIAdd(ctx context.Context, sid, config, secType, name string) (string, error)
 	// UCIDelete removes a section from config through rpcd, carrying the sid, or
 	// one option of that section when option is non-empty — rpcd's `uci delete`
 	// takes both shapes. It realizes the "remove" of a uci-backed repeater
@@ -370,7 +381,7 @@ type (
 	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciCommitFn    func(ctx context.Context, sid, config string) error
 	uciConfigFn    func(ctx context.Context, sid, config string) (map[string]any, error)
-	uciAddFn       func(ctx context.Context, sid, config, secType string) (string, error)
+	uciAddFn       func(ctx context.Context, sid, config, secType, name string) (string, error)
 	uciDeleteFn    func(ctx context.Context, sid, config, section, option string) error
 	uciOrderFn     func(ctx context.Context, sid, config string, sections []string) error
 	passwdFn       func(ctx context.Context, sid, username, password string) error
@@ -550,10 +561,10 @@ func (b *NativeBackend) UCIConfig(ctx context.Context, sid, config string) (map[
 	return b.uciConfig(ctx, sid, config)
 }
 
-// UCIAdd creates a new anonymous section of secType through rpcd, gated by the sid,
-// and returns its id.
-func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType string) (string, error) {
-	return b.uciAdd(ctx, sid, config, secType)
+// UCIAdd creates a new section of secType through rpcd, gated by the sid, and
+// returns its id — anonymous when name is empty, named otherwise.
+func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType, name string) (string, error) {
+	return b.uciAdd(ctx, sid, config, secType, name)
 }
 
 // UCIDelete removes a section — or one of its options — through rpcd, gated by
@@ -855,11 +866,14 @@ func dialUCIConfig(socket string) uciConfigFn {
 	}
 }
 
-// dialUCIAdd returns a uciAddFn that creates an anonymous section of secType via
-// rpcd's `uci` object (method `add`), carrying the sid, and returns rpcd's new
-// section id. The caller commits the config afterwards, as with `set`.
+// dialUCIAdd returns a uciAddFn that creates a section of secType via rpcd's
+// `uci` object (method `add`), carrying the sid, and returns rpcd's new section
+// id. The optional `name` argument is what makes the section named rather than
+// anonymous; it is omitted entirely when empty, since an empty name is not a
+// name rpcd should try to give a section. The caller commits the config
+// afterwards, as with `set`.
 func dialUCIAdd(socket string) uciAddFn {
-	return func(_ context.Context, sid, config, secType string) (string, error) {
+	return func(_ context.Context, sid, config, secType, name string) (string, error) {
 		c, err := ubus.Dial(socket)
 		if err != nil {
 			return "", err
@@ -869,11 +883,15 @@ func dialUCIAdd(socket string) uciAddFn {
 		if err != nil {
 			return "", err
 		}
-		res, err := c.InvokeArgs(id, "add", map[string]string{
+		args := map[string]string{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"type":             secType,
-		})
+		}
+		if name != "" {
+			args["name"] = name
+		}
+		res, err := c.InvokeArgs(id, "add", args)
 		if err != nil {
 			return "", err
 		}

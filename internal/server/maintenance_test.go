@@ -54,8 +54,12 @@ func TestMaintenanceShowsFullBuildFacts(t *testing.T) {
 			t.Errorf("Maintenance page missing %q", want)
 		}
 	}
-	if strings.Contains(rr.Body.String(), ">Save</button>") {
-		t.Error("Maintenance immediate actions rendered stray generated Save buttons")
+	// Maintenance is a page of immediate acts — each button names its own verb —
+	// with exactly one exception: the automatic-check setting stages like every
+	// other setting and so carries the page's only Save. A second one means an
+	// immediate action grew a stray generated submit.
+	if n := strings.Count(rr.Body.String(), ">Save</button>"); n != 1 {
+		t.Errorf("Maintenance rendered %d Save buttons, want only the automatic-check setting's", n)
 	}
 	if strings.Contains(rr.Body.String(), ">Check backup</button>") {
 		t.Error("Restore should submit on file selection, not require a second button")

@@ -54,6 +54,17 @@ RUN apk add --no-check-certificate ca-bundle \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
  # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.
  && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json /usr/share/rpcd/acl.d/verso-shell.json \
+ && chmod 0644 /etc/config/verso \
+ # The daily update check ships as package content in a real install (the script,
+ # the crontab line, and crond enabled); the dev image carries the same pieces so
+ # the unattended path is exercised here before it ships. A real install's
+ # post-install seeds the opt-in (ADR-014 §2); mirror that here so `make dev`
+ # runs with the switch on, as a fresh install ships.
+ && uci -q set verso.updates=updates \
+ && uci -q set verso.updates.autocheck=1 \
+ && uci -q commit verso \
+ && chmod 0755 /usr/libexec/verso/update-check \
+ && chmod 0600 /etc/crontabs/root \
  && chmod 0755 /usr/sbin/verso-rpcd /usr/bin/verso-plugin-system \
  && chmod +x /etc/init.d/verso /etc/init.d/verso-rpcd /etc/init.d/verso-plugin-system /etc/init.d/netfix \
  # No ujail in an unprivileged container: it cannot clone namespaces (EPERM),
@@ -64,6 +75,7 @@ RUN apk add --no-check-certificate ca-bundle \
  && ( /etc/init.d/verso-rpcd enable || ln -sf ../init.d/verso-rpcd /etc/rc.d/S94verso-rpcd ) \
  && ( /etc/init.d/verso-plugin-system enable || ln -sf ../init.d/verso-plugin-system /etc/rc.d/S93verso-plugin-system ) \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
+ && ( /etc/init.d/cron enable || ln -sf ../init.d/cron /etc/rc.d/S50cron ) \
  && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true
 EXPOSE 8080
 # Boots OpenWrt via procd so verso can reach live ubus/uci. MUST run

@@ -1,0 +1,30 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# The router's daily look at what it could install (ADR-014). The crontab line
+# that runs this is package content: it never varies per device and is never
+# edited at runtime, because whether the check happens at all is one uci option.
+# Turning it off is therefore a setting an owner changes in Verso or with one
+# `uci set` over SSH, and never a crontab edit that the next package upgrade
+# would fight. An explicit 1 is the only value that means yes: a bare config
+# never reaches the network on its own.
+#
+# Identical crontabs across a fleet would hit the package feeds and the
+# sysupgrade server on the same minute, so a random offset of up to an hour
+# precedes the check. --now skips it, for a person at a prompt who wants the
+# answer rather than a fleet's good manners.
+#
+# The check itself is the Verso binary's one-shot mode: it asks the privileged
+# helper the two read verbs under rpcd's local-root session and renames the
+# result into /var/run/verso/state, where every Verso surface reads it. Nothing
+# in this path installs, applies, or upgrades anything.
+[ "$(uci -q get verso.updates.autocheck)" = "1" ] || exit 0
+# hexdump is a busybox applet a trimmed build can omit; if it is missing the
+# substitution is empty and the offset falls back to zero, so the check still
+# runs — a fleet losing its spread beats the check dying silently.
+if [ "$1" != "--now" ]; then
+	offset="$(hexdump -n2 -e '/2 "%u"' /dev/urandom 2>/dev/null)"
+	sleep "$(( ${offset:-0} % 3600 ))"
+fi
+exec /usr/bin/verso update-check

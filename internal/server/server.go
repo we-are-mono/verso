@@ -28,6 +28,7 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/version"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -123,6 +124,11 @@ type Server struct {
 	pendingFirmwareMu sync.Mutex
 	pendingFirmwares  map[string]pendingFirmware
 	maintenanceDir    string
+	// stateDir is where the update check's answer is recorded and read back
+	// (ADR-014 §5). The daily cron run writes the same file, so this is a shared
+	// location on the device rather than anything this process owns; tests point
+	// it at a directory of their own.
+	stateDir string
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -169,6 +175,7 @@ func New(
 		pendingRestores:  make(map[string]pendingRestore),
 		pendingFirmwares: make(map[string]pendingFirmware),
 		maintenanceDir:   "/var/run/verso",
+		stateDir:         updatecheck.DefaultDir,
 	}
 	// Start English-only: the page cache holds just the identity set and the
 	// bundle stays nil (English) until SetBundle — wired by cmd/verso once the
@@ -603,7 +610,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	if hostErr != nil || deviceName == "" {
 		deviceName = tr("This device")
 	}
-	updates, updatesKnown := updateChecks.state()
+	updates, updatesKnown := s.updateTruth()
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "page.html.tmpl", pageData{
 		Lang:          langAttr(lang),
@@ -625,7 +632,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		SessionExpiry: s.sessionExpiryStamp(r),
 		DeviceName:    deviceName,
 		DeviceVersion: version.Version,
-		UpdateReady:   updatesKnown && updates.pending(),
+		UpdateReady:   updatesKnown && updates.Pending(),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
 		ShowCapsule:   stages || capsule.Count > 0,
@@ -721,7 +728,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// home page never waits on a package feed.
 	ov.SecurityHref = liveSectionHref(s.sectionHref("Security"))
 	ov.SoftwareHref, ov.UpdatesHref = packagesPath, maintenancePath
-	if truth, known := updateChecks.state(); known {
+	if truth, known := s.updateTruth(); known {
 		ov.UpdatesKnown = true
 		ov.UpdatesPackages = len(truth.Packages)
 		ov.UpdatesFirmware = truth.Firmware.State == openwrt.FirmwareUpdateAvailable

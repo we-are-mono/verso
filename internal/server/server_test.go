@@ -34,6 +34,7 @@ type fakeBackend struct {
 	access         bool
 	accessErr      error
 	uciErr         error                     // returned by UCISet/UCICommit
+	uciReadErr     error                     // returned by UCIConfig (a read the shell brokers)
 	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
 	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
 	addReturns     string                    // section id UCIAdd returns
@@ -169,14 +170,25 @@ func (f fakeBackend) UCICommit(_ context.Context, _, config string) error {
 // plugin reads through rpcd, ADR-007). An absent config yields an empty snapshot,
 // mirroring an operator who may not read it.
 func (f fakeBackend) UCIConfig(_ context.Context, _, config string) (map[string]any, error) {
+	if f.uciReadErr != nil {
+		return nil, f.uciReadErr
+	}
 	return f.uci[config], nil
 }
 
 // UCIAdd/UCIDelete record what the shell asked rpcd to do to realize a repeater's
-// add/remove (ADR-005 §7), so the broker tests can assert it.
-func (f fakeBackend) UCIAdd(_ context.Context, _, config, secType string) (string, error) {
+// add/remove (ADR-005 §7), so the broker tests can assert it. A named section
+// records its name too, since naming is the whole point of that shape.
+func (f fakeBackend) UCIAdd(_ context.Context, _, config, secType, name string) (string, error) {
+	record := config + " " + secType
+	if name != "" {
+		record += " " + name
+	}
 	if f.adds != nil {
-		*f.adds = append(*f.adds, config+" "+secType)
+		*f.adds = append(*f.adds, record)
+	}
+	if name != "" {
+		return name, f.uciErr
 	}
 	return f.addReturns, f.uciErr
 }
@@ -399,6 +411,10 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	}
 	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb in tests") }
 	s.maintenanceDir = t.TempDir()
+	// The update truth is a file on the device shared with the cron run
+	// (ADR-014 §5); each test gets its own, so one test's answer is never
+	// another's starting state.
+	s.stateDir = t.TempDir()
 	return s
 }
 

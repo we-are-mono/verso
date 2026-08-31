@@ -9,25 +9,27 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // Updates are two lanes with one shape: packages, which apk answers for uniformly
 // on every device, and the system firmware, which an attended-sysupgrade server
-// answers for — or honestly cannot. Both truths are read in the background and
-// cached: the package feeds are remote, and the firmware check talks to a server
-// over the internet, so a page that asked either question while rendering would be
-// a page that hangs on someone else's network. Every surface reads this cache and
-// nothing else; before the first check there is no cache, and the surfaces that
-// exist to nudge simply do not render.
-
-// versoPackage is Verso's own package name. It leads the software lane, because an
-// update to the thing the person is looking at is the one they came to read about.
-const versoPackage = "verso"
+// answers for — or honestly cannot. Both truths are read away from any render:
+// the package feeds are remote, and the firmware check talks to a server over the
+// internet, so a page that asked either question while rendering would be a page
+// that hangs on someone else's network.
+//
+// The answer lives in a file (ADR-014 §5), not in this process. The daily cron run
+// writes it as local root and the Check-for-updates button writes it as the
+// operator, through the one shared writer in internal/updatecheck; every surface
+// here reads that file and nothing else. So the truth survives a shell restart,
+// states its own age, and — the point of the whole arrangement — is there for an
+// owner who never went looking. Before any check there is no file, and the
+// surfaces that exist to nudge simply do not render.
 
 // Every update surface lands on one page, and the software itself on one other.
 const (
@@ -35,115 +37,34 @@ const (
 	packagesPath    = "/system/packages"
 )
 
-// updateTruth is one complete answer from both lanes, and the moment it was read.
-type updateTruth struct {
-	Packages  []openwrt.PackageUpgrade
-	Firmware  openwrt.FirmwareUpdate
-	CheckedAt time.Time
-}
-
-// pending reports whether the device has anything to install — the one boolean the
-// homepage tile and the sidebar's device row are allowed to draw attention with.
-func (t updateTruth) pending() bool {
-	return len(t.Packages) != 0 || t.Firmware.State == openwrt.FirmwareUpdateAvailable
-}
-
-// verso returns Verso's own entry in the upgradable set, if it is in it.
-func (t updateTruth) verso() (openwrt.PackageUpgrade, bool) {
-	for _, p := range t.Packages {
-		if p.Name == versoPackage {
-			return p, true
-		}
-	}
-	return openwrt.PackageUpgrade{}, false
-}
-
-// updateCheckJob holds the cached truth and the one background run allowed to
-// refresh it. It follows the shape of the other device-wide jobs, and keeps the
-// answer as well as the failure: what a check found is what every surface reads.
-type updateCheckJob struct {
-	mu      sync.Mutex
-	active  bool
-	known   bool
-	truth   updateTruth
-	failure error
-}
-
-// start reads both truths in the background unless a run is already under way,
-// reporting whether this call owns the new one. A failed run leaves the previous
-// answer in place: a stale truth with its own timestamp beats no truth at all.
-func (j *updateCheckJob) start(check func() (updateTruth, error)) bool {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	if j.active {
-		return false
-	}
-	j.active = true
-	j.failure = nil
-	go func() {
-		truth, err := check()
-		j.mu.Lock()
-		j.active, j.failure = false, err
-		if err == nil {
-			j.known, j.truth = true, truth
-		}
-		j.mu.Unlock()
-	}()
-	return true
-}
-
-func (j *updateCheckJob) running() bool {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	return j.active
-}
-
-// state is the cached answer and whether there is one at all.
-func (j *updateCheckJob) state() (updateTruth, bool) {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	return j.truth, j.known
-}
-
-// takeFailure reports how the last finished run failed and forgets it, so a
-// failure nobody was waiting for is still stated once, on the next visit.
-func (j *updateCheckJob) takeFailure() error {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	failure := j.failure
-	j.failure = nil
-	return failure
-}
-
-// updateChecks is that job, and packageUpgrade the installation it leads to. Both
-// are device-wide: what a router can install is a property of the router, not of
-// whoever is looking at it.
+// updateChecks is the one check allowed to run at a time, and packageUpgrade the
+// installation it leads to. Both are device-wide: what a router can install is a
+// property of the router, not of whoever is looking at it. Neither holds the
+// answer — only whether a run is under way, and how the last one failed.
 var (
-	updateChecks   updateCheckJob
+	updateChecks   backgroundJob
 	packageUpgrade backgroundJob
 )
 
-// startUpdateCheck reads both lanes under the operator's session. The run outlives
-// the request that began it, so it carries a context of its own; the helper
-// client's deadline is what bounds each call.
-//
-// The package lane failing is the check failing — apk answers on every device. The
-// firmware lane failing is not: the helper reports a rung rather than an error for
-// every device it cannot answer for, so a transport failure here leaves the lane's
-// state empty and the page says the check could not run.
+// updateTruth is the recorded answer and whether there is one at all — the single
+// accessor the three surfaces share, so they can never disagree about what this
+// router knows.
+func (s *Server) updateTruth() (updatecheck.Truth, bool) {
+	return updatecheck.Read(s.stateDir)
+}
+
+// startUpdateCheck reads both lanes under the operator's session and records the
+// result where every surface — and the next shell process — will find it. The run
+// outlives the request that began it, so it carries a context of its own; the
+// helper client's deadline is what bounds each call. Failing to record the answer
+// is failing the check: an answer nobody can read is not one.
 func (s *Server) startUpdateCheck(sid string) bool {
-	return updateChecks.start(func() (updateTruth, error) {
-		ctx := context.Background()
-		packages, err := s.backend.PkgUpgradable(ctx, sid)
+	return updateChecks.start(func() error {
+		truth, err := updatecheck.Run(context.Background(), s.backend, sid)
 		if err != nil {
-			return updateTruth{}, err
+			return err
 		}
-		firmware, err := s.backend.FirmwareCheck(ctx, sid)
-		if err != nil {
-			log.Printf("verso: updates: firmware check unavailable: %v", err)
-			firmware = openwrt.FirmwareUpdate{}
-		}
-		return updateTruth{Packages: packages, Firmware: firmware, CheckedAt: time.Now()}, nil
+		return updatecheck.Write(s.stateDir, truth)
 	})
 }
 
@@ -194,11 +115,11 @@ func (s *Server) handleUpdatesInstall(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 }
 
-// updatesSection leads Maintenance with the two lanes. It reads only the cache, so
-// it costs a page render nothing; a router that has never checked says so and
-// offers the check, which is the whole content of that state.
-func updatesSection() widget.Widget {
-	truth, known := updateChecks.state()
+// updatesSection leads Maintenance with the two lanes. It reads only the recorded
+// answer, so it costs a page render nothing; a router that has never checked says
+// so and offers the check, which is the whole content of that state.
+func (s *Server) updatesSection(ctx context.Context, sid string) widget.Widget {
+	truth, known := s.updateTruth()
 	checking := updateChecks.running()
 	children := []widget.Widget{}
 	if err := updateChecks.takeFailure(); err != nil {
@@ -209,7 +130,7 @@ func updatesSection() widget.Widget {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Update did not complete",
 			Body: fmt.Sprintf("Installing the available packages failed (%v). Nothing was left half-installed — apk applies an update as one transaction.", err)})
 	}
-	children = append(children, softwareLane(truth, known, checking), firmwareLane(truth, known))
+	children = append(children, softwareLane(truth, known, checking), firmwareLane(truth, known), s.autocheckLane(ctx, sid))
 	return &widget.Section{
 		Title:    "Updates",
 		Sub:      updatesCheckedLine(truth, known, checking),
@@ -218,9 +139,66 @@ func updatesSection() widget.Widget {
 	}
 }
 
+// autocheckLane is the standing arrangement under the two answers: whether this
+// router goes looking on its own, so an owner who never opens this page still
+// learns that an update exists (ADR-014). The switch reads its state from uci
+// through rpcd, and saving it stages like every other setting.
+func (s *Server) autocheckLane(ctx context.Context, sid string) widget.Widget {
+	value, readable := s.versoOption(ctx, sid, updatesSectionName, autocheckOption)
+	if !readable {
+		// The setting could not be read, so there is no honest switch to draw and
+		// no state to save from. Say why rather than show a toggle that might state
+		// the opposite of what the router does — and offer no Save, so a guessed
+		// value is never written.
+		return &widget.Callout{Variant: "neutral", Compact: true,
+			Body: "Whether this router checks for updates on its own could not be read just now. Reload in a moment."}
+	}
+	return &widget.Form{
+		Action: maintenancePath + "/updates/autocheck",
+		Submit: "Save",
+		Fields: []widget.Widget{&widget.Settings{Items: []widget.SettingsItem{{
+			Title: "Check for updates automatically",
+			Desc:  "Once a day this router asks what is available. It installs nothing on its own.",
+			Code:  updatesSectionName + "." + autocheckOption,
+			Toggle: &widget.SettingsToggle{
+				Name: autocheckOption,
+				On:   value == optionOn,
+			},
+		}}}},
+	}
+}
+
+// handleUpdatesAutocheck stages the daily check's gate. A switch that is off
+// posts nothing, so an absent field is the person saying no — and that no is
+// written as an explicit 0 rather than by clearing the option, because an absence
+// is what the next package install seeds back to on (ADR-014 §2).
+func (s *Server) handleUpdatesAutocheck(w http.ResponseWriter, r *http.Request) {
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+	// The switch posts its value only when on, and that value is optionOn — so
+	// exactly that string means yes, and anything else (a different value, an
+	// absent field) means no. This mirrors the reader's rule: optionOn is the only
+	// truth for "on" (see settings.go).
+	value := optionOff
+	if r.PostForm.Get(autocheckOption) == optionOn {
+		value = optionOn
+	}
+	if err := s.stageVersoOption(r.Context(), s.sessionSID(r), updatesSectionName, autocheckOption, value); err != nil {
+		log.Printf("verso: updates: staging the automatic check failed: %v", err)
+		s.flash(r, "danger", tr("That setting could not be saved just now. Try again in a moment."))
+	} else {
+		s.flash(r, "info", tr("Saved. Use Save & Apply to put the change into effect."))
+	}
+	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
+}
+
 // updatesCheckedLine is the quiet freshness statement under the heading — the age
 // of the answer every lane below is reading.
-func updatesCheckedLine(truth updateTruth, known, checking bool) string {
+func updatesCheckedLine(truth updatecheck.Truth, known, checking bool) string {
 	switch {
 	case checking:
 		return "Asking the package feeds and the update server what this router could install…"
@@ -243,7 +221,7 @@ func updatesCheckForm(checking bool) widget.Widget {
 
 // softwareLane is the package half: what the feeds hold newer copies of, Verso's
 // own package leading, and the one act that installs them all.
-func softwareLane(truth updateTruth, known, checking bool) widget.Widget {
+func softwareLane(truth updatecheck.Truth, known, checking bool) widget.Widget {
 	section := &widget.Section{Title: "Software", Hairline: true}
 	switch {
 	case !known:
@@ -255,7 +233,7 @@ func softwareLane(truth updateTruth, known, checking bool) widget.Widget {
 	}
 	section.Sub = softwareLead(truth)
 	section.Children = []widget.Widget{
-		upgradableList(truth.Packages),
+		upgradableList(truth),
 		&widget.Form{Action: maintenancePath + "/updates/install", NoSubmit: true, Fields: []widget.Widget{
 			updatesInstallButton(checking),
 		}},
@@ -265,8 +243,8 @@ func softwareLane(truth updateTruth, known, checking bool) widget.Widget {
 
 // softwareLead names the update a person came for. Verso's own package is that one
 // whenever it is in the set; otherwise the set speaks as a count.
-func softwareLead(truth updateTruth) string {
-	verso, ok := truth.verso()
+func softwareLead(truth updatecheck.Truth) string {
+	verso, ok := truth.Verso()
 	if !ok {
 		return packagesAre(len(truth.Packages)) + " newer in your feeds than what this router runs."
 	}
@@ -296,31 +274,28 @@ func otherPackages(n int) string {
 // disclosure as a condensed table — a person acts on the lead and audits the
 // tail, and the tail is tabular fact (name, version → version), not a run of
 // options.
-func upgradableList(packages []openwrt.PackageUpgrade) widget.Widget {
+func upgradableList(truth updatecheck.Truth) widget.Widget {
 	var children []widget.Widget
-	for _, p := range packages {
-		if p.Name != versoPackage {
-			continue
-		}
+	if verso, ok := truth.Verso(); ok {
 		children = append(children, &widget.Settings{Style: "card", Items: []widget.SettingsItem{{
-			Title: p.Name,
-			Desc:  "This router runs " + p.Installed,
-			Value: p.Available,
+			Title: verso.Name,
+			Desc:  "This router runs " + verso.Installed,
+			Value: verso.Available,
 		}}})
+		// A lead that is the whole story needs no manifest behind it.
+		if len(truth.Packages) == 1 {
+			return children[0]
+		}
 	}
-	// A lead that is the whole story needs no manifest behind it.
-	if len(children) != 0 && len(packages) == 1 {
-		return children[0]
-	}
-	rows := make([]widget.TableRow, 0, len(packages))
-	for _, p := range packages {
+	rows := make([]widget.TableRow, 0, len(truth.Packages))
+	for _, p := range truth.Packages {
 		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
 			{Text: p.Name},
 			{Text: p.Installed + " → " + p.Available},
 		}})
 	}
 	children = append(children, &widget.Disclosure{
-		Summary: changesSummary(len(packages)),
+		Summary: changesSummary(len(truth.Packages)),
 		Children: []widget.Widget{&widget.Table{
 			Condensed: true,
 			Columns: []widget.TableColumn{
@@ -354,7 +329,7 @@ func updatesInstallButton(checking bool) *widget.Button {
 // firmwareLane is the system half. Where the package lane always has an answer,
 // this one may only have a reason there is none — and a named reason is what the
 // person needs, so each rung says its own plain sentence.
-func firmwareLane(truth updateTruth, known bool) widget.Widget {
+func firmwareLane(truth updatecheck.Truth, known bool) widget.Widget {
 	section := &widget.Section{Title: "System firmware", Hairline: true}
 	if !known {
 		section.Sub = "Whether a newer OpenWrt build exists for this router is not known until it checks."

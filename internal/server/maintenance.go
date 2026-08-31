@@ -128,7 +128,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	// Updates lead: what the router could install is the question a person opens
 	// this page with. The manual image upload below is the permanent floor under
 	// them — the way in when no server can build for this device.
-	root := &widget.Stack{Children: []widget.Widget{updatesSection(), software, backup, restart, factory}}
+	root := &widget.Stack{Children: []widget.Widget{s.updatesSection(r.Context(), sid), software, backup, restart, factory}}
 	lang, t := s.localize(r)
 	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)

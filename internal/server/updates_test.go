@@ -6,40 +6,41 @@ package server
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 )
 
 // idleUpdates puts the device-wide update jobs back to a known empty state. The
-// truth is one router's, not one test's, so every test starts from "never checked".
+// jobs are one router's, not one test's, so every test starts from "nothing
+// running, nothing failed".
 func idleUpdates(t *testing.T) {
 	t.Helper()
 	reset := func() {
-		updateChecks.mu.Lock()
-		updateChecks.active, updateChecks.known, updateChecks.failure = false, false, nil
-		updateChecks.truth = updateTruth{}
-		updateChecks.mu.Unlock()
-		packageUpgrade.mu.Lock()
-		packageUpgrade.active, packageUpgrade.failure = false, nil
-		packageUpgrade.mu.Unlock()
-		feedRefresh.mu.Lock()
-		feedRefresh.active, feedRefresh.failure = false, nil
-		feedRefresh.mu.Unlock()
+		for _, job := range []*backgroundJob{&updateChecks, &packageUpgrade, &feedRefresh} {
+			job.mu.Lock()
+			job.active, job.failure = false, nil
+			job.mu.Unlock()
+		}
 	}
 	reset()
 	t.Cleanup(reset)
 }
 
-// knownUpdates installs a completed check's answer directly, so a render test
-// exercises the surfaces rather than the background job's timing.
-func knownUpdates(truth updateTruth) {
-	updateChecks.mu.Lock()
-	defer updateChecks.mu.Unlock()
-	updateChecks.known, updateChecks.truth = true, truth
+// knownUpdates records a completed check's answer where every surface reads it,
+// so a render test exercises the surfaces rather than the background job's
+// timing — and takes the same path the daily cron run does.
+func knownUpdates(t *testing.T, s *Server, truth updatecheck.Truth) {
+	t.Helper()
+	if err := updatecheck.Write(s.stateDir, truth); err != nil {
+		t.Fatalf("recording the update truth: %v", err)
+	}
 }
 
 // waitForCheck blocks until the background check settles, the way a person's next
@@ -55,9 +56,10 @@ func waitForCheck(t *testing.T) {
 	}
 }
 
-// TestUpdateCheckFillsTheCacheOnce: an on-demand check reads both lanes in the
-// background, answers the browser at once, and refuses a second concurrent run.
-func TestUpdateCheckFillsTheCacheOnce(t *testing.T) {
+// TestUpdateCheckRecordsTheAnswerOnce: an on-demand check reads both lanes in the
+// background, answers the browser at once, writes what it found where every
+// surface reads it, and refuses a second concurrent run.
+func TestUpdateCheckRecordsTheAnswerOnce(t *testing.T) {
 	idleUpdates(t)
 	backend := fakeBackend{
 		access:        true,
@@ -66,8 +68,8 @@ func TestUpdateCheckFillsTheCacheOnce(t *testing.T) {
 	}
 	s := newServer(t, backend)
 
-	if _, known := updateChecks.state(); known {
-		t.Fatal("a fresh router should hold no cached answer")
+	if _, known := s.updateTruth(); known {
+		t.Fatal("a fresh router should hold no recorded answer")
 	}
 	rec := postPlugin(t, s, "/system/maintenance/updates/check", url.Values{})
 	if rec.Code != 303 {
@@ -75,14 +77,14 @@ func TestUpdateCheckFillsTheCacheOnce(t *testing.T) {
 	}
 	waitForCheck(t)
 
-	truth, known := updateChecks.state()
+	truth, known := s.updateTruth()
 	if !known || len(truth.Packages) != 1 || truth.Packages[0].Name != "verso" {
-		t.Fatalf("cache = %+v known=%v", truth, known)
+		t.Fatalf("recorded answer = %+v known=%v", truth, known)
 	}
 	if truth.Firmware.State != openwrt.FirmwareCurrent {
 		t.Errorf("firmware lane = %q, want the check's answer", truth.Firmware.State)
 	}
-	if !truth.pending() {
+	if !truth.Pending() {
 		t.Error("an upgradable package is something to install")
 	}
 	if truth.CheckedAt.IsZero() {
@@ -90,18 +92,39 @@ func TestUpdateCheckFillsTheCacheOnce(t *testing.T) {
 	}
 }
 
+// TestUpdateCheckSurvivesAShellRestart: the answer is a file on the device, so a
+// process that never ran the check still reports what the last one found — which
+// is what makes the daily cron run worth having.
+func TestUpdateCheckSurvivesAShellRestart(t *testing.T) {
+	idleUpdates(t)
+	first := newServer(t, fakeBackend{access: true})
+	knownUpdates(t, first, updatecheck.Truth{
+		CheckedAt: time.Now().Add(-3 * time.Hour),
+		Packages:  []openwrt.PackageUpgrade{{Name: "verso", Installed: "0.0.22", Available: "0.0.23"}},
+	})
+
+	restarted := newServer(t, fakeBackend{access: true})
+	restarted.stateDir = first.stateDir
+	body := get(t, restarted, "/system/maintenance").Body.String()
+	for _, want := range []string{"Checked", "3 h ago", "Verso 0.0.23 is available"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("a restarted shell should read the recorded answer, missing %q:\n%s", want, body)
+		}
+	}
+}
+
 // TestUpdateCheckRefusesASecondRun: the check is one act device-wide.
 func TestUpdateCheckRefusesASecondRun(t *testing.T) {
 	idleUpdates(t)
 	blocked := make(chan struct{})
-	started := updateChecks.start(func() (updateTruth, error) {
+	started := updateChecks.start(func() error {
 		<-blocked
-		return updateTruth{}, nil
+		return nil
 	})
 	if !started {
 		t.Fatal("an idle job should accept the first run")
 	}
-	if updateChecks.start(func() (updateTruth, error) { return updateTruth{}, nil }) {
+	if updateChecks.start(func() error { return nil }) {
 		t.Error("a second check should be refused while one runs")
 	}
 	close(blocked)
@@ -112,16 +135,16 @@ func TestUpdateCheckRefusesASecondRun(t *testing.T) {
 // leaves the previous answer standing — a stale truth beats no truth.
 func TestUpdateCheckKeepsTheLastAnswerOnFailure(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{
+	s := newServer(t, fakeBackend{access: true, pkgUpgradableErr: errors.New("helper unreachable")})
+	knownUpdates(t, s, updatecheck.Truth{
 		Packages:  []openwrt.PackageUpgrade{{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"}},
 		CheckedAt: time.Now().Add(-2 * time.Hour),
 	})
-	s := newServer(t, fakeBackend{access: true, pkgUpgradableErr: errors.New("helper unreachable")})
 
 	postPlugin(t, s, "/system/maintenance/updates/check", url.Values{})
 	waitForCheck(t)
 
-	truth, known := updateChecks.state()
+	truth, known := s.updateTruth()
 	if !known || len(truth.Packages) != 1 {
 		t.Fatalf("a failed check should not erase the previous answer: %+v", truth)
 	}
@@ -158,7 +181,8 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 // fold behind the seam, and one act installs them all.
 func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{
+	s := newServer(t, fakeBackend{access: true})
+	knownUpdates(t, s, updatecheck.Truth{
 		CheckedAt: time.Now(),
 		Packages: []openwrt.PackageUpgrade{
 			{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
@@ -168,7 +192,6 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 			{Name: "uhttpd", Installed: "2025.10.03", Available: "2026.06.16"},
 		},
 	})
-	s := newServer(t, fakeBackend{access: true})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
 		"Verso 0.0.23 is available", "this router runs 0.0.22",
@@ -187,11 +210,12 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 // and claims no company it does not have.
 func TestMaintenanceUpdatesVersoAlone(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{
+	s := newServer(t, fakeBackend{access: true})
+	knownUpdates(t, s, updatecheck.Truth{
 		CheckedAt: time.Now(),
 		Packages:  []openwrt.PackageUpgrade{{Name: "verso", Installed: "0.0.22", Available: "0.0.23"}},
 	})
-	body := get(t, newServer(t, fakeBackend{access: true}), "/system/maintenance").Body.String()
+	body := get(t, s, "/system/maintenance").Body.String()
 	if !strings.Contains(body, "Verso 0.0.23 is available") {
 		t.Errorf("Verso's own update should lead by name:\n%s", body)
 	}
@@ -204,11 +228,11 @@ func TestMaintenanceUpdatesVersoAlone(t *testing.T) {
 // set speaks as a count and the manifest table carries the detail.
 func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{
+	s := newServer(t, fakeBackend{access: true})
+	knownUpdates(t, s, updatecheck.Truth{
 		CheckedAt: time.Now(),
 		Packages:  []openwrt.PackageUpgrade{{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"}},
 	})
-	s := newServer(t, fakeBackend{access: true})
 	body := get(t, s, "/system/maintenance").Body.String()
 	if !strings.Contains(body, "1 package is newer in your feeds") {
 		t.Errorf("a single upgradable package should read as one:\n%s", body)
@@ -222,11 +246,11 @@ func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 // statement with the age of the answer, not an empty space.
 func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{
+	s := newServer(t, fakeBackend{access: true})
+	knownUpdates(t, s, updatecheck.Truth{
 		CheckedAt: time.Now().Add(-90 * time.Minute),
 		Firmware:  openwrt.FirmwareUpdate{State: openwrt.FirmwareCurrent, From: "25.12.4 r32933-4ccb782af7", Server: "https://sysupgrade.mono.si"},
 	})
-	s := newServer(t, fakeBackend{access: true})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
 		"Every installed package is the newest version",
@@ -284,8 +308,9 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			idleUpdates(t)
-			knownUpdates(updateTruth{CheckedAt: time.Now(), Firmware: tc.firmware})
-			body := get(t, newServer(t, fakeBackend{access: true}), "/system/maintenance").Body.String()
+			s := newServer(t, fakeBackend{access: true})
+			knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Firmware: tc.firmware})
+			body := get(t, s, "/system/maintenance").Body.String()
 			for _, want := range tc.want {
 				if !strings.Contains(body, want) {
 					t.Errorf("the %s rung is missing %q:\n%s", tc.name, want, body)
@@ -313,7 +338,7 @@ func TestUpdateInstallRunsOnceInTheBackground(t *testing.T) {
 		blocked:     blocked,
 	}
 	s := newServer(t, backend)
-	knownUpdates(updateTruth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "verso", Installed: "0.0.22", Available: "0.0.23"}}})
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "verso", Installed: "0.0.22", Available: "0.0.23"}}})
 
 	if rec := postPlugin(t, s, "/system/maintenance/updates/install", url.Values{}); rec.Code != 303 {
 		t.Fatalf("install POST = %d, want an immediate redirect", rec.Code)
@@ -370,29 +395,245 @@ func TestDeviceRowNamesTheRouter(t *testing.T) {
 // and nowhere else.
 func TestDeviceRowMarksAPendingUpdate(t *testing.T) {
 	idleUpdates(t)
-	knownUpdates(updateTruth{CheckedAt: time.Now(), Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, To: "25.12.5"}})
 	s := newServer(t, fakeBackend{access: true, hn: "gateway"})
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, To: "25.12.5"}})
 	body := get(t, s, "/").Body.String()
 	if !strings.Contains(body, "Update ready") || !strings.Contains(body, "bg-amber-500 ring-2") {
 		t.Errorf("a pending update should mark the device row:\n%s", body)
 	}
 }
 
-// TestOverviewSoftwareTileReadsTheCache: the home page's tile is the same truth as
-// the footer's mark, and the same doorway.
-func TestOverviewSoftwareTileReadsTheCache(t *testing.T) {
+// TestOverviewSoftwareTileReadsTheRecordedTruth: the home page's tile is the same
+// truth as the footer's mark, and the same doorway.
+func TestOverviewSoftwareTileReadsTheRecordedTruth(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true})
 	if body := get(t, s, "/").Body.String(); !strings.Contains(body, "Installed software") {
 		t.Errorf("an unchecked router should claim nothing on the tile:\n%s", body)
 	}
-	knownUpdates(updateTruth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{
 		{Name: "verso", Installed: "0.0.22", Available: "0.0.23"},
 		{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
 	}})
 	body := get(t, s, "/").Body.String()
 	if !strings.Contains(body, "2 packages ready") || !strings.Contains(body, `href="/system/maintenance"`) {
 		t.Errorf("the tile should state the count and lead to the maintenance page:\n%s", body)
+	}
+}
+
+// TestAutocheckRowReadsTheSetting: the switch states what the config says, and a
+// config that says nothing reads as off — an unattended path that touches the
+// network is opt-in at the system level (ADR-014 §2).
+func TestAutocheckRowReadsTheSetting(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		uci  map[string]map[string]any
+		on   bool
+	}{
+		{name: "an empty config", uci: nil},
+		{
+			name: "an explicit off",
+			uci:  map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "0"}}},
+		},
+		{
+			name: "an explicit on",
+			uci:  map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "1"}}},
+			on:   true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idleUpdates(t)
+			s := newServer(t, fakeBackend{access: true, uci: tc.uci})
+			body := get(t, s, "/system/maintenance").Body.String()
+			for _, want := range []string{
+				"Check for updates automatically",
+				"It installs nothing on its own.",
+				">updates.autocheck<",
+				`name="autocheck"`,
+				`action="/system/maintenance/updates/autocheck"`,
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("the automatic-check row is missing %q:\n%s", want, body)
+				}
+			}
+			// The switch's checkbox carries `checked` only when the option reads 1.
+			checked := strings.Contains(body, `value="1" checked name="autocheck"`)
+			if checked != tc.on {
+				t.Errorf("with %s the switch is on=%v, want %v", tc.name, checked, tc.on)
+			}
+		})
+	}
+}
+
+// TestAutocheckRowUnreadableShowsNoSwitch: when Verso's own config cannot be
+// read, the row draws no switch. A toggle guessed off for a setting that is
+// actually on would state the opposite of what the router does — the one control
+// whose purpose is honesty about unattended network activity — and saving from a
+// guessed state would write a decision the owner never made (ADR-014 §2). The row
+// says why instead, and offers no Save.
+func TestAutocheckRowUnreadableShowsNoSwitch(t *testing.T) {
+	idleUpdates(t)
+	s := newServer(t, fakeBackend{access: true, uciReadErr: errors.New("rpcd refused")})
+	body := get(t, s, "/system/maintenance").Body.String()
+	if !strings.Contains(body, "could not be read just now") {
+		t.Errorf("an unreadable setting should say so plainly:\n%s", body)
+	}
+	if strings.Contains(body, `name="autocheck"`) {
+		t.Error("no switch should be drawn when the setting cannot be read")
+	}
+	if strings.Contains(body, `action="/system/maintenance/updates/autocheck"`) {
+		t.Error("no Save form should be offered when the setting cannot be read")
+	}
+}
+
+// TestAutocheckSaveCreatesTheSection: a fresh install ships an empty config, so
+// the first setting an owner changes is also the section's first appearance —
+// created named and typed, then written, both staged (ADR-013 §1).
+func TestAutocheckSaveCreatesTheSection(t *testing.T) {
+	idleUpdates(t)
+	var adds []string
+	var writes []uciWrite
+	s := newServer(t, fakeBackend{access: true, adds: &adds, writes: &writes})
+
+	rec := postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}})
+	if rec.Code != 303 {
+		t.Fatalf("autocheck POST = %d, want a redirect back to the page", rec.Code)
+	}
+	if len(adds) != 1 || adds[0] != "verso updates updates" {
+		t.Fatalf("UCIAdd calls = %v, want one named updates section in verso", adds)
+	}
+	if len(writes) != 1 || writes[0].config != "verso" || writes[0].section != "updates" || writes[0].values["autocheck"] != "1" {
+		t.Fatalf("staged writes = %+v, want verso.updates.autocheck = 1", writes)
+	}
+}
+
+// TestAutocheckSaveReusesTheSection: a config that already has the section gains
+// no second one.
+func TestAutocheckSaveReusesTheSection(t *testing.T) {
+	idleUpdates(t)
+	var adds []string
+	var writes []uciWrite
+	s := newServer(t, fakeBackend{
+		access: true, adds: &adds, writes: &writes,
+		uci: map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "1"}}},
+	})
+
+	postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}})
+	if len(adds) != 0 {
+		t.Errorf("an existing section should not be created again: %v", adds)
+	}
+	if len(writes) != 1 || writes[0].values["autocheck"] != "1" {
+		t.Errorf("staged writes = %+v, want the option written once", writes)
+	}
+}
+
+// TestAutocheckSaveWritesAnExplicitOff: an unchecked switch posts nothing, and
+// that silence is written as 0 rather than by clearing the option — an absent
+// option is what the next package install seeds back to on (ADR-014 §2).
+func TestAutocheckSaveWritesAnExplicitOff(t *testing.T) {
+	idleUpdates(t)
+	var writes []uciWrite
+	var deletes []string
+	s := newServer(t, fakeBackend{
+		access: true, writes: &writes, deletes: &deletes,
+		uci: map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "1"}}},
+	})
+
+	postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{})
+	if len(writes) != 1 || writes[0].values["autocheck"] != "0" {
+		t.Fatalf("staged writes = %+v, want verso.updates.autocheck = 0", writes)
+	}
+	if len(deletes) != 0 {
+		t.Errorf("turning the setting off should never clear the option: %v", deletes)
+	}
+}
+
+// TestAutocheckSaveSpeaksOnce: the setting's outcome — saved, or refused —
+// reaches the person on the page the redirect lands on, and only there. One
+// session carries both requests, the way a browser does.
+func TestAutocheckSaveSpeaksOnce(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		backend fakeBackend
+		want    string
+	}{
+		{
+			name:    "a staged setting",
+			backend: fakeBackend{access: true},
+			want:    "Use Save &amp; Apply to put the change into effect",
+		},
+		{
+			name:    "a write rpcd refused",
+			backend: fakeBackend{access: true, uciErr: errors.New("rpcd refused")},
+			want:    "could not be saved",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idleUpdates(t)
+			s := newServer(t, tc.backend)
+			do := sameSession(t, s)
+
+			if rec := do(http.MethodPost, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}}); rec.Code != http.StatusSeeOther {
+				t.Fatalf("autocheck POST = %d, want a redirect", rec.Code)
+			}
+			if body := do(http.MethodGet, maintenancePath, nil).Body.String(); !strings.Contains(body, tc.want) {
+				t.Errorf("the page the redirect lands on is missing %q:\n%s", tc.want, body)
+			}
+			if body := do(http.MethodGet, maintenancePath, nil).Body.String(); strings.Contains(body, tc.want) {
+				t.Error("an outcome already seen should not be repeated")
+			}
+		})
+	}
+}
+
+// sameSession returns a request driver holding one session across calls, so a
+// one-shot flash set by a POST is observable on the render that follows it.
+func sameSession(t *testing.T, s *Server) func(method, path string, form url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	sess, _ := s.sessions.get(token)
+	return func(method, path string, form url.Values) *httptest.ResponseRecorder {
+		var req *http.Request
+		if form != nil {
+			form.Set("_csrf", sess.csrf)
+			req = httptest.NewRequest(method, path, strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else {
+			req = httptest.NewRequest(method, path, nil)
+		}
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec
+	}
+}
+
+// TestStagedVersoSettingReachesTheCapsule: Verso's own config is declared by the
+// shell, so a staged setting counts, reads, and discards like a firewall rule
+// (ADR-013 §3).
+func TestStagedVersoSettingReachesTheCapsule(t *testing.T) {
+	idleUpdates(t)
+	var reverts []string
+	s := newServer(t, fakeBackend{
+		access:  true,
+		reverts: &reverts,
+		changes: map[string][][]string{"verso": {{"set", "updates", "autocheck", "0"}}},
+	})
+
+	body := get(t, s, "/system/maintenance").Body.String()
+	for _, want := range []string{"1 staged change", "verso: updates.autocheck = 0"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the capsule is missing %q:\n%s", want, body)
+		}
+	}
+	if rec := postPlugin(t, s, "/uci/discard", url.Values{}); rec.Code != 200 {
+		t.Fatalf("discard = %d, want 200", rec.Code)
+	}
+	if len(reverts) != 1 || reverts[0] != "verso" {
+		t.Errorf("discard reverted %v, want the verso config", reverts)
 	}
 }
 

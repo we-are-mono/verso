@@ -27,11 +27,15 @@ type capsuleView struct {
 	Items []string // one plain line per change tuple
 }
 
-// declaredConfigsUnion is the set of uci configs any installed plugin declares —
-// the surface the capsule reports and discards. Changes staged outside it (a
-// concurrent uci shell on an undeclared config) are not the shell's to manage.
+// declaredConfigsUnion is the set of uci configs any installed plugin declares,
+// plus the shell's own (ADR-013) — the surface the capsule reports and discards.
+// Changes staged outside it (a concurrent uci shell on an undeclared config) are
+// not the shell's to manage.
 func (s *Server) declaredConfigsUnion() map[string]bool {
 	union := make(map[string]bool)
+	for _, cfg := range shellConfigs {
+		union[cfg] = true
+	}
 	for _, m := range s.manifestList() {
 		for cfg := range declaredUCIConfigs(m) {
 			union[cfg] = true

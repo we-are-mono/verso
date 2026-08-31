@@ -16,6 +16,25 @@ start_service() {
 	# file type, owner, and basename. Matches the mode the plugin init scripts set.
 	chmod 1770 /var/run/verso
 
+	# The update truth has two writers — the daily cron run as root and the
+	# shell's own check as `verso` — and each replaces the file by renaming over
+	# it. The sticky parent forbids that across accounts, so the file lives one
+	# level down in a directory the shell's account owns: both writers can rename
+	# into it, while the sticky parent then keeps any other group member (a
+	# plugin, under its own uid) from swapping the directory once it exists.
+	#
+	# Creating it is the exposed moment: the parent is group-writable, so a plugin
+	# account starting before this could plant a symlink where the directory
+	# belongs, and a chown through it would hand that account whatever it points
+	# at. Unlink anything already there (rm frees a symlink without following it),
+	# then create with a plain mkdir, which fails on a link that reappears rather
+	# than following it — so only a directory we just made is ever chowned.
+	rm -rf /var/run/verso/state
+	if mkdir /var/run/verso/state 2>/dev/null; then
+		chown verso:verso /var/run/verso/state
+		chmod 0700 /var/run/verso/state
+	fi
+
 	procd_open_instance verso-rpcd
 	procd_set_param command /usr/sbin/verso-rpcd --socket /var/run/verso/verso-rpcd.sock
 	# Root owns the narrow privileged actions. The socket admits the verso group,

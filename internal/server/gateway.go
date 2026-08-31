@@ -480,7 +480,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 		// a plugin never adds bare sections it then has to chase.
 		section := op.Section
 		if section == "" && op.Type != "" {
-			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type)
+			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type, "")
 			if err != nil {
 				log.Printf("verso: plugin %q section create in uci %q failed: %v", m.ID, op.Config, err)
 				return s.stageFailed(tr)
@@ -571,7 +571,7 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 		if secType == "" {
 			return s.malformedOperation(m, tr)
 		}
-		_, err = s.backend.UCIAdd(ctx, sid, config, secType)
+		_, err = s.backend.UCIAdd(ctx, sid, config, secType, "")
 	case widget.RepeaterOpRemove:
 		section := form.Get(widget.RepeaterSectionField)
 		if section == "" {

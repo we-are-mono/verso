@@ -32,6 +32,12 @@ use std::time::Duration;
 const DEFAULT_SOCKET: &str = "/var/run/verso/verso-rpcd.sock";
 const MAX_REQUEST: u64 = 128 * 1024;
 const VERSO_UID: u32 = 6000;
+
+/// rpcd's local-root convention: automation running as root on the device itself
+/// has no operator session to borrow and presents an all-zero session id instead.
+/// rpcd's own `session.access` answers `false` for it on every verb, so honoring
+/// it is this helper's decision to make, and the bound below is where it is made.
+const ZERO_SID: &str = "00000000000000000000000000000000";
 const SOL_SOCKET: i32 = 1;
 const SO_PEERCRED: i32 = 17;
 
@@ -184,7 +190,7 @@ fn handle(mut stream: UnixStream, state: &State) -> Result<(), String> {
         .read_line(&mut line)
         .map_err(|error| format!("read request: {error}"))?;
     let response = match serde_json::from_str::<Value>(&line) {
-        Ok(request) => response(dispatch(&request, state)),
+        Ok(request) => response(dispatch(&request, state, uid)),
         Err(error) => response(Err(Failure::invalid(format!(
             "invalid request JSON: {error}"
         )))),
@@ -234,23 +240,38 @@ fn response(result: Result<Value, Failure>) -> Value {
     }
 }
 
-fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
+/// The zero session's whole grant: the two verbs that only read what this device
+/// could install, and only for a caller the kernel says is root. Unattended work
+/// runs under this and nothing else, so the blast radius of the daily update check
+/// is "the router found out" (ADR-014 §3). The shell's own requests never take
+/// this path — an operator's action always carries that operator's session — so
+/// uid 6000 gets nothing here however it asks.
+fn zero_session_grants(uid: u32, method: &str) -> bool {
+    uid == 0 && matches!(method, "pkgUpgradable" | "firmwareCheck")
+}
+
+fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> {
     let method = field(request, "method")?;
     let sid = field(request, "sid")?;
-    match ubus::access(sid, method) {
-        Ok(true) => {}
-        Ok(false) => {
-            return Err(Failure {
-                status: STATUS_PERMISSION_DENIED,
-                message: "permission denied".into(),
-            });
+    let denied = || Failure {
+        status: STATUS_PERMISSION_DENIED,
+        message: "permission denied".into(),
+    };
+    if sid == ZERO_SID {
+        // rpcd holds no session to consult for the zero sid — asking it would deny
+        // every verb, including the two this path exists for. The peer's kernel-
+        // reported uid and the grant above are the whole decision.
+        if !zero_session_grants(uid, method) {
+            return Err(denied());
         }
-        Err(error) => {
-            eprintln!("verso-rpcd: authorization failed for {method}: {error}");
-            return Err(Failure {
-                status: STATUS_PERMISSION_DENIED,
-                message: "permission denied".into(),
-            });
+    } else {
+        match ubus::access(sid, method) {
+            Ok(true) => {}
+            Ok(false) => return Err(denied()),
+            Err(error) => {
+                eprintln!("verso-rpcd: authorization failed for {method}: {error}");
+                return Err(denied());
+            }
         }
     }
 
@@ -984,6 +1005,76 @@ fn valid_username(username: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every verb dispatch answers, so the grant below is checked against the
+    /// whole surface rather than a remembered subset of it.
+    const EVERY_METHOD: &[&str] = &[
+        "setPassword",
+        "setSystemTime",
+        "pkgStatus",
+        "pkgUpdate",
+        "pkgInstalled",
+        "pkgUpgradable",
+        "pkgUpgrade",
+        "firmwareCheck",
+        "pkgSearch",
+        "pkgInstall",
+        "pkgRemove",
+        "rootHasPassword",
+        "firewallCounters",
+        "createBackup",
+        "restoreBackup",
+        "validateFirmware",
+        "installFirmware",
+        "restart",
+        "factoryReset",
+    ];
+
+    #[test]
+    fn the_zero_session_grants_root_exactly_the_two_read_verbs() {
+        for method in EVERY_METHOD {
+            let reading = matches!(*method, "pkgUpgradable" | "firmwareCheck");
+            assert_eq!(
+                zero_session_grants(0, method),
+                reading,
+                "root's zero-session grant for {method}"
+            );
+            // The shell keeps using operator sessions; the zero sid buys uid 6000
+            // nothing, not even the reads.
+            assert!(
+                !zero_session_grants(VERSO_UID, method),
+                "the shell's account must not ride the zero session for {method}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_zero_session_refuses_a_write_verb_from_root() {
+        // No ubus socket is involved: the zero sid short-circuits before any
+        // session lookup, which is exactly what makes this bound the helper's own.
+        let state = State {
+            packages: Mutex::new(()),
+            maintenance: Mutex::new(()),
+        };
+        let request = json!({
+            "method": "setPassword",
+            "sid": ZERO_SID,
+            "args": {"username": "root", "password": "hunter2"},
+        });
+        let failure = dispatch(&request, &state, 0).expect_err("denied");
+        assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+    }
+
+    #[test]
+    fn the_zero_session_refuses_a_read_verb_from_the_shell() {
+        let state = State {
+            packages: Mutex::new(()),
+            maintenance: Mutex::new(()),
+        };
+        let request = json!({"method": "pkgUpgradable", "sid": ZERO_SID});
+        let failure = dispatch(&request, &state, VERSO_UID).expect_err("denied");
+        assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+    }
 
     #[test]
     fn root_password_detection() {
