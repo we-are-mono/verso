@@ -30,6 +30,8 @@ func (*Modal) isWidget() {}
 
 func (m *Modal) children() []Widget { return m.Children }
 
+func (m *Modal) prune(keep func(Widget) bool) { m.Children = pruneList(m.Children, keep) }
+
 // UnmarshalJSON decodes a modal's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing.
 func (m *Modal) UnmarshalJSON(data []byte) error {

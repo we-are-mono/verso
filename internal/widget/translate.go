@@ -243,6 +243,7 @@ func translateSettingsItems(items []SettingsItem, t func(string) string) {
 func translateTable(n *Table, t func(string) string) {
 	n.Title = t(n.Title)
 	n.DrawerLabel = t(n.DrawerLabel)
+	n.EmptyText = t(n.EmptyText)
 	for i := range n.Columns {
 		n.Columns[i].Label = t(n.Columns[i].Label)
 	}

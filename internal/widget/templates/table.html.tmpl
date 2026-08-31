@@ -244,6 +244,16 @@
   <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}} class="w-full border-collapse text-sm{{if .AlignTop}} [&_td]:align-top{{end}}">
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
+      {{if .Empty}}
+      {{/* nothing to list: the column heads are gone (they describe data, and
+           over none they are chrome) and one quiet row states the absence on the
+           wash a group head wears, with a single hairline so the section keeps
+           its footprint. A listing that IS the page uses the empty widget
+           instead — this row serves one section among several. */}}
+      <tr>
+        <td colspan="{{.ColumnSpan}}" class="border-b border-slate-200 bg-slate-50 px-3.5 py-6 text-center text-sm text-slate-500">{{.EmptyText}}</td>
+      </tr>
+      {{else}}
 {{template "table.rows" .Rows}}
       {{if .SeamSummary}}
       {{/* A genuine spanning row keeps the collapsed affordance and every
@@ -260,6 +270,7 @@
         </td>
       </tr>
 {{template "table.rows" .SeamRows}}
+      {{end}}
       {{end}}
     </tbody>
   </table>

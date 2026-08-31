@@ -52,6 +52,15 @@ func (s *Section) children() []Widget {
 	return append([]Widget{s.Control}, s.Children...)
 }
 
+func (s *Section) prune(keep func(Widget) bool) {
+	if s.Control != nil {
+		if control := pruneList([]Widget{s.Control}, keep); len(control) == 0 {
+			s.Control = nil
+		}
+	}
+	s.Children = pruneList(s.Children, keep)
+}
+
 // UnmarshalJSON decodes the contents recursively through Decode, so an unknown
 // child type fails loudly rather than vanishing.
 func (s *Section) UnmarshalJSON(data []byte) error {

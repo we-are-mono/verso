@@ -464,6 +464,9 @@ mod tests {
             "the chip names every option the row moves"
         );
         assert_eq!(names["items"][1]["toggle"], serde_json::json!({"name": "expandhosts", "on": true}));
+        // The card states its long tail as it is; whether a tail this short is
+        // worth a fold is the shell's call, and one row is not — it renders on
+        // the card beside the rest.
         assert_eq!(names["seam"]["summary"], "1 more option");
         assert_eq!(names["seam"]["items"][0]["toggle"], serde_json::json!({"name": "nohosts"}));
 

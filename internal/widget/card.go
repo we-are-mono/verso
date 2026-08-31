@@ -25,6 +25,8 @@ func (*Card) isWidget() {}
 
 func (c *Card) children() []Widget { return c.Children }
 
+func (c *Card) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children, keep) }
+
 // UnmarshalJSON decodes a card's title, subtitle, and children, recursing through
 // Decode so an unknown child type fails here rather than silently vanishing.
 func (c *Card) UnmarshalJSON(data []byte) error {

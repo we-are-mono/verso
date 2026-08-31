@@ -144,6 +144,15 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return s.unavailable(m, tr), http.StatusOK
 	}
 
+	// The page-wide lens is the shell's call, not each plugin's constant: a
+	// plugin declares the filter it would like and the shell keeps it only on a
+	// page with enough to sift (ADR-005 §5 — the vocabulary decides what a widget
+	// is worth). Below the threshold the widget is removed rather than hidden, so
+	// the page carries no dead dock and no "/" shortcut into nothing.
+	if widget.FilterableCount(wdg) <= widget.FilterThreshold {
+		wdg = widget.StripFilters(wdg)
+	}
+
 	// The capsule binds to exactly one page form. A page composing more than
 	// one — a page-style form beside a reorderable listing, two reorderable
 	// listings — mis-wires silently in the browser, so the breach is at least

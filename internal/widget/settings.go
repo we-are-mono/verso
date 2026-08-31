@@ -31,6 +31,14 @@ type SettingsSeam struct {
 	Items   []SettingsItem `json:"items"`
 }
 
+// seamMinimum is how many rows a seam has to hold before folding them is worth
+// what it costs. The fold's own summary line occupies the space one hidden row
+// would, so under three rows the block saves no height and charges a click for
+// it: those rows render in place and the card draws no fold. The rule is a
+// render decision — the declared schema keeps its seam, because what a plugin
+// considers its long tail stays true whatever the card does with it.
+const seamMinimum = 3
+
 // SettingsItem is one option row. Exactly one of Toggle, Pills, or Value should
 // carry the trailing state; a row with none is informational. A Value with a
 // Name is edited in place: the read-out renders as a borderless input posting
@@ -106,15 +114,30 @@ func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemV
 
 func (s *Settings) renderInto(r *Renderer, out io.Writer, _ string) error {
 	v := settingsView{Card: s.Style == "card", Title: s.Title, Meta: s.Meta}
+	items, folded := s.rows()
 	var err error
-	if v.Items, err = s.itemViews(r, s.Items); err != nil {
+	if v.Items, err = s.itemViews(r, items); err != nil {
 		return err
 	}
-	if s.Seam != nil {
+	if len(folded) > 0 {
 		v.SeamSummary = s.Seam.Summary
-		if v.SeamItems, err = s.itemViews(r, s.Seam.Items); err != nil {
+		if v.SeamItems, err = s.itemViews(r, folded); err != nil {
 			return err
 		}
 	}
 	return r.execute(out, "settings.html.tmpl", v)
+}
+
+// rows splits the card into what it shows and what it folds. A seam too short to
+// earn its fold (seamMinimum) gives its rows back to the card, where they render
+// as ordinary rows — carrying their controls and change-tracking hooks like every
+// other row, since they render through the same one.
+func (s *Settings) rows() (items, folded []SettingsItem) {
+	if s.Seam == nil {
+		return s.Items, nil
+	}
+	if len(s.Seam.Items) >= seamMinimum {
+		return s.Items, s.Seam.Items
+	}
+	return append(append(make([]SettingsItem, 0, len(s.Items)+len(s.Seam.Items)), s.Items...), s.Seam.Items...), nil
 }

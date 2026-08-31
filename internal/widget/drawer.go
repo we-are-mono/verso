@@ -41,6 +41,11 @@ func (d *Drawer) children() []Widget {
 	return append(append([]Widget{}, d.Trigger...), d.Children...)
 }
 
+func (d *Drawer) prune(keep func(Widget) bool) {
+	d.Trigger = pruneList(d.Trigger, keep)
+	d.Children = pruneList(d.Children, keep)
+}
+
 // UnmarshalJSON decodes the trigger and body recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal does).
 func (d *Drawer) UnmarshalJSON(data []byte) error {

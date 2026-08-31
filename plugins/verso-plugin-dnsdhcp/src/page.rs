@@ -57,7 +57,9 @@ pub fn dns(widget: Widget) -> Envelope {
         .with_width("wide")
 }
 
-/// filter is the page-wide lens every page carries.
+/// filter is the page-wide lens every page carries. Whether it renders is the
+/// shell's call — it counts what the page really lists and drops a lens over a
+/// page short enough to read whole.
 pub fn filter(placeholder: &str) -> Widget {
     Widget::Filter {
         placeholder: placeholder.into(),
@@ -100,8 +102,10 @@ pub fn columns(spec: &[(&str, &str)]) -> Vec<TableColumn> {
 }
 
 /// table is a listing in the one table style: bare hairline rows, no header
-/// band, and no order to persist — nothing here is evaluated in sequence.
-pub fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>) -> Widget {
+/// band, and no order to persist — nothing here is evaluated in sequence. Every
+/// listing here is one section among several, so an empty one keeps its place on
+/// the page and says what the absence means; the shell draws that as one row.
+pub fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>, empty: &str) -> Widget {
     Widget::Table {
         style: String::new(),
         title: String::new(),
@@ -114,6 +118,7 @@ pub fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>) -> Widget {
         rows,
         drawer_label: String::new(),
         drawer_icon: String::new(),
+        empty_text: empty.into(),
     }
 }
 

@@ -56,6 +56,9 @@ fn listing(model: &Dnsdhcp, leases: &Leases, refusal: Option<&hosts::Refusal>) -
             ("Static lease", "pill"),
         ]),
         rows,
+        // This listing is the whole page, and its two silences are told apart
+        // above by an empty state of their own.
+        "",
     )
 }
 

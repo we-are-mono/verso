@@ -22,6 +22,8 @@ func (*CapsulePreview) isWidget() {}
 
 func (c *CapsulePreview) children() []Widget { return c.Children }
 
+func (c *CapsulePreview) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children, keep) }
+
 func (c *CapsulePreview) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Count    int               `json:"count"`

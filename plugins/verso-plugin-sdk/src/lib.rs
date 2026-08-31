@@ -578,6 +578,9 @@ pub enum Widget {
     /// rows are sections of in `reorder_config`: the shell then drags the rows,
     /// posts the new sequence, and stages a `uci order` on that config. Row ids
     /// are the section names it reorders, and a row's group bounds the drag.
+    /// With no rows at all the shell drops the column heads — they describe data
+    /// — and states `empty_text` in one quiet row; leave it blank and the shell
+    /// says so in its own words.
     Table {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
@@ -599,12 +602,17 @@ pub enum Widget {
         drawer_label: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         drawer_icon: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        empty_text: String,
     },
     /// A block of option rows: a plainly-named option, a one-line description,
     /// the underlying option name as a code chip, and its state hard right — a
     /// switch for an on/off option, pills for a row that reads rather than
     /// toggles. Style "card" boxes the block. A Seam folds the block's long
-    /// tail of rare options behind a collapsed line inside the same block.
+    /// tail of rare options behind a collapsed line inside the same block —
+    /// state the tail as it is, and the shell folds it only once there are
+    /// three rows to fold: below that the fold's own line costs the height it
+    /// would save, so those rows render on the block.
     Settings {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
@@ -618,7 +626,10 @@ pub enum Widget {
     },
     /// The page-wide lens: one field that narrows every listing on the page at
     /// once. The plugin declares only the placeholder; the shell owns the
-    /// behaviour.
+    /// behaviour — and whether the lens renders at all. A page carrying twenty
+    /// filterable entries or fewer (table rows and settings rows, folded ones
+    /// counted) is read in one glance, so the shell removes the widget. State
+    /// the lens your page would want and carry no threshold of your own.
     Filter {
         #[serde(skip_serializing_if = "String::is_empty")]
         placeholder: String,

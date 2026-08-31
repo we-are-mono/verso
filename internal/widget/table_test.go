@@ -374,6 +374,82 @@ func TestRenderTableSeam(t *testing.T) {
 	}
 }
 
+// TestRenderTableEmpty: a listing with nothing in it drops its column heads —
+// headings describe data, and over none they are chrome — and states the absence
+// in one quiet full-width row on the wash. The plugin's own sentence wins; a
+// listing that states none gets the shell's.
+func TestRenderTableEmpty(t *testing.T) {
+	r := newRenderer(t)
+	bare := &Table{
+		Columns: []TableColumn{{Label: "Type", Kind: "keyword"}, {Label: "Name", Kind: "mono"}},
+	}
+	got := render(t, r, bare)
+	for _, want := range []string{
+		`colspan="2"`, "bg-slate-50", "text-center", "text-slate-500",
+		"border-b border-slate-200", // one hairline keeps the section's footprint
+		">Nothing here yet<",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("empty table missing %q:\n%s", want, got)
+		}
+	}
+	for _, absent := range []string{"<thead", ">Type<", ">Name<"} {
+		if strings.Contains(got, absent) {
+			t.Errorf("empty table must draw no column head, found %q:\n%s", absent, got)
+		}
+	}
+
+	bare.EmptyText = "No extra names yet — reserved devices already answer by name."
+	if own := render(t, r, bare); !strings.Contains(own, bare.EmptyText) {
+		t.Errorf("the listing's own sentence should carry the empty state:\n%s", own)
+	}
+
+	// Folded rows are rows: a seam holding some keeps the listing a listing.
+	seamed := &Table{
+		Columns: []TableColumn{{Label: "Type", Kind: "keyword"}},
+		Seam:    &TableSeam{Summary: "stock entries", Rows: []TableRow{{Cells: []TableCell{{Text: "A"}}}}},
+	}
+	if got := render(t, r, seamed); !strings.Contains(got, "<thead") || strings.Contains(got, "Nothing here yet") {
+		t.Errorf("a table whose rows are all folded is not empty:\n%s", got)
+	}
+}
+
+// TestRenderEmptyTableDoesNotDrag: there is no order to state over no rows, so an
+// empty listing draws neither handles nor the hidden order form the capsule would
+// otherwise count.
+func TestRenderEmptyTableDoesNotDrag(t *testing.T) {
+	r := newRenderer(t)
+	table := &Table{
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+	}
+	got := render(t, r, table)
+	for _, absent := range []string{"data-verso-reorder-table", "data-verso-page-form", ReorderConfigField} {
+		if strings.Contains(got, absent) {
+			t.Errorf("empty listing still carries %q:\n%s", absent, got)
+		}
+	}
+	if n := PageFormCount(table); n != 0 {
+		t.Errorf("PageFormCount = %d over an empty listing, want 0", n)
+	}
+}
+
+// TestDecodeTableEmptyText pins the wire name a listing states its nothing under.
+func TestDecodeTableEmptyText(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","columns":[{"label":"Server"}],"rows":[],` +
+		`"empty_text":"Lookups follow what the internet connection suggested."}`))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	table, ok := w.(*Table)
+	if !ok {
+		t.Fatalf("decoded %T, want *Table", w)
+	}
+	if table.EmptyText != "Lookups follow what the internet connection suggested." {
+		t.Errorf("EmptyText = %q", table.EmptyText)
+	}
+}
+
 // TestRenderTableRowDrawer: a row with a drawer is an openable object, but the
 // row itself is inert — it hosts its own modal scope and opens from a trailing
 // "Details" link (never a whole-row click, so cell values stay selectable). The

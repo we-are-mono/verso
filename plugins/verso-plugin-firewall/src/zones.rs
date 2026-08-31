@@ -30,6 +30,8 @@ governs traffic to the router itself, **Forward** governs traffic leaving the zo
 
 const DEFAULTS_SUB: &str = "The baseline applied before any zone or rule — `config defaults`.";
 
+const EMPTY: &str = "No zones yet — every network is governed by the defaults below.";
+
 /// TOGGLE_ROWS name the defaults options plainly and say what each one does.
 /// The order is the order they render; the uci name is the switch's form name.
 const TOGGLE_ROWS: [(&str, &str, &str); 3] = [
@@ -58,17 +60,11 @@ pub fn options() -> impl Iterator<Item = &'static str> {
 
 /// page renders the Zones listing and the global defaults.
 pub fn page(model: &Firewall) -> Envelope {
-    let mut children = Vec::new();
-    children.extend(page::filter(
-        "Filter — zone, network, subnet…",
-        model.zones.len(),
-    ));
-    children.push(Widget::section("Zones", ZONES_SUB, vec![table(model)]));
-    children.push(Widget::section(
-        "Global defaults",
-        DEFAULTS_SUB,
-        vec![defaults(model)],
-    ));
+    let children = vec![
+        page::filter("Filter — zone, network, subnet…"),
+        Widget::section("Zones", ZONES_SUB, vec![table(model)]),
+        Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
+    ];
     page::envelope(SUBHEADING, Widget::stack(children))
 }
 
@@ -104,6 +100,7 @@ fn table(model: &Firewall) -> Widget {
         rows: model.zones.iter().map(|zone| row(model, zone)).collect(),
         drawer_label: String::new(),
         drawer_icon: String::new(),
+        empty_text: EMPTY.into(),
     }
 }
 
@@ -223,28 +220,25 @@ mod tests {
         assert_eq!(body["width"], "wide");
         assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][2]["path"], "zones");
-        assert_eq!(body["widget"]["children"][0]["title"], "Zones");
-        assert_eq!(body["widget"]["children"][1]["title"], "Global defaults");
+        assert_eq!(body["widget"]["children"][0]["type"], "filter");
+        assert_eq!(body["widget"]["children"][1]["title"], "Zones");
+        assert_eq!(body["widget"]["children"][2]["title"], "Global defaults");
         assert!(
             body.get("action").is_none(),
             "the zones listing has no editor, so the page offers no doorway to one"
         );
     }
 
-    // The filter is a control for a listing too long to read whole.
+    // A firewall that groups nothing still has a baseline, and the listing says
+    // so rather than drawing a grid of column headings over no rows.
     #[test]
-    fn the_filter_appears_only_once_the_listing_outgrows_the_screen() {
-        let leads = |zones: usize| {
-            let mut model = fixture::firewall();
-            while model.zones.len() < zones {
-                model.zones.push(fixture::firewall().zones.remove(0));
-            }
-            model.zones.truncate(zones);
-            let body = serde_json::to_value(page(&model)).expect("serialize");
-            body["widget"]["children"][0]["type"].as_str().unwrap_or_default().to_string()
-        };
-        assert_eq!(leads(page::FILTER_THRESHOLD), "section");
-        assert_eq!(leads(page::FILTER_THRESHOLD + 1), "filter");
+    fn a_config_with_no_zones_says_what_that_means() {
+        let mut model = fixture::firewall();
+        model.zones.clear();
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        let table = fixture::table(&body, "Zones");
+        assert_eq!(table["empty_text"], EMPTY);
+        assert!(table["rows"].as_array().expect("rows").is_empty());
     }
 
     #[test]

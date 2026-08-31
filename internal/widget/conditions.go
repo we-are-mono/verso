@@ -42,6 +42,12 @@ func (c *Conditions) children() []Widget {
 	return out
 }
 
+func (c *Conditions) prune(keep func(Widget) bool) {
+	for i := range c.Items {
+		c.Items[i].Children = pruneList(c.Items[i].Children, keep)
+	}
+}
+
 func (c *Conditions) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Label string `json:"label"`

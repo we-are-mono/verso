@@ -31,18 +31,14 @@ pub const NEW: &str = "new";
 /// unlike the subpage bar, whose paths the shell resolves against the mount.
 pub const MOUNT: &str = "/plugins/firewall";
 
-/// FILTER_THRESHOLD is how many rows a listing has to carry before its filter
-/// earns its place. Below it the whole listing is on screen at once, and a
-/// search box over a dozen rows is a control that answers a question nobody
-/// asked.
-pub const FILTER_THRESHOLD: usize = 20;
-
-/// filter is a listing's search field, or nothing when the listing is short
-/// enough to read whole.
-pub fn filter(placeholder: &str, rows: usize) -> Option<Widget> {
-    (rows > FILTER_THRESHOLD).then(|| Widget::Filter {
+/// filter is a listing's search field. Whether it renders is the shell's call —
+/// it counts what the page really lists and drops a lens over a page short
+/// enough to read whole — so a page states the one it would like and says
+/// nothing about when it is worth having.
+pub fn filter(placeholder: &str) -> Widget {
+    Widget::Filter {
         placeholder: placeholder.into(),
-    })
+    }
 }
 
 /// rule_href is the address of one rule's editor.

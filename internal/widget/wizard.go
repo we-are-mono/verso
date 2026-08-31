@@ -36,6 +36,12 @@ func (w *Wizard) children() []Widget {
 	return out
 }
 
+func (w *Wizard) prune(keep func(Widget) bool) {
+	for i := range w.Steps {
+		w.Steps[i].Children = pruneList(w.Steps[i].Children, keep)
+	}
+}
+
 // UnmarshalJSON decodes each step's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal/tabs do).
 func (w *Wizard) UnmarshalJSON(data []byte) error {

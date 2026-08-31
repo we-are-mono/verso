@@ -26,6 +26,8 @@ pub const TYPE: &str = "host";
 const SUB: &str = "Devices pinned to an address — `config host`. Online is live: the device \
 holds its lease right now.";
 
+const EMPTY: &str = "No reserved addresses yet — reserve one from a device on the Leases page.";
+
 /// OWNED is every option this form writes. A save states all of them, so an
 /// option the operator cleared is cleared on disk rather than left behind, and
 /// an option this form does not draw is never touched.
@@ -136,6 +138,7 @@ pub fn section(model: &Dnsdhcp, leases: &Leases, refusal: Option<&Refusal>) -> W
                 ("Online", "pill"),
             ]),
             rows,
+            EMPTY,
         )],
     )
 }
@@ -393,6 +396,19 @@ mod tests {
             Saved::Ops(ops, _) => serde_json::to_value(ops).expect("serialize"),
             _ => panic!("the submission was not written"),
         }
+    }
+
+    // A router with nothing pinned is the ordinary case, and the listing points
+    // at where a reservation comes from rather than drawing an empty grid.
+    #[test]
+    fn no_reservations_points_at_where_one_comes_from() {
+        let mut model = fixture::dnsdhcp();
+        model.hosts.clear();
+        let json = serde_json::to_value(section(&model, &fixture::leases(), None))
+            .expect("serialize");
+        let table = &json["children"][0];
+        assert_eq!(table["empty_text"], EMPTY);
+        assert!(table["rows"].as_array().expect("rows").is_empty());
     }
 
     #[test]

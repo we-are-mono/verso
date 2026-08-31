@@ -44,6 +44,8 @@ func (*Form) isWidget() {}
 
 func (f *Form) children() []Widget { return f.Fields }
 
+func (f *Form) prune(keep func(Widget) bool) { f.Fields = pruneList(f.Fields, keep) }
+
 // confirmDriven reports whether the form's own contents already carry its submit.
 // A confirm renders a submit button of its own, so a generated Save beside it
 // would offer the same action twice — once guarded, once not. A form that wants

@@ -23,6 +23,8 @@ use crate::page;
 const SUB: &str = "Extra names answered locally — `config domain`, `config cname`, \
 `config srvhost`, `config mxhost`. Reserved devices already resolve; these are the names on top.";
 
+const EMPTY: &str = "No extra names yet — reserved devices already answer by name.";
+
 /// Refusal is a record the operator stated and the daemon would not read: the
 /// section it was about, the values as typed, and what is wrong with them.
 pub struct Refusal {
@@ -62,6 +64,7 @@ pub fn section(model: &Dnsdhcp, refusal: Option<&Refusal>, settings: Widget) -> 
             page::table(
                 page::columns(&[("Type", "keyword"), ("Name", "mono"), ("Points to", "mono")]),
                 rows,
+                EMPTY,
             ),
             settings,
         ],
@@ -371,6 +374,19 @@ mod tests {
         // The delete lives in a form of its own, behind a confirm.
         assert_eq!(drawer["children"][1]["fields"][2]["name"], "_delete");
         assert_eq!(drawer["children"][1]["fields"][3]["type"], "confirm");
+    }
+
+    // Nothing added is a normal state here, not a broken one: the devices with a
+    // reservation already answer by name without any of these.
+    #[test]
+    fn no_extra_names_states_what_still_resolves() {
+        let mut model = fixture::dnsdhcp();
+        model.records.clear();
+        let json = serde_json::to_value(section(&model, None, Widget::text("")))
+            .expect("serialize");
+        let table = &json["children"][0];
+        assert_eq!(table["empty_text"], EMPTY);
+        assert!(table["rows"].as_array().expect("rows").is_empty());
     }
 
     #[test]

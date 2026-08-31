@@ -27,6 +27,8 @@ func (*Grid) isWidget() {}
 
 func (g *Grid) children() []Widget { return g.Children }
 
+func (g *Grid) prune(keep func(Widget) bool) { g.Children = pruneList(g.Children, keep) }
+
 func (g *Grid) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Style    string            `json:"style"`

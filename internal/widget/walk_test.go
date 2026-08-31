@@ -94,6 +94,108 @@ func TestWalkReachesAttachedWidgets(t *testing.T) {
 	}
 }
 
+// TestStripFiltersReachesEveryContainer: removal has to reach wherever a page
+// can compose, so the same nesting positions the walk covers are pinned again
+// here — a container that visits its children but cannot rewrite them would
+// leave a lens on a page that did not earn one.
+func TestStripFiltersReachesEveryContainer(t *testing.T) {
+	lens := func() Widget { return &Filter{Placeholder: "Filter…"} }
+	isFilter := func(w Widget) bool { _, ok := w.(*Filter); return ok }
+	cases := []struct {
+		name string
+		tree Widget
+	}{
+		{"card", &Card{Children: []Widget{lens()}}},
+		{"section children", &Section{Children: []Widget{lens()}}},
+		{"section control", &Section{Control: lens()}},
+		{"grid", &Grid{Children: []Widget{lens()}}},
+		{"stack", &Stack{Children: []Widget{lens()}}},
+		{"canvas", &Canvas{Children: []Widget{lens()}}},
+		{"disclosure", &Disclosure{Children: []Widget{lens()}}},
+		{"empty", &Empty{Children: []Widget{lens()}}},
+		{"capsule preview", &CapsulePreview{Children: []Widget{lens()}}},
+		{"hero", &Hero{Children: []Widget{lens()}}},
+		{"modal", &Modal{Children: []Widget{lens()}}},
+		{"drawer", &Drawer{Trigger: []Widget{lens()}, Children: []Widget{lens()}}},
+		{"conditional", &Conditional{Fields: []Widget{lens()}, Otherwise: []Widget{lens()}}},
+		{"conditions", &Conditions{Items: []ConditionItem{{Key: "k", Children: []Widget{lens()}}}}},
+		{"form", &Form{Fields: []Widget{lens()}}},
+		{"tabs", &Tabs{Tabs: []Tab{{Children: []Widget{lens()}}, {Children: []Widget{lens()}}}}},
+		{"wizard", &Wizard{Steps: []WizardStep{{Children: []Widget{lens()}}}}},
+		{"repeater", &Repeater{Items: []RepeaterItem{{Section: "s", Widget: lens()}}}},
+		{"table row drawer", &Table{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{lens()}}}}}},
+		{"table seam row drawer", &Table{Seam: &TableSeam{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{lens()}}}}}}},
+		{"deep nesting", &Modal{Children: []Widget{
+			&Tabs{Tabs: []Tab{{Children: []Widget{&Form{Fields: []Widget{lens()}}}}}},
+		}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := countVisits(tc.tree, isFilter); got == 0 {
+				t.Fatalf("the case places no lens to remove")
+			}
+			if got := countVisits(StripFilters(tc.tree), isFilter); got != 0 {
+				t.Errorf("%d lenses survived the strip", got)
+			}
+		})
+	}
+
+	// Everything else stays where it was, in order.
+	kept := StripFilters(&Stack{Children: []Widget{
+		&Text{Markdown: "a"}, lens(), &Text{Markdown: "b"},
+	}})
+	stack, ok := kept.(*Stack)
+	if !ok {
+		t.Fatalf("stripped root is %T, want *Stack", kept)
+	}
+	if len(stack.Children) != 2 || stack.Children[0].(*Text).Markdown != "a" || stack.Children[1].(*Text).Markdown != "b" {
+		t.Errorf("the strip disturbed the composition: %+v", stack.Children)
+	}
+	// A page that is nothing but its lens has nothing left.
+	if got := StripFilters(lens()); got != nil {
+		t.Errorf("a root filter should strip to nothing, got %T", got)
+	}
+}
+
+// TestFilterableCount: the lens sifts rows and option rows, folded ones included,
+// wherever they sit; 20 is the boundary at which a page still reads whole.
+func TestFilterableCount(t *testing.T) {
+	rows := func(n int) []TableRow {
+		out := make([]TableRow, n)
+		return out
+	}
+	items := func(n int) []SettingsItem {
+		out := make([]SettingsItem, n)
+		return out
+	}
+	cases := []struct {
+		name string
+		tree Widget
+		want int
+	}{
+		{"nothing to sift", &Stack{Children: []Widget{&Text{Markdown: "prose"}}}, 0},
+		{"rows and folded rows", &Table{Rows: rows(3), Seam: &TableSeam{Rows: rows(2)}}, 5},
+		{"option rows and folded ones", &Settings{Items: items(4), Seam: &SettingsSeam{Items: items(1)}}, 5},
+		{"across the page", &Stack{Children: []Widget{
+			&Section{Children: []Widget{&Table{Rows: rows(18)}}},
+			&Section{Children: []Widget{&Settings{Items: items(2)}}},
+		}}, 20},
+		{"one past the threshold", &Stack{Children: []Widget{
+			&Section{Children: []Widget{&Table{Rows: rows(21)}}},
+		}}, 21},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := FilterableCount(c.tree); got != c.want {
+				t.Errorf("FilterableCount = %d, want %d", got, c.want)
+			}
+		})
+	}
+	if FilterThreshold != 20 {
+		t.Errorf("FilterThreshold = %d, want 20", FilterThreshold)
+	}
+}
+
 // TestPageFormCount: the capsule binds to one page form, so the count is what
 // the gateway holds a page's composition to — a page-style form and a
 // reorderable listing each bring one; a reorder column without its config

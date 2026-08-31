@@ -25,6 +25,8 @@ func (*Stack) isWidget() {}
 
 func (s *Stack) children() []Widget { return s.Children }
 
+func (s *Stack) prune(keep func(Widget) bool) { s.Children = pruneList(s.Children, keep) }
+
 func (s *Stack) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Divided  bool              `json:"divided"`

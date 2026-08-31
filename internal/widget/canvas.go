@@ -30,6 +30,8 @@ func (*Canvas) isWidget() {}
 
 func (c *Canvas) children() []Widget { return c.Children }
 
+func (c *Canvas) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children, keep) }
+
 // UnmarshalJSON decodes the canvas's padding and children, recursing through
 // Decode so an unknown child type fails here rather than silently vanishing.
 func (c *Canvas) UnmarshalJSON(data []byte) error {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -633,6 +634,46 @@ func TestPluginPageRendersSchema(t *testing.T) {
 	}
 	if tr.lastReq.Method != http.MethodGet || tr.lastReq.Path != "" {
 		t.Errorf("forwarded request = %+v, want GET with empty sub-path", tr.lastReq)
+	}
+}
+
+// TestPluginFilterEarnsItsPlace: the page-wide lens is the shell's rule, not a
+// constant every plugin carries. A plugin declares the filter it wants; the
+// shell keeps it only where there is enough to sift, and removes the widget
+// outright below the threshold — no dead dock, no shortcut into nothing.
+func TestPluginFilterEarnsItsPlace(t *testing.T) {
+	page := func(rows int) json.RawMessage {
+		var b strings.Builder
+		b.WriteString(`{"type":"stack","children":[` +
+			`{"type":"filter","placeholder":"Filter — zone, port…"},` +
+			`{"type":"table","columns":[{"label":"Name"}],"rows":[`)
+		for i := range rows {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			fmt.Fprintf(&b, `{"id":"r%d","cells":[{"text":"row %d"}]}`, i, i)
+		}
+		b.WriteString(`]}]}`)
+		return json.RawMessage(b.String())
+	}
+	for _, tc := range []struct {
+		rows int
+		want bool
+	}{
+		{widget.FilterThreshold, false},
+		{widget.FilterThreshold + 1, true},
+	} {
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Title: "Firewall", Widget: page(tc.rows),
+		}}
+		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+		body := get(t, s, "/plugins/demo/").Body.String()
+		if got := strings.Contains(body, "data-verso-filter"); got != tc.want {
+			t.Errorf("%d rows: filter rendered = %v, want %v", tc.rows, got, tc.want)
+		}
+		if !strings.Contains(body, "row 0") {
+			t.Errorf("%d rows: the listing itself should still render", tc.rows)
+		}
 	}
 }
 

@@ -32,6 +32,8 @@ func (*Hero) isWidget() {}
 
 func (h *Hero) children() []Widget { return h.Children }
 
+func (h *Hero) prune(keep func(Widget) bool) { h.Children = pruneList(h.Children, keep) }
+
 func (h *Hero) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Variant  string            `json:"variant"`

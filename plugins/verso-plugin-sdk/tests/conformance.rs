@@ -401,5 +401,6 @@ fn listing() -> Widget {
         ],
         drawer_label: "Edit".into(),
         drawer_icon: "pencil".into(),
+        empty_text: "No zones yet.".into(),
     }
 }

@@ -23,6 +23,8 @@ func (*Disclosure) isWidget() {}
 
 func (d *Disclosure) children() []Widget { return d.Children }
 
+func (d *Disclosure) prune(keep func(Widget) bool) { d.Children = pruneList(d.Children, keep) }
+
 // UnmarshalJSON decodes the contents recursively through Decode, so an unknown
 // child type fails loudly rather than vanishing.
 func (d *Disclosure) UnmarshalJSON(data []byte) error {

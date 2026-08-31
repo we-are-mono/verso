@@ -29,6 +29,11 @@ func (c *Conditional) children() []Widget {
 	return append(append([]Widget{}, c.Fields...), c.Otherwise...)
 }
 
+func (c *Conditional) prune(keep func(Widget) bool) {
+	c.Fields = pruneList(c.Fields, keep)
+	c.Otherwise = pruneList(c.Otherwise, keep)
+}
+
 // UnmarshalJSON decodes the gated fields recursively through Decode, so an unknown
 // field type fails loudly rather than vanishing.
 func (c *Conditional) UnmarshalJSON(data []byte) error {

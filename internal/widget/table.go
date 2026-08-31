@@ -63,6 +63,14 @@ type Table struct {
 	// the shared top line with the single-value cells, the second dangling below.
 	Align string `json:"align,omitempty"`
 
+	// EmptyText is what a listing with nothing in it says. Column headings
+	// describe data; over no data they are chrome, so an empty table drops them
+	// and renders one quiet full-width row carrying this sentence — the treatment
+	// for a listing that is one section among several. A listing that IS the page
+	// deserves the full empty widget instead. Left blank it reads "Nothing here
+	// yet" in the operator's language.
+	EmptyText string `json:"empty_text,omitempty"`
+
 	// ReorderConfig names the uci config whose sections these rows are, and it is
 	// what makes a leading "reorder" column real: the shell posts the dragged id
 	// sequence back and stages a `uci order` on that config. A table without it
@@ -243,6 +251,20 @@ func (t *Table) children() []Widget {
 	return out
 }
 
+func (t *Table) prune(keep func(Widget) bool) {
+	rows := func(rows []TableRow) {
+		for i := range rows {
+			if rows[i].Drawer != nil {
+				rows[i].Drawer.Children = pruneList(rows[i].Drawer.Children, keep)
+			}
+		}
+	}
+	rows(t.Rows)
+	if t.Seam != nil {
+		rows(t.Seam.Rows)
+	}
+}
+
 // endpointIcons maps an endpoint kind to its registered icon. Unknown kinds fall
 // back to the zone glyph — a wrong icon beats a missing one in a listing.
 var endpointIcons = map[string]string{
@@ -268,6 +290,8 @@ type tableView struct {
 	HasLabels     bool // any column carries a header label; a labelless table draws no <thead>
 	Columns       []TableColumn
 	HasDetail     bool
+	Empty         bool // nothing to list: no head, no rows, one quiet sentence
+	EmptyText     string
 	Reorderable   bool
 	ReorderConfig string
 	ReorderLabel  string
@@ -342,21 +366,33 @@ func (t *Table) hasDetail() bool {
 	return need(t.Rows) || (t.Seam != nil && need(t.Seam.Rows))
 }
 
+// empty reports whether the listing has anything to show — its own rows or
+// folded ones. Both absent is the state the quiet empty row serves.
+func (t *Table) empty() bool {
+	return len(t.Rows) == 0 && (t.Seam == nil || len(t.Seam.Rows) == 0)
+}
+
 // reorderable reports whether these rows really drag. The leading "reorder"
 // column asks for the handle and ReorderConfig names the config the new order is
 // staged against; only both together make the interaction persist, so only both
-// together draw it.
+// together draw it. A listing with no rows has no order to state, so it carries
+// neither handles nor the order form.
 func (t *Table) reorderable() bool {
-	return t.ReorderConfig != "" && len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
+	return !t.empty() && t.ReorderConfig != "" && len(t.Columns) > 0 && t.Columns[0].Kind == "reorder"
 }
 
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
+	empty := t.empty()
 	v := tableView{
 		Card: t.Style == "card", Lined: t.Style == "lined",
 		Condensed: t.Condensed, AlignTop: t.Align == "top",
 		Title: t.Title, Detail: t.Detail, Action: t.Action,
-		HasLabels: hasColumnLabels(t.Columns),
+		HasLabels: hasColumnLabels(t.Columns) && !empty,
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
+		Empty: empty, EmptyText: t.EmptyText,
+	}
+	if empty && v.EmptyText == "" {
+		v.EmptyText = r.tr("Nothing here yet")
 	}
 	// A plugin's hrefs land in shell chrome; the link widget's URL policy
 	// applies here the same as there, and a reject reads "#", never ZgotmplZ.
@@ -372,6 +408,11 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	v.ColumnSpan = len(v.Columns)
 	if v.HasDetail {
 		v.ColumnSpan++
+	}
+	// A spanning row (a group head, the empty sentence) needs a column to span;
+	// a listing that declared none still has one cell's worth of width.
+	if v.ColumnSpan < 1 {
+		v.ColumnSpan = 1
 	}
 	var err error
 	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDetail); err != nil {

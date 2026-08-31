@@ -18,6 +18,16 @@ use crate::page;
 const SUB: &str = "Questions not answered locally go upstream — `list server`. \
 A domain-limited entry routes only that domain.";
 
+/// What an empty list means depends on one other option: with `noresolv` off,
+/// dnsmasq falls back to the resolvers the internet connection handed this
+/// router, so nothing listed is a working state; with it on, that fallback is
+/// refused and there is nowhere left to ask.
+const EMPTY_FALLBACK: &str = "No servers listed — lookups follow what the internet connection \
+suggested.";
+
+const EMPTY_NOWHERE: &str = "No servers listed, and the connection's own resolvers are ignored — \
+nothing outside this network can be looked up.";
+
 /// Refusal is an upstream the operator stated and dnsmasq would not read.
 pub struct Refusal {
     pub index: usize,
@@ -52,6 +62,10 @@ pub fn section(model: &Dnsdhcp, refusal: Option<&Refusal>, settings: Widget) -> 
             page::table(
                 page::columns(&[("Server", "mono"), ("Limited to", "mono")]),
                 rows,
+                match model.daemon.flag("noresolv", false) {
+                    true => EMPTY_NOWHERE,
+                    false => EMPTY_FALLBACK,
+                },
             ),
             settings,
         ],
@@ -246,6 +260,22 @@ mod tests {
         );
         assert_eq!(fields[2]["value"], "10.66.0.53");
         assert_eq!(fields[3]["value"], "corp.example.com");
+    }
+
+    // An empty list is two different states, and saying the wrong one would tell
+    // an operator their lookups work when nothing can answer them.
+    #[test]
+    fn an_empty_list_says_which_of_the_two_silences_it_is() {
+        let empty = |noresolv: bool| {
+            let mut model = fixture::dnsdhcp();
+            model.upstreams.clear();
+            model.daemon.set("noresolv", noresolv.then_some("1"));
+            let json = serde_json::to_value(section(&model, None, Widget::text("")))
+                .expect("serialize");
+            json["children"][0]["empty_text"].as_str().unwrap_or("").to_string()
+        };
+        assert_eq!(empty(false), EMPTY_FALLBACK);
+        assert_eq!(empty(true), EMPTY_NOWHERE);
     }
 
     #[test]

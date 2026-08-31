@@ -37,6 +37,12 @@ func (t *Tabs) children() []Widget {
 	return out
 }
 
+func (t *Tabs) prune(keep func(Widget) bool) {
+	for i := range t.Tabs {
+		t.Tabs[i].Children = pruneList(t.Tabs[i].Children, keep)
+	}
+}
+
 // UnmarshalJSON decodes each tab's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal/card do).
 func (t *Tabs) UnmarshalJSON(data []byte) error {

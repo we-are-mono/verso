@@ -44,6 +44,17 @@ func (rp *Repeater) children() []Widget {
 	return out
 }
 
+func (rp *Repeater) prune(keep func(Widget) bool) {
+	for i := range rp.Items {
+		if rp.Items[i].Widget == nil {
+			continue
+		}
+		if item := pruneList([]Widget{rp.Items[i].Widget}, keep); len(item) == 0 {
+			rp.Items[i].Widget = nil
+		}
+	}
+}
+
 // The hidden form fields the shell's repeater affordances post, and that the
 // gateway reads to realize the structural change. They live here because this
 // package renders the affordances; the gateway imports these same constants, so

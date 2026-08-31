@@ -65,8 +65,9 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 			{Title: "Local domain", Code: "domain", Value: "lan"},
 			{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"},
 		},
-		Seam: &SettingsSeam{Summary: "2 more options", Items: []SettingsItem{
+		Seam: &SettingsSeam{Summary: "3 more options", Items: []SettingsItem{
 			{Title: "Wildcard address", Code: "address"},
+			{Title: "Minimum TTL", Code: "min_cache_ttl"},
 			{Title: "Skip /etc/hosts", Code: "nohosts", Toggle: &SettingsToggle{Name: "nohosts"}},
 		}},
 	})
@@ -74,7 +75,7 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 		">lan</span>", "font-mono",
 		`name="cachesize" value="1000"`, "w-28", // a named value is a fixed-width in-place input
 		"<span>Resolution</span>", "uppercase", // the group label renders inside the card
-		"<details", "2 more options", "nohosts", "verso-chevron",
+		"<details", "3 more options", "nohosts", "verso-chevron",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
@@ -122,6 +123,53 @@ func TestRenderSettingsBare(t *testing.T) {
 		if strings.Contains(got, bad) {
 			t.Errorf("bare settings must not carry card chrome %q:\n%s", bad, got)
 		}
+	}
+}
+
+// TestRenderSettingsSeamMinimum: a fold has to hide more than its own summary
+// line to be worth a click, so a seam of one or two rows dissolves — the rows
+// render in place, controls and change hooks intact — while three rows fold.
+func TestRenderSettingsSeamMinimum(t *testing.T) {
+	r := newRenderer(t)
+	card := func(folded ...SettingsItem) string {
+		return render(t, r, &Settings{
+			Items: []SettingsItem{{Title: "Local domain", Code: "domain", Value: "lan"}},
+			Seam:  &SettingsSeam{Summary: "the long tail", Items: folded},
+		})
+	}
+	short := card(
+		SettingsItem{Title: "Skip /etc/hosts", Code: "nohosts", Toggle: &SettingsToggle{Name: "nohosts"}},
+		SettingsItem{Title: "Minimum TTL", Code: "min_cache_ttl", Value: "60", Name: "min_cache_ttl"},
+	)
+	for _, want := range []string{
+		"Skip /etc/hosts", "Minimum TTL", // the rows are on the card, not behind it
+		`data-verso-change-name="nohosts"`,       // …and still post through the capsule
+		`data-verso-change-name="min_cache_ttl"`, // …in-place fields included
+	} {
+		if !strings.Contains(short, want) {
+			t.Errorf("dissolved seam missing %q:\n%s", want, short)
+		}
+	}
+	for _, absent := range []string{"<details", "the long tail", "verso-chevron"} {
+		if strings.Contains(short, absent) {
+			t.Errorf("a seam under the minimum must draw no fold, found %q:\n%s", absent, short)
+		}
+	}
+
+	long := card(
+		SettingsItem{Title: "Skip /etc/hosts", Code: "nohosts"},
+		SettingsItem{Title: "Minimum TTL", Code: "min_cache_ttl"},
+		SettingsItem{Title: "Maximum TTL", Code: "max_cache_ttl"},
+	)
+	for _, want := range []string{"<details", "the long tail", "Maximum TTL"} {
+		if !strings.Contains(long, want) {
+			t.Errorf("seam at the minimum missing %q:\n%s", want, long)
+		}
+	}
+
+	// A seam declared with nothing in it is not a fold over nothing.
+	if none := card(); strings.Contains(none, "<details") {
+		t.Errorf("an empty seam must draw no fold:\n%s", none)
 	}
 }
 

@@ -34,20 +34,22 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
         .iter()
         .filter(|redirect| redirect.is_port_forward())
         .collect();
-    let mut children = Vec::new();
-    children.extend(page::filter("Filter — zone, port, IP, comment…", forwards.len()));
-    children.push(Widget::section(
-        "Port forwards and redirects",
-        SECTION_SUB,
-        vec![content(&forwards, counters)],
-    ));
+    let children = vec![
+        page::filter("Filter — zone, port, IP, comment…"),
+        Widget::section(
+            "Port forwards and redirects",
+            SECTION_SUB,
+            vec![content(&forwards, counters)],
+        ),
+    ];
     page::envelope(SUBHEADING, Widget::stack(children))
         .with_action("Add forward", &page::new_redirect_href(), "plus")
 }
 
 /// content is the listing, or — with nothing to list — the invitation to make
-/// the first one. An empty table under column headings states a shape where
-/// there is not yet a thing.
+/// the first one. This listing is the whole page, so its nothing is a designed
+/// state with a doorway in it, not the quiet row the shell draws for a listing
+/// that is one section among several.
 fn content(forwards: &[&Redirect], counters: &Counters) -> Widget {
     if forwards.is_empty() {
         return Widget::Empty {
@@ -99,6 +101,8 @@ fn table(forwards: &[&Redirect], counters: &Counters) -> Widget {
             .collect(),
         drawer_label: String::new(),
         drawer_icon: String::new(),
+        // Nothing to forward is answered above, by the page's empty state.
+        empty_text: String::new(),
     }
 }
 
@@ -164,8 +168,9 @@ mod tests {
         assert_eq!(body["width"], "wide");
         assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][1]["path"], "port-forwards");
+        assert_eq!(body["widget"]["children"][0]["type"], "filter");
         assert_eq!(
-            body["widget"]["children"][0]["title"],
+            body["widget"]["children"][1]["title"],
             "Port forwards and redirects"
         );
         assert_eq!(
@@ -176,25 +181,6 @@ mod tests {
                 "icon": "plus"
             })
         );
-    }
-
-    // The filter is a control for a listing too long to read whole, and it counts
-    // what the page shows: a source rewrite is not on this listing, so it is not
-    // one of the rows the threshold is about.
-    #[test]
-    fn the_filter_appears_only_once_the_listing_outgrows_the_screen() {
-        let leads = |forwards: usize| {
-            let mut model = fixture::firewall();
-            model.redirects.retain(|redirect| !redirect.is_port_forward());
-            while model.redirects.len() < forwards + 1 {
-                // The fixture's first redirect is a dnat one — a port forward.
-                model.redirects.push(fixture::firewall().redirects.remove(0));
-            }
-            let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
-            body["widget"]["children"][0]["type"].as_str().unwrap_or_default().to_string()
-        };
-        assert_eq!(leads(page::FILTER_THRESHOLD), "section");
-        assert_eq!(leads(page::FILTER_THRESHOLD + 1), "filter");
     }
 
     // Nothing forwarded is not an empty table under column headings — it is a
@@ -218,14 +204,6 @@ mod tests {
                 "href": "/plugins/firewall/port-forwards/new",
                 "style": "button"
             })
-        );
-        assert!(
-            body["widget"]["children"]
-                .as_array()
-                .expect("children")
-                .iter()
-                .all(|child| child["type"] != "filter"),
-            "nothing to list is nothing to filter"
         );
     }
 

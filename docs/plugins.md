@@ -602,6 +602,26 @@ not carrying the page:
             "rows": [ /* the folded sections, same cell shapes */ ] } }
 ```
 
+**Nothing to list.** A table with no rows at all — none of its own and none
+folded — renders neither `<thead>` nor rows: column headings describe data, and
+over no data they are chrome. In their place the shell draws one quiet
+full-width row carrying `empty_text`, so the section keeps its footprint and
+says what the absence means. Leave `empty_text` unset and it reads "Nothing here
+yet" in the operator's language; set it and say something true about *this*
+listing ("No extra names yet — reserved devices already answer by name.").
+
+```json
+{ "type": "table", "columns": [ /* … */ ], "rows": [],
+  "empty_text": "No reserved addresses yet — reserve one from a device on the Leases page." }
+```
+
+The two nothings are different altitudes. A listing that is one section among
+several gets this row — the page still has other things on it, and a full
+illustrated empty state would shout. A listing that **is** the page (nothing
+else on it but the heading) gets the `empty` widget instead: icon, headline,
+reassurance, and a doorway to the thing that would fill it. Choose by what
+surrounds the listing, not by how empty it is.
+
 ### Subpages (`pages`) — the domain's top bar
 
 A domain with more than one kind of visit (live state you watch, configuration
@@ -631,6 +651,16 @@ the scroll. Declare it once, near the top of the page:
 { "type": "filter", "placeholder": "Filter — zone, port, IP, comment…" }
 ```
 
+**Whether it renders is the shell's call, not yours.** Before rendering a page
+the shell counts its filterable entries — every table row, folded ones included,
+plus every settings option row, folded ones included — and **removes** the
+filter when that count is 20 or fewer: a page you can read in one glance is not
+helped by a search box over it, and a lens with nothing to sift is a control
+answering a question nobody asked. Removal, not concealment: no dead dock, no
+"/" shortcut into nothing. So declare the filter your page would want and carry
+no threshold of your own — a page's own count changes as its config does, and
+the rule that decides is one rule for every plugin.
+
 ### settings — a card of option rows
 
 The "config defaults" pattern: each row a plainly-named option with a one-line
@@ -651,6 +681,21 @@ vocabulary) for a row that reads rather than toggles.
       "toggle": { "name": "synflood_protect", "on": true } }
   ] }
 ```
+
+**Seam.** A block may fold its long tail of rare options behind a collapsed line
+inside the same block, so the everyday rows carry it:
+
+```json
+{ "type": "settings", "items": [ /* the everyday rows */ ],
+  "seam": { "summary": "5 more options", "items": [ /* the rare ones */ ] } }
+```
+
+A seam holding fewer than **three** rows draws no fold: the summary line
+occupies the height one hidden row would, so under three the fold saves nothing
+and charges a click for it — the shell renders those rows on the block, with
+their controls and their place in the page form intact. Declare your seam as you
+mean it; the rule is applied at render, so a block whose tail grows past two
+starts folding on its own.
 
 ### form — a standalone page form
 

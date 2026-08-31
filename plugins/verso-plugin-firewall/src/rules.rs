@@ -28,19 +28,15 @@ const SECTION_SUB: &str = "Each packet enters the group for its traffic path. En
 checked from top to bottom; the first matching Accept, Reject, or Drop rule decides the packet \
 and stops evaluation. If no rule matches, the zone's default policy decides.";
 
+const EMPTY: &str = "No rules yet — every packet is decided by its zone's default policy.";
+
 /// page renders the Rules listing. Adding a rule is the one thing this page is
 /// for beyond reading it, so it is the page's action, up beside the heading.
 pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
-    let mut children = Vec::new();
-    children.extend(page::filter(
-        "Filter — zone, protocol, port, comment…",
-        model.rules.len(),
-    ));
-    children.push(Widget::section(
-        "Traffic rules",
-        SECTION_SUB,
-        vec![table(model, counters)],
-    ));
+    let children = vec![
+        page::filter("Filter — zone, protocol, port, comment…"),
+        Widget::section("Traffic rules", SECTION_SUB, vec![table(model, counters)]),
+    ];
     page::envelope(SUBHEADING, Widget::stack(children))
         .with_action("New rule", &page::new_rule_href(), "plus")
 }
@@ -94,6 +90,7 @@ fn table(model: &Firewall, counters: &Counters) -> Widget {
         rows,
         drawer_label: String::new(),
         drawer_icon: String::new(),
+        empty_text: EMPTY.into(),
     }
 }
 
@@ -191,7 +188,10 @@ mod tests {
                 {"label": "Zones", "path": "zones"}
             ])
         );
-        assert_eq!(body["widget"]["children"][0]["title"], "Traffic rules");
+        // The lens is stated on every page; the shell decides whether a page has
+        // enough to sift for it to render.
+        assert_eq!(body["widget"]["children"][0]["type"], "filter");
+        assert_eq!(body["widget"]["children"][1]["title"], "Traffic rules");
         assert!(body.get("commit").is_none());
         assert!(body.get("notice").is_none());
     }
@@ -256,21 +256,16 @@ mod tests {
         );
     }
 
-    // The filter is a control for a listing too long to read whole; a page that
-    // fits on screen is not helped by a search box over it.
+    // A firewall with nothing in it is not an empty grid of column headings: the
+    // listing says what the absence means, and the shell draws it as one row.
     #[test]
-    fn the_filter_appears_only_once_the_listing_outgrows_the_screen() {
-        let leads = |rules: usize| {
-            let mut model = fixture::firewall();
-            while model.rules.len() < rules {
-                model.rules.push(fixture::firewall().rules.remove(0));
-            }
-            model.rules.truncate(rules);
-            let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
-            body["widget"]["children"][0]["type"].as_str().unwrap_or_default().to_string()
-        };
-        assert_eq!(leads(page::FILTER_THRESHOLD), "section");
-        assert_eq!(leads(page::FILTER_THRESHOLD + 1), "filter");
+    fn a_config_with_no_rules_says_what_that_means() {
+        let mut model = fixture::firewall();
+        model.rules.clear();
+        let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
+        let table = table_of(&body);
+        assert_eq!(table["empty_text"], EMPTY);
+        assert!(table["rows"].as_array().expect("rows").is_empty());
     }
 
     #[test]

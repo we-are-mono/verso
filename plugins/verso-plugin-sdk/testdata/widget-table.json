@@ -170,5 +170,6 @@
     }
   ],
   "drawer_label": "Edit",
-  "drawer_icon": "pencil"
+  "drawer_icon": "pencil",
+  "empty_text": "No zones yet."
 }

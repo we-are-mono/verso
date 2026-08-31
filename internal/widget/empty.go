@@ -25,6 +25,8 @@ func (*Empty) isWidget() {}
 
 func (e *Empty) children() []Widget { return e.Children }
 
+func (e *Empty) prune(keep func(Widget) bool) { e.Children = pruneList(e.Children, keep) }
+
 // UnmarshalJSON decodes the action children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing.
 func (e *Empty) UnmarshalJSON(data []byte) error {
