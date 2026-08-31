@@ -1,21 +1,23 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* meter: a full donut ring. The ring fills by Fill% (a track circle plus a fill
-     circle whose stroke-dasharray is the fraction, rotated to start at 12 o'clock);
-     the centre shows the value over its unit. The ring carries the proportion, so the
-     number never restates it. The shell colours the ring by fill (ADR-005); "info"
-     forces the accent for a rate like speed. A named meter is live: the data-verso-
-     meter hooks let the shell's client script stream fresh readings into the parts
-     (verso.js), and empty unit/detail slots still render so a later reading has a
-     place to land. */}}
-<div class="text-center"{{if .Name}} data-verso-meter="{{.Name}}"{{end}}>
-  <svg viewBox="0 0 120 120" class="mx-auto w-full max-w-[7.5rem]" role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
-    <circle cx="60" cy="60" r="50" fill="none" stroke-width="11" class="stroke-slate-200"/>
-    <circle cx="60" cy="60" r="50" fill="none" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{.Dash}}" transform="rotate(-90 60 60)" data-verso-meter-ring
-      class="verso-meter-ring {{if eq .Band "info"}}stroke-sky-600{{else if eq .Band "danger"}}stroke-red-600{{else if eq .Band "warning"}}stroke-amber-500{{else}}stroke-emerald-600{{end}}"/>
-    <text x="60" y="53" text-anchor="middle" dominant-baseline="central" font-size="27" font-weight="700" class="fill-slate-900 tabular-nums" data-verso-meter-value>{{.Value}}</text>
-    {{if or .Unit .Name}}<text x="60" y="74" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" class="fill-slate-500" data-verso-meter-unit>{{.Unit}}</text>{{end}}
-  </svg>
-  <div class="mt-1 text-sm font-bold uppercase tracking-wide text-slate-500">{{.Label}}</div>
-  {{if or .Detail .Name}}<div class="mt-0.5 text-xs text-slate-400" data-verso-meter-detail>{{.Detail}}</div>{{end}}
+{{/* meter: a left-aligned horizontal gauge. The label sits over the value in its
+     own unit, a thin track carries the fill (coloured by band, ADR-005), and the
+     caption holds the one fact worth acting on. The number never restates the
+     fill — a storage meter reads "23 GB" over a ~72%-full track. A named meter is
+     live (data-verso-meter*): the shell's client script streams fresh
+     value/unit/detail and a new width into place (verso.js); "info" forces the
+     accent for a rate. */}}
+<div class="text-left"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
+  <div class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+    {{if .Icon}}<span class="{{if eq .Role "sky"}}text-sky-500{{else if eq .Role "violet"}}text-violet-500{{else if eq .Role "emerald"}}text-emerald-500{{else if eq .Role "amber"}}text-amber-500{{else}}text-slate-400{{end}}">{{icon .Icon "size-4"}}</span>{{end}}
+    <span>{{.Label}}</span>
+  </div>
+  <div class="mt-3 flex items-baseline gap-1">
+    <span class="text-4xl font-extrabold tracking-tight tabular-nums text-slate-900" data-verso-meter-value>{{.Value}}</span>
+    {{if or .Unit .Name}}<span class="text-base font-medium text-slate-500" data-verso-meter-unit>{{.Unit}}</span>{{end}}
+  </div>
+  <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-sky-500{{else if eq .Role "violet"}}bg-violet-500{{else if eq .Role "emerald"}}bg-emerald-500{{else if eq .Role "amber"}}bg-amber-500{{else}}bg-slate-400{{end}}{{else if eq .Band "info"}}bg-sky-600{{else if eq .Band "danger"}}bg-red-600{{else if eq .Band "warning"}}bg-amber-500{{else}}bg-emerald-600{{end}}" style="width: {{.Width}}" data-verso-meter-bar></div>
+  </div>
+  {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-slate-500" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>

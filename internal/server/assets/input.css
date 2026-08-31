@@ -735,13 +735,12 @@ html.verso-fonts-loading body {
   .verso-flash ~ .verso-page-body .verso-filter-dock { margin-top: 0; }
 }
 
-/* Live meters glide: a fresh reading lands as a stroke-dasharray change
-   (verso.js streams them in) and the ring eases there instead of snapping. */
+/* Live meters glide: a fresh reading lands as a width change (verso.js
+   streams them in) and the track eases there instead of snapping. */
 @layer components {
-  .verso-meter-ring { transition: stroke-dasharray 600ms ease; }
   .verso-meter-bar { transition: width 600ms ease; }
   @media (prefers-reduced-motion: reduce) {
-    .verso-meter-ring, .verso-meter-bar { transition: none; }
+    .verso-meter-bar { transition: none; }
   }
 
   /* netmap ants: a lit green dash pattern is the only thing on each link (no

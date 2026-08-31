@@ -1099,13 +1099,7 @@ document.addEventListener(
 (function () {
   if (!window.EventSource) return;
   if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-prop]")) return;
-  var BANDS = {
-    success: "stroke-emerald-600",
-    warning: "stroke-amber-500",
-    danger: "stroke-red-600",
-    info: "stroke-sky-600",
-  };
-  // The bar layout tints its fill with a background, not a stroke.
+  // The meter's track tints by its health band (the tone vocabulary).
   var BAR_BANDS = {
     success: "bg-emerald-600",
     warning: "bg-amber-500",
@@ -1123,13 +1117,6 @@ document.addEventListener(
     setText(root, "[data-verso-meter-unit]", reading.unit);
     setText(root, "[data-verso-meter-detail]", reading.detail);
     var fill = Math.min(100, Math.max(0, reading.fill));
-    var ring = root.querySelector("[data-verso-meter-ring]");
-    if (ring) {
-      var c = 2 * Math.PI * parseFloat(ring.getAttribute("r"));
-      ring.setAttribute("stroke-dasharray", ((fill / 100) * c).toFixed(1) + " " + c.toFixed(2));
-      for (var band in BANDS) ring.classList.remove(BANDS[band]);
-      ring.classList.add(BANDS[reading.band] || BANDS.success);
-    }
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {
       bar.style.width = fill + "%";
@@ -1140,8 +1127,7 @@ document.addEventListener(
         bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.success);
       }
     }
-    var svg = root.querySelector("svg");
-    if (svg) svg.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
+    root.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
   function applyInterface(iface) {
     var rows = document.querySelectorAll("[data-verso-row]");
