@@ -65,7 +65,7 @@ func (q *Qr) renderInto(r *Renderer, out io.Writer, _ string) error {
 	if q.DownloadHref != "" {
 		view.DownloadHref = safeHref(q.DownloadHref, true)
 		if view.DownloadLabel == "" {
-			view.DownloadLabel = "Download config file"
+			view.DownloadLabel = r.tr("Download config file")
 		}
 	}
 	return r.execute(out, "qr.html.tmpl", view)

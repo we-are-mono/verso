@@ -17,8 +17,8 @@
     <div class="mt-3.5 flex items-center justify-between gap-4">
       <h1 class="font-serif text-4xl font-semibold leading-tight tracking-tight text-slate-900">{{.Lead}}<span class="text-emerald-600">{{.Accent}}</span></h1>
       <span class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-gray-700 dark:bg-gray-800">
-        <span class="rounded-md px-3 py-1 text-sm font-medium text-slate-500 dark:text-gray-400">Basic</span>
-        <span class="rounded-md bg-white px-3 py-1 text-sm font-medium text-slate-900 shadow-sm dark:bg-gray-700 dark:text-gray-100 dark:shadow-none">Advanced</span>
+        <span class="rounded-md px-3 py-1 text-sm font-medium text-slate-500 dark:text-gray-400">{{ t "Basic" }}</span>
+        <span class="rounded-md bg-white px-3 py-1 text-sm font-medium text-slate-900 shadow-sm dark:bg-gray-700 dark:text-gray-100 dark:shadow-none">{{ t "Advanced" }}</span>
       </span>
     </div>
   </div>
@@ -77,7 +77,7 @@
   {{/* System: headline metrics with bars, then the hardware facts in two columns. */}}
   <section class="mt-12">
     <div class="flex items-baseline gap-4">
-      <h2 class="text-2xl font-semibold tracking-tight text-slate-900">System</h2>
+      <h2 class="text-2xl font-semibold tracking-tight text-slate-900">{{ t "System" }}</h2>
       <span class="text-sm text-slate-400">{{.SysMeta}}</span>
     </div>
     {{/* The headline metrics: bar-layout Meter widgets, injected into a divided

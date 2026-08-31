@@ -24,31 +24,132 @@ var templateFS embed.FS
 // Dispatch is polymorphic, not a switch: each widget renders itself via renderInto
 // (below), so adding a widget touches only that widget's file — never this engine.
 // The per-widget view models and render logic live beside their structs.
+//
+// Localization (ADR-012) has two seams here. The {{ t }} template function is
+// bound at parse time, so the template set is parsed once per installed language
+// and cached (sets); the request selects its set. And the request's translator is
+// carried on the render handle (t) so a widget's renderInto can localize the
+// string defaults it injects (Form "Save", Confirm labels, …), which have no
+// struct field for translateSchema to reach.
 type Renderer struct {
-	tmpl     *template.Template
-	md       goldmark.Markdown
-	tabSeq   atomic.Int64 // per-render unique id, so multiple tabs groups never collide
-	wizSeq   atomic.Int64 // ditto for wizards
-	cfmSeq   atomic.Int64 // ditto for confirm widgets
-	chartSeq atomic.Int64 // ditto for charts' gradient ids
+	// sets is the per-language template cache on the root renderer: language code
+	// → parsed set, with "" the English (identity) set. Swapped atomically on a
+	// catalog rescan, so a concurrent render keeps rendering its own snapshot.
+	sets atomic.Pointer[map[string]*template.Template]
+	// tmpl and t are set on a per-render handle derived by RenderWithToken: the
+	// selected language's template set, and its translator (nil/identity for
+	// English). The root renderer leaves them nil and never renders directly.
+	tmpl *template.Template
+	t    func(string) string
+	md   goldmark.Markdown
+	// seq holds the process-wide id counters, shared by pointer so a per-render
+	// handle keeps minting ids that never collide with any other render's.
+	seq *renderSeqs
+}
+
+// renderSeqs are the monotonic id counters that keep generated element ids
+// unique — tabs groups, wizards, confirm checkboxes, chart gradients — across
+// every render (they are shared by pointer, never copied, so concurrency is safe).
+type renderSeqs struct {
+	tab   atomic.Int64
+	wiz   atomic.Int64
+	cfm   atomic.Int64
+	chart atomic.Int64
 }
 
 // NewRenderer parses the embedded widget templates and builds the sanitising
-// Markdown engine for the raw bridge.
+// Markdown engine for the raw bridge. It starts with English only; SetLanguages
+// adds the installed catalogs' template sets once the bundle is known.
 func NewRenderer() (*Renderer, error) {
-	tmpl, err := template.New("widget").Funcs(template.FuncMap{"icon": Icon}).ParseFS(templateFS, "templates/*.tmpl")
+	base, err := parseWidgetTemplates(identityTranslator)
 	if err != nil {
 		return nil, fmt.Errorf("widget: parse templates: %w", err)
 	}
-	return &Renderer{tmpl: tmpl, md: newMarkdown()}, nil
+	r := &Renderer{md: newMarkdown(), seq: &renderSeqs{}}
+	r.sets.Store(&map[string]*template.Template{"": base})
+	return r, nil
 }
 
-// RenderWithToken renders w, injecting csrfToken as a hidden field into any form
-// it produces, so state-changing plugin submissions carry the caller's CSRF
-// token (VS-04). An empty token omits it. The widget set is closed, so an
-// unknown type is a programming error, not an extension point.
-func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken string) error {
-	return r.render(out, w, csrfToken)
+// identityTranslator is the English translator: every source string is its own
+// translation. It backs the "" template set and any nil per-request translator.
+func identityTranslator(s string) string { return s }
+
+// parseWidgetTemplates parses the embedded widget templates with t bound as the
+// {{ t }} function, so each installed language gets its own set (html/template
+// binds funcs at parse time).
+func parseWidgetTemplates(t func(string) string) (*template.Template, error) {
+	return template.New("widget").
+		Funcs(template.FuncMap{"icon": Icon, "t": t}).
+		ParseFS(templateFS, "templates/*.tmpl")
+}
+
+// SetLanguages rebuilds the per-language template cache: the English identity set
+// plus one parsed set per installed code, each with its {{ t }} closing over that
+// code's translator. translatorFor returns the lookup for a code (i18n.Bundle's
+// Translator). The fresh cache is swapped in atomically. Called at startup and on
+// every catalog rescan (ADR-012); safe to call while requests render.
+func (r *Renderer) SetLanguages(codes []string, translatorFor func(code string) func(string) string) error {
+	sets := make(map[string]*template.Template, len(codes)+1)
+	base, err := parseWidgetTemplates(identityTranslator)
+	if err != nil {
+		return fmt.Errorf("widget: parse templates: %w", err)
+	}
+	sets[""] = base
+	for _, code := range codes {
+		set, err := parseWidgetTemplates(translatorFor(code))
+		if err != nil {
+			return fmt.Errorf("widget: parse templates for %q: %w", code, err)
+		}
+		sets[strings.ToLower(code)] = set
+	}
+	r.sets.Store(&sets)
+	return nil
+}
+
+// setFor returns the parsed template set for a language code, falling back to the
+// English set for an empty or uninstalled code.
+func (r *Renderer) setFor(lang string) *template.Template {
+	sets := *r.sets.Load()
+	if set, ok := sets[strings.ToLower(lang)]; ok {
+		return set
+	}
+	return sets[""]
+}
+
+// RenderWithToken renders w for the request's language, injecting csrfToken as a
+// hidden field into any form it produces so state-changing plugin submissions
+// carry the caller's CSRF token (VS-04). An empty token omits it. lang selects the
+// template set and t is the request's translator (nil = English): when t is
+// non-nil the widget tree is translated in place first (translateSchema), and t
+// rides the render handle so injected string defaults are localized too. The
+// widget set is closed, so an unknown type is a programming error, not an
+// extension point.
+func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken, lang string, t func(string) string) error {
+	if t != nil {
+		translateSchema(w, t)
+	}
+	pass := &Renderer{tmpl: r.setFor(lang), t: t, md: r.md, seq: r.seq}
+	return pass.render(out, w, csrfToken)
+}
+
+// tr localizes a string the renderer itself injects at render time (a widget's
+// default label, e.g. Form's "Save"). translateSchema already localized every
+// authored struct field, so this is only ever called on renderer-owned literals —
+// never re-translating an authored value. English (nil t) is the identity.
+func (r *Renderer) tr(s string) string {
+	if r.t == nil {
+		return s
+	}
+	return r.t(s)
+}
+
+// translate runs the localization walk over a widget subtree the renderer composes
+// itself — the overview's child tables/chart/meters, which it renders directly and
+// so never reach RenderWithToken's walk. A no-op for English (nil t).
+func (r *Renderer) translate(w Widget) {
+	if r.t != nil {
+		translateSchema(w, r.t)
+	}
 }
 
 // render dispatches to the widget itself — polymorphism replaces the old type

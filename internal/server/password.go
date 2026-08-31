@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -46,7 +47,7 @@ func accessForm(hasPassword bool, fieldErrs map[string]string, formErr, success 
 	return &widget.Form{Submit: label, Success: success, Error: formErr, Fields: fields}
 }
 
-func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession) *widget.Stack {
+func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
 	return &widget.Stack{Children: []widget.Widget{
 		&widget.Section{
 			Title: "Administrator account",
@@ -63,7 +64,7 @@ func accessBody(hasPassword bool, username string, fieldErrs map[string]string, 
 			Title:    "Active sessions",
 			Sub:      "Browsers currently signed in to Verso. End anything you do not recognize.",
 			Hairline: true,
-			Children: []widget.Widget{accessSessionsTable(sessions)},
+			Children: []widget.Widget{accessSessionsTable(sessions, tr)},
 		},
 	}}
 }
@@ -73,7 +74,7 @@ type accessSession struct {
 	Current                                    bool
 }
 
-func accessSessionsTable(sessions []accessSession) *widget.Table {
+func accessSessionsTable(sessions []accessSession, tr func(string) string) *widget.Table {
 	rows := make([]widget.TableRow, 0, len(sessions))
 	for _, sess := range sessions {
 		var access widget.TableCell
@@ -83,7 +84,7 @@ func accessSessionsTable(sessions []accessSession) *widget.Table {
 			access = widget.TableCell{
 				Button: "End session", Action: "end-session:" + sess.ID,
 				ConfirmTitle: "End this session?",
-				Confirm:      "Anyone using " + sess.Browser + " will be signed out of Verso immediately. They’ll need the administrator password to sign in again.",
+				Confirm:      fmt.Sprintf(tr("Anyone using %s will be signed out of Verso immediately. They’ll need the administrator password to sign in again."), sess.Browser),
 			}
 		}
 		rows = append(rows, widget.TableRow{ID: sess.ID, Cells: []widget.TableCell{
@@ -272,7 +273,9 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		username = "root"
 	}
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r)), s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	access := accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r), translatorOrIdentity(t))
+	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

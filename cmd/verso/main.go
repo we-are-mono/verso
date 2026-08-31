@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/server"
@@ -37,6 +38,22 @@ func main() {
 	}
 	log.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
 
+	// Localization catalogs are data packages discovered on disk (ADR-012), the
+	// same resilient glob as plugin manifests; a malformed catalog is skipped and
+	// reported, never fatal. English needs none.
+	i18nDir := os.Getenv("VERSO_I18N_DIR")
+	if i18nDir == "" {
+		i18nDir = "/usr/share/verso/i18n"
+	}
+	loadBundle := func() *i18n.Bundle {
+		bundle, i18nProblems := i18n.Load(os.DirFS(i18nDir), "*.json")
+		for _, p := range i18nProblems {
+			log.Printf("verso: %v", p)
+		}
+		log.Printf("verso: loaded %d language catalog(s) in %s", len(bundle.Codes()), i18nDir)
+		return bundle
+	}
+
 	srv, err := server.New(
 		renderer,
 		openwrt.NewNativeBackend(),
@@ -47,14 +64,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+	// Install the catalogs discovered at startup; English is the built-in source.
+	srv.SetBundle(loadBundle())
 	// The management surface rescans manifests after an install or remove
-	// (ADR-011 §7), so a plugin package appears without a shell restart.
+	// (ADR-011 §7), so a plugin package appears without a shell restart. A catalog
+	// apk lands the same way, so re-read the catalogs on the same trigger — a new
+	// language needs no restart either (ADR-012).
 	srv.SetRescan(func() []plugin.Manifest {
 		rescanned, rescanProblems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
 		for _, p := range rescanProblems {
 			log.Printf("verso: %v", p)
 		}
 		log.Printf("verso: rediscovered %d plugin(s) in %s", len(rescanned), pluginsDir)
+		srv.SetBundle(loadBundle())
 		return rescanned
 	})
 	srv.SetAllowedHosts(allowedHosts())

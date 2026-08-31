@@ -215,7 +215,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Baseline = scaleY(0)
 	}
 
-	seq := r.chartSeq.Add(1)
+	seq := r.seq.chart.Add(1)
 	for i, s := range c.Series {
 		if len(s.Values) < 2 {
 			continue // a line needs at least two points

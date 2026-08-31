@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <!doctype html>
-<html lang="en">
+<html lang="{{ .Lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in · Verso</title>
+<title>{{ t "Sign in" }} · Verso</title>
 <link rel="preload" href="/assets/fonts/hanken.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -44,7 +44,7 @@
     <section class="relative hidden flex-col justify-between py-12 md:flex">
       <div>
         <h1 class="font-serif text-6xl font-medium tracking-tight text-slate-900">Verso</h1>
-        <p class="mt-4 text-lg text-slate-500">Your network, at a glance.</p>
+        <p class="mt-4 text-lg text-slate-500">{{ t "Your network, at a glance." }}</p>
       </div>
 
       {{/* The constellation as a true 3D scene: each device node sits at its own
@@ -72,9 +72,9 @@
         <h1 class="mb-10 font-serif text-4xl font-medium tracking-tight text-slate-900 md:hidden">Verso</h1>
 
         <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
-          Sign in
+          {{ t "Sign in" }}
         </h2>
-        <p class="mt-1.5 text-slate-500">Enter your router password to continue.</p>
+        <p class="mt-1.5 text-slate-500">{{ t "Enter your router password to continue." }}</p>
 
         {{if .Error}}
         <div class="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">{{.Error}}</div>
@@ -82,18 +82,18 @@
 
         <form method="post" action="/login" class="mt-8 space-y-5">
           <div class="space-y-1.5">
-            <label for="username" class="block font-medium text-slate-700">Username</label>
+            <label for="username" class="block font-medium text-slate-700">{{ t "Username" }}</label>
             <input id="username" name="username" type="text" value="root" autocomplete="username"
               class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
           </div>
           <div class="space-y-1.5">
-            <label for="password" class="block font-medium text-slate-700">Password</label>
+            <label for="password" class="block font-medium text-slate-700">{{ t "Password" }}</label>
             <input id="password" name="password" type="password" autocomplete="current-password" autofocus
               class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
           </div>
           <button type="submit"
             class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-sky-700 active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0 focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">
-            Sign in
+            {{ t "Sign in" }}
           </button>
         </form>
       </div>

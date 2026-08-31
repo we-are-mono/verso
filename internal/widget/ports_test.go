@@ -34,14 +34,17 @@ func TestPortsLegend(t *testing.T) {
 	got := render(t, r, &Ports{Legend: true, Items: []PortItem{
 		{Kind: "rj45", Label: "a"}, {Kind: "sfp", Label: "b", Role: "wan"},
 	}})
-	for _, want := range []string{"verso-ports-legend", "Connected", "Not connected", "Internet = your WAN", "RJ45 = network cable", "SFP+ = fiber"} {
+	// Legend text now flows through the {{ t }} localization function (ADR-012),
+	// so html/template autoescaping encodes the "+" as &#43; in the source — the
+	// browser still renders "SFP+ = fiber".
+	for _, want := range []string{"verso-ports-legend", "Connected", "Not connected", "Internet = your WAN", "RJ45 = network cable", "SFP&#43; = fiber"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("legend missing %q:\n%s", want, got)
 		}
 	}
 	// A copper-only device with no WAN omits the fiber and Internet hints.
 	rj := render(t, r, &Ports{Legend: true, Items: []PortItem{{Kind: "rj45", Label: "a", Role: "lan"}}})
-	if strings.Contains(rj, "SFP+ = fiber") || strings.Contains(rj, "Internet = your WAN") {
+	if strings.Contains(rj, "SFP&#43; = fiber") || strings.Contains(rj, "Internet = your WAN") {
 		t.Errorf("legend should list only what the device has:\n%s", rj)
 	}
 	// No legend unless requested.

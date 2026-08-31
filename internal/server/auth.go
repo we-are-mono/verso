@@ -154,6 +154,7 @@ func validCSRF(r *http.Request, want string) bool {
 }
 
 type loginData struct {
+	Lang     string // negotiated language for <html lang>, "en" when English
 	CSS      template.CSS
 	Error    string
 	Version  string // the deployed Verso build ("dev" when un-stamped), shown in the hero so the running version is verifiable without signing in
@@ -183,7 +184,7 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.renderLogin(w, http.StatusOK, "")
+	s.renderLogin(w, r, http.StatusOK, "")
 }
 
 // handleLogin authenticates and, on success, stores the session server-side and
@@ -192,16 +193,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// /login is pre-session, so it can carry no CSRF token; a same-origin check
 	// is its CSRF defense against a cross-site auto-submit (VS-04).
 	if crossSiteLogin(r) {
-		s.renderLogin(w, http.StatusForbidden, "That request didn’t come from this page — reload and try again.")
+		s.renderLogin(w, r, http.StatusForbidden, "That request didn’t come from this page — reload and try again.")
 		return
 	}
 	key := clientIP(r)
 	if !s.loginLimiter.allowed(key) {
-		s.renderLogin(w, http.StatusTooManyRequests, "Too many attempts — wait a minute and try again.")
+		s.renderLogin(w, r, http.StatusTooManyRequests, "Too many attempts — wait a minute and try again.")
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderLogin(w, http.StatusOK, "Could not read the form.")
+		s.renderLogin(w, r, http.StatusOK, "Could not read the form.")
 		return
 	}
 	username := r.PostForm.Get("username")
@@ -212,7 +213,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// username or password was wrong. The detail is logged, not shown.
 		s.loginLimiter.fail(key)
 		log.Printf("verso: login failed for %q: %v", username, err)
-		s.renderLogin(w, http.StatusOK, "Invalid username or password.")
+		s.renderLogin(w, r, http.StatusOK, "Invalid username or password.")
 		return
 	}
 	s.loginLimiter.success(key)
@@ -244,9 +245,15 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func (s *Server) renderLogin(w http.ResponseWriter, status int, errMsg string) {
+func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int, errMsg string) {
+	// /login is pre-session, so the language is negotiated from Accept-Language
+	// like any other request; the error copy is localized here at its one exit.
+	lang, t := s.localize(r)
 	var buf bytes.Buffer
-	if err := s.page.ExecuteTemplate(&buf, "login.html.tmpl", loginData{CSS: s.css, Error: errMsg, Version: version.Version, Firmware: loginFirmware()}); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
+		Lang: langAttr(lang), CSS: s.css, Error: translatorOrIdentity(t)(errMsg),
+		Version: version.Version, Firmware: loginFirmware(),
+	}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return
 	}

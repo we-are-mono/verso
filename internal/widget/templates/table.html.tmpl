@@ -37,7 +37,7 @@
         {{range .Cells}}
         {{if eq .Kind "reorder"}}
         <td class="w-8 border-b border-slate-200 py-3 pr-2 pl-0 align-middle group-last:border-b-0">
-          <button type="button" data-verso-reorder-handle aria-label="Reorder {{.RowID}}" title="Drag to reorder" class="grid size-6 cursor-grab touch-none place-items-center text-slate-300 transition-colors select-none hover:text-slate-500 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
+          <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowID}}" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-slate-300 transition-colors select-none hover:text-slate-500 active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600">
             {{icon "grip-vertical" "size-4"}}
           </button>
         </td>
@@ -126,7 +126,7 @@
                             <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
                             <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950 sm:w-auto">{{.Button}}</button>
                           </form>
-                          <button type="button" @click="hide" class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 sm:w-auto">Cancel</button>
+                          <button type="button" @click="hide" class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 sm:w-auto">{{ t "Cancel" }}</button>
                         </div>
                       </div>
                     </div>
@@ -200,13 +200,13 @@
               class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .DrawerWide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
               {{if .DrawerHideTitle}}
               <h3 class="sr-only">{{.DrawerTitle}}</h3>
-              <button type="button" @click="hide" aria-label="Close"
+              <button type="button" @click="hide" aria-label="{{ t "Close" }}"
                 class="absolute top-5 right-5 z-10 rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
                 {{icon "x" "size-5"}}
               </button>
               {{else}}<header class="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">
                 <h3 class="text-base font-medium text-slate-900">{{.DrawerTitle}}</h3>
-                <button type="button" @click="hide" aria-label="Close"
+                <button type="button" @click="hide" aria-label="{{ t "Close" }}"
                   class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
                   {{icon "x" "size-5"}}
                 </button>

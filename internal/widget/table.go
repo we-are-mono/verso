@@ -342,7 +342,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	out := make([]tableRowView, 0, len(rows))
 	drawerLabel := t.DrawerLabel
 	if drawerLabel == "" {
-		drawerLabel = "Details"
+		drawerLabel = r.tr("Details")
 	}
 	primary := 0
 	if len(t.Columns) > 0 && t.Columns[0].Kind == "reorder" {
@@ -382,9 +382,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
 				if cv.Confirm != "" {
-					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.cfmSeq.Add(1))
+					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1))
 					if cv.ConfirmTitle == "" {
-						cv.ConfirmTitle = "Are you sure?"
+						cv.ConfirmTitle = r.tr("Are you sure?")
 					}
 				}
 				for _, ep := range row.Cells[i].Endpoints {

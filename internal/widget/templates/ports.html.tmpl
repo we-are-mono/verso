@@ -50,12 +50,12 @@
   </div>
   {{if .Legend}}
   <div class="verso-ports-legend">
-    <span class="verso-ports-key"><span class="verso-ports-dot on"></span>Connected</span>
-    <span class="verso-ports-key"><span class="verso-ports-dot act"></span>Traffic</span>
-    <span class="verso-ports-key"><span class="verso-ports-dot"></span>Not connected</span>
-    {{if .HasWAN}}<span class="verso-ports-key">Internet = your WAN connection</span>{{end}}
-    {{if .HasRJ45}}<span class="verso-ports-key">RJ45 = network cable</span>{{end}}
-    {{if .HasSFP}}<span class="verso-ports-key">SFP+ = fiber</span>{{end}}
+    <span class="verso-ports-key"><span class="verso-ports-dot on"></span>{{ t "Connected" }}</span>
+    <span class="verso-ports-key"><span class="verso-ports-dot act"></span>{{ t "Traffic" }}</span>
+    <span class="verso-ports-key"><span class="verso-ports-dot"></span>{{ t "Not connected" }}</span>
+    {{if .HasWAN}}<span class="verso-ports-key">{{ t "Internet = your WAN connection" }}</span>{{end}}
+    {{if .HasRJ45}}<span class="verso-ports-key">{{ t "RJ45 = network cable" }}</span>{{end}}
+    {{if .HasSFP}}<span class="verso-ports-key">{{ t "SFP+ = fiber" }}</span>{{end}}
   </div>
   {{end}}
 </div>

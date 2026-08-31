@@ -41,8 +41,8 @@
     <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
     <span class="pointer-events-none text-sm text-slate-500">
       <span class="mx-auto mb-4 block w-fit text-slate-400">{{icon "upload" "size-10"}}</span>
-      <span class="block">{{if .Prompt}}{{.Prompt}}{{else}}Drop a file here{{end}}</span>
-      <span class="mt-1 block">or <span class="whitespace-nowrap font-semibold text-sky-600 underline underline-offset-2">choose one from your computer</span>.</span>
+      <span class="block">{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Drop a file here" }}{{end}}</span>
+      <span class="mt-1 block">{{ t "or" }} <span class="whitespace-nowrap font-semibold text-sky-600 underline underline-offset-2">{{ t "choose one from your computer" }}</span>.</span>
     </span>
   </label>
   {{else if eq .Kind "textarea"}}

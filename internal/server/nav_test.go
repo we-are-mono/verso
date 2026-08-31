@@ -118,7 +118,7 @@ func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
 	system := manifest("system", nav("System", "General", "/"))
 	system.Socket = "/system.sock"
 	s := navServer(system, manifest("net", nav("Network", "Interfaces", "/")))
-	model := s.buildSidebar("/plugins/system/")
+	model := s.buildSidebar("/plugins/system/", identityTranslator)
 	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/plugins/system/" || !got.Active {
 		t.Fatalf("last basic row = %+v, want active System targeting registered General", got)
 	}

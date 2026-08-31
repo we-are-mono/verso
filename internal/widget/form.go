@@ -105,7 +105,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	submit := f.Submit
 	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit {
-		submit = "Save"
+		submit = r.tr("Save")
 	}
 	var note template.HTML
 	if f.Note != "" {

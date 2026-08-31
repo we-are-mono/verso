@@ -222,11 +222,11 @@ type overviewView struct {
 	Devices    template.HTML
 }
 
-// orUnavailable falls a missing live fact back to a plain "unavailable" so the
+// orUnavailable falls a missing live fact back to a localized "unavailable" so the
 // System panel degrades honestly rather than showing a stale placeholder.
-func orUnavailable(s string) string {
+func orUnavailable(tr func(string) string, s string) string {
 	if s == "" {
-		return "unavailable"
+		return tr("unavailable")
 	}
 	return s
 }
@@ -250,6 +250,11 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 			{Label: "up", Role: "violet", Fill: true, Values: up},
 		},
 	}
+	// The overview composes its child widgets directly (not through
+	// RenderWithToken), so it runs the localization walk over each itself — every
+	// column label, cell word, chart caption and drawer fact is translated in one
+	// place, exactly as a plugin's table would be (ADR-012).
+	r.translate(chart)
 	chartHTML, err := renderToHTML(r, chart, csrf)
 	if err != nil {
 		return err
@@ -258,11 +263,15 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	interfaces, err := renderToHTML(r, o.interfacesTable(), csrf)
+	interfacesTable := o.interfacesTable()
+	r.translate(interfacesTable)
+	interfaces, err := renderToHTML(r, interfacesTable, csrf)
 	if err != nil {
 		return err
 	}
-	devices, err := renderToHTML(r, o.devicesTable(), csrf)
+	devicesTable := o.devicesTable()
+	r.translate(devicesTable)
+	devices, err := renderToHTML(r, devicesTable, csrf)
 	if err != nil {
 		return err
 	}
@@ -271,6 +280,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	// (icon + bar), not a health band, so the row reads as a dashboard.
 	metrics := make([]template.HTML, 0, 4)
 	for _, mt := range o.sysMeters() {
+		r.translate(mt)
 		html, err := renderToHTML(r, mt, csrf)
 		if err != nil {
 			return err
@@ -278,27 +288,29 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		metrics = append(metrics, html)
 	}
 
-	tiles := []ohTile{o.internetTile()}
+	// The verdict, tiles, and System facts are this template's own render model,
+	// not walkable widget structs, so their prose is localized here at the site.
+	tiles := []ohTile{o.internetTile(r.tr)}
 	if o.WiFiPresent {
-		tiles = append(tiles, ohTile{Label: "WI-FI", Icon: "wifi", Variant: "good", Status: "Both bands active", Caption: "2.4 & 5 GHz"})
+		tiles = append(tiles, ohTile{Label: r.tr("WI-FI"), Icon: "wifi", Variant: "good", Status: r.tr("Both bands active"), Caption: r.tr("2.4 & 5 GHz")})
 	}
 	tiles = append(tiles,
-		ohTile{Label: "SECURITY", Icon: "shield", Variant: "good", Status: "Protected", Caption: "Firewall on"},
-		ohTile{Label: "SOFTWARE", Icon: "download", Variant: "warning", Status: "Update available", Caption: "Security fixes"},
+		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "good", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
+		ohTile{Label: r.tr("SOFTWARE"), Icon: "download", Variant: "warning", Status: r.tr("Update available"), Caption: r.tr("Security fixes")},
 	)
 
-	chartMeta := "live · WAN"
+	chartMeta := r.tr("live") + " · WAN"
 	if o.WANDevice != "" {
-		chartMeta = "live · " + o.WANDevice
+		chartMeta = r.tr("live") + " · " + o.WANDevice
 	}
 	v := overviewView{
-		Kicker:      "ALL GOOD",
-		Lead:        "Your network is ",
-		Accent:      "healthy",
+		Kicker:      r.tr("ALL GOOD"),
+		Lead:        r.tr("Your network is "),
+		Accent:      r.tr("healthy"),
 		Tiles:       tiles,
 		HasWiFi:     o.WiFiPresent,
-		Facts:       o.factCols(),
-		ChartTitle:  "Internet traffic",
+		Facts:       o.factCols(r.tr),
+		ChartTitle:  r.tr("Internet traffic"),
 		ChartMeta:   chartMeta,
 		DownVal:     o.DownVal,
 		UpVal:       o.UpVal,
@@ -306,15 +318,15 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Chart:       chartHTML,
 		TrafficSeed: string(seed),
 
-		SysMeta: "hardware · live",
+		SysMeta: r.tr("hardware · live"),
 		Metrics: metrics,
 		SysLeft: []ohProp{
-			{Label: "Model", Value: orUnavailable(o.Model)},
-			{Label: "Firmware", Value: orUnavailable(o.Firmware), Mono: true},
-			{Label: "Kernel", Value: orUnavailable(o.Kernel), Mono: true},
-			{Label: "Uptime", Value: orUnavailable(o.Uptime)},
+			{Label: r.tr("Model"), Value: orUnavailable(r.tr, o.Model)},
+			{Label: r.tr("Firmware"), Value: orUnavailable(r.tr, o.Firmware), Mono: true},
+			{Label: r.tr("Kernel"), Value: orUnavailable(r.tr, o.Kernel), Mono: true},
+			{Label: r.tr("Uptime"), Value: orUnavailable(r.tr, o.Uptime)},
 		},
-		SysRight: o.sysRight(),
+		SysRight: o.sysRight(r.tr),
 
 		Interfaces: interfaces,
 		Devices:    devices,
@@ -322,18 +334,18 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	return r.execute(out, "overview.html.tmpl", v)
 }
 
-func (o *Overview) internetTile() ohTile {
-	tile := ohTile{Label: "INTERNET", Icon: "globe", Variant: "warning", Status: "Unavailable", Key: "internet-uptime"}
+func (o *Overview) internetTile(tr func(string) string) ohTile {
+	tile := ohTile{Label: tr("INTERNET"), Icon: "globe", Variant: "warning", Status: tr("Unavailable"), Key: "internet-uptime"}
 	if !o.WANKnown {
 		return tile
 	}
 	if !o.WANUp {
-		tile.Status, tile.Caption = "Not connected", "WAN is down"
+		tile.Status, tile.Caption = tr("Not connected"), tr("WAN is down")
 		return tile
 	}
-	tile.Variant, tile.Status = "good", "Connected"
+	tile.Variant, tile.Status = "good", tr("Connected")
 	if o.WANUptime != "" {
-		tile.Caption = "for " + o.WANUptime
+		tile.Caption = tr("for ") + o.WANUptime
 	}
 	return tile
 }
@@ -354,29 +366,31 @@ func (o *Overview) sysMeters() []*Meter {
 // sysRight builds the hardware-sensor facts column, omitting any reading the box
 // doesn't expose — a PC with no power sensor simply shows no "Power draw" row,
 // never a fabricated zero.
-func (o *Overview) sysRight() []ohProp {
+func (o *Overview) sysRight(tr func(string) string) []ohProp {
 	rows := make([]ohProp, 0, 4)
 	if o.Temperature != "" {
-		rows = append(rows, ohProp{Label: "Temperature", Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
+		rows = append(rows, ohProp{Label: tr("Temperature"), Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
 	}
 	if o.Fan != "" {
-		rows = append(rows, ohProp{Label: "Fan", Value: o.Fan, Key: "fan"})
+		rows = append(rows, ohProp{Label: tr("Fan"), Value: o.Fan, Key: "fan"})
 	}
 	if o.Power != "" {
-		rows = append(rows, ohProp{Label: "Power draw", Value: o.Power, Key: "power"})
+		rows = append(rows, ohProp{Label: tr("Power draw"), Value: o.Power, Key: "power"})
 	}
 	if o.SensorSummary != "" {
-		rows = append(rows, ohProp{Label: "Sensors", Value: o.SensorSummary, Key: "summary"})
+		rows = append(rows, ohProp{Label: tr("Sensors"), Value: o.SensorSummary, Key: "summary"})
 	}
 	return rows
 }
 
-// factCols builds the IPv4/IPv6 connection-facts columns from the live fields.
-func (o *Overview) factCols() []ohFactCol {
+// factCols builds the IPv4/IPv6 connection-facts columns from the live fields. The
+// row labels and any prose value ("Not configured") are localized; an address value
+// simply misses the catalog and stays verbatim.
+func (o *Overview) factCols(tr func(string) string) []ohFactCol {
 	rows := func(facts []OverviewFact) []ohRow {
 		out := make([]ohRow, 0, len(facts))
 		for _, f := range facts {
-			out = append(out, ohRow(f))
+			out = append(out, ohRow{Label: tr(f.Label), Value: tr(f.Value), Copy: f.Copy})
 		}
 		return out
 	}

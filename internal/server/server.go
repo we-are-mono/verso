@@ -20,8 +20,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
@@ -84,9 +86,17 @@ type Server struct {
 	sessions     *Sessions
 	loginLimiter *loginLimiter
 	allowedHosts map[string]bool
-	page         *template.Template
-	css          template.CSS
-	devCSS       string // dev hot-reload stylesheet path, "" in a normal build
+	// pages is the page-template cache, one parsed set per installed language
+	// with "" the English (identity) set, its {{ t }} bound at parse time
+	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
+	// its set by the negotiated language.
+	pages atomic.Pointer[map[string]*template.Template]
+	// bundle is the loaded localization catalogs, read per request to negotiate
+	// the language and translate. Immutable after load; a rescan swaps the
+	// pointer atomically (ADR-012).
+	bundle atomic.Pointer[i18n.Bundle]
+	css    template.CSS
+	devCSS string // dev hot-reload stylesheet path, "" in a normal build
 	// probe reports whether a plugin's unix socket accepts a connection — the
 	// liveness half of the management surface (ADR-011); a seam so tests need
 	// no real sockets.
@@ -128,7 +138,7 @@ func New(
 	manifests []plugin.Manifest,
 	auth Authenticator,
 ) (*Server, error) {
-	page, err := template.New("page").Funcs(template.FuncMap{"icon": widget.Icon}).ParseFS(templateFS, "templates/*.tmpl")
+	page, err := parsePageTemplates(identityTranslator)
 	if err != nil {
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
@@ -144,7 +154,6 @@ func New(
 		auth:             auth,
 		sessions:         newSessions(),
 		loginLimiter:     newLoginLimiter(time.Now),
-		page:             page,
 		css:              template.CSS(cssText),
 		probe:            probeSocket,
 		stats:            sysstat.New(),
@@ -159,6 +168,10 @@ func New(
 		pendingFirmwares: make(map[string]pendingFirmware),
 		maintenanceDir:   "/var/run/verso",
 	}
+	// Start English-only: the page cache holds just the identity set and the
+	// bundle stays nil (English) until SetBundle — wired by cmd/verso once the
+	// catalogs are loaded, and again on rescan — installs the localized sets.
+	s.pages.Store(&map[string]*template.Template{"": page})
 	// Enter CSS hot-reload only when the dev drop file is present (scripts/dev.sh);
 	// checked once, so a normal deployment pays nothing per render.
 	if _, err := os.Stat(devCSSPath); err == nil {
@@ -166,6 +179,107 @@ func New(
 	}
 	s.routes()
 	return s, nil
+}
+
+// identityTranslator is the English translator: each source string is its own
+// translation. It backs the "" page-template set and any nil per-request lookup.
+func identityTranslator(s string) string { return s }
+
+// parsePageTemplates parses the shell's page templates with t bound as the {{ t }}
+// function, so each installed language gets its own set (html/template binds funcs
+// at parse time). icon is bound as it is for the widget renderer.
+func parsePageTemplates(t func(string) string) (*template.Template, error) {
+	return template.New("page").
+		Funcs(template.FuncMap{"icon": widget.Icon, "t": t}).
+		ParseFS(templateFS, "templates/*.tmpl")
+}
+
+// SetBundle installs a freshly loaded catalog set (ADR-012): it rebuilds the
+// page-template cache (English plus one set per installed language) and the widget
+// renderer's matching cache, then swaps the bundle pointer — so the request path
+// reads immutable snapshots with no lock. Called at startup and on every catalog
+// rescan; safe to call while requests render. A nil bundle is ignored, and a parse
+// failure keeps the previous caches (it cannot happen for the embedded templates).
+func (s *Server) SetBundle(b *i18n.Bundle) {
+	if b == nil {
+		return
+	}
+	base, err := parsePageTemplates(identityTranslator)
+	if err != nil {
+		log.Printf("verso: i18n: parse page templates: %v", err)
+		return
+	}
+	pages := map[string]*template.Template{"": base}
+	for _, code := range b.Codes() {
+		set, err := parsePageTemplates(b.Translator(code))
+		if err != nil {
+			log.Printf("verso: i18n: parse page templates for %q: %v", code, err)
+			continue
+		}
+		pages[code] = set
+	}
+	if err := s.widgets.SetLanguages(b.Codes(), b.Translator); err != nil {
+		log.Printf("verso: i18n: rebuild widget templates: %v", err)
+		return
+	}
+	s.pages.Store(&pages)
+	s.bundle.Store(b)
+}
+
+// pageSet returns the page-template set for a language code, falling back to the
+// English set for an empty or uninstalled code.
+func (s *Server) pageSet(lang string) *template.Template {
+	sets := *s.pages.Load()
+	if set, ok := sets[lang]; ok {
+		return set
+	}
+	return sets[""]
+}
+
+// localize negotiates the request's language from Accept-Language against the
+// installed catalogs, returning the language code and its translator. English —
+// no installed match, or no catalogs — is ("", nil): the caller then renders the
+// English template set and the render skips the translation walk.
+func (s *Server) localize(r *http.Request) (lang string, t func(string) string) {
+	b := s.bundle.Load()
+	if b == nil {
+		return "", nil
+	}
+	lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
+	if lang == "" {
+		return "", nil
+	}
+	return lang, b.Translator(lang)
+}
+
+// translatorOrIdentity returns t, or the identity function for a nil t (English),
+// so shell code can localize a string unconditionally.
+func translatorOrIdentity(t func(string) string) func(string) string {
+	if t == nil {
+		return identityTranslator
+	}
+	return t
+}
+
+// langAttr is the value for <html lang>: the negotiated code, or "en" for English.
+func langAttr(lang string) string {
+	if lang == "" {
+		return "en"
+	}
+	return lang
+}
+
+// localizeBanner returns a copy of the banner with its shell-facing text localized,
+// or nil for no banner. The banner is chrome the page template renders, outside the
+// widget walk.
+func localizeBanner(b *plugin.Banner, tr func(string) string) *plugin.Banner {
+	if b == nil {
+		return nil
+	}
+	c := *b
+	c.Title = tr(c.Title)
+	c.Body = tr(c.Body)
+	return &c
 }
 
 // Close stops background services owned by the shell.
@@ -296,6 +410,7 @@ func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
 }
 
 type pageData struct {
+	Lang          string // negotiated language for <html lang>, "en" when English
 	Title         string
 	Heading       string
 	HeadingDetail string // the active subpage's name, muted beside the heading
@@ -356,13 +471,19 @@ type pageHeader struct {
 // pages carry the staged-changes bar even when clean; immediate-action pages
 // get it only when the shared stage is non-empty.
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	capsule := s.capsule(r.Context(), s.sessionSID(r))
 	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
 	flashVariant, flashMessage := s.takeFlash(r)
-	// A page with a top bar names its face in the headline — "Plugins —
+	// The top bar's labels are shell/plugin chrome the shell copied out; localize
+	// them here (surface 2) and name the active face in the headline — "Plugins —
 	// Discover" — with the face in muted ink so the domain stays the title.
 	headingDetail := ""
-	for _, p := range pages {
+	localizedPages := make([]pageTab, len(pages))
+	for i, p := range pages {
+		p.Label = tr(p.Label)
+		localizedPages[i] = p
 		if p.Active {
 			headingDetail = p.Label
 		}
@@ -374,28 +495,29 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		hasPassword = true
 	}
 	var buf bytes.Buffer
-	if err := s.page.ExecuteTemplate(&buf, "page.html.tmpl", pageData{
+	if err := s.pageSet(lang).ExecuteTemplate(&buf, "page.html.tmpl", pageData{
+		Lang:          langAttr(lang),
 		Title:         "Verso",
-		Heading:       hdr.Heading,
+		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
-		Kicker:        hdr.Kicker,
-		KickerStatus:  hdr.KickerStatus,
+		Kicker:        tr(hdr.Kicker),
+		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
-		Subheading:    hdr.Subheading,
+		Subheading:    tr(hdr.Subheading),
 		Width:         width,
 		CSS:           s.currentCSS(),
-		Nav:           s.buildSidebar(r.URL.Path),
+		Nav:           s.buildSidebar(r.URL.Path, tr),
 		Body:          body,
 		NoPassword:    !hasPassword,
-		Banner:        hdr.Banner,
+		Banner:        localizeBanner(hdr.Banner, tr),
 		CSRFToken:     s.sessionCSRF(r),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
 		ShowCapsule:   stages || capsule.Count > 0,
 		HasPageForm:   hasPageForm,
-		Pages:         pages,
+		Pages:         localizedPages,
 		FlashVariant:  flashVariant,
-		FlashMessage:  flashMessage,
+		FlashMessage:  tr(flashMessage),
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
@@ -476,7 +598,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

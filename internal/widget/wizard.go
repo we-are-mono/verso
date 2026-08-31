@@ -76,7 +76,7 @@ type wizardView struct {
 // The plugin declared the steps; the progress bar and navigation are the shell's
 // (ADR-005 §7).
 func (w *Wizard) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	group := fmt.Sprintf("verso-wizard-%d", r.wizSeq.Add(1))
+	group := fmt.Sprintf("verso-wizard-%d", r.seq.wiz.Add(1))
 	n := len(w.Steps)
 	steps := make([]wizStepView, 0, n)
 	for i, s := range w.Steps {

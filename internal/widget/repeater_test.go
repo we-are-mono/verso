@@ -33,7 +33,7 @@ func TestRepeaterDecodeAndRender(t *testing.T) {
 	}
 
 	var b strings.Builder
-	if err := newRenderer(t).RenderWithToken(&b, rp, "tok"); err != nil {
+	if err := newRenderer(t).RenderWithToken(&b, rp, "tok", "", nil); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	got := normalizeHTML(b.String())

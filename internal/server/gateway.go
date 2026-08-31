@@ -62,9 +62,13 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
 func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath string, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
+	// The request's language, negotiated once: t localizes the widget tree at
+	// render, tr the shell-owned notices this gateway may return (ADR-012).
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	if m.SchemaVersion != supportedSchemaVersion {
-		return s.notice("Plugin needs a newer Verso", fmt.Sprintf(
-			"%s speaks schema version %d; this shell supports version %d.",
+		return s.notice(tr("Plugin needs a newer Verso"), fmt.Sprintf(
+			tr("%s speaks schema version %d; this shell supports version %d."),
 			m.Name, m.SchemaVersion, supportedSchemaVersion)), http.StatusOK
 	}
 
@@ -76,11 +80,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		switch allowed, err := s.authorizePluginWrite(r.Context(), m, s.sessionSID(r)); {
 		case err != nil:
 			log.Printf("verso: plugin %q permission check failed: %v", m.ID, err)
-			return s.notice("Permission check unavailable",
-				"Verso couldn’t verify your permissions just now. Try again in a moment."), http.StatusServiceUnavailable
+			return s.notice(tr("Permission check unavailable"),
+				tr("Verso couldn’t verify your permissions just now. Try again in a moment.")), http.StatusServiceUnavailable
 		case !allowed:
-			return s.notice("Not permitted",
-				fmt.Sprintf("Your account isn’t permitted to change %s.", m.Name)), http.StatusForbidden
+			return s.notice(tr("Not permitted"),
+				fmt.Sprintf(tr("Your account isn’t permitted to change %s."), m.Name)), http.StatusForbidden
 		}
 	}
 
@@ -96,7 +100,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		// then re-renders the fresh state as a read. The plugin ships no add/remove
 		// logic — it only declared the repeater.
 		if r.PostForm.Get(widget.RepeaterOpField) != "" {
-			if body, st, ok := s.realizeRepeater(r.Context(), m, s.sessionSID(r), r.PostForm); !ok {
+			if body, st, ok := s.realizeRepeater(r.Context(), m, s.sessionSID(r), r.PostForm, tr); !ok {
 				return body, st
 			}
 			method = http.MethodGet // render current state; carry no form, run no commit
@@ -116,13 +120,13 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	env, err := s.transport.Fetch(r.Context(), m.Socket, req)
 	if err != nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
-		return s.unavailable(m), http.StatusOK
+		return s.unavailable(m, tr), http.StatusOK
 	}
 
 	wdg, err := widget.Decode(env.Widget)
 	if err != nil {
 		log.Printf("verso: plugin %q returned undecodable schema: %v", m.ID, err)
-		return s.unavailable(m), http.StatusOK
+		return s.unavailable(m, tr), http.StatusOK
 	}
 
 	status := http.StatusOK
@@ -143,11 +147,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		} else {
 			if err := validateApplyActions(m, env.Apply); err != nil {
 				log.Printf("verso: plugin %q returned an invalid apply action: %v", m.ID, err)
-				return s.notice("Not permitted", fmt.Sprintf(
-					"%s tried to perform an operation it did not declare.", m.Name)), http.StatusForbidden
+				return s.notice(tr("Not permitted"), fmt.Sprintf(
+					tr("%s tried to perform an operation it did not declare."), m.Name)), http.StatusForbidden
 			}
 			if len(env.Commit) > 0 {
-				if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit); !ok {
+				if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit, tr); !ok {
 					return body, st
 				}
 			}
@@ -156,9 +160,9 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	}
 
 	var b strings.Builder
-	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r)); err != nil {
+	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)
-		return s.unavailable(m), http.StatusOK
+		return s.unavailable(m, tr), http.StatusOK
 	}
 	if env.Title != "" {
 		hdr.Heading = env.Title
@@ -368,7 +372,10 @@ func (s *Server) notice(title, message string) template.HTML {
 
 func (s *Server) noticeWith(d noticeData) template.HTML {
 	var b bytes.Buffer
-	if err := s.page.ExecuteTemplate(&b, "notice.html.tmpl", d); err != nil {
+	// The notice template carries no {{ t }} chrome of its own — its text arrives
+	// already localized in d (wrapped at the call site) — so the English set renders
+	// it correctly in any language.
+	if err := s.pageSet("").ExecuteTemplate(&b, "notice.html.tmpl", d); err != nil {
 		return template.HTML(template.HTMLEscapeString(d.Title + ": " + d.Message))
 	}
 	return template.HTML(b.String())
@@ -377,12 +384,12 @@ func (s *Server) noticeWith(d noticeData) template.HTML {
 // unavailable is the honest dead-plugin page — and a door, not a wall: the
 // commonest cause is the plugin being turned off, and the management surface
 // (ADR-011) is where it turns back on.
-func (s *Server) unavailable(m plugin.Manifest) template.HTML {
+func (s *Server) unavailable(m plugin.Manifest, tr func(string) string) template.HTML {
 	return s.noticeWith(noticeData{
-		Title: "Plugin unavailable",
+		Title: tr("Plugin unavailable"),
 		Message: fmt.Sprintf(
-			"%s isn’t responding right now — it may be turned off. The rest of Verso is unaffected.", m.Name),
-		ActionLabel: "Open Packages",
+			tr("%s isn’t responding right now — it may be turned off. The rest of Verso is unaffected."), m.Name),
+		ActionLabel: tr("Open Packages"),
 		ActionHref:  "/system/packages",
 	})
 }
@@ -423,13 +430,13 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 // operator's sid on every call. On refusal or failure it returns a contained
 // notice and a status with ok=false; on success ok is true and the caller
 // renders the plugin's returned widget.
-func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp) (template.HTML, int, bool) {
+func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp, tr func(string) string) (template.HTML, int, bool) {
 	declared := declaredUCIConfigs(m)
 	for _, op := range ops {
 		if op.Config == "" || !declared[op.Config] {
 			log.Printf("verso: plugin %q tried to write undeclared uci config %q; refused", m.ID, op.Config)
-			return s.notice("Not permitted", fmt.Sprintf(
-				"%s tried to change settings it did not declare.", m.Name)), http.StatusForbidden, false
+			return s.notice(tr("Not permitted"), fmt.Sprintf(
+				tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
 		}
 		// An op with no section and a type creates the section first (through
 		// rpcd, staged like the set): the "drawer first, row on save" flow —
@@ -439,15 +446,15 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type)
 			if err != nil {
 				log.Printf("verso: plugin %q section create in uci %q failed: %v", m.ID, op.Config, err)
-				return s.notice("Save failed",
-					"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+				return s.notice(tr("Save failed"),
+					tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
 			}
 			section = created
 		}
 		if err := s.backend.UCISet(ctx, sid, op.Config, section, op.Values); err != nil {
 			log.Printf("verso: plugin %q write to uci %q failed: %v", m.ID, op.Config, err)
-			return s.notice("Save failed",
-				"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+			return s.notice(tr("Save failed"),
+				tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
 		}
 	}
 	return "", 0, true
@@ -459,12 +466,12 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 // acl.write — the same surface brokerStage bounds — and rpcd re-checks the
 // operator's sid. On success the caller re-renders the fresh state; a failure is
 // a contained notice, never a crash.
-func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid string, form url.Values) (template.HTML, int, bool) {
+func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid string, form url.Values, tr func(string) string) (template.HTML, int, bool) {
 	config := form.Get(widget.RepeaterConfigField)
 	if config == "" || !declaredUCIConfigs(m)[config] {
 		log.Printf("verso: plugin %q repeater op on undeclared uci config %q; refused", m.ID, config)
-		return s.notice("Not permitted", fmt.Sprintf(
-			"%s tried to change settings it did not declare.", m.Name)), http.StatusForbidden, false
+		return s.notice(tr("Not permitted"), fmt.Sprintf(
+			tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
 	}
 
 	var err error
@@ -472,23 +479,23 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 	case widget.RepeaterOpAdd:
 		secType := form.Get(widget.RepeaterTypeField)
 		if secType == "" {
-			return s.malformedRepeater(m)
+			return s.malformedRepeater(m, tr)
 		}
 		_, err = s.backend.UCIAdd(ctx, sid, config, secType)
 	case widget.RepeaterOpRemove:
 		section := form.Get(widget.RepeaterSectionField)
 		if section == "" {
-			return s.malformedRepeater(m)
+			return s.malformedRepeater(m, tr)
 		}
 		err = s.backend.UCIDelete(ctx, sid, config, section)
 	default:
 		log.Printf("verso: plugin %q unknown repeater op %q; refused", m.ID, op)
-		return s.malformedRepeater(m)
+		return s.malformedRepeater(m, tr)
 	}
 	if err != nil {
 		log.Printf("verso: plugin %q repeater op on uci %q failed: %v", m.ID, config, err)
-		return s.notice("Save failed",
-			"The change couldn’t be saved just now. Try again in a moment."), http.StatusServiceUnavailable, false
+		return s.notice(tr("Save failed"),
+			tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
 	}
 	return "", 0, true
 }
@@ -496,9 +503,9 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 // malformedRepeater is the contained response to a repeater affordance that posted
 // without the fields the shell needs to act — a client-side problem, not the
 // operator's, so it is a plain notice.
-func (s *Server) malformedRepeater(m plugin.Manifest) (template.HTML, int, bool) {
-	return s.notice("Couldn’t apply that change", fmt.Sprintf(
-		"Verso couldn’t apply that change to %s.", m.Name)), http.StatusBadRequest, false
+func (s *Server) malformedRepeater(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
+	return s.notice(tr("Couldn’t apply that change"), fmt.Sprintf(
+		tr("Verso couldn’t apply that change to %s."), m.Name)), http.StatusBadRequest, false
 }
 
 // declaredUCIConfigs is the set of uci configs a plugin declared it may write in

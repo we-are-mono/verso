@@ -33,6 +33,8 @@ func (s *Server) handlePackagesPage(w http.ResponseWriter, r *http.Request) {
 // drawer's Remove). Success flashes and redirects (PRG); the manifest set is
 // rescanned in case a plugin package left (ADR-011 §7).
 func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -47,11 +49,11 @@ func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.backend.PkgRemove(r.Context(), s.sessionSID(r), name); err != nil {
-		s.renderPackages(w, r, fmt.Sprintf("The device refused: %v.", err))
+		s.renderPackages(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
 		return
 	}
 	s.rescanManifests()
-	s.flash(r, "success", name+" removed.")
+	s.flash(r, "success", fmt.Sprintf(tr("%s removed."), name))
 	http.Redirect(w, r, "/system/packages", http.StatusSeeOther)
 }
 
@@ -75,7 +77,8 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	)
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -177,6 +180,8 @@ func (s *Server) handleDiscoverPage(w http.ResponseWriter, r *http.Request) {
 // manifest set is rescanned so a plugin package appears without a restart
 // (ADR-011 §7).
 func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -197,10 +202,10 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "refresh":
 		if err := s.backend.PkgUpdate(r.Context(), sid); err != nil {
-			s.renderDiscover(w, r, fmt.Sprintf("Could not refresh the feeds: %v.", err))
+			s.renderDiscover(w, r, fmt.Sprintf(tr("Could not refresh the feeds: %v."), err))
 			return
 		}
-		s.flash(r, "success", "Feeds refreshed.")
+		s.flash(r, "success", tr("Feeds refreshed."))
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "install", "remove":
 		name := r.PostForm.Get("package")
@@ -215,16 +220,16 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 			err = s.backend.PkgRemove(r.Context(), sid, name)
 		}
 		if err != nil {
-			s.renderDiscover(w, r, fmt.Sprintf("The device refused: %v.", err))
+			s.renderDiscover(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
 			return
 		}
 		// A plugin package just landed (or left): re-read the manifests so
 		// its pages and nav rows exist without a shell restart.
 		s.rescanManifests()
 		if verb == "install" {
-			s.flash(r, "success", name+" installed.")
+			s.flash(r, "success", fmt.Sprintf(tr("%s installed."), name))
 		} else {
-			s.flash(r, "success", name+" removed.")
+			s.flash(r, "success", fmt.Sprintf(tr("%s removed."), name))
 		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	default:
@@ -292,7 +297,8 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

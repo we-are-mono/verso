@@ -179,7 +179,7 @@ func TestRestoreBackendFailureIsAModalErrorNotAFieldError(t *testing.T) {
 	err := srv.widgets.RenderWithToken(&body, srv.restoreModal(restoreState{
 		open: true, verified: true, token: "opaque", name: "backup.tar.gz", entries: 12,
 		restoreError: "OpenWrt could not complete the restore.",
-	}), "csrf")
+	}), "csrf", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

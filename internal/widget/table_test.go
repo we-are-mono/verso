@@ -263,7 +263,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		Children: []Widget{&Form{Submit: "Save changes", Fields: []Widget{&Field{Name: "src", Label: "From zone", Value: "guest"}}}},
 	}
 	var b strings.Builder
-	if err := r.RenderWithToken(&b, tbl, "tok123"); err != nil {
+	if err := r.RenderWithToken(&b, tbl, "tok123", "", nil); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	got := b.String()

@@ -108,7 +108,7 @@ func (rp *Repeater) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	add := rp.AddLabel
 	if add == "" {
-		add = "Add"
+		add = r.tr("Add")
 	}
 	return r.execute(out, "repeater.html.tmpl", repeaterView{
 		Config: rp.Config, SectionType: rp.SectionType, AddLabel: add, CSRFToken: csrf,

@@ -22,7 +22,7 @@ func (*Filter) isWidget() {}
 func (f *Filter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	ph := f.Placeholder
 	if ph == "" {
-		ph = "Filter…"
+		ph = r.tr("Filter…")
 	}
 	return r.execute(out, "filter.html.tmpl", ph)
 }

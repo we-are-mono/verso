@@ -197,7 +197,7 @@ func (s *Server) handleFirmwareApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = os.Remove(pending.path)
-	s.renderFirmwareStarted(w)
+	s.renderFirmwareStarted(w, r)
 }
 
 func (s *Server) putPendingFirmware(token string, pending pendingFirmware) {
@@ -237,9 +237,13 @@ func (s *Server) consumePendingFirmware(token string) bool {
 	return ok
 }
 
-func (s *Server) renderFirmwareStarted(w http.ResponseWriter) {
+func (s *Server) renderFirmwareStarted(w http.ResponseWriter, r *http.Request) {
+	lang, _ := s.localize(r)
 	var body strings.Builder
-	if err := s.page.ExecuteTemplate(&body, "firmware-started.html.tmpl", struct{ CSS template.CSS }{CSS: s.currentCSS()}); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "firmware-started.html.tmpl", struct {
+		Lang string
+		CSS  template.CSS
+	}{Lang: langAttr(lang), CSS: s.currentCSS()}); err != nil {
 		http.Error(w, "firmware started page error", http.StatusInternalServerError)
 		return
 	}

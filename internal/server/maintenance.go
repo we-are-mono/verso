@@ -126,7 +126,8 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 
 	var body strings.Builder
 	root := &widget.Stack{Children: []widget.Widget{software, backup, restart, factory}}
-	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -381,12 +382,16 @@ func (s *Server) handleRestoreApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = os.Remove(pending.path)
-	s.renderRestoreComplete(w)
+	s.renderRestoreComplete(w, r)
 }
 
-func (s *Server) renderRestoreComplete(w http.ResponseWriter) {
+func (s *Server) renderRestoreComplete(w http.ResponseWriter, r *http.Request) {
+	lang, _ := s.localize(r)
 	var body strings.Builder
-	if err := s.page.ExecuteTemplate(&body, "restore-complete.html.tmpl", struct{ CSS template.CSS }{CSS: s.currentCSS()}); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "restore-complete.html.tmpl", struct {
+		Lang string
+		CSS  template.CSS
+	}{Lang: langAttr(lang), CSS: s.currentCSS()}); err != nil {
 		http.Error(w, "restore complete page error", http.StatusInternalServerError)
 		return
 	}

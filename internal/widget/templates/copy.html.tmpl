@@ -8,5 +8,5 @@
   <span x-ref="src" class="hidden">{{.Text}}</span>
   {{icon "copy" "size-4 text-slate-400"}}
   <span x-show="idle">{{.Label}}</span>
-  <span x-show="done" x-cloak>Copied!</span>
+  <span x-show="done" x-cloak>{{ t "Copied!" }}</span>
 </button>

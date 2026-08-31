@@ -68,14 +68,16 @@ type navGroup struct {
 
 // buildSidebar assembles the device-first sidebar for the current path: the everyday
 // basic rows, then the manifest-driven sections (via buildNav) as the Advanced groups.
-func (s *Server) buildSidebar(active string) navModel {
+// tr localizes every label at the display edge (surface 2); the section titles that
+// buildNav uses for ordering and filtering stay English internally.
+func (s *Server) buildSidebar(active string, tr func(string) string) navModel {
 	basic := func(label, icon, href string) navLink {
-		return navLink{Label: label, Icon: icon, Href: href, Active: isActive(active, href)}
+		return navLink{Label: tr(label), Icon: icon, Href: href, Active: isActive(active, href)}
 	}
 	m := navModel{Basic: []navLink{
 		basic("Home", "house", "/"),
-		{Label: "Internet", Icon: "globe", Href: "#", Detail: "Online", Dot: true, Variant: "good"},
-		{Label: "Devices", Icon: "devices", Href: "#", Detail: "9"},
+		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "good"},
+		{Label: tr("Devices"), Icon: "devices", Href: "#", Detail: "9"},
 		basic("Wi-Fi", "wifi", "#"),
 		basic("Family", "users", "#"),
 		basic("Safety", "shield", "#"),
@@ -93,7 +95,12 @@ func (s *Server) buildSidebar(active string) navModel {
 		if sec.Title == "Status" || sec.Title == "System" {
 			continue // Home and System are first-class destinations above the seam
 		}
-		m.Advanced = append(m.Advanced, navGroup{Title: sec.Title, Links: sec.Links})
+		links := make([]navLink, len(sec.Links))
+		for i, l := range sec.Links {
+			l.Label = tr(l.Label)
+			links[i] = l
+		}
+		m.Advanced = append(m.Advanced, navGroup{Title: tr(sec.Title), Links: links})
 	}
 	return m
 }

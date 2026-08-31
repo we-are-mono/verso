@@ -29,7 +29,7 @@
             <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
             {{if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
           </div>
-          <button type="button" @click="hide" aria-label="Close"
+          <button type="button" @click="hide" aria-label="{{ t "Close" }}"
             class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
             {{icon "x" "size-5"}}
           </button>

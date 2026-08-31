@@ -33,14 +33,14 @@ type confirmView struct {
 func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 	confirm := c.Confirm
 	if confirm == "" {
-		confirm = "Confirm"
+		confirm = r.tr("Confirm")
 	}
 	cancel := c.Cancel
 	if cancel == "" {
-		cancel = "Cancel"
+		cancel = r.tr("Cancel")
 	}
 	return r.execute(out, "confirm.html.tmpl", confirmView{
-		ID:              fmt.Sprintf("verso-confirm-%d", r.cfmSeq.Add(1)),
+		ID:              fmt.Sprintf("verso-confirm-%d", r.seq.cfm.Add(1)),
 		Trigger:         c.Trigger,
 		Message:         c.Message,
 		Confirm:         confirm,

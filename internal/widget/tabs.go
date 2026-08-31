@@ -76,7 +76,7 @@ type tabsView struct {
 // template a radio group whose :checked state (pure CSS) switches panels. The plugin
 // declared the tabs; every affordance and the switching is the shell's (ADR-005 §7).
 func (t *Tabs) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	group := fmt.Sprintf("verso-tabs-%d", r.tabSeq.Add(1))
+	group := fmt.Sprintf("verso-tabs-%d", r.seq.tab.Add(1))
 	tabs := make([]tabView, 0, len(t.Tabs))
 	for i, tab := range t.Tabs {
 		body, err := r.renderChildren(tab.Children, csrf)

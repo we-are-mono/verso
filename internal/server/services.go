@@ -117,6 +117,8 @@ func (s *Server) handleServicesPage(w http.ResponseWriter, r *http.Request) {
 // drawer's Restart. Success flashes the completed act and redirects (PRG).
 func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 	switchRequest := r.Header.Get("X-Verso-Interaction") == "switch"
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -131,7 +133,7 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if svcKeep[svc] {
-		msg := fmt.Sprintf("%s keeps this page alive — manage it over SSH if you really mean it.", svc)
+		msg := fmt.Sprintf(tr("%s keeps this page alive — manage it over SSH if you really mean it."), svc)
 		if switchRequest {
 			// A switch POST reads res.ok as success and reloads (verso.js), so a
 			// refusal must be an error status, not a 200 re-render — parity with the
@@ -143,7 +145,7 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if svcMustStayEnabled[svc] && (slices.Contains(actions, "stop") || slices.Contains(actions, "disable")) {
-		msg := svc + " must remain enabled; stopping it would remove the router's firewall and forwarding rules."
+		msg := fmt.Sprintf(tr("%s must remain enabled; stopping it would remove the router's firewall and forwarding rules."), svc)
 		if switchRequest {
 			http.Error(w, msg, http.StatusConflict)
 			return
@@ -160,14 +162,14 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 	for _, a := range actions {
 		if err := s.backend.RCInit(r.Context(), s.sessionSID(r), svc, a); err != nil {
 			if switchRequest {
-				http.Error(w, fmt.Sprintf("Could not %s %s: the device refused (%v).", a, svc, err), http.StatusBadGateway)
+				http.Error(w, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), a, svc, err), http.StatusBadGateway)
 				return
 			}
-			s.renderServices(w, r, fmt.Sprintf("Could not %s %s: the device refused (%v).", a, svc, err))
+			s.renderServices(w, r, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), a, svc, err))
 			return
 		}
 	}
-	s.flash(r, "success", svc+" "+lifecycleWord(actions)+".")
+	s.flash(r, "success", svc+" "+tr(lifecycleWord(actions))+".")
 	if switchRequest {
 		// A fetch-based switch already reloads the page after this response.
 		// Returning 204 avoids following a 303 through one expensive service-list
@@ -283,7 +285,8 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r)); err != nil {
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

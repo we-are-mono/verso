@@ -7,7 +7,7 @@
      button (shell-owned "copy", verso.js); icons from icons.go. */}}
 {{/* verso-copy-inline: the icon-sized copy control beside a value — context is the
      text to copy. Shared by properties rows and mono table cells. */}}
-{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="Copy" class="group/copy relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
+{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
   <span x-ref="src" class="hidden">{{.}}</span>
   <span x-show="idle">{{icon "copy" "size-4"}}</span>
   <span x-show="done" x-cloak>{{icon "check" "size-4 text-green-600"}}</span>
@@ -16,8 +16,8 @@
        the group is NAMED so an ancestor `group` (a table row wears one for its
        border styling) can never reveal the bubble from afar. */}}
   <span class="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
-    <span x-show="idle">Click to copy</span>
-    <span x-show="done" x-cloak>Copied!</span>
+    <span x-show="idle">{{ t "Click to copy" }}</span>
+    <span x-show="done" x-cloak>{{ t "Copied!" }}</span>
   </span>
 </button>{{end}}
 <dl class="{{if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-slate-200{{end}}">

@@ -10,10 +10,10 @@
     {{range .Items}}
     <span data-verso-token class="inline-flex items-center gap-1 rounded-md bg-slate-100 py-1 pr-1 pl-2 font-mono text-sm font-semibold text-slate-700 dark:bg-gray-700 dark:text-gray-200">
       <input type="hidden" name="{{$.Name}}" value="{{.}}"><span>{{.}}</span>
-      <button type="button" data-verso-token-remove aria-label="Remove {{.}}" class="grid size-5 place-items-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:bg-gray-600 dark:hover:text-gray-100">{{icon "x" "size-3.5"}}</button>
+      <button type="button" data-verso-token-remove aria-label="{{ t "Remove" }} {{.}}" class="grid size-5 place-items-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:bg-gray-600 dark:hover:text-gray-100">{{icon "x" "size-3.5"}}</button>
     </span>
     {{end}}
-    <input data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}Add…{{end}}" class="min-w-32 flex-1 border-0 bg-transparent px-1 py-1 text-sm text-slate-900 shadow-none outline-none focus:ring-0 dark:text-gray-100">
+    <input data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="min-w-32 flex-1 border-0 bg-transparent px-1 py-1 text-sm text-slate-900 shadow-none outline-none focus:ring-0 dark:text-gray-100">
   </div>
   {{else}}
   <div class="space-y-2">
@@ -23,7 +23,7 @@
       {{with index $.Errors (printf "%d" $i)}}<p class="text-sm text-red-600 dark:text-red-400">{{.}}</p>{{end}}
     </div>
     {{end}}
-    <input name="{{.Name}}" value="" type="text" placeholder="Add…"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none dark:focus:border-sky-400 dark:focus:ring-sky-400/50">
+    <input name="{{.Name}}" value="" type="text" placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none dark:focus:border-sky-400 dark:focus:ring-sky-400/50">
   </div>
   {{end}}
   {{if .Help}}<p class="mt-1.5 text-sm text-slate-500">{{.Help}}</p>{{end}}

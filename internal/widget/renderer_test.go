@@ -34,7 +34,7 @@ func newRenderer(t *testing.T) *Renderer {
 func render(t *testing.T, r *Renderer, w Widget) string {
 	t.Helper()
 	var b strings.Builder
-	if err := r.RenderWithToken(&b, w, ""); err != nil {
+	if err := r.RenderWithToken(&b, w, "", "", nil); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
 	return normalizeHTML(b.String())
@@ -1099,7 +1099,7 @@ func TestRenderWithTokenInjectsCSRF(t *testing.T) {
 	form := &Form{Fields: []Widget{&Field{Name: "h", Label: "H"}}}
 
 	var withTok strings.Builder
-	if err := r.RenderWithToken(&withTok, form, "tok123"); err != nil {
+	if err := r.RenderWithToken(&withTok, form, "tok123", "", nil); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
 	if !strings.Contains(withTok.String(), `name="_csrf" value="tok123"`) {
@@ -1107,7 +1107,7 @@ func TestRenderWithTokenInjectsCSRF(t *testing.T) {
 	}
 
 	var plain strings.Builder
-	if err := r.RenderWithToken(&plain, form, ""); err != nil {
+	if err := r.RenderWithToken(&plain, form, "", "", nil); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
 	if strings.Contains(plain.String(), "_csrf") {

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <!doctype html>
-<html lang="en">
+<html lang="{{ .Lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,8 +27,8 @@
       {{/* Light/dark toggle — flips .dark on <html> and persists it (verso.js
            toggleTheme); the palette vars under :root.dark do the rest, and
            verso-boot.js re-applies the choice pre-paint on every page. */}}
-      <button type="button" @click="toggleTheme" aria-label="Toggle theme" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
-      <button type="button" @click="close" aria-label="Close menu" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction md:hidden">{{icon "x" "size-5"}}</button>
+      <button type="button" @click="toggleTheme" aria-label="{{ t "Toggle theme" }}" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
+      <button type="button" @click="close" aria-label="{{ t "Close menu" }}" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction md:hidden">{{icon "x" "size-5"}}</button>
     </div>
   </div>
   <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -48,7 +48,7 @@
     <div x-data="advseam" class="mt-2.5 border-t border-slate-100 pt-2.5">
       <button type="button" @click="toggle" :aria-expanded="open" aria-controls="verso-adv" class="verso-seam group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
         <span class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-600">{{icon "sliders-horizontal" "size-5"}}</span>
-        <span class="text-sm font-medium text-slate-700 transition group-hover:translate-x-1 group-hover:text-slate-900">Advanced settings</span>
+        <span class="text-sm font-medium text-slate-700 transition group-hover:translate-x-1 group-hover:text-slate-900">{{ t "Advanced settings" }}</span>
         <span class="verso-chev ml-auto text-slate-400">{{icon "chevron-down" "size-4"}}</span>
       </button>
       <div id="verso-adv" class="verso-adv-wrap">
@@ -75,19 +75,19 @@
         {{icon "settings" "size-5"}}
         <span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>
       </span>
-      <span class="text-sm font-medium transition group-hover:translate-x-1">This device</span>
-      <span class="ml-auto text-xs font-medium text-amber-700">Update ready</span>
+      <span class="text-sm font-medium transition group-hover:translate-x-1">{{ t "This device" }}</span>
+      <span class="ml-auto text-xs font-medium text-amber-700">{{ t "Update ready" }}</span>
     </a>
     {{/* Account chip: who's signed in + a quick sign-out. */}}
     <div class="flex items-center gap-3 rounded-xl px-2 py-2">
       <span class="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">A</span>
       <div class="min-w-0 flex-1">
-        <div class="truncate text-sm font-medium text-slate-900">Administrator</div>
-        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-green-500"></span>Signed in</div>
+        <div class="truncate text-sm font-medium text-slate-900">{{ t "Administrator" }}</div>
+        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-green-500"></span>{{ t "Signed in" }}</div>
       </div>
       <form method="post" action="/logout">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <button type="submit" aria-label="Sign out" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "log-out" "size-5"}}</button>
+        <button type="submit" aria-label="{{ t "Sign out" }}" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "log-out" "size-5"}}</button>
       </form>
     </div>
   </div>
@@ -113,7 +113,7 @@
   {{if .NoPassword}}
   <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y border-red-200 bg-red-50 px-8 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
     {{icon "triangle-alert" "size-4 shrink-0 text-red-600 dark:text-red-400"}}
-    <span><span class="font-semibold dark:text-red-400">No administrator password is set.</span> Anyone who can reach this router can change its settings.</span>
+    <span><span class="font-semibold dark:text-red-400">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
   </div>
   {{else if .Banner}}
   <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y px-8 text-sm
@@ -128,7 +128,7 @@
   {{end}}
   {{/* Mobile top bar: the hamburger opens the drawer. */}}
   <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
-    <button type="button" @click="toggle" aria-label="Open menu" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "menu" "size-5"}}</button>
+    <button type="button" @click="toggle" aria-label="{{ t "Open menu" }}" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "menu" "size-5"}}</button>
     <a href="/" class="text-base font-semibold tracking-tight">Verso</a>
   </div>
   {{/* Content width is a per-page preset the page declares (default normal),
@@ -174,9 +174,9 @@
       class="verso-capsule mr-8 mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle dark:border-gray-700">
       <div class="relative flex flex-wrap items-center gap-3 px-8 py-5">
       <button type="button" id="verso-capsule-apply"{{if not .Capsule.Count}} disabled{{end}}
-        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:pointer-events-none disabled:opacity-40 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">Save &amp; Apply</button>
+        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:pointer-events-none disabled:opacity-40 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">{{ t "Save & Apply" }}</button>
       <button type="button" id="verso-capsule-discard"{{if not .Capsule.Count}} disabled{{end}}
-        class="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950">Discard</button>
+        class="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950">{{ t "Discard" }}</button>
       {{if or .Capsule.Count .HasPageForm}}<button type="button" id="verso-capsule-review" aria-expanded="false"{{if not .Capsule.Count}} disabled{{end}}
         class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 transition-colors enabled:cursor-pointer enabled:hover:text-slate-900 disabled:pointer-events-none dark:text-gray-400 dark:enabled:hover:text-gray-200">
         <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full {{if .Capsule.Count}}bg-sky-500{{else}}bg-slate-300 dark:bg-gray-600{{end}}"></span>
@@ -189,7 +189,7 @@
       <div id="verso-capsule-list" aria-hidden="true" class="verso-capsule-review absolute bottom-full z-10 rounded-t-sm border border-b-0 border-slate-200 bg-surface-subtle dark:border-gray-700">
         <div class="flex items-center justify-between gap-4 px-8 pt-3 pb-2">
           <div id="verso-capsule-list-title" class="text-sm font-semibold text-slate-900 dark:text-gray-100">{{.Capsule.Label}}</div>
-          <button type="button" id="verso-capsule-close" aria-label="Close change review" class="grid size-7 shrink-0 place-items-center rounded text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:text-gray-100">
+          <button type="button" id="verso-capsule-close" aria-label="{{ t "Close change review" }}" class="grid size-7 shrink-0 place-items-center rounded text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:text-gray-100">
             {{icon "chevron-down" "size-4"}}
           </button>
         </div>
