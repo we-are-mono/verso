@@ -89,7 +89,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-pot
 
 all: lint test build
 
@@ -225,3 +225,64 @@ apk-publish: apk
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
+
+# ── i18n catalog packaging ────────────────────────────────────────────────────
+# A language is a data package, discovered on disk at runtime (ADR-012): the same
+# shape LuCI ships (luci-i18n-base-<code>). `make apk-i18n` builds + signs a
+# data-only, architecture-independent apk (verso-i18n-base-<code>) that drops one
+# <code>.json catalog into /usr/share/verso/i18n/. No post-install script — nothing
+# to restart, the shell rescans on the same trigger as a plugin install. Override
+# I18N_CODE to package another language (its <code>.json must exist at the root).
+I18N_CODE ?= sl
+I18N_SRC     := $(I18N_CODE).json
+I18N_PKG     := verso-i18n-base-$(I18N_CODE)
+I18N_PAYLOAD := $(APK_DIR)/i18n-$(I18N_CODE)
+I18N_OUT     := $(APK_DIR)/$(I18N_PKG)-$(VER).apk
+
+# apk-i18n needs no cross-build (data only), only the buildroot's apk + signing key.
+apk-i18n: apk-preflight
+	@test -f "$(I18N_SRC)" || { echo "catalog $(I18N_SRC) not found — author it at the repo root, or pass I18N_CODE=<code>."; exit 1; }
+	rm -rf $(I18N_PAYLOAD)
+	install -Dm644 $(I18N_SRC) $(I18N_PAYLOAD)/usr/share/verso/i18n/$(I18N_SRC)
+	fakeroot -- sh -c 'chown -R 0:0 "$(I18N_PAYLOAD)" && "$(APK)" mkpkg \
+	  --info name:$(I18N_PKG) --info version:$(VER) --info arch:all \
+	  --info "description:Verso localization catalog ($(I18N_CODE))" \
+	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
+	  --info origin:verso \
+	  --info "depends:verso" \
+	  --files "$(I18N_PAYLOAD)" \
+	  --sign-key "$(KEY)" \
+	  --output "$(I18N_OUT)"'
+	@echo "built and signed: $(I18N_OUT)  (arch all, version $(VER))"
+
+# apk-i18n-publish drops the catalog package alongside verso in the per-arch dev
+# repo and re-indexes what is present (an arch:all package installs on the router's
+# arch just the same). It does NOT clear the dir, so run it after `apk-publish` to
+# keep both the shell and the language in one index.
+apk-i18n-publish: apk-i18n
+	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
+	cp $(I18N_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
+	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
+	chmod -R a+rX $(VERSO_REPO_DIR)
+	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(I18N_OUT))  (index rebuilt)"
+
+# i18n-pot emits the source strings wrapped by the explicit localization seams —
+# every {{ t "…" }} in a template and every t("…")/tr("…") STRING LITERAL in Go —
+# sorted and de-duplicated, so a catalog can be diffed against those (ADR-012).
+#
+# It is a partial extractor, not the authoritative source-string set. Two large
+# classes of translated strings are NOT listed, because they are not literal
+# arguments to a t()/{{ t }} call:
+#   1. Strings the render walk (translateSchema) translates in place — authored
+#      widget struct fields (Section titles/subs, Callout bodies, Form submits,
+#      table column labels, …). These are the bulk of a page's prose.
+#   2. Strings translated centrally on a VARIABLE — renderPage's tr(hdr.Subheading)
+#      / tr(flashMessage) / tr(p.Label), buildSidebar's tr(sec.Title), renderLogin's
+#      tr(errMsg), services' tr(lifecycleWord(...)) — where the English lives in a
+#      struct field or a bare argument elsewhere, not inside the tr(...) call.
+# Author the catalog from the code and the shipped sl.json, using this only to spot
+# drift in the explicit-seam subset.
+i18n-pot:
+	@{ grep -rhoE '\{\{[ ]*t "([^"]+)"' internal --include='*.tmpl' | sed -E 's/^\{\{[ ]*t "//; s/"$$//'; \
+	   grep -rhoE '\btr?\("([^"]+)"' internal cmd --include='*.go' | grep -v '_test.go' | sed -E 's/^\btr?\("//; s/"$$//'; \
+	 } | sort -u
