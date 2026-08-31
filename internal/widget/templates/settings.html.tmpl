@@ -36,8 +36,7 @@
      (pt-1.5) so the first row sits where a title row would, the seam swallows
      the bottom padding with -mb-2.5, and overflow-hidden clips the seam's
      hover wash to the rounded edge. */}}
-{{/* the card frame is a twin hairline — the border plus a ring floated 4px
-     out with the page showing through — so a card reads as a deliberate
+{{/* the card frame is one hairline border — a card reads as a deliberate
      object on the white canvas without leaning on shadow. */}}
 <div class="{{if .Card}}overflow-hidden {{template "verso-card-frame"}} px-5 pb-2.5 {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
   {{/* the group label lives inside its card (same treatment as table column

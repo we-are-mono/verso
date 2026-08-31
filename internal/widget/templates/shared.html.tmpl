@@ -39,10 +39,10 @@
      success pulses — it marks something live. */}}
 {{define "verso-tone-dot"}}{{if eq . "success"}}verso-live-dot bg-emerald-500{{else if eq . "warning"}}bg-amber-500{{else if eq . "danger"}}bg-red-500{{else if eq . "info"}}bg-sky-500{{else}}bg-slate-400{{end}}{{end}}
 
-{{/* verso-card-frame: the twin-hairline card — border plus a ring floated 4px
-     out with the page showing through — shared by card, settings, and table so
-     every boxed surface speaks one card language. */}}
-{{define "verso-card-frame"}}rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{end}}
+{{/* verso-card-frame: the card's edge — one hairline border on white, no
+     shadow — shared by card, settings, and table so every boxed surface
+     speaks one card language. */}}
+{{define "verso-card-frame"}}rounded-2xl border border-slate-200 bg-white{{end}}
 
 {{/* verso-overlay-backdrop: the dimmed, blurred click-to-close layer behind an
      open modal, drawer, or confirm dialog. */}}

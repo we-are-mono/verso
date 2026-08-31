@@ -104,7 +104,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white p-6"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
+	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -125,7 +125,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white p-6"><div class="space-y-4"></div></section>`
+	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6"><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
