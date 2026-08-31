@@ -39,7 +39,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		}
 		sess, ok := s.currentSession(r)
 		if !ok {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, loginRedirect(r), http.StatusSeeOther)
 			return
 		}
 		// CSRF: every state-changing request must carry the session's token
@@ -52,6 +52,20 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// loginRedirect is where a request without a live session goes. A browser that
+// presents a session cookie was signed in and is not any more — the sign-in ran
+// out of time — so its login page carries the marker that explains the sign-out.
+// A browser presenting no cookie was never signed in and is told nothing; a
+// deliberate sign-out clears the cookie before it redirects, and so lands there
+// too. Both POST and GET take this exit: once the session is gone the work is
+// lost either way, and a redirect is the honest outcome.
+func loginRedirect(r *http.Request) string {
+	if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" {
+		return "/login?expired=1"
+	}
+	return "/login"
 }
 
 func (s *Server) currentSession(r *http.Request) (session, bool) {
@@ -85,6 +99,28 @@ func (s *Server) sessionUser(r *http.Request) string {
 		return sess.username
 	}
 	return ""
+}
+
+// sessionAlive reports whether the request's session is still live without
+// sliding its idle window — the check for a connection the browser holds open
+// rather than a page a person asked for.
+func (s *Server) sessionAlive(r *http.Request) bool {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return false
+	}
+	return s.sessions.alive(cookie.Value)
+}
+
+// sessionExpiryStamp is the moment the request's session ends, RFC3339 in UTC.
+// Every page stamps it so a page left open follows its own session out instead
+// of learning about the sign-out from the next click. Empty without a session.
+func (s *Server) sessionExpiryStamp(r *http.Request) string {
+	sess, ok := s.currentSession(r)
+	if !ok {
+		return ""
+	}
+	return s.sessions.expiresAt(sess).UTC().Format(time.RFC3339)
 }
 
 // flash stores a one-shot confirmation on the request's session — set by an
@@ -157,6 +193,7 @@ type loginData struct {
 	Lang     string // negotiated language for <html lang>, "en" when English
 	CSS      template.CSS
 	Error    string
+	Notice   string // a calm statement about how the visitor got here, in the info tone
 	Version  string // the deployed Verso build ("dev" when un-stamped), shown in the hero so the running version is verifiable without signing in
 	Firmware string // the OpenWrt release + revision, shown quietly in the hero
 }
@@ -175,6 +212,17 @@ func loginFirmware() string {
 		}
 	}
 	return ""
+}
+
+// expiryNotice is the login page's statement for a visitor the middleware sent
+// here: the sign-in ran out of time. It is a fact about the session, not a
+// failure of this visit, so it reads plainly and wears the info tone. Empty
+// unless the redirect marked the request.
+func expiryNotice(r *http.Request) string {
+	if r.URL.Query().Get("expired") != "1" {
+		return ""
+	}
+	return "You were signed out after a period of inactivity."
 }
 
 // handleLoginForm serves the login page (redirecting an already-signed-in user
@@ -249,9 +297,10 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	// /login is pre-session, so the language is negotiated from Accept-Language
 	// like any other request; the error copy is localized here at its one exit.
 	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), CSS: s.css, Error: translatorOrIdentity(t)(errMsg),
+		Lang: langAttr(lang), CSS: s.css, Error: tr(errMsg), Notice: tr(expiryNotice(r)),
 		Version: version.Version, Firmware: loginFirmware(),
 	}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)

@@ -76,6 +76,15 @@
         </h2>
         <p class="mt-1.5 text-slate-500">{{ t "Enter your router password to continue." }}</p>
 
+        {{/* The notice slot: why this page is on screen, when the visitor did not
+             ask for it. Same tone vocabulary as the app's flash — info here, since
+             a session running out is ordinary, not a failure. */}}
+        {{if .Notice}}
+        <div class="mt-6 flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700 dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300">
+          {{icon "info" "size-4 shrink-0"}}<span>{{.Notice}}</span>
+        </div>
+        {{end}}
+
         {{if .Error}}
         <div class="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">{{.Error}}</div>
         {{end}}

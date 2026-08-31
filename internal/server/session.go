@@ -101,6 +101,37 @@ func (s *Sessions) get(token string) (session, bool) {
 	return sess, true
 }
 
+// alive reports whether a token still names a live session, leaving its idle
+// clock untouched — the check a held-open stream makes on each tick. A browser
+// keeping a connection open is not a person at the router, so the overview left
+// on a screen signs out on inactivity like any other page; list() leaves the
+// clocks alone for the same reason.
+func (s *Sessions) alive(token string) bool {
+	now := s.now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.items[token]
+	if !ok {
+		return false
+	}
+	if s.expired(sess, now) {
+		delete(s.items, token)
+		return false
+	}
+	return true
+}
+
+// expiresAt is the moment a session ends if nothing touches it again: the idle
+// window from its last use, or the absolute cap from its creation, whichever
+// comes first. Every render states it, so it must never overstate the session.
+func (s *Sessions) expiresAt(sess session) time.Time {
+	idle := sess.lastSeen.Add(s.idle)
+	if absolute := sess.created.Add(s.absolute); absolute.Before(idle) {
+		return absolute
+	}
+	return idle
+}
+
 // SetFlash stores the session's one-shot confirmation for the next render.
 func (s *Sessions) SetFlash(token, variant, message string) {
 	s.mu.Lock()

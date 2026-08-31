@@ -46,6 +46,7 @@
   "Too many attempts — wait a minute and try again.": "Preveč poskusov — počakajte minuto in poskusite znova.",
   "That request didn’t come from this page — reload and try again.": "Ta zahteva ni prišla s te strani — osvežite in poskusite znova.",
   "Could not read the form.": "Obrazca ni bilo mogoče prebrati.",
+  "You were signed out after a period of inactivity.": "Zaradi nedejavnosti ste bili odjavljeni.",
 
   "ALL GOOD": "VSE V REDU",
   "Your network is ": "Vaše omrežje je ",

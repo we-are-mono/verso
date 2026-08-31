@@ -498,6 +498,9 @@ type pageData struct {
 	NoPassword    bool
 	Banner        *plugin.Banner
 	CSRFToken     string
+	// SessionExpiry is the moment this session ends (RFC3339, UTC), restated by
+	// every render: the browser follows it out rather than waiting for a click.
+	SessionExpiry string
 	Dev           bool        // dev session: inject the CSS hot-reload script
 	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
 	// ShowCapsule: staging pages carry the bar always (inert when clean — a
@@ -604,6 +607,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		NoPassword:    !hasPassword,
 		Banner:        localizeBanner(hdr.Banner, tr),
 		CSRFToken:     s.sessionCSRF(r),
+		SessionExpiry: s.sessionExpiryStamp(r),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
 		ShowCapsule:   stages || capsule.Count > 0,

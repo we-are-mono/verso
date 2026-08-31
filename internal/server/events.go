@@ -20,8 +20,11 @@ import (
 
 // handleOverviewEvents serves the stream. The session is re-checked every
 // tick: a stream must not outlive its session the way a one-shot poll could
-// not have. When it ends, EventSource's reconnect lands on the login
-// redirect — not an event stream — which closes the client for good.
+// not have. The check leaves the idle clock where it is — a page holding this
+// connection open is the browser working, not a person, and it must not keep
+// the router signed in past the expiry the page itself states. When the session
+// ends, EventSource's reconnect lands on the login redirect — not an event
+// stream — which closes the client for good.
 func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -102,7 +105,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if s.sessionUser(r) == "" || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
+			if !s.sessionAlive(r) || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
 				return
 			}
 			flusher.Flush()

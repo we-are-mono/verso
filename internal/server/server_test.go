@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -1746,6 +1747,79 @@ func TestUnauthenticatedRedirectsToLogin(t *testing.T) {
 	}
 }
 
+// TestExpiredSessionRedirectsAnnotated: a request presenting a session cookie
+// that no longer names a live session lands on the login page carrying the
+// inactivity marker — POST as much as GET, since the work is lost either way
+// once the session is.
+func TestExpiredSessionRedirectsAnnotated(t *testing.T) {
+	cases := []struct {
+		name   string
+		method string
+		cookie func(srv *Server, clk *fakeClock) string
+	}{
+		{"expired GET", http.MethodGet, func(srv *Server, clk *fakeClock) string {
+			token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+			clk.advance(sessionIdleTimeout + time.Minute)
+			return token
+		}},
+		{"expired POST", http.MethodPost, func(srv *Server, clk *fakeClock) string {
+			token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+			clk.advance(sessionIdleTimeout + time.Minute)
+			return token
+		}},
+		{"unknown token", http.MethodGet, func(*Server, *fakeClock) string {
+			return "a-token-this-shell-never-issued"
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newServer(t, fakeBackend{})
+			clk := &fakeClock{t: time.Unix(1_000_000, 0)}
+			srv.sessions = newSessionsClock(clk.now)
+
+			req := httptest.NewRequest(tc.method, "/", nil)
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: tc.cookie(srv, clk)})
+			rec := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusSeeOther {
+				t.Fatalf("status = %d, want 303", rec.Code)
+			}
+			if loc := rec.Header().Get("Location"); loc != "/login?expired=1" {
+				t.Errorf("Location = %q, want /login?expired=1", loc)
+			}
+		})
+	}
+}
+
+// TestLoginNoticeOnExpiredMarker: the marker turns into one calm line in the
+// login page's notice slot, in the info tone — never the error styling, which
+// belongs to a rejected attempt. Without the marker the slot stays empty, so a
+// deliberate sign-out and a first visit say nothing.
+func TestLoginNoticeOnExpiredMarker(t *testing.T) {
+	const notice = "You were signed out after a period of inactivity."
+	srv := newServer(t, fakeBackend{})
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login?expired=1", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, notice) {
+		t.Errorf("expired login page is missing the notice")
+	}
+	if !strings.Contains(body, "bg-sky-50") {
+		t.Errorf("the notice should carry the info tone, not the error's")
+	}
+
+	plain := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(plain, httptest.NewRequest(http.MethodGet, "/login", nil))
+	if strings.Contains(plain.Body.String(), notice) {
+		t.Errorf("a plain login page must not claim the visitor was signed out")
+	}
+}
+
 func TestLoginPageIsPublic(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	req := httptest.NewRequest(http.MethodGet, "/login", nil)
@@ -1839,6 +1913,32 @@ func TestLogoutClearsSession(t *testing.T) {
 	}
 	if _, ok := srv.sessions.get(token); ok {
 		t.Errorf("session was not destroyed")
+	}
+	// Signing out on purpose is not an expiry: the login page it lands on says
+	// nothing about inactivity.
+	if loc := rec.Header().Get("Location"); loc != "/login" {
+		t.Errorf("Location = %q, want /login", loc)
+	}
+}
+
+// TestSessionExpiryMeta: every rendered page stamps the moment its session ends,
+// so a page left open can follow its own session out instead of waiting for the
+// next click to discover it.
+func TestSessionExpiryMeta(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
+	srv.sessions = newSessionsClock(clk.now)
+	token, _ := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	want := `<meta name="verso-session-expiry" content="` +
+		clk.t.Add(sessionIdleTimeout).UTC().Format(time.RFC3339) + `">`
+	if !strings.Contains(rec.Body.String(), want) {
+		t.Errorf("page is missing %s", want)
 	}
 }
 

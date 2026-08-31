@@ -288,6 +288,31 @@ document.addEventListener("alpine:init", function () {
   });
 })();
 
+// A page left open outlives its session. The shell stamps the moment that
+// session ends on every render, so the page can follow it out instead of
+// learning about the sign-out from the next click — landing on the login page,
+// which explains itself. The leave guard is suppressed first: warning someone
+// about unsaved work in a session that can no longer hold it is a lie.
+//
+// The deadline is taken once, relative to load, so a browser clock that
+// disagrees with the router's cannot pull it forward: a stamp already in the
+// past on a page the shell just rendered is skew, not expiry, and the timer
+// stands down. Drift the other way costs nothing — the middleware redirects any
+// request that outlives the session anyway.
+(function () {
+  var meta = document.querySelector('meta[name="verso-session-expiry"]');
+  if (!meta) return;
+  var remaining = Date.parse(meta.content) - Date.now();
+  if (!(remaining > 0)) return;
+  setTimeout(function () {
+    if (window.versoDirtyState) window.versoDirtyState.suppress();
+    // Reload rather than navigate: the middleware decides. A dead session
+    // lands on /login?expired=1 with its notice; a session another tab kept
+    // alive re-renders this page and re-arms this timer from the fresh stamp.
+    window.location.reload();
+  }, remaining);
+})();
+
 // Compact multi-value inputs. Each chip owns a hidden input, preserving the same
 // repeated-field POST contract as the expanded list widget.
 (function () {
