@@ -134,6 +134,24 @@ func translateFields(w Widget, t func(string) string) {
 		for i := range n.Leaves {
 			translateNetNode(&n.Leaves[i], t)
 		}
+	case *OverviewPreview:
+		n.Kicker = t(n.Kicker)
+		n.Lead = t(n.Lead)
+		n.Accent = t(n.Accent)
+		for i := range n.Tiles {
+			n.Tiles[i].Label = t(n.Tiles[i].Label)
+			n.Tiles[i].Status = t(n.Tiles[i].Status)
+			n.Tiles[i].Caption = t(n.Tiles[i].Caption)
+		}
+		// A column's kind ("IPV4") is an identity that misses the catalog; the
+		// protocol and any prose value are translated, addresses pass through.
+		for i := range n.Facts {
+			n.Facts[i].Proto = t(n.Facts[i].Proto)
+			for j := range n.Facts[i].Facts {
+				n.Facts[i].Facts[j].Label = t(n.Facts[i].Facts[j].Label)
+				n.Facts[i].Facts[j].Value = t(n.Facts[i].Facts[j].Value)
+			}
+		}
 	case *Ports:
 		// The port's role name ("Internet", "Network 1") is prose; its interface,
 		// address, speed and hover Note are machine facts left verbatim.

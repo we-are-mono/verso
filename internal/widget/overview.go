@@ -184,17 +184,23 @@ type ohFactColView struct {
 	Rows  template.HTML
 }
 
+// overviewMastheadView is the top block's render model — the verdict, the view
+// switch, the status tiles, and the connection facts — shared by the home page
+// and the overview-preview styleguide workbench, so the block cannot drift.
+type overviewMastheadView struct {
+	Kicker string
+	Lead   string
+	Accent string
+	Tiles  []ohTile
+	Facts  []ohFactColView
+}
+
 // overviewView is the page's layout model: the vocabulary widgets — the fact
 // sheets, the gauges, the listings — rendered to HTML, plus the page's own
-// chrome (the verdict sentence, the view switch, the tile strip, the traffic
-// panel's legend). The page owns composition and rhythm.
+// chrome (the masthead block, the traffic panel's legend). The page owns
+// composition and rhythm.
 type overviewView struct {
-	Kicker  string
-	Lead    string
-	Accent  string
-	Tiles   []ohTile
-	HasWiFi bool
-	Facts   []ohFactColView
+	Masthead overviewMastheadView
 
 	ChartTitle  string
 	ChartMeta   string
@@ -313,12 +319,13 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		chartMeta = r.tr("live") + " · " + o.WANDevice
 	}
 	v := overviewView{
-		Kicker:      r.tr("ALL GOOD"),
-		Lead:        r.tr("Your network is "),
-		Accent:      r.tr("healthy"),
-		Tiles:       tiles,
-		HasWiFi:     o.WiFiPresent,
-		Facts:       facts,
+		Masthead: overviewMastheadView{
+			Kicker: r.tr("ALL GOOD"),
+			Lead:   r.tr("Your network is "),
+			Accent: r.tr("healthy"),
+			Tiles:  tiles,
+			Facts:  facts,
+		},
 		ChartTitle:  r.tr("Internet traffic"),
 		ChartMeta:   chartMeta,
 		DownVal:     o.DownVal,
@@ -369,7 +376,7 @@ func (o *Overview) sysMeters() []*Meter {
 	out := make([]*Meter, 0, len(o.SysMetrics))
 	for _, m := range o.SysMetrics {
 		out = append(out, &Meter{
-			Layout: "bar", Name: m.Name, Icon: m.Icon, Role: m.Role,
+			Name: m.Name, Icon: m.Icon, Role: m.Role,
 			Label: m.Label, Value: m.Value, Unit: m.Unit, Fill: m.Fill, Detail: m.Detail,
 		})
 	}
