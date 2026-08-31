@@ -141,6 +141,12 @@ envelope** back — `Content-Type: application/json`:
 - `kicker` — optional eyebrow above a standalone page heading.
 - `kicker_status` — optional short emerald state beside the kicker, such as
   `"Complete"` on a finished styleguide reference.
+- `action` — optional `{label, href, icon?}`: the page's one primary doorway
+  ("New rule", "Add forward"), rendered as a button hard right on the heading
+  row. A page has at most one — it is *the* thing to do here, not a menu, so a
+  second affordance belongs beside the content it acts on. `href` is a route
+  through the shell, exactly like a `link` widget's, so address your own mount
+  in full (`/plugins/<id>/…`).
 - `banner` — optional page-level semantic notice rendered full-width directly
   beneath the subpage bar (or in its place when there is no bar). Reserve it for
   a state important enough to remain visible above the page heading; use an
@@ -186,14 +192,18 @@ the operator's rpcd session and acts through it on your behalf. You declare, as
 `{scope, object, function}` triples mirroring `session.access` one-to-one, the two
 things you need:
 
-- **`acl.read`** — the configs the shell reads and hands you as a snapshot (see
-  [Reading config](#reading-config-the-read-snapshot)).
+- **`acl.read`** — what the shell reads and hands you. A `uci` scope names a config,
+  which arrives as your snapshot (see
+  [Reading config](#reading-config-the-read-snapshot)); a `ubus` scope on object
+  `verso` names one of the privileged helper's read functions, which arrives beside
+  it (see [Reading live state](#reading-live-state-brokered-helper-reads)).
 - **`acl.write`** — the configs a save changes.
 
 ```json
 "acl": {
-  "read":  [ { "scope": "uci", "object": "system", "function": "read"  } ],
-  "write": [ { "scope": "uci", "object": "system", "function": "write" } ]
+  "read":  [ { "scope": "uci",  "object": "system", "function": "read"  },
+             { "scope": "ubus", "object": "verso",  "function": "firewallCounters" } ],
+  "write": [ { "scope": "uci",  "object": "system", "function": "write" } ]
 }
 ```
 
@@ -205,10 +215,16 @@ The two are gated differently, because rpcd already gates them differently:
   any is denied, the shell returns **403** and your plugin is never called; if rpcd
   can't be reached, it fails closed with **503**. **A plugin that declares no
   `acl.write` cannot receive a state-changing request at all.**
-- **Reads are scoped, not gated.** `acl.read` names *which* configs the shell reads
-  for you; the operator's own sid scopes the actual read at rpcd, so an operator
-  who may not read a config simply gets an empty snapshot — never a 403. Reads
-  (GET/HEAD) are never gated by the shell.
+- **Reads are scoped, not gated.** `acl.read` names *what* the shell reads for you;
+  the operator's own sid scopes the actual read at rpcd, so an operator who may not
+  read something simply gets nothing where the data would be — never a 403. Reads
+  (GET/HEAD) are never gated by the shell. A read the shell cannot complete at all
+  degrades the same way: the page still renders, without that data.
+
+A `ubus` read scope is bounded twice over. The shell brokers only functions in its
+own closed set, so naming one it does not know brokers nothing; and rpcd still
+checks the operator's session on the call. Declaring a function is how you opt in,
+never how you widen the surface.
 
 This gates *who* may act; you remain authoritative for deciding *what* to write and
 for semantic validation (below).
@@ -235,6 +251,33 @@ empty rather than erroring.
 
 You link no uci library and open no file — the snapshot is your whole view of
 config. A GET carries it too, so a fresh page render reads current state.
+
+### Reading live state (brokered helper reads)
+
+Config is what the device was told; some pages also need what the device is doing —
+a firewall rule's packet counters, say, which live in the kernel and take
+`CAP_NET_ADMIN` to read. Your plugin holds no more privilege than the shell, so
+these reads are brokered too: declare them in `acl.read` with scope `ubus`, object
+`verso`, and the helper function's name, and the shell reads them with the
+operator's sid and injects the results into every request as the **`X-Verso-Ubus`**
+header, base64-encoded JSON shaped
+
+```json
+{ "<function>": <the result that function returned> }
+```
+
+Each value is the helper's own JSON, untouched — the shell does not interpret it,
+and you own its meaning. The shell brokers only functions in its own closed set:
+
+| Function | Returns |
+|---|---|
+| `firewallCounters` | `{"counters": [{"chain", "name", "packets", "bytes"}]}` — fw4's live nftables hit counters, one entry per (chain, rule name), summed across the several nft rules a single UCI section can render into. |
+| `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. |
+
+The header is absent when you declared no `ubus` read, when the function is not one
+the shell brokers, and when the read failed or the operator was not allowed it. All
+four are the same thing to you: no data. Render the page without it — a missing
+count is a dash, not an error.
 
 ### Writing config (the `commit` intent)
 
@@ -263,11 +306,28 @@ An entry may also **create** a section: with `section` empty and a `type`
 the shell adds a new anonymous section of that type and sets `values` on it —
 one staged operation, so an "Add" drawer creates the row it promised.
 
-Each entry is one `uci set`: `config` + `section` + a `values` map of
-option→value, where a value is a string (an option) or an array of strings (a
-list option). Service reload and the rollback safety net belong to the shell and
-OpenWrt, never to a plugin. Three rules bound the merge, enforced by the shell —
-not by your good behaviour:
+An entry may **delete** a section: `delete: true` with a `section` and nothing
+else (`{ "config": "firewall", "section": "block_telnet", "delete": true }`).
+The whole section goes. A delete describes one operation, so an entry that also
+carries a `type` or `values` is refused rather than guessed at.
+
+Within `values`, `null` **clears** one option:
+
+```json
+{ "config": "firewall", "section": "allow_ping",
+  "values": { "dest_port": null, "proto": ["tcp", "udp"] } }
+```
+
+The shell issues an option-level delete for every null and one `uci set` for
+what remains. Reach for it whenever an editor owns a setting the submission no
+longer carries: an empty string is a value, and a rule matching the empty port
+is not a rule matching every port.
+
+Each ordinary entry is one `uci set`: `config` + `section` + a `values` map of
+option→value, where a value is a string (an option), an array of strings (a
+list option), or null (clear it). Service reload and the rollback safety net
+belong to the shell and OpenWrt, never to a plugin. Three rules bound the merge,
+enforced by the shell — not by your good behaviour:
 
 - **You can only write configs you declared** in `acl.write` (`scope: "uci"`,
   `object: "<config>"`). A `commit` for any other config is refused and nothing
@@ -461,8 +521,40 @@ Column kinds, one treatment each (never mix them per row):
 - `"endpoint"` — one or more traffic endpoints; each is `{ "kind", "label" }`
   where kind is `"zone"` (sans + shield), `"device"` (mono address + screen),
   `"router"` (this device, accented), or `"any"` (muted globe).
+- `"reorder"` — a drag handle, first column only; see **Reorderable rows** below.
 
 A row's `id` is its stable handle — use the UCI section name.
+
+**Reorderable rows.** A listing whose *sequence* is meaning — evaluation order —
+adds a leading `{ "kind": "reorder" }` column and names the uci config its rows
+are sections of in `reorder_config`. The shell owns the interaction end to end:
+it draws the handles, drags the row, holds the new sequence as a pending change,
+and — when the operator saves — stages a `uci order` on that config, like every
+other write, so the capsule's Save & Apply is what makes it live. Your plugin
+ships no drag logic and never sees the reorder POST; it renders the page again
+from the fresh snapshot.
+
+A drop writes nothing on its own. The reorderable table renders **the page's
+form** beside itself, carrying the config and the row sequence as hidden fields,
+so a dragged row counts in the staged-changes bar exactly like a dirty field,
+appears in its review list, and un-drags itself on Discard. That form is the
+page's only one: a page whose listing drags must not also compose a `"style":
+"page"` form of its own.
+
+```json
+{ "type": "table", "reorder_config": "firewall",
+  "columns": [ { "kind": "reorder" }, { "label": "From", "kind": "endpoint" } ],
+  "rows": [ { "id": "allow_ping", "cells": [ {}, /* … */ ] } ] }
+```
+
+Three things make the drag real, and the shell enforces all three: the config
+must be one you declared in `acl.write` (an undeclared one is refused), every row
+`id` must name a section that config really holds (an unknown id is refused), and
+both the leading column and `reorder_config` must be present — a table naming no
+config draws no handle, because a grip the device would not remember is a lie.
+The drag is bounded by the row's `group`, so a grouped listing moves a row within
+its lane and never across it; sections the listing never showed keep their places
+in the file, and a drag that ends where it began stages nothing.
 
 **Direct row action.** A `pill` cell may carry a compact immediate action instead
 of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
@@ -485,6 +577,11 @@ pointer; controls inside the row (toggles) keep their own meaning. Set
 editor's identity; the title remains available to assistive technology and the
 close control remains visible. That first section may set `flush:true` so the
 drawer supplies the outer top inset instead of stacking two layers of padding.
+
+Set `open:true` to render the panel already open. That is how a submission you
+refused comes back: re-render the listing with the offending drawer open, its
+fields carrying their errors, and the operator is looking at what to fix instead
+of at a closed row.
 
 ```json
 { "id": "force_dns_guest", "cells": [ /* … */ ],
@@ -512,9 +609,9 @@ href and marks the active tab from the request, so the bar cannot point outside
 your plugin. Declare the same `pages` on every subpage's envelope.
 
 ```json
-{ "schema_version": 1, "title": "DNS & DHCP",
-  "pages": [ { "label": "Leases", "path": "dnsdhcp" },
-             { "label": "Configuration", "path": "dnsdhcp/config" } ],
+{ "schema_version": 1, "title": "DHCP",
+  "pages": [ { "label": "Leases", "path": "" },
+             { "label": "Configuration", "path": "config" } ],
   "widget": { /* … */ } }
 ```
 
@@ -568,7 +665,10 @@ A contribution fragment must not emit `form`; emit its field-bearing `section`,
 page's outer form and coordinates its Save & Apply with every other changed owner.
 
 `submit` currently defaults to `"Save"` for manifest-v1 pages. Manifest-v2 pages
-should state `"Save & Apply"` until the renderer changes its default.
+should state `"Save & Apply"` until the renderer changes its default. Two forms
+get no generated button: one with `"style": "page"`, whose submission the shell's
+staged-changes bar owns, and one whose `fields` carry a `confirm`, which renders
+the submit itself — state a `submit` label explicitly if you want both.
 
 **Secondary actions.** Besides Save & Apply, a standalone form may declare `actions` — extra buttons
 that submit the form (all its fields) with an `_action` marker you read in your

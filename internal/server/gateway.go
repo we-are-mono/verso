@@ -6,11 +6,14 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -98,12 +101,20 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		if err := r.ParseForm(); err == nil {
 			r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
 		}
-		// A repeater's add/remove is the shell's to realize, not the plugin's
-		// (ADR-005 §7): the shell performs the uci section add/delete through rpcd,
-		// then re-renders the fresh state as a read. The plugin ships no add/remove
-		// logic — it only declared the repeater.
-		if r.PostForm.Get(widget.RepeaterOpField) != "" {
-			if body, st, ok := s.realizeRepeater(r.Context(), m, s.sessionSID(r), r.PostForm, tr); !ok {
+		// A structural change to the plugin's own uci sections is the shell's to
+		// realize, not the plugin's (ADR-005 §7): the shell performs the add,
+		// delete, or reorder through rpcd, then re-renders the fresh state as a
+		// read. The plugin ships none of that logic — it only declared the
+		// repeater, or the listing whose rows drag.
+		var realize structuralOp
+		switch {
+		case r.PostForm.Get(widget.RepeaterOpField) != "":
+			realize = s.realizeRepeater
+		case r.PostForm.Get(widget.ReorderConfigField) != "":
+			realize = s.realizeReorder
+		}
+		if realize != nil {
+			if body, st, ok := realize(r.Context(), m, s.sessionSID(r), r.PostForm, tr); !ok {
 				return body, st
 			}
 			method = http.MethodGet // render current state; carry no form, run no commit
@@ -119,6 +130,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// so a session-less plugin never touches /etc/config itself. Read after any
 	// repeater op, so the re-render reflects the structural change.
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
+	req.Ubus = s.readUbus(r.Context(), m, s.sessionSID(r))
 
 	env, err := s.transport.Fetch(r.Context(), m.Socket, req)
 	if err != nil {
@@ -195,6 +207,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
 	hdr.Subheading = tr(env.Subheading)
+	hdr.Action = localizeAction(env.Action, tr)
 	hdr.Banner = localizeBanner(env.Banner, tr)
 	hdr.Notice = localizeNotice(env.Notice, tr)
 	*width = env.Width
@@ -431,6 +444,20 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 			return s.notice(tr("Not permitted"), fmt.Sprintf(
 				tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
 		}
+		// A delete is the whole section and nothing else: naming a type or values
+		// beside it describes two operations at once, which the shell will not
+		// guess at.
+		if op.Delete {
+			if op.Section == "" || op.Type != "" || len(op.Values) > 0 {
+				log.Printf("verso: plugin %q sent a malformed delete for uci %q; refused", m.ID, op.Config)
+				return s.malformedOperation(m, tr)
+			}
+			if err := s.backend.UCIDelete(ctx, sid, op.Config, op.Section, ""); err != nil {
+				log.Printf("verso: plugin %q delete in uci %q failed: %v", m.ID, op.Config, err)
+				return s.stageFailed(tr)
+			}
+			continue
+		}
 		// An op with no section and a type creates the section first (through
 		// rpcd, staged like the set): the "drawer first, row on save" flow —
 		// a plugin never adds bare sections it then has to chase.
@@ -439,19 +466,72 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type)
 			if err != nil {
 				log.Printf("verso: plugin %q section create in uci %q failed: %v", m.ID, op.Config, err)
-				return s.notice(tr("Save failed"),
-					tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
+				return s.stageFailed(tr)
 			}
 			section = created
 		}
-		if err := s.backend.UCISet(ctx, sid, op.Config, section, op.Values); err != nil {
+		// A null value clears its option. uci.set has no way to say "unset", so
+		// the nulls leave as option-level deletes and only the remaining values
+		// are written. It is how an editor drops a setting it owns: writing the
+		// option empty would leave a value behind, and an empty value is rarely
+		// what "no longer set" means to the service reading it.
+		values, cleared := splitClears(op.Values)
+		for _, option := range cleared {
+			if err := s.backend.UCIDelete(ctx, sid, op.Config, section, option); err != nil {
+				log.Printf("verso: plugin %q clear of uci %q option %q failed: %v", m.ID, op.Config, option, err)
+				return s.stageFailed(tr)
+			}
+		}
+		if len(values) == 0 && len(cleared) > 0 {
+			continue
+		}
+		if err := s.backend.UCISet(ctx, sid, op.Config, section, values); err != nil {
 			log.Printf("verso: plugin %q write to uci %q failed: %v", m.ID, op.Config, err)
-			return s.notice(tr("Save failed"),
-				tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
+			return s.stageFailed(tr)
 		}
 	}
 	return "", 0, true
 }
+
+// splitClears separates the options a commit sets from the options it clears —
+// the entries whose value is JSON null. The cleared names come back sorted, so
+// one submission stages the same sequence of operations every time.
+func splitClears(values map[string]any) (map[string]any, []string) {
+	set := make(map[string]any, len(values))
+	var cleared []string
+	for option, value := range values {
+		if value == nil {
+			cleared = append(cleared, option)
+			continue
+		}
+		set[option] = value
+	}
+	sort.Strings(cleared)
+	return set, cleared
+}
+
+// stageFailed is the contained response to rpcd refusing or failing a staged
+// operation: the operator sees a plain "try again", never a stack trace.
+func (s *Server) stageFailed(tr func(string) string) (template.HTML, int, bool) {
+	return s.notice(tr("Save failed"),
+		tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
+}
+
+// malformedOperation is the contained response to an operation the shell cannot
+// act on — a commit op that describes two things at once, a repeater affordance
+// that posted without the fields to act on. A plugin-side problem, not the
+// operator's, so it is a plain notice.
+func (s *Server) malformedOperation(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
+	return s.notice(tr("Couldn’t apply that change"), fmt.Sprintf(
+		tr("Verso couldn’t apply that change to %s."), m.Name)), http.StatusBadRequest, false
+}
+
+// structuralOp is one shell-realized change to a plugin's uci sections — the
+// repeater's add and remove, a reorderable listing's new order. Each is bounded
+// by the plugin's declared write scope, performs its write through rpcd on the
+// operator's behalf, and answers a contained notice with ok=false when it
+// refuses or fails.
+type structuralOp func(context.Context, plugin.Manifest, string, url.Values, func(string) string) (template.HTML, int, bool)
 
 // realizeRepeater performs a repeater's structural change on the operator's behalf
 // (ADR-005 §7): a uci section add or delete through rpcd, staged like every other
@@ -472,33 +552,135 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 	case widget.RepeaterOpAdd:
 		secType := form.Get(widget.RepeaterTypeField)
 		if secType == "" {
-			return s.malformedRepeater(m, tr)
+			return s.malformedOperation(m, tr)
 		}
 		_, err = s.backend.UCIAdd(ctx, sid, config, secType)
 	case widget.RepeaterOpRemove:
 		section := form.Get(widget.RepeaterSectionField)
 		if section == "" {
-			return s.malformedRepeater(m, tr)
+			return s.malformedOperation(m, tr)
 		}
-		err = s.backend.UCIDelete(ctx, sid, config, section)
+		err = s.backend.UCIDelete(ctx, sid, config, section, "")
 	default:
 		log.Printf("verso: plugin %q unknown repeater op %q; refused", m.ID, op)
-		return s.malformedRepeater(m, tr)
+		return s.malformedOperation(m, tr)
 	}
 	if err != nil {
 		log.Printf("verso: plugin %q repeater op on uci %q failed: %v", m.ID, config, err)
-		return s.notice(tr("Save failed"),
-			tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
+		return s.stageFailed(tr)
 	}
 	return "", 0, true
 }
 
-// malformedRepeater is the contained response to a repeater affordance that posted
-// without the fields the shell needs to act — a client-side problem, not the
-// operator's, so it is a plain notice.
-func (s *Server) malformedRepeater(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
-	return s.notice(tr("Couldn’t apply that change"), fmt.Sprintf(
-		tr("Verso couldn’t apply that change to %s."), m.Name)), http.StatusBadRequest, false
+// realizeReorder performs a dragged listing's structural change on the operator's
+// behalf: rpcd's `uci order` on the declared config, staged like every other write
+// (ADR-010), so the capsule owns the apply. It is bounded exactly as
+// realizeRepeater is — the config must be one the plugin declared in acl.write,
+// and rpcd re-checks the operator's sid — and every posted id must name a section
+// the config really holds, so a stale page cannot order a listing into a shape the
+// device does not have.
+func (s *Server) realizeReorder(ctx context.Context, m plugin.Manifest, sid string, form url.Values, tr func(string) string) (template.HTML, int, bool) {
+	config := form.Get(widget.ReorderConfigField)
+	if !declaredUCIConfigs(m)[config] {
+		log.Printf("verso: plugin %q reorder of undeclared uci config %q; refused", m.ID, config)
+		return s.notice(tr("Not permitted"), fmt.Sprintf(
+			tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+	}
+	moved := form[widget.ReorderIDField]
+	if len(moved) == 0 {
+		return s.malformedOperation(m, tr)
+	}
+	sections, err := s.backend.UCIConfig(ctx, sid, config)
+	if err != nil {
+		log.Printf("verso: plugin %q read of uci %q for a reorder failed: %v", m.ID, config, err)
+		return s.stageFailed(tr)
+	}
+	current := sectionOrder(sections)
+	order, err := reorderSections(current, moved)
+	if err != nil {
+		log.Printf("verso: plugin %q sent an unusable order for uci %q: %v", m.ID, config, err)
+		return s.malformedOperation(m, tr)
+	}
+	// A drag the operator abandoned announces the sequence it started from, so an
+	// order that moves nothing stages nothing: the re-render below is the whole
+	// answer, and the capsule stays as clean as it was.
+	if slices.Equal(current, order) {
+		return "", 0, true
+	}
+	if err := s.backend.UCIOrder(ctx, sid, config, order); err != nil {
+		log.Printf("verso: plugin %q reorder of uci %q failed: %v", m.ID, config, err)
+		return s.stageFailed(tr)
+	}
+	return "", 0, true
+}
+
+// sectionOrder is a uci snapshot's sections in the sequence the file holds them.
+// rpcd hands a config back as a map, so only each section's `.index` states where
+// it sits; equal indices fall back to the name, so one snapshot always yields one
+// order.
+func sectionOrder(sections map[string]any) []string {
+	names := make([]string, 0, len(sections))
+	for name := range sections {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		a, b := sectionIndex(sections[names[i]]), sectionIndex(sections[names[j]])
+		if a == b {
+			return names[i] < names[j]
+		}
+		return a < b
+	})
+	return names
+}
+
+// sectionIndex reads a section's position out of its `.index` meta. rpcd's
+// blobmsg carries it as an integer and a JSON-decoded snapshot as a float; a
+// section carrying neither sorts first, where the name breaks the tie.
+func sectionIndex(section any) float64 {
+	values, _ := section.(map[string]any)
+	switch index := values[".index"].(type) {
+	case int64:
+		return float64(index)
+	case float64:
+		return index
+	}
+	return 0
+}
+
+// reorderSections rebuilds a config's whole section sequence from the ids the
+// browser posted. The posted ids refill exactly the slots they already occupy, so
+// a section the listing never showed — another type interleaved among them —
+// keeps its place. A grouped listing posts its rows group-major, so the first drag
+// on one can normalize more of the sequence than the visible move touched; that is
+// faithful where the groups are themselves derived from the config, which is the
+// only shape a grouped reorderable listing has (a firewall chain evaluates its own
+// rules, in config order, and nothing else).
+func reorderSections(current, moved []string) ([]string, error) {
+	held := make(map[string]bool, len(current))
+	for _, name := range current {
+		held[name] = true
+	}
+	slots := make(map[string]bool, len(moved))
+	for _, id := range moved {
+		switch {
+		case !held[id]:
+			return nil, fmt.Errorf("no section %q in this config", id)
+		case slots[id]:
+			return nil, fmt.Errorf("section %q posted twice", id)
+		}
+		slots[id] = true
+	}
+	out := make([]string, 0, len(current))
+	next := 0
+	for _, name := range current {
+		if slots[name] {
+			out = append(out, moved[next])
+			next++
+			continue
+		}
+		out = append(out, name)
+	}
+	return out, nil
 }
 
 // declaredUCIConfigs is the set of uci configs a plugin declared it may write in
@@ -546,6 +728,62 @@ func declaredUCIReadConfigs(m plugin.Manifest) []string {
 		if a.Scope == "uci" && !seen[a.Object] {
 			seen[a.Object] = true
 			out = append(out, a.Object)
+		}
+	}
+	return out
+}
+
+// readUbus brokers the plugin's non-uci reads (ADR-007): live system state a
+// de-privileged plugin cannot reach, read through the privileged helper with the
+// operator's sid and handed down beside the uci snapshot. It shares the snapshot's
+// posture — a read the shell cannot complete contributes nothing rather than
+// failing the page, and a plugin declaring none receives no header at all.
+func (s *Server) readUbus(ctx context.Context, m plugin.Manifest, sid string) plugin.Ubus {
+	var out plugin.Ubus
+	for _, function := range declaredUbusReadFunctions(m) {
+		result, brokered, err := s.brokeredUbusRead(ctx, sid, function)
+		if !brokered {
+			continue
+		}
+		if err != nil {
+			log.Printf("verso: plugin %q read of ubus verso.%s failed: %v", m.ID, function, err)
+			continue
+		}
+		if out == nil {
+			out = make(plugin.Ubus)
+		}
+		out[function] = result
+	}
+	return out
+}
+
+// brokeredUbusRead bounds the reads the shell will perform on a plugin's behalf to
+// a closed set of named helper functions, the way validateApplyActions bounds the
+// privileged tail of a write. Declaring a scope is not enough: the shell must also
+// know the function, so a manifest cannot name its way to an arbitrary helper verb.
+// It reports whether the function is one the shell brokers at all.
+func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (json.RawMessage, bool, error) {
+	switch function {
+	case "firewallCounters":
+		result, err := s.backend.FirewallCounters(ctx, sid)
+		return result, true, err
+	case "dhcpLeases":
+		result, err := s.dhcpLeases(ctx, sid)
+		return result, true, err
+	}
+	return nil, false, nil
+}
+
+// declaredUbusReadFunctions is the ordered, de-duplicated set of Verso helper
+// functions a plugin declared it reads (manifest acl.read, scope "ubus", object
+// "verso").
+func declaredUbusReadFunctions(m plugin.Manifest) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for _, a := range m.ACL.Read {
+		if a.Scope == "ubus" && a.Object == "verso" && !seen[a.Function] {
+			seen[a.Function] = true
+			out = append(out, a.Function)
 		}
 	}
 	return out

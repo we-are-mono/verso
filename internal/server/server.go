@@ -304,6 +304,17 @@ func localizeNotice(n *plugin.Notice, tr func(string) string) *plugin.Notice {
 	return &c
 }
 
+// localizeAction returns a copy of the page action with its label localized, or
+// nil for no action. The href and the icon name are addresses, not words.
+func localizeAction(a *plugin.PageAction, tr func(string) string) *plugin.PageAction {
+	if a == nil {
+		return nil
+	}
+	c := *a
+	c.Label = tr(c.Label)
+	return &c
+}
+
 // pluginLocalize is localize for a plugin render: the request's language and the
 // plugin's base⊕plugin translator, so the plugin's page and manifest labels resolve
 // from its own catalog while shell-owned widget defaults fall through to base
@@ -477,8 +488,9 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
-	Subheading    string // optional lede under the heading
-	Width         string // content-column width preset: "narrow" | "normal" (default) | "wide"
+	Subheading    string             // optional lede under the heading
+	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
+	Width         string             // content-column width preset: "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
 	Nav           navModel
 	Body          template.HTML
@@ -524,6 +536,7 @@ type pageHeader struct {
 	Immediate    bool
 	Live         bool
 	Subheading   string
+	Action       *plugin.PageAction // the page's one primary doorway, hard right on the heading row
 	Banner       *plugin.Banner
 	Notice       *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
 	Modes        []pageTab
@@ -582,6 +595,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		Subheading:    tr(hdr.Subheading),
+		Action:        localizeAction(hdr.Action, tr),
 		Width:         width,
 		CSS:           s.currentCSS(),
 		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr),

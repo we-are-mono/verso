@@ -154,10 +154,14 @@
           {{range .Modes}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="rounded-md px-3 py-1 text-sm font-medium transition-colors {{if .Active}}bg-white text-slate-900 shadow-sm dark:bg-gray-700 dark:text-gray-100 dark:shadow-none{{else}}text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200{{end}}">{{.Label}}</a>{{end}}
         </nav>
         {{end}}
+        {{if .Action}}{{template "verso-page-action" .Action}}{{end}}
       </div>
     </div>
     {{else if .Heading}}
-    <h2 class="text-2xl font-normal tracking-tight mb-10">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h2>
+    <div class="mb-10 flex flex-wrap items-start justify-between gap-5">
+      <h2 class="text-2xl font-normal tracking-tight">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h2>
+      {{if .Action}}{{template "verso-page-action" .Action}}{{end}}
+    </div>
     {{end}}
     {{/* The flash: the one-shot outcome at the top of the content — a PRG
          confirmation, or a plugin envelope's notice. Coloured by the tone

@@ -8,6 +8,7 @@ package openwrt
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -55,9 +56,18 @@ type Backend interface {
 	// the "add" of a uci-backed repeater (ADR-005 §7): the shell — not the plugin —
 	// performs the structural change, within the plugin's declared write scope.
 	UCIAdd(ctx context.Context, sid, config, secType string) (string, error)
-	// UCIDelete removes a section from config through rpcd, carrying the sid. It
-	// realizes the "remove" of a uci-backed repeater (ADR-005 §7).
-	UCIDelete(ctx context.Context, sid, config, section string) error
+	// UCIDelete removes a section from config through rpcd, carrying the sid, or
+	// one option of that section when option is non-empty — rpcd's `uci delete`
+	// takes both shapes. It realizes the "remove" of a uci-backed repeater
+	// (ADR-005 §7) and the clearing of a single option, which is how an editor
+	// unsets a setting it owns rather than writing it empty.
+	UCIDelete(ctx context.Context, sid, config, section, option string) error
+	// UCIOrder rewrites the sequence of a config's sections through rpcd's `uci`
+	// object, carrying the sid; sections is the config's whole order, not a
+	// fragment. It realizes the drag of a reorderable listing — the shell, not
+	// the plugin, performs the structural change — and stages like every other
+	// write (ADR-010), so the capsule's apply is what makes the new order live.
+	UCIOrder(ctx context.Context, sid, config string, sections []string) error
 	// SetPassword asks the persistent root helper to set username's system
 	// password, carrying the operator's sid. The helper verifies the sid through
 	// rpcd before acting; the shell itself is unprivileged and cannot write
@@ -139,6 +149,12 @@ type Backend interface {
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
+	// FirewallCounters reads fw4's live nftables hit counters — one entry per
+	// (chain, rule name) with packets and bytes — through the privileged helper,
+	// which lists the ruleset as root and self-gates on the sid. The result stays
+	// raw JSON: the shell brokers it to a declaring plugin (ADR-007) and the plugin,
+	// not the shell, owns what a firewall counter means.
+	FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error)
 }
 
 // WANState is the set of live L3 devices that own an active default route.
@@ -312,7 +328,8 @@ type (
 	uciCommitFn    func(ctx context.Context, sid, config string) error
 	uciConfigFn    func(ctx context.Context, sid, config string) (map[string]any, error)
 	uciAddFn       func(ctx context.Context, sid, config, secType string) (string, error)
-	uciDeleteFn    func(ctx context.Context, sid, config, section string) error
+	uciDeleteFn    func(ctx context.Context, sid, config, section, option string) error
+	uciOrderFn     func(ctx context.Context, sid, config string, sections []string) error
 	passwdFn       func(ctx context.Context, sid, username, password string) error
 	setTimeFn      func(ctx context.Context, sid, datetime, timezone string) error
 	rootPasswdFn   func(ctx context.Context, sid string) (bool, error)
@@ -332,6 +349,7 @@ type (
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
 	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
+	fwCountersFn   func(ctx context.Context, sid string) (json.RawMessage, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -350,6 +368,7 @@ type NativeBackend struct {
 	uciConfig     uciConfigFn
 	uciAdd        uciAddFn
 	uciDelete     uciDeleteFn
+	uciOrder      uciOrderFn
 	setPassword   passwdFn
 	setTime       setTimeFn
 	rootPasswd    rootPasswdFn
@@ -374,6 +393,7 @@ type NativeBackend struct {
 	pkgRemove     pkgActFn
 	wanStatus     wanStatusFn
 	deviceStats   deviceStatsFn
+	fwCounters    fwCountersFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -390,6 +410,7 @@ func NewNativeBackend() *NativeBackend {
 		uciConfig:     dialUCIConfig(""),
 		uciAdd:        dialUCIAdd(""),
 		uciDelete:     dialUCIDelete(""),
+		uciOrder:      dialUCIOrder(""),
 		setPassword:   dialSetPassword(""),
 		setTime:       dialSetSystemTime(""),
 		rootPasswd:    dialRootHasPassword(""),
@@ -420,6 +441,7 @@ func NewNativeBackend() *NativeBackend {
 		pkgRemove:    dialPkgAct("", "pkgRemove"),
 		wanStatus:    dialWANStatus(""),
 		deviceStats:  dialDeviceStats(""),
+		fwCounters:   dialFirewallCounters(""),
 	}
 }
 
@@ -482,9 +504,15 @@ func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType string)
 	return b.uciAdd(ctx, sid, config, secType)
 }
 
-// UCIDelete removes a section through rpcd, gated by the sid.
-func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section string) error {
-	return b.uciDelete(ctx, sid, config, section)
+// UCIDelete removes a section — or one of its options — through rpcd, gated by
+// the sid.
+func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section, option string) error {
+	return b.uciDelete(ctx, sid, config, section, option)
+}
+
+// UCIOrder rewrites a config's section sequence through rpcd, gated by the sid.
+func (b *NativeBackend) UCIOrder(ctx context.Context, sid, config string, sections []string) error {
+	return b.uciOrder(ctx, sid, config, sections)
 }
 
 // SetPassword sets username's system password through the privileged `verso-rpcd`
@@ -593,6 +621,12 @@ func (b *NativeBackend) WANConn(ctx context.Context, sid string) (WANConn, error
 
 func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
 	return b.deviceStats(ctx, sid, device)
+}
+
+// FirewallCounters reads fw4's per-rule nftables counters through the privileged
+// `verso-rpcd` helper, gated by the sid.
+func (b *NativeBackend) FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error) {
+	return b.fwCounters(ctx, sid)
 }
 
 // dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
@@ -823,6 +857,22 @@ func dialRootHasPassword(socket string) rootPasswdFn {
 	}
 }
 
+// dialFirewallCounters returns a fwCountersFn that asks the resident Rust helper
+// for fw4's per-rule nftables counters (the firewallCounters verb). Listing an
+// nftables table needs CAP_NET_ADMIN, which the shell does not hold (ADR-007), so
+// the helper lists it as root and self-gates on session.access. The result crosses
+// as raw JSON — the shell forwards it to the plugin that declared the read without
+// reading it itself.
+func dialFirewallCounters(socket string) fwCountersFn {
+	return func(ctx context.Context, sid string) (json.RawMessage, error) {
+		var result json.RawMessage
+		if err := callHelper(ctx, socket, "firewallCounters", sid, nil, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+}
+
 // dialBackupAct brokers OpenWrt-native backup operations without carrying the
 // archive through JSON. The helper accepts only Verso's private temporary-file
 // naming convention and invokes sysupgrade directly, never through a shell.
@@ -847,9 +897,11 @@ func dialMaintenanceAct(socket, method string) maintenanceFn {
 }
 
 // dialUCIDelete returns a uciDeleteFn that removes a section via rpcd's `uci`
-// object (method `delete`), carrying the sid. The caller commits afterwards.
+// object (method `delete`), carrying the sid. Naming an option narrows the
+// delete to that option, leaving the section itself; omitting it removes the
+// whole section. The caller commits afterwards.
 func dialUCIDelete(socket string) uciDeleteFn {
-	return func(_ context.Context, sid, config, section string) error {
+	return func(_ context.Context, sid, config, section, option string) error {
 		c, err := ubus.Dial(socket)
 		if err != nil {
 			return err
@@ -859,10 +911,38 @@ func dialUCIDelete(socket string) uciDeleteFn {
 		if err != nil {
 			return err
 		}
-		_, err = c.InvokeArgs(id, "delete", map[string]string{
+		args := map[string]string{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"section":          section,
+		}
+		if option != "" {
+			args["option"] = option
+		}
+		_, err = c.InvokeArgs(id, "delete", args)
+		return err
+	}
+}
+
+// dialUCIOrder returns a uciOrderFn that rewrites a config's section sequence
+// via rpcd's `uci` object (method `order`), carrying the sid. sections is the
+// whole new order; rpcd stages the move exactly as it stages a set or a delete,
+// so the caller's apply is what makes it live.
+func dialUCIOrder(socket string) uciOrderFn {
+	return func(_ context.Context, sid, config string, sections []string) error {
+		c, err := ubus.Dial(socket)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+		id, err := c.Lookup("uci")
+		if err != nil {
+			return err
+		}
+		_, err = c.InvokeTable(id, "order", map[string]any{
+			"ubus_rpc_session": sid,
+			"config":           config,
+			"sections":         sections,
 		})
 		return err
 	}

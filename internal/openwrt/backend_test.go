@@ -207,19 +207,56 @@ func TestUCIAddThreadsArgsAndReturnsSection(t *testing.T) {
 	}
 }
 
-// TestUCIDeleteThreadsArgs checks UCIDelete passes sid/config/section through.
+// TestUCIDeleteThreadsArgs checks UCIDelete passes sid/config/section through,
+// and the option too — the narrower shape that clears one setting rather than
+// the whole section.
 func TestUCIDeleteThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig, gotSection string
-	b := &NativeBackend{uciDelete: func(_ context.Context, sid, config, section string) error {
-		gotSID, gotConfig, gotSection = sid, config, section
+	var gotSID, gotConfig, gotSection, gotOption string
+	b := &NativeBackend{uciDelete: func(_ context.Context, sid, config, section, option string) error {
+		gotSID, gotConfig, gotSection, gotOption = sid, config, section, option
 		return nil
 	}}
 
-	if err := b.UCIDelete(context.Background(), "s1", "network", "@wireguard_wg0[0]"); err != nil {
+	if err := b.UCIDelete(context.Background(), "s1", "network", "@wireguard_wg0[0]", ""); err != nil {
 		t.Fatalf("UCIDelete: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "network" || gotSection != "@wireguard_wg0[0]" {
-		t.Errorf("args not threaded: sid=%q config=%q section=%q", gotSID, gotConfig, gotSection)
+	if gotSID != "s1" || gotConfig != "network" || gotSection != "@wireguard_wg0[0]" || gotOption != "" {
+		t.Errorf("args not threaded: sid=%q config=%q section=%q option=%q", gotSID, gotConfig, gotSection, gotOption)
+	}
+
+	if err := b.UCIDelete(context.Background(), "s1", "firewall", "allow_ping", "dest_port"); err != nil {
+		t.Fatalf("UCIDelete option: %v", err)
+	}
+	if gotSection != "allow_ping" || gotOption != "dest_port" {
+		t.Errorf("option not threaded: section=%q option=%q", gotSection, gotOption)
+	}
+}
+
+// TestUCIOrderThreadsArgs checks UCIOrder passes sid/config through with the
+// whole new section sequence — the shape rpcd's `uci order` takes to stage a
+// reordered listing.
+func TestUCIOrderThreadsArgs(t *testing.T) {
+	var gotSID, gotConfig string
+	var gotSections []string
+	b := &NativeBackend{uciOrder: func(_ context.Context, sid, config string, sections []string) error {
+		gotSID, gotConfig, gotSections = sid, config, sections
+		return nil
+	}}
+
+	want := []string{"allow_ping", "allow_dhcp_renew", "cfg0af21e"}
+	if err := b.UCIOrder(context.Background(), "s1", "firewall", want); err != nil {
+		t.Fatalf("UCIOrder: %v", err)
+	}
+	if gotSID != "s1" || gotConfig != "firewall" {
+		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
+	}
+	if len(gotSections) != len(want) {
+		t.Fatalf("sections = %v, want %v", gotSections, want)
+	}
+	for i := range want {
+		if gotSections[i] != want[i] {
+			t.Fatalf("sections = %v, want %v", gotSections, want)
+		}
 	}
 }
 

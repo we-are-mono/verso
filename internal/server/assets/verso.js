@@ -394,8 +394,9 @@ document.addEventListener("alpine:init", function () {
 
 // Reorderable table rows. The shell owns the interaction so plugins only declare
 // a reorder column and stable row IDs. Dragging is constrained to the row's
-// evaluation group; this preview changes DOM order only, while a real form can
-// consume the emitted verso:reorder event and stage the returned ID sequence.
+// evaluation group; the drop changes DOM order and announces the table's whole
+// new ID sequence as a bubbling verso:reorder event, which the pending-change
+// block below writes into the page's order form.
 (function () {
   var drag = null;
   var hoverTimer = 0;
@@ -873,10 +874,20 @@ document.addEventListener(
     refresh();
   }
 
+  // Restoring the baseline puts the form's values back, but a control the shell
+  // renders elsewhere on the page — a listing's row order, say — mirrors the
+  // form rather than living in it. Announcing the restore lets such a control
+  // read the baseline back off the form and follow it.
+  function announceRestored() {
+    if (!pageForm) return;
+    pageForm.dispatchEvent(new CustomEvent("verso:capsule-restored", { bubbles: true }));
+  }
+
   function resetRenderedForms() {
     if (window.versoDirtyState) window.versoDirtyState.reset();
     if (pageForm && pristinePageForm) replacePageForm(pristinePageForm.cloneNode(true), false);
     setReviewOpen(false);
+    announceRestored();
   }
 
   function post(path) {
@@ -938,6 +949,7 @@ document.addEventListener(
         var staged = document.getElementById("verso-capsule-staged-changes");
         if (staged) staged.remove();
         replacePageForm(replacement, true);
+        announceRestored();
         resetRenderedForms();
         capsule.classList.remove("verso-busy");
       })
@@ -1327,6 +1339,98 @@ document.addEventListener(
       el.disabled = false;
       el.checked = !el.checked;
     });
+  });
+})();
+
+// Dropped rows are a pending change, not a write. The reorderable table renders
+// the page form beside itself, holding the config and one hidden input per row id
+// in current order; a drop rewrites that sequence, and the capsule counts it,
+// reviews it, and stages the uci order when Save & Apply posts the form. The whole
+// table's ids travel, in DOM order, because the file holds one sequence — the drag
+// is constrained to a group, the order is not.
+//
+// The form is the truth and the rows follow it: Discard restores the form's
+// baseline and announces it, and the rows drag themselves back to match.
+(function () {
+  function orderForm(config) {
+    return [].filter.call(document.querySelectorAll("form[data-verso-page-form]"), function (form) {
+      var declared = form.querySelector('input[name="_uci_order_config"]');
+      return !!declared && declared.value === config;
+    })[0];
+  }
+
+  function orderTable(config) {
+    return [].filter.call(document.querySelectorAll("table[data-verso-reorder-table]"), function (table) {
+      return table.dataset.versoReorderConfig === config;
+    })[0];
+  }
+
+  function sequence(form) {
+    return [].map.call(form.querySelectorAll('input[name="_uci_order"]'), function (input) {
+      return input.value;
+    });
+  }
+
+  function writeSequence(form, order) {
+    var field = form.querySelector('[data-verso-change-name="_uci_order"]');
+    if (!field) return;
+    field.replaceChildren();
+    order.forEach(function (id) {
+      var input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "_uci_order";
+      input.value = id;
+      field.appendChild(input);
+    });
+  }
+
+  // syncRows puts the rendered rows into the form's sequence. Each row's current
+  // position is a slot its group keeps — a group header introduces the run below
+  // it — so only which row sits in each slot changes, and the headers stay put.
+  function syncRows(table, order) {
+    var rows = [].slice.call(table.querySelectorAll("tr[data-verso-reorder-row]"));
+    if (rows.length === 0) return;
+    var byID = new Map();
+    rows.forEach(function (row) { byID.set(row.dataset.versoReorderId, row); });
+    var wanted = new Map();
+    order.forEach(function (id) {
+      var row = byID.get(id);
+      if (!row) return;
+      var group = row.dataset.versoReorderGroup || "";
+      if (!wanted.has(group)) wanted.set(group, []);
+      wanted.get(group).push(row);
+    });
+    var slots = rows.map(function (row) {
+      var marker = document.createComment("verso-reorder-slot");
+      row.parentNode.insertBefore(marker, row);
+      return { marker: marker, group: row.dataset.versoReorderGroup || "" };
+    });
+    var filled = new Map();
+    slots.forEach(function (slot) {
+      var next = filled.get(slot.group) || 0;
+      filled.set(slot.group, next + 1);
+      var row = (wanted.get(slot.group) || [])[next];
+      if (row) slot.marker.parentNode.insertBefore(row, slot.marker);
+    });
+    slots.forEach(function (slot) { slot.marker.remove(); });
+  }
+
+  document.addEventListener("verso:reorder", function (e) {
+    var table = e.target;
+    if (!table || !table.dataset || !table.dataset.versoReorderConfig) return;
+    var form = orderForm(table.dataset.versoReorderConfig);
+    if (!form) return;
+    writeSequence(form, (e.detail && e.detail.order) || []);
+    form.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  document.addEventListener("verso:capsule-restored", function (e) {
+    var form = e.target;
+    if (!form || !form.querySelector) return;
+    var declared = form.querySelector('input[name="_uci_order_config"]');
+    if (!declared) return;
+    var table = orderTable(declared.value);
+    if (table) syncRows(table, sequence(form));
   });
 })();
 

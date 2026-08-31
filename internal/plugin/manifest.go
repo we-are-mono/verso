@@ -32,10 +32,13 @@ type Manifest struct {
 //     state-changing request, so an operator whose session lacks the grant is
 //     refused by the shell and the plugin never sees the write. A plugin that
 //     declares no write scopes cannot receive a state-changing request at all.
-//   - Read scopes name the configs the shell pre-reads and hands the plugin as its
-//     snapshot. They are not a second gate: the operator's sid scopes the actual
-//     `uci get`, so an operator who may not read a config simply gets an empty
-//     snapshot. A plugin that declares no read scopes receives no snapshot.
+//   - Read scopes name what the shell pre-reads and hands the plugin: a "uci" scope
+//     names a config, read as the plugin's snapshot; a "ubus" scope on object
+//     "verso" names one of the privileged helper's read functions, from a closed set
+//     the shell knows, read as live system state beside the snapshot. Neither is a
+//     second gate: the operator's sid scopes the actual read, so an operator who may
+//     not perform it simply gets nothing where the data would be. A plugin that
+//     declares no read scopes receives neither channel.
 type ACL struct {
 	Read  []ACLScope `json:"read"`
 	Write []ACLScope `json:"write"`

@@ -218,7 +218,10 @@ over a local socket**, exchanging *data*, not markup.
   scopes, 503 when rpcd is unreachable). And the plugin no longer writes config
   itself: it returns a declarative `commit` intent in its envelope, and the shell
   executes it through rpcd with the operator's sid, refusing any op outside the
-  plugin's declared configs. A typed `apply` intent is bounded the same way for
+  plugin's declared configs. An op takes one of three shapes — set a section's
+  options; create a section of a named `type` (empty `section`) and set them;
+  `delete` a section outright — and a `null` among an op's `values` clears that
+  one option, since an empty string is a value and unsetting is not. A typed `apply` intent is bounded the same way for
   the small closed set of non-UCI operations the shell brokers. §5 narrows accordingly — the plugin stays
   authoritative for *validation* and for *deciding* what to write, but the
   privileged write is the shell's, so a de-privileged (non-root) plugin holds no

@@ -21,6 +21,10 @@ import (
 // punctuation a raw header would mangle — intact across the header.
 const HeaderUCI = "X-Verso-UCI"
 
+// HeaderUbus carries the brokered helper reads that ride beside the uci snapshot
+// (ADR-007), base64-encoded JSON keyed by the function that produced each result.
+const HeaderUbus = "X-Verso-Ubus"
+
 // maxEnvelopeBytes bounds how much a plugin can return, so a misbehaving plugin
 // cannot exhaust shell memory. Widget schema for an admin page is tiny; a
 // megabyte is generous.
@@ -28,13 +32,15 @@ const maxEnvelopeBytes = 1 << 20
 
 // Request is what the shell forwards to a plugin over its socket: the browser's
 // method, sub-path (below the /plugins/<id>/ mount), query, any form body, and the
-// uci read snapshot the shell brokered on the plugin's behalf (ADR-007).
+// reads the shell brokered on the plugin's behalf (ADR-007) — the uci snapshot and
+// the results of the helper functions the plugin declared.
 type Request struct {
 	Method string
 	Path   string
 	Query  map[string][]string
 	Form   map[string][]string
 	UCI    UCI
+	Ubus   Ubus
 }
 
 // UCI is the read snapshot the shell injects into a plugin request (ADR-007):
@@ -45,6 +51,15 @@ type Request struct {
 // library or reading /etc/config. A list option is a JSON array; a scalar is a
 // string.
 type UCI map[string]map[string]any
+
+// Ubus is the second read the shell injects (ADR-007): helper function name → the
+// result that function returned, verbatim. It carries live system state a plugin
+// cannot reach itself — nftables counters, for one — read with the operator's sid
+// through the privileged helper. The shell brokers only functions it knows and the
+// plugin declared; a read that fails contributes nothing, so a plugin renders
+// without an entry rather than seeing an error. The shell does not interpret the
+// results: they cross as raw JSON and the plugin owns their meaning.
+type Ubus map[string]json.RawMessage
 
 // Envelope is a plugin's schema response (ADR-006 §4). Widget is the raw schema
 // subtree, decoded by the widget package — the transport stays ignorant of the
@@ -61,6 +76,7 @@ type Envelope struct {
 	Subheading    string          `json:"subheading"`    // optional lede under the heading
 	Width         string          `json:"width"`         // page width preset: "narrow" | "normal" (default) | "wide"
 	Pages         []PageTab       `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
+	Action        *PageAction     `json:"action"`        // optional primary doorway for the whole page, rendered beside the heading
 	Banner        *Banner         `json:"banner"`        // optional full-width semantic notice beneath the subpage bar
 	Notice        *Notice         `json:"notice"`        // optional outcome flash for this render, shown in the shell's flash slot
 	Widget        json.RawMessage `json:"widget"`
@@ -88,6 +104,17 @@ type Notice struct {
 	Text  string `json:"text"`
 }
 
+// PageAction is a page's one primary doorway — "New rule", "Add forward" —
+// rendered as a button hard right on the heading row. A page has at most one:
+// it is the thing to do here, not a menu, so a second affordance belongs beside
+// the content it acts on. Href is a route through the shell, like a link
+// widget's, so a plugin points it at its own mount.
+type PageAction struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
+	Icon  string `json:"icon,omitempty"`
+}
+
 // PageTab is one subpage in a domain's top bar (the third navigation tier:
 // sidebar → domain, top bar → kind of visit, in-page → position). Path is
 // relative to the plugin's mount; the shell builds the href and marks the
@@ -106,8 +133,9 @@ type PageTab struct {
 type CommitOp struct {
 	Config  string         `json:"config"`
 	Section string         `json:"section"`
-	Type    string         `json:"type,omitempty"` // with an empty Section: create a new section of this type, then set Values on it
-	Values  map[string]any `json:"values"`         // option → value; a value may be a string or a list of strings (uci list option)
+	Type    string         `json:"type,omitempty"`   // with an empty Section: create a new section of this type, then set Values on it
+	Delete  bool           `json:"delete,omitempty"` // remove Section outright; carries no Type and no Values
+	Values  map[string]any `json:"values"`           // option → value: a string, a list of strings (uci list option), or null to clear the option
 }
 
 // ApplyAction is one tightly typed non-UCI operation a plugin asks the shell to
@@ -225,6 +253,15 @@ func (t *SocketTransport) buildRequest(ctx context.Context, req Request) (*http.
 			return nil, fmt.Errorf("plugin: encode uci snapshot: %w", err)
 		}
 		httpReq.Header.Set(HeaderUCI, base64.StdEncoding.EncodeToString(snapshot))
+	}
+	// The brokered helper reads ride their own header, so a plugin that wants only
+	// config never has to look past the snapshot to find it.
+	if len(req.Ubus) > 0 {
+		reads, err := json.Marshal(req.Ubus)
+		if err != nil {
+			return nil, fmt.Errorf("plugin: encode brokered reads: %w", err)
+		}
+		httpReq.Header.Set(HeaderUbus, base64.StdEncoding.EncodeToString(reads))
 	}
 	return httpReq, nil
 }

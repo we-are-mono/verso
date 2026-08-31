@@ -66,19 +66,23 @@ broken socket.**
 4. **Plugins present credentials too, for reads and writes (extends ADR-006).** A
    plugin holds no session and touches config in neither direction directly. It
    declares the ACL scopes it needs in its `manifest.json` (the Verso analog of
-   LuCI's per-plugin `acl.d`) — `acl.read` for the configs it renders, `acl.write`
+   LuCI's per-plugin `acl.d`) — `acl.read` for what it renders, `acl.write`
    for the configs it changes. The shell, which holds the sid, brokers **both**
    directions through rpcd on the plugin's behalf: it **reads** each declared
    config with the sid and hands the plugin a snapshot to render from, and it
    **writes** the plugin's declarative `commit` intent — refusing anything outside
-   the plugin's declared, session-authorized scopes. Plugins gain a *declared*
-   privilege surface instead of ambient root, and never read `/etc/config` or hold
-   a write path.
+   the plugin's declared, session-authorized scopes. A read scope also reaches past
+   config: a `ubus` scope on object `verso` names one of the helper's read functions
+   (`firewallCounters`), so a page can show live kernel state — nftables counters —
+   that neither the plugin nor the de-privileged shell may read for itself. Plugins
+   gain a *declared* privilege surface instead of ambient root, and never read
+   `/etc/config` or hold a write path.
 
 5. **A first-party persistent helper performs privileged root actions that are not uci
    config.** The operations the shell owns but must not perform itself include
-   setting the root password, setting the kernel clock, and apk package operations (index refresh,
-   search, list-installed, install, remove). procd service lifecycle is *not* one of them —
+   setting the root password, setting the kernel clock, apk package operations (index refresh,
+   search, list-installed, install, remove), and privileged reads such as listing fw4's
+   nftables ruleset for its per-rule counters. procd service lifecycle is *not* one of them —
    it rides rpcd's native `rc` object, sid-gated like `uci` (the `rc` grant in the shell's
    `acl.d`). Rather than depend
    on `rpcd-mod-luci` (a LuCI component this shell
@@ -138,8 +142,9 @@ broken socket.**
   invisible to the widget renderer.
 - Governs privilege only; the visual contract (ADR-005) is unchanged. The
   mechanical plugin contract (ADR-006) gains two things: the manifest
-  `acl.read`/`acl.write` declarations, and a read channel — the shell injects the
-  uci snapshot into the plugin request (the `X-Verso-UCI` header).
+  `acl.read`/`acl.write` declarations, and two read channels the shell injects into
+  the plugin request — the uci snapshot (`X-Verso-UCI`) and the brokered helper
+  reads (`X-Verso-Ubus`).
 
 ## Alternatives considered
 
@@ -193,7 +198,11 @@ touches config in **neither** direction directly. For
 **reads**, the shell reads each config the plugin declares in `acl.read` through
 rpcd's `uci get` carrying the operator's sid — one whole-config call — and injects
 the result into the plugin's request as the `X-Verso-UCI` header (JSON); the plugin
-renders from that snapshot and links no uci library. For **writes**, the plugin
+renders from that snapshot and links no uci library. A declared `ubus` read scope on
+object `verso` is brokered the same way through the privileged helper, and rides its
+own `X-Verso-Ubus` header keyed by function name. The shell brokers only functions in
+a closed set it knows, so a manifest cannot name its way to an arbitrary helper verb,
+and the helper re-checks the operator's sid before it acts. For **writes**, the plugin
 returns a declarative `commit` intent (ADR-006) and the shell executes it through
 rpcd, refusing any op outside the plugin's declared configs. The two gates are
 deliberately shaped by rpcd: a write is probe-and-refused up front

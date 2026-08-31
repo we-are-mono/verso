@@ -36,7 +36,8 @@ type fakeBackend struct {
 	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
 	addReturns     string                    // section id UCIAdd returns
 	adds           *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
-	deletes        *[]string                 // records "config.section" per UCIDelete
+	deletes        *[]string                 // records "config.section[.option]" per UCIDelete
+	orders         *[]string                 // records "config: a,b,c" per UCIOrder
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword      func(ctx context.Context, sid, username, password string) error
@@ -79,6 +80,10 @@ type fakeBackend struct {
 	wanCalls *int
 	devStats *[]openwrt.DeviceStats
 	devErr   error
+	// The helper's brokered firewall read (ADR-007): the canned counters payload the
+	// shell forwards to a declaring plugin, and the failure that degrades it away.
+	fwCounters json.RawMessage
+	fwErr      error
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
@@ -166,9 +171,22 @@ func (f fakeBackend) UCIAdd(_ context.Context, _, config, secType string) (strin
 	return f.addReturns, f.uciErr
 }
 
-func (f fakeBackend) UCIDelete(_ context.Context, _, config, section string) error {
+func (f fakeBackend) UCIDelete(_ context.Context, _, config, section, option string) error {
 	if f.deletes != nil {
-		*f.deletes = append(*f.deletes, config+"."+section)
+		record := config + "." + section
+		if option != "" {
+			record += "." + option
+		}
+		*f.deletes = append(*f.deletes, record)
+	}
+	return f.uciErr
+}
+
+// UCIOrder records the whole section sequence the shell staged for a dragged
+// listing, so the reorder tests can assert what reached rpcd.
+func (f fakeBackend) UCIOrder(_ context.Context, _, config string, sections []string) error {
+	if f.orders != nil {
+		*f.orders = append(*f.orders, config+": "+strings.Join(sections, ","))
 	}
 	return f.uciErr
 }
@@ -293,6 +311,10 @@ func (f fakeBackend) Restart(ctx context.Context, sid string) error {
 		return f.restart(ctx, sid)
 	}
 	return nil
+}
+
+func (f fakeBackend) FirewallCounters(context.Context, string) (json.RawMessage, error) {
+	return f.fwCounters, f.fwErr
 }
 
 func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
@@ -483,6 +505,15 @@ func demoReadManifest() plugin.Manifest {
 	return m
 }
 
+func demoCountersManifest() plugin.Manifest {
+	m := demoManifest()
+	m.ACL = plugin.ACL{Read: []plugin.ACLScope{
+		{Scope: "uci", Object: "firewall", Function: "read"},
+		{Scope: "ubus", Object: "verso", Function: "firewallCounters"},
+	}}
+	return m
+}
+
 func demoRepeaterManifest() plugin.Manifest {
 	m := demoManifest()
 	m.ACL = plugin.ACL{
@@ -649,6 +680,75 @@ func TestPluginNoReadACLGetsNoSnapshot(t *testing.T) {
 	}
 }
 
+// TestPluginUbusReadBrokered: a plugin declaring an allowlisted helper read in
+// acl.read receives that helper's result in its request, read with the operator's
+// sid (ADR-007) — live state the plugin cannot reach itself.
+func TestPluginUbusReadBrokered(t *testing.T) {
+	counters := json.RawMessage(`{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12,"bytes":1008}]}`)
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+	s := newServerWith(t, fakeBackend{fwCounters: counters}, tr, []plugin.Manifest{demoCountersManifest()})
+
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	got, ok := tr.lastReq.Ubus["firewallCounters"]
+	if !ok {
+		t.Fatalf("forwarded request carried no brokered read: %+v", tr.lastReq.Ubus)
+	}
+	if string(got) != string(counters) {
+		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
+	}
+}
+
+// TestPluginUndeclaredUbusReadNotBrokered: neither a plugin that declares no helper
+// read nor one that names a function outside the shell's closed set receives one —
+// the declaration alone cannot widen what the shell will read.
+func TestPluginUndeclaredUbusReadNotBrokered(t *testing.T) {
+	unknown := demoManifest()
+	unknown.ACL = plugin.ACL{Read: []plugin.ACLScope{
+		{Scope: "ubus", Object: "verso", Function: "installFirmware"},
+	}}
+	for name, m := range map[string]plugin.Manifest{
+		"no read acl":         demoManifest(),
+		"uci reads only":      demoReadManifest(),
+		"un-allowlisted verb": unknown,
+	} {
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Title: "Demo", Widget: json.RawMessage(`{"type":"card"}`),
+		}}
+		backend := fakeBackend{fwCounters: json.RawMessage(`{"counters":[]}`)}
+		s := newServerWith(t, backend, tr, []plugin.Manifest{m})
+
+		if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d, want 200", name, rec.Code)
+		}
+		if tr.lastReq.Ubus != nil {
+			t.Errorf("%s: got a brokered read: %+v", name, tr.lastReq.Ubus)
+		}
+	}
+}
+
+// TestPluginUbusReadDegradesOnBackendError: a helper read that fails contributes
+// nothing and the page still renders — reads are never a 4xx/5xx, the same posture
+// the uci snapshot takes.
+func TestPluginUbusReadDegradesOnBackendError(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+	backend := fakeBackend{fwErr: errors.New("helper unavailable")}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoCountersManifest()})
+
+	rec := get(t, s, "/plugins/demo/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (a failed read must degrade, not fail)", rec.Code)
+	}
+	if tr.lastReq.Ubus != nil {
+		t.Errorf("failed read still reached the plugin: %+v", tr.lastReq.Ubus)
+	}
+}
+
 // repeaterTransport renders a trivial page, standing in for the plugin's re-render
 // of the fresh state after a repeater op.
 func repeaterTransport() *fakeTransport {
@@ -735,6 +835,140 @@ func TestPluginRepeaterGatedByWriteACL(t *testing.T) {
 	}
 	if len(adds) != 0 {
 		t.Errorf("a denied operator must not add: %v", adds)
+	}
+}
+
+// demoReorderManifest declares the firewall config for both reading and writing —
+// what a plugin whose listing drags must declare for the shell to stage the order.
+func demoReorderManifest() plugin.Manifest {
+	m := demoManifest()
+	m.ACL = plugin.ACL{
+		Read:  []plugin.ACLScope{{Scope: "uci", Object: "firewall", Function: "read"}},
+		Write: []plugin.ACLScope{{Scope: "uci", Object: "firewall", Function: "write"}},
+	}
+	return m
+}
+
+// reorderSnapshot is a firewall config whose rule sections are interleaved with
+// sections of other types — the shape that proves a reorder moves only the rows
+// the listing showed. `.index` arrives as an integer, the way rpcd's blobmsg
+// carries it.
+func reorderSnapshot() map[string]map[string]any {
+	section := func(secType string, index int64) map[string]any {
+		return map[string]any{".type": secType, ".index": index}
+	}
+	return map[string]map[string]any{"firewall": {
+		"defaults":         section("defaults", 0),
+		"lan":              section("zone", 1),
+		"allow_dhcp_renew": section("rule", 2),
+		"allow_ping":       section("rule", 3),
+		"wan":              section("zone", 4),
+		"block_telnet":     section("rule", 5),
+	}}
+}
+
+// reorderForm is what verso.js posts when a row is dropped: the config the rows
+// are sections of, and every reorderable row id in the table's new order.
+func reorderForm(ids ...string) url.Values {
+	f := url.Values{"_uci_order_config": {"firewall"}}
+	f["_uci_order"] = ids
+	return f
+}
+
+// TestPluginReorderStagesTheWholeSequence: a dropped row posts the listing's new
+// id order, and the shell stages a `uci order` over the config's *whole* section
+// sequence — the posted ids refilling the slots they already held, so the zone and
+// defaults sections interleaved among the rules never move.
+func TestPluginReorderStagesTheWholeSequence(t *testing.T) {
+	orders := []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, orders: &orders, uci: reorderSnapshot()}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoReorderManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", reorderForm("allow_ping", "allow_dhcp_renew", "block_telnet"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	want := "firewall: defaults,lan,allow_ping,allow_dhcp_renew,wan,block_telnet"
+	if len(orders) != 1 || orders[0] != want {
+		t.Errorf("UCIOrder calls = %v, want one %q", orders, want)
+	}
+	if tr.lastReq.Method != http.MethodGet {
+		t.Errorf("re-render method = %q, want GET (the order was staged, then rendered)", tr.lastReq.Method)
+	}
+}
+
+// TestPluginReorderThatMovesNothingStagesNothing: an abandoned drag announces the
+// sequence it started from, and a page that already reads that way has nothing to
+// save — the operator's staged changes stay as they were.
+func TestPluginReorderThatMovesNothingStagesNothing(t *testing.T) {
+	orders := []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, orders: &orders, uci: reorderSnapshot()}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoReorderManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", reorderForm("allow_dhcp_renew", "allow_ping", "block_telnet"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(orders) != 0 {
+		t.Errorf("an unchanged order must stage nothing: %v", orders)
+	}
+}
+
+// TestPluginReorderRefusedForUndeclaredConfig: the reorder is bounded by the same
+// declared write surface every other staged write is — an undeclared config is
+// refused and nothing is staged.
+func TestPluginReorderRefusedForUndeclaredConfig(t *testing.T) {
+	orders := []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, orders: &orders, uci: reorderSnapshot()}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoRepeaterManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", reorderForm("allow_ping"))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	if len(orders) != 0 {
+		t.Errorf("an undeclared-config reorder must stage nothing: %v", orders)
+	}
+}
+
+// TestPluginReorderRefusedForUnknownSection: every posted id must name a section
+// the config really holds, so a stale page cannot order the listing into a shape
+// the device does not have.
+func TestPluginReorderRefusedForUnknownSection(t *testing.T) {
+	orders := []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{access: true, orders: &orders, uci: reorderSnapshot()}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoReorderManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", reorderForm("allow_ping", "cfg_gone"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	if len(orders) != 0 {
+		t.Errorf("an unusable order must stage nothing: %v", orders)
+	}
+}
+
+// TestPluginReorderContainedOnBackendError: rpcd refusing the order is a plain
+// "try again" notice, never a crash — the same containment every staged write has.
+func TestPluginReorderContainedOnBackendError(t *testing.T) {
+	orders := []string{}
+	tr := repeaterTransport()
+	backend := fakeBackend{
+		access: true, orders: &orders, uci: reorderSnapshot(),
+		uciErr: errors.New("rpcd said no"),
+	}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoReorderManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", reorderForm("allow_ping", "allow_dhcp_renew", "block_telnet"))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Save failed") {
+		t.Errorf("a failed reorder should render the contained notice:\n%s", rec.Body.String())
 	}
 }
 
@@ -985,6 +1219,149 @@ func TestPluginCommitListOption(t *testing.T) {
 	}
 }
 
+// TestPluginCommitDeletesSection: a commit op carrying delete removes the whole
+// section through the backend and writes nothing else — the editor's Delete.
+func TestPluginCommitDeletesSection(t *testing.T) {
+	calls := []uciWrite{}
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "cfg07led", Delete: true}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"_delete": {"1"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(dels) != 1 || dels[0] != "system.cfg07led" {
+		t.Fatalf("UCIDelete calls = %v, want one \"system.cfg07led\"", dels)
+	}
+	if len(calls) != 0 {
+		t.Errorf("a delete must not also write values; got %d UCISet calls", len(calls))
+	}
+}
+
+// TestPluginCommitDeleteMalformedRefused: a delete describes one operation. An op
+// that also names a type, values, or no section at all is refused outright rather
+// than guessed at, and nothing reaches the backend.
+func TestPluginCommitDeleteMalformedRefused(t *testing.T) {
+	for name, op := range map[string]plugin.CommitOp{
+		"no section": {Config: "system", Section: "", Delete: true},
+		"with type":  {Config: "system", Section: "cfg07led", Type: "led", Delete: true},
+		"with values": {Config: "system", Section: "cfg07led", Delete: true,
+			Values: map[string]any{"name": "disk"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			calls, dels, adds := []uciWrite{}, []string{}, []string{}
+			tr := &fakeTransport{env: &plugin.Envelope{
+				SchemaVersion: 1, Status: http.StatusOK,
+				Widget: json.RawMessage(`{"type":"card","children":[]}`),
+				Commit: []plugin.CommitOp{op},
+			}}
+			be := fakeBackend{access: true, writes: &calls, deletes: &dels, adds: &adds}
+			s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+			rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}})
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400 for a malformed delete", rec.Code)
+			}
+			if len(dels)+len(calls)+len(adds) != 0 {
+				t.Errorf("a malformed delete must reach the backend not at all; got %v %v %v", dels, calls, adds)
+			}
+		})
+	}
+}
+
+// TestPluginCommitNullClearsOption: a null among a commit's values clears that
+// one option (an option-level delete) while the rest of the op is written — how
+// an editor drops a setting it owns instead of writing it empty.
+func TestPluginCommitNullClearsOption(t *testing.T) {
+	calls := []uciWrite{}
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{
+			"enabled": "1", "server": nil, "interface": nil,
+		}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(dels) != 2 || dels[0] != "system.ntp.interface" || dels[1] != "system.ntp.server" {
+		t.Fatalf("cleared options = %v, want interface then server (sorted)", dels)
+	}
+	if len(calls) != 1 || len(calls[0].values) != 1 || calls[0].values["enabled"] != "1" {
+		t.Fatalf("brokered write = %+v; want only the non-null value", calls)
+	}
+}
+
+// TestPluginCommitAllNullsWritesNothing: an op whose every value is a null is
+// only clears — it must not follow them with an empty uci set.
+func TestPluginCommitAllNullsWritesNothing(t *testing.T) {
+	calls := []uciWrite{}
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{"server": nil}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
+
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(dels) != 1 || len(calls) != 0 {
+		t.Errorf("clears = %v, writes = %v; want one clear and no write", dels, calls)
+	}
+}
+
+// TestPluginCommitDeleteRefusedForUndeclaredConfig: the declared-surface bound
+// covers deletes exactly as it covers writes.
+func TestPluginCommitDeleteRefusedForUndeclaredConfig(t *testing.T) {
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "network", Section: "cfg01", Delete: true}},
+	}}
+	// demoACLManifest declares only uci/system.
+	s := newServerWith(t, fakeBackend{access: true, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 for a delete outside the declared scope", rec.Code)
+	}
+	if len(dels) != 0 {
+		t.Errorf("an undeclared delete must NOT be executed; got %v", dels)
+	}
+}
+
+// TestPluginCommitDeleteBackendErrorContained: rpcd refusing the delete is a
+// contained failure, never a false success.
+func TestPluginCommitDeleteBackendErrorContained(t *testing.T) {
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "cfg07led", Delete: true}},
+	}}
+	be := fakeBackend{access: true, deletes: &dels, uciErr: errors.New("rpcd denied")}
+	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code == http.StatusOK {
+		t.Fatalf("a failed delete must not report 200")
+	}
+	if len(dels) != 1 {
+		t.Errorf("UCIDelete should have been attempted once; got %v", dels)
+	}
+}
+
 // TestPluginCommitRefusedForUndeclaredConfig: a plugin cannot broker a write to a
 // config it did not declare in its manifest — the shell refuses and writes nothing
 // (the malicious-plugin defense).
@@ -1150,6 +1527,42 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("notice flash missing %q", want)
 		}
+	}
+}
+
+// TestPluginActionRendersBesideTheHeading: the envelope's one primary doorway is
+// a button on the heading row, in both masthead shapes — the kicker/lede one and
+// the bare heading — and its label is localized with the plugin's own catalog.
+func TestPluginActionRendersBesideTheHeading(t *testing.T) {
+	for _, sub := range []string{"", "Say which traffic this is about."} {
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Status: http.StatusOK,
+			Title:      "Firewall",
+			Subheading: sub,
+			Action:     &plugin.PageAction{Label: "New rule", Href: "/plugins/demo/rules/new"},
+			Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
+		}}
+		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+		body := get(t, s, "/plugins/demo/").Body.String()
+		for _, want := range []string{`href="/plugins/demo/rules/new"`, ">New rule</a>", "bg-sky-600"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("page action missing %q (subheading %q):\n%s", want, sub, body)
+			}
+		}
+	}
+}
+
+// TestPluginWithoutActionRendersNoButton: no action, no doorway.
+func TestPluginWithoutActionRendersNoButton(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK, Title: "Firewall",
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	if body := get(t, s, "/plugins/demo/").Body.String(); strings.Contains(body, "rules/new") {
+		t.Error("a plugin page declaring no action must render no heading button")
 	}
 }
 
