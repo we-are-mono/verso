@@ -56,6 +56,26 @@ func TestPageFormUsesCapsuleInsteadOfOwnSubmit(t *testing.T) {
 	}
 }
 
+func TestSearchFormRendersSubmitInsideInputOutline(t *testing.T) {
+	f := &Form{
+		Style: "search", Icon: "search", Submit: "Search",
+		Fields: []Widget{&Field{Name: "q", Placeholder: "Package name"}},
+	}
+	got := render(t, newRenderer(t), f)
+	for _, want := range []string{
+		"relative w-full max-w-sm",
+		"[&_input[type=text]]:pr-28",
+		"absolute inset-y-1 right-1",
+		"bg-sky-600",
+		`placeholder="Package name"`,
+		">Search</button>",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("search form render missing %q: %s", want, got)
+		}
+	}
+}
+
 func TestShellFormCanOmitGeneratedSubmitAndAutoSubmitFile(t *testing.T) {
 	f := &Form{
 		Action: "/system/maintenance/restore", Multipart: true,

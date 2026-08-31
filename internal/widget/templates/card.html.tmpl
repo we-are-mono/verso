@@ -6,7 +6,7 @@
      space below the block so it never crowds the content. */}}
 {{/* the twin-hairline frame shared with settings/table cards — a card is a
      deliberate object on the flat page, no shadow. */}}
-<section class="rounded-2xl border border-slate-200 bg-white p-6 ring-1 ring-slate-200 ring-offset-4 ring-offset-white">
+<section class="{{template "verso-card-frame"}} p-6">
   {{if or .Title .Subtitle}}
   <div class="{{if .Subtitle}}mb-8{{else}}mb-4{{end}}">
     {{if .Title}}<h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>{{end}}

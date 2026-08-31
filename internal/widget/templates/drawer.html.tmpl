@@ -15,7 +15,7 @@
   </button>
   <template x-teleport="body">
     <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
-      <div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs dark:bg-black/60"></div>
+      {{template "verso-overlay-backdrop"}}
       <aside x-show="open" @input="markDirty" @change="markDirty"
         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
@@ -25,14 +25,11 @@
           {{/* The title row can carry state: a status dot (pulsing when it marks
                something live) and the category chip the rows wear elsewhere. */}}
           <div class="flex min-w-0 items-center gap-2.5">
-            {{if .Dot}}<span class="{{if eq .Dot "success"}}verso-live-dot bg-green-500{{else if eq .Dot "danger"}}bg-red-500{{else if eq .Dot "warning"}}bg-amber-500{{else}}bg-slate-400{{end}} size-2 shrink-0 rounded-full"></span>{{end}}
+            {{if .Dot}}<span class="{{template "verso-tone-dot" .Dot}} size-2 shrink-0 rounded-full"></span>{{end}}
             <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
-            {{if .Tag}}<span class="inline-flex shrink-0 items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Tag}}</span>{{end}}
+            {{if .Tag}}<span class="shrink-0 {{template "verso-chip-class"}}">{{.Tag}}</span>{{end}}
           </div>
-          <button type="button" @click="hide" aria-label="{{ t "Close" }}"
-            class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">
-            {{icon "x" "size-5"}}
-          </button>
+          {{template "verso-close-btn"}}
         </header>
         {{/* Tables lose their page-width floor in here: the panel is narrower
              than the 44rem that keeps columns comfortable on a full page, and

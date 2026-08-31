@@ -39,7 +39,7 @@
 {{/* the card frame is a twin hairline — the border plus a ring floated 4px
      out with the page showing through — so a card reads as a deliberate
      object on the white canvas without leaning on shadow. */}}
-<div class="{{if .Card}}overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 pb-2.5 ring-1 ring-slate-200 ring-offset-4 ring-offset-white {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
+<div class="{{if .Card}}overflow-hidden {{template "verso-card-frame"}} px-5 pb-2.5 {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
   {{/* the group label lives inside its card (same treatment as table column
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline

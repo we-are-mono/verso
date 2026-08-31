@@ -16,7 +16,7 @@ import (
 // ring is the "how full" and the number never restates it — a storage ring reads
 // "23 GB" over a ~72%-full ring, not "72%" over "23 GB of 32 GB". Fill can differ from
 // Value (Value "23" GB with Fill 72), or match it (a CPU reading of "18" %, Fill 18).
-// The shell colours the ring by how full it is (green/amber/red); Variant "info"
+// The shell colours the ring by how full it is (emerald/amber/red); Variant "info"
 // overrides that with the accent, for a rate like speed that has no "getting full".
 //
 // Layout picks the face: the default ring, or "bar" — the same reading as a

@@ -26,14 +26,14 @@
     <label class="min-w-0 flex-1 space-y-1.5">
       <span class="block text-sm font-medium text-slate-900 dark:text-gray-100">{{ t "Add condition" }}</span>
       <span class="relative block">
-        <select data-verso-condition-select class="w-full appearance-none rounded-md border border-slate-300 bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-sky-400 dark:focus:ring-sky-400/50">
+        <select data-verso-condition-select class="w-full appearance-none rounded-md border {{template "verso-input-border" ""}} bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:outline-none dark:bg-gray-900 dark:text-gray-100">
           <option value="">{{ t "Choose a condition…" }}</option>
           {{range .Options}}<option value="{{.Key}}"{{if .Active}} disabled hidden{{end}}>{{.Label}}</option>{{end}}
         </select>
         <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">{{icon "chevron-down" "size-4"}}</span>
       </span>
     </label>
-    <button type="button" data-verso-condition-add class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-sky-600 hover:text-sky-600 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900">{{ t "Add" }}</button>
+    <button type="button" data-verso-condition-add class="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{template "verso-btn-secondary"}}">{{ t "Add" }}</button>
   </div>
   {{range $i, $item := .Templates}}<template data-verso-condition-template="{{(index $.Options $i).Key}}">{{$item}}</template>{{end}}
 </fieldset>

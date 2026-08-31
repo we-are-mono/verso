@@ -16,7 +16,7 @@ func TestRenderMeter(t *testing.T) {
 		`r="50"`,           // a full ring
 		"stroke-dasharray", // filled by Fill
 		"tabular-nums",
-		"stroke-green-600", // 72% is still healthy (amber starts at 80)
+		"stroke-emerald-600", // 72% is still healthy (amber starts at 80)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("meter missing %q:\n%s", want, got)
@@ -27,7 +27,7 @@ func TestRenderMeter(t *testing.T) {
 // TestMeterBands: the ring colours itself from Fill (not from the displayed Value).
 func TestMeterBands(t *testing.T) {
 	r := newRenderer(t)
-	cases := map[int]string{45: "stroke-green-600", 85: "stroke-amber-500", 95: "stroke-red-600"}
+	cases := map[int]string{45: "stroke-emerald-600", 85: "stroke-amber-500", 95: "stroke-red-600"}
 	for fill, want := range cases {
 		got := render(t, r, &Meter{Label: "x", Value: "x", Fill: fill})
 		if !strings.Contains(got, want) {
@@ -46,7 +46,7 @@ func TestMeterInfoVariant(t *testing.T) {
 			t.Errorf("speed meter missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "stroke-green-600") {
+	if strings.Contains(got, "stroke-emerald-600") {
 		t.Errorf("info variant must not auto-colour:\n%s", got)
 	}
 }
@@ -99,7 +99,7 @@ func TestRenderMeterBar(t *testing.T) {
 		"Storage", ">23<", ">GB<", "9 GB free",
 		"data-verso-meter-bar", // the fill element
 		"width: 72%",           // filled by Fill
-		"bg-green-600",         // 72% is still healthy
+		"bg-emerald-600",         // 72% is still healthy
 		"tabular-nums",
 	} {
 		if !strings.Contains(got, want) {
@@ -114,7 +114,7 @@ func TestRenderMeterBar(t *testing.T) {
 // TestMeterBarBands: the bar tints itself from Fill, same rule as the ring.
 func TestMeterBarBands(t *testing.T) {
 	r := newRenderer(t)
-	cases := map[int]string{45: "bg-green-600", 85: "bg-amber-500", 95: "bg-red-600"}
+	cases := map[int]string{45: "bg-emerald-600", 85: "bg-amber-500", 95: "bg-red-600"}
 	for fill, want := range cases {
 		got := render(t, r, &Meter{Layout: "bar", Label: "x", Value: "x", Fill: fill})
 		if !strings.Contains(got, want) {
@@ -130,7 +130,7 @@ func TestMeterBarInfoVariant(t *testing.T) {
 	if !strings.Contains(got, "bg-sky-600") {
 		t.Errorf("info bar must use the accent:\n%s", got)
 	}
-	if strings.Contains(got, "bg-green-600") {
+	if strings.Contains(got, "bg-emerald-600") {
 		t.Errorf("info variant must not auto-colour:\n%s", got)
 	}
 }

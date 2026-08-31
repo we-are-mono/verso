@@ -182,7 +182,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 	})
 	for _, want := range []string{
 		"font-semibold text-slate-900",          // the identity column is emphasised ink, no icon
-		"bg-green-50 text-green-700",            // accept pill through the badge palette
+		"bg-emerald-50 text-emerald-700",            // accept pill through the badge palette
 		"bg-amber-50 text-amber-700",            // reject pill
 		"bg-sky-50 text-sky-700",                // NAT carries the info accent
 		`<span class="text-slate-300">—</span>`, // empty pill cell is a faint dash

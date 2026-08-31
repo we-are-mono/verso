@@ -11,7 +11,7 @@
     <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="shrink-0 text-sm font-medium">
       <span x-ref="src" class="hidden">{{.Value}}</span>
       <span x-show="idle" class="inline-flex items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-700">{{icon "copy" "size-4"}}{{ t "Copy" }}</span>
-      <span x-show="done" x-cloak class="inline-flex items-center gap-1.5 text-green-600">{{icon "check" "size-4"}}{{ t "Copied!" }}</span>
+      <span x-show="done" x-cloak class="inline-flex items-center gap-1.5 text-emerald-600">{{icon "check" "size-4"}}{{ t "Copied!" }}</span>
     </button>
     {{end}}
   </div>

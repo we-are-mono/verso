@@ -10,7 +10,7 @@
 {{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
   <span x-ref="src" class="hidden">{{.}}</span>
   <span x-show="idle">{{icon "copy" "size-4"}}</span>
-  <span x-show="done" x-cloak>{{icon "check" "size-4 text-green-600"}}</span>
+  <span x-show="done" x-cloak>{{icon "check" "size-4 text-emerald-600"}}</span>
   {{/* Hover bubble beneath the icon: "Click to copy", flipping to "Copied!" on click
        (same idle/done state as the icon). Pure-CSS reveal on hover/keyboard focus —
        the group is NAMED so an ancestor `group` (a table row wears one for its
@@ -41,7 +41,7 @@
   <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
     <dt class="shrink-0 text-slate-500{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
     <dd class="{{if eq $.Align "left"}}flex min-w-0 flex-1 items-baseline text-left{{else}}text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-slate-700">
-      {{if .Chip}}<span class="inline-flex items-center rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{.Value}}</span>{{else}}<span class="{{if .Mono}}font-mono{{if .Emphasis}} font-semibold{{end}}{{end}}">{{.Value}}</span>{{end}}
+      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="{{if .Mono}}font-mono{{if .Emphasis}} font-semibold{{end}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex shrink-0 align-middle">{{template "badge.html.tmpl" .Status}}</span>{{end}}
     </dd>

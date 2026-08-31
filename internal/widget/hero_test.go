@@ -14,7 +14,7 @@ func TestRenderHero(t *testing.T) {
 	for _, want := range []string{
 		"Everything&#39;s good", "All quiet.",
 		"rounded-2xl",         // largest surface, largest radius
-		"bg-green-600",        // success palette on the glyph
+		"bg-emerald-600",        // success palette on the glyph
 		"font-serif",          // verdict set in the display face
 		`stroke-width="1.75"`, // Lucide glyph
 	} {

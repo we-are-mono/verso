@@ -12,7 +12,7 @@
   {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
        the native arrow hugs the border and can't follow the theme. */}}
   <div class="relative">
-    <select id="{{.Name}}" name="{{.Name}}" class="w-full appearance-none rounded-md border {{if .Error}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:outline-none">
+    <select id="{{.Name}}" name="{{.Name}}" class="w-full appearance-none rounded-md border {{template "verso-input-border" .Error}} bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:outline-none">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">{{icon "chevron-down" "size-4"}}</span>
@@ -33,7 +33,7 @@
   </div>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}" class="w-full rounded-md border {{if .Error}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
   {{else if eq .Kind "file"}}
   {{/* The native input covers the drop surface invisibly: dropping works without
        plugin JavaScript, and clicking the emphasized phrase opens the OS picker. */}}
@@ -46,11 +46,11 @@
     </span>
   </label>
   {{else if eq .Kind "textarea"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="w-full rounded-md border {{if .Error}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white px-3 py-2 inset-shadow-sm font-mono text-sm text-slate-900 focus:outline-none">{{.Value}}</textarea>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm font-mono text-sm text-slate-900 focus:outline-none">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1" class="w-full rounded-md border {{if .Error}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
   {{else}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{if .Error}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
   {{end}}
   {{/* On error, the helper line becomes the error — one line under the field, not two. */}}
   {{if .Error}}<p class="text-sm text-red-600 dark:text-red-400">{{.Error}}</p>{{else if .Help}}<p class="text-sm text-slate-500">{{.Help}}</p>{{end}}

@@ -38,8 +38,8 @@
       <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50 dark:bg-menu-interaction{{else}}hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
         <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
         <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
-        {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "success"}}text-green-700{{else}}text-slate-400{{end}}">
-          {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "success"}}verso-live-dot bg-green-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
+        {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "success"}}text-emerald-700{{else}}text-slate-400{{end}}">
+          {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "success"}}verso-live-dot bg-emerald-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
       </a></li>
       {{end}}
     </ul>
@@ -83,7 +83,7 @@
       <span class="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">A</span>
       <div class="min-w-0 flex-1">
         <div class="truncate text-sm font-medium text-slate-900">{{ t "Administrator" }}</div>
-        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-green-500"></span>{{ t "Signed in" }}</div>
+        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-emerald-500"></span>{{ t "Signed in" }}</div>
       </div>
       <form method="post" action="/logout">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
@@ -143,7 +143,7 @@
     {{/* Artifact-style masthead a page opts into: an uppercase kicker (with a live dot),
          a serif display headline, and a lede. Falls back to the plain heading below. */}}
     <div class="mb-10">
-      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green-500"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-emerald-600">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
+      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-emerald-500"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-emerald-600">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
         <div class="min-w-0">
           <h1 class="verso-page-heading">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h1>
@@ -162,7 +162,7 @@
     {{/* The PRG flash: the one-shot confirmation of the action that just
          redirected here. Rendered once by the chrome, gone on the next view. */}}
     {{if .FlashMessage}}
-    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700{{else}}border-green-200 bg-green-50 text-green-700 dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300{{end}}">
+    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700{{else}}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300{{end}}">
       {{if eq .FlashVariant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
       <span>{{.FlashMessage}}</span>
     </div>

@@ -1100,14 +1100,14 @@ document.addEventListener(
   if (!window.EventSource) return;
   if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
   var BANDS = {
-    success: "stroke-green-600",
+    success: "stroke-emerald-600",
     warning: "stroke-amber-500",
     danger: "stroke-red-600",
     info: "stroke-sky-600",
   };
   // The bar layout tints its fill with a background, not a stroke.
   var BAR_BANDS = {
-    success: "bg-green-600",
+    success: "bg-emerald-600",
     warning: "bg-amber-500",
     danger: "bg-red-600",
     info: "bg-sky-600",

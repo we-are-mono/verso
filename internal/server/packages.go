@@ -267,7 +267,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	// the row's right end as a quiet fact.
 	checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
 	children = append(children,
-		&widget.Form{Style: "inline-compact", Icon: "search", Submit: "Search",
+		&widget.Form{Style: "search", Icon: "search", Submit: "Search",
 			Note:    freshnessLine(checkedAt, statusErr),
 			Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
 			Fields: []widget.Widget{

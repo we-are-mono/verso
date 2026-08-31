@@ -104,7 +104,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6 ring-1 ring-slate-200 ring-offset-4 ring-offset-white"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
+	want := `<section class="rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white p-6"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -125,7 +125,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6 ring-1 ring-slate-200 ring-offset-4 ring-offset-white"><div class="space-y-4"></div></section>`
+	want := `<section class="rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white p-6"><div class="space-y-4"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -211,8 +211,8 @@ func TestRenderBadge(t *testing.T) {
 	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
 	for _, want := range []string{
 		"Connected", "rounded-full",
-		"bg-green-50 text-green-700 ring-green-600/20", // light treatment is unchanged
-		"dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20",
+		"bg-emerald-50 text-emerald-700 ring-emerald-600/20", // light treatment is unchanged
+		"dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("success badge missing %q in: %s", want, got)
@@ -372,7 +372,7 @@ func TestRenderWizard(t *testing.T) {
 		t.Errorf("want exactly one checked step radio, got %d: %s", n, got)
 	}
 	// The Continue label on step 1 targets step 2's radio (id ...-1).
-	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md bg-sky-600`) {
+	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-sky-600`) {
 		t.Errorf("Continue label does not target the next step's radio: %s", got)
 	}
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
@@ -640,9 +640,9 @@ func TestRenderCallout(t *testing.T) {
 	r := newRenderer(t)
 	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
 	for _, want := range []string{
-		"border-green-200 bg-green-50 text-green-800", // light palette remains unchanged
-		"dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300",
-		"dark:text-green-400", "Reachable", "Verified from the internet.", "<svg",
+		"border-emerald-200 bg-emerald-50 text-emerald-800", // light palette remains unchanged
+		"dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300",
+		"dark:text-emerald-400", "Reachable", "Verified from the internet.", "<svg",
 	} {
 		if !strings.Contains(ok, want) {
 			t.Errorf("success callout missing %q in: %s", want, ok)
@@ -729,6 +729,15 @@ func TestRenderButton(t *testing.T) {
 			t.Errorf("submitting button missing %q: %s", want, submit)
 		}
 	}
+	loading := render(t, r, &Button{Label: "Fetching sources", Icon: "refresh-cw", Style: "secondary", Loading: true})
+	for _, want := range []string{`disabled`, `aria-busy="true"`, "cursor-wait opacity-70", "size-4 animate-spin", "Fetching sources", lucideIcons["loader-circle"]} {
+		if !strings.Contains(loading, want) {
+			t.Errorf("loading button missing %q: %s", want, loading)
+		}
+	}
+	if strings.Contains(loading, lucideIcons["refresh-cw"]) || strings.Contains(loading, "hover:border-slate-400") {
+		t.Errorf("loading button must replace its action icon and have no hover response: %s", loading)
+	}
 }
 
 func TestRenderCopy(t *testing.T) {
@@ -781,7 +790,7 @@ func TestRenderSection(t *testing.T) {
 func TestRenderCode(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Code{Label: "Server public key", Value: "HIgo9xNzJM==", Copy: true})
-	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "<code", "font-mono", `x-data="copy"`, "Copy", "Copied!", "text-green-600"} {
+	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "<code", "font-mono", `x-data="copy"`, "Copy", "Copied!", "text-emerald-600"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("code missing %q in: %s", want, got)
 		}
@@ -1059,7 +1068,8 @@ func TestRenderFormSuccess(t *testing.T) {
 	if !strings.Contains(got, "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900") {
 		t.Errorf("form submit missing dark primary-button treatment: %s", got)
 	}
-	if !strings.Contains(got, "active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0") {
+	if !strings.Contains(got, "active:bg-sky-800") ||
+		!strings.Contains(got, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
 		t.Errorf("form submit missing tactile pressed state: %s", got)
 	}
 }

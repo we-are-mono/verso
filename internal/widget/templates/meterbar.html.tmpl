@@ -16,7 +16,7 @@
     {{if or .Unit .Name}}<span class="text-base font-medium text-slate-500" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
   <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
-    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-sky-500{{else if eq .Role "violet"}}bg-violet-500{{else if eq .Role "emerald"}}bg-emerald-500{{else if eq .Role "amber"}}bg-amber-500{{else}}bg-slate-400{{end}}{{else if eq .Band "info"}}bg-sky-600{{else if eq .Band "danger"}}bg-red-600{{else if eq .Band "warning"}}bg-amber-500{{else}}bg-green-600{{end}}" style="width: {{.Width}}" data-verso-meter-bar></div>
+    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-sky-500{{else if eq .Role "violet"}}bg-violet-500{{else if eq .Role "emerald"}}bg-emerald-500{{else if eq .Role "amber"}}bg-amber-500{{else}}bg-slate-400{{end}}{{else if eq .Band "info"}}bg-sky-600{{else if eq .Band "danger"}}bg-red-600{{else if eq .Band "warning"}}bg-amber-500{{else}}bg-emerald-600{{end}}" style="width: {{.Width}}" data-verso-meter-bar></div>
   </div>
   {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-slate-500" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>

@@ -123,7 +123,7 @@ func TestFlashConfirmsActions(t *testing.T) {
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); !strings.Contains(body, "htop removed.") {
 		t.Error("the redirect target must show the confirmation")
-	} else if !strings.Contains(body, "dark:border-green-500/15 dark:bg-green-500/10 dark:text-green-300") {
+	} else if !strings.Contains(body, "dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300") {
 		t.Error("success flashes should match the verified modal's dark success palette")
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); strings.Contains(body, "htop removed.") {
@@ -146,8 +146,13 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	if !strings.Contains(body, "max-w-4xl") {
 		t.Error("Available must use the narrow package-management width")
 	}
-	if !strings.Contains(body, "w-52") {
-		t.Error("Available's search field should use the compact inline width")
+	if !strings.Contains(body, "max-w-sm") {
+		t.Error("Available's search field should use the compound search width")
+	}
+	for _, want := range []string{"[&_input[type=text]]:pr-28", "absolute inset-y-1 right-1", "bg-sky-600"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Available's compound search control missing %q", want)
+		}
 	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",

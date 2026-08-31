@@ -8,7 +8,7 @@
   <div class="space-y-2">
     {{.Body}}
     <form method="post" class="flex justify-end">
-      {{if $.CSRFToken}}<input type="hidden" name="_csrf" value="{{$.CSRFToken}}">{{end}}
+      {{template "verso-csrf" $.CSRFToken}}
       <input type="hidden" name="{{$.OpField}}" value="{{$.OpRemove}}">
       <input type="hidden" name="{{$.ConfigField}}" value="{{$.Config}}">
       <input type="hidden" name="{{$.SectionField}}" value="{{.Section}}">
@@ -17,10 +17,10 @@
   </div>
   {{end}}
   <form method="post">
-    {{if .CSRFToken}}<input type="hidden" name="_csrf" value="{{.CSRFToken}}">{{end}}
+    {{template "verso-csrf" .CSRFToken}}
     <input type="hidden" name="{{.OpField}}" value="{{.OpAdd}}">
     <input type="hidden" name="{{.ConfigField}}" value="{{.Config}}">
     <input type="hidden" name="{{.TypeField}}" value="{{.SectionType}}">
-    <button type="submit" class="cursor-pointer rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:border-sky-600 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">{{.AddLabel}}</button>
+    <button type="submit" class="cursor-pointer rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{template "verso-btn-secondary"}}">{{.AddLabel}}</button>
   </form>
 </div>

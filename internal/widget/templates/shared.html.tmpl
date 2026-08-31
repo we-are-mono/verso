@@ -1,0 +1,52 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* Shared partials: the fragments every widget template speaks identically —
+     button colour chains, the input border/focus/error chain, the category
+     chip, the tone dot, the card frame, the overlay backdrop, the close
+     button, the CSRF carrier. Each lives here once so the treatments cannot
+     drift apart; a widget's own template keeps only its layout. The class
+     strings stay in template files (not Go) so Tailwind's scanner keeps them. */}}
+
+{{/* verso-press: the shared press affordance — the control dips a pixel while
+     active, unless the person prefers reduced motion. */}}
+{{define "verso-press"}}active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0{{end}}
+
+{{/* verso-btn-primary: the primary action's colour + interaction chain. The
+     call site owns layout (flex, gap, padding, radius, focus treatment). */}}
+{{define "verso-btn-primary"}}bg-sky-600 text-white transition-colors hover:bg-sky-700 active:bg-sky-800 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900 {{template "verso-press"}}{{end}}
+
+{{/* verso-btn-secondary: the quiet bordered action that warms to the accent on
+     hover. Layout stays at the call site, as with verso-btn-primary. */}}
+{{define "verso-btn-secondary"}}border-slate-300 bg-white text-slate-700 transition-colors hover:border-sky-600 hover:text-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 {{template "verso-press"}}{{end}}
+
+{{/* verso-input-border: a form control's border/focus halo, switching to the
+     error treatment when the argument (the field's error) is set. */}}
+{{define "verso-input-border"}}{{if .}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}}{{end}}
+
+{{/* verso-chip-class: the neutral category/reference chip — the one chip
+     treatment an entity cited inside another row wears everywhere. */}}
+{{define "verso-chip-class"}}inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}
+
+{{/* verso-chip: the icon+label entity chip (an interface, a zone, a port) —
+     the Lucide glyph names the kind, the label the one. */}}
+{{define "verso-chip"}}<span class="{{template "verso-chip-class"}}">{{if .Icon}}<span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
+
+{{/* verso-tone-dot: the status dot's colour for a tone (the badge vocabulary);
+     success pulses — it marks something live. */}}
+{{define "verso-tone-dot"}}{{if eq . "success"}}verso-live-dot bg-emerald-500{{else if eq . "warning"}}bg-amber-500{{else if eq . "danger"}}bg-red-500{{else if eq . "info"}}bg-sky-500{{else}}bg-slate-400{{end}}{{end}}
+
+{{/* verso-card-frame: the twin-hairline card — border plus a ring floated 4px
+     out with the page showing through — shared by card, settings, and table so
+     every boxed surface speaks one card language. */}}
+{{define "verso-card-frame"}}rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-200 ring-offset-4 ring-offset-white{{end}}
+
+{{/* verso-overlay-backdrop: the dimmed, blurred click-to-close layer behind an
+     open modal, drawer, or confirm dialog. */}}
+{{define "verso-overlay-backdrop"}}<div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs dark:bg-black/60"></div>{{end}}
+
+{{/* verso-close-btn: the × that dismisses an overlay. */}}
+{{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">{{icon "x" "size-5"}}</button>{{end}}
+
+{{/* verso-csrf: the hidden CSRF carrier every state-changing form posts;
+     renders nothing without a token (a render outside a session). */}}
+{{define "verso-csrf"}}{{if .}}<input type="hidden" name="_csrf" value="{{.}}">{{end}}{{end}}

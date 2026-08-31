@@ -109,9 +109,9 @@ html.verso-fonts-loading body {
   --color-sky-50: #0b2236;
   --color-sky-100: #0e3050;
   --color-sky-200: #16466c;
-  --color-green-50: #06281a;
-  --color-green-100: #0a3a26;
-  --color-green-200: #0f5334;
+  --color-emerald-50: #06281a;
+  --color-emerald-100: #0a3a26;
+  --color-emerald-200: #0f5334;
   --color-amber-50: #2a1d06;
   --color-amber-200: #4a3410;
   --color-red-50: #2a1010;
@@ -302,7 +302,7 @@ html.verso-fonts-loading body {
   /* Staged-changes bar (verso.js "capsule"): in-flow at the bottom of the
      content, always visible; only its busy/done states are stateful. */
   .verso-capsule.verso-busy button { opacity: 0.45; pointer-events: none; }
-  .verso-capsule.verso-done #verso-capsule-dot { background: var(--color-green-500); }
+  .verso-capsule.verso-done #verso-capsule-dot { background: var(--color-emerald-500); }
 
   /* Prose for the raw bridge: goldmark output, styled minimally and display-only
      (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */
@@ -341,8 +341,8 @@ html.verso-fonts-loading body {
      state drives everything — no JavaScript. State-varying properties live here,
      never as utilities, so the utility layer can't win the cascade. */
   .verso-beacon {
-    background-color: var(--color-green-100);
-    color: var(--color-green-600);
+    background-color: var(--color-emerald-100);
+    color: var(--color-emerald-600);
     position: relative;
   }
   .verso-beacon::after {
@@ -350,11 +350,11 @@ html.verso-fonts-loading body {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green-500) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-emerald-500) 55%, transparent);
     animation: verso-pulse 2.6s ease-out infinite;
   }
   @keyframes verso-pulse {
-    0%      { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green-500) 45%, transparent); }
+    0%      { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-emerald-500) 45%, transparent); }
     70%,100%{ box-shadow: 0 0 0 0.875rem transparent; }
   }
   /* Off state: grey, calm, no pulse; headline swaps to the off copy. */
@@ -500,7 +500,7 @@ html.verso-fonts-loading body {
     position: absolute;
     inset: -0.1875rem;
     border-radius: 9999px;
-    border: 2px solid color-mix(in srgb, var(--color-green-500) 60%, transparent);
+    border: 2px solid color-mix(in srgb, var(--color-emerald-500) 60%, transparent);
     animation: verso-ring 2s ease-out infinite;
   }
   @keyframes verso-ring {
@@ -583,7 +583,7 @@ html.verso-fonts-loading body {
   .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-slate-500); }
   .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
   .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-300); }
-  .verso-ports-dot.on { background: var(--color-green-500); }
+  .verso-ports-dot.on { background: var(--color-emerald-500); }
   .verso-ports-dot.act { background: var(--color-amber-400); }
 
   @media (max-width: 560px) {

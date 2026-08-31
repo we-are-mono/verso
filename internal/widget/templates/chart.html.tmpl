@@ -43,7 +43,7 @@
   {{template "verso-chart-plot" .}}
 </div>{{else if .Readout}}<div class="verso-chart-hero">
   <div class="verso-chart-readout">
-    {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green-500"></span>{{end}}{{.Title}}</div>{{end}}
+    {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-emerald-500"></span>{{end}}{{.Title}}</div>{{end}}
     {{if .Note}}<div class="verso-chart-meta">{{.Note}}</div>{{end}}
     {{if .Rates}}<div class="verso-chart-rates">{{range .Rates}}<div class="verso-chart-rate verso-chart--{{.RoleClass}}"><div class="verso-chart-rate-v">{{.Value}}{{if .Unit}} <small>{{.Unit}}</small>{{end}}</div><div class="verso-chart-rate-k"><span class="verso-chart-rate-sw"></span>{{.Label}}</div></div>{{end}}</div>{{end}}
   </div>

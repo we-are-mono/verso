@@ -19,11 +19,11 @@
   <div class="space-y-2">
     {{range $i, $item := .Items}}
     <div class="space-y-1.5">
-      <input name="{{$.Name}}" value="{{$item}}" type="text"{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="w-full rounded-md border {{with index $.Errors (printf "%d" $i)}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+      <input name="{{$.Name}}" value="{{$item}}" type="text"{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="w-full rounded-md border {{template "verso-input-border" (index $.Errors (printf "%d" $i))}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
       {{with index $.Errors (printf "%d" $i)}}<p class="text-sm text-red-600 dark:text-red-400">{{.}}</p>{{end}}
     </div>
     {{end}}
-    <input name="{{.Name}}" value="" type="text" placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none dark:focus:border-sky-400 dark:focus:ring-sky-400/50">
+    <input name="{{.Name}}" value="" type="text" placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{template "verso-input-border" ""}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
   </div>
   {{end}}
   {{if .Help}}<p class="mt-1.5 text-sm text-slate-500">{{.Help}}</p>{{end}}

@@ -6,17 +6,12 @@
      the chip radius the rest of the app uses. */}}
 <span class="inline-flex items-center font-medium ring-1 ring-inset
   {{if eq .Size "lg"}}gap-2 rounded-md px-3 py-3 text-sm{{else}}gap-1.5 rounded-full px-2.5 py-1 text-xs{{end}}
-  {{if eq .Variant "success"}}bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20
+  {{if eq .Variant "success"}}bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20
   {{else if eq .Variant "warning"}}bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20
   {{else if eq .Variant "danger"}}bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20
   {{else if eq .Variant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/20
   {{else}}bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}">
   {{if .Icon}}{{if eq .Size "lg"}}{{icon .Icon "size-4 shrink-0"}}{{else}}{{icon .Icon "size-3.5 shrink-0"}}{{end}}{{end}}
-  {{if .Dot}}<span class="size-1.5 rounded-full
-    {{if eq .Variant "success"}}verso-live-dot bg-green-500
-    {{else if eq .Variant "warning"}}bg-amber-500
-    {{else if eq .Variant "danger"}}bg-red-500
-    {{else if eq .Variant "info"}}bg-sky-500
-    {{else}}bg-slate-400{{end}}"></span>{{end}}
+  {{if .Dot}}<span class="size-1.5 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}
   {{.Text}}
 </span>

@@ -20,9 +20,9 @@
         <label for="{{.PrevID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">{{ t "Back" }}</label>
         {{else}}<span></span>{{end}}
         {{if .HasNext}}
-        <label for="{{.NextID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700">{{ t "Continue" }}</label>
+        <label for="{{.NextID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium {{template "verso-btn-primary"}}">{{ t "Continue" }}</label>
         {{else}}
-        <button type="submit" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700">{{ t "Done" }}</button>
+        <button type="submit" class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium {{template "verso-btn-primary"}}">{{ t "Done" }}</button>
         {{end}}
       </div>
     </section>
