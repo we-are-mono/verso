@@ -250,6 +250,17 @@ func (s *Server) sectionHref(section string) string {
 	return "#"
 }
 
+// liveSectionHref turns a section destination into a link only when something
+// actually serves it. The sidebar's rows keep the placeholder "#" — a row with no
+// href would collapse the list's rhythm — but a status tile has no such obligation
+// and simply stops being a doorway.
+func liveSectionHref(href string) string {
+	if href == "#" {
+		return ""
+	}
+	return href
+}
+
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount
 // joined with the manifest's (mount-relative) nav path.
 func pluginHref(id, navPath string) string {

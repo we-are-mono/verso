@@ -28,6 +28,7 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
+	"github.com/we-are-mono/verso/internal/version"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -501,6 +502,13 @@ type pageData struct {
 	// SessionExpiry is the moment this session ends (RFC3339, UTC), restated by
 	// every render: the browser follows it out rather than waiting for a click.
 	SessionExpiry string
+	// The sidebar's device row: the router's own name, the Verso release it runs
+	// as the quiet trailing detail, and UpdateReady when the cached update truth
+	// names something to install — the row's amber mark is that truth's only
+	// claim on a person's attention anywhere in the chrome.
+	DeviceName    string
+	DeviceVersion string
+	UpdateReady   bool
 	Dev           bool        // dev session: inject the CSS hot-reload script
 	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
 	// ShowCapsule: staging pages carry the bar always (inert when clean — a
@@ -589,6 +597,13 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	if hpErr != nil {
 		hasPassword = true
 	}
+	// The device row names the router itself. A box whose hostname cannot be read
+	// still has a row — it just says what it is rather than who it is.
+	deviceName, hostErr := s.backend.Hostname(r.Context(), s.sessionSID(r))
+	if hostErr != nil || deviceName == "" {
+		deviceName = tr("This device")
+	}
+	updates, updatesKnown := updateChecks.state()
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "page.html.tmpl", pageData{
 		Lang:          langAttr(lang),
@@ -608,6 +623,9 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Banner:        localizeBanner(hdr.Banner, tr),
 		CSRFToken:     s.sessionCSRF(r),
 		SessionExpiry: s.sessionExpiryStamp(r),
+		DeviceName:    deviceName,
+		DeviceVersion: version.Version,
+		UpdateReady:   updatesKnown && updates.pending(),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
 		ShowCapsule:   stages || capsule.Count > 0,
@@ -696,6 +714,19 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The roster is its own page; the tile carries the one number and the way in.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
 	ov.DevicesHref = devicesPath
+	// Each remaining tile is the doorway to the page its fact belongs to. Security
+	// resolves through the same section resolver the sidebar's row uses, so the two
+	// surfaces can never disagree about where the domain lives — or that it is not
+	// there. The software tile reads the cached update truth and nothing live: the
+	// home page never waits on a package feed.
+	ov.SecurityHref = liveSectionHref(s.sectionHref("Security"))
+	ov.SoftwareHref, ov.UpdatesHref = packagesPath, maintenancePath
+	if truth, known := updateChecks.state(); known {
+		ov.UpdatesKnown = true
+		ov.UpdatesPackages = len(truth.Packages)
+		ov.UpdatesFirmware = truth.Firmware.State == openwrt.FirmwareUpdateAvailable
+		ov.UpdatesCheckedAgo = humanAgo(time.Since(truth.CheckedAt))
+	}
 
 	var body strings.Builder
 	lang, t := s.localize(r)

@@ -219,7 +219,15 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	case "refresh":
 		// The run outlives this response, so it carries a context of its own;
 		// the helper client's deadline is what bounds the wait now.
-		if !feedRefresh.start(func() error { return s.backend.PkgUpdate(context.Background(), sid) }) {
+		if !feedRefresh.start(func() error {
+			if err := s.backend.PkgUpdate(context.Background(), sid); err != nil {
+				return err
+			}
+			// A rebuilt index is exactly when what this router can install changes,
+			// so the update truths are re-read here — never on a page render.
+			s.startUpdateCheck(sid)
+			return nil
+		}) {
 			s.flash(r, "info", tr("The feeds are already being refreshed."))
 		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
@@ -258,21 +266,21 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// feedRefreshJob is the feed refresh, detached from the browser. Reaching every
-// configured repository takes longer than a person will hold a page open for, so
-// the POST starts the work and answers; each render then states what the job is
-// doing. verso-rpcd's package mutex remains the serializer that keeps two apk
-// runs apart — this job's own guard is what makes the page honest about a refresh
-// already being under way, and what moves the helper call's wait off the request.
-type feedRefreshJob struct {
+// backgroundJob is one device-wide operation detached from the browser. Work that
+// reaches the network takes longer than a person will hold a page open for, so the
+// POST starts it and answers; each render then states what the job is doing.
+// verso-rpcd's own mutexes remain the serializers that keep two such runs apart —
+// this job's guard is what makes the page honest about a run already being under
+// way, and what moves the helper call's wait off the request.
+type backgroundJob struct {
 	mu      sync.Mutex
 	active  bool
 	failure error
 }
 
-// start refreshes in the background unless a run is already under way, reporting
+// start runs work in the background unless a run is already under way, reporting
 // whether this call owns the new one.
-func (j *feedRefreshJob) start(refresh func() error) bool {
+func (j *backgroundJob) start(refresh func() error) bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.active {
@@ -289,12 +297,12 @@ func (j *feedRefreshJob) start(refresh func() error) bool {
 	return true
 }
 
-// running reports whether a refresh is under way — and so whether apk is holding
-// verso-rpcd's package guard. Every other package verb queues behind that guard,
-// so while this is true the surface asks the helper for nothing and states what
-// the device is doing instead: a page that answers at once and says the listing
-// is a moment away beats a page that is right in a minute.
-func (j *feedRefreshJob) running() bool {
+// running reports whether a run is under way — and so, for the package jobs,
+// whether apk is holding verso-rpcd's package guard. Every other package verb
+// queues behind that guard, so while this is true the surface asks the helper for
+// nothing and states what the device is doing instead: a page that answers at once
+// and says the listing is a moment away beats a page that is right in a minute.
+func (j *backgroundJob) running() bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return j.active
@@ -302,7 +310,7 @@ func (j *feedRefreshJob) running() bool {
 
 // takeFailure reports how the last finished run failed and forgets it, so a
 // failure nobody was waiting for is still stated once, on the next visit.
-func (j *feedRefreshJob) takeFailure() error {
+func (j *backgroundJob) takeFailure() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	failure := j.failure
@@ -310,9 +318,10 @@ func (j *feedRefreshJob) takeFailure() error {
 	return failure
 }
 
-// feedRefresh is that job. The package index is one file set the whole device
-// shares, so the refresh is one act device-wide, not one per operator.
-var feedRefresh feedRefreshJob
+// feedRefresh is the feed refresh: reaching every configured repository is slow,
+// and the package index it rebuilds is one file set the whole device shares, so
+// the refresh is one act device-wide, not one per operator.
+var feedRefresh backgroundJob
 
 // refreshingInstead stands where a listing would be while the refresh owns apk.
 func refreshingInstead(body string) widget.Widget {

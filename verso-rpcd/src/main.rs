@@ -9,6 +9,7 @@
 //! checked through native ubus `session.access` before any action runs.
 
 mod firewall;
+mod firmware;
 mod packages;
 mod ubus;
 
@@ -277,6 +278,17 @@ fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
             let found = packages::installed().map_err(Failure::unknown)?;
             Ok(json!({"packages": found}))
         }
+        "pkgUpgradable" => {
+            let _guard = package_guard(state)?;
+            let found = packages::upgradable().map_err(Failure::unknown)?;
+            Ok(json!({"packages": found}))
+        }
+        "pkgUpgrade" => {
+            let _guard = package_guard(state)?;
+            let output = packages::upgrade().map_err(Failure::unknown)?;
+            Ok(json!({"result": true, "output": output}))
+        }
+        "firmwareCheck" => Ok(firmware_check()),
         "pkgSearch" => {
             let query = argument(request, "query")?;
             if !packages::valid_query(query) {
@@ -372,6 +384,31 @@ fn firewall_counters() -> Result<Value, Failure> {
         return Err(command_failure("list firewall counters", output));
     }
     firewall::counters(&output.stdout).map_err(Failure::unknown)
+}
+
+// firmware_check asks owut whether the device's attended-sysupgrade server can
+// build it a newer image. owut reads the whole system — board, installed packages,
+// uci — and talks to the network, which the de-privileged shell cannot do (ADR-007),
+// so the run is brokered here; the binary is executed directly and only ever with
+// `check`, which builds, downloads and flashes nothing.
+//
+// A device owut cannot answer for is not an error: the method reports the rung
+// instead, so the page states a plain fact rather than a failure.
+const OWUT: &str = "/usr/bin/owut";
+
+fn firmware_check() -> Value {
+    if !Path::new(OWUT).exists() {
+        return firmware::unavailable(
+            firmware::STATE_NO_OWUT,
+            "owut is not installed on this device",
+        );
+    }
+    let mut command = Command::new(OWUT);
+    command.arg("check");
+    match run_bounded(command, "check for firmware updates", 1 << 20) {
+        Ok(output) => firmware::summarize(&output.stdout, &output.stderr, output.status.success()),
+        Err(failure) => firmware::unavailable(firmware::STATE_UNSUPPORTED, &failure.message),
+    }
 }
 
 // Backups stay in OpenWrt's native sysupgrade format. The unprivileged shell

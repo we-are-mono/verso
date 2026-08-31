@@ -69,15 +69,18 @@
       </div>
     </div>
   </nav>
-  {{/* Bottom: the "update ready" device row, then sign out. */}}
+  {{/* Bottom: the device's own row — its name, the release it runs, and the way to
+       everything that maintains it. The amber mark appears only when this router
+       has actually found something to install. */}}
   <div class="space-y-1 border-t border-slate-100 p-3">
-    <a href="/plugins/hostname/" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
+    <a href="/system/maintenance" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
       <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
-        {{icon "settings" "size-5"}}
-        <span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>
+        {{icon "router" "size-5"}}
+        {{if .UpdateReady}}<span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>{{end}}
       </span>
-      <span class="text-sm font-medium transition group-hover:translate-x-1">{{ t "This device" }}</span>
-      <span class="ml-auto text-xs font-medium text-amber-700">{{ t "Update ready" }}</span>
+      <span class="min-w-0 truncate text-sm font-medium transition group-hover:translate-x-1">{{.DeviceName}}</span>
+      {{if .UpdateReady}}<span class="ml-auto shrink-0 text-xs font-medium text-amber-700">{{ t "Update ready" }}</span>
+      {{else if .DeviceVersion}}<span class="ml-auto shrink-0 font-mono text-xs text-slate-400">{{.DeviceVersion}}</span>{{end}}
     </a>
     {{/* Account chip: who's signed in + a quick sign-out. */}}
     <div class="flex items-center gap-3 rounded-xl px-2 py-2">

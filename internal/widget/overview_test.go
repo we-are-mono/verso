@@ -17,6 +17,8 @@ func TestRenderOverview(t *testing.T) {
 	got := render(t, r, &Overview{
 		WiFiPresent:   true,
 		DevicesOnline: 9, DevicesKnown: true, DevicesHref: "/devices",
+		SecurityHref: "/plugins/firewall/", SoftwareHref: "/system/packages",
+		UpdatesKnown: true, UpdatesPackages: 3, UpdatesHref: "/system/maintenance",
 		Model:    "Mono Gateway Development Kit",
 		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
 		WANKnown: true, WANUp: true, WANUptime: "2h 14m",
@@ -61,6 +63,9 @@ func TestRenderOverview(t *testing.T) {
 		"Basic", "Advanced", // the view switch
 		"INTERNET", "for 2h 14m", "data-verso-tile-caption=\"internet-uptime\"",
 		"WI-FI", "SECURITY", "SOFTWARE", // status tiles
+		// Security leads to the plugin that serves the domain; software to the page
+		// that installs what the cached check found.
+		`href="/plugins/firewall/"`, "3 packages ready", `href="/system/maintenance"`,
 		// The Devices tile states the live count and is the doorway to the roster.
 		"DEVICES", "9 devices online", `href="/devices"`,
 		"IPV4", "172.30.1.171/24", "IPV6", "fd42:7ea:aa00::/56",
@@ -157,6 +162,62 @@ func TestRenderOverviewDevicesTileCounts(t *testing.T) {
 		if !strings.Contains(got, tc.want) {
 			t.Errorf("devices tile for %d online should read %q", tc.online, tc.want)
 		}
+	}
+}
+
+// TestRenderOverviewSecurityTileIsADoorwayOnlyWhenServed: the Security tile links
+// to whichever plugin serves the domain, and stops being a link when none does —
+// the resolver, not the tile, decides, so the sidebar and the strip agree.
+func TestRenderOverviewSecurityTileIsADoorwayOnlyWhenServed(t *testing.T) {
+	r := newRenderer(t)
+	live := render(t, r, &Overview{SecurityHref: "/plugins/firewall/"})
+	if !strings.Contains(live, `<a href="/plugins/firewall/"`) {
+		t.Errorf("a served Security section should make its tile a link:\n%s", live)
+	}
+	stopped := render(t, r, &Overview{})
+	if strings.Contains(stopped, "/plugins/firewall/") {
+		t.Errorf("an unserved Security section should leave a plain status tile")
+	}
+}
+
+// TestRenderOverviewSoftwareTile: the tile claims nothing before a check has run,
+// states what a completed check found, and becomes the doorway to the page that
+// installs it only when there is something to install.
+func TestRenderOverviewSoftwareTile(t *testing.T) {
+	r := newRenderer(t)
+	base := Overview{SoftwareHref: "/system/packages", UpdatesHref: "/system/maintenance"}
+
+	unchecked := render(t, r, &base)
+	if !strings.Contains(unchecked, "Installed software") || strings.Contains(unchecked, "Update available") {
+		t.Errorf("an unchecked router should claim neither an update nor being up to date:\n%s", unchecked)
+	}
+	if !strings.Contains(unchecked, `<a href="/system/packages"`) {
+		t.Errorf("the software tile should always lead to the software surface")
+	}
+
+	clean := base
+	clean.UpdatesKnown, clean.UpdatesCheckedAgo = true, "5 min ago"
+	if got := render(t, r, &clean); !strings.Contains(got, "Up to date") || !strings.Contains(got, "checked 5 min ago") {
+		t.Errorf("a checked router with nothing to install should say so, with the age:\n%s", got)
+	}
+
+	pending := base
+	pending.UpdatesKnown, pending.UpdatesPackages = true, 1
+	got := render(t, r, &pending)
+	if !strings.Contains(got, "Update available") || !strings.Contains(got, "1 package ready") {
+		t.Errorf("one upgradable package should read as one:\n%s", got)
+	}
+	if !strings.Contains(got, `<a href="/system/maintenance"`) {
+		t.Errorf("a pending update should point the tile at the page that installs it")
+	}
+	if !strings.Contains(got, "text-amber-700") {
+		t.Errorf("a pending update should read amber")
+	}
+
+	firmware := base
+	firmware.UpdatesKnown, firmware.UpdatesFirmware = true, true
+	if got := render(t, r, &firmware); !strings.Contains(got, "A newer system build") {
+		t.Errorf("an available firmware build should be the tile's caption:\n%s", got)
 	}
 }
 

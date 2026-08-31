@@ -73,6 +73,14 @@ type fakeBackend struct {
 	pkgUpdates       *int      // counts PkgUpdate calls
 	pkgInstalls      *[]string // records installed names
 	pkgRemoves       *[]string // records removed names
+	// The update truths (Stage L): the upgradable set, the firmware check's answer,
+	// and a count of the upgrades the shell started.
+	pkgUpgradable    []openwrt.PackageUpgrade
+	pkgUpgradableErr error
+	pkgUpgrades      *int
+	pkgUpgradeErr    error
+	firmware         openwrt.FirmwareUpdate
+	firmwareErr      error
 	// The wan side of the overview meters: canned uplink state and a queue of
 	// device-counter snapshots, popped one per DeviceStats call (pointer:
 	// fakeBackend is used by value); the last snapshot repeats.
@@ -260,6 +268,21 @@ func (f fakeBackend) PkgRemove(_ context.Context, _ string, name string) error {
 		*f.pkgRemoves = append(*f.pkgRemoves, name)
 	}
 	return f.pkgErr
+}
+
+func (f fakeBackend) PkgUpgradable(context.Context, string) ([]openwrt.PackageUpgrade, error) {
+	return f.pkgUpgradable, f.pkgUpgradableErr
+}
+
+func (f fakeBackend) PkgUpgrade(context.Context, string) error {
+	if f.pkgUpgrades != nil {
+		*f.pkgUpgrades++
+	}
+	return f.pkgUpgradeErr
+}
+
+func (f fakeBackend) FirmwareCheck(context.Context, string) (openwrt.FirmwareUpdate, error) {
+	return f.firmware, f.firmwareErr
 }
 
 func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password string) error {

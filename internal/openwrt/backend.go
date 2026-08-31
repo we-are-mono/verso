@@ -134,6 +134,16 @@ type Backend interface {
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
 	PkgInstall(ctx context.Context, sid, name string) error
 	PkgRemove(ctx context.Context, sid, name string) error
+	// PkgUpgradable lists the installed packages the configured feeds hold a newer
+	// copy of, and PkgUpgrade installs every one of them. Both ride the helper's
+	// package mutex, so neither overlaps a refresh, a search, or each other.
+	PkgUpgradable(ctx context.Context, sid string) ([]PackageUpgrade, error)
+	PkgUpgrade(ctx context.Context, sid string) error
+	// FirmwareCheck asks the device's attended-sysupgrade server, through owut,
+	// whether it can build this device a newer image. It never downloads or
+	// installs anything. A device the check cannot answer for is not an error: the
+	// result names the rung it landed on instead (see FirmwareUpdate.State).
+	FirmwareCheck(ctx context.Context, sid string) (FirmwareUpdate, error)
 	// WANStatus discovers every live uplink from netifd's active default routes
 	// and the kernel FIB. Roles attach to exact L3 devices; logical-interface
 	// names and transport ancestry are never used as classifiers.
@@ -244,6 +254,39 @@ type Package struct {
 	Removable   bool     `json:"removable"`
 }
 
+// PackageUpgrade is one installed package the feeds hold a newer copy of, named
+// with both versions — what the device runs and what it would get.
+type PackageUpgrade struct {
+	Name      string `json:"name"`
+	Installed string `json:"installed"`
+	Available string `json:"available"`
+}
+
+// FirmwareUpdate is what the attended-sysupgrade server had to say about this
+// device. State is the rung the check landed on: "update" and "current" are
+// answers, while "no-owut" (the tool is not installed), "no-server" (nothing
+// answered) and "unsupported" (the server cannot build this device) each name why
+// there is none — Message carries the tool's own words for those. From and To are
+// the release plus revision code; Packages is how many packages an upgrade would
+// change; Server is the URL the check consulted.
+type FirmwareUpdate struct {
+	State    string `json:"state"`
+	Server   string `json:"server"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Packages int    `json:"packages"`
+	Message  string `json:"message"`
+}
+
+// The firmware-check rungs, mirroring verso-rpcd's vocabulary.
+const (
+	FirmwareUpdateAvailable = "update"
+	FirmwareCurrent         = "current"
+	FirmwareNoOwut          = "no-owut"
+	FirmwareNoServer        = "no-server"
+	FirmwareUnsupported     = "unsupported"
+)
+
 // ServiceKind describes an init script's lifecycle shape, not its current
 // state. Daemons own a process, subsystems are procd-managed without a resident
 // process, and startup tasks run to completion during boot.
@@ -347,6 +390,9 @@ type (
 	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
 	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
 	pkgActFn       func(ctx context.Context, sid, name string) error
+	pkgUpgradesFn  func(ctx context.Context, sid string) ([]PackageUpgrade, error)
+	pkgUpgradeFn   func(ctx context.Context, sid string) error
+	firmwareUpdFn  func(ctx context.Context, sid string) (FirmwareUpdate, error)
 	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
 	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
 	fwCountersFn   func(ctx context.Context, sid string) (json.RawMessage, error)
@@ -391,6 +437,9 @@ type NativeBackend struct {
 	pkgInstalled  pkgInstalledFn
 	pkgInstall    pkgActFn
 	pkgRemove     pkgActFn
+	pkgUpgrades   pkgUpgradesFn
+	pkgUpgrade    pkgUpgradeFn
+	firmwareUpd   firmwareUpdFn
 	wanStatus     wanStatusFn
 	deviceStats   deviceStatsFn
 	fwCounters    fwCountersFn
@@ -439,6 +488,9 @@ func NewNativeBackend() *NativeBackend {
 		pkgInstalled: dialPkgInstalled(""),
 		pkgInstall:   dialPkgAct("", "pkgInstall"),
 		pkgRemove:    dialPkgAct("", "pkgRemove"),
+		pkgUpgrades:  dialPkgUpgradable(""),
+		pkgUpgrade:   dialPkgUpgrade(""),
+		firmwareUpd:  dialFirmwareCheck(""),
 		wanStatus:    dialWANStatus(""),
 		deviceStats:  dialDeviceStats(""),
 		fwCounters:   dialFirewallCounters(""),
@@ -609,6 +661,20 @@ func (b *NativeBackend) PkgInstall(ctx context.Context, sid, name string) error 
 
 func (b *NativeBackend) PkgRemove(ctx context.Context, sid, name string) error {
 	return b.pkgRemove(ctx, sid, name)
+}
+
+func (b *NativeBackend) PkgUpgradable(ctx context.Context, sid string) ([]PackageUpgrade, error) {
+	return b.pkgUpgrades(ctx, sid)
+}
+
+func (b *NativeBackend) PkgUpgrade(ctx context.Context, sid string) error {
+	return b.pkgUpgrade(ctx, sid)
+}
+
+// FirmwareCheck asks the privileged helper to run owut's check against the
+// device's configured attended-sysupgrade server, gated by the sid.
+func (b *NativeBackend) FirmwareCheck(ctx context.Context, sid string) (FirmwareUpdate, error) {
+	return b.firmwareUpd(ctx, sid)
 }
 
 func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, error) {
@@ -1506,6 +1572,33 @@ func dialPkgInstalled(socket string) pkgInstalledFn {
 func dialPkgAct(socket, methodName string) pkgActFn {
 	return func(ctx context.Context, sid, name string) error {
 		return callHelper(ctx, socket, methodName, sid, map[string]string{"package": name}, nil)
+	}
+}
+
+func dialPkgUpgradable(socket string) pkgUpgradesFn {
+	return func(ctx context.Context, sid string) ([]PackageUpgrade, error) {
+		var result struct {
+			Packages []PackageUpgrade `json:"packages"`
+		}
+		err := callHelper(ctx, socket, "pkgUpgradable", sid, nil, &result)
+		return result.Packages, err
+	}
+}
+
+func dialPkgUpgrade(socket string) pkgUpgradeFn {
+	return func(ctx context.Context, sid string) error {
+		return callHelper(ctx, socket, "pkgUpgrade", sid, nil, nil)
+	}
+}
+
+// dialFirmwareCheck asks the helper to run owut's check. The helper answers with a
+// rung rather than an error whenever the check itself cannot conclude, so an error
+// here means the helper was unreachable, not that the device has no answer.
+func dialFirmwareCheck(socket string) firmwareUpdFn {
+	return func(ctx context.Context, sid string) (FirmwareUpdate, error) {
+		var result FirmwareUpdate
+		err := callHelper(ctx, socket, "firmwareCheck", sid, nil, &result)
+		return result, err
 	}
 }
 

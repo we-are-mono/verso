@@ -160,6 +160,49 @@ fn merge_by_name(listing: &str) -> Vec<Value> {
     packages
 }
 
+// upgradable is what the configured feeds hold newer copies of. apk states both
+// versions on one line — the repository's in the package token, the device's in the
+// trailing `[upgradable from: …]` note — so the whole answer comes from one listing
+// rather than from joining two queries whose sets could disagree.
+pub fn upgradable() -> Result<Value, String> {
+    let output = Command::new("apk")
+        .args(["list", "--upgradable"])
+        .output()
+        .map_err(|error| format!("apk list --upgradable: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "apk list --upgradable: {}",
+            output_tail(&output.stderr)
+        ));
+    }
+    Ok(Value::Array(upgrades(&String::from_utf8_lossy(
+        &output.stdout,
+    ))))
+}
+
+pub fn upgrade() -> Result<String, String> {
+    command_ok("apk upgrade", Command::new("apk").arg("upgrade"))
+}
+
+fn upgrades(listing: &str) -> Vec<Value> {
+    listing.lines().filter_map(parse_upgrade_line).collect()
+}
+
+// A line is "<name>-<new> <arch> {origin} (license) [upgradable from: <name>-<old>]".
+// Both halves split at the same place — the last dash before a digit — so the
+// entry names one package with the two versions that make it upgradable.
+fn parse_upgrade_line(line: &str) -> Option<Value> {
+    let available = parse_list_line(line)?;
+    let start = line.find("[upgradable from: ")? + "[upgradable from: ".len();
+    let end = line[start..].find(']')? + start;
+    let installed = split_version(line[start..end].trim())?;
+    Some(json!({
+        "name": available["name"],
+        "installed": installed.1,
+        "available": available["version"],
+    }))
+}
+
 pub fn install(name: &str) -> Result<String, String> {
     command_ok("apk add", Command::new("apk").args(["add", name]))
 }
@@ -301,21 +344,26 @@ fn normalize_installed(package: &Value, required_by: &HashMap<String, Vec<String
     })
 }
 
-fn parse_list_line(line: &str) -> Option<Value> {
-    let first = line.split_whitespace().next()?;
-    let split = first
+// apk names a package object "<name>-<version>". A name may itself hold dashes, so
+// the split is the last dash that a digit follows — the point where the version
+// begins.
+fn split_version(token: &str) -> Option<(&str, &str)> {
+    let at = token
         .char_indices()
         .rev()
         .find(|(index, ch)| {
             *ch == '-'
-                && first
+                && token
                     .as_bytes()
                     .get(index + 1)
                     .is_some_and(u8::is_ascii_digit)
         })?
         .0;
-    let name = &first[..split];
-    let version = &first[split + 1..];
+    Some((&token[..at], &token[at + 1..]))
+}
+
+fn parse_list_line(line: &str) -> Option<Value> {
+    let (name, version) = split_version(line.split_whitespace().next()?)?;
     let origin_start = line.find('{')? + 1;
     let origin_end = line[origin_start..].find('}')? + origin_start;
     let origin = &line[origin_start..origin_end];
@@ -432,6 +480,38 @@ mod tests {
         assert_eq!(packages[0]["version"], "2.91-r3");
         assert_eq!(packages[0]["installed"], true);
         assert_eq!(packages[1]["name"], "dnsmasq-full");
+    }
+
+    // Captured from `apk list --upgradable` on the dev container.
+    const UPGRADABLE: &str = include_str!("../testdata/apk-upgradable.txt");
+
+    #[test]
+    fn an_upgradable_listing_names_both_versions_of_each_package() {
+        let entries = upgrades(UPGRADABLE);
+        assert_eq!(entries.len(), 47);
+        assert_eq!(
+            entries[2],
+            json!({"name": "dnsmasq", "installed": "2.91-r3", "available": "2.93-r1"})
+        );
+        // A name holding dashes and a version holding a tilde both split correctly.
+        let luci = entries
+            .iter()
+            .find(|entry| entry["name"] == "luci-app-firewall")
+            .expect("luci-app-firewall");
+        assert_eq!(luci["installed"], "26.133.20346~e9ebca7");
+        assert_eq!(luci["available"], "26.239.42882~e60322b");
+    }
+
+    #[test]
+    fn a_line_without_an_upgrade_note_is_not_an_upgrade() {
+        let listing = concat!(
+            "htop-3.4.1-r1 x86_64 {feeds/packages/utils/htop} (GPL-2.0) [installed]\n",
+            "\n",
+            "dnsmasq-2.93-r1 x86_64 {feeds/base/network/services/dnsmasq} (GPL-2.0) [upgradable from: dnsmasq-2.91-r3]\n",
+        );
+        let entries = upgrades(listing);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "dnsmasq");
     }
 
     #[test]

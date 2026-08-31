@@ -46,6 +46,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/maintenance/restore/apply", s.handleRestoreApply)
 	s.mux.HandleFunc("POST /system/maintenance/firmware", s.handleFirmwareInspect)
 	s.mux.HandleFunc("POST /system/maintenance/firmware/apply", s.handleFirmwareApply)
+	s.mux.HandleFunc("POST /system/maintenance/updates/check", s.handleUpdatesCheck)
+	s.mux.HandleFunc("POST /system/maintenance/updates/install", s.handleUpdatesInstall)
 	s.mux.HandleFunc("POST /system/maintenance/restart", s.handleRestart)
 	s.mux.HandleFunc("POST /system/maintenance/factory-reset", s.handleFactoryReset)
 

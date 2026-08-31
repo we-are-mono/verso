@@ -103,6 +103,64 @@ func TestFirewallCountersPassesResultThrough(t *testing.T) {
 	}
 }
 
+// helperReplying answers one request with a canned body, after checking that the
+// verb arrived under the operator's sid with no arguments — the shape every read
+// verb shares.
+func helperReplying(t *testing.T, method, body string) string {
+	t.Helper()
+	socket := filepath.Join(t.TempDir(), "helper.sock")
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		var request helperRequest
+		if err := json.NewDecoder(conn).Decode(&request); err != nil {
+			return
+		}
+		if request.Method != method || request.SID != "good-sid" || len(request.Args) != 0 {
+			_ = json.NewEncoder(conn).Encode(map[string]any{"status": 2, "error": "unexpected request"})
+			return
+		}
+		_, _ = conn.Write([]byte(body + "\n"))
+	}()
+	return socket
+}
+
+// TestPkgUpgradableDecodesBothVersions: the upgradable set reaches the caller as
+// typed entries naming what the device runs and what the feeds hold.
+func TestPkgUpgradableDecodesBothVersions(t *testing.T) {
+	socket := helperReplying(t, "pkgUpgradable",
+		`{"status":0,"result":{"packages":[{"name":"dnsmasq","installed":"2.91-r3","available":"2.93-r1"}]}}`)
+	packages, err := dialPkgUpgradable(socket)(context.Background(), "good-sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packages) != 1 || packages[0] != (PackageUpgrade{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"}) {
+		t.Fatalf("packages = %+v", packages)
+	}
+}
+
+// TestFirmwareCheckDecodesTheRung: a device the check cannot answer for comes back
+// as a named rung with the tool's own words, not as an error.
+func TestFirmwareCheckDecodesTheRung(t *testing.T) {
+	socket := helperReplying(t, "firmwareCheck",
+		`{"status":0,"result":{"state":"unsupported","server":"","from":"","to":"","packages":0,"message":"File system type '(null)'"}}`)
+	update, err := dialFirmwareCheck(socket)(context.Background(), "good-sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if update.State != FirmwareUnsupported || update.Message != "File system type '(null)'" {
+		t.Fatalf("update = %+v", update)
+	}
+}
+
 func TestCallHelperMapsPermissionDenied(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "helper.sock")
 	listener, err := net.Listen("unix", socket)

@@ -1,0 +1,10 @@
+ASU-Server     https://sysupgrade.openwrt.org
+Upstream       https://downloads.openwrt.org
+Target         x86/64
+Profile        generic
+Package-arch   x86_64
+Version-from   25.12.4 r32933-4ccb782af7 (kernel 6.12.101+deb13-amd64)
+Version-to     25.12.5 r33051-f5dae5ece4 (kernel 6.12.94)
+78 packages are out-of-date
+There are 13 missing and 1 modified default packages
+It is safe to proceed with an upgrade (re-run with '--verbose' for details)

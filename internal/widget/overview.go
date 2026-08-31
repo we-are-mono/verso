@@ -76,6 +76,24 @@ type Overview struct {
 	DevicesOnline int
 	DevicesKnown  bool
 	DevicesHref   string
+
+	// The strip's remaining doorways. SecurityHref is the firewall's page while
+	// that plugin answers and empty while it does not — the tile is then a plain
+	// status, since a door to a page nobody serves is worse than none.
+	// SoftwareHref is the shell's own package surface, which always answers.
+	SecurityHref string
+	SoftwareHref string
+
+	// What this router knows about what it could install. UpdatesKnown is whether
+	// a check has ever completed — before one has, the tile makes no claim either
+	// way. UpdatesPackages counts the packages with newer versions in the feeds,
+	// UpdatesFirmware says a newer system build is on offer, UpdatesCheckedAgo is
+	// how old that answer is, and UpdatesHref is where a person acts on it.
+	UpdatesKnown      bool
+	UpdatesPackages   int
+	UpdatesFirmware   bool
+	UpdatesCheckedAgo string
+	UpdatesHref       string
 }
 
 // OverviewInterface is one kernel interface enriched with runtime topology and
@@ -266,8 +284,9 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		tiles = append(tiles, o.devicesTile(r.tr))
 	}
 	tiles = append(tiles,
-		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "success", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
-		ohTile{Label: r.tr("SOFTWARE"), Icon: "download", Variant: "warning", Status: r.tr("Update available"), Caption: r.tr("Security fixes")},
+		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "success", Status: r.tr("Protected"),
+			Caption: r.tr("Firewall on"), Href: o.SecurityHref},
+		o.softwareTile(r.tr),
 	)
 
 	facts, err := o.factCols(r, csrf)
@@ -357,6 +376,34 @@ func (o *Overview) devicesTile(tr func(string) string) ohTile {
 		Label: tr("DEVICES"), Icon: "devices", Variant: "success",
 		Status: status, Caption: tr("See who is here"), Href: o.DevicesHref,
 	}
+}
+
+// softwareTile is the strip's software fact and its doorway. A router that has
+// never checked claims nothing about updates and leads to its software instead; a
+// router with something to install says so in amber and leads to the page that
+// installs it. The tile never invents an "up to date" it has not verified.
+func (o *Overview) softwareTile(tr func(string) string) ohTile {
+	tile := ohTile{Label: tr("SOFTWARE"), Icon: "download", Variant: "success", Href: o.SoftwareHref}
+	switch {
+	case !o.UpdatesKnown:
+		tile.Status, tile.Caption = tr("Installed software"), tr("Packages and firmware")
+	case o.UpdatesFirmware:
+		tile.Variant, tile.Status = "warning", tr("Update available")
+		tile.Caption, tile.Href = tr("A newer system build"), o.UpdatesHref
+	case o.UpdatesPackages > 0:
+		tile.Variant, tile.Status = "warning", tr("Update available")
+		tile.Caption, tile.Href = updatesReadyCaption(tr, o.UpdatesPackages), o.UpdatesHref
+	default:
+		tile.Status, tile.Caption = tr("Up to date"), tr("checked ")+o.UpdatesCheckedAgo
+	}
+	return tile
+}
+
+func updatesReadyCaption(tr func(string) string, packages int) string {
+	if packages == 1 {
+		return tr("1 package ready")
+	}
+	return strconv.Itoa(packages) + tr(" packages ready")
 }
 
 // sysMeters builds the System gauges from the live fields, each a named bar meter
