@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -26,6 +25,10 @@ type Conditional struct {
 
 func (*Conditional) isWidget() {}
 
+func (c *Conditional) children() []Widget {
+	return append(append([]Widget{}, c.Fields...), c.Otherwise...)
+}
+
 // UnmarshalJSON decodes the gated fields recursively through Decode, so an unknown
 // field type fails loudly rather than vanishing.
 func (c *Conditional) UnmarshalJSON(data []byte) error {
@@ -43,25 +46,13 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 	c.Label = raw.Label
 	c.Checked = raw.Checked
 	var err error
-	if c.Fields, err = decodeConditionalBranch(raw.Fields, "field"); err != nil {
+	if c.Fields, err = decodeChildren(raw.Fields, "conditional field"); err != nil {
 		return err
 	}
-	if c.Otherwise, err = decodeConditionalBranch(raw.Otherwise, "otherwise field"); err != nil {
+	if c.Otherwise, err = decodeChildren(raw.Otherwise, "conditional otherwise field"); err != nil {
 		return err
 	}
 	return nil
-}
-
-func decodeConditionalBranch(raw []json.RawMessage, label string) ([]Widget, error) {
-	widgets := make([]Widget, 0, len(raw))
-	for i, item := range raw {
-		w, err := Decode(item)
-		if err != nil {
-			return nil, fmt.Errorf("conditional %s %d: %w", label, i, err)
-		}
-		widgets = append(widgets, w)
-	}
-	return widgets, nil
 }
 
 // conditionalView is the conditional template's model: the toggle plus the gated

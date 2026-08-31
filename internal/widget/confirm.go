@@ -22,6 +22,8 @@ type Confirm struct {
 
 func (*Confirm) isWidget() {}
 
+func (*Confirm) children() []Widget { return nil }
+
 // confirmView is the confirm template's model: a render-unique id (so several
 // confirms on a page never share checkbox state) plus the resolved labels.
 type confirmView struct {

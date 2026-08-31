@@ -14,6 +14,8 @@ type Progress struct {
 
 func (*Progress) isWidget() {}
 
+func (*Progress) children() []Widget { return nil }
+
 func (p *Progress) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "progress.html.tmpl", p)
 }

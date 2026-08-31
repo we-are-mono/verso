@@ -45,6 +45,16 @@ type Property struct {
 
 func (*Properties) isWidget() {}
 
+func (p *Properties) children() []Widget {
+	var out []Widget
+	for i := range p.Items {
+		if p.Items[i].Status != nil {
+			out = append(out, p.Items[i].Status)
+		}
+	}
+	return out
+}
+
 func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "properties.html.tmpl", p)
 }

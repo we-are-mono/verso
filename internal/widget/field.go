@@ -35,6 +35,8 @@ type Option struct {
 
 func (*Field) isWidget() {}
 
+func (*Field) children() []Widget { return nil }
+
 // Checked reports whether v is among the checks field's current values — the
 // template's membership test. Selection semantics per the control vocabulary:
 // checks = "include this one" (a set), never on/off state (that's a switch).

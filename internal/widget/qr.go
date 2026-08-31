@@ -28,6 +28,8 @@ type Qr struct {
 
 func (*Qr) isWidget() {}
 
+func (*Qr) children() []Widget { return nil }
+
 // qrView is the qr template's model: the code as inline SVG (built here, so it is
 // trusted), the caption, and an optional download (its href already validated to a
 // trusted template.URL by the link policy).

@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -24,6 +23,8 @@ type Stack struct {
 
 func (*Stack) isWidget() {}
 
+func (s *Stack) children() []Widget { return s.Children }
+
 func (s *Stack) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Divided  bool              `json:"divided"`
@@ -39,14 +40,11 @@ func (s *Stack) UnmarshalJSON(data []byte) error {
 	s.Compact = raw.Compact
 	s.Inline = raw.Inline
 	s.Width = raw.Width
-	s.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("stack child %d: %w", i, err)
-		}
-		s.Children = append(s.Children, w)
+	children, err := decodeChildren(raw.Children, "stack child")
+	if err != nil {
+		return err
 	}
+	s.Children = children
 	return nil
 }
 

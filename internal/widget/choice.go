@@ -28,6 +28,8 @@ type ChoiceOption struct {
 
 func (*Choice) isWidget() {}
 
+func (*Choice) children() []Widget { return nil }
+
 func (c *Choice) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "choice.html.tmpl", c)
 }

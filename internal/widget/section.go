@@ -45,6 +45,13 @@ type Section struct {
 
 func (*Section) isWidget() {}
 
+func (s *Section) children() []Widget {
+	if s.Control == nil {
+		return s.Children
+	}
+	return append([]Widget{s.Control}, s.Children...)
+}
+
 // UnmarshalJSON decodes the contents recursively through Decode, so an unknown
 // child type fails loudly rather than vanishing.
 func (s *Section) UnmarshalJSON(data []byte) error {
@@ -79,14 +86,11 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		}
 		s.Control = control
 	}
-	s.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("section child %d: %w", i, err)
-		}
-		s.Children = append(s.Children, w)
+	children, err := decodeChildren(raw.Children, "section child")
+	if err != nil {
+		return err
 	}
+	s.Children = children
 	return nil
 }
 

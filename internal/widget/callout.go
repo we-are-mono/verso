@@ -24,6 +24,13 @@ type Callout struct {
 
 func (*Callout) isWidget() {}
 
+func (c *Callout) children() []Widget {
+	if c.Link == nil {
+		return nil
+	}
+	return []Widget{c.Link}
+}
+
 func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
 	var link template.HTML
 	if c.Link != nil {

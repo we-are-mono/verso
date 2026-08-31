@@ -34,6 +34,8 @@ type Stat struct {
 
 func (*Stat) isWidget() {}
 
+func (*Stat) children() []Widget { return nil }
+
 func (s *Stat) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "stat.html.tmpl", s)
 }

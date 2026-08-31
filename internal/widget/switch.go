@@ -19,6 +19,8 @@ type Switch struct {
 
 func (*Switch) isWidget() {}
 
+func (*Switch) children() []Widget { return nil }
+
 func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "form_switch.html.tmpl", s)
 }

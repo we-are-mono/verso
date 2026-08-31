@@ -27,6 +27,27 @@ import (
 type Widget interface {
 	isWidget()
 	renderInto(r *Renderer, out io.Writer, csrf string) error
+	// children returns every widget nested beneath this one — a section's
+	// control, a table row's drawer contents, a repeater item's subtree. It is
+	// the one structural seam every tree pass recurses through (Walk), declared
+	// beside the widget so no walk can silently miss a container. Leaves return
+	// nil; widgets composed only at render time (Overview) are leaves here.
+	children() []Widget
+}
+
+// decodeChildren decodes a slice of raw child schemas through Decode, so an
+// unknown child type fails loudly rather than silently vanishing. what names
+// the parent context in the error, e.g. "card child" → "card child 3: …".
+func decodeChildren(raw []json.RawMessage, what string) ([]Widget, error) {
+	children := make([]Widget, 0, len(raw))
+	for i, rc := range raw {
+		w, err := Decode(rc)
+		if err != nil {
+			return nil, fmt.Errorf("%s %d: %w", what, i, err)
+		}
+		children = append(children, w)
+	}
+	return children, nil
 }
 
 // Decode parses one widget from its JSON schema representation, using the

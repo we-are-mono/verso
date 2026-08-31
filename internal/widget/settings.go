@@ -54,6 +54,24 @@ type SettingsToggle struct {
 
 func (*Settings) isWidget() {}
 
+// children surfaces the rows' pill badges, so the walk covers their text the
+// same way it covers a property's status badge.
+func (s *Settings) children() []Widget {
+	var out []Widget
+	collect := func(items []SettingsItem) {
+		for i := range items {
+			for p := range items[i].Pills {
+				out = append(out, &items[i].Pills[p])
+			}
+		}
+	}
+	collect(s.Items)
+	if s.Seam != nil {
+		collect(s.Seam.Items)
+	}
+	return out
+}
+
 // settingsView carries the presentation and the rows; each item's pills are
 // pre-rendered to trusted HTML, the rest is plain text the template escapes.
 type settingsView struct {

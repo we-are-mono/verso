@@ -9,14 +9,18 @@ import "io"
 // useful for a static preview; with Name it submits its Value from a containing
 // form. Style selects semantic emphasis rather than arbitrary classes.
 type Button struct {
-	Label string `json:"label"`
-	Icon  string `json:"icon,omitempty"`
-	Style string `json:"style,omitempty"` // "" / "primary" | "secondary" | "danger"
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Label    string `json:"label"`
+	Icon     string `json:"icon,omitempty"`
+	Style    string `json:"style,omitempty"` // "" / "primary" | "secondary" | "danger"
+	Name     string `json:"name,omitempty"`
+	Value    string `json:"value,omitempty"`
+	Disabled bool   `json:"disabled,omitempty"` // unavailable action; rendered natively disabled
+	Loading  bool   `json:"loading,omitempty"`  // disabled busy state; replaces Icon with a spinning loader
 }
 
 func (*Button) isWidget() {}
+
+func (*Button) children() []Widget { return nil }
 
 func (b *Button) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "button.html.tmpl", b)

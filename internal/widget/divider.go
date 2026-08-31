@@ -15,6 +15,8 @@ type Divider struct {
 
 func (*Divider) isWidget() {}
 
+func (*Divider) children() []Widget { return nil }
+
 func (d *Divider) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "divider.html.tmpl", d)
 }

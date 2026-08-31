@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -24,6 +23,8 @@ type Card struct {
 
 func (*Card) isWidget() {}
 
+func (c *Card) children() []Widget { return c.Children }
+
 // UnmarshalJSON decodes a card's title, subtitle, and children, recursing through
 // Decode so an unknown child type fails here rather than silently vanishing.
 func (c *Card) UnmarshalJSON(data []byte) error {
@@ -37,14 +38,11 @@ func (c *Card) UnmarshalJSON(data []byte) error {
 	}
 	c.Title = raw.Title
 	c.Subtitle = raw.Subtitle
-	c.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		child, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("card child %d: %w", i, err)
-		}
-		c.Children = append(c.Children, child)
+	children, err := decodeChildren(raw.Children, "card child")
+	if err != nil {
+		return err
 	}
+	c.Children = children
 	return nil
 }
 

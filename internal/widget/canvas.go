@@ -28,6 +28,8 @@ const canvasDefaultPad = 12
 
 func (*Canvas) isWidget() {}
 
+func (c *Canvas) children() []Widget { return c.Children }
+
 // UnmarshalJSON decodes the canvas's padding and children, recursing through
 // Decode so an unknown child type fails here rather than silently vanishing.
 func (c *Canvas) UnmarshalJSON(data []byte) error {
@@ -39,14 +41,11 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	c.Pad = raw.Pad
-	c.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		child, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("canvas child %d: %w", i, err)
-		}
-		c.Children = append(c.Children, child)
+	children, err := decodeChildren(raw.Children, "canvas child")
+	if err != nil {
+		return err
 	}
+	c.Children = children
 	return nil
 }
 

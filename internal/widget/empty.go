@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -24,6 +23,8 @@ type Empty struct {
 
 func (*Empty) isWidget() {}
 
+func (e *Empty) children() []Widget { return e.Children }
+
 // UnmarshalJSON decodes the action children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing.
 func (e *Empty) UnmarshalJSON(data []byte) error {
@@ -37,14 +38,11 @@ func (e *Empty) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	e.Icon, e.Title, e.Body = raw.Icon, raw.Title, raw.Body
-	e.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("empty child %d: %w", i, err)
-		}
-		e.Children = append(e.Children, w)
+	children, err := decodeChildren(raw.Children, "empty child")
+	if err != nil {
+		return err
 	}
+	e.Children = children
 	return nil
 }
 

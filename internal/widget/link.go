@@ -25,6 +25,8 @@ type Link struct {
 
 func (*Link) isWidget() {}
 
+func (*Link) children() []Widget { return nil }
+
 // linkView is the template's model: the href already validated to a trusted
 // template.URL by the shell's own policy (below), so it isn't re-neutralised.
 type linkView struct {

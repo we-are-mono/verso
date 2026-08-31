@@ -29,6 +29,8 @@ type List struct {
 
 func (*List) isWidget() {}
 
+func (*List) children() []Widget { return nil }
+
 func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "list.html.tmpl", l)
 }

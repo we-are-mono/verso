@@ -20,6 +20,8 @@ type Text struct {
 
 func (*Text) isWidget() {}
 
+func (*Text) children() []Widget { return nil }
+
 // renderInto runs the prose through the same sanitizing Markdown as raw, but with
 // no "raw" affordance — it is first-class content, not an escape hatch.
 func (t *Text) renderInto(r *Renderer, out io.Writer, _ string) error {

@@ -20,6 +20,8 @@ type CapsulePreview struct {
 
 func (*CapsulePreview) isWidget() {}
 
+func (c *CapsulePreview) children() []Widget { return c.Children }
+
 func (c *CapsulePreview) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Count    int               `json:"count"`
@@ -29,14 +31,11 @@ func (c *CapsulePreview) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	c.Count = raw.Count
-	c.Children = make([]Widget, 0, len(raw.Children))
-	for i, child := range raw.Children {
-		w, err := Decode(child)
-		if err != nil {
-			return fmt.Errorf("capsule preview child %d: %w", i, err)
-		}
-		c.Children = append(c.Children, w)
+	children, err := decodeChildren(raw.Children, "capsule preview child")
+	if err != nil {
+		return err
 	}
+	c.Children = children
 	return nil
 }
 

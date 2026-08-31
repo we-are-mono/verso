@@ -44,6 +44,8 @@ type Meter struct {
 
 func (*Meter) isWidget() {}
 
+func (*Meter) children() []Widget { return nil }
+
 // meterCircumference is the length of the ring (radius 50): 2·π·r.
 const meterCircumference = 314.16
 

@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -26,6 +25,8 @@ type Grid struct {
 
 func (*Grid) isWidget() {}
 
+func (g *Grid) children() []Widget { return g.Children }
+
 func (g *Grid) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Style    string            `json:"style"`
@@ -37,14 +38,11 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 	}
 	g.Style = raw.Style
 	g.Columns = raw.Columns
-	g.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("grid child %d: %w", i, err)
-		}
-		g.Children = append(g.Children, w)
+	children, err := decodeChildren(raw.Children, "grid child")
+	if err != nil {
+		return err
 	}
+	g.Children = children
 	return nil
 }
 

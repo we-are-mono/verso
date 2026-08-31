@@ -17,6 +17,8 @@ type Copy struct {
 
 func (*Copy) isWidget() {}
 
+func (*Copy) children() []Widget { return nil }
+
 func (c *Copy) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "copy.html.tmpl", c)
 }

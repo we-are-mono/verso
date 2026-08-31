@@ -142,15 +142,11 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 	if raw.Drawer == nil {
 		return nil
 	}
-	d := &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, HideTitle: raw.Drawer.HideTitle, Children: make([]Widget, 0, len(raw.Drawer.Children))}
-	for i, rc := range raw.Drawer.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("row drawer child %d: %w", i, err)
-		}
-		d.Children = append(d.Children, w)
+	children, err := decodeChildren(raw.Drawer.Children, "row drawer child")
+	if err != nil {
+		return err
 	}
-	tr.Drawer = d
+	tr.Drawer = &RowDrawer{Title: raw.Drawer.Title, Size: raw.Drawer.Size, HideTitle: raw.Drawer.HideTitle, Children: children}
 	return nil
 }
 
@@ -203,6 +199,22 @@ type TableEndpoint struct {
 }
 
 func (*Table) isWidget() {}
+
+func (t *Table) children() []Widget {
+	var out []Widget
+	collect := func(rows []TableRow) {
+		for i := range rows {
+			if rows[i].Drawer != nil {
+				out = append(out, rows[i].Drawer.Children...)
+			}
+		}
+	}
+	collect(t.Rows)
+	if t.Seam != nil {
+		collect(t.Seam.Rows)
+	}
+	return out
+}
 
 // endpointIcons maps an endpoint kind to its registered icon. Unknown kinds fall
 // back to the zone glyph — a wrong icon beats a missing one in a listing.

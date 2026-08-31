@@ -22,6 +22,8 @@ type Toggle struct {
 
 func (*Toggle) isWidget() {}
 
+func (*Toggle) children() []Widget { return nil }
+
 func (t *Toggle) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "toggle.html.tmpl", t)
 }

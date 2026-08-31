@@ -6,7 +6,6 @@ package widget
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -20,7 +19,7 @@ type Form struct {
 	Multipart  bool         `json:"-"`               // shell-owned file-transfer encoding
 	NoSubmit   bool         `json:"-"`               // shell-owned forms may be driven by a child control
 	AutoSubmit bool         `json:"-"`               // submit when a file is selected
-	Style      string       `json:"style,omitempty"` // "" (stacked, default) | "inline" — fields and submit on one row (a search row) | "inline-compact" — the same row, tighter
+	Style      string       `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one compound search field + inset submit) | "page"
 	Icon       string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
 	Note       string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
 	Submit     string       // submit button label (default "Save")
@@ -42,6 +41,8 @@ type FormAction struct {
 }
 
 func (*Form) isWidget() {}
+
+func (f *Form) children() []Widget { return f.Fields }
 
 // UnmarshalJSON decodes a form's fields recursively through Decode, so an unknown
 // field type fails loudly rather than vanishing.
@@ -66,14 +67,11 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 	f.Success = raw.Success
 	f.Error = raw.Error
 	f.Actions = raw.Actions
-	f.Fields = make([]Widget, 0, len(raw.Fields))
-	for i, rf := range raw.Fields {
-		field, err := Decode(rf)
-		if err != nil {
-			return fmt.Errorf("form field %d: %w", i, err)
-		}
-		f.Fields = append(f.Fields, field)
+	fields, err := decodeChildren(raw.Fields, "form field")
+	if err != nil {
+		return err
 	}
+	f.Fields = fields
 	return nil
 }
 
@@ -85,6 +83,7 @@ type formView struct {
 	AutoSubmit bool
 	Inline     bool
 	Compact    bool
+	Search     bool
 	Page       bool
 	Icon       string
 	Note       template.HTML
@@ -117,7 +116,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	return r.execute(out, "form.html.tmpl", formView{
 		Action: f.Action, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Page: f.Style == "page", Icon: f.Icon, Note: note,
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: f.Style == "page", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

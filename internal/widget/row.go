@@ -28,6 +28,13 @@ type Row struct {
 
 func (*Row) isWidget() {}
 
+func (w *Row) children() []Widget {
+	if w.Status == nil {
+		return nil
+	}
+	return []Widget{w.Status}
+}
+
 // rowView is the row template's model: its optional status badge pre-rendered to
 // trusted HTML (by this renderer), the rest plain text the template escapes.
 type rowView struct {

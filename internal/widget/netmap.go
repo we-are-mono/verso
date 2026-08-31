@@ -36,6 +36,8 @@ type NetNode struct {
 
 func (*NetMap) isWidget() {}
 
+func (*NetMap) children() []Widget { return nil }
+
 // The map's coordinate system: a 1024-wide viewBox the SVG stretches to the
 // container (preserveAspectRatio none), so node columns sit at fixed fractions
 // while the height stays in pixels. These x's are the connector endpoints — the

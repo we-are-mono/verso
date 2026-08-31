@@ -29,6 +29,14 @@ type Tab struct {
 
 func (*Tabs) isWidget() {}
 
+func (t *Tabs) children() []Widget {
+	var out []Widget
+	for i := range t.Tabs {
+		out = append(out, t.Tabs[i].Children...)
+	}
+	return out
+}
+
 // UnmarshalJSON decodes each tab's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal/card do).
 func (t *Tabs) UnmarshalJSON(data []byte) error {
@@ -44,15 +52,11 @@ func (t *Tabs) UnmarshalJSON(data []byte) error {
 	}
 	t.Tabs = make([]Tab, 0, len(raw.Tabs))
 	for i, rt := range raw.Tabs {
-		tab := Tab{Label: rt.Label, Icon: rt.Icon, Children: make([]Widget, 0, len(rt.Children))}
-		for j, rc := range rt.Children {
-			w, err := Decode(rc)
-			if err != nil {
-				return fmt.Errorf("tab %d child %d: %w", i, j, err)
-			}
-			tab.Children = append(tab.Children, w)
+		children, err := decodeChildren(rt.Children, fmt.Sprintf("tab %d child", i))
+		if err != nil {
+			return err
 		}
-		t.Tabs = append(t.Tabs, tab)
+		t.Tabs = append(t.Tabs, Tab{Label: rt.Label, Icon: rt.Icon, Children: children})
 	}
 	return nil
 }

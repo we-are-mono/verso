@@ -157,6 +157,10 @@ const wanSeriesFallback = 60
 
 func (*Overview) isWidget() {}
 
+// children is empty: the overview composes its chart, meters, and tables at
+// render time, so its renderInto runs the localization walk over each itself.
+func (*Overview) children() []Widget { return nil }
+
 // ohTile is one status tile: an eyebrow label, a trailing icon, a status dot +
 // word, and a caption. Variant "good" tints emerald; "warning" tints amber.
 type ohTile struct {

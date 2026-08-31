@@ -38,6 +38,8 @@ type PortItem struct {
 
 func (*Ports) isWidget() {}
 
+func (*Ports) children() []Widget { return nil }
+
 type portsView struct {
 	Device  string
 	Accent  string

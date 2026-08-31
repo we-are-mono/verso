@@ -63,6 +63,8 @@ type ChartSeries struct {
 
 func (*Chart) isWidget() {}
 
+func (*Chart) children() []Widget { return nil }
+
 // chartDims are the drawing constants for a size: the viewBox, the vertical padding
 // that keeps peaks and troughs off the edges, whether faint gridlines are drawn, and
 // the endpoint-dot radius (0 = no dot). "full" is the hero graph; "spark" is a bare

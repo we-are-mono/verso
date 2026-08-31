@@ -40,6 +40,8 @@ type ChangeValue struct {
 
 func (*Changes) isWidget() {}
 
+func (*Changes) children() []Widget { return nil }
+
 func (c *Changes) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "changes.html.tmpl", c)
 }

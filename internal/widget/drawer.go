@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -38,6 +37,10 @@ type Drawer struct {
 
 func (*Drawer) isWidget() {}
 
+func (d *Drawer) children() []Widget {
+	return append(append([]Widget{}, d.Trigger...), d.Children...)
+}
+
 // UnmarshalJSON decodes the trigger and body recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal does).
 func (d *Drawer) UnmarshalJSON(data []byte) error {
@@ -58,22 +61,16 @@ func (d *Drawer) UnmarshalJSON(data []byte) error {
 	d.Style = raw.Style
 	d.Dot = raw.Dot
 	d.Tag = raw.Tag
-	d.Trigger = make([]Widget, 0, len(raw.Trigger))
-	for i, rc := range raw.Trigger {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("drawer trigger %d: %w", i, err)
-		}
-		d.Trigger = append(d.Trigger, w)
+	trigger, err := decodeChildren(raw.Trigger, "drawer trigger")
+	if err != nil {
+		return err
 	}
-	d.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("drawer child %d: %w", i, err)
-		}
-		d.Children = append(d.Children, w)
+	d.Trigger = trigger
+	children, err := decodeChildren(raw.Children, "drawer child")
+	if err != nil {
+		return err
 	}
+	d.Children = children
 	return nil
 }
 

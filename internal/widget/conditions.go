@@ -34,6 +34,14 @@ type ConditionItem struct {
 
 func (*Conditions) isWidget() {}
 
+func (c *Conditions) children() []Widget {
+	var out []Widget
+	for i := range c.Items {
+		out = append(out, c.Items[i].Children...)
+	}
+	return out
+}
+
 func (c *Conditions) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Label string `json:"label"`
@@ -60,13 +68,9 @@ func (c *Conditions) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("condition item %d: duplicate key %q", i, item.Key)
 		}
 		seen[item.Key] = true
-		children := make([]Widget, 0, len(item.Children))
-		for j, child := range item.Children {
-			w, err := Decode(child)
-			if err != nil {
-				return fmt.Errorf("condition item %d child %d: %w", i, j, err)
-			}
-			children = append(children, w)
+		children, err := decodeChildren(item.Children, fmt.Sprintf("condition item %d child", i))
+		if err != nil {
+			return err
 		}
 		c.Items = append(c.Items, ConditionItem{
 			Key: item.Key, Label: item.Label, Help: item.Help, Active: item.Active, Children: children,

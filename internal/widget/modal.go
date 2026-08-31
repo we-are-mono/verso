@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -32,6 +31,8 @@ type Modal struct {
 }
 
 func (*Modal) isWidget() {}
+
+func (m *Modal) children() []Widget { return m.Children }
 
 // UnmarshalJSON decodes a modal's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing.
@@ -66,14 +67,11 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	m.Body = raw.Body
 	m.Confirm = raw.Confirm
 	m.Cancel = raw.Cancel
-	m.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("modal child %d: %w", i, err)
-		}
-		m.Children = append(m.Children, w)
+	children, err := decodeChildren(raw.Children, "modal child")
+	if err != nil {
+		return err
 	}
+	m.Children = children
 	return nil
 }
 

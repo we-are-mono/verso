@@ -17,6 +17,8 @@ type Code struct {
 
 func (*Code) isWidget() {}
 
+func (*Code) children() []Widget { return nil }
+
 func (c *Code) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "code.html.tmpl", c)
 }

@@ -18,6 +18,8 @@ type Badge struct {
 
 func (*Badge) isWidget() {}
 
+func (*Badge) children() []Widget { return nil }
+
 func (b *Badge) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "badge.html.tmpl", b)
 }

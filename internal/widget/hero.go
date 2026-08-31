@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -31,6 +30,8 @@ type Hero struct {
 
 func (*Hero) isWidget() {}
 
+func (h *Hero) children() []Widget { return h.Children }
+
 func (h *Hero) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Variant  string            `json:"variant"`
@@ -43,14 +44,11 @@ func (h *Hero) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	h.Variant, h.Icon, h.Title, h.Body = raw.Variant, raw.Icon, raw.Title, raw.Body
-	h.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("hero child %d: %w", i, err)
-		}
-		h.Children = append(h.Children, w)
+	children, err := decodeChildren(raw.Children, "hero child")
+	if err != nil {
+		return err
 	}
+	h.Children = children
 	return nil
 }
 

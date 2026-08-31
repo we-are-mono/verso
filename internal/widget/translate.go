@@ -5,9 +5,11 @@ package widget
 
 // translateSchema walks the decoded widget tree and replaces each user-facing
 // text field with its translation in place — the localization counterpart to
-// validateSchema's datatype walk over these same structs (ADR-008, ADR-012). It
+// the server's datatype walk over these same structs (ADR-008, ADR-012). It
 // runs once, at the top of a render, so every widget (plugin-supplied and the
-// shell's own trees alike) is covered from one place.
+// shell's own trees alike) is covered from one place. Recursion is Walk over
+// the widgets' shared children seam; the switch below holds only each widget's
+// own fields, so a container never needs a case just to keep the walk going.
 //
 // t is a source-string-as-key lookup with English fallback: a field whose source
 // text has no catalog entry keeps its English, so a machine value that happens to
@@ -21,6 +23,12 @@ package widget
 // "Cancel", Table "Details", …) are NOT applied here — they have no struct field
 // to carry, so the renderer injects and translates them at render (Renderer.tr).
 func translateSchema(w Widget, t func(string) string) {
+	Walk(w, func(n Widget) { translateFields(n, t) })
+}
+
+// translateFields localizes one widget's own prose fields; nested widgets are
+// reached by translateSchema's walk, never from a case here.
+func translateFields(w Widget, t func(string) string) {
 	switch n := w.(type) {
 	case *Badge:
 		n.Text = t(n.Text)
@@ -29,17 +37,9 @@ func translateSchema(w Widget, t func(string) string) {
 	case *Callout:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
-		if n.Link != nil {
-			translateSchema(n.Link, t)
-		}
-	case *Canvas:
-		translateChildren(n.Children, t)
-	case *CapsulePreview:
-		translateChildren(n.Children, t)
 	case *Card:
 		n.Title = t(n.Title)
 		n.Subtitle = t(n.Subtitle)
-		translateChildren(n.Children, t)
 	case *Changes:
 		for i := range n.Items {
 			n.Items[i].Label = t(n.Items[i].Label)
@@ -69,15 +69,12 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 	case *Conditional:
 		n.Label = t(n.Label)
-		translateChildren(n.Fields, t)
-		translateChildren(n.Otherwise, t)
 	case *Conditions:
 		n.Label = t(n.Label)
 		n.Help = t(n.Help)
 		for i := range n.Items {
 			n.Items[i].Label = t(n.Items[i].Label)
 			n.Items[i].Help = t(n.Items[i].Help)
-			translateChildren(n.Items[i].Children, t)
 		}
 	case *Confirm:
 		n.Trigger = t(n.Trigger)
@@ -88,17 +85,13 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 	case *Disclosure:
 		n.Summary = t(n.Summary)
-		translateChildren(n.Children, t)
 	case *Divider:
 		n.Label = t(n.Label)
 	case *Drawer:
 		n.Title = t(n.Title)
-		translateChildren(n.Trigger, t)
-		translateChildren(n.Children, t)
 	case *Empty:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
-		translateChildren(n.Children, t)
 	case *Field:
 		n.Label = t(n.Label)
 		n.Prompt = t(n.Prompt)
@@ -121,13 +114,9 @@ func translateSchema(w Widget, t func(string) string) {
 		for i := range n.Actions {
 			n.Actions[i].Label = t(n.Actions[i].Label)
 		}
-		translateChildren(n.Fields, t)
-	case *Grid:
-		translateChildren(n.Children, t)
 	case *Hero:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
-		translateChildren(n.Children, t)
 	case *Link:
 		n.Label = t(n.Label)
 	case *List:
@@ -144,7 +133,6 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Body = t(n.Body)
 		n.Confirm = t(n.Confirm)
 		n.Cancel = t(n.Cancel)
-		translateChildren(n.Children, t)
 	case *NetMap:
 		translateNetNode(&n.Source, t)
 		translateNetNode(&n.Hub, t)
@@ -165,9 +153,6 @@ func translateSchema(w Widget, t func(string) string) {
 			n.Items[i].Label = t(n.Items[i].Label)
 			n.Items[i].Help = t(n.Items[i].Help)
 			n.Items[i].Value = t(n.Items[i].Value)
-			if n.Items[i].Status != nil {
-				translateSchema(n.Items[i].Status, t)
-			}
 		}
 	case *Qr:
 		n.Caption = t(n.Caption)
@@ -176,14 +161,8 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Markdown = t(n.Markdown)
 	case *Repeater:
 		n.AddLabel = t(n.AddLabel)
-		for i := range n.Items {
-			translateSchema(n.Items[i].Widget, t)
-		}
 	case *Row:
 		n.Title = t(n.Title)
-		if n.Status != nil {
-			translateSchema(n.Status, t)
-		}
 	case *Section:
 		n.Title = t(n.Title)
 		n.Sub = t(n.Sub)
@@ -192,10 +171,6 @@ func translateSchema(w Widget, t func(string) string) {
 		// not reported") in some sections, a live value (a timestamp, a subnet) in
 		// others; the latter simply misses the catalog and stays verbatim.
 		n.Meta = t(n.Meta)
-		if n.Control != nil {
-			translateSchema(n.Control, t)
-		}
-		translateChildren(n.Children, t)
 	case *Settings:
 		n.Title = t(n.Title)
 		translateSettingsItems(n.Items, t)
@@ -203,8 +178,6 @@ func translateSchema(w Widget, t func(string) string) {
 			n.Seam.Summary = t(n.Seam.Summary)
 			translateSettingsItems(n.Seam.Items, t)
 		}
-	case *Stack:
-		translateChildren(n.Children, t)
 	case *Stat:
 		n.Label = t(n.Label)
 		n.Sub = t(n.Sub)
@@ -217,7 +190,6 @@ func translateSchema(w Widget, t func(string) string) {
 	case *Tabs:
 		for i := range n.Tabs {
 			n.Tabs[i].Label = t(n.Tabs[i].Label)
-			translateChildren(n.Tabs[i].Children, t)
 		}
 	case *Text:
 		n.Markdown = t(n.Markdown)
@@ -225,21 +197,9 @@ func translateSchema(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 		n.OffLabel = t(n.OffLabel)
 		n.Meta = t(n.Meta)
-	case *Wizard:
-		for i := range n.Steps {
-			translateChildren(n.Steps[i].Children, t)
-		}
 	}
-	// Any other widget (e.g. Divider-like leaves already handled, or Overview,
-	// which is shell page content that never reaches Decode) carries no plugin
-	// prose to translate here.
-}
-
-// translateChildren walks a slice of child widgets.
-func translateChildren(ws []Widget, t func(string) string) {
-	for _, w := range ws {
-		translateSchema(w, t)
-	}
+	// Any other widget (pure containers like Stack/Grid, or Overview, which is
+	// shell page content that never reaches Decode) carries no prose of its own.
 }
 
 // translateNetNode localizes a map node's label and detail. A leaf's label is
@@ -250,13 +210,12 @@ func translateNetNode(n *NetNode, t func(string) string) {
 	n.Detail = t(n.Detail)
 }
 
+// translateSettingsItems localizes the rows' prose; a row's pill badges are
+// widgets the walk reaches through the settings' children seam.
 func translateSettingsItems(items []SettingsItem, t func(string) string) {
 	for i := range items {
 		items[i].Title = t(items[i].Title)
 		items[i].Desc = t(items[i].Desc)
-		for p := range items[i].Pills {
-			items[i].Pills[p].Text = t(items[i].Pills[p].Text)
-		}
 	}
 }
 
@@ -265,7 +224,9 @@ func translateSettingsItems(items []SettingsItem, t func(string) string) {
 // cell's Text/Sub is prose in a status/pill/text column and a machine value in a
 // mono/num column — the latter simply misses the catalog and stays verbatim. The
 // entity fields a cell can carry (Chip, Tag, endpoint/chip labels) are identities
-// (a zone, an interface, an address) and are deliberately left untranslated.
+// (a zone, an interface, an address) and are deliberately left untranslated. Row
+// drawers' contents are widgets the walk reaches through the table's children
+// seam; only the drawer title is a table-owned field.
 func translateTable(n *Table, t func(string) string) {
 	n.Title = t(n.Title)
 	n.DrawerLabel = t(n.DrawerLabel)
@@ -297,7 +258,6 @@ func translateRows(rows []TableRow, t func(string) string) {
 		}
 		if rows[i].Drawer != nil {
 			rows[i].Drawer.Title = t(rows[i].Drawer.Title)
-			translateChildren(rows[i].Drawer.Children, t)
 		}
 	}
 }

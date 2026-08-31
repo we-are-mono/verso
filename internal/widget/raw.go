@@ -26,6 +26,8 @@ type Raw struct {
 
 func (*Raw) isWidget() {}
 
+func (*Raw) children() []Widget { return nil }
+
 type rawView struct{ HTML template.HTML }
 
 // renderInto converts the plugin's Markdown through the sanitising engine and

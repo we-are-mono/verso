@@ -19,6 +19,8 @@ type Filter struct {
 
 func (*Filter) isWidget() {}
 
+func (*Filter) children() []Widget { return nil }
+
 func (f *Filter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	ph := f.Placeholder
 	if ph == "" {

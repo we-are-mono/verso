@@ -34,6 +34,16 @@ type RepeaterItem struct {
 
 func (*Repeater) isWidget() {}
 
+func (rp *Repeater) children() []Widget {
+	var out []Widget
+	for i := range rp.Items {
+		if rp.Items[i].Widget != nil {
+			out = append(out, rp.Items[i].Widget)
+		}
+	}
+	return out
+}
+
 // The hidden form fields the shell's repeater affordances post, and that the
 // gateway reads to realize the structural change. They live here because this
 // package renders the affordances; the gateway imports these same constants, so

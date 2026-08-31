@@ -5,7 +5,6 @@ package widget
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 )
@@ -22,6 +21,8 @@ type Disclosure struct {
 
 func (*Disclosure) isWidget() {}
 
+func (d *Disclosure) children() []Widget { return d.Children }
+
 // UnmarshalJSON decodes the contents recursively through Decode, so an unknown
 // child type fails loudly rather than vanishing.
 func (d *Disclosure) UnmarshalJSON(data []byte) error {
@@ -34,14 +35,11 @@ func (d *Disclosure) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	d.Style, d.Summary = raw.Style, raw.Summary
-	d.Children = make([]Widget, 0, len(raw.Children))
-	for i, rc := range raw.Children {
-		w, err := Decode(rc)
-		if err != nil {
-			return fmt.Errorf("disclosure child %d: %w", i, err)
-		}
-		d.Children = append(d.Children, w)
+	children, err := decodeChildren(raw.Children, "disclosure child")
+	if err != nil {
+		return err
 	}
+	d.Children = children
 	return nil
 }
 

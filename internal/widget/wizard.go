@@ -28,6 +28,14 @@ type WizardStep struct {
 
 func (*Wizard) isWidget() {}
 
+func (w *Wizard) children() []Widget {
+	var out []Widget
+	for i := range w.Steps {
+		out = append(out, w.Steps[i].Children...)
+	}
+	return out
+}
+
 // UnmarshalJSON decodes each step's children recursively through Decode, so an
 // unknown child type fails loudly rather than vanishing (as modal/tabs do).
 func (w *Wizard) UnmarshalJSON(data []byte) error {
@@ -41,15 +49,11 @@ func (w *Wizard) UnmarshalJSON(data []byte) error {
 	}
 	w.Steps = make([]WizardStep, 0, len(raw.Steps))
 	for i, rs := range raw.Steps {
-		step := WizardStep{Children: make([]Widget, 0, len(rs.Children))}
-		for j, rc := range rs.Children {
-			child, err := Decode(rc)
-			if err != nil {
-				return fmt.Errorf("wizard step %d child %d: %w", i, j, err)
-			}
-			step.Children = append(step.Children, child)
+		children, err := decodeChildren(rs.Children, fmt.Sprintf("wizard step %d child", i))
+		if err != nil {
+			return err
 		}
-		w.Steps = append(w.Steps, step)
+		w.Steps = append(w.Steps, WizardStep{Children: children})
 	}
 	return nil
 }
