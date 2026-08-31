@@ -19,6 +19,10 @@
      hover. Layout stays at the call site, as with verso-btn-primary. */}}
 {{define "verso-btn-secondary"}}border-slate-300 bg-white text-slate-700 transition-colors hover:border-sky-600 hover:text-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 {{template "verso-press"}}{{end}}
 
+{{/* verso-btn-danger: the destructive action's colour + interaction chain —
+     one red across the confirm widget and the table's confirmed row action. */}}
+{{define "verso-btn-danger"}}bg-red-600 text-white transition-colors hover:bg-red-700 dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950 {{template "verso-press"}}{{end}}
+
 {{/* verso-input-border: a form control's border/focus halo, switching to the
      error treatment when the argument (the field's error) is set. */}}
 {{define "verso-input-border"}}{{if .}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}}{{end}}
@@ -50,3 +54,38 @@
 {{/* verso-csrf: the hidden CSRF carrier every state-changing form posts;
      renders nothing without a token (a render outside a session). */}}
 {{define "verso-csrf"}}{{if .}}<input type="hidden" name="_csrf" value="{{.}}">{{end}}{{end}}
+
+{{/* verso-drawer-panel: the slide-in detail panel — the one drawer language,
+     shared by the drawer widget and a table row's drawer (drawerPanelView).
+     Behaviour is the shell's modal Alpine component; the caller provides the
+     x-data scope and the trigger. The title row can carry a status dot and the
+     category chip; HideTitle keeps the heading for readers only. The body
+     wrapper tames in-panel tables: the page-width floor and side padding go,
+     the last column rides the right edge, hover tints go quiet (these rows
+     open nothing), and a fact list following other content gets its own
+     breath. */}}
+{{define "verso-drawer-panel"}}<template x-teleport="body">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
+    {{template "verso-overlay-backdrop"}}
+    <aside x-show="open" @input="markDirty" @change="markDirty"
+      x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+      x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+      x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+      class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
+      {{if .HideTitle}}
+      <h3 class="sr-only">{{.Title}}</h3>
+      <span class="absolute top-5 right-5 z-10">{{template "verso-close-btn"}}</span>
+      {{else}}<header class="flex shrink-0 items-center justify-between px-6 py-4">
+        <div class="flex min-w-0 items-center gap-2.5">
+          {{if .Dot}}<span class="{{template "verso-tone-dot" .Dot}} size-2 shrink-0 rounded-full"></span>{{end}}
+          <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
+          {{if .Tag}}<span class="shrink-0 {{template "verso-chip-class"}}">{{.Tag}}</span>{{end}}
+        </div>
+        {{template "verso-close-btn"}}
+      </header>{{end}}
+      <div class="space-y-6 overflow-x-hidden px-6 {{if .HideTitle}}pt-6{{else}}pt-2{{end}} pb-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+        {{range .Body}}{{.}}{{end}}
+      </div>
+    </aside>
+  </div>
+</template>{{end}}

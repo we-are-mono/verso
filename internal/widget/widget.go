@@ -166,12 +166,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode stack: %w", err)
 		}
 		return &st, nil
-	case "toggle":
-		var t Toggle
-		if err := json.Unmarshal(data, &t); err != nil {
-			return nil, fmt.Errorf("widget: decode toggle: %w", err)
-		}
-		return &t, nil
 	case "tabs":
 		var t Tabs
 		if err := json.Unmarshal(data, &t); err != nil {
@@ -250,12 +244,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode button: %w", err)
 		}
 		return &b, nil
-	case "copy":
-		var c Copy
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode copy: %w", err)
-		}
-		return &c, nil
 	case "disclosure":
 		var d Disclosure
 		if err := json.Unmarshal(data, &d); err != nil {

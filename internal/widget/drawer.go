@@ -74,17 +74,25 @@ func (d *Drawer) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// drawerView is the drawer template's model: the trigger and body already rendered
-// to trusted HTML, plus the panel title and its variants.
+// drawerPanelView is the slide-in panel's model — one shape for the drawer
+// widget and a table row's drawer, so the two render through one template
+// (verso-drawer-panel) and cannot drift apart.
+type drawerPanelView struct {
+	Title     string
+	Wide      bool
+	HideTitle bool
+	Dot       string
+	Tag       string
+	Body      []template.HTML
+}
+
+// drawerView is the drawer template's model: the rendered trigger and its
+// dress, plus the shared panel.
 type drawerView struct {
-	Title    string
-	Wide     bool
-	Bare     bool
-	Button   bool
-	Dot      string
-	Tag      string
-	Trigger  template.HTML
-	Children []template.HTML
+	Bare    bool
+	Button  bool
+	Trigger template.HTML
+	Panel   drawerPanelView
 }
 
 // renderInto renders the trigger and the panel body through the renderer, then hands
@@ -100,8 +108,10 @@ func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	return r.execute(out, "drawer.html.tmpl", drawerView{
-		Title: d.Title, Wide: d.Size == "wide", Bare: d.Style == "bare", Button: d.Style == "button",
-		Dot: d.Dot, Tag: d.Tag,
-		Trigger: joinHTML(trigger), Children: children,
+		Bare: d.Style == "bare", Button: d.Style == "button",
+		Trigger: joinHTML(trigger),
+		Panel: drawerPanelView{
+			Title: d.Title, Wide: d.Size == "wide", Dot: d.Dot, Tag: d.Tag, Body: children,
+		},
 	})
 }

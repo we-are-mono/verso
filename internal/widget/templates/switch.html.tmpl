@@ -8,4 +8,10 @@
   <span class="absolute inset-0 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-600"></span>
   <span class="relative mx-0.5 size-3 rounded-full bg-white shadow transition peer-checked:translate-x-3"></span>
 </span>{{end}}
+{{/* switch.row: the labelled form row — the control with its label beside it.
+     Shared by the switch widget and the conditional's controlling toggle. */}}
+{{define "switch.row"}}<label class="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-slate-900">
+  {{template "switch.control" .}}
+  <span>{{.Label}}</span>
+</label>{{end}}
 <label class="inline-flex cursor-pointer items-center">{{template "switch.control" .}}</label>

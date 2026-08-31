@@ -81,8 +81,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.Message = t(n.Message)
 		n.Confirm = t(n.Confirm)
 		n.Cancel = t(n.Cancel)
-	case *Copy:
-		n.Label = t(n.Label)
 	case *Disclosure:
 		n.Summary = t(n.Summary)
 	case *Divider:
@@ -130,9 +128,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.BusyTitle = t(n.BusyTitle)
 		n.BusyBody = t(n.BusyBody)
 		n.Title = t(n.Title)
-		n.Body = t(n.Body)
-		n.Confirm = t(n.Confirm)
-		n.Cancel = t(n.Cancel)
 	case *NetMap:
 		translateNetNode(&n.Source, t)
 		translateNetNode(&n.Hub, t)
@@ -185,6 +180,7 @@ func translateFields(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
+		n.Meta = t(n.Meta)
 	case *Table:
 		translateTable(n, t)
 	case *Tabs:
@@ -193,10 +189,6 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Text:
 		n.Markdown = t(n.Markdown)
-	case *Toggle:
-		n.Label = t(n.Label)
-		n.OffLabel = t(n.OffLabel)
-		n.Meta = t(n.Meta)
 	}
 	// Any other widget (pure containers like Stack/Grid, or Overview, which is
 	// shell page content that never reaches Decode) carries no prose of its own.

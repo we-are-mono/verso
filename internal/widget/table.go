@@ -6,7 +6,6 @@ package widget
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 )
 
@@ -249,23 +248,20 @@ type tableView struct {
 }
 
 type tableRowView struct {
-	ID              string
-	Key             string
-	Group           *TableGroup
-	ColumnSpan      int
-	Reorder         bool
-	ReorderGroup    string
-	Cells           []tableCellView
-	HasDetail       bool // table-wide flag, copied so the rows sub-template needs no second argument
-	Drawer          bool // this row has a drawer (hosts the modal scope)
-	Inline          bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
-	DrawerWide      bool // the drawer opens at the wide detail width
-	DrawerHideTitle bool
-	Seam            bool // this row belongs to the collapsible continuation block
-	DrawerLabel     string
-	DrawerIcon      string
-	DrawerTitle     string
-	DrawerBody      []template.HTML
+	ID           string
+	Key          string
+	Group        *TableGroup
+	ColumnSpan   int
+	Reorder      bool
+	ReorderGroup string
+	Cells        []tableCellView
+	HasDetail    bool // table-wide flag, copied so the rows sub-template needs no second argument
+	Drawer       bool // this row has a drawer (hosts the modal scope)
+	Inline       bool // the drawer opens from an in-cell button, so this row shows no trailing "Details"
+	Seam         bool // this row belongs to the collapsible continuation block
+	DrawerLabel  string
+	DrawerIcon   string
+	Panel        drawerPanelView // the row's slide-in detail panel (shared with the drawer widget)
 }
 
 type tableCellView struct {
@@ -380,10 +376,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				return nil, err
 			}
 			rv.Drawer = true
-			rv.DrawerWide = row.Drawer.Size == "wide"
-			rv.DrawerHideTitle = row.Drawer.HideTitle
-			rv.DrawerTitle = row.Drawer.Title
-			rv.DrawerBody = body
+			rv.Panel = drawerPanelView{
+				Title: row.Drawer.Title, Wide: row.Drawer.Size == "wide",
+				HideTitle: row.Drawer.HideTitle, Body: body,
+			}
 		}
 		for i := range t.Columns {
 			kind := t.Columns[i].Kind

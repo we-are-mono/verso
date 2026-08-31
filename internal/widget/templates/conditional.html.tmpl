@@ -4,10 +4,7 @@
      pure CSS (ADR-005 §7). The plugin declared only the intent; the shell owns
      the toggle and the show/hide — no JavaScript. */}}
 <div class="verso-conditional space-y-4" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
-  <label class="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-slate-900">
-    {{template "switch.control" .}}
-    <span>{{.Label}}</span>
-  </label>
+  {{template "switch.row" .}}
   <div class="verso-conditional-body space-y-6">{{range .Fields}}{{.}}{{end}}</div>
   {{if .Otherwise}}<div class="verso-conditional-otherwise space-y-6">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
 </div>

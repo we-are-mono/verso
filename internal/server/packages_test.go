@@ -57,7 +57,7 @@ func TestPackagesInventory(t *testing.T) {
 		"border-slate-200 bg-slate-50 text-slate-700",                       // description uses the neutral callout
 		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link stays in the callout and opens safely outside Verso
 		"space-y-0", "border-t border-slate-100 py-3", // facts match the Overview System DL
-		`<header class="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">`, // modal-like header, no divider
+		`<header class="flex shrink-0 items-center justify-between px-6 py-4">`, // the shared drawer panel's header, no divider
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("inventory missing %q", want)

@@ -13,42 +13,5 @@
     class="{{if .Button}}inline-flex cursor-pointer items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-sky-700 active:bg-sky-800 [&_.verso-prose]:!text-sm [&_.verso-prose]:!text-white{{else}}block w-full{{end}} text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 {{if .Bare}}transition-colors hover:bg-slate-50{{else if not .Button}}rounded-xl border border-slate-200 bg-white px-4 py-1 shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md{{end}}">
     {{.Trigger}}
   </button>
-  <template x-teleport="body">
-    <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
-      {{template "verso-overlay-backdrop"}}
-      <aside x-show="open" @input="markDirty" @change="markDirty"
-        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-        x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-        class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
-        <header class="flex shrink-0 items-center justify-between px-6 py-4">
-          {{/* The title row can carry state: a status dot (pulsing when it marks
-               something live) and the category chip the rows wear elsewhere. */}}
-          <div class="flex min-w-0 items-center gap-2.5">
-            {{if .Dot}}<span class="{{template "verso-tone-dot" .Dot}} size-2 shrink-0 rounded-full"></span>{{end}}
-            <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
-            {{if .Tag}}<span class="shrink-0 {{template "verso-chip-class"}}">{{.Tag}}</span>{{end}}
-          </div>
-          {{template "verso-close-btn"}}
-        </header>
-        {{/* Tables lose their page-width floor in here: the panel is narrower
-             than the 44rem that keeps columns comfortable on a full page, and
-             a scrollbar inside a drawer helps nobody. Horizontal overflow is
-             clipped outright — edge-hugging absolute bits (a copy button's
-             tooltip) must not grow a sideways scroll area. Table edges run
-             flush with the panel's own: no side padding on the outer cells,
-             and the last column rides the right edge. */}}
-        {{/* The table's own scroll wrapper goes inert in here too: with the
-             width floor gone it never needs to scroll, and its scroll context
-             would otherwise grow a vertical bar from the copy tooltips. Row
-             hover goes quiet as well — these rows open nothing, and the tint
-             would promise otherwise. */}}
-        {{/* A fact list following other content gets double the stack's gap —
-             the drawer's closing section starts as its own breath. */}}
-        <div class="space-y-6 overflow-x-hidden px-6 py-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
-          {{range .Children}}{{.}}{{end}}
-        </div>
-      </aside>
-    </div>
-  </template>
+  {{template "verso-drawer-panel" .Panel}}
 </div>

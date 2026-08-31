@@ -274,8 +274,8 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
 		"dark:bg-black/60",
 		`verso-drawer-scrollbar absolute inset-y-0`,
-		`<header class="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">`,
-		`class="space-y-6 px-5 pt-2.5 pb-5"`,
+		`<header class="flex shrink-0 items-center justify-between px-6 py-4">`, // the shared drawer panel's header
+		"space-y-6 overflow-x-hidden px-6 pt-2 pb-6",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -300,7 +300,7 @@ func TestRenderTableRowDrawerCanHideVisibleTitle(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h3 class="sr-only">Edit redirect</h3>`, "absolute top-5 right-5", "pt-5", `aria-label="Close"`} {
+	for _, want := range []string{`<h3 class="sr-only">Edit redirect</h3>`, "absolute top-5 right-5", "pt-6", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("titleless drawer missing %q:\n%s", want, got)
 		}

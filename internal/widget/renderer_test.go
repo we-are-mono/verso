@@ -228,10 +228,10 @@ func TestRenderBadge(t *testing.T) {
 	}
 }
 
-func TestRenderToggle(t *testing.T) {
+func TestRenderHeroSwitch(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Toggle{
-		Icon: "shield", Name: "vpn_on", Checked: true,
+	got := render(t, r, &Switch{
+		Style: "hero", Icon: "shield", Name: "vpn_on", On: true,
 		Label: "Your home VPN is on", OffLabel: "Your home VPN is off",
 		Meta: "2 of 3 devices connected",
 	})
@@ -245,21 +245,21 @@ func TestRenderToggle(t *testing.T) {
 		"peer-checked:bg-emerald-500", // switch reflects state without JS
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("toggle missing %q in: %s", want, got)
+			t.Errorf("hero switch missing %q in: %s", want, got)
 		}
 	}
-	// The checked attribute is present on the input when Checked is true.
+	// The checked attribute is present on the input when On is true.
 	if !strings.Contains(got, `name="vpn_on" checked`) {
-		t.Errorf("checked toggle missing the checked attribute: %s", got)
+		t.Errorf("checked hero switch missing the checked attribute: %s", got)
 	}
 	// The switch is pure CSS: the markup carries no script and no Alpine directive.
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("toggle must be pure CSS, found script/alpine: %s", got)
+		t.Errorf("hero switch must be pure CSS, found script/alpine: %s", got)
 	}
 	// Unchecked renders without the checked attribute (peer-checked utility aside).
-	off := render(t, r, &Toggle{Name: "n", Label: "On", OffLabel: "Off"})
+	off := render(t, r, &Switch{Style: "hero", Name: "n", Label: "On", OffLabel: "Off"})
 	if strings.Contains(off, `name="n" checked`) {
-		t.Errorf("unchecked toggle must not carry the checked attribute: %s", off)
+		t.Errorf("unchecked hero switch must not carry the checked attribute: %s", off)
 	}
 }
 
@@ -740,19 +740,6 @@ func TestRenderButton(t *testing.T) {
 	}
 }
 
-func TestRenderCopy(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Copy{Label: "Copy key", Text: "SECRETKEY=="})
-	for _, want := range []string{`x-data="copy"`, `@click="run"`, "Copy key", "Copied!", "SECRETKEY=="} {
-		if !strings.Contains(got, want) {
-			t.Errorf("copy missing %q in: %s", want, got)
-		}
-	}
-	if strings.Contains(got, "<script") {
-		t.Errorf("copy must not emit a script tag: %s", got)
-	}
-}
-
 func TestRenderDisclosure(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Disclosure{Summary: "Server settings", Children: []Widget{&Field{Name: "port", Label: "Listen port"}}})
@@ -862,29 +849,6 @@ func TestRenderModalPreview(t *testing.T) {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("modal preview should not render interactive overlay chrome %q: %s", unwanted, got)
 		}
-	}
-}
-
-func TestRenderModalDangerPreview(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Modal{
-		Preview: true, Variant: "danger", Title: "Factory reset this router?",
-		Body: "All settings will be erased.", Confirm: "Erase and reset", Cancel: "Cancel",
-	})
-	for _, want := range []string{
-		"bg-red-100 text-red-600", "size-6 -translate-y-px", "Factory reset this router?", "All settings will be erased.",
-		"bg-red-600", "dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950", ">Erase and reset<", ">Cancel<", "sm:ml-14 sm:flex-row",
-		"underline-offset-2 transition-colors hover:text-slate-900 hover:underline",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("danger modal preview missing %q: %s", want, got)
-		}
-	}
-	if strings.Contains(got, `aria-label="Close"`) {
-		t.Errorf("danger confirmation should use its explicit cancel action, not a close icon: %s", got)
-	}
-	if strings.Contains(got, "hover:bg-slate-100") {
-		t.Errorf("danger confirmation cancel must remain link-style on hover: %s", got)
 	}
 }
 

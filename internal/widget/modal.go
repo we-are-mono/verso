@@ -22,11 +22,7 @@ type Modal struct {
 	BusyTitle    string // optional submit-time progress state
 	BusyBody     string
 	Preview      bool     // render the open window in-flow without trigger/backdrop/behaviour (styleguide use)
-	Variant      string   // "" (standard composed modal) | "danger" (destructive confirmation)
 	Title        string   // dialog heading
-	Body         string   // destructive confirmation explanation
-	Confirm      string   // destructive confirmation action label
-	Cancel       string   // destructive confirmation cancel label
 	Children     []Widget // dialog body
 }
 
@@ -45,11 +41,7 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 		BusyTitle    string            `json:"busy_title"`
 		BusyBody     string            `json:"busy_body"`
 		Preview      bool              `json:"preview"`
-		Variant      string            `json:"variant"`
 		Title        string            `json:"title"`
-		Body         string            `json:"body"`
-		Confirm      string            `json:"confirm"`
-		Cancel       string            `json:"cancel"`
 		Children     []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -62,11 +54,7 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	m.BusyTitle = raw.BusyTitle
 	m.BusyBody = raw.BusyBody
 	m.Preview = raw.Preview
-	m.Variant = raw.Variant
 	m.Title = raw.Title
-	m.Body = raw.Body
-	m.Confirm = raw.Confirm
-	m.Cancel = raw.Cancel
 	children, err := decodeChildren(raw.Children, "modal child")
 	if err != nil {
 		return err
@@ -85,11 +73,7 @@ type modalView struct {
 	BusyTitle    string
 	BusyBody     string
 	Preview      bool
-	Variant      string
 	Title        string
-	Body         string
-	Confirm      string
-	Cancel       string
 	Children     []template.HTML
 }
 
@@ -103,7 +87,7 @@ func (m *Modal) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	return r.execute(out, "modal.html.tmpl", modalView{
 		Trigger: m.Trigger, TriggerIcon: m.TriggerIcon, TriggerStyle: m.TriggerStyle, Open: m.Open,
-		BusyTitle: m.BusyTitle, BusyBody: m.BusyBody, Preview: m.Preview, Variant: m.Variant,
-		Title: m.Title, Body: m.Body, Confirm: m.Confirm, Cancel: m.Cancel, Children: children,
+		BusyTitle: m.BusyTitle, BusyBody: m.BusyBody, Preview: m.Preview,
+		Title: m.Title, Children: children,
 	})
 }
