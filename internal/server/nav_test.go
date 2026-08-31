@@ -52,10 +52,10 @@ func assertTitles(t *testing.T, got []navSection, want ...string) {
 func TestBuildNavCoreOrderIsFixed(t *testing.T) {
 	s := navServer(
 		manifest("sys", nav("System", "General", "/")),
-		manifest("fw", nav("Firewall", "Zones", "/")),
+		manifest("fw", nav("Security", "Firewall", "/")),
 		manifest("net", nav("Network", "Interfaces", "/")),
 	)
-	assertTitles(t, s.buildNav("/"), "Status", "Network", "Firewall", "System")
+	assertTitles(t, s.buildNav("/"), "Status", "Network", "Security", "System")
 }
 
 // The System frame exists with zero plugins, but contains only pages the shell
@@ -129,6 +129,59 @@ func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
 	}
 }
 
+// securityRow returns the sidebar's Security row, which sits directly above
+// System among the everyday rows.
+func securityRow(t *testing.T, model navModel) navLink {
+	t.Helper()
+	for _, row := range model.Basic {
+		if row.Icon == "shield" {
+			return row
+		}
+	}
+	t.Fatal("Security row missing from the sidebar")
+	return navLink{}
+}
+
+// Security is an everyday row, not an Advanced group: it targets the firewall
+// plugin's own page and stays lit anywhere inside the domain, the same way
+// System does.
+func TestBuildSidebarPromotesSecurityAboveAdvanced(t *testing.T) {
+	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall.Socket = "/firewall.sock"
+	s := navServer(firewall, manifest("net", nav("Network", "Interfaces", "/")))
+
+	model := s.buildSidebar("/plugins/firewall/zones", identityTranslator, func(string) func(string) string { return identityTranslator })
+	row := securityRow(t, model)
+	if row.Label != "Security" || row.Href != "/plugins/firewall/" || !row.Active {
+		t.Fatalf("Security row = %+v, want active Security targeting the registered page", row)
+	}
+	for _, group := range model.Advanced {
+		if group.Title == "Security" {
+			t.Fatal("Security must not also appear under Advanced settings")
+		}
+	}
+}
+
+// With no plugin answering under Security the row leads nowhere rather than to a
+// URL that only reports the plugin is unavailable.
+func TestBuildSidebarSecurityWithoutALivePluginLeadsNowhere(t *testing.T) {
+	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall.Socket = "/dead/firewall.sock"
+	s := navServer(firewall)
+	s.probe = func(string) bool { return false }
+
+	model := s.buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	if row := securityRow(t, model); row.Href != "#" || row.Active {
+		t.Fatalf("Security row = %+v, want an inert row", row)
+	}
+	// The stopped plugin's own URL still belongs to the domain, so the row lights
+	// up there and the page can explain itself.
+	model = s.buildSidebar("/plugins/firewall/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	if row := securityRow(t, model); !row.Active {
+		t.Fatalf("Security row = %+v, want Active on a stopped plugin's own URL", row)
+	}
+}
+
 func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	system := manifest("system", nav("System", "General", "/"))
 	system.Socket = "/live/system.sock"
@@ -153,17 +206,17 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 func TestBuildNavActiveSectionExpands(t *testing.T) {
 	s := navServer(
 		manifest("net", nav("Network", "Interfaces", "/")),
-		manifest("fw", nav("Firewall", "Zones", "/")),
+		manifest("fw", nav("Security", "Firewall", "/")),
 	)
 	sections := s.buildNav("/plugins/fw/")
 	for _, sec := range sections {
-		wantOpen := sec.Title == "Firewall" // only the section holding the active page is open
+		wantOpen := sec.Title == "Security" // only the section holding the active page is open
 		if sec.Open != wantOpen {
 			t.Fatalf("section %q open = %v, want %v", sec.Title, sec.Open, wantOpen)
 		}
 		for _, l := range sec.Links {
-			if l.Active != (sec.Title == "Firewall") {
-				t.Fatalf("link %q active = %v, want %v", l.Label, l.Active, sec.Title == "Firewall")
+			if l.Active != (sec.Title == "Security") {
+				t.Fatalf("link %q active = %v, want %v", l.Label, l.Active, sec.Title == "Security")
 			}
 		}
 	}
@@ -174,14 +227,14 @@ func TestBuildNavActiveSectionExpands(t *testing.T) {
 // used to stay active on Redirects/Rules because it prefix-matched their URLs.
 func TestBuildNavDeepSubpageMarksOnlyItself(t *testing.T) {
 	s := navServer(manifest("firewall",
-		nav("Firewall", "Zones", "/"),
-		nav("Firewall", "Redirects", "/redirects"),
-		nav("Firewall", "Traffic rules", "/rules"),
+		nav("Security", "Zones", "/"),
+		nav("Security", "Redirects", "/redirects"),
+		nav("Security", "Traffic rules", "/rules"),
 	))
 	sections := s.buildNav("/plugins/firewall/redirects")
 	var fw navSection
 	for _, sec := range sections {
-		if sec.Title == "Firewall" {
+		if sec.Title == "Security" {
 			fw = sec
 		}
 	}
@@ -199,7 +252,7 @@ func TestBuildNavDeepSubpageMarksOnlyItself(t *testing.T) {
 // unaffected.
 func TestBuildNavHidesDeadPlugins(t *testing.T) {
 	s := navServer(
-		manifest("fw", nav("Firewall", "Zones", "/")),
+		manifest("fw", nav("Security", "Firewall", "/")),
 		manifest("vpn", nav("VPN", "WireGuard", "/")),
 	)
 	s.manifests[0].Socket = "/dead/fw.sock"
@@ -209,7 +262,7 @@ func TestBuildNavHidesDeadPlugins(t *testing.T) {
 	sections := s.buildNav("/")
 	assertTitles(t, sections, "Status", "System", "VPN")
 	for _, sec := range sections {
-		if sec.Title == "Firewall" {
+		if sec.Title == "Security" {
 			t.Fatalf("dead plugin still contributes section %q", sec.Title)
 		}
 	}

@@ -10,10 +10,10 @@ import (
 
 // coreSectionOrder is the shell-owned core taxonomy (ADR-009 §2): these sections
 // render first, in exactly this order, ahead of any plugin-introduced section.
-// Status is served by the shell itself; Network, Firewall and System are backed
+// Status is served by the shell itself; Network, Security and System are backed
 // by bundled first-party plugins. Membership here is a nav-ordering guarantee, not
 // a mechanism — every configuring section is still an ADR-006 plugin.
-var coreSectionOrder = []string{"Status", "Network", "Firewall", "System"}
+var coreSectionOrder = []string{"Status", "Network", "Security", "System"}
 
 // coreRank returns a section title's position in the core taxonomy, and whether
 // it is a core section at all. Non-core (plugin-introduced) sections sort after
@@ -54,11 +54,12 @@ type navLink struct {
 }
 
 // navModel is the device-first sidebar: a few everyday "basic" rows on top, then the
-// technical pages grouped under a collapsible "Advanced settings" seam. System is a
-// stable top-level destination of its own: its frame combines live plugin registrations
-// with the shell-owned administration pages. The remaining manifest-driven sections
-// live under Advanced. The everyday rows are the plain-language destinations a
-// non-technical person reaches for (placeholders until their pages exist).
+// technical pages grouped under a collapsible "Advanced settings" seam. Security and
+// System are stable top-level destinations of their own — System's frame combines live
+// plugin registrations with the shell-owned administration pages, Security is one
+// plugin's domain — so neither also appears under Advanced. The remaining
+// manifest-driven sections live there. The everyday rows are the plain-language
+// destinations a non-technical person reaches for.
 type navModel struct {
 	Basic    []navLink
 	Advanced []navGroup
@@ -80,26 +81,31 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	basic := func(label, icon, href string) navLink {
 		return navLink{Label: tr(label), Icon: icon, Href: href, Active: isActive(active, href)}
 	}
+	// Security and System are domain rows rather than page links: each leads to the
+	// first live registered page filed under its section and stays Active anywhere
+	// inside that domain, plugin URLs included. System also holds shell-owned pages,
+	// so it always resolves somewhere; Security is one plugin, and leads nowhere
+	// while that plugin is not answering.
+	security := basic("Security", "shield", s.sectionHref("Security"))
+	security.Active = s.isSectionPath("Security", active)
+	system := basic("System", "settings", "/system")
+	if pages := s.systemPages(active); len(pages) > 0 {
+		system.Href = pages[0].Href
+	}
+	system.Active = s.isSystemPath(active)
+
 	m := navModel{Basic: []navLink{
 		basic("Home", "house", "/"),
 		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "success"},
 		{Label: tr("Devices"), Icon: "devices", Href: "#", Detail: "9"},
 		basic("Wi-Fi", "wifi", "#"),
 		basic("Family", "users", "#"),
-		basic("Safety", "shield", "#"),
-		basic("System", "settings", "/system"),
+		security,
+		system,
 	}}
-	// System's destination is its first live registered page (normally the
-	// bundled General plugin), falling back naturally to the first shell page.
-	// The row represents the whole mixed-ownership domain, including plugin URLs.
-	pages := s.systemPages(active)
-	if len(pages) > 0 {
-		m.Basic[len(m.Basic)-1].Href = pages[0].Href
-	}
-	m.Basic[len(m.Basic)-1].Active = s.isSystemPath(active)
 	for _, sec := range s.buildNav(active) {
-		if sec.Title == "Status" || sec.Title == "System" {
-			continue // Home and System are first-class destinations above the seam
+		if sec.Title == "Status" || sec.Title == "Security" || sec.Title == "System" {
+			continue // Home, Security and System are first-class destinations above the seam
 		}
 		links := make([]navLink, len(sec.Links))
 		for i, l := range sec.Links {
@@ -195,21 +201,45 @@ func (s *Server) buildNav(active string) []navSection {
 }
 
 // isSystemPath reports whether a request belongs to either a shell-owned
-// System page or any manifest-registered System plugin page. Liveness is not
-// required here: a direct URL to a stopped plugin still belongs visually to
-// System while it explains that the plugin is unavailable.
+// System page or any manifest-registered System plugin page.
 func (s *Server) isSystemPath(active string) bool {
 	if active == "/system" || strings.HasPrefix(active, "/system/") {
 		return true
 	}
+	return s.isSectionPath("System", active)
+}
+
+// isSectionPath reports whether a request belongs to any manifest-registered
+// page of one nav section. Liveness is not required here: a direct URL to a
+// stopped plugin still belongs visually to its domain while it explains that the
+// plugin is unavailable.
+func (s *Server) isSectionPath(section, active string) bool {
 	for _, m := range s.manifestList() {
 		for _, entry := range m.Nav {
-			if entry.Section == "System" && isActive(active, pluginHref(m.ID, entry.Path)) {
+			if entry.Section == section && isActive(active, pluginHref(m.ID, entry.Path)) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// sectionHref is a domain row's destination: the first live registered page
+// filed under that section, in discovery (id-sorted) order. A section no
+// answering plugin fills has no destination — the row leads nowhere rather than
+// to a URL that reports the plugin is unavailable.
+func (s *Server) sectionHref(section string) string {
+	for _, m := range s.manifestList() {
+		if !s.probe(m.Socket) {
+			continue
+		}
+		for _, entry := range m.Nav {
+			if entry.Section == section {
+				return pluginHref(m.ID, entry.Path)
+			}
+		}
+	}
+	return "#"
 }
 
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount

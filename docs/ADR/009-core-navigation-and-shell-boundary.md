@@ -51,19 +51,21 @@ call: **on a gateway the firewall is not optional, so it is core.**
    |-------|----------|--------------------------------------------------------------|
    | 1     | Status   | overview, logs, realtime graphs, processes, routes           |
    | 2     | Network  | interfaces, wireless, DHCP/DNS, static routes, diagnostics   |
-   | 3     | Firewall | zones, port forwards, traffic rules, NAT                     |
+   | 3     | Security | firewall zones, port forwards, traffic rules, NAT            |
    | 4     | System   | general/time, admin (password/SSH), startup, cron, backup, reboot |
 
    This ordered list is data the shell owns — the analog of `luci-base` declaring
    the top-level slots — but it does not drive the top-level chrome directly. The
    sidebar is device-first: a few everyday, plain-language rows (Home, Internet,
-   Devices, Wi-Fi, Family, Safety — several still `#` placeholders) sit up top for
-   the least-technical operator, and the core sections sit below them under a
-   collapsible **Advanced settings** seam. Status is not one of those groups; it is
-   the **Home** overview at the head of the everyday rows, so status never appears
-   twice and the nav carries no live state. Within Advanced the sections render in
-   this canonical order, ahead of any non-core section, so the seam is coherent and
-   deterministic regardless of plugin discovery order.
+   Devices, Wi-Fi, Family, Security, System — several still `#` placeholders) sit up
+   top for the least-technical operator, and the remaining core sections sit below
+   them under a collapsible **Advanced settings** seam. Three sections are not
+   groups in that seam. Status is the **Home** overview at the head of the everyday
+   rows, so status never appears twice and the nav carries no live state; Security
+   and System are everyday rows of their own, each leading to the first live page
+   registered under it and lit anywhere inside that domain. Within Advanced the
+   remaining sections render in this canonical order, ahead of any non-core section,
+   so the seam is coherent and deterministic regardless of plugin discovery order.
 
 3. **The shell serves its own machinery and generic platform administration
    directly; feature-specific device configuration is a plugin.** Four bounded
@@ -120,7 +122,7 @@ call: **on a gateway the firewall is not optional, so it is core.**
    What makes a section *core* is its position in the fixed taxonomy (2), not a
    hardcoded page list. The shell contributes only pages it owns; plugin pages
    exist in navigation only through their live manifest registrations. Bundled
-   first-party plugins provide Network, Firewall, and System configuration on a
+   first-party plugins provide Network, Security, and System configuration on a
    healthy image, but stopping one withdraws its navigation entries just like any
    other plugin. Its direct URL remains mounted and degrades to the ADR-006
    "unavailable" card — never a 500.
@@ -131,8 +133,12 @@ call: **on a gateway the firewall is not optional, so it is core.**
    next to manifest-registered plugin pages (General, SSH, cron). The bundled
    System plugin's manifest registers General; the shell neither predeclares nor
    conditionally hides it. The System destination is the first live registered
-   page, falling back to Access when no System plugin page is available. Status is
-   shell-only; Firewall is one plugin end to end; System is mixed.
+   page, falling back to Access when no System plugin page is available. The
+   Security destination resolves the same way, with no shell-owned pages behind
+   it: the section's one occupant is the firewall plugin, so the row leads
+   nowhere while that plugin is not answering, and the shell never merges its
+   heading or subpage bar the way the mixed System frame does. Status is
+   shell-only; Security is one plugin end to end; System is mixed.
 
    **Page ownership is not exclusive composition.** Shell page templates publish a
    stable hook at every semantic seam between their sections (ADR-005, ADR-006). A
@@ -145,11 +151,12 @@ call: **on a gateway the firewall is not optional, so it is core.**
    write intent. A missing or failed contribution degrades only its hook and never
    removes or blocks unchanged shell content.
 
-4. **Firewall is core, and — because it configures the device — it is a plugin.**
-   In LuCI the firewall is `luci-app-firewall`, an optional app. In Verso it is a
-   core section (slot 3, guaranteed present) backed by a bundled first-party plugin
-   (`verso-plugin-firewall`). It falls on the plugin side of §3 by the same rule as
-   Network and System: it *writes device configuration*. Rationale for core: a
+4. **Security is core, and — because it configures the device — it is a plugin.**
+   In LuCI the firewall is `luci-app-firewall`, an optional app. In Verso it fills
+   a core section (slot 3, guaranteed present) named for what the operator came to
+   do rather than for the subsystem that does it, backed by a bundled first-party
+   plugin (`verso-plugin-firewall`). It falls on the plugin side of §3 by the same
+   rule as Network and System: it *writes device configuration*. Rationale for core: a
    Verso device is a gateway, and a gateway without firewall management is not a
    product. Keeping it a plugin (not in-shell) is deliberate and *stronger* here,
    not weaker — the firewall is the most privileged, most nftables-adjacent
@@ -226,12 +233,12 @@ call: **on a gateway the firewall is not optional, so it is core.**
   state to resolve to 404.
 - Section membership is the plugin's declaration (`nav[].section`); the shell does
   not police which section a third-party plugin joins. A plugin filing itself
-  under "Firewall" places its links there — coherence of *membership* is a review
+  under "Security" places its links there — coherence of *membership* is a review
   concern, not a mechanical gate, consistent with ADR-006's data-driven nav.
 
 ## Alternatives considered
 
-- **All device configuration in-shell (two mechanisms).** Serve Network/Firewall/
+- **All device configuration in-shell (two mechanisms).** Serve Network/Security/
   System *configuration* directly from the shell binary for speed, reserve the
   plugin contract for third parties. Rejected: it forks the rendering path (ADR-005
   consistency now has two enforcers), forks the privilege model, and puts the
@@ -252,7 +259,7 @@ call: **on a gateway the firewall is not optional, so it is core.**
 - **Basic identity as a System plugin.** Put hostname and timezone behind a
   bundled System plugin rather than in the shell. **Adopted.** General (hostname,
   timezone) writes device configuration, so it falls on the plugin side of §3's
-  rule like Network and Firewall: it ships as a bundled first-party plugin filing
+  rule like Network and Security: it ships as a bundled first-party plugin filing
   into the System section. Its manifest registration is the sole source of the
   General navigation entry; if the process is absent the entry is withdrawn, while
   a direct plugin URL degrades to the ADR-006 "unavailable" card. One configuration
