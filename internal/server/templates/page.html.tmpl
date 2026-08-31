@@ -159,11 +159,12 @@
     {{else if .Heading}}
     <h2 class="text-2xl font-normal tracking-tight mb-10">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h2>
     {{end}}
-    {{/* The PRG flash: the one-shot confirmation of the action that just
-         redirected here. Rendered once by the chrome, gone on the next view. */}}
+    {{/* The flash: the one-shot outcome at the top of the content — a PRG
+         confirmation, or a plugin envelope's notice. Coloured by the tone
+         vocabulary; rendered once by the chrome, gone on the next view. */}}
     {{if .FlashMessage}}
-    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700{{else}}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300{{end}}">
-      {{if eq .FlashVariant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
+    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700 dark:border-red-500/15 dark:bg-red-500/10 dark:text-red-300{{else if eq .FlashVariant "warning"}}border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-300{{else if eq .FlashVariant "info"}}border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300{{else}}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300{{end}}">
+      {{if eq .FlashVariant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else if eq .FlashVariant "warning"}}{{icon "triangle-alert" "size-4 shrink-0"}}{{else if eq .FlashVariant "info"}}{{icon "info" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
       <span>{{.FlashMessage}}</span>
     </div>
     {{end}}

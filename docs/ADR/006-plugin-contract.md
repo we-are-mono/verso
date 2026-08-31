@@ -47,9 +47,9 @@ over a local socket**, exchanging *data*, not markup.
    ```json
    {
      "manifest_version": 1,
-     "id": "hostname",
+     "id": "system",
      "name": "System — General",
-     "socket": "/var/run/verso/hostname.sock",
+     "socket": "/var/run/verso/system.sock",
      "schema_version": 1,
      "nav": [ { "section": "System", "label": "General", "path": "/" } ],
      "acl": { "write": [ { "scope": "uci", "object": "system", "function": "write" } ] }
@@ -112,7 +112,12 @@ over a local socket**, exchanging *data*, not markup.
    entry is `{label, path}` relative to the plugin's mount; the shell builds the href
    and marks the active tab, so a plugin cannot aim the bar outside itself. `banner`
    is a full-width `{variant, title, body}` notice the shell renders at the navigation
-   seam. Every field is optional: a plugin that sends only `schema_version`, `title`,
+   seam — standing page state, visible above the heading. `notice` is the *outcome*
+   of the action this render answers — `{level, text}`, level in the tone vocabulary
+   (`success` | `warning` | `danger` | `info`) — rendered in the shell's flash slot,
+   exactly where and how the shell's own confirmations appear. An outcome is stated
+   as intent, never composed as widgets, so a plugin cannot get it wrong. Every
+   field is optional: a plugin that sends only `schema_version`, `title`,
    and `widget` gets a plain page. A successful POST may also carry a closed-set
    `apply` intent for a typed non-UCI operation that follows the UCI apply; the
    shell accepts it only when the plugin declared its exact rpcd scope.
@@ -121,8 +126,9 @@ over a local socket**, exchanging *data*, not markup.
    in-band.** A POST that fails validation returns HTTP **422** with the *same*
    envelope — the form re-rendered, each offending field carrying its `error` and
    its submitted `value`. A POST that succeeds returns **200** with the
-   re-rendered page (a success `badge`/`raw` note; the live-apply gap is the
-   author's to surface). The shell does not interpret field semantics; it renders
+   re-rendered page, its outcome stated in the envelope's `notice` (the
+   live-apply gap is the author's to surface in the notice's text). The shell
+   does not interpret field semantics; it renders
    whatever tree comes back. This keeps tier-3 (server-side, authoritative)
    validation entirely inside the plugin, where it belongs, while tier-1
    (declarative `datatype`) validation is expressed in the schema and can be
@@ -151,15 +157,25 @@ over a local socket**, exchanging *data*, not markup.
    gateway, and the isolation contract above — with no plugin process and no
    device.
 
-9. **Naming and filesystem conventions.**
+9. **The wire contract is the API; the SDK is its typed mirror.** A plugin may
+   be written in any language by hand-writing envelope JSON — nothing the
+   contract guarantees may depend on the SDK. The Rust SDK exists to make the
+   right widget as easy to emit as any other: a typed `Widget` model mirroring
+   the vocabulary (the editor's completion is the catalog), never an
+   escape-hatch builder set that makes `raw` the one-liner. The SDK's
+   serialization is pinned to the shell's decoder by conformance fixtures — the
+   SDK's tests serialize each widget kind to `testdata/`, the shell's tests
+   decode every fixture — so the two catalogs cannot drift apart silently.
+
+10. **Naming and filesystem conventions.**
    - **Program / repository:** a plugin is distributed as `verso-plugin-<name>`
-     (e.g. `verso-plugin-hostname`) and is **its own repository and Go module**,
+     (e.g. `verso-plugin-system`) and is **its own repository and module**,
      independent of the shell's build — crash isolation extends to build
      isolation, so no plugin can break the shell's compile any more than its
      runtime. First-party plugin *sources* live in the shell repo's gitignored
      `./plugins/` directory purely for dev convenience; they are built and
      installed on their own.
-   - **Manifest `id`:** the short `<name>` (e.g. `hostname`), **without** the
+   - **Manifest `id`:** the short `<name>` (e.g. `system`), **without** the
      `verso-plugin-` prefix. The id namespaces the `/plugins/<id>/` mount and the
      socket; the prefix lives on the program name, not the id.
    - **Socket:** by convention `/var/run/verso/<id>.sock` (the manifest states it

@@ -62,6 +62,7 @@ type Envelope struct {
 	Width         string          `json:"width"`         // page width preset: "narrow" | "normal" (default) | "wide"
 	Pages         []PageTab       `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
 	Banner        *Banner         `json:"banner"`        // optional full-width semantic notice beneath the subpage bar
+	Notice        *Notice         `json:"notice"`        // optional outcome flash for this render, shown in the shell's flash slot
 	Widget        json.RawMessage `json:"widget"`
 	Commit        []CommitOp      `json:"commit"`
 	Apply         []ApplyAction   `json:"apply"`
@@ -75,6 +76,16 @@ type Banner struct {
 	Variant string `json:"variant"` // "info" | "warning" | "danger"
 	Title   string `json:"title"`
 	Body    string `json:"body"`
+}
+
+// Notice is the outcome of the action this render answers — "saved", "could not
+// read the form", "takes effect on reboot" — stated as intent, never composed as
+// widgets. The shell renders it in its own flash slot, so a plugin's outcome and
+// the shell's are indistinguishable. Standing page state belongs in Banner; a
+// contextual note beside content belongs in a callout; prose belongs in raw.
+type Notice struct {
+	Level string `json:"level"` // the tone vocabulary: "success" | "warning" | "danger" | "info"
+	Text  string `json:"text"`
 }
 
 // PageTab is one subpage in a domain's top bar (the third navigation tier:

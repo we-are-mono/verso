@@ -1134,6 +1134,38 @@ func TestValidateSchemaAnnotatesAndPreservesPluginErrors(t *testing.T) {
 	}
 }
 
+// TestPluginNoticeRendersInFlashSlot: the envelope's notice is the outcome
+// channel (ADR-006 §4) — the shell shows it in its own flash slot, toned by
+// its level, so a plugin's outcome and the shell's are indistinguishable.
+func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Notice: &plugin.Notice{Level: "warning", Text: "Takes effect on the next reload."},
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	body := get(t, s, "/plugins/demo/").Body.String()
+	for _, want := range []string{`<div class="verso-flash`, "Takes effect on the next reload.", "border-amber-200"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("notice flash missing %q", want)
+		}
+	}
+}
+
+// TestPluginWithoutNoticeShowsNoFlash: no notice, no flash strip.
+func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+
+	if body := get(t, s, "/plugins/demo/").Body.String(); strings.Contains(body, `<div class="verso-flash`) {
+		t.Error("a plugin page without a notice must carry no flash strip")
+	}
+}
+
 // TestValidateSchemaCoversNestedContainers: the datatype gate reaches a field
 // no matter which container it nests in — a modal, a tab, a wizard step, a
 // conditions item, a drawer, or a table row's drawer. Each of these was once

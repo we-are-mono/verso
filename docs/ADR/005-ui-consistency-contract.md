@@ -34,7 +34,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
 4. **A governed "raw" bridge.** When no widget fits, an author may emit a `raw`
    element: **display-only**, **Markdown** (not HTML/CSS), rendered through Verso's
    styling and sanitizer. It grants content freedom, never appearance control.
-   Interactivity (inputs, forms) is never available in raw.
+   Interactivity (inputs, forms) is never available in raw. Raw is for **prose** —
+   running text no widget shapes. An outcome notice, a machine value, or an empty
+   state rendered through raw is a defect, not a style choice: each has an owner
+   (the envelope's `notice` channel — ADR-006 §4 — `code`/`properties`, and
+   `empty`).
 5. **Raw stays a bridge by mechanism, not goodwill.** `raw` is an explicit type,
    rendered with a visible "raw" affordance, and instrumented — its usage is the demand
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →

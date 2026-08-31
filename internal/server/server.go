@@ -293,6 +293,17 @@ func localizeBanner(b *plugin.Banner, tr func(string) string) *plugin.Banner {
 	return &c
 }
 
+// localizeNotice returns a copy of the notice with its text localized, or nil
+// for no notice — the flash-slot counterpart to localizeBanner.
+func localizeNotice(n *plugin.Notice, tr func(string) string) *plugin.Notice {
+	if n == nil {
+		return nil
+	}
+	c := *n
+	c.Text = tr(c.Text)
+	return &c
+}
+
 // pluginLocalize is localize for a plugin render: the request's language and the
 // plugin's base⊕plugin translator, so the plugin's page and manifest labels resolve
 // from its own catalog while shell-owned widget defaults fall through to base
@@ -486,9 +497,9 @@ type pageData struct {
 	HasPageForm bool
 	Pages       []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
 	Modes       []pageTab // optional local views, rendered as a compact switch beside the heading
-	// Flash is the one-shot confirmation from the last action (PRG): shown
-	// once at the top of the content, then gone.
-	FlashVariant string // "success" | "danger" | "" (no flash)
+	// Flash is the one-shot outcome at the top of the content: the PRG
+	// confirmation from a redirect, or a plugin envelope's notice.
+	FlashVariant string // the tone vocabulary: "success" | "warning" | "danger" | "info" | "" (no flash)
 	FlashMessage string
 }
 
@@ -514,6 +525,7 @@ type pageHeader struct {
 	Live         bool
 	Subheading   string
 	Banner       *plugin.Banner
+	Notice       *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
 	Modes        []pageTab
 }
 
@@ -530,6 +542,12 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	capsule := s.capsule(r.Context(), s.sessionSID(r))
 	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
 	flashVariant, flashMessage := s.takeFlash(r)
+	// A plugin's outcome notice rides the same flash slot as the shell's PRG
+	// flash (one treatment for one meaning); the redirect flash, being the
+	// operator's own just-completed action, wins if both are present.
+	if flashMessage == "" && hdr.Notice != nil && hdr.Notice.Text != "" {
+		flashVariant, flashMessage = hdr.Notice.Level, hdr.Notice.Text
+	}
 	// The top bar mixes shell tabs and plugin tabs; localize each label from its
 	// owner's catalog (base for the shell's, the plugin's for a plugin's — ADR-012
 	// §5) and name the active face in the headline in muted ink so the domain stays

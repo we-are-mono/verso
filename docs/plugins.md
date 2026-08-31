@@ -145,6 +145,13 @@ envelope** back — `Content-Type: application/json`:
   beneath the subpage bar (or in its place when there is no bar). Reserve it for
   a state important enough to remain visible above the page heading; use an
   in-content `callout` for ordinary context.
+- `notice` — optional `{level, text}`: the *outcome* of the action this render
+  answers ("Saved.", "Could not read the form.", "Takes effect on the next
+  reload."). `level` speaks the tone vocabulary (`success` | `warning` |
+  `danger` | `info`). The shell renders it in its own flash slot, exactly where
+  its own confirmations appear — state the outcome, never compose it from
+  widgets. Standing state belongs in `banner`; context beside content in a
+  `callout`.
 - `immediate` — optional boolean for a page made only of direct commands rather
   than staged configuration. It omits the capsule when the shared UCI stage is
   clean; pending changes from elsewhere remain visible. It does not make a
@@ -320,8 +327,8 @@ START=80          # before the shell (verso is START=95): your socket is up soon
 STOP=10
 
 start_service() {
-    procd_open_instance hostname     # a NAMED instance -> procd runs exactly one
-    procd_set_param command /usr/bin/verso-plugin-hostname
+    procd_open_instance system       # a NAMED instance -> procd runs exactly one
+    procd_set_param command /usr/bin/verso-plugin-system
     procd_set_param respawn 3600 5 5 # self-heal crashes; give up after 5 in 3600s
     procd_set_param stdout 1
     procd_set_param stderr 1         # your logs/crashes -> syslog -> `logread`
@@ -765,14 +772,18 @@ declaration.)
 
 ### raw — the governed bridge
 
-Display-only Markdown, for when no widget fits. Sanitised (no HTML passthrough,
-dangerous URL schemes stripped) and rendered through Verso's styling with a
-visible "raw" affordance. **Never interactive** — no inputs, no forms. Its usage
-is metered as the demand signal for the next widget; treat it as a temporary
+Display-only Markdown, for **prose** — running text no widget shapes. Sanitised
+(no HTML passthrough, dangerous URL schemes stripped) and rendered through
+Verso's styling. **Never interactive** — no inputs, no forms. Its usage is
+metered as the demand signal for the next widget; treat it as a temporary
 bridge, not a home.
 
+An outcome message, a machine value, or an empty state in `raw` is a defect,
+not a style choice — each has an owner: the envelope's `notice` for outcomes,
+`code`/`properties` for values, `empty` for nothing-here states.
+
 ```json
-{ "type": "raw", "markdown": "**Note:** applied on next reboot." }
+{ "type": "raw", "markdown": "WireGuard keeps a tunnel silent until traffic flows, so a peer can look idle while it is perfectly healthy." }
 ```
 
 ## Validation
@@ -809,32 +820,33 @@ it. They are LuCI's names, so OpenWrt authors already know them.
 | `host` | a hostname or an IP address |
 | `port` | a port number, 1–65535 |
 
-## A worked example: verso-plugin-hostname
+## A worked example: verso-plugin-system
 
-The reference plugin (`verso-plugin-hostname`, its own module) manages the system
-hostname and NTP server list. It was written **only from this document** — it
-shares no Go code with the shell. Its whole shape:
+The reference plugin (`verso-plugin-system`, Rust on the `verso-plugin` SDK)
+manages the device's identity and clock: hostname, timezone, and time
+synchronization. It speaks only the documented JSON contract — it shares no
+code with the shell. Its whole shape:
 
 - **manifest.json** places one entry under System → General, and declares
-  `acl.read` and `acl.write` for the `system` config.
-- **GET /** reads the hostname and NTP servers from the `X-Verso-UCI` snapshot the
-  shell brokered (it links no uci library) and returns a
-  `card` → `form` → (`field` hostname + `list` servers) envelope.
-- **POST /** reads `hostname` and the multi-value `server` field and returns a
-  `commit` intent setting `system.@system[0].hostname` and the `server` list,
-  which the shell writes and commits through rpcd. The plugin declares the
-  datatypes (`fqdn` for the hostname, `host` for each server) and does no
-  validation of its own; if a value fails its datatype the shell re-renders the
-  form with the error and applies nothing. The plugin runs unprivileged and
-  touches no config itself.
-
-The shell writes and commits, but the values apply on the next service reload —
-the plugin surfaces that live-apply caveat with a `raw` note. That is the honest
-use of the bridge: an explanatory message no widget yet covers, which is exactly
-the signal for whether a future "note" widget is worth building.
+  `acl.read` and `acl.write` for the `system` config (plus the rpcd scope for
+  its one apply action).
+- **GET /** reads the system section and the timeserver section from the
+  `X-Verso-UCI` snapshot the shell brokered (it links no uci library) and
+  returns a page-style `form` of three `section`s — identity, time and region,
+  synchronization — built from the SDK's typed `Widget` model. The NTP block is
+  a `conditional`: time servers while automatic sync is on, a manual
+  `datetime-local` field while it is off.
+- **POST /** echoes the submission and returns `commit` intents for
+  `system.@system[0]` and the timeserver section (created by `type` when
+  missing), which the shell stages through rpcd. Manual time also returns the
+  typed `set-system-time` `apply` action the shell performs after the stage
+  applies. The plugin declares datatypes (`hostname`, `host`) and adds its own
+  semantic checks (the timezone must come from its catalog; the manual datetime
+  must be calendar-valid), returning the re-rendered form with inline field
+  errors when one fails — the shell blocks the write (ADR-008).
 
 It runs under procd (above); point the shell's `$VERSO_PLUGINS_DIR` at the
-installed manifest and the page appears at `/plugins/hostname/`.
+installed manifest and the page appears at `/plugins/system/`.
 
 ## Conformance checklist
 

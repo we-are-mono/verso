@@ -132,6 +132,21 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return s.unavailable(m, tr), http.StatusOK
 	}
 
+	// The raw gauge (ADR-005 §5): raw is instrumented because its usage is the
+	// demand signal for the next widget. Dev sessions log it; production pays
+	// nothing (s.devCSS is set only under scripts/dev.sh).
+	if s.devCSS != "" {
+		rawCount := 0
+		widget.Walk(wdg, func(n widget.Widget) {
+			if _, ok := n.(*widget.Raw); ok {
+				rawCount++
+			}
+		})
+		if rawCount > 0 {
+			log.Printf("verso: dev: plugin %q page %q carries %d raw widget(s) — check whether an existing widget or the envelope notice fits (ADR-005 §5)", m.ID, pluginPath, rawCount)
+		}
+	}
+
 	status := http.StatusOK
 	if env.Status == http.StatusUnprocessableEntity {
 		status = http.StatusUnprocessableEntity
@@ -181,6 +196,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Live = env.Live
 	hdr.Subheading = tr(env.Subheading)
 	hdr.Banner = localizeBanner(env.Banner, tr)
+	hdr.Notice = localizeNotice(env.Notice, tr)
 	*width = env.Width
 	// The subpage tabs carry the plugin id, so renderPage localizes their labels
 	// from the plugin's catalog (ADR-012 §5) — no need to pre-translate here.
