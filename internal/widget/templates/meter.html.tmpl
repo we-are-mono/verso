@@ -12,7 +12,7 @@
   <svg viewBox="0 0 120 120" class="mx-auto w-full max-w-[7.5rem]" role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
     <circle cx="60" cy="60" r="50" fill="none" stroke-width="11" class="stroke-slate-200"/>
     <circle cx="60" cy="60" r="50" fill="none" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{.Dash}}" transform="rotate(-90 60 60)" data-verso-meter-ring
-      class="verso-meter-ring {{if eq .Band "info"}}stroke-sky-600{{else if eq .Band "danger"}}stroke-red-600{{else if eq .Band "warn"}}stroke-amber-500{{else}}stroke-green-600{{end}}"/>
+      class="verso-meter-ring {{if eq .Band "info"}}stroke-sky-600{{else if eq .Band "danger"}}stroke-red-600{{else if eq .Band "warning"}}stroke-amber-500{{else}}stroke-green-600{{end}}"/>
     <text x="60" y="53" text-anchor="middle" dominant-baseline="central" font-size="27" font-weight="700" class="fill-slate-900 tabular-nums" data-verso-meter-value>{{.Value}}</text>
     {{if or .Unit .Name}}<text x="60" y="74" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" class="fill-slate-500" data-verso-meter-unit>{{.Unit}}</text>{{end}}
   </svg>

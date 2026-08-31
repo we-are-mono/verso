@@ -9,7 +9,10 @@ import "io"
 // short text, optionally with a leading status dot. The shell maps the variant to
 // its palette, so "connected" always looks the same across the UI.
 type Badge struct {
-	Variant string `json:"variant"` // "neutral" (default) | "success" | "warning" | "danger" | "info"
+	// Variant is the tone vocabulary — the one spelling every widget's semantic
+	// state speaks (a badge/callout variant, a stat/hero verdict, a meter band,
+	// a status dot): "neutral" (default) | "success" | "warning" | "danger" | "info".
+	Variant string `json:"variant"`
 	Text    string `json:"text"`
 	Dot     bool   `json:"dot"`            // show a leading status dot (e.g. online/offline)
 	Icon    string `json:"icon,omitempty"` // optional leading icon, by Lucide name (instead of, or beside, the dot)

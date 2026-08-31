@@ -19,8 +19,8 @@ type Facts struct {
 	ThermalCount int // thermal sources the box exposes
 }
 
-// Temp is the CPU temperature with its trip-derived status and a colour level
-// ("emerald"|"amber"|"red") for the dot.
+// Temp is the CPU temperature with its trip-derived status and a tone level
+// ("success"|"warning"|"danger") for the dot.
 type Temp struct {
 	MilliC int
 	Status string
@@ -194,11 +194,11 @@ func classify(milliC int, trips []Trip) (status, level string) {
 	}
 	switch {
 	case milliC >= crit:
-		return "Critical", "red"
+		return "Critical", "danger"
 	case milliC >= warn:
-		return "Warm", "amber"
+		return "Warm", "warning"
 	default:
-		return "Normal", "emerald"
+		return "Normal", "success"
 	}
 }
 

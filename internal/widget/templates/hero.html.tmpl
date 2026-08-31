@@ -6,12 +6,12 @@
      serif display face (font-serif) so the verdict reads as a human line. Icon from
      the shared Lucide set (icons.go); CTA children sit at the end. */}}
 <div class="flex flex-col gap-5 rounded-2xl border p-7 sm:flex-row sm:items-center sm:gap-6
-  {{if eq .Variant "good"}}border-green-200 bg-green-50
+  {{if eq .Variant "success"}}border-green-200 bg-green-50
   {{else if eq .Variant "danger"}}border-red-200 bg-red-50
   {{else if eq .Variant "warning"}}border-amber-200 bg-amber-50
   {{else}}border-sky-200 bg-sky-50{{end}}">
   <span class="grid size-16 shrink-0 place-items-center rounded-2xl text-white shadow-md
-    {{if eq .Variant "good"}}bg-green-600
+    {{if eq .Variant "success"}}bg-green-600
     {{else if eq .Variant "danger"}}bg-red-600
     {{else if eq .Variant "warning"}}bg-amber-600
     {{else}}bg-sky-600{{end}}">{{icon .Icon "size-8"}}</span>

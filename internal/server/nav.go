@@ -46,8 +46,8 @@ type navLink struct {
 	// rather than the shell's base (ADR-012 §5).
 	PluginID string
 	// Optional trailing detail on the right of a basic row — a short word or count with an
-	// optional leading dot; Variant tints it ("good" = green). A couple of examples today;
-	// any row can grow one later.
+	// optional leading dot; Variant tints it (the tone vocabulary, "success" = green).
+	// A couple of examples today; any row can grow one later.
 	Detail  string
 	Dot     bool
 	Variant string
@@ -82,7 +82,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	}
 	m := navModel{Basic: []navLink{
 		basic("Home", "house", "/"),
-		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "good"},
+		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "success"},
 		{Label: tr("Devices"), Icon: "devices", Href: "#", Detail: "9"},
 		basic("Wi-Fi", "wifi", "#"),
 		basic("Family", "users", "#"),

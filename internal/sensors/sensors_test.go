@@ -75,7 +75,7 @@ func TestResolveProfiled(t *testing.T) {
 	if f.CPUTemp == nil || f.CPUTemp.MilliC != 52000 {
 		t.Fatalf("cpu temp: %+v", f.CPUTemp)
 	}
-	if f.CPUTemp.Status != "Normal" || f.CPUTemp.Level != "emerald" {
+	if f.CPUTemp.Status != "Normal" || f.CPUTemp.Level != "success" {
 		t.Fatalf("cpu status: %+v", f.CPUTemp)
 	}
 	if f.Fan == nil || f.Fan.RPM != 3630 { // the running channel, not the empty header
@@ -89,14 +89,14 @@ func TestResolveProfiled(t *testing.T) {
 	}
 }
 
-// A hot reading past the passive trip grades Warm/amber.
+// A hot reading past the passive trip grades Warm/warning.
 func TestResolveWarm(t *testing.T) {
 	root := t.TempDir()
 	zone(t, root, 0, "cluster-thermal", 88000, [][2]string{{"passive", "85000"}, {"critical", "95000"}})
 	p := &Profile{Thermal: []Entry{{Path: "cluster-thermal", CPU: true}}}
 	f := Resolve(p, &Reader{Root: filepath.Join(root, "sys")})
-	if f.CPUTemp == nil || f.CPUTemp.Status != "Warm" || f.CPUTemp.Level != "amber" {
-		t.Fatalf("expected warm/amber: %+v", f.CPUTemp)
+	if f.CPUTemp == nil || f.CPUTemp.Status != "Warm" || f.CPUTemp.Level != "warning" {
+		t.Fatalf("expected warm/warning: %+v", f.CPUTemp)
 	}
 }
 

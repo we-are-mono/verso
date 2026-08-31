@@ -20,7 +20,7 @@ func TestRenderOverview(t *testing.T) {
 		Model:       "Mono Gateway Development Kit",
 		Firmware:    "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
 		WANKnown: true, WANUp: true, WANUptime: "2h 14m",
-		Temperature: "52 °C · Normal", TempDot: "emerald",
+		Temperature: "52 °C · Normal", TempDot: "success",
 		Fan: "3630 rpm", Power: "12.4 W", SensorSummary: "8 power · 5 thermal",
 		V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},

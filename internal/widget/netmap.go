@@ -26,12 +26,12 @@ type NetMap struct {
 
 // NetNode is one box on the map. The source and hub show an icon over a label
 // with a caption beneath; a leaf reads as a label with its detail on the right.
-// Variant "good" tints the box's border and icon (a healthy internet link).
+// Variant "success" tints the box's border and icon (a healthy internet link).
 type NetNode struct {
 	Label   string `json:"label"`
 	Icon    string `json:"icon,omitempty"`
 	Detail  string `json:"detail,omitempty"`
-	Variant string `json:"variant,omitempty"` // "" | "good"
+	Variant string `json:"variant,omitempty"` // "" | "success" (the tone vocabulary)
 }
 
 func (*NetMap) isWidget() {}
@@ -97,14 +97,14 @@ func (m *NetMap) renderInto(r *Renderer, out io.Writer, _ string) error {
 	groupTop := (height - leafGroupH) / 2
 
 	v := netMapView{Height: height, Live: m.Live}
-	v.Source = netNodeView{NetNode: m.Source, Left: nmSrcLeft, Width: nmNodeWidth, Top: midY - nmNodeH/2, Good: m.Source.Variant == "good"}
-	v.Hub = netNodeView{NetNode: m.Hub, Left: nmHubLeft, Width: nmNodeWidth, Top: midY - nmNodeH/2, Good: m.Hub.Variant == "good"}
+	v.Source = netNodeView{NetNode: m.Source, Left: nmSrcLeft, Width: nmNodeWidth, Top: midY - nmNodeH/2, Good: m.Source.Variant == "success"}
+	v.Hub = netNodeView{NetNode: m.Hub, Left: nmHubLeft, Width: nmNodeWidth, Top: midY - nmNodeH/2, Good: m.Hub.Variant == "success"}
 	v.Links = append(v.Links, fmt.Sprintf("M%d,%d H%d", nmSrcEdgeX, midY, nmHubLeftX))
 	cp := (nmLeafLeftX - nmHubRightX) * 2 / 5 // control-point reach, scales with the gap
 	for i, leaf := range m.Leaves {
 		top := groupTop + i*(nmLeafH+nmLeafGap)
 		cy := top + nmLeafH/2
-		v.Leaves = append(v.Leaves, netNodeView{NetNode: leaf, Left: nmLeafLeft, Width: nmLeafWidth, Top: top, Good: leaf.Variant == "good"})
+		v.Leaves = append(v.Leaves, netNodeView{NetNode: leaf, Left: nmLeafLeft, Width: nmLeafWidth, Top: top, Good: leaf.Variant == "success"})
 		// a cubic bezier that leaves the hub level, then eases to the leaf's row
 		v.Links = append(v.Links, fmt.Sprintf("M%d,%d C%d,%d %d,%d %d,%d",
 			nmHubRightX, midY, nmHubRightX+cp, midY, nmLeafLeftX-cp, cy, nmLeafLeftX, cy))

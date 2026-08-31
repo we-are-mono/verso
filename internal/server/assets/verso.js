@@ -1100,15 +1100,15 @@ document.addEventListener(
   if (!window.EventSource) return;
   if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
   var BANDS = {
-    good: "stroke-green-600",
-    warn: "stroke-amber-500",
+    success: "stroke-green-600",
+    warning: "stroke-amber-500",
     danger: "stroke-red-600",
     info: "stroke-sky-600",
   };
   // The bar layout tints its fill with a background, not a stroke.
   var BAR_BANDS = {
-    good: "bg-green-600",
-    warn: "bg-amber-500",
+    success: "bg-green-600",
+    warning: "bg-amber-500",
     danger: "bg-red-600",
     info: "bg-sky-600",
   };
@@ -1128,7 +1128,7 @@ document.addEventListener(
       var c = 2 * Math.PI * parseFloat(ring.getAttribute("r"));
       ring.setAttribute("stroke-dasharray", ((fill / 100) * c).toFixed(1) + " " + c.toFixed(2));
       for (var band in BANDS) ring.classList.remove(BANDS[band]);
-      ring.classList.add(BANDS[reading.band] || BANDS.good);
+      ring.classList.add(BANDS[reading.band] || BANDS.success);
     }
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {
@@ -1137,7 +1137,7 @@ document.addEventListener(
       // band); only a band-coloured bar recolours with its reading.
       if (!reading.role) {
         for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
-        bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.good);
+        bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.success);
       }
     }
     var svg = root.querySelector("svg");
@@ -1301,7 +1301,7 @@ document.addEventListener(
     setSensor("summary", d.summary);
     var dot = document.querySelector('[data-verso-sensor-dot="temperature"]');
     if (dot && d.tempLevel) {
-      var color = d.tempLevel === "red" ? "bg-red-500" : d.tempLevel === "amber" ? "bg-amber-500" : "bg-emerald-500";
+      var color = d.tempLevel === "danger" ? "bg-red-500" : d.tempLevel === "warning" ? "bg-amber-500" : "bg-emerald-500";
       dot.className = "mr-2 inline-block size-1.5 rounded-full align-middle " + color;
     }
   });

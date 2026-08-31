@@ -13,7 +13,7 @@ func TestFormatSensors(t *testing.T) {
 	// A fully-instrumented board: temperature rounds from milli-°C, power from
 	// micro-watts, and the summary counts both kinds.
 	v := formatSensors("Mono Gateway Development Kit", sensors.Facts{
-		CPUTemp:      &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "amber"},
+		CPUTemp:      &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "warning"},
 		Fan:          &sensors.Fan{RPM: 3630},
 		Power:        &sensors.Power{MicroW: 12400000},
 		PowerCount:   8,
@@ -22,7 +22,7 @@ func TestFormatSensors(t *testing.T) {
 	if v.Model != "Mono Gateway Development Kit" {
 		t.Errorf("model: %q", v.Model)
 	}
-	if v.Temperature != "76 °C · Warm" || v.TempLevel != "amber" { // 75750 rounds to 76
+	if v.Temperature != "76 °C · Warm" || v.TempLevel != "warning" { // 75750 rounds to 76
 		t.Errorf("temperature: %q level %q", v.Temperature, v.TempLevel)
 	}
 	if v.Fan != "3630 rpm" {
@@ -40,7 +40,7 @@ func TestFormatSensorsHidesAbsent(t *testing.T) {
 	// An unprofiled PC: temperature only, no fan, no power. Blank fields hide
 	// their rows; the summary drops the kind that has no sensors.
 	v := formatSensors("", sensors.Facts{
-		CPUTemp:      &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "emerald"},
+		CPUTemp:      &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "success"},
 		ThermalCount: 3,
 	})
 	if v.Temperature != "45 °C · Normal" {

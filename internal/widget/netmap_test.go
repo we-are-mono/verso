@@ -15,7 +15,7 @@ func TestRenderNetMap(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &NetMap{
 		Live:   true,
-		Source: NetNode{Label: "Internet", Icon: "globe", Detail: "Fibre · 300/40", Variant: "good"},
+		Source: NetNode{Label: "Internet", Icon: "globe", Detail: "Fibre · 300/40", Variant: "success"},
 		Hub:    NetNode{Label: "Router", Icon: "router", Detail: "MyHome"},
 		Leaves: []NetNode{{Label: "Wi-Fi", Detail: "8 devices"}, {Label: "Ethernet", Detail: "4 devices"}},
 	})
@@ -58,7 +58,7 @@ func TestRenderNetMapStatic(t *testing.T) {
 // TestDecodeNetMap: the wire shape round-trips through Decode.
 func TestDecodeNetMap(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"netmap","live":true,
-		"source":{"label":"Internet","icon":"globe","variant":"good"},
+		"source":{"label":"Internet","icon":"globe","variant":"success"},
 		"hub":{"label":"Router"},
 		"leaves":[{"label":"Wi-Fi","detail":"8 devices"}]}`))
 	if err != nil {
@@ -68,7 +68,7 @@ func TestDecodeNetMap(t *testing.T) {
 	if !ok {
 		t.Fatalf("decoded %T, want *NetMap", w)
 	}
-	if nm.Source.Label != "Internet" || nm.Source.Variant != "good" || len(nm.Leaves) != 1 {
+	if nm.Source.Label != "Internet" || nm.Source.Variant != "success" || len(nm.Leaves) != 1 {
 		t.Errorf("netmap not decoded: %+v", nm)
 	}
 }

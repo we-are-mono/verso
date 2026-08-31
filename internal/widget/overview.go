@@ -56,7 +56,7 @@ type Overview struct {
 	// Model is the board's human name. Temperature/Fan/Power/SensorSummary are
 	// the resolved hardware sensor facts (see internal/sensors); an empty string
 	// hides that row — an unprofiled PC shows no power draw rather than a zero.
-	// TempDot is the temperature status colour ("emerald"|"amber"|"red").
+	// TempDot is the temperature status tone ("success"|"warning"|"danger").
 	Model         string
 	Temperature   string
 	TempDot       string
@@ -162,11 +162,11 @@ func (*Overview) isWidget() {}
 func (*Overview) children() []Widget { return nil }
 
 // ohTile is one status tile: an eyebrow label, a trailing icon, a status dot +
-// word, and a caption. Variant "good" tints emerald; "warning" tints amber.
+// word, and a caption. Variant "success" tints emerald; "warning" tints amber.
 type ohTile struct {
 	Label   string
 	Icon    string
-	Variant string // "good" | "warning"
+	Variant string // the tone vocabulary: "success" | "warning"
 	Status  string
 	Caption string
 	Key     string
@@ -190,7 +190,7 @@ type ohFactCol struct {
 }
 
 // ohProp is one System fact row: a label and its value, mono for machine strings,
-// with an optional leading status dot (Dot names the colour, e.g. "emerald"). Key
+// with an optional leading status dot (Dot speaks the tone vocabulary). Key
 // tags a live-updated sensor row (temperature/fan/power/summary) so the overview
 // stream can refresh its value — and the dot's colour — in place.
 type ohProp struct {
@@ -296,10 +296,10 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	// not walkable widget structs, so their prose is localized here at the site.
 	tiles := []ohTile{o.internetTile(r.tr)}
 	if o.WiFiPresent {
-		tiles = append(tiles, ohTile{Label: r.tr("WI-FI"), Icon: "wifi", Variant: "good", Status: r.tr("Both bands active"), Caption: r.tr("2.4 & 5 GHz")})
+		tiles = append(tiles, ohTile{Label: r.tr("WI-FI"), Icon: "wifi", Variant: "success", Status: r.tr("Both bands active"), Caption: r.tr("2.4 & 5 GHz")})
 	}
 	tiles = append(tiles,
-		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "good", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
+		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "success", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
 		ohTile{Label: r.tr("SOFTWARE"), Icon: "download", Variant: "warning", Status: r.tr("Update available"), Caption: r.tr("Security fixes")},
 	)
 
@@ -347,7 +347,7 @@ func (o *Overview) internetTile(tr func(string) string) ohTile {
 		tile.Status, tile.Caption = tr("Not connected"), tr("WAN is down")
 		return tile
 	}
-	tile.Variant, tile.Status = "good", tr("Connected")
+	tile.Variant, tile.Status = "success", tr("Connected")
 	if o.WANUptime != "" {
 		tile.Caption = tr("for ") + o.WANUptime
 	}

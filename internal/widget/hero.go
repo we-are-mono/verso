@@ -83,7 +83,7 @@ func heroIcon(variant, override string) string {
 		return override
 	}
 	switch variant {
-	case "good":
+	case "success":
 		return "check"
 	case "danger", "warning":
 		return "triangle-alert"

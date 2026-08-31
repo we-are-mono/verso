@@ -20,7 +20,7 @@ type Stat struct {
 	Unit    string `json:"unit"`    // optional small suffix on the value, e.g. "Mbps"
 	Sub     string `json:"sub"`     // optional supporting line under the value
 	Icon    string `json:"icon"`    // optional: globe | devices | speed | shield
-	Variant string `json:"variant"` // "neutral" (default) | "good" | "warning" | "danger"
+	Variant string `json:"variant"` // the tone vocabulary: "neutral" (default) | "success" | "warning" | "danger"
 	Dot     bool   `json:"dot"`     // show a status dot on the sub line (pulses when good)
 	Href    string `json:"href"`    // optional: makes the whole tile a doorway to a detail page
 	// Style: "" wears the framed card; "bare" is label over number on the

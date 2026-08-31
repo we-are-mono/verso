@@ -34,7 +34,7 @@ type Meter struct {
 	Icon string `json:"icon,omitempty"`
 	// Role paints the bar (and the icon) a fixed decorative accent instead of the
 	// fill-band health colour — for a dashboard row where each gauge carries its
-	// own hue, not a good/warn/danger reading: "sky" | "violet" | "emerald" | "amber".
+	// own hue, not a health tone: "sky" | "violet" | "emerald" | "amber".
 	Role string `json:"role,omitempty"`
 	// Name is a stable handle for a live meter: the rendered markup carries it
 	// (plus per-part hooks) so the shell's client script can stream fresh
@@ -57,15 +57,15 @@ type meterView struct {
 	Name   string
 	Icon   string
 	Role   string // decorative accent for the bar + icon; "" colours by band
-	Band   string // "good" | "warn" | "danger" | "info"
+	Band   string // the tone vocabulary: "success" | "warning" | "danger" | "info"
 	Dash   string // stroke-dasharray for the ring's fill arc
 	Width  string // width of the bar's fill, e.g. "72%"
 }
 
-// MeterBand is the ring's colour band for a fill: "good" until 80, "warn"
-// until 92, "danger" beyond; Variant "info" overrides with the accent.
-// Exported so a live reading's producer can send the same truth the renderer
-// would have drawn.
+// MeterBand is the ring's colour band for a fill, in the tone vocabulary:
+// "success" until 80, "warning" until 92, "danger" beyond; Variant "info"
+// overrides with the accent. Exported so a live reading's producer can send
+// the same truth the renderer would have drawn.
 func MeterBand(fill int, variant string) string {
 	switch {
 	case variant == "info":
@@ -73,9 +73,9 @@ func MeterBand(fill int, variant string) string {
 	case fill >= 92:
 		return "danger"
 	case fill >= 80:
-		return "warn"
+		return "warning"
 	}
-	return "good"
+	return "success"
 }
 
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
