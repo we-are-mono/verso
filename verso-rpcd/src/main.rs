@@ -8,6 +8,7 @@
 //! request still carries the operator's rpcd session and is independently
 //! checked through native ubus `session.access` before any action runs.
 
+mod firewall;
 mod packages;
 mod ubus;
 
@@ -316,6 +317,7 @@ fn dispatch(request: &Value, state: &State) -> Result<Value, Failure> {
             Ok(json!({"result": true, "output": output}))
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
+        "firewallCounters" => firewall_counters(),
         "createBackup" | "restoreBackup" | "validateFirmware" | "installFirmware" => {
             let path = argument(request, "path")?;
             let _guard = state
@@ -356,6 +358,20 @@ fn root_has_password() -> bool {
         Ok(shadow) => shadow_root_has_password(&shadow),
         Err(_) => true, // fail safe: an unreadable /etc/shadow reads as "has one"
     }
+}
+
+// firewall_counters reads fw4's live nftables ruleset and reduces it to per-rule
+// hit counters. Listing a table needs CAP_NET_ADMIN, which the de-privileged shell
+// does not hold (ADR-007), so the read is brokered here; nft is executed directly,
+// never through a shell, and the listing is a read with no arguments to validate.
+fn firewall_counters() -> Result<Value, Failure> {
+    let mut command = Command::new("/usr/sbin/nft");
+    command.args(["-j", "list", "table", "inet", "fw4"]);
+    let output = run_bounded(command, "list firewall counters", 4 * 1024 * 1024)?;
+    if !output.status.success() {
+        return Err(command_failure("list firewall counters", output));
+    }
+    firewall::counters(&output.stdout).map_err(Failure::unknown)
 }
 
 // Backups stay in OpenWrt's native sysupgrade format. The unprivileged shell
@@ -433,7 +449,6 @@ fn command_failure(name: &str, output: std::process::Output) -> Failure {
 // that immutable copy. No other account can rename, unlink, or follow it. The
 // maintenance mutex serializes callers, so fixed working names are safe.
 const O_NOFOLLOW: i32 = 0o400000;
-const MAINTENANCE_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn root_open_new(work: &str) -> Result<(fs::File, PathBuf), Failure> {
     let dest = Path::new("/tmp").join(work);
@@ -481,10 +496,12 @@ fn remove_quietly(path: &Path) {
     let _ = fs::remove_file(path);
 }
 
-// run_bounded runs a maintenance child under a wall-clock cap so a stalled tool
-// cannot pin the maintenance mutex and its worker thread indefinitely, and caps
-// captured stdout so a hostile archive listing cannot exhaust memory. On the
-// deadline a kill ends the child and the call reports a timeout.
+// run_bounded runs a child under a wall-clock cap so a stalled tool cannot pin its
+// worker thread — and any mutex that thread holds — indefinitely, and caps captured
+// stdout so a hostile archive listing or a vast ruleset cannot exhaust memory. On
+// the deadline a kill ends the child and the call reports a timeout.
+const CHILD_TIMEOUT: Duration = Duration::from_secs(120);
+
 fn run_bounded(
     mut command: Command,
     name: &str,
@@ -521,7 +538,7 @@ fn run_bounded(
         }
         buffer
     });
-    let deadline = std::time::Instant::now() + MAINTENANCE_TIMEOUT;
+    let deadline = std::time::Instant::now() + CHILD_TIMEOUT;
     let mut timed_out = false;
     let status = loop {
         if over.load(Ordering::Acquire) {

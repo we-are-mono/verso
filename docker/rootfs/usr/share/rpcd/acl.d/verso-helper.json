@@ -1,6 +1,11 @@
 {
 	"verso-helper": {
 		"description": "Verso persistent privileged helper actions",
+		"read": {
+			"ubus": {
+				"verso": [ "firewallCounters" ]
+			}
+		},
 		"write": {
 			"ubus": {
 				"verso": [ "setPassword", "setSystemTime", "rootHasPassword", "createBackup", "restoreBackup", "validateFirmware", "installFirmware", "restart", "factoryReset", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove" ]
