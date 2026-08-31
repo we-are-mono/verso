@@ -97,6 +97,7 @@ type Server struct {
 	bundle atomic.Pointer[i18n.Bundle]
 	css    template.CSS
 	devCSS string // dev hot-reload stylesheet path, "" in a normal build
+	bootID string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
 	// probe reports whether a plugin's unix socket accepts a connection — the
 	// liveness half of the management surface (ADR-011); a seam so tests need
 	// no real sockets.
@@ -176,6 +177,7 @@ func New(
 	// checked once, so a normal deployment pays nothing per render.
 	if _, err := os.Stat(devCSSPath); err == nil {
 		s.devCSS = devCSSPath
+		s.bootID = fmt.Sprintf("%x", time.Now().UnixNano())
 	}
 	s.routes()
 	return s, nil
@@ -447,6 +449,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 // CSS for first paint; this is what the dev hot-reload script re-fetches to swap the
 // <style> in place. Fresh from disk in a dev session, embedded otherwise.
 func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
+	if s.devCSS != "" {
+		// A CSS swap cannot show a template edit (templates are embedded), so the
+		// dev script compares this id and reloads the page when the shell restarts.
+		w.Header().Set("X-Verso-Boot", s.bootID)
+	}
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	_, _ = w.Write([]byte(s.currentCSS()))
 }
