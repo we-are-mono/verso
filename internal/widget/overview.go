@@ -161,53 +161,40 @@ func (*Overview) isWidget() {}
 // render time, so its renderInto runs the localization walk over each itself.
 func (*Overview) children() []Widget { return nil }
 
-// ohTile is one status tile: an eyebrow label, a trailing icon, a status dot +
-// word, and a caption. Variant "success" tints emerald; "warning" tints amber.
+// ohTile is one status tile in the strip under the verdict: an eyebrow label,
+// a trailing icon, a status dot + word, and a caption. Page-owned chrome (like
+// the traffic legend), not a widget: its anatomy — the dot beside the word,
+// the quiet caption — is this page's own. Variant speaks the tone vocabulary.
 type ohTile struct {
 	Label   string
 	Icon    string
-	Variant string // the tone vocabulary: "success" | "warning"
+	Variant string // "success" | "warning"
 	Status  string
 	Caption string
-	Key     string
+	Key     string // live hook: the stream refreshes the caption in place
 }
 
-// ohRow is one label/value fact; the value is machine text set in mono, with an
-// inline copy control when Copy is set.
-type ohRow struct {
-	Label string
-	Value string
-	Copy  bool
-}
-
-// ohFactCol is one connection-facts column (IPv4 or IPv6): an eyebrow (kind +
-// protocol) over its rows. Side places it left or right of the divider.
-type ohFactCol struct {
+// ohFactColView is one connection-facts column (IPv4 or IPv6): an eyebrow
+// (kind + protocol) over its rows — a Properties widget rendered to HTML. Side
+// places it left or right of the divider.
+type ohFactColView struct {
 	Kind  string
 	Proto string
 	Side  string // "left" | "right"
-	Rows  []ohRow
+	Rows  template.HTML
 }
 
-// ohProp is one System fact row: a label and its value, mono for machine strings,
-// with an optional leading status dot (Dot speaks the tone vocabulary). Key
-// tags a live-updated sensor row (temperature/fan/power/summary) so the overview
-// stream can refresh its value — and the dot's colour — in place.
-type ohProp struct {
-	Label string
-	Value string
-	Mono  bool
-	Dot   string
-	Key   string
-}
-
+// overviewView is the page's layout model: the vocabulary widgets — the fact
+// sheets, the gauges, the listings — rendered to HTML, plus the page's own
+// chrome (the verdict sentence, the view switch, the tile strip, the traffic
+// panel's legend). The page owns composition and rhythm.
 type overviewView struct {
 	Kicker  string
 	Lead    string
 	Accent  string
 	Tiles   []ohTile
 	HasWiFi bool
-	Facts   []ohFactCol
+	Facts   []ohFactColView
 
 	ChartTitle  string
 	ChartMeta   string
@@ -219,8 +206,8 @@ type overviewView struct {
 
 	SysMeta  string
 	Metrics  []template.HTML
-	SysLeft  []ohProp
-	SysRight []ohProp
+	SysLeft  template.HTML
+	SysRight template.HTML
 
 	Interfaces template.HTML
 	Devices    template.HTML
@@ -292,8 +279,8 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		metrics = append(metrics, html)
 	}
 
-	// The verdict, tiles, and System facts are this template's own render model,
-	// not walkable widget structs, so their prose is localized here at the site.
+	// The verdict and tiles are this template's own render model, not walkable
+	// widget structs, so their prose is localized here at the site.
 	tiles := []ohTile{o.internetTile(r.tr)}
 	if o.WiFiPresent {
 		tiles = append(tiles, ohTile{Label: r.tr("WI-FI"), Icon: "wifi", Variant: "success", Status: r.tr("Both bands active"), Caption: r.tr("2.4 & 5 GHz")})
@@ -302,6 +289,24 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "success", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
 		ohTile{Label: r.tr("SOFTWARE"), Icon: "download", Variant: "warning", Status: r.tr("Update available"), Caption: r.tr("Security fixes")},
 	)
+
+	facts, err := o.factCols(r, csrf)
+	if err != nil {
+		return err
+	}
+	sysLeft, err := o.renderWidget(r, &Properties{Style: "system", Items: []Property{
+		{Label: "Model", Value: orUnavailable(r.tr, o.Model)},
+		{Label: "Firmware", Value: orUnavailable(r.tr, o.Firmware), Mono: true},
+		{Label: "Kernel", Value: orUnavailable(r.tr, o.Kernel), Mono: true},
+		{Label: "Uptime", Value: orUnavailable(r.tr, o.Uptime)},
+	}}, csrf)
+	if err != nil {
+		return err
+	}
+	sysRight, err := o.renderWidget(r, o.sysRight(), csrf)
+	if err != nil {
+		return err
+	}
 
 	chartMeta := r.tr("live") + " · WAN"
 	if o.WANDevice != "" {
@@ -313,7 +318,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Accent:      r.tr("healthy"),
 		Tiles:       tiles,
 		HasWiFi:     o.WiFiPresent,
-		Facts:       o.factCols(r.tr),
+		Facts:       facts,
 		ChartTitle:  r.tr("Internet traffic"),
 		ChartMeta:   chartMeta,
 		DownVal:     o.DownVal,
@@ -322,15 +327,10 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Chart:       chartHTML,
 		TrafficSeed: string(seed),
 
-		SysMeta: r.tr("hardware · live"),
-		Metrics: metrics,
-		SysLeft: []ohProp{
-			{Label: r.tr("Model"), Value: orUnavailable(r.tr, o.Model)},
-			{Label: r.tr("Firmware"), Value: orUnavailable(r.tr, o.Firmware), Mono: true},
-			{Label: r.tr("Kernel"), Value: orUnavailable(r.tr, o.Kernel), Mono: true},
-			{Label: r.tr("Uptime"), Value: orUnavailable(r.tr, o.Uptime)},
-		},
-		SysRight: o.sysRight(r.tr),
+		SysMeta:  r.tr("hardware · live"),
+		Metrics:  metrics,
+		SysLeft:  sysLeft,
+		SysRight: sysRight,
 
 		Interfaces: interfaces,
 		Devices:    devices,
@@ -338,6 +338,15 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	return r.execute(out, "overview.html.tmpl", v)
 }
 
+// renderWidget localizes one composed widget and renders it to a fragment —
+// the overview's per-widget path through the same walk a plugin tree takes.
+func (o *Overview) renderWidget(r *Renderer, w Widget, csrf string) (template.HTML, error) {
+	r.translate(w)
+	return renderToHTML(r, w, csrf)
+}
+
+// internetTile is the one live tile: the WAN's actual state, its caption
+// refreshed in place by the stream (Key).
 func (o *Overview) internetTile(tr func(string) string) ohTile {
 	tile := ohTile{Label: tr("INTERNET"), Icon: "globe", Variant: "warning", Status: tr("Unavailable"), Key: "internet-uptime"}
 	if !o.WANKnown {
@@ -367,50 +376,56 @@ func (o *Overview) sysMeters() []*Meter {
 	return out
 }
 
-// sysRight builds the hardware-sensor facts column, omitting any reading the box
+// sysRight builds the hardware-sensor fact sheet, omitting any reading the box
 // doesn't expose — a PC with no power sensor simply shows no "Power draw" row,
-// never a fabricated zero.
-func (o *Overview) sysRight(tr func(string) string) []ohProp {
-	rows := make([]ohProp, 0, 4)
+// never a fabricated zero. Keys tag the live rows for the overview stream.
+func (o *Overview) sysRight() *Properties {
+	rows := make([]Property, 0, 4)
 	if o.Temperature != "" {
-		rows = append(rows, ohProp{Label: tr("Temperature"), Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
+		rows = append(rows, Property{Label: "Temperature", Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
 	}
 	if o.Fan != "" {
-		rows = append(rows, ohProp{Label: tr("Fan"), Value: o.Fan, Key: "fan"})
+		rows = append(rows, Property{Label: "Fan", Value: o.Fan, Key: "fan"})
 	}
 	if o.Power != "" {
-		rows = append(rows, ohProp{Label: tr("Power draw"), Value: o.Power, Key: "power"})
+		rows = append(rows, Property{Label: "Power draw", Value: o.Power, Key: "power"})
 	}
 	if o.SensorSummary != "" {
-		rows = append(rows, ohProp{Label: tr("Sensors"), Value: o.SensorSummary, Key: "summary"})
+		rows = append(rows, Property{Label: "Sensors", Value: o.SensorSummary, Key: "summary"})
 	}
-	return rows
+	return &Properties{Style: "system", Items: rows}
 }
 
-// factCols builds the IPv4/IPv6 connection-facts columns from the live fields. The
-// row labels and any prose value ("Not configured") are localized; an address value
-// simply misses the catalog and stays verbatim.
-func (o *Overview) factCols(tr func(string) string) []ohFactCol {
-	rows := func(facts []OverviewFact) []ohRow {
-		out := make([]ohRow, 0, len(facts))
+// factCols builds the IPv4/IPv6 connection-facts columns from the live fields:
+// each side an eyebrow over a left-aligned Properties sheet (mono, copyable —
+// the reading order for addresses a person compares line by line).
+func (o *Overview) factCols(r *Renderer, csrf string) ([]ohFactColView, error) {
+	sheet := func(facts []OverviewFact) *Properties {
+		items := make([]Property, 0, len(facts))
 		for _, f := range facts {
-			out = append(out, ohRow{Label: tr(f.Label), Value: tr(f.Value), Copy: f.Copy})
+			items = append(items, Property{Label: f.Label, Value: f.Value, Mono: true, Emphasis: true, Copy: f.Copy})
 		}
-		return out
+		return &Properties{Align: "left", Items: items}
 	}
-	return []ohFactCol{
-		{Kind: "IPV4", Proto: o.V4Proto, Side: "left", Rows: rows(o.V4)},
-		{Kind: "IPV6", Proto: o.V6Proto, Side: "right", Rows: rows(o.V6)},
+	v4, err := o.renderWidget(r, sheet(o.V4), csrf)
+	if err != nil {
+		return nil, err
 	}
+	v6, err := o.renderWidget(r, sheet(o.V6), csrf)
+	if err != nil {
+		return nil, err
+	}
+	return []ohFactColView{
+		{Kind: "IPV4", Proto: o.V4Proto, Side: "left", Rows: v4},
+		{Kind: "IPV6", Proto: o.V6Proto, Side: "right", Rows: v6},
+	}, nil
 }
 
 // renderToHTML renders one widget to a fragment for injection into a composing
-// template (the overview places the chart and the three listings itself).
-func renderToHTML(r *Renderer, w interface {
-	renderInto(*Renderer, io.Writer, string) error
-}, csrf string) (template.HTML, error) {
+// template (the overview places the chart and the listings itself).
+func renderToHTML(r *Renderer, w Widget, csrf string) (template.HTML, error) {
 	var b strings.Builder
-	if err := w.renderInto(r, &b, csrf); err != nil {
+	if err := r.render(&b, w, csrf); err != nil {
 		return "", err
 	}
 	return template.HTML(b.String()), nil
@@ -480,27 +495,18 @@ func (o *Overview) deviceDrawer(d OverviewDevice) *RowDrawer {
 		Rows: addrRows,
 	}
 
-	facts := &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{{Kind: "keyword"}, {Kind: "text"}},
-		Rows: []TableRow{
-			factRow("MAC", d.MAC),
-			factRow("DUID", orDash(d.DUID)),
-			factRow("Interface", orDash(d.Interface)),
-			factRow("Zone", orDash(d.Zone)),
-			factRow("Connection", orDash(d.Connection)),
-			factRow("DHCP lease", orDash(d.Lease)),
-			factRow("Traffic", orDash(d.Traffic)),
-			factRow("Connections", orDash(d.Conns)),
-		},
-	}
+	facts := &Properties{Items: []Property{
+		{Label: "MAC", Value: d.MAC},
+		{Label: "DUID", Value: orDash(d.DUID)},
+		{Label: "Interface", Value: orDash(d.Interface)},
+		{Label: "Zone", Value: orDash(d.Zone)},
+		{Label: "Connection", Value: orDash(d.Connection)},
+		{Label: "DHCP lease", Value: orDash(d.Lease)},
+		{Label: "Traffic", Value: orDash(d.Traffic)},
+		{Label: "Connections", Value: orDash(d.Conns)},
+	}}
 
 	return &RowDrawer{Title: d.Name, Size: "wide", Children: []Widget{addresses, facts}}
-}
-
-// factRow is one label/value line for a device's Details facts table.
-func factRow(label, value string) TableRow {
-	return TableRow{Cells: []TableCell{{Text: label}, {Text: value}}}
 }
 
 // family maps an address family to the pill palette — v6 the calmer tint.
@@ -601,26 +607,22 @@ func interfaceKindLabel(kind string) string {
 // interfaceDrawer carries the complete counters and UCI facts without widening
 // the main topology table.
 func (o *Overview) interfaceDrawer(n OverviewInterface) *RowDrawer {
-	facts := &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{{Kind: "keyword"}, {Kind: "text"}},
-		Rows: []TableRow{
-			factRow("Type", interfaceKindLabel(n.Kind)),
-			factRow("State", orDash(n.State)),
-			factRow("Network", orDash(strings.Join(n.Networks, ", "))),
-			factRow("Role", map[bool]string{true: "WAN", false: "—"}[n.WAN]),
-			factRow("Protocol", orDash(n.Proto)),
-			factRow("Subnet", orDash(n.Subnet)),
-			factRow("Zone", orDash(n.Zone)),
-			factRow("VLAN", orDash(n.VLAN)),
-			factRow("RX rate", n.RxRate),
-			factRow("TX rate", n.TxRate),
-			factRow("RX packets", n.RxPackets),
-			factRow("TX packets", n.TxPackets),
-			factRow("RX total", n.RxTotal),
-			factRow("TX total", n.TxTotal),
-		},
-	}
+	facts := &Properties{Items: []Property{
+		{Label: "Type", Value: interfaceKindLabel(n.Kind)},
+		{Label: "State", Value: orDash(n.State)},
+		{Label: "Network", Value: orDash(strings.Join(n.Networks, ", "))},
+		{Label: "Role", Value: map[bool]string{true: "WAN", false: "—"}[n.WAN]},
+		{Label: "Protocol", Value: orDash(n.Proto)},
+		{Label: "Subnet", Value: orDash(n.Subnet)},
+		{Label: "Zone", Value: orDash(n.Zone)},
+		{Label: "VLAN", Value: orDash(n.VLAN)},
+		{Label: "RX rate", Value: n.RxRate},
+		{Label: "TX rate", Value: n.TxRate},
+		{Label: "RX packets", Value: n.RxPackets},
+		{Label: "TX packets", Value: n.TxPackets},
+		{Label: "RX total", Value: n.RxTotal},
+		{Label: "TX total", Value: n.TxTotal},
+	}}
 	children := []Widget{facts}
 	if len(n.Relations) != 0 {
 		topology := &Table{

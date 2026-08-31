@@ -559,7 +559,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	if wanCalls != 1 {
 		t.Errorf("WAN discovery calls = %d, want one consistent page snapshot", wanCalls)
 	}
-	if got := strings.Count(body, ">WAN</span>"); got != 1 {
+	if got := strings.Count(body, "</svg></span>WAN</span>"); got != 1 {
 		t.Errorf("WAN badges = %d, want only the exact pppoe-upstream L3 row", got)
 	}
 }
@@ -572,7 +572,7 @@ func TestIndexDegradesWhenBackendFails(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200 (must degrade, not 500)", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "Your network is") {
+	if !strings.Contains(rec.Body.String(), "font-serif") {
 		t.Errorf("GET /: overview should render regardless of backend")
 	}
 }

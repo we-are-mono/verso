@@ -119,7 +119,7 @@ func TestIndexWithoutMetersStillRenders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if !strings.Contains(rec.Body.String(), "Your network is") {
+	if !strings.Contains(rec.Body.String(), "font-serif") {
 		t.Error("GET /: overview should render regardless of the meter sources")
 	}
 }

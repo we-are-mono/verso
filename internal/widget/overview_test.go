@@ -78,7 +78,7 @@ func TestRenderOverview(t *testing.T) {
 	})
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "font-serif", // verdict in Fraunces
-		"Basic", "Advanced", // the view toggle
+		"Basic", "Advanced", // the view switch
 		"INTERNET", "for 2h 14m", "data-verso-tile-caption=\"internet-uptime\"",
 		"WI-FI", "SECURITY", "SOFTWARE", // status tiles
 		"IPV4", "172.30.1.171/24", "IPV6", "fd42:7ea:aa00::/56",
@@ -121,7 +121,7 @@ func TestRenderOverview(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`font-mono text-base font-semibold text-slate-900">172.30.1.171/24`,
+		`font-mono font-semibold">172.30.1.171/24`,
 		`font-mono text-base font-semibold tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">a4:83:e7:2b:19:0c`,
 		`font-mono text-base font-semibold tabular-nums group-last:border-b-0`,
 		`class="text-base font-medium text-slate-900"`,

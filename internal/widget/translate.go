@@ -175,6 +175,9 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Stat:
 		n.Label = t(n.Label)
+		// Value is prose in a status tile ("Online") and a machine figure in a
+		// metric tile ("300") — the latter simply misses the catalog.
+		n.Value = t(n.Value)
 		n.Sub = t(n.Sub)
 	case *Switch:
 		n.Label = t(n.Label)

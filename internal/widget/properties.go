@@ -41,6 +41,11 @@ type Property struct {
 	// Status hangs a trailing state pill after the value — the same badge
 	// vocabulary rows and pill cells speak.
 	Status *Badge `json:"status,omitempty"`
+	// Dot marks the value with a leading state dot (the tone vocabulary), and
+	// Key tags a live row: the rendered markup carries it so the shell's client
+	// script can refresh the value — and the dot's tone — in place.
+	Dot string `json:"dot,omitempty"`
+	Key string `json:"key,omitempty"`
 }
 
 func (*Properties) isWidget() {}

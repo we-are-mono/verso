@@ -1098,7 +1098,7 @@ document.addEventListener(
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-sensor]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-prop]")) return;
   var BANDS = {
     success: "stroke-emerald-600",
     warning: "stroke-amber-500",
@@ -1288,7 +1288,7 @@ document.addEventListener(
   // find, so it is silently skipped. The temperature dot recolours to match.
   function setSensor(name, val) {
     if (val == null) return;
-    var el = document.querySelector('[data-verso-sensor="' + name + '"]');
+    var el = document.querySelector('[data-verso-prop="' + name + '"]');
     if (el) el.textContent = val;
   }
   es.addEventListener("sensors", function (e) {
@@ -1299,7 +1299,7 @@ document.addEventListener(
     setSensor("fan", d.fan);
     setSensor("power", d.power);
     setSensor("summary", d.summary);
-    var dot = document.querySelector('[data-verso-sensor-dot="temperature"]');
+    var dot = document.querySelector('[data-verso-prop-dot="temperature"]');
     if (dot && d.tempLevel) {
       var color = d.tempLevel === "danger" ? "bg-red-500" : d.tempLevel === "warning" ? "bg-amber-500" : "bg-emerald-500";
       dot.className = "mr-2 inline-block size-1.5 rounded-full align-middle " + color;

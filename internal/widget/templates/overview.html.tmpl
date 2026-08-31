@@ -1,14 +1,15 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* overview: the advanced overview page, bare on the canvas (no card). Sections
-     stack with generous spacing; hairline rules span the content width. Colours map
-     the mock's slates/emerald/amber onto the Tailwind scale; the verdict headline is
-     Fraunces (font-serif). The traffic plot is the generic Chart widget, injected;
-     the copy control is the shared verso-copy-inline (properties.html.tmpl). Shell-
-     owned, hardcoded content (not the plugin vocabulary). Icons from icons.go. */}}
+{{/* overview: the home page, bare on the canvas (no card), composed from the
+     widget vocabulary — the hero verdict, the stat tiles, the fact sheets, the
+     bar gauges, and the flat listings are all injected widgets; this template
+     owns only the page's composition and rhythm (the grid strips, the section
+     headings, the traffic panel's live legend). Shell-owned content, outside
+     the plugin gateway. */}}
 <div>
 
-  {{/* Verdict: kicker above, then the headline with the Basic/Advanced toggle on its row. */}}
+  {{/* Verdict: kicker above, then the headline with the Basic/Advanced switch on
+       its row (Basic is a view still to be built; the switch states the intent). */}}
   <div>
     <div class="flex items-center gap-2.5">
       <span class="size-2.5 shrink-0 rounded-full bg-emerald-500 verso-live-dot"></span>
@@ -49,14 +50,7 @@
         <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{.Kind}}</span>
         <span class="text-xs text-slate-400">{{.Proto}}</span>
       </div>
-      <div class="mt-2">
-        {{range .Rows}}
-        <div class="flex gap-4 border-t border-slate-100 py-2.5">
-          <span class="w-24 shrink-0 text-sm text-slate-400">{{.Label}}</span>
-          <span class="min-w-0 flex-1 break-all font-mono text-base font-semibold text-slate-900">{{.Value}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}</span>
-        </div>
-        {{end}}
-      </div>
+      <div class="mt-2">{{.Rows}}</div>
     </div>
     {{end}}
   </div>
@@ -86,8 +80,8 @@
       {{range .Metrics}}<div class="px-9 first:pl-0 last:pr-0">{{.}}</div>{{end}}
     </div>
     <div class="mt-8 grid grid-cols-2 gap-14">
-      {{template "overview_props" .SysLeft}}
-      {{template "overview_props" .SysRight}}
+      <div>{{.SysLeft}}</div>
+      <div>{{.SysRight}}</div>
     </div>
   </section>
 
@@ -97,16 +91,3 @@
   <section class="mt-12">{{.Devices}}</section>
 
 </div>
-
-{{define "overview_props"}}
-<div>
-  {{range .}}
-  <div class="flex items-baseline justify-between gap-4 border-t border-slate-100 py-3">
-    <span class="text-sm text-slate-500">{{.Label}}</span>
-    <span class="text-base font-medium text-slate-900">
-      {{if .Dot}}<span class="mr-2 inline-block size-1.5 rounded-full align-middle {{if eq .Dot "danger"}}bg-red-500{{else if eq .Dot "warning"}}bg-amber-500{{else}}bg-emerald-500{{end}}"{{if .Key}} data-verso-sensor-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-sensor="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-semibold{{end}}">{{.Value}}</span>
-    </span>
-  </div>
-  {{end}}
-</div>
-{{end}}
