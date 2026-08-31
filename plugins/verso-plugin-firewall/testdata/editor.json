@@ -1,0 +1,107 @@
+{
+  "firewall": {
+    "cfg01e63d": {
+      ".anonymous": true,
+      ".type": "defaults",
+      ".name": "cfg01e63d",
+      ".index": 0,
+      "input": "REJECT",
+      "output": "ACCEPT",
+      "forward": "REJECT"
+    },
+    "cfg02dc81": {
+      ".anonymous": true,
+      ".type": "zone",
+      ".name": "cfg02dc81",
+      ".index": 1,
+      "name": "lan",
+      "network": ["lan"],
+      "input": "ACCEPT",
+      "forward": "ACCEPT"
+    },
+    "guest_zone": {
+      ".anonymous": false,
+      ".type": "zone",
+      ".name": "guest_zone",
+      ".index": 2,
+      "name": "guest",
+      "network": ["guest"]
+    },
+    "blocked": {
+      ".anonymous": false,
+      ".type": "ipset",
+      ".name": "blocked",
+      ".index": 3,
+      "name": "blocked_hosts",
+      "match": ["src_ip"]
+    },
+    "everything": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "everything",
+      ".index": 4,
+      "name": "Everything",
+      "enabled": "0",
+      "src": "guest",
+      "dest": "lan",
+      "family": "ipv4",
+      "proto": ["tcp", "udp"],
+      "device": "br-guest",
+      "direction": "out",
+      "src_ip": ["10.0.20.0/24", "!10.0.20.5"],
+      "src_mac": ["00:11:22:33:44:55"],
+      "src_port": ["1024-65535"],
+      "dest_ip": ["10.0.0.0/24"],
+      "dest_port": ["53", "!5353"],
+      "icmp_type": ["echo-request"],
+      "ipset": "!blocked_hosts src dest",
+      "helper": "!ftp",
+      "mark": "!0x10/0xff",
+      "dscp": "EF",
+      "limit": "!1000/minute",
+      "limit_burst": "5",
+      "weekdays": ["Mon", "Tue"],
+      "start_date": "2026-01-01",
+      "stop_date": "2026-12-31",
+      "start_time": "08:00:00",
+      "stop_time": "18:00:00",
+      "utc_time": "1",
+      "target": "MARK",
+      "set_xmark": "0x20/0xff",
+      "counter": "0",
+      "log": "guest-audit: ",
+      "log_limit": "10/minute",
+      "extra": "-m comment --comment kept"
+    },
+    "plain": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "plain",
+      ".index": 5,
+      "src": "guest",
+      "target": "ACCEPT"
+    }
+  },
+  "network": {
+    "lan": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "lan",
+      ".index": 0,
+      "device": "br-lan",
+      "proto": "static",
+      "ipaddr": "10.0.0.1",
+      "netmask": "255.255.255.0"
+    },
+    "guest": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "guest",
+      ".index": 1,
+      "device": "br-guest",
+      "proto": "static",
+      "ipaddr": "10.0.20.1",
+      "netmask": "255.255.255.0"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "firewallCounters": {
+    "counters": [
+      { "chain": "input_wan", "name": "Allow-DHCP-Renew", "packets": 0, "bytes": 0 },
+      { "chain": "input_wan", "name": "Allow-Ping", "packets": 1400, "bytes": 117600 },
+      { "chain": "input_wan", "name": "Allow-DHCPv6", "packets": 196, "bytes": 20776 },
+      { "chain": "input_wan", "name": "Allow-ICMPv6-Input", "packets": 208, "bytes": 13384 },
+      { "chain": "input_guest", "name": "Allow-DNS-Guest", "packets": 65500, "bytes": 4913000 },
+      { "chain": "forward_wan", "name": "@rule[6]", "packets": 296, "bytes": 24864 },
+      { "chain": "forward_wan", "name": "Allow-ISAKMP", "packets": 0, "bytes": 0 },
+      { "chain": "forward_guest", "name": "family_to_printer", "packets": 4, "bytes": 336 },
+      { "chain": "dstnat_guest", "name": "Force-DNS-to-AdGuard-guest", "packets": 60600, "bytes": 4363200 },
+      { "chain": "dstnat_wan", "name": "HTTPS-to-NAS", "packets": 1200, "bytes": 96000 },
+      { "chain": "dstnat_wan", "name": "HTTPS-to-NAS (reflection)", "packets": 3, "bytes": 240 }
+    ]
+  }
+}

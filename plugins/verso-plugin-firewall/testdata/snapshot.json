@@ -1,0 +1,296 @@
+{
+  "firewall": {
+    "cfg01e63d": {
+      ".anonymous": true,
+      ".type": "defaults",
+      ".name": "cfg01e63d",
+      ".index": 0,
+      "input": "REJECT",
+      "output": "ACCEPT",
+      "forward": "REJECT",
+      "synflood_protect": "1"
+    },
+    "cfg02dc81": {
+      ".anonymous": true,
+      ".type": "zone",
+      ".name": "cfg02dc81",
+      ".index": 1,
+      "name": "lan",
+      "network": ["lan", "lan2"],
+      "input": "ACCEPT",
+      "output": "ACCEPT",
+      "forward": "ACCEPT"
+    },
+    "cfg03dc81": {
+      ".anonymous": true,
+      ".type": "zone",
+      ".name": "cfg03dc81",
+      ".index": 2,
+      "name": "wan",
+      "network": ["wan", "wan6"],
+      "input": "REJECT",
+      "output": "ACCEPT",
+      "forward": "REJECT",
+      "masq": "1",
+      "mtu_fix": "1"
+    },
+    "guest_zone": {
+      ".anonymous": false,
+      ".type": "zone",
+      ".name": "guest_zone",
+      ".index": 3,
+      "name": "guest",
+      "network": ["guest"],
+      "output": "ACCEPT"
+    },
+    "tailscale_zone": {
+      ".anonymous": false,
+      ".type": "zone",
+      ".name": "tailscale_zone",
+      ".index": 4,
+      "name": "tailscale",
+      "device": ["tailscale0"],
+      "input": "ACCEPT",
+      "output": "ACCEPT",
+      "forward": "REJECT"
+    },
+    "cfg05ad58": {
+      ".anonymous": true,
+      ".type": "forwarding",
+      ".name": "cfg05ad58",
+      ".index": 5,
+      "src": "lan",
+      "dest": "wan"
+    },
+    "allow_dhcp_renew": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_dhcp_renew",
+      ".index": 6,
+      "name": "Allow-DHCP-Renew",
+      "src": "wan",
+      "proto": "udp",
+      "dest_port": "68",
+      "family": "ipv4",
+      "target": "ACCEPT"
+    },
+    "allow_ping": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_ping",
+      ".index": 7,
+      "name": "Allow-Ping",
+      "src": "wan",
+      "proto": "icmp",
+      "icmp_type": "echo-request",
+      "family": "ipv4",
+      "target": "ACCEPT"
+    },
+    "allow_dhcpv6": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_dhcpv6",
+      ".index": 8,
+      "name": "Allow-DHCPv6",
+      "src": "wan",
+      "proto": "udp",
+      "dest_port": "546",
+      "family": "ipv6",
+      "target": "ACCEPT"
+    },
+    "allow_icmpv6_input": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_icmpv6_input",
+      ".index": 9,
+      "name": "Allow-ICMPv6-Input",
+      "src": "wan",
+      "proto": "icmp",
+      "icmp_type": [
+        "echo-request",
+        "echo-reply",
+        "destination-unreachable",
+        "packet-too-big",
+        "time-exceeded",
+        "bad-header",
+        "unknown-header-type",
+        "router-solicitation",
+        "neighbour-solicitation",
+        "router-advertisement",
+        "neighbour-advertisement"
+      ],
+      "limit": "1000/sec",
+      "family": "ipv6",
+      "target": "ACCEPT"
+    },
+    "allow_dns_guest": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_dns_guest",
+      ".index": 10,
+      "name": "Allow-DNS-Guest",
+      "src": "guest",
+      "proto": "udp",
+      "dest_port": "53 67 547",
+      "target": "ACCEPT"
+    },
+    "block_telnet": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "block_telnet",
+      ".index": 11,
+      "name": "Block-Telnet",
+      "src": "guest",
+      "proto": "tcp",
+      "dest_port": "23",
+      "target": "DROP",
+      "enabled": "0"
+    },
+    "cfg0af21e": {
+      ".anonymous": true,
+      ".type": "rule",
+      ".name": "cfg0af21e",
+      ".index": 12,
+      "src": "wan",
+      "dest": "*",
+      "proto": "icmp",
+      "icmp_type": [
+        "echo-request",
+        "echo-reply",
+        "destination-unreachable",
+        "packet-too-big",
+        "time-exceeded",
+        "bad-header",
+        "unknown-header-type"
+      ],
+      "limit": "1000/sec",
+      "family": "ipv6",
+      "target": "ACCEPT"
+    },
+    "allow_isakmp": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "allow_isakmp",
+      ".index": 13,
+      "name": "Allow-ISAKMP",
+      "src": "wan",
+      "dest": "lan",
+      "proto": "udp",
+      "dest_port": "500",
+      "target": "ACCEPT"
+    },
+    "family_to_printer": {
+      ".anonymous": false,
+      ".type": "rule",
+      ".name": "family_to_printer",
+      ".index": 14,
+      "src": "guest",
+      "dest": "lan",
+      "dest_ip": "10.0.31.213",
+      "target": "ACCEPT"
+    },
+    "force_dns_guest": {
+      ".anonymous": false,
+      ".type": "redirect",
+      ".name": "force_dns_guest",
+      ".index": 15,
+      "name": "Force-DNS-to-AdGuard-guest",
+      "src": "guest",
+      "proto": "tcp udp",
+      "src_dport": "53",
+      "dest_port": "53",
+      "target": "DNAT"
+    },
+    "nas_snat": {
+      ".anonymous": false,
+      ".type": "redirect",
+      ".name": "nas_snat",
+      ".index": 16,
+      "name": "NAS-source-NAT",
+      "src": "lan",
+      "dest": "wan",
+      "proto": "tcp",
+      "src_ip": "10.0.0.30",
+      "target": "SNAT"
+    },
+    "https_to_nas": {
+      ".anonymous": false,
+      ".type": "redirect",
+      ".name": "https_to_nas",
+      ".index": 17,
+      "name": "HTTPS-to-NAS",
+      "src": "wan",
+      "proto": "tcp",
+      "src_dport": "8443",
+      "dest_ip": "10.0.0.30",
+      "dest_port": "443"
+    }
+  },
+  "network": {
+    "loopback": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "loopback",
+      ".index": 0,
+      "device": "lo",
+      "proto": "static",
+      "ipaddr": "127.0.0.1",
+      "netmask": "255.0.0.0"
+    },
+    "lan": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "lan",
+      ".index": 1,
+      "device": "br-lan",
+      "proto": "static",
+      "ipaddr": "10.0.0.1",
+      "netmask": "255.255.255.0",
+      "ip6assign": "60"
+    },
+    "lan2": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "lan2",
+      ".index": 2,
+      "device": "eth2",
+      "proto": "none"
+    },
+    "wan": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "wan",
+      ".index": 3,
+      "device": "wan0",
+      "proto": "dhcp"
+    },
+    "wan6": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "wan6",
+      ".index": 4,
+      "device": "wan0",
+      "proto": "dhcpv6"
+    },
+    "guest": {
+      ".anonymous": false,
+      ".type": "interface",
+      ".name": "guest",
+      ".index": 5,
+      "device": "br-guest",
+      "proto": "static",
+      "ipaddr": "10.0.20.1",
+      "netmask": "255.255.255.0",
+      "ip6assign": "64"
+    },
+    "cfg09ab12": {
+      ".anonymous": true,
+      ".type": "device",
+      ".name": "cfg09ab12",
+      ".index": 6,
+      "name": "br-lan",
+      "type": "bridge",
+      "ports": ["lan0", "lan1"]
+    }
+  }
+}
