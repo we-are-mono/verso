@@ -1,0 +1,11 @@
+{
+  "type": "section",
+  "title": "Peers",
+  "sub": "Devices that may connect.",
+  "children": [
+    {
+      "type": "text",
+      "markdown": "body"
+    }
+  ]
+}

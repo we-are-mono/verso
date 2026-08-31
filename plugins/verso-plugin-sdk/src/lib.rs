@@ -4,19 +4,24 @@
 //! The Verso plugin SDK.
 //!
 //! Everything common to a Verso plugin lives here so each plugin writes only its
-//! own `get`/`post` logic (see verso-plugin-hostname2 for the ~40-line example):
+//! own `get`/`post` logic (see verso-plugin-system for the example):
 //!
 //! - [`serve`] — bind the unix socket and run the HTTP loop, routing GET → your
 //!   `get` and POST → your `post`.
 //! - [`Snapshot`] / [`Section`] — the read the shell injects (X-Verso-UCI).
 //! - [`Form`] — a decoded POST submission.
-//! - [`envelope`], [`card`], [`form`], [`field`], [`list`], [`raw`], [`commit`],
-//!   [`with_commit`] — builders for the wire schema (docs/plugins.md).
+//! - [`Envelope`] / [`Widget`] / [`Tone`] — the typed wire schema
+//!   (docs/plugins.md, ADR-006 §9). The `Widget` enum mirrors the shell's
+//!   vocabulary, so your editor's completion is the catalog; there is no
+//!   untyped builder set, and `raw` is one variant among many, for prose.
 //!
 //! A plugin holds no session and writes nothing itself (ADR-007): it renders from
 //! the snapshot and returns a commit intent the shell applies. This crate speaks
-//! only the documented JSON contract; it shares no code with the shell.
+//! only the documented JSON contract; it shares no code with the shell — the two
+//! are pinned together by the conformance fixtures this crate's tests write and
+//! the shell's tests decode.
 
+use serde::Serialize;
 use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -32,8 +37,8 @@ pub use serde_json::{json, Value};
 /// thread. This never returns under normal operation.
 pub fn serve<G, P>(id: &str, get: G, post: P)
 where
-    G: Fn(&Snapshot) -> Value + Send + Sync + 'static,
-    P: Fn(&Form) -> Value + Send + Sync + 'static,
+    G: Fn(&Snapshot) -> Envelope + Send + Sync + 'static,
+    P: Fn(&Form) -> Envelope + Send + Sync + 'static,
 {
     let env_key = format!("VERSO_{}_SOCKET", id.to_uppercase());
     let socket = env::var(&env_key).unwrap_or_else(|_| format!("/var/run/verso/{id}.sock"));
@@ -66,8 +71,8 @@ where
 
 fn handle<G, P>(mut stream: UnixStream, get: &G, post: &P) -> std::io::Result<()>
 where
-    G: Fn(&Snapshot) -> Value,
-    P: Fn(&Form) -> Value,
+    G: Fn(&Snapshot) -> Envelope,
+    P: Fn(&Form) -> Envelope,
 {
     // Bound a slow or hostile peer (group verso: the shell or a sibling plugin):
     // a stalled read/write cannot pin this thread indefinitely, and an oversized
@@ -254,57 +259,432 @@ impl Form {
     }
 }
 
-// ---- widget / envelope builders (the wire schema) ----
+// ---- the typed wire schema (ADR-006 §9) ----
 
-/// envelope wraps a widget as the top-level reply (schema_version + title).
-pub fn envelope(title: &str, widget: Value) -> Value {
-    json!({ "schema_version": 1, "title": title, "widget": widget })
+/// Tone is the semantic state vocabulary the whole UI speaks (ADR-005): a
+/// plugin names intent, never a colour; the shell maps the tone to palette.
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum Tone {
+    Neutral,
+    Success,
+    Warning,
+    Danger,
+    Info,
 }
 
-/// with_commit attaches a commit intent (the declarative writes the shell applies).
-pub fn with_commit(mut envelope: Value, ops: Vec<Value>) -> Value {
-    envelope["commit"] = Value::Array(ops);
-    envelope
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
-/// card is a titleless container of child widgets.
-pub fn card(children: Vec<Value>) -> Value {
-    json!({ "type": "card", "children": children })
+/// Widget is the typed mirror of the shell's widget vocabulary: compose these —
+/// the editor's completion is the catalog. Every variant serializes to the
+/// documented wire shape; the conformance fixtures pin that to the shell's
+/// decoder. `Raw` is for prose only — an outcome belongs in the envelope's
+/// notice, a machine value in `Code`/`Properties`, a nothing-here state in
+/// `Empty` (ADR-005 §4).
+#[derive(Serialize, Debug)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Widget {
+    /// A titled box of child widgets — the page-layout primitive.
+    Card {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        title: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        subtitle: String,
+        children: Vec<Widget>,
+    },
+    /// A titled region of the page, set apart with generous space. Meta is
+    /// compact status text beside the title (an optional icon and "inline"
+    /// position refine it).
+    Section {
+        title: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        sub: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        meta: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        meta_icon: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        meta_position: String,
+        children: Vec<Widget>,
+    },
+    /// Vertical rhythm for its children; draws nothing itself. Width "compact"
+    /// narrows the run for a short form column.
+    Stack {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        width: String,
+        children: Vec<Widget>,
+    },
+    /// Side-by-side columns; the shell owns the responsive collapse.
+    Grid { columns: u32, children: Vec<Widget> },
+    /// A submittable set of fields; the shell threads CSRF and posts back here.
+    /// Style "page" hands submission to the shell's staging capsule.
+    Form {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        submit: String,
+        fields: Vec<Widget>,
+    },
+    /// One labelled input with a declared datatype the shell enforces (ADR-008).
+    /// Kind picks the control ("text", "select", "hidden", "datetime-local", …);
+    /// options feed a select; error is the inline validation message (422).
+    Field {
+        name: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        label: String,
+        kind: String,
+        value: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        datatype: String,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        options: Vec<SelectOption>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        error: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        help: String,
+    },
+    /// A field-set gated by a toggle: `fields` show while it is on, `otherwise`
+    /// while it is off. The shell realizes the show/hide (ADR-005 §7); the
+    /// toggle posts under `name` so the plugin reads the chosen branch.
+    Conditional {
+        name: String,
+        label: String,
+        checked: bool,
+        fields: Vec<Widget>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        otherwise: Vec<Widget>,
+    },
+    /// A repeatable input sharing one name — a list of ports, hosts, CIDRs.
+    List {
+        name: String,
+        label: String,
+        kind: String,
+        datatype: String,
+        items: Vec<String>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        help: String,
+    },
+    /// A boxed contextual notice beside content, toned by intent. An action's
+    /// *outcome* belongs in the envelope's notice, not here.
+    Callout {
+        variant: Tone,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        title: String,
+        body: String,
+        #[serde(skip_serializing_if = "is_false")]
+        compact: bool,
+    },
+    /// A machine value in a monospace box, with an inline copy button.
+    Code {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        label: String,
+        value: String,
+        copy: bool,
+    },
+    /// The designed nothing-here state: icon, headline, reassurance, and the
+    /// call(s) to action as children.
+    Empty {
+        icon: String,
+        title: String,
+        body: String,
+        children: Vec<Widget>,
+    },
+    /// A label/value fact sheet.
+    Properties { items: Vec<Property> },
+    /// A status pill.
+    Badge {
+        variant: Tone,
+        text: String,
+        #[serde(skip_serializing_if = "is_false")]
+        dot: bool,
+    },
+    /// A short run of styled prose (Markdown), inline in a composition.
+    Text { markdown: String },
+    /// A destructive action behind an explicit confirmation.
+    Confirm {
+        trigger: String,
+        message: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        confirm: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        cancel: String,
+    },
+    /// The governed bridge: display-only Markdown **prose** no widget shapes
+    /// (ADR-005 §4). Metered — its usage is the demand signal for the next
+    /// widget.
+    Raw { markdown: String },
 }
 
-/// raw is a Markdown note — the governed bridge, for when no widget fits (ADR-005).
-pub fn raw(markdown: &str) -> Value {
-    json!({ "type": "raw", "markdown": markdown })
-}
-
-/// form is a submittable set of fields; `success` is shown after a save (omit "").
-pub fn form(submit: &str, success: &str, fields: Vec<Value>) -> Value {
-    let mut f = json!({ "type": "form", "submit": submit, "fields": fields });
-    if !success.is_empty() {
-        f["success"] = json!(success);
+impl Widget {
+    /// card is a container of child widgets, optionally titled.
+    pub fn card(title: &str, children: Vec<Widget>) -> Widget {
+        Widget::Card {
+            title: title.into(),
+            subtitle: String::new(),
+            children,
+        }
     }
-    f
+
+    /// section is a titled region of the page.
+    pub fn section(title: &str, sub: &str, children: Vec<Widget>) -> Widget {
+        Widget::Section {
+            title: title.into(),
+            sub: sub.into(),
+            meta: String::new(),
+            meta_icon: String::new(),
+            meta_position: String::new(),
+            children,
+        }
+    }
+
+    /// stack lays children out vertically; width "compact" via the variant.
+    pub fn stack(children: Vec<Widget>) -> Widget {
+        Widget::Stack {
+            width: String::new(),
+            children,
+        }
+    }
+
+    /// form is a submittable set of fields with the given submit label.
+    pub fn form(submit: &str, fields: Vec<Widget>) -> Widget {
+        Widget::Form {
+            style: String::new(),
+            submit: submit.into(),
+            fields,
+        }
+    }
+
+    /// field is a single text input carrying a datatype the shell enforces.
+    pub fn field(name: &str, label: &str, value: &str, datatype: &str, help: &str) -> Widget {
+        Widget::Field {
+            name: name.into(),
+            label: label.into(),
+            kind: "text".into(),
+            value: value.into(),
+            datatype: datatype.into(),
+            options: Vec::new(),
+            error: String::new(),
+            help: help.into(),
+        }
+    }
+
+    /// select is a single-choice field over a closed option set.
+    pub fn select(name: &str, label: &str, value: &str, options: Vec<SelectOption>, error: &str) -> Widget {
+        Widget::Field {
+            name: name.into(),
+            label: label.into(),
+            kind: "select".into(),
+            value: value.into(),
+            datatype: String::new(),
+            options,
+            error: error.into(),
+            help: String::new(),
+        }
+    }
+
+    /// hidden is the bare value carrier a form posts but a person never edits.
+    pub fn hidden(name: &str, value: &str) -> Widget {
+        Widget::Field {
+            name: name.into(),
+            label: String::new(),
+            kind: "hidden".into(),
+            value: value.into(),
+            datatype: String::new(),
+            options: Vec::new(),
+            error: String::new(),
+            help: String::new(),
+        }
+    }
+
+    /// list is a repeatable text input (one value per row) of one datatype.
+    pub fn list(name: &str, label: &str, datatype: &str, items: &[String], help: &str) -> Widget {
+        Widget::List {
+            name: name.into(),
+            label: label.into(),
+            kind: "text".into(),
+            datatype: datatype.into(),
+            items: items.to_vec(),
+            help: help.into(),
+        }
+    }
+
+    /// callout is a boxed contextual notice beside content.
+    pub fn callout(variant: Tone, title: &str, body: &str) -> Widget {
+        Widget::Callout {
+            variant,
+            title: title.into(),
+            body: body.into(),
+            compact: false,
+        }
+    }
+
+    /// code shows a machine value with a copy button.
+    pub fn code(label: &str, value: &str) -> Widget {
+        Widget::Code {
+            label: label.into(),
+            value: value.into(),
+            copy: true,
+        }
+    }
+
+    /// empty is the designed nothing-here state.
+    pub fn empty(icon: &str, title: &str, body: &str, children: Vec<Widget>) -> Widget {
+        Widget::Empty {
+            icon: icon.into(),
+            title: title.into(),
+            body: body.into(),
+            children,
+        }
+    }
+
+    /// text is a short run of styled prose.
+    pub fn text(markdown: &str) -> Widget {
+        Widget::Text {
+            markdown: markdown.into(),
+        }
+    }
+
+    /// raw is the governed prose bridge — reach for a widget first (ADR-005 §4).
+    pub fn raw(markdown: &str) -> Widget {
+        Widget::Raw {
+            markdown: markdown.into(),
+        }
+    }
 }
 
-/// field is a single text input carrying a declared datatype the shell enforces.
-pub fn field(name: &str, label: &str, value: &str, datatype: &str, help: &str) -> Value {
-    json!({
-        "type": "field", "name": name, "label": label, "kind": "text",
-        "value": value, "datatype": datatype, "help": help
-    })
+/// SelectOption is one choice of a select field.
+#[derive(Serialize, Debug)]
+pub struct SelectOption {
+    pub value: String,
+    pub label: String,
 }
 
-/// list is a repeatable text input (one value per row), each of the given datatype.
-pub fn list(name: &str, label: &str, datatype: &str, items: &[String], help: &str) -> Value {
-    json!({
-        "type": "list", "name": name, "label": label, "kind": "text",
-        "datatype": datatype, "items": items, "help": help
-    })
+/// Property is one row of a [`Widget::Properties`] fact sheet.
+#[derive(Serialize, Debug)]
+pub struct Property {
+    pub label: String,
+    pub value: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub mono: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub copy: bool,
 }
 
-/// commit is one declarative uci write for [`with_commit`].
-pub fn commit(config: &str, section: &str, values: Value) -> Value {
-    json!({ "config": config, "section": section, "values": values })
+/// Notice is the outcome of the action this render answers — shown by the shell
+/// in its own flash slot (ADR-006 §4). State the outcome; never compose it.
+#[derive(Serialize, Debug)]
+pub struct Notice {
+    pub level: Tone,
+    pub text: String,
+}
+
+/// CommitOp is one declarative uci write the shell applies on the plugin's
+/// behalf (ADR-007). An empty section with a section_type creates a new
+/// section of that type, then sets the values on it.
+#[derive(Serialize, Debug)]
+pub struct CommitOp {
+    pub config: String,
+    pub section: String,
+    #[serde(rename = "type", skip_serializing_if = "String::is_empty")]
+    pub section_type: String,
+    pub values: Value,
+}
+
+/// commit is one declarative uci write for [`Envelope::with_commit`].
+pub fn commit(config: &str, section: &str, values: Value) -> CommitOp {
+    CommitOp {
+        config: config.into(),
+        section: section.into(),
+        section_type: String::new(),
+        values,
+    }
+}
+
+/// commit_new creates a new section of `section_type` and sets `values` on it.
+pub fn commit_new(config: &str, section_type: &str, values: Value) -> CommitOp {
+    CommitOp {
+        config: config.into(),
+        section: String::new(),
+        section_type: section_type.into(),
+        values,
+    }
+}
+
+/// ApplyAction is one tightly typed non-UCI operation the shell performs after
+/// the staged UCI transaction applies — only for a declared rpcd scope.
+#[derive(Serialize, Debug)]
+pub struct ApplyAction {
+    pub name: String,
+    pub args: std::collections::BTreeMap<String, String>,
+}
+
+/// Envelope is the typed top-level reply (ADR-006 §4).
+#[derive(Serialize, Debug)]
+pub struct Envelope {
+    pub schema_version: u32,
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub subheading: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub width: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<Notice>,
+    pub widget: Widget,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub commit: Vec<CommitOp>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub apply: Vec<ApplyAction>,
+}
+
+impl Envelope {
+    /// page wraps a widget as the reply for one page render.
+    pub fn page(title: &str, widget: Widget) -> Envelope {
+        Envelope {
+            schema_version: 1,
+            title: title.into(),
+            subheading: String::new(),
+            width: String::new(),
+            notice: None,
+            widget,
+            commit: Vec::new(),
+            apply: Vec::new(),
+        }
+    }
+
+    /// with_subheading sets the lede under the page heading.
+    pub fn with_subheading(mut self, sub: &str) -> Envelope {
+        self.subheading = sub.into();
+        self
+    }
+
+    /// with_width sets the content-column preset ("narrow" | "normal" | "wide").
+    pub fn with_width(mut self, width: &str) -> Envelope {
+        self.width = width.into();
+        self
+    }
+
+    /// with_notice states this render's outcome — shown in the shell's flash slot.
+    pub fn with_notice(mut self, level: Tone, text: &str) -> Envelope {
+        self.notice = Some(Notice {
+            level,
+            text: text.into(),
+        });
+        self
+    }
+
+    /// with_commit attaches the declarative writes the shell applies.
+    pub fn with_commit(mut self, ops: Vec<CommitOp>) -> Envelope {
+        self.commit = ops;
+        self
+    }
+
+    /// with_apply attaches the typed post-apply operations.
+    pub fn with_apply(mut self, ops: Vec<ApplyAction>) -> Envelope {
+        self.apply = ops;
+        self
+    }
 }
 
 // ---- tiny internals (no dependencies) ----

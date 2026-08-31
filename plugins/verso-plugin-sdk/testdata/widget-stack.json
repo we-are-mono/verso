@@ -1,0 +1,13 @@
+{
+  "type": "stack",
+  "children": [
+    {
+      "type": "text",
+      "markdown": "a"
+    },
+    {
+      "type": "text",
+      "markdown": "b"
+    }
+  ]
+}

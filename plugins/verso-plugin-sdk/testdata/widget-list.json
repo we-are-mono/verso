@@ -1,0 +1,11 @@
+{
+  "type": "list",
+  "name": "server",
+  "label": "NTP servers",
+  "kind": "text",
+  "datatype": "host",
+  "items": [
+    "0.openwrt.pool.ntp.org"
+  ],
+  "help": "One per row."
+}

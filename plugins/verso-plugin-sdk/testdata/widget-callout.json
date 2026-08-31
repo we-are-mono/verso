@@ -1,0 +1,6 @@
+{
+  "type": "callout",
+  "variant": "warning",
+  "title": "Not reachable",
+  "body": "The tunnel has no endpoint yet."
+}

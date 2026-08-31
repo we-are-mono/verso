@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
+use std::collections::BTreeMap;
 use std::mem::MaybeUninit;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use verso_plugin::{json, serve, Form, Snapshot, Value};
+use verso_plugin::{
+    commit, commit_new, json, serve, ApplyAction, Envelope, Form, SelectOption, Snapshot, Widget,
+};
 
 mod timezones;
 
@@ -25,11 +28,11 @@ fn main() {
     serve("system", get, post);
 }
 
-fn get(snapshot: &Snapshot) -> Value {
+fn get(snapshot: &Snapshot) -> Envelope {
     page(facts(snapshot), "", "")
 }
 
-fn post(form: &Form) -> Value {
+fn post(form: &Form) -> Envelope {
     let hostname = form.get("hostname").trim().to_string();
     let zonename = form.get("zonename").trim().to_string();
     let original_zonename = form.get("original_zonename");
@@ -78,38 +81,34 @@ fn post(form: &Form) -> Value {
     let ntp_enabled = values.ntp_enabled;
     let ntp_section = values.ntp_section.clone();
 
-    let mut operations = vec![json!({
-        "config": "system",
-        "section": "@system[0]",
-        "values": {
+    let mut operations = vec![commit(
+        "system",
+        "@system[0]",
+        json!({
             "hostname": hostname,
             "zonename": zonename,
             "timezone": timezone.clone()
-        }
-    })];
+        }),
+    )];
     let ntp_values = json!({
         "enabled": if ntp_enabled { "1" } else { "0" },
         "server": servers
     });
     if ntp_section.is_empty() {
-        operations.push(json!({
-            "config": "system", "section": "", "type": "timeserver", "values": ntp_values
-        }));
+        // A missing timeserver section is created by type (docs/plugins.md).
+        operations.push(commit_new("system", "timeserver", ntp_values));
     } else {
-        operations.push(json!({
-            "config": "system", "section": ntp_section, "values": ntp_values
-        }));
+        operations.push(commit("system", &ntp_section, ntp_values));
     }
 
-    let mut result = page(values, "", "");
-    result["commit"] = Value::Array(operations);
+    let mut result = page(values, "", "").with_commit(operations);
     if !ntp_enabled {
-        result["apply"] = json!([{
-            "name": "set-system-time",
-            "args": {
-                "datetime": datetime,
-                "timezone": timezone
-            }
+        result = result.with_apply(vec![ApplyAction {
+            name: "set-system-time".into(),
+            args: BTreeMap::from([
+                ("datetime".into(), datetime),
+                ("timezone".into(), timezone),
+            ]),
         }]);
     }
     result
@@ -159,21 +158,27 @@ fn facts(snapshot: &Snapshot) -> Facts {
     }
 }
 
-fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Value {
+fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
     let (now_display, now_input) = local_time();
     let datetime = if values.datetime.is_empty() {
         now_input
     } else {
         values.datetime.clone()
     };
-    let mut zones: Vec<Value> = ZONES
+    let mut zones: Vec<SelectOption> = ZONES
         .iter()
-        .map(|(value, _)| json!({"value": value, "label": value}))
+        .map(|(value, _)| SelectOption {
+            value: (*value).into(),
+            label: (*value).into(),
+        })
         .collect();
     if !values.zonename.is_empty() && !ZONES.iter().any(|(name, _)| *name == values.zonename) {
         zones.insert(
             0,
-            json!({"value": values.zonename, "label": values.zonename}),
+            SelectOption {
+                value: values.zonename.clone(),
+                label: values.zonename.clone(),
+            },
         );
     }
     let servers = if values.servers.is_empty() {
@@ -185,69 +190,86 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Value {
         values.servers.clone()
     };
 
-    json!({
-        "schema_version": 1,
-        "title": "System",
-        "subheading": "The name, place, and clock shared by everything on this router.",
-        "width": "narrow",
-        "widget": {
-            "type": "form",
-            "style": "page",
-            "fields": [
-                {
-                    "type": "section",
-                    "title": "Device identity",
-                    "sub": "The name this router uses on your network and in Verso.",
-                    "children": [{
-                        "type": "stack", "width": "compact", "children": [{
-                            "type": "field", "name": "hostname", "label": "Hostname",
-                            "value": values.hostname, "datatype": "hostname",
-                            "help": "Use letters, numbers, and hyphens. Devices may find it using the local network suffix."
-                        }]
-                    }]
-                },
-                {
-                    "type": "section",
-                    "title": "Time and region",
-                    "sub": "Used for logs, schedules, certificates, and every time shown by the router.",
-                    "meta": now_display, "meta_icon": "clock",
-                    "meta_position": "inline",
-                    "children": [
-                        {"type": "stack", "width": "compact", "children": [{
-                                "type": "field", "name": "zonename", "label": "Timezone", "kind": "select",
-                                "value": values.zonename, "options": zones, "error": timezone_error
-                        }]},
-                        {"type": "field", "name": "original_zonename", "kind": "hidden", "value": values.zonename},
-                        {"type": "field", "name": "original_timezone", "kind": "hidden", "value": values.timezone}
-                    ]
-                },
-                {
-                    "type": "section",
-                    "title": "Time synchronization",
-                    "sub": "Keep the clock accurate automatically using trusted time servers.",
-                    "meta": "Last synchronization not reported", "meta_icon": "clock",
-                    "meta_position": "inline",
-                    "children": [
-                        {
-                            "type": "conditional", "name": "ntp_enabled",
-                            "label": "Set the time automatically", "checked": values.ntp_enabled,
-                            "fields": [{"type": "stack", "width": "compact", "children": [{
-                                    "type": "list", "name": "server", "label": "Time servers",
-                                    "kind": "text", "datatype": "host", "items": servers,
-                                    "help": "Servers are tried in order; leave several so time still works if one is unavailable."
-                            }]}],
-                            "otherwise": [{"type": "stack", "width": "compact", "children": [{
-                                    "type": "field", "name": "datetime", "label": "Date and time",
-                                    "kind": "datetime-local", "value": datetime, "error": datetime_error,
-                                    "help": "Interpreted in the selected timezone and applied to the router clock."
-                            }]}]
-                        },
-                        {"type": "field", "name": "ntp_section", "kind": "hidden", "value": values.ntp_section}
-                    ]
-                }
-            ]
-        }
-    })
+    let compact = |children: Vec<Widget>| Widget::Stack {
+        width: "compact".into(),
+        children,
+    };
+
+    let identity = Widget::section(
+        "Device identity",
+        "The name this router uses on your network and in Verso.",
+        vec![compact(vec![Widget::field(
+            "hostname",
+            "Hostname",
+            &values.hostname,
+            "hostname",
+            "Use letters, numbers, and hyphens. Devices may find it using the local network suffix.",
+        )])],
+    );
+
+    let region = Widget::Section {
+        title: "Time and region".into(),
+        sub: "Used for logs, schedules, certificates, and every time shown by the router.".into(),
+        meta: now_display,
+        meta_icon: "clock".into(),
+        meta_position: "inline".into(),
+        children: vec![
+            compact(vec![Widget::select(
+                "zonename",
+                "Timezone",
+                &values.zonename,
+                zones,
+                timezone_error,
+            )]),
+            Widget::hidden("original_zonename", &values.zonename),
+            Widget::hidden("original_timezone", &values.timezone),
+        ],
+    };
+
+    let sync = Widget::Section {
+        title: "Time synchronization".into(),
+        sub: "Keep the clock accurate automatically using trusted time servers.".into(),
+        meta: "Last synchronization not reported".into(),
+        meta_icon: "clock".into(),
+        meta_position: "inline".into(),
+        children: vec![
+            Widget::Conditional {
+                name: "ntp_enabled".into(),
+                label: "Set the time automatically".into(),
+                checked: values.ntp_enabled,
+                fields: vec![compact(vec![Widget::list(
+                    "server",
+                    "Time servers",
+                    "host",
+                    &servers,
+                    "Servers are tried in order; leave several so time still works if one is unavailable.",
+                )])],
+                otherwise: vec![compact(vec![Widget::Field {
+                    name: "datetime".into(),
+                    label: "Date and time".into(),
+                    kind: "datetime-local".into(),
+                    value: datetime,
+                    datatype: String::new(),
+                    options: Vec::new(),
+                    error: datetime_error.into(),
+                    help: "Interpreted in the selected timezone and applied to the router clock."
+                        .into(),
+                }])],
+            },
+            Widget::hidden("ntp_section", &values.ntp_section),
+        ],
+    };
+
+    Envelope::page(
+        "System",
+        Widget::Form {
+            style: "page".into(),
+            submit: String::new(),
+            fields: vec![identity, region, sync],
+        },
+    )
+    .with_subheading("The name, place, and clock shared by everything on this router.")
+    .with_width("narrow")
 }
 
 fn valid_local_datetime(value: &str) -> bool {

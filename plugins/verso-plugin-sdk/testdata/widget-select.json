@@ -1,0 +1,13 @@
+{
+  "type": "field",
+  "name": "zonename",
+  "label": "Timezone",
+  "kind": "select",
+  "value": "UTC",
+  "options": [
+    {
+      "value": "UTC",
+      "label": "UTC"
+    }
+  ]
+}

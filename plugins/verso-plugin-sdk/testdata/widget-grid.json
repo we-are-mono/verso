@@ -1,0 +1,14 @@
+{
+  "type": "grid",
+  "columns": 2,
+  "children": [
+    {
+      "type": "text",
+      "markdown": "a"
+    },
+    {
+      "type": "text",
+      "markdown": "b"
+    }
+  ]
+}

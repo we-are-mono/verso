@@ -1,0 +1,15 @@
+{
+  "type": "form",
+  "submit": "Save",
+  "fields": [
+    {
+      "type": "field",
+      "name": "hostname",
+      "label": "Hostname",
+      "kind": "text",
+      "value": "router.lan",
+      "datatype": "fqdn",
+      "help": "The device's name."
+    }
+  ]
+}

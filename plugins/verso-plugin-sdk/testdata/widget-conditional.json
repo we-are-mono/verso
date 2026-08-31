@@ -1,0 +1,18 @@
+{
+  "type": "conditional",
+  "name": "ntp_enabled",
+  "label": "Set the time automatically",
+  "checked": true,
+  "fields": [
+    {
+      "type": "text",
+      "markdown": "on"
+    }
+  ],
+  "otherwise": [
+    {
+      "type": "text",
+      "markdown": "off"
+    }
+  ]
+}

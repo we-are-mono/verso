@@ -1,0 +1,10 @@
+{
+  "type": "card",
+  "title": "Tunnel",
+  "children": [
+    {
+      "type": "text",
+      "markdown": "One tunnel, two peers."
+    }
+  ]
+}

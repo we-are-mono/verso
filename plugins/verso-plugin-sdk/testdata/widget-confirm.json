@@ -1,0 +1,5 @@
+{
+  "type": "confirm",
+  "trigger": "Remove peer",
+  "message": "The device loses access immediately."
+}

@@ -1,0 +1,6 @@
+{
+  "type": "field",
+  "name": "ntp_section",
+  "kind": "hidden",
+  "value": "cfg1"
+}
