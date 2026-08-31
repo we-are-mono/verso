@@ -627,9 +627,9 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The advanced overview, transferred hardcoded from the design: verdict,
 	// status tiles, IPv4/IPv6 facts, the traffic graph, System, and the Interfaces
-	// / DHCP leases listings (each a flat Table). It opens on the verdict, so the
-	// page carries no masthead heading. The System panel's firmware/kernel/uptime
-	// are live; the shell fills them, degrading to "unavailable" on a backend miss.
+	// listing (a flat Table). It opens on the verdict, so the page carries no
+	// masthead heading. The System panel's firmware/kernel/uptime are live; the
+	// shell fills them, degrading to "unavailable" on a backend miss.
 	sid := s.sessionSID(r)
 	ov := &widget.Overview{}
 	board, boardErr := s.backend.Board(r.Context(), sid)
@@ -687,9 +687,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
 	s.applySensors(ov, board.BoardName)
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
-	// the WAN graph and are enriched with UCI topology; clients follow them.
-	ov.Devices = s.connectedDevices(r.Context(), sid)
+	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
+	// The roster is its own page; the tile carries the one number and the way in.
+	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
+	ov.DevicesHref = devicesPath
 
 	var body strings.Builder
 	lang, t := s.localize(r)

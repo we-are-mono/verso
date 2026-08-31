@@ -12,13 +12,13 @@ import (
 )
 
 // Overview is the advanced overview page, transferred hardcoded from the design:
-// a verdict line with a Basic/Advanced toggle, a strip of four status tiles, the
+// a verdict line with a Basic/Advanced toggle, a strip of status tiles, the
 // IPv4/IPv6 connection facts, the internet-traffic graph, the System panel, and
-// the Interfaces and Connected-devices listings. It is the shell's own
-// page content — not part of the plugin-facing vocabulary, so it never appears in
-// Decode — a faithful transfer that later steps wire to live data.
+// the Interfaces listing. It is the shell's own page content — not part of the
+// plugin-facing vocabulary, so it never appears in Decode — a faithful transfer
+// that later steps wire to live data.
 //
-// The graph reuses the generic Chart widget and the listings reuse the generic
+// The graph reuses the generic Chart widget and the listing reuses the generic
 // flat Table widget (both injected as rendered HTML); Overview owns only the page
 // composition — the verdict, the tiles, the facts, and the section rhythm. The
 // verdict headline is set in the serif display face (Fraunces).
@@ -64,10 +64,18 @@ type Overview struct {
 	Power         string
 	SensorSummary string
 
-	// Interfaces and Devices are the live listings — every kernel interface,
-	// enriched with its topology/UCI meaning, and the clients on those networks.
+	// Interfaces is the live listing: every kernel interface, enriched with its
+	// topology/UCI meaning.
 	Interfaces []OverviewInterface
-	Devices    []OverviewDevice
+
+	// DevicesOnline is how many devices are on the network right now, and
+	// DevicesKnown whether the box could count them at all. The roster itself is
+	// the Devices page, which DevicesHref names; the tile is this page's doorway
+	// to it and states the one number the strip has room for. An uncounted
+	// network draws no tile — the same silence a box without Wi-Fi keeps.
+	DevicesOnline int
+	DevicesKnown  bool
+	DevicesHref   string
 }
 
 // OverviewInterface is one kernel interface enriched with runtime topology and
@@ -96,38 +104,6 @@ type OverviewInterface struct {
 type OverviewInterfaceRelation struct {
 	Name     string
 	Physical bool
-}
-
-// OverviewDevice is one Connected-devices row and its drawer: the device name,
-// its MAC, its primary v4/v6 addresses (the stacked cell), the Interface (logical
-// network) it sits on, and presence ("online"|"idle"|"offline") — plus the fuller
-// story the Details drawer opens: every address, its zone, connection, lease, and
-// traffic. Interface ties the row back to the Interfaces table; Zone rides the
-// drawer, not the row (the interface already names the segment).
-type OverviewDevice struct {
-	Name      string
-	Icon      string // device-type Lucide glyph, resolved deterministically from MAC OUI / hostname (internal/deviceicon)
-	MAC       string
-	V4        string
-	V6        string
-	Interface string
-	Presence  string
-
-	DUID       string
-	Zone       string
-	Addresses  []OverviewAddr
-	Connection string
-	Lease      string
-	Traffic    string
-	Conns      string
-}
-
-// OverviewAddr is one row of a device's full address list in the drawer: the
-// address, its family ("IPv4"|"IPv6"), and the kernel's confidence in it.
-type OverviewAddr struct {
-	Addr   string
-	Family string
-	State  string
 }
 
 // OverviewFact is one connection-facts row: a label, its value, and whether the
@@ -165,6 +141,7 @@ func (*Overview) children() []Widget { return nil }
 // a trailing icon, a status dot + word, and a caption. Page-owned chrome (like
 // the traffic legend), not a widget: its anatomy — the dot beside the word,
 // the quiet caption — is this page's own. Variant speaks the tone vocabulary.
+// A tile with an Href is also a doorway: the whole tile becomes the link.
 type ohTile struct {
 	Label   string
 	Icon    string
@@ -172,6 +149,7 @@ type ohTile struct {
 	Status  string
 	Caption string
 	Key     string // live hook: the stream refreshes the caption in place
+	Href    string
 }
 
 // ohFactColView is one connection-facts column (IPv4 or IPv6): an eyebrow
@@ -216,7 +194,6 @@ type overviewView struct {
 	SysRight template.HTML
 
 	Interfaces template.HTML
-	Devices    template.HTML
 }
 
 // orUnavailable falls a missing live fact back to a localized "unavailable" so the
@@ -266,12 +243,6 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	devicesTable := o.devicesTable()
-	r.translate(devicesTable)
-	devices, err := renderToHTML(r, devicesTable, csrf)
-	if err != nil {
-		return err
-	}
 
 	// The System headline metrics as bar-layout Meters — each a fixed accent
 	// (icon + bar), not a health band, so the row reads as a dashboard.
@@ -290,6 +261,9 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	tiles := []ohTile{o.internetTile(r.tr)}
 	if o.WiFiPresent {
 		tiles = append(tiles, ohTile{Label: r.tr("WI-FI"), Icon: "wifi", Variant: "success", Status: r.tr("Both bands active"), Caption: r.tr("2.4 & 5 GHz")})
+	}
+	if o.DevicesKnown {
+		tiles = append(tiles, o.devicesTile(r.tr))
 	}
 	tiles = append(tiles,
 		ohTile{Label: r.tr("SECURITY"), Icon: "shield", Variant: "success", Status: r.tr("Protected"), Caption: r.tr("Firewall on")},
@@ -340,7 +314,6 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		SysRight: sysRight,
 
 		Interfaces: interfaces,
-		Devices:    devices,
 	}
 	return r.execute(out, "overview.html.tmpl", v)
 }
@@ -368,6 +341,22 @@ func (o *Overview) internetTile(tr func(string) string) ohTile {
 		tile.Caption = tr("for ") + o.WANUptime
 	}
 	return tile
+}
+
+// devicesTile is the strip's doorway to the roster: how many devices are on the
+// network right now, and a way in to see which. The count is the status — the
+// number is the reason a person looks at this tile.
+func (o *Overview) devicesTile(tr func(string) string) ohTile {
+	status := tr("Nobody connected")
+	if o.DevicesOnline == 1 {
+		status = tr("1 device online")
+	} else if o.DevicesOnline > 1 {
+		status = strconv.Itoa(o.DevicesOnline) + tr(" devices online")
+	}
+	return ohTile{
+		Label: tr("DEVICES"), Icon: "devices", Variant: "success",
+		Status: status, Caption: tr("See who is here"), Href: o.DevicesHref,
+	}
 }
 
 // sysMeters builds the System gauges from the live fields, each a named bar meter
@@ -436,92 +425,6 @@ func renderToHTML(r *Renderer, w Widget, csrf string) (template.HTML, error) {
 		return "", err
 	}
 	return template.HTML(b.String()), nil
-}
-
-// devicesTable is the Connected-devices roster: one row per device the box has
-// seen — a device-type icon + name + zone chip, MAC, the IPv4 address, and
-// presence. The row carries only the IPv4; each row's Details opens a drawer
-// with the full address list (both families) and the rest of the story. This is
-// the unified view (all devices, both families, DHCP or not), not a lease dump.
-func (o *Overview) devicesTable() *Table {
-	rows := make([]TableRow, 0, len(o.Devices))
-	for _, d := range o.Devices {
-		rows = append(rows, TableRow{
-			Cells: []TableCell{
-				{Text: d.Name, LeadIcon: d.Icon},
-				{Text: d.Interface, Chips: zoneChip(d.Zone)},
-				{Text: d.MAC, Copy: true, Emphasis: true},
-				{Text: d.V4, Copy: true, Emphasis: true},
-				presenceCell(d.Presence),
-			},
-			Drawer: o.deviceDrawer(d),
-		})
-	}
-	return &Table{
-		Style: "flat", Align: "top", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
-		Columns: []TableColumn{
-			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "reference"},
-			{Label: "MAC", Kind: "mono"}, {Label: "IPv4", Kind: "addr"},
-			{Label: "Status", Kind: "status"},
-		},
-		Rows: rows,
-	}
-}
-
-// presenceCell renders a device's presence as a status dot + word: online reads
-// emerald, idle amber, offline a quiet grey.
-func presenceCell(p string) TableCell {
-	switch p {
-	case "online":
-		return TableCell{Text: "Online", Variant: "success"}
-	case "idle":
-		return TableCell{Text: "Idle", Variant: "warning"}
-	default:
-		return TableCell{Text: "Offline", Variant: "neutral"}
-	}
-}
-
-// deviceDrawer builds the Details panel for one device: its full address list and
-// a facts block (connection, DHCP lease, traffic) — the more/all-info view behind
-// the row.
-func (o *Overview) deviceDrawer(d OverviewDevice) *RowDrawer {
-	addrRows := make([]TableRow, 0, len(d.Addresses))
-	for _, a := range d.Addresses {
-		addrRows = append(addrRows, TableRow{Cells: []TableCell{
-			{Text: a.Addr, Copy: true, Emphasis: true},
-			{Text: a.Family, Variant: family(a.Family)},
-			{Text: orDash(a.State), Muted: true},
-		}})
-	}
-	addresses := &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{
-			{Label: "Address", Kind: "mono"}, {Label: "Family", Kind: "pill"},
-			{Label: "State", Kind: "text"},
-		},
-		Rows: addrRows,
-	}
-
-	facts := &Properties{Items: []Property{
-		{Label: "MAC", Value: d.MAC},
-		{Label: "DUID", Value: orDash(d.DUID)},
-		{Label: "Interface", Value: orDash(d.Interface)},
-		{Label: "Zone", Value: orDash(d.Zone)},
-		{Label: "Connection", Value: orDash(d.Connection)},
-		{Label: "DHCP lease", Value: orDash(d.Lease)},
-		{Label: "Traffic", Value: orDash(d.Traffic)},
-		{Label: "Connections", Value: orDash(d.Conns)},
-	}}
-
-	return &RowDrawer{Title: d.Name, Size: "wide", Children: []Widget{addresses, facts}}
-}
-
-// family maps an address family to the pill palette — v6 the calmer tint.
-func family(fam string) string {
-	if fam == "IPv6" {
-		return "info"
-	}
-	return "neutral"
 }
 
 // interfacesTable is the kernel's complete network topology: physical ports,

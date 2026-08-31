@@ -5,21 +5,48 @@ package server
 
 import (
 	"fmt"
+	"html/template"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
-// Connected devices: the roster, from the router's own truth. dnsmasq's
+// The Devices page: the roster, from the router's own truth. dnsmasq's
 // lease file names who holds an address; the kernel supplies everything
 // else, joined by MAC — neighbour entries both families (with real NUD
 // confidence) and the bridge port the MAC was learned on. Friendly names lead;
 // each row opens the device's full story in a wide drawer.
 
 const leasesPath = "/tmp/dhcp.leases"
+
+// devicesPath is where the roster answers — the sidebar row's destination and
+// the home page's doorway, so the three never drift apart.
+const devicesPath = "/devices"
+
+// handleDevices renders the roster. It is the shell's own content, so a render
+// failure is a real 500 rather than a contained notice; every reading behind it
+// degrades on its own (an unreadable source drops its facts, never the page).
+func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
+	roster := s.connectedDevices(r.Context(), s.sessionSID(r))
+
+	var body strings.Builder
+	lang, t := s.localize(r)
+	if err := s.widgets.RenderWithToken(&body, widget.DevicesTable(roster), s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	// Nothing on this page stages a change; the capsule appears only when edits
+	// made elsewhere are waiting (ADR-010).
+	s.renderPage(w, r, http.StatusOK, pageHeader{
+		Heading:    "Devices",
+		Subheading: "Everything that has joined this network — what it is, where it sits, and whether it is here right now.",
+	}, "wide", nil, false, template.HTML(body.String()))
+}
 
 // presence is the roster's honest tri-state: the kernel confirmed the device
 // recently (online), holds a lapsed entry (idle — seen lately, quiet since),

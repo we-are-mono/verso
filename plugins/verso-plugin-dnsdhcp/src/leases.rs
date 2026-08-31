@@ -25,26 +25,46 @@ use crate::page;
 const SUB: &str = "The addresses handed out right now — `/tmp/dhcp.leases`. Open a device to \
 reserve its address permanently.";
 
-/// page renders the leases listing.
-pub fn page(model: &Dnsdhcp, leases: &Leases) -> Envelope {
-    render(model, leases, None)
+/// RESERVE is the query parameter that names the device a visitor arrived to
+/// reserve: the Devices page links here with a MAC, and the panel that would
+/// have taken a click opens on arrival instead.
+pub const RESERVE: &str = "reserve";
+
+/// page renders the leases listing. `reserve` is the MAC the visitor came for,
+/// or "" — a MAC no lease answers to changes nothing.
+pub fn page(model: &Dnsdhcp, leases: &Leases, reserve: &str) -> Envelope {
+    render(model, leases, None, reserve)
 }
 
-fn render(model: &Dnsdhcp, leases: &Leases, refusal: Option<&hosts::Refusal>) -> Envelope {
+fn render(
+    model: &Dnsdhcp,
+    leases: &Leases,
+    refusal: Option<&hosts::Refusal>,
+    reserve: &str,
+) -> Envelope {
     page::dhcp(Widget::stack(vec![
         page::filter("Filter — device, MAC, IP…"),
-        Widget::section("Active leases", SUB, vec![listing(model, leases, refusal)]),
+        Widget::section(
+            "Active leases",
+            SUB,
+            vec![listing(model, leases, refusal, reserve)],
+        ),
     ]))
 }
 
-fn listing(model: &Dnsdhcp, leases: &Leases, refusal: Option<&hosts::Refusal>) -> Widget {
+fn listing(
+    model: &Dnsdhcp,
+    leases: &Leases,
+    refusal: Option<&hosts::Refusal>,
+    reserve: &str,
+) -> Widget {
     if leases.all().is_empty() {
         return nothing_here(leases);
     }
     let rows = leases
         .all()
         .iter()
-        .map(|lease| row(model, lease, refusal))
+        .map(|lease| row(model, lease, refusal, reserve))
         .collect();
     page::table(
         page::columns(&[
@@ -82,7 +102,12 @@ fn nothing_here(leases: &Leases) -> Widget {
     }
 }
 
-fn row(model: &Dnsdhcp, lease: &Lease, refusal: Option<&hosts::Refusal>) -> TableRow {
+fn row(
+    model: &Dnsdhcp,
+    lease: &Lease,
+    refusal: Option<&hosts::Refusal>,
+    reserve: &str,
+) -> TableRow {
     let mut row = TableRow {
         id: lease.mac.clone(),
         cells: vec![
@@ -105,7 +130,11 @@ fn row(model: &Dnsdhcp, lease: &Lease, refusal: Option<&hosts::Refusal>) -> Tabl
     let refused = refusal.filter(|refused| same_mac(&refused.host.mac, &lease.mac));
     row.drawer = match refused {
         Some(refused) => hosts::reserve_drawer(&refused.host, &refused.errors, true),
-        None => hosts::reserve_drawer(&Host::of_lease(lease), &Errors::default(), false),
+        None => hosts::reserve_drawer(
+            &Host::of_lease(lease),
+            &Errors::default(),
+            same_mac(reserve, &lease.mac),
+        ),
     };
     row
 }
@@ -125,19 +154,20 @@ fn network_of<'a>(model: &'a Dnsdhcp, ipv4: &str) -> &'a str {
 }
 
 /// post answers a submission to this page. The only thing it draws is the
-/// reserve panel, so that is the only submission it accepts.
-pub fn post(model: &mut Dnsdhcp, leases: &Leases, form: &Form) -> Envelope {
+/// reserve panel, so that is the only submission it accepts. A refusal reopens
+/// the panel it came from, which outranks the panel the visitor arrived on.
+pub fn post(model: &mut Dnsdhcp, leases: &Leases, form: &Form, reserve: &str) -> Envelope {
     if form::kind(form).as_deref() != Some(form::HOST) || form::deletes(form) {
-        return render(model, leases, None).with_notice(Tone::Danger, form::UNKNOWN);
+        return render(model, leases, None, reserve).with_notice(Tone::Danger, form::UNKNOWN);
     }
     match hosts::save(model, form) {
-        hosts::Saved::Ops(ops, said) => render(model, leases, None)
+        hosts::Saved::Ops(ops, said) => render(model, leases, None, reserve)
             .with_notice(Tone::Success, said)
             .with_commit(ops),
-        hosts::Saved::Refused(refusal) => render(model, leases, Some(&refusal))
+        hosts::Saved::Refused(refusal) => render(model, leases, Some(&refusal), reserve)
             .with_notice(Tone::Danger, form::REFUSED),
         hosts::Saved::Unknown => {
-            render(model, leases, None).with_notice(Tone::Danger, form::UNKNOWN)
+            render(model, leases, None, reserve).with_notice(Tone::Danger, form::UNKNOWN)
         }
     }
 }
@@ -151,7 +181,13 @@ mod tests {
     use verso_plugin::{Ubus, Value};
 
     fn body(leases: &Leases) -> Json {
-        serde_json::to_value(page(&fixture::dnsdhcp(), leases)).expect("serialize")
+        opened(leases, "")
+    }
+
+    /// opened renders the page as a visitor who arrived to reserve one device
+    /// sees it.
+    fn opened(leases: &Leases, reserve: &str) -> Json {
+        serde_json::to_value(page(&fixture::dnsdhcp(), leases, reserve)).expect("serialize")
     }
 
     fn rows(body: &Json) -> Vec<Json> {
@@ -163,7 +199,7 @@ mod tests {
 
     fn answer(body: &str) -> Json {
         let mut model = fixture::dnsdhcp();
-        serde_json::to_value(post(&mut model, &fixture::leases(), &Form::parse(body)))
+        serde_json::to_value(post(&mut model, &fixture::leases(), &Form::parse(body), ""))
             .expect("serialize")
     }
 
@@ -237,6 +273,30 @@ mod tests {
         assert_eq!(saved["notice"], serde_json::json!({"level": "success", "text": "Address reserved."}));
         assert_eq!(saved["commit"][0]["type"], "host");
         assert_eq!(rows(&saved)[0]["cells"][5], serde_json::json!({"text": "reserved", "variant": "info"}));
+    }
+
+    // Arriving with a device named opens that device's panel and no other; a MAC
+    // no lease answers to is simply not about anything here.
+    #[test]
+    fn the_device_the_visitor_came_for_is_already_open() {
+        let named = rows(&opened(&fixture::leases(), "42:e6:ad:ff:b7:af"));
+        assert_eq!(named[0]["drawer"]["open"], true);
+        assert!(named[1]["drawer"].get("open").is_none());
+
+        for reserve in ["", "aa:bb:cc:dd:ee:ff", "nonsense"] {
+            for row in rows(&opened(&fixture::leases(), reserve)) {
+                assert!(row["drawer"].get("open").is_none(), "{reserve}: {row}");
+            }
+        }
+    }
+
+    // A device whose address is already reserved has no panel to open, so naming
+    // it changes nothing.
+    #[test]
+    fn a_reserved_device_named_in_the_query_still_opens_nothing() {
+        for row in rows(&opened(&fixture::leases(), "30:9c:23:5e:88:01")) {
+            assert!(row["drawer"]["open"] != true, "{row}");
+        }
     }
 
     #[test]

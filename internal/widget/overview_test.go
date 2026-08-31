@@ -10,15 +10,15 @@ import (
 
 // TestRenderOverview: the overview draws every section — verdict, tiles, IPv4/IPv6
 // facts (with copy), the injected traffic chart, System, and the injected flat-Table
-// listings (Interfaces, Connected devices) — with the headline in the serif display face.
-// The live System facts are filled from the fields; an empty Overview shows them as
-// "unavailable".
+// Interfaces listing — with the headline in the serif display face. The live System
+// facts are filled from the fields; an empty Overview shows them as "unavailable".
 func TestRenderOverview(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Overview{
-		WiFiPresent: true,
-		Model:       "Mono Gateway Development Kit",
-		Firmware:    "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
+		WiFiPresent:   true,
+		DevicesOnline: 9, DevicesKnown: true, DevicesHref: "/devices",
+		Model:    "Mono Gateway Development Kit",
+		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
 		WANKnown: true, WANUp: true, WANUptime: "2h 14m",
 		Temperature: "52 °C · Normal", TempDot: "success",
 		Fan: "3630 rpm", Power: "12.4 W", SensorSummary: "8 power · 5 thermal",
@@ -55,32 +55,14 @@ func TestRenderOverview(t *testing.T) {
 				RxPackets: "820 pkt/s", TxPackets: "210 pkt/s",
 			},
 		},
-		Devices: []OverviewDevice{
-			{
-				Name: "Gaming PC", MAC: "a4:83:e7:2b:19:0c",
-				DUID: "00:03:00:01:a4:83:e7:2b:19:0c",
-				V4:   "192.168.1.104", V6: "2001:db8::4f",
-				Interface: "br-lan", Zone: "lan", Presence: "online",
-				Addresses: []OverviewAddr{
-					{Addr: "192.168.1.104", Family: "IPv4", State: "reachable"},
-					{Addr: "2001:db8::4f", Family: "IPv6", State: "reachable"},
-				},
-				Connection: "lan1", Lease: "in 11h 12m",
-				Traffic: "12.4 GB down · 3.1 GB up", Conns: "42",
-			},
-			{
-				Name: "Unknown device", MAC: "9e:2f:11:c4:08:5b",
-				V4: "192.168.20.44", Interface: "br-lan.20", Zone: "guest", Presence: "offline",
-				Addresses: []OverviewAddr{{Addr: "192.168.20.44", Family: "IPv4", State: "stale"}},
-				Lease:     "No DHCP lease",
-			},
-		},
 	})
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "font-serif", // verdict in Fraunces
 		"Basic", "Advanced", // the view switch
 		"INTERNET", "for 2h 14m", "data-verso-tile-caption=\"internet-uptime\"",
 		"WI-FI", "SECURITY", "SOFTWARE", // status tiles
+		// The Devices tile states the live count and is the doorway to the roster.
+		"DEVICES", "9 devices online", `href="/devices"`,
 		"IPV4", "172.30.1.171/24", "IPV6", "fd42:7ea:aa00::/56",
 		"x-data=\"copy\"",                             // copy control on the IP values
 		"Internet traffic", "live · WAN", "Mbps down", // chart header + legend
@@ -100,19 +82,9 @@ func TestRenderOverview(t *testing.T) {
 		// Entity reference chips carry their Lucide type icon so interface / zone /
 		// port never blur: network glyph on the interface chip, ethernet-port glyph
 		// on the port chips.
-		"M12 12V8",           // network icon → an interface topology chip
-		"M10 8v1",            // ethernet-port icon → the interface's port chips
-		"M20 13c0 5-3.5 7.5", // zone icon → the shared firewall-zone chip
-		// Connected devices: MAC + stacked v4/v6 addresses, presence, and the
-		// per-row Details drawer carrying the full story.
-		"Connected devices", "2 devices",
-		"a4:83:e7:2b:19:0c", "192.168.1.104", "2001:db8::4f", // MAC + stacked addresses
-		"Interface", "br-lan", "br-lan.20", // kernel segment + zone chip
-		"Online", "Offline", // presence words
-		"Details", "max-w-2xl", // the drawer opener + its wide panel
-		"in 11h 12m", "No DHCP lease", // drawer lease facts
-		"12.4 GB down · 3.1 GB up", "lan1", // drawer traffic + connection
-		"DUID", "00:03:00:01:a4:83:e7:2b:19:0c", // the DHCPv6 identity in the drawer
+		"M12 12V8",                              // network icon → an interface topology chip
+		"M10 8v1",                               // ethernet-port icon → the interface's port chips
+		"M20 13c0 5-3.5 7.5",                    // zone icon → the shared firewall-zone chip
 		"dark:border-gray-700 dark:bg-gray-800", // dark segmented-control track
 		"dark:bg-gray-700 dark:text-gray-100",   // active Advanced segment
 	} {
@@ -122,8 +94,6 @@ func TestRenderOverview(t *testing.T) {
 	}
 	for _, want := range []string{
 		`font-mono font-semibold">172.30.1.171/24`,
-		`font-mono text-base font-semibold tabular-nums whitespace-nowrap text-slate-900 group-last:border-b-0">a4:83:e7:2b:19:0c`,
-		`font-mono text-base font-semibold tabular-nums group-last:border-b-0`,
 		`class="text-base font-medium text-slate-900"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -146,8 +116,8 @@ func TestRenderOverview(t *testing.T) {
 	if strings.Count(got, "w-32 min-w-32 max-w-32") < 4 {
 		t.Errorf("the live RX and TX columns should both have a stable fixed width")
 	}
-	if !strings.Contains(got, "grid grid-cols-4") {
-		t.Errorf("Wi-Fi hardware should render the four-column status strip")
+	if !strings.Contains(got, "grid grid-cols-5") {
+		t.Errorf("Wi-Fi hardware and a counted roster should render the five-column status strip")
 	}
 	if !strings.Contains(got, "</svg></span>Wi-Fi</span>") {
 		t.Errorf("a wireless interface should carry a Wi-Fi chip")
@@ -163,6 +133,30 @@ func TestRenderOverview(t *testing.T) {
 	}
 	if strings.Contains(bare, "WI-FI") || !strings.Contains(bare, "grid grid-cols-3") {
 		t.Errorf("an overview without Wi-Fi hardware should use three full-width status columns")
+	}
+	// A roster the box could not count states no number and offers no doorway
+	// rather than claiming nobody is here.
+	if strings.Contains(bare, "DEVICES") {
+		t.Errorf("an uncounted roster should draw no tile")
+	}
+}
+
+// TestRenderOverviewDevicesTileCounts: the tile says what one device and no
+// device mean, in words rather than a bare number.
+func TestRenderOverviewDevicesTileCounts(t *testing.T) {
+	r := newRenderer(t)
+	for _, tc := range []struct {
+		online int
+		want   string
+	}{
+		{0, "Nobody connected"},
+		{1, "1 device online"},
+		{12, "12 devices online"},
+	} {
+		got := render(t, r, &Overview{DevicesKnown: true, DevicesOnline: tc.online})
+		if !strings.Contains(got, tc.want) {
+			t.Errorf("devices tile for %d online should read %q", tc.online, tc.want)
+		}
 	}
 }
 

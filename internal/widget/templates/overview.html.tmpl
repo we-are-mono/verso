@@ -41,8 +41,8 @@
   </section>
 
   {{/* Kernel interfaces are one topology: physical ports, bridges, VLANs and
-       tunnels in one telemetry-backed listing, followed by their clients. */}}
+       tunnels in one telemetry-backed listing. The devices on those networks are
+       a page of their own, reached from the strip's Devices tile. */}}
   <section class="mt-12">{{.Interfaces}}</section>
-  <section class="mt-12">{{.Devices}}</section>
 
 </div>

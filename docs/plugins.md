@@ -184,6 +184,12 @@ then:
 You may serve multiple pages (multiple `nav` paths) from one socket; route on the
 request path like any HTTP server. You may likewise serve several contribution paths.
 
+The query string never selects the page — it addresses something *within* the page
+the path named, so a link from elsewhere in the shell can arrive with a row already
+open (`/plugins/dnsdhcp/?reserve=<mac>` opens that device's panel). Read it beside
+the path (`request.query`), and let a value that names nothing you have change
+nothing: a link written for a device that has since left must still render the page.
+
 ### Declaring your ACL scopes
 
 Verso — not your plugin — is the enforcement point for privilege (ADR-007). Your

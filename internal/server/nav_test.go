@@ -4,18 +4,26 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/sysstat"
 )
 
-// nav builds a Server holding only manifests — buildNav reads nothing else — so
-// the sidebar ordering (ADR-009 §2, §5) is unit-testable with no transport,
-// backend, or device.
+// nav builds a Server holding manifests and the one device reading the sidebar
+// takes, so the sidebar ordering (ADR-009 §2, §5) is unit-testable with no
+// transport, backend, or device.
 func navServer(manifests ...plugin.Manifest) *Server {
 	// Sockets read as alive so every manifest contributes rows; the
-	// liveness-hiding test overrides probe itself.
-	return &Server{manifests: manifests, probe: func(string) bool { return true }}
+	// liveness-hiding test overrides probe itself. The neighbour table answers
+	// nothing until a test supplies one, which is the sidebar's own
+	// degrade-without-a-count case.
+	return &Server{
+		manifests: manifests,
+		probe:     func(string) bool { return true },
+		neighbors: func() ([]sysstat.Neighbor, error) { return nil, errors.New("no neighbour table in tests") },
+	}
 }
 
 func manifest(id string, entries ...plugin.NavEntry) plugin.Manifest {
@@ -179,6 +187,53 @@ func TestBuildSidebarSecurityWithoutALivePluginLeadsNowhere(t *testing.T) {
 	model = s.buildSidebar("/plugins/firewall/", identityTranslator, func(string) func(string) string { return identityTranslator })
 	if row := securityRow(t, model); !row.Active {
 		t.Fatalf("Security row = %+v, want Active on a stopped plugin's own URL", row)
+	}
+}
+
+// basicRow returns the everyday row carrying one icon.
+func basicRow(t *testing.T, model navModel, icon string) navLink {
+	t.Helper()
+	for _, row := range model.Basic {
+		if row.Icon == icon {
+			return row
+		}
+	}
+	t.Fatalf("no basic row with icon %q", icon)
+	return navLink{}
+}
+
+// The Devices row leads to the roster page and lights up there, carrying the
+// live count of devices on the network as its trailing detail.
+func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
+	s := navServer()
+	s.neighbors = testNeighbors
+	model := s.buildSidebar(devicesPath, identityTranslator, func(string) func(string) string { return identityTranslator })
+	row := basicRow(t, model, "devices")
+	if row.Href != devicesPath || !row.Active || row.Detail != "1" {
+		t.Fatalf("Devices row = %+v, want the active roster row detailing one device online", row)
+	}
+	if elsewhere := basicRow(t, s.buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator }), "devices"); elsewhere.Active {
+		t.Errorf("Devices row = %+v, want inactive away from the roster", elsewhere)
+	}
+}
+
+// A box that cannot count its devices shows the row without a number rather
+// than an invented or stale one.
+func TestBuildSidebarDevicesRowDegradesWithoutACount(t *testing.T) {
+	model := navServer().buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	if row := basicRow(t, model, "devices"); row.Detail != "" {
+		t.Fatalf("Devices row = %+v, want no detail when the count is unavailable", row)
+	}
+}
+
+// Every everyday row leads to a page that exists — the Family placeholder is
+// gone, and its icon with it.
+func TestBuildSidebarHasNoFamilyRow(t *testing.T) {
+	model := navServer().buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	for _, row := range model.Basic {
+		if row.Label == "Family" || row.Icon == "users" {
+			t.Fatalf("the Family placeholder row should be gone: %+v", row)
+		}
 	}
 }
 

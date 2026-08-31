@@ -22,11 +22,13 @@
     </div>
   </div>
 
-  {{/* Status tiles: Wi-Fi hardware earns a fourth column; without a kernel PHY,
-       the remaining three expand evenly across the same full width. */}}
-  <div class="mt-8 grid {{if eq (len .Tiles) 4}}grid-cols-4{{else}}grid-cols-3{{end}} divide-x divide-slate-100 border-y border-slate-100">
+  {{/* Status tiles: each fact the box can honestly state earns a column — Wi-Fi
+       hardware one, a countable device roster another — and the strip divides
+       the same full width evenly however many that is. A tile with an Href is
+       the doorway to the page that fact belongs to. */}}
+  <div class="mt-8 grid {{if eq (len .Tiles) 5}}grid-cols-5{{else if eq (len .Tiles) 4}}grid-cols-4{{else}}grid-cols-3{{end}} divide-x divide-slate-100 border-y border-slate-100">
     {{range .Tiles}}
-    <div class="px-6 py-5 first:pl-0 last:pr-0">
+    {{if .Href}}<a href="{{.Href}}" class="block px-6 py-5 transition-colors first:pl-0 last:pr-0 hover:bg-slate-50 dark:hover:bg-gray-800">{{else}}<div class="px-6 py-5 first:pl-0 last:pr-0">{{end}}
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{.Label}}</span>
         <span class="shrink-0 {{if eq .Variant "warning"}}text-amber-600{{else}}text-emerald-500{{end}}">{{icon .Icon "size-4"}}</span>
@@ -36,7 +38,7 @@
         <span class="text-base font-semibold {{if eq .Variant "warning"}}text-amber-700{{else}}text-slate-900{{end}}">{{.Status}}</span>
       </div>
       <div class="mt-1.5 text-sm text-slate-400"{{if .Key}} data-verso-tile-caption="{{.Key}}"{{end}}>{{.Caption}}</div>
-    </div>
+    {{if .Href}}</a>{{else}}</div>{{end}}
     {{end}}
   </div>
 

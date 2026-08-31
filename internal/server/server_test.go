@@ -544,7 +544,8 @@ func TestHealthzReturnsOK(t *testing.T) {
 
 // TestIndexRendersOverview: the landing page renders the advanced overview — the
 // verdict, the traffic section, the System panel with live firmware/kernel/uptime
-// from the backend, and the lease table.
+// from the backend, and the interface listing. The roster itself lives on its own
+// page and is not repeated here.
 func TestIndexRendersOverview(t *testing.T) {
 	wanCalls := 0
 	backend := fakeBackend{
@@ -580,7 +581,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces", "Connected devices",
+		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
 		"Connected", "for 2h 14m", "live · pppoe-upstream", // live WAN state, device, and uptime
 	} {

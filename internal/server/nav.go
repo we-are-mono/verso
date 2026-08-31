@@ -5,6 +5,7 @@ package server
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -94,12 +95,19 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	}
 	system.Active = s.isSystemPath(active)
 
+	// Devices is a live row: its detail is how many are on the network right now,
+	// counted from the kernel's neighbour table. A box that cannot answer shows
+	// the row without a number rather than a stale or invented one.
+	devices := basic("Devices", "devices", devicesPath)
+	if online, ok := s.onlineDevices(); ok {
+		devices.Detail = strconv.Itoa(online)
+	}
+
 	m := navModel{Basic: []navLink{
 		basic("Home", "house", "/"),
 		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "success"},
-		{Label: tr("Devices"), Icon: "devices", Href: "#", Detail: "9"},
+		devices,
 		basic("Wi-Fi", "wifi", "#"),
-		basic("Family", "users", "#"),
 		security,
 		system,
 	}}

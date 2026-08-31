@@ -17,6 +17,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
+	// The roster is a page of its own, the overview's peer: shell-owned content
+	// read from the kernel and the lease file, with no configuration to stage.
+	s.mux.HandleFunc("GET "+devicesPath, s.handleDevices)
 	s.mux.HandleFunc("GET /system", s.handleSystemRoot)
 	s.mux.HandleFunc("GET /system/{$}", s.handleSystemRoot)
 

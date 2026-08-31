@@ -102,7 +102,7 @@ where
         }
     };
 
-    let (method, path, headers) = parse_head(&String::from_utf8_lossy(&buf[..header_end]));
+    let (method, target, headers) = parse_head(&String::from_utf8_lossy(&buf[..header_end]));
     let content_length = headers
         .iter()
         .find(|(k, _)| k == "content-length")
@@ -124,7 +124,8 @@ where
     // Both reads ride every request the shell forwards, POST included, so a
     // submission renders its answer from the same reads a GET would have seen.
     let request = Request {
-        path,
+        path: request_path(&target),
+        query: request_query(&target),
         snapshot: Snapshot::from_b64(header(&headers, "x-verso-uci")),
         ubus: Ubus::from_b64(header(&headers, "x-verso-ubus")),
     };
@@ -148,10 +149,14 @@ where
 
 /// Request is one page ask. Path is the sub-path below the plugin's mount — "/"
 /// for the plugin's own root, "/zones" for a subpage — so a plugin with several
-/// pages routes on it; Snapshot and Ubus are the reads the shell took for this
-/// request, config and live state.
+/// pages routes on it; Query is the request target's query string, which the
+/// shell forwards verbatim and which addresses something *within* a page (which
+/// record to open, which device to act on) rather than which page to render;
+/// Snapshot and Ubus are the reads the shell took for this request, config and
+/// live state.
 pub struct Request {
     pub path: String,
+    pub query: Form,
     pub snapshot: Snapshot,
     pub ubus: Ubus,
 }
@@ -301,7 +306,9 @@ impl Ubus {
 // ---- the POST submission ----
 
 /// Form is a decoded urlencoded submission; a field may repeat (a list posts as a
-/// multi-value field).
+/// multi-value field). A query string is the same shape, so [`Request::query`]
+/// is read through this type too.
+#[derive(Default)]
 pub struct Form {
     pairs: Vec<(String, String)>,
 }
@@ -1310,16 +1317,18 @@ impl Envelope {
 
 // ---- tiny internals (no dependencies) ----
 
+/// parse_head splits the request head into the method, the raw request target
+/// (path and query string together, as the shell sent it), and the headers.
 fn parse_head(head: &str) -> (String, String, Vec<(String, String)>) {
     let mut lines = head.split("\r\n");
     let mut request_line = lines.next().unwrap_or("").split(' ');
     let method = request_line.next().unwrap_or("GET").to_string();
-    let path = request_path(request_line.next().unwrap_or(""));
+    let target = request_line.next().unwrap_or("").to_string();
     let headers = lines
         .filter_map(|line| line.split_once(':'))
         .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_string()))
         .collect();
-    (method, path, headers)
+    (method, target, headers)
 }
 
 /// header reads one parsed request header by its lowercased name, or "" when the
@@ -1332,15 +1341,21 @@ fn header<'a>(headers: &'a [(String, String)], name: &str) -> &'a str {
         .unwrap_or("")
 }
 
-/// request_path is the request target's path: the query string is the shell's to
-/// forward and the plugin's to read from the form, never part of the route. A
-/// target that carries no path at all is the mount root.
+/// request_path is the request target's path — what the plugin routes on; the
+/// query string is never part of the route. A target that carries no path at all
+/// is the mount root.
 fn request_path(target: &str) -> String {
     let path = target.split('?').next().unwrap_or("");
     if path.is_empty() {
         return "/".to_string();
     }
     path.to_string()
+}
+
+/// request_query is the request target's query string, decoded like a form body:
+/// it addresses something within the page the path named.
+fn request_query(target: &str) -> Form {
+    Form::parse(target.split_once('?').map(|(_, query)| query).unwrap_or(""))
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -1415,9 +1430,9 @@ fn hex(c: u8) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::{
-        commit, commit_delete, commit_new, header, parse_head, ConditionItem, Envelope, Form,
-        PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
-        TableCell, TableRow, Tone, Ubus, Widget,
+        commit, commit_delete, commit_new, header, parse_head, request_path, request_query,
+        ConditionItem, Envelope, Form, PageTab, RowDrawer, SelectOption, SettingsItem,
+        SettingsPill, SettingsSeam, Snapshot, TableCell, TableRow, Tone, Ubus, Widget,
     };
 
     #[test]
@@ -1462,29 +1477,40 @@ mod tests {
 
     #[test]
     fn request_line_carries_method_and_sub_path() {
-        let (method, path, _) = parse_head("GET /zones HTTP/1.1\r\nHost: plugin\r\n\r\n");
+        let (method, target, _) = parse_head("GET /zones HTTP/1.1\r\nHost: plugin\r\n\r\n");
         assert_eq!(method, "GET");
-        assert_eq!(path, "/zones");
+        assert_eq!(request_path(&target), "/zones");
 
-        let (method, path, _) = parse_head("POST /port-forwards HTTP/1.1\r\n\r\n");
+        let (method, target, _) = parse_head("POST /port-forwards HTTP/1.1\r\n\r\n");
         assert_eq!(method, "POST");
-        assert_eq!(path, "/port-forwards");
+        assert_eq!(request_path(&target), "/port-forwards");
     }
 
     #[test]
-    fn request_path_drops_the_query_string() {
-        let (_, path, _) = parse_head("GET /zones?edit=lan&x=1 HTTP/1.1\r\n\r\n");
-        assert_eq!(path, "/zones");
+    fn the_route_is_the_path_and_the_query_is_read_beside_it() {
+        let (_, target, _) = parse_head("GET /zones?edit=lan&x=1&x=2 HTTP/1.1\r\n\r\n");
+        assert_eq!(request_path(&target), "/zones");
+        let query = request_query(&target);
+        assert_eq!(query.get("edit"), "lan");
+        assert_eq!(query.all("x"), vec!["1", "2"]);
 
-        let (_, path, _) = parse_head("GET /?q=wan HTTP/1.1\r\n\r\n");
-        assert_eq!(path, "/");
+        // A percent-encoded value arrives decoded, the way a form field does.
+        let (_, target, _) = parse_head("GET /?reserve=42%3Ae6%3Aad%3Aff%3Ab7%3Aaf HTTP/1.1\r\n\r\n");
+        assert_eq!(request_path(&target), "/");
+        assert_eq!(request_query(&target).get("reserve"), "42:e6:ad:ff:b7:af");
+    }
+
+    #[test]
+    fn a_request_without_a_query_reads_as_no_values() {
+        let (_, target, _) = parse_head("GET /config HTTP/1.1\r\n\r\n");
+        assert_eq!(request_query(&target).get("reserve"), "");
     }
 
     #[test]
     fn a_pathless_request_line_reads_as_the_mount_root() {
         for line in ["GET  HTTP/1.1\r\n\r\n", "GET\r\n\r\n", "\r\n\r\n"] {
-            let (_, path, _) = parse_head(line);
-            assert_eq!(path, "/", "{line:?}");
+            let (_, target, _) = parse_head(line);
+            assert_eq!(request_path(&target), "/", "{line:?}");
         }
     }
 

@@ -15,17 +15,19 @@ type OverviewPreview struct {
 	Kicker string                   `json:"kicker"` // eyebrow above the headline, e.g. "ALL GOOD"
 	Lead   string                   `json:"lead"`   // the headline up to the accent word
 	Accent string                   `json:"accent"` // the emerald accent word, e.g. "healthy"
-	Tiles  []OverviewPreviewTile    `json:"tiles"`  // 3 tiles, or 4 with Wi-Fi
+	Tiles  []OverviewPreviewTile    `json:"tiles"`  // one per fact the box can state: 3, or up to 5 with Wi-Fi and a counted roster
 	Facts  []OverviewPreviewFactCol `json:"facts"`  // the two connection-facts columns
 }
 
-// OverviewPreviewTile is one status tile of the strip.
+// OverviewPreviewTile is one status tile of the strip. A tile with an href is a
+// doorway to the page its fact belongs to, and the whole tile is the link.
 type OverviewPreviewTile struct {
 	Label   string `json:"label"`
 	Icon    string `json:"icon"`
 	Variant string `json:"variant"` // "success" | "warning"
 	Status  string `json:"status"`
 	Caption string `json:"caption"`
+	Href    string `json:"href"`
 }
 
 // OverviewPreviewFactCol is one connection-facts column: an eyebrow (kind +
@@ -51,7 +53,7 @@ func (*OverviewPreview) children() []Widget { return nil }
 func (p *OverviewPreview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	tiles := make([]ohTile, 0, len(p.Tiles))
 	for _, t := range p.Tiles {
-		tiles = append(tiles, ohTile{Label: t.Label, Icon: t.Icon, Variant: t.Variant, Status: t.Status, Caption: t.Caption})
+		tiles = append(tiles, ohTile{Label: t.Label, Icon: t.Icon, Variant: t.Variant, Status: t.Status, Caption: t.Caption, Href: SafeHref(t.Href)})
 	}
 	cols := make([]ohFactColView, 0, len(p.Facts))
 	for i, col := range p.Facts {

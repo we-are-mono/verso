@@ -49,7 +49,7 @@ fn get(request: &Request) -> Envelope {
     match Route::of(&request.path) {
         Route::Dns => dns::page(&model),
         Route::Config => config::page(&model, &leases),
-        Route::Leases => leases::page(&model, &leases),
+        Route::Leases => leases::page(&model, &leases, &reserve(request)),
     }
 }
 
@@ -59,8 +59,14 @@ fn post(request: &Request, form: &Form) -> Envelope {
     match Route::of(&request.path) {
         Route::Dns => dns::post(&mut model, form),
         Route::Config => config::post(&mut model, &leases, form),
-        Route::Leases => leases::post(&mut model, &leases, form),
+        Route::Leases => leases::post(&mut model, &leases, form, &reserve(request)),
     }
+}
+
+/// reserve is the device a visitor arrived to reserve — the Devices page sends
+/// a MAC in the query so the panel opens on arrival rather than after a hunt.
+fn reserve(request: &Request) -> String {
+    request.query.get(leases::RESERVE)
 }
 
 /// Route is what a request's sub-path asks for. A sub-path this plugin does not
@@ -91,6 +97,7 @@ mod tests {
     fn request(path: &str) -> Request {
         Request {
             path: path.into(),
+            query: Form::default(),
             snapshot: fixture::snapshot(),
             ubus: fixture::ubus(),
         }
@@ -136,6 +143,7 @@ mod tests {
         for path in ["/", "/config", "/dns"] {
             let request = Request {
                 path: path.into(),
+                query: Form::default(),
                 snapshot: fixture::snapshot(),
                 ubus: Ubus::from_value(Value::Null),
             };
@@ -145,12 +153,29 @@ mod tests {
         // Without the lease table a network card states its span but nobody on it.
         let request = Request {
             path: page::CONFIG.into(),
+            query: Form::default(),
             snapshot: fixture::snapshot(),
             ubus: Ubus::from_value(Value::Null),
         };
         let body = serde_json::to_value(get(&request)).expect("serialize");
         let card = &body["widget"]["children"][1]["fields"][0]["children"][0]["children"][0];
         assert_eq!(card["meta"], "10.0.0.0/24 · nobody right now");
+    }
+
+    // The Devices page links here with a MAC in the query; that device's panel is
+    // open when the page arrives, so the visitor lands on the form they came for.
+    #[test]
+    fn a_reserve_query_opens_that_devices_panel() {
+        let request = Request {
+            path: "/".into(),
+            query: Form::parse("reserve=42:e6:ad:ff:b7:af"),
+            snapshot: fixture::snapshot(),
+            ubus: fixture::ubus(),
+        };
+        let body = serde_json::to_value(get(&request)).expect("serialize");
+        let rows = &body["widget"]["children"][1]["children"][0]["rows"];
+        assert_eq!(rows[0]["drawer"]["open"], true);
+        assert!(rows[1]["drawer"].get("open").is_none());
     }
 
     #[test]
@@ -176,6 +201,7 @@ mod tests {
     fn an_empty_config_still_answers_every_page() {
         let request = Request {
             path: page::CONFIG.into(),
+            query: Form::default(),
             snapshot: Snapshot::from_value(serde_json::json!({"dhcp": {}, "network": {}})),
             ubus: fixture::ubus(),
         };

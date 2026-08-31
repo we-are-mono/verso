@@ -237,6 +237,7 @@ mod tests {
     fn request(path: &str) -> Request {
         Request {
             path: path.into(),
+            query: Form::default(),
             snapshot: fixture::snapshot(),
             ubus: Ubus::from_value(Value::Null),
         }
@@ -350,6 +351,7 @@ mod tests {
     fn a_defaults_option_on_a_config_without_one_creates_the_section() {
         let request = Request {
             path: "/zones".into(),
+            query: Form::default(),
             snapshot: Snapshot::from_value(json!({"firewall": {}, "network": {}})),
             ubus: Ubus::from_value(Value::Null),
         };
