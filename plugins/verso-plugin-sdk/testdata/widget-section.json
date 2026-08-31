@@ -1,7 +1,17 @@
 {
   "type": "section",
-  "title": "Peers",
+  "title": "Rule",
   "sub": "Devices that may connect.",
+  "meta": "3 peers",
+  "meta_icon": "shield",
+  "meta_position": "inline",
+  "flush": true,
+  "control": {
+    "type": "switch",
+    "name": "enabled",
+    "label": "Enabled",
+    "on": true
+  },
   "children": [
     {
       "type": "text",

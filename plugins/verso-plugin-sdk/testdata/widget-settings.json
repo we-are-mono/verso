@@ -1,0 +1,61 @@
+{
+  "type": "settings",
+  "style": "card",
+  "title": "Global defaults",
+  "meta": "firewall.@defaults[0]",
+  "items": [
+    {
+      "title": "Default policies",
+      "desc": "What happens to traffic that matches no rule.",
+      "code": "input · output · forward",
+      "pills": [
+        {
+          "variant": "warning",
+          "text": "in reject"
+        },
+        {
+          "variant": "success",
+          "text": "out accept"
+        },
+        {
+          "variant": "warning",
+          "text": "fwd reject"
+        }
+      ]
+    },
+    {
+      "title": "Drop invalid packets",
+      "desc": "Discard packets that belong to no known connection.",
+      "code": "drop_invalid",
+      "toggle": {
+        "name": "drop_invalid",
+        "on": true
+      }
+    },
+    {
+      "title": "Tracked connections",
+      "desc": "How many connections the router follows at once.",
+      "code": "nf_conntrack_max",
+      "value": "16384",
+      "name": "nf_conntrack_max"
+    }
+  ],
+  "seam": {
+    "summary": "2 more options",
+    "items": [
+      {
+        "title": "Software flow offloading",
+        "desc": "Fast-path established connections.",
+        "code": "flow_offloading",
+        "toggle": {
+          "name": "flow_offloading"
+        }
+      },
+      {
+        "title": "Custom rules file",
+        "desc": "Read by fw4 after the generated ruleset.",
+        "code": "/etc/nftables.d"
+      }
+    ]
+  }
+}

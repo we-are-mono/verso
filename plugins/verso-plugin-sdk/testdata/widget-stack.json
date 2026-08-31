@@ -1,5 +1,9 @@
 {
   "type": "stack",
+  "width": "compact",
+  "compact": true,
+  "inline": true,
+  "divided": true,
   "children": [
     {
       "type": "text",

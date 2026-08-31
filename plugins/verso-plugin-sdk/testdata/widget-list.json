@@ -3,9 +3,15 @@
   "name": "server",
   "label": "NTP servers",
   "kind": "text",
+  "style": "tokens",
+  "prompt": "Server address",
   "datatype": "host",
   "items": [
-    "0.openwrt.pool.ntp.org"
+    "0.openwrt.pool.ntp.org",
+    "not a host"
   ],
+  "errors": {
+    "1": "must be a hostname"
+  },
   "help": "One per row."
 }

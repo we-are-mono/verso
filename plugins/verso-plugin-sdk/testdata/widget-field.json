@@ -4,6 +4,8 @@
   "label": "Hostname",
   "kind": "text",
   "value": "router.lan",
+  "placeholder": "router.lan",
   "datatype": "fqdn",
+  "error": "must be a fully-qualified domain name",
   "help": "The device's name."
 }

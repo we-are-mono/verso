@@ -1,0 +1,25 @@
+{
+  "type": "field",
+  "name": "weekdays",
+  "label": "Weekdays",
+  "kind": "checks",
+  "value": "",
+  "values": [
+    "Mon",
+    "Tue"
+  ],
+  "options": [
+    {
+      "value": "Mon",
+      "label": "Mon"
+    },
+    {
+      "value": "Tue",
+      "label": "Tue"
+    },
+    {
+      "value": "Wed",
+      "label": "Wed"
+    }
+  ]
+}

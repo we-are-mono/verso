@@ -6,7 +6,8 @@ use std::mem::MaybeUninit;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use verso_plugin::{
-    commit, commit_new, json, serve, ApplyAction, Envelope, Form, SelectOption, Snapshot, Widget,
+    commit, commit_new, json, serve, ApplyAction, Envelope, Form, Request, SelectOption, Snapshot,
+    Widget,
 };
 
 mod timezones;
@@ -28,11 +29,12 @@ fn main() {
     serve("system", get, post);
 }
 
-fn get(snapshot: &Snapshot) -> Envelope {
-    page(facts(snapshot), "", "")
+// The system plugin is one page, so it answers every sub-path with that page.
+fn get(request: &Request) -> Envelope {
+    page(facts(&request.snapshot), "", "")
 }
 
-fn post(form: &Form) -> Envelope {
+fn post(_request: &Request, form: &Form) -> Envelope {
     let hostname = form.get("hostname").trim().to_string();
     let zonename = form.get("zonename").trim().to_string();
     let original_zonename = form.get("original_zonename");
@@ -192,6 +194,9 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
 
     let compact = |children: Vec<Widget>| Widget::Stack {
         width: "compact".into(),
+        compact: false,
+        inline: false,
+        divided: false,
         children,
     };
 
@@ -213,6 +218,8 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         meta: now_display,
         meta_icon: "clock".into(),
         meta_position: "inline".into(),
+        flush: false,
+        control: None,
         children: vec![
             compact(vec![Widget::select(
                 "zonename",
@@ -232,6 +239,8 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         meta: "Last synchronization not reported".into(),
         meta_icon: "clock".into(),
         meta_position: "inline".into(),
+        flush: false,
+        control: None,
         children: vec![
             Widget::Conditional {
                 name: "ntp_enabled".into(),
@@ -249,6 +258,8 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
                     label: "Date and time".into(),
                     kind: "datetime-local".into(),
                     value: datetime,
+                    values: Vec::new(),
+                    placeholder: String::new(),
                     datatype: String::new(),
                     options: Vec::new(),
                     error: datetime_error.into(),
@@ -265,6 +276,7 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         Widget::Form {
             style: "page".into(),
             submit: String::new(),
+            error: String::new(),
             fields: vec![identity, region, sync],
         },
     )

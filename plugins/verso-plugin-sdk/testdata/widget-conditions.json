@@ -1,0 +1,46 @@
+{
+  "type": "conditions",
+  "label": "Conditions",
+  "help": "Conditions are combined with and.",
+  "items": [
+    {
+      "key": "dest_port",
+      "label": "Destination ports",
+      "help": "TCP/UDP ports or ranges from 0 to 65535.",
+      "active": true,
+      "children": [
+        {
+          "type": "list",
+          "name": "dest_port",
+          "label": "Include",
+          "kind": "text",
+          "style": "tokens",
+          "prompt": "Port or range",
+          "datatype": "",
+          "items": [
+            "53",
+            "1024-65535"
+          ],
+          "help": "For example 53 or 1024-65535."
+        }
+      ]
+    },
+    {
+      "key": "src_mac",
+      "label": "Source MAC addresses",
+      "help": "Match link-layer senders visible on ingress.",
+      "children": [
+        {
+          "type": "list",
+          "name": "src_mac",
+          "label": "Include",
+          "kind": "text",
+          "style": "tokens",
+          "prompt": "MAC address",
+          "datatype": "",
+          "items": []
+        }
+      ]
+    }
+  ]
+}

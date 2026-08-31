@@ -1,5 +1,6 @@
 {
   "type": "grid",
+  "style": "form",
   "columns": 2,
   "children": [
     {

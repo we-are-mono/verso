@@ -1,0 +1,173 @@
+{
+  "type": "table",
+  "style": "flat",
+  "title": "Zones",
+  "detail": "4 zones · 2 forwardings",
+  "condensed": true,
+  "align": "top",
+  "reorder_config": "firewall",
+  "columns": [
+    {
+      "kind": "reorder"
+    },
+    {
+      "label": "Zone",
+      "kind": "name"
+    },
+    {
+      "label": "Address",
+      "kind": "addr"
+    },
+    {
+      "label": "From",
+      "kind": "endpoint"
+    },
+    {
+      "label": "Protocol",
+      "kind": "keyword"
+    },
+    {
+      "label": "Input",
+      "kind": "pill"
+    },
+    {
+      "label": "Hits",
+      "kind": "num"
+    },
+    {
+      "kind": "toggle"
+    },
+    {
+      "kind": "link"
+    },
+    {
+      "kind": "pill"
+    }
+  ],
+  "rows": [
+    {
+      "id": "cfg02zone",
+      "key": "zone:lan",
+      "group": {
+        "label": "LAN → Router",
+        "chain": "input_lan",
+        "count": 2
+      },
+      "cells": [
+        {},
+        {
+          "text": "lan",
+          "chip": "trusted",
+          "chip_icon": "zone",
+          "lead_icon": "network",
+          "tag": "default",
+          "tag_variant": "info",
+          "tag_icon": "globe"
+        },
+        {
+          "text": "10.0.0.1/24",
+          "copy": true,
+          "emphasis": true,
+          "sub": "fd00:0:0:1::1/64"
+        },
+        {
+          "endpoints": [
+            {
+              "kind": "zone",
+              "label": "lan"
+            }
+          ]
+        },
+        {
+          "text": "tcp/udp"
+        },
+        {
+          "text": "accept",
+          "variant": "success",
+          "dot": true,
+          "icon": "check"
+        },
+        {
+          "text": "1284",
+          "key": "hits:lan"
+        },
+        {
+          "on": true,
+          "name": "cfg02zone"
+        },
+        {
+          "text": "Details",
+          "href": "/zones/lan"
+        },
+        {
+          "button": "Edit",
+          "disabled": true
+        }
+      ],
+      "drawer": {
+        "title": "Edit zone — lan",
+        "size": "wide",
+        "hide_title": true,
+        "open": true,
+        "children": [
+          {
+            "type": "form",
+            "submit": "Save",
+            "fields": [
+              {
+                "type": "field",
+                "name": "name",
+                "label": "Name",
+                "kind": "text",
+                "value": "lan"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "cfg03zone",
+      "cells": [
+        {},
+        {
+          "text": "wan"
+        },
+        {
+          "text": "203.0.113.7",
+          "muted": true
+        },
+        {
+          "endpoints": [
+            {
+              "kind": "device",
+              "label": "10.0.0.30"
+            },
+            {
+              "kind": "any",
+              "label": "any"
+            }
+          ]
+        },
+        {
+          "text": "icmp"
+        },
+        {
+          "text": "reject",
+          "variant": "warning"
+        },
+        {
+          "text": "0"
+        },
+        {},
+        {},
+        {
+          "button": "Edit",
+          "disabled": true
+        }
+      ]
+    }
+  ],
+  "drawer_label": "Edit",
+  "drawer_icon": "pencil"
+}

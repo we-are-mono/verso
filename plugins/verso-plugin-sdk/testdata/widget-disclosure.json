@@ -1,0 +1,11 @@
+{
+  "type": "disclosure",
+  "style": "condition",
+  "summary": "Parameters for advanced actions",
+  "children": [
+    {
+      "type": "text",
+      "markdown": "Only the selected action's parameters apply."
+    }
+  ]
+}

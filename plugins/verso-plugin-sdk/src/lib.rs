@@ -8,7 +8,10 @@
 //!
 //! - [`serve`] — bind the unix socket and run the HTTP loop, routing GET → your
 //!   `get` and POST → your `post`.
-//! - [`Snapshot`] / [`Section`] — the read the shell injects (X-Verso-UCI).
+//! - [`Request`] — what both handlers answer: the sub-path below the plugin's
+//!   mount and the reads the shell injected with it.
+//! - [`Snapshot`] / [`Section`] — the config read the shell injects (X-Verso-UCI).
+//! - [`Ubus`] — the live-state reads the shell brokered (X-Verso-Ubus).
 //! - [`Form`] — a decoded POST submission.
 //! - [`Envelope`] / [`Widget`] / [`Tone`] — the typed wire schema
 //!   (docs/plugins.md, ADR-006 §9). The `Widget` enum mirrors the shell's
@@ -29,16 +32,18 @@ use std::path::Path;
 use std::sync::Arc;
 use std::{env, fs, thread};
 
-pub use serde_json::{json, Value};
+pub use serde_json::{json, Map, Value};
 
 /// serve binds `/var/run/verso/<id>.sock` (override with `VERSO_<ID>_SOCKET`) and
-/// serves forever: GET → `get`, POST → `post`. Each returns the full envelope
-/// [`Value`]. A bind failure logs and exits; per-connection work runs on its own
-/// thread. This never returns under normal operation.
+/// serves forever: GET → `get`, POST → `post`. Both see the [`Request`] — the
+/// page asked for and the snapshot read for it — and `post` additionally the
+/// submitted [`Form`]; each returns the full [`Envelope`]. A bind failure logs
+/// and exits; per-connection work runs on its own thread. This never returns
+/// under normal operation.
 pub fn serve<G, P>(id: &str, get: G, post: P)
 where
-    G: Fn(&Snapshot) -> Envelope + Send + Sync + 'static,
-    P: Fn(&Form) -> Envelope + Send + Sync + 'static,
+    G: Fn(&Request) -> Envelope + Send + Sync + 'static,
+    P: Fn(&Request, &Form) -> Envelope + Send + Sync + 'static,
 {
     let env_key = format!("VERSO_{}_SOCKET", id.to_uppercase());
     let socket = env::var(&env_key).unwrap_or_else(|_| format!("/var/run/verso/{id}.sock"));
@@ -71,8 +76,8 @@ where
 
 fn handle<G, P>(mut stream: UnixStream, get: &G, post: &P) -> std::io::Result<()>
 where
-    G: Fn(&Snapshot) -> Envelope,
-    P: Fn(&Form) -> Envelope,
+    G: Fn(&Request) -> Envelope,
+    P: Fn(&Request, &Form) -> Envelope,
 {
     // Bound a slow or hostile peer (group verso: the shell or a sibling plugin):
     // a stalled read/write cannot pin this thread indefinitely, and an oversized
@@ -97,7 +102,7 @@ where
         }
     };
 
-    let (method, headers) = parse_head(&String::from_utf8_lossy(&buf[..header_end]));
+    let (method, path, headers) = parse_head(&String::from_utf8_lossy(&buf[..header_end]));
     let content_length = headers
         .iter()
         .find(|(k, _)| k == "content-length")
@@ -116,15 +121,17 @@ where
         body.extend_from_slice(&tmp[..n]);
     }
 
+    // Both reads ride every request the shell forwards, POST included, so a
+    // submission renders its answer from the same reads a GET would have seen.
+    let request = Request {
+        path,
+        snapshot: Snapshot::from_b64(header(&headers, "x-verso-uci")),
+        ubus: Ubus::from_b64(header(&headers, "x-verso-ubus")),
+    };
     let envelope = if method == "POST" {
-        post(&Form::parse(&String::from_utf8_lossy(&body)))
+        post(&request, &Form::parse(&String::from_utf8_lossy(&body)))
     } else {
-        let uci = headers
-            .iter()
-            .find(|(k, _)| k == "x-verso-uci")
-            .map(|(_, v)| v.as_str())
-            .unwrap_or("");
-        get(&Snapshot::from_b64(uci))
+        get(&request)
     };
 
     let payload = serde_json::to_vec(&envelope).unwrap_or_default();
@@ -137,12 +144,30 @@ where
     stream.flush()
 }
 
+// ---- what a handler answers ----
+
+/// Request is one page ask. Path is the sub-path below the plugin's mount — "/"
+/// for the plugin's own root, "/zones" for a subpage — so a plugin with several
+/// pages routes on it; Snapshot and Ubus are the reads the shell took for this
+/// request, config and live state.
+pub struct Request {
+    pub path: String,
+    pub snapshot: Snapshot,
+    pub ubus: Ubus,
+}
+
 // ---- the read snapshot (docs/plugins.md) ----
 
 /// Snapshot is the brokered UCI read the shell injects: config → section → table.
 pub struct Snapshot(Value);
 
 impl Snapshot {
+    /// from_value wraps an already-decoded read in the shape the shell injects,
+    /// so a plugin can exercise its own snapshot mapping against a fixture.
+    pub fn from_value(read: Value) -> Snapshot {
+        Snapshot(read)
+    }
+
     fn from_b64(b64: &str) -> Snapshot {
         if b64.is_empty() {
             return Snapshot(Value::Null);
@@ -194,6 +219,17 @@ impl Section<'_> {
             .to_string()
     }
 
+    /// anonymous reports whether the section was written without a name, so its
+    /// handle is uci's generated `cfgXXXXXX` rather than something an operator
+    /// chose. Config that identifies such a section by position (`@rule[2]`)
+    /// needs this to tell the two apart.
+    pub fn anonymous(&self) -> bool {
+        self.0
+            .get(".anonymous")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
     /// scalar reads an option as a string, or "" if unset or a list.
     pub fn scalar(&self, option: &str) -> String {
         self.0
@@ -201,6 +237,17 @@ impl Section<'_> {
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string()
+    }
+
+    /// entries is every option the section carries, uci's own meta (`.type`,
+    /// `.name`, `.index`, `.anonymous`) left out. A plugin that holds a whole
+    /// section — a settings page whose rows are a catalogue of option names —
+    /// needs the values it did not think to ask for, so that a save can tell an
+    /// option that is set from one that is merely defaulted.
+    pub fn entries(&self) -> impl Iterator<Item = (&String, &Value)> {
+        self.0
+            .iter()
+            .filter(|(option, _)| !option.starts_with('.'))
     }
 
     /// list reads a list option as strings, or empty if unset or a scalar.
@@ -217,6 +264,40 @@ impl Section<'_> {
     }
 }
 
+// ---- the brokered live reads (docs/plugins.md) ----
+
+/// Ubus is the second read the shell injects: the result of each helper function
+/// the plugin declared in `acl.read` with scope `ubus`, keyed by function name. It
+/// carries live system state a plugin cannot reach itself — nftables counters, for
+/// one — read with the operator's session on the plugin's behalf.
+pub struct Ubus(Value);
+
+impl Ubus {
+    /// from_value wraps already-decoded brokered reads keyed by function name,
+    /// the counterpart to [`Snapshot::from_value`].
+    pub fn from_value(reads: Value) -> Ubus {
+        Ubus(reads)
+    }
+
+    fn from_b64(b64: &str) -> Ubus {
+        if b64.is_empty() {
+            return Ubus(Value::Null);
+        }
+        match base64_decode(b64).and_then(|d| serde_json::from_slice(&d).ok()) {
+            Some(v) => Ubus(v),
+            None => Ubus(Value::Null),
+        }
+    }
+
+    /// get returns one function's result. None means the shell brokered nothing
+    /// under that name — the operator may not perform the read, the helper was
+    /// unreachable, or the plugin never declared it — so render without the data
+    /// rather than treating its absence as an error.
+    pub fn get(&self, function: &str) -> Option<&Value> {
+        self.0.get(function)
+    }
+}
+
 // ---- the POST submission ----
 
 /// Form is a decoded urlencoded submission; a field may repeat (a list posts as a
@@ -226,7 +307,9 @@ pub struct Form {
 }
 
 impl Form {
-    fn parse(body: &str) -> Form {
+    /// parse decodes an urlencoded body — what [`serve`] hands `post`, and what a
+    /// plugin's own tests submit to it.
+    pub fn parse(body: &str) -> Form {
         let mut pairs = Vec::new();
         for pair in body.split('&') {
             if pair.is_empty() {
@@ -296,7 +379,9 @@ pub enum Widget {
     },
     /// A titled region of the page, set apart with generous space. Meta is
     /// compact status text beside the title (an optional icon and "inline"
-    /// position refine it).
+    /// position refine it). Control is one compact widget placed beside the
+    /// title — an object's enabled switch belongs there, not in the body.
+    /// Flush drops the region's own top inset where the parent already pads.
     Section {
         title: String,
         #[serde(skip_serializing_if = "String::is_empty")]
@@ -307,35 +392,64 @@ pub enum Widget {
         meta_icon: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         meta_position: String,
+        #[serde(skip_serializing_if = "is_false")]
+        flush: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        control: Option<Box<Widget>>,
         children: Vec<Widget>,
     },
     /// Vertical rhythm for its children; draws nothing itself. Width "compact"
-    /// narrows the run for a short form column.
+    /// narrows the run for a short form column; Compact tightens the rhythm,
+    /// Divided draws a hairline between entries, and Inline forms a wrapping
+    /// row instead of a column.
     Stack {
         #[serde(skip_serializing_if = "String::is_empty")]
         width: String,
+        #[serde(skip_serializing_if = "is_false")]
+        compact: bool,
+        #[serde(skip_serializing_if = "is_false")]
+        inline: bool,
+        #[serde(skip_serializing_if = "is_false")]
+        divided: bool,
         children: Vec<Widget>,
     },
-    /// Side-by-side columns; the shell owns the responsive collapse.
-    Grid { columns: u32, children: Vec<Widget> },
+    /// Side-by-side columns; the shell owns the responsive collapse. Style
+    /// "form" tightens the gutter for a row of form controls.
+    Grid {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        columns: u32,
+        children: Vec<Widget>,
+    },
     /// A submittable set of fields; the shell threads CSRF and posts back here.
-    /// Style "page" hands submission to the shell's staging capsule.
+    /// Style "page" hands submission to the shell's staging capsule. Error is a
+    /// refusal that belongs to the whole submission rather than to one control —
+    /// shown above the fields, and enough on its own to make the answer a 422,
+    /// so nothing is written and the capsule keeps the operator on the form.
     Form {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         submit: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        error: String,
         fields: Vec<Widget>,
     },
     /// One labelled input with a declared datatype the shell enforces (ADR-008).
-    /// Kind picks the control ("text", "select", "hidden", "datetime-local", …);
-    /// options feed a select; error is the inline validation message (422).
+    /// Kind picks the control ("text", "select", "checks", "hidden",
+    /// "datetime-local", …); options feed a select or a set of checks, values
+    /// are the checked members of that set; placeholder hints at the shape of a
+    /// text value; error is the inline validation message (422).
     Field {
         name: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         label: String,
         kind: String,
         value: String,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        values: Vec<String>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        placeholder: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         datatype: String,
         #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -344,6 +458,56 @@ pub enum Widget {
         error: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         help: String,
+    },
+    /// One persistent on/off setting, sharing its control with table toggle
+    /// cells so a thing's enabled state looks the same in a listing and in its
+    /// editor. Style "inline" sits it beside a section heading; "hero" is a
+    /// page's one big state. A switch inside a form posts only when it is on.
+    Switch {
+        name: String,
+        label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        off_label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        help: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        icon: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        meta: String,
+        #[serde(skip_serializing_if = "is_false")]
+        on: bool,
+    },
+    /// The optional-match builder: the plugin declares the complete catalogue of
+    /// conditions and which of them the object currently carries; the shell
+    /// renders the active ones and keeps the rest in its Add-condition picker.
+    /// An inactive item's fields are inert markup, so they post nothing — an
+    /// absent field name in a submission means that condition is gone.
+    Conditions {
+        label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        help: String,
+        items: Vec<ConditionItem>,
+    },
+    /// An expand/collapse region: the summary line, and the contents revealed
+    /// beneath it. The home for the advanced-but-rarely-touched.
+    Disclosure {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        summary: String,
+        children: Vec<Widget>,
+    },
+    /// A labelled hyperlink, optionally styled as a button. The href is the
+    /// plugin's to choose — a route inside the shell, most often — and the shell
+    /// owns the look and the URL policy.
+    Link {
+        label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        icon: String,
+        href: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
     },
     /// A field-set gated by a toggle: `fields` show while it is on, `otherwise`
     /// while it is off. The shell realizes the show/hide (ADR-005 §7); the
@@ -357,12 +521,22 @@ pub enum Widget {
         otherwise: Vec<Widget>,
     },
     /// A repeatable input sharing one name — a list of ports, hosts, CIDRs.
+    /// Style "tokens" is the compact editor for many short values, each removable
+    /// on its own, with Prompt as the add-field's hint. Errors are keyed by an
+    /// item's index as a string, which is how a repeating control says which row
+    /// failed. An empty list posts nothing under its name.
     List {
         name: String,
         label: String,
         kind: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        prompt: String,
         datatype: String,
         items: Vec<String>,
+        #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        errors: std::collections::BTreeMap<String, String>,
         #[serde(skip_serializing_if = "String::is_empty")]
         help: String,
     },
@@ -393,6 +567,60 @@ pub enum Widget {
     },
     /// A label/value fact sheet.
     Properties { items: Vec<Property> },
+    /// Config sections as identical rows under fixed columns: each column
+    /// declares a kind ("name", "mono", "keyword", "pill", "endpoint",
+    /// "toggle", "comment", …) and that kind renders every cell in it the same
+    /// way — rows cannot vary in shape, which is the point. Style "flat" (the
+    /// default) draws bare hairline rows; Title/Detail draw the header band
+    /// above them; Condensed tightens the rhythm; Align "top" pins cells to the
+    /// row's top line. A listing whose sequence is meaning — evaluation order —
+    /// adds a leading `{kind: "reorder"}` column and names the uci config its
+    /// rows are sections of in `reorder_config`: the shell then drags the rows,
+    /// posts the new sequence, and stages a `uci order` on that config. Row ids
+    /// are the section names it reorders, and a row's group bounds the drag.
+    Table {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        title: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        detail: String,
+        #[serde(skip_serializing_if = "is_false")]
+        condensed: bool,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        align: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        reorder_config: String,
+        columns: Vec<TableColumn>,
+        rows: Vec<TableRow>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        drawer_label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        drawer_icon: String,
+    },
+    /// A block of option rows: a plainly-named option, a one-line description,
+    /// the underlying option name as a code chip, and its state hard right — a
+    /// switch for an on/off option, pills for a row that reads rather than
+    /// toggles. Style "card" boxes the block. A Seam folds the block's long
+    /// tail of rare options behind a collapsed line inside the same block.
+    Settings {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        style: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        title: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        meta: String,
+        items: Vec<SettingsItem>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        seam: Option<SettingsSeam>,
+    },
+    /// The page-wide lens: one field that narrows every listing on the page at
+    /// once. The plugin declares only the placeholder; the shell owns the
+    /// behaviour.
+    Filter {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        placeholder: String,
+    },
     /// A status pill.
     Badge {
         variant: Tone,
@@ -435,15 +663,62 @@ impl Widget {
             meta: String::new(),
             meta_icon: String::new(),
             meta_position: String::new(),
+            flush: false,
+            control: None,
             children,
         }
     }
 
-    /// stack lays children out vertically; width "compact" via the variant.
+    /// stack lays children out vertically; the rhythm variants via the variant.
     pub fn stack(children: Vec<Widget>) -> Widget {
         Widget::Stack {
             width: String::new(),
+            compact: false,
+            inline: false,
+            divided: false,
             children,
+        }
+    }
+
+    /// grid lays children out across columns.
+    pub fn grid(columns: u32, children: Vec<Widget>) -> Widget {
+        Widget::Grid {
+            style: String::new(),
+            columns,
+            children,
+        }
+    }
+
+    /// disclosure folds detail away behind a summary line.
+    pub fn disclosure(summary: &str, children: Vec<Widget>) -> Widget {
+        Widget::Disclosure {
+            style: String::new(),
+            summary: summary.into(),
+            children,
+        }
+    }
+
+    /// link points somewhere; style "" is a link, "button" a call to action.
+    pub fn link(label: &str, href: &str, style: &str) -> Widget {
+        Widget::Link {
+            label: label.into(),
+            icon: String::new(),
+            href: href.into(),
+            style: style.into(),
+        }
+    }
+
+    /// switch is one on/off setting, labelled and in the plain row style.
+    pub fn switch(name: &str, label: &str, on: bool) -> Widget {
+        Widget::Switch {
+            name: name.into(),
+            label: label.into(),
+            off_label: String::new(),
+            help: String::new(),
+            style: String::new(),
+            icon: String::new(),
+            meta: String::new(),
+            on,
         }
     }
 
@@ -452,6 +727,7 @@ impl Widget {
         Widget::Form {
             style: String::new(),
             submit: submit.into(),
+            error: String::new(),
             fields,
         }
     }
@@ -463,6 +739,8 @@ impl Widget {
             label: label.into(),
             kind: "text".into(),
             value: value.into(),
+            values: Vec::new(),
+            placeholder: String::new(),
             datatype: datatype.into(),
             options: Vec::new(),
             error: String::new(),
@@ -477,9 +755,28 @@ impl Widget {
             label: label.into(),
             kind: "select".into(),
             value: value.into(),
+            values: Vec::new(),
+            placeholder: String::new(),
             datatype: String::new(),
             options,
             error: error.into(),
+            help: String::new(),
+        }
+    }
+
+    /// checks is membership in a set: each option is included or not, and the
+    /// checked ones post under the one name. State of a thing is a switch.
+    pub fn checks(name: &str, label: &str, values: &[String], options: Vec<SelectOption>) -> Widget {
+        Widget::Field {
+            name: name.into(),
+            label: label.into(),
+            kind: "checks".into(),
+            value: String::new(),
+            values: values.to_vec(),
+            placeholder: String::new(),
+            datatype: String::new(),
+            options,
+            error: String::new(),
             help: String::new(),
         }
     }
@@ -491,6 +788,8 @@ impl Widget {
             label: String::new(),
             kind: "hidden".into(),
             value: value.into(),
+            values: Vec::new(),
+            placeholder: String::new(),
             datatype: String::new(),
             options: Vec::new(),
             error: String::new(),
@@ -504,8 +803,27 @@ impl Widget {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
+            style: String::new(),
+            prompt: String::new(),
             datatype: datatype.into(),
             items: items.to_vec(),
+            errors: std::collections::BTreeMap::new(),
+            help: help.into(),
+        }
+    }
+
+    /// tokens is the compact list style: many short values, each removable, with
+    /// Prompt hinting what one looks like.
+    pub fn tokens(name: &str, label: &str, prompt: &str, items: &[String], help: &str) -> Widget {
+        Widget::List {
+            name: name.into(),
+            label: label.into(),
+            kind: "text".into(),
+            style: "tokens".into(),
+            prompt: prompt.into(),
+            datatype: String::new(),
+            items: items.to_vec(),
+            errors: std::collections::BTreeMap::new(),
             help: help.into(),
         }
     }
@@ -554,11 +872,38 @@ impl Widget {
     }
 }
 
-/// SelectOption is one choice of a select field.
+/// SelectOption is one choice of a select or checks field.
 #[derive(Serialize, Debug)]
 pub struct SelectOption {
     pub value: String,
     pub label: String,
+}
+
+impl SelectOption {
+    /// new is one choice; label it as a person would say it, value it as the
+    /// config writes it.
+    pub fn new(value: &str, label: &str) -> SelectOption {
+        SelectOption {
+            value: value.into(),
+            label: label.into(),
+        }
+    }
+}
+
+/// ConditionItem is one uniquely keyed optional condition of a
+/// [`Widget::Conditions`]. Key identifies it to the shell's picker; Active says
+/// the object carries it now, so it renders in the form rather than waiting in
+/// the picker; Children are ordinary widgets, so nothing about validation or
+/// posting is special.
+#[derive(Serialize, Debug)]
+pub struct ConditionItem {
+    pub key: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub active: bool,
+    pub children: Vec<Widget>,
 }
 
 /// Property is one row of a [`Widget::Properties`] fact sheet.
@@ -572,6 +917,202 @@ pub struct Property {
     pub copy: bool,
 }
 
+/// TableColumn is one column of a [`Widget::Table`]: its header label and the
+/// kind every cell in it renders as. An empty kind reads as "text"; a table
+/// whose columns carry no label at all draws no header row.
+#[derive(Serialize, Debug, Default)]
+pub struct TableColumn {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub kind: String,
+}
+
+/// TableRow is one config section. Id is its stable handle (the UCI section
+/// name); it does not render. A Group on a row opens a run of rows sharing one
+/// evaluation lane, headed above it. A Drawer makes the row an object that
+/// opens.
+#[derive(Serialize, Debug, Default)]
+pub struct TableRow {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub id: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<TableGroup>,
+    pub cells: Vec<TableCell>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drawer: Option<RowDrawer>,
+}
+
+/// RowDrawer is a row's edit surface: a slide-in panel carrying the row's own
+/// form and, where it applies, the confirm that deletes it. It is where a small
+/// object is edited — one record, one host; an object with a page's worth of
+/// settings gets a page instead. Size widens the panel ("" reading width |
+/// "wide"), HideTitle drops the heading where the first section already names
+/// the object, and Open renders the panel already open — which is how a
+/// submission the plugin refused comes back with the failed drawer in front of
+/// the operator rather than silently closed.
+#[derive(Serialize, Debug, Default)]
+pub struct RowDrawer {
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub size: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub hide_title: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub open: bool,
+    pub children: Vec<Widget>,
+}
+
+/// TableGroup heads a run of rows that share one evaluation lane. Label is
+/// human-facing; Chain keeps the packet filter's exact name visible to experts;
+/// Count is how many rows the run holds.
+#[derive(Serialize, Debug)]
+pub struct TableGroup {
+    pub label: String,
+    pub chain: String,
+    pub count: u32,
+}
+
+/// TableCell carries the value for one cell; which field applies is decided by
+/// the column's kind — Text for the text kinds, Text plus Variant for a pill,
+/// On and Name for a toggle, Endpoints for an endpoint cell, Button for an
+/// in-row action.
+#[derive(Serialize, Debug, Default)]
+pub struct TableCell {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub text: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub variant: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub dot: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub icon: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub copy: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub emphasis: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub chip: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub chip_icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub lead_icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub muted: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub sub: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tag: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tag_variant: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tag_icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub href: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub button: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub disabled: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub on: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub endpoints: Vec<TableEndpoint>,
+}
+
+impl TableCell {
+    /// zone is a traffic endpoint naming a firewall zone.
+    pub fn zone(name: &str) -> TableCell {
+        TableCell::endpoint("zone", name)
+    }
+
+    /// device is a traffic endpoint naming one address on the network.
+    pub fn device(address: &str) -> TableCell {
+        TableCell::endpoint("device", address)
+    }
+
+    /// router is a traffic endpoint naming this device itself.
+    pub fn router() -> TableCell {
+        TableCell::endpoint("router", "router")
+    }
+
+    /// any is the endpoint that matches wherever traffic comes from or goes.
+    pub fn any() -> TableCell {
+        TableCell::endpoint("any", "any")
+    }
+
+    fn endpoint(kind: &str, label: &str) -> TableCell {
+        TableCell {
+            endpoints: vec![TableEndpoint {
+                kind: kind.into(),
+                label: label.into(),
+            }],
+            ..TableCell::default()
+        }
+    }
+}
+
+/// TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
+/// type icon and treatment: "zone" | "device" | "router" | "any".
+#[derive(Serialize, Debug)]
+pub struct TableEndpoint {
+    pub kind: String,
+    pub label: String,
+}
+
+/// SettingsItem is one option row of a [`Widget::Settings`]. Exactly one of
+/// Toggle, Pills, or Value carries the trailing state; a row with none is
+/// informational. A Value with a Name is edited in place.
+#[derive(Serialize, Debug, Default)]
+pub struct SettingsItem {
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub desc: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub code: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub value: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub toggle: Option<SettingsToggle>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pills: Vec<SettingsPill>,
+}
+
+/// SettingsSeam folds a block's rarely-touched options behind a collapsed line
+/// inside the same block: the everyday rows stay visible, the long tail stays
+/// present and honest without carrying the block. Summary is the line that
+/// opens it.
+#[derive(Serialize, Debug)]
+pub struct SettingsSeam {
+    pub summary: String,
+    pub items: Vec<SettingsItem>,
+}
+
+/// SettingsToggle is an option row's switch: its state and the form name it
+/// posts under.
+#[derive(Serialize, Debug)]
+pub struct SettingsToggle {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub on: bool,
+}
+
+/// SettingsPill is one value pill on an option row that reads rather than
+/// toggles — the tone vocabulary, never a colour.
+#[derive(Serialize, Debug)]
+pub struct SettingsPill {
+    pub variant: Tone,
+    pub text: String,
+}
+
 /// Notice is the outcome of the action this render answers — shown by the shell
 /// in its own flash slot (ADR-006 §4). State the outcome; never compose it.
 #[derive(Serialize, Debug)]
@@ -581,14 +1122,20 @@ pub struct Notice {
 }
 
 /// CommitOp is one declarative uci write the shell applies on the plugin's
-/// behalf (ADR-007). An empty section with a section_type creates a new
-/// section of that type, then sets the values on it.
+/// behalf (ADR-007). It takes one of three shapes: a section and values sets
+/// those options; an empty section with a section_type creates a new section of
+/// that type and sets the values on it; a section with `delete` removes it.
+/// Within values, a JSON `null` clears that one option — what an editor writes
+/// when a setting it owns is no longer there, since an empty string is a value.
 #[derive(Serialize, Debug)]
 pub struct CommitOp {
     pub config: String,
     pub section: String,
     #[serde(rename = "type", skip_serializing_if = "String::is_empty")]
     pub section_type: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub delete: bool,
+    #[serde(skip_serializing_if = "Value::is_null")]
     pub values: Value,
 }
 
@@ -598,6 +1145,7 @@ pub fn commit(config: &str, section: &str, values: Value) -> CommitOp {
         config: config.into(),
         section: section.into(),
         section_type: String::new(),
+        delete: false,
         values,
     }
 }
@@ -608,7 +1156,20 @@ pub fn commit_new(config: &str, section_type: &str, values: Value) -> CommitOp {
         config: config.into(),
         section: String::new(),
         section_type: section_type.into(),
+        delete: false,
         values,
+    }
+}
+
+/// commit_delete removes a section outright — the whole object, not one of its
+/// options. Clearing a single option is a `null` among a [`commit`]'s values.
+pub fn commit_delete(config: &str, section: &str) -> CommitOp {
+    CommitOp {
+        config: config.into(),
+        section: section.into(),
+        section_type: String::new(),
+        delete: true,
+        values: Value::Null,
     }
 }
 
@@ -620,6 +1181,29 @@ pub struct ApplyAction {
     pub args: std::collections::BTreeMap<String, String>,
 }
 
+/// PageTab is one subpage in the plugin's top bar — the third navigation tier
+/// (sidebar → domain, top bar → kind of visit). Path is relative to the plugin's
+/// mount, so the bar can only ever point inside the plugin; the shell builds the
+/// href and marks the active tab from the request path.
+#[derive(Serialize, Debug)]
+pub struct PageTab {
+    pub label: String,
+    pub path: String,
+}
+
+/// PageAction is the page's one primary doorway — "New rule", "Add forward" —
+/// which the shell renders as a button hard right on the heading row. A page has
+/// at most one: it is the thing to do here, not a menu. Href is a route through
+/// the shell, exactly like a link widget's, so it addresses the plugin's mount
+/// in full.
+#[derive(Serialize, Debug)]
+pub struct PageAction {
+    pub label: String,
+    pub href: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub icon: String,
+}
+
 /// Envelope is the typed top-level reply (ADR-006 §4).
 #[derive(Serialize, Debug)]
 pub struct Envelope {
@@ -629,6 +1213,10 @@ pub struct Envelope {
     pub subheading: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub width: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pages: Vec<PageTab>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<PageAction>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<Notice>,
     pub widget: Widget,
@@ -646,6 +1234,8 @@ impl Envelope {
             title: title.into(),
             subheading: String::new(),
             width: String::new(),
+            pages: Vec::new(),
+            action: None,
             notice: None,
             widget,
             commit: Vec::new(),
@@ -662,6 +1252,24 @@ impl Envelope {
     /// with_width sets the content-column preset ("narrow" | "normal" | "wide").
     pub fn with_width(mut self, width: &str) -> Envelope {
         self.width = width.into();
+        self
+    }
+
+    /// with_pages declares the plugin's subpages as the shell's top bar. Every
+    /// page of a multi-page plugin declares the same list, so the bar stays put
+    /// as the visitor moves between them.
+    pub fn with_pages(mut self, pages: Vec<PageTab>) -> Envelope {
+        self.pages = pages;
+        self
+    }
+
+    /// with_action gives the page its one primary doorway, beside the heading.
+    pub fn with_action(mut self, label: &str, href: &str) -> Envelope {
+        self.action = Some(PageAction {
+            label: label.into(),
+            href: href.into(),
+            icon: String::new(),
+        });
         self
     }
 
@@ -689,18 +1297,37 @@ impl Envelope {
 
 // ---- tiny internals (no dependencies) ----
 
-fn parse_head(head: &str) -> (String, Vec<(String, String)>) {
+fn parse_head(head: &str) -> (String, String, Vec<(String, String)>) {
     let mut lines = head.split("\r\n");
-    let method = lines
-        .next()
-        .and_then(|l| l.split(' ').next())
-        .unwrap_or("GET")
-        .to_string();
+    let mut request_line = lines.next().unwrap_or("").split(' ');
+    let method = request_line.next().unwrap_or("GET").to_string();
+    let path = request_path(request_line.next().unwrap_or(""));
     let headers = lines
         .filter_map(|line| line.split_once(':'))
         .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_string()))
         .collect();
-    (method, headers)
+    (method, path, headers)
+}
+
+/// header reads one parsed request header by its lowercased name, or "" when the
+/// shell sent none — the shape both brokered reads decode from.
+fn header<'a>(headers: &'a [(String, String)], name: &str) -> &'a str {
+    headers
+        .iter()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value.as_str())
+        .unwrap_or("")
+}
+
+/// request_path is the request target's path: the query string is the shell's to
+/// forward and the plugin's to read from the form, never part of the route. A
+/// target that carries no path at all is the mount root.
+fn request_path(target: &str) -> String {
+    let path = target.split('?').next().unwrap_or("");
+    if path.is_empty() {
+        return "/".to_string();
+    }
+    path.to_string()
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -769,5 +1396,425 @@ fn hex(c: u8) -> Option<u8> {
         b'a'..=b'f' => Some(c - b'a' + 10),
         b'A'..=b'F' => Some(c - b'A' + 10),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        commit, commit_delete, commit_new, header, parse_head, ConditionItem, Envelope, Form,
+        PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
+        TableCell, TableRow, Tone, Ubus, Widget,
+    };
+
+    #[test]
+    fn a_snapshot_orders_a_type_and_tells_named_from_anonymous() {
+        let snapshot = Snapshot::from_value(serde_json::json!({
+            "firewall": {
+                "cfg02": {".type": "rule", ".name": "cfg02", ".index": 2, "name": "Allow-Ping"},
+                "wanping": {".type": "rule", ".name": "wanping", ".index": 1},
+                "cfg00": {".type": "zone", ".name": "cfg00", ".index": 0, ".anonymous": true},
+            }
+        }));
+
+        let rules = snapshot.sections_of_type("firewall", "rule");
+        let names: Vec<String> = rules.iter().map(|rule| rule.name()).collect();
+        assert_eq!(names, vec!["wanping", "cfg02"]);
+        assert!(!rules[0].anonymous(), "a named section reads as named");
+
+        let zone = snapshot.section("firewall", "cfg00").expect("zone");
+        assert!(zone.anonymous());
+    }
+
+    #[test]
+    fn a_sections_entries_are_its_options_and_not_ucis_meta() {
+        let snapshot = Snapshot::from_value(serde_json::json!({
+            "dhcp": {
+                "lan": {
+                    ".type": "dhcp", ".name": "lan", ".index": 1, ".anonymous": false,
+                    "interface": "lan", "leasetime": "12h", "ra_flags": ["managed-config"]
+                }
+            }
+        }));
+        let section = snapshot.section("dhcp", "lan").expect("section");
+        let options: Vec<&str> = section
+            .entries()
+            .map(|(option, _)| option.as_str())
+            .collect();
+        assert_eq!(options, vec!["interface", "leasetime", "ra_flags"]);
+        let values: Vec<&super::Value> = section.entries().map(|(_, value)| value).collect();
+        assert_eq!(values[1], &serde_json::json!("12h"));
+        assert_eq!(values[2], &serde_json::json!(["managed-config"]));
+    }
+
+    #[test]
+    fn request_line_carries_method_and_sub_path() {
+        let (method, path, _) = parse_head("GET /zones HTTP/1.1\r\nHost: plugin\r\n\r\n");
+        assert_eq!(method, "GET");
+        assert_eq!(path, "/zones");
+
+        let (method, path, _) = parse_head("POST /port-forwards HTTP/1.1\r\n\r\n");
+        assert_eq!(method, "POST");
+        assert_eq!(path, "/port-forwards");
+    }
+
+    #[test]
+    fn request_path_drops_the_query_string() {
+        let (_, path, _) = parse_head("GET /zones?edit=lan&x=1 HTTP/1.1\r\n\r\n");
+        assert_eq!(path, "/zones");
+
+        let (_, path, _) = parse_head("GET /?q=wan HTTP/1.1\r\n\r\n");
+        assert_eq!(path, "/");
+    }
+
+    #[test]
+    fn a_pathless_request_line_reads_as_the_mount_root() {
+        for line in ["GET  HTTP/1.1\r\n\r\n", "GET\r\n\r\n", "\r\n\r\n"] {
+            let (_, path, _) = parse_head(line);
+            assert_eq!(path, "/", "{line:?}");
+        }
+    }
+
+    #[test]
+    fn headers_are_lowercased_and_trimmed() {
+        let (_, _, headers) = parse_head("POST / HTTP/1.1\r\nX-Verso-UCI:  e30=  \r\n\r\n");
+        assert_eq!(
+            headers,
+            vec![("x-verso-uci".to_string(), "e30=".to_string())]
+        );
+    }
+
+    // The shell's X-Verso-Ubus header for
+    // {"firewallCounters":{"counters":[{"chain":"input_wan","name":"Allow-Ping",
+    //   "packets":12,"bytes":1008}]}}
+    const COUNTERS_HEADER: &str = "eyJmaXJld2FsbENvdW50ZXJzIjp7ImNvdW50ZXJzIjpbeyJjaGFpbiI6ImlucHV0X3dhbiIsIm5hbWUiOiJBbGxvdy1QaW5nIiwicGFja2V0cyI6MTIsImJ5dGVzIjoxMDA4fV19fQ==";
+
+    #[test]
+    fn brokered_reads_arrive_under_their_function_name() {
+        let head =
+            format!("POST /port-forwards HTTP/1.1\r\nX-Verso-Ubus: {COUNTERS_HEADER}\r\n\r\n");
+        let (_, _, headers) = parse_head(&head);
+        let ubus = Ubus::from_b64(header(&headers, "x-verso-ubus"));
+
+        let counters = ubus.get("firewallCounters").expect("brokered read");
+        assert_eq!(counters["counters"][0]["name"], "Allow-Ping");
+        assert_eq!(counters["counters"][0]["packets"], 12);
+        assert!(ubus.get("somethingElse").is_none());
+    }
+
+    #[test]
+    fn an_unbrokered_read_is_absent_rather_than_an_error() {
+        let (_, _, headers) = parse_head("GET / HTTP/1.1\r\nX-Verso-UCI: e30=\r\n\r\n");
+        assert!(Ubus::from_b64(header(&headers, "x-verso-ubus"))
+            .get("firewallCounters")
+            .is_none());
+        // A header the shell could not have sent decodes to nothing, never a panic.
+        assert!(Ubus::from_b64("not base64 at all!")
+            .get("firewallCounters")
+            .is_none());
+        assert!(Ubus::from_b64("bm90IGpzb24=")
+            .get("firewallCounters")
+            .is_none());
+    }
+
+    #[test]
+    fn form_reads_first_and_all_values() {
+        let form = Form::parse("server=a&server=b&name=my+router&empty=");
+        assert_eq!(form.get("server"), "a");
+        assert_eq!(form.all("server"), vec!["a", "b"]);
+        assert_eq!(form.get("name"), "my router");
+        assert_eq!(form.get("empty"), "");
+        assert_eq!(form.get("absent"), "");
+    }
+
+    #[test]
+    fn pages_serialize_only_once_declared() {
+        let bare = Envelope::page("Firewall", Widget::text("body"));
+        let json = serde_json::to_value(&bare).unwrap();
+        assert!(json.get("pages").is_none());
+
+        let tabbed = Envelope::page("Firewall", Widget::text("body")).with_pages(vec![
+            PageTab {
+                label: "Rules".into(),
+                path: "".into(),
+            },
+            PageTab {
+                label: "Zones".into(),
+                path: "zones".into(),
+            },
+        ]);
+        let json = serde_json::to_value(&tabbed).unwrap();
+        assert_eq!(
+            json["pages"],
+            serde_json::json!([
+                {"label": "Rules", "path": ""},
+                {"label": "Zones", "path": "zones"}
+            ])
+        );
+    }
+
+    /// The page action rides the envelope rather than the widget tree, so it has
+    /// no conformance fixture; this pins its wire shape instead.
+    #[test]
+    fn the_page_action_serializes_only_once_declared() {
+        let bare = Envelope::page("Firewall", Widget::text("body"));
+        let json = serde_json::to_value(&bare).unwrap();
+        assert!(json.get("action").is_none());
+
+        let with_action = Envelope::page("Firewall", Widget::text("body"))
+            .with_action("New rule", "/plugins/firewall/rules/new");
+        let json = serde_json::to_value(&with_action).unwrap();
+        assert_eq!(
+            json["action"],
+            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new"}),
+            "an action without an icon carries no icon"
+        );
+    }
+
+    #[test]
+    fn endpoint_cells_name_their_kind() {
+        let cases = [
+            (TableCell::zone("guest"), "zone", "guest"),
+            (TableCell::device("10.0.0.30"), "device", "10.0.0.30"),
+            (TableCell::router(), "router", "router"),
+            (TableCell::any(), "any", "any"),
+        ];
+        for (cell, kind, label) in cases {
+            let json = serde_json::to_value(&cell).unwrap();
+            assert_eq!(
+                json["endpoints"],
+                serde_json::json!([{"kind": kind, "label": label}])
+            );
+        }
+    }
+
+    #[test]
+    fn a_disabled_row_button_serializes_both_fields() {
+        let cell = TableCell {
+            button: "Edit".into(),
+            disabled: true,
+            ..TableCell::default()
+        };
+        let json = serde_json::to_value(&cell).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"button": "Edit", "disabled": true})
+        );
+    }
+
+    #[test]
+    fn a_switch_states_only_what_it_carries() {
+        let plain = Widget::switch("enabled", "Enabled", true);
+        assert_eq!(
+            serde_json::to_value(&plain).unwrap(),
+            serde_json::json!({"type": "switch", "name": "enabled", "label": "Enabled", "on": true})
+        );
+        let off = Widget::Switch {
+            name: "counter".into(),
+            label: "Count matching packets".into(),
+            off_label: "Not counted".into(),
+            help: "Hit counts come from the kernel.".into(),
+            style: "inline".into(),
+            icon: String::new(),
+            meta: String::new(),
+            on: false,
+        };
+        assert_eq!(
+            serde_json::to_value(&off).unwrap(),
+            serde_json::json!({
+                "type": "switch", "name": "counter", "label": "Count matching packets",
+                "off_label": "Not counted", "help": "Hit counts come from the kernel.",
+                "style": "inline"
+            })
+        );
+    }
+
+    #[test]
+    fn a_condition_declares_its_key_and_whether_it_is_carried() {
+        let widget = Widget::Conditions {
+            label: "Conditions".into(),
+            help: "Combined with and.".into(),
+            items: vec![
+                ConditionItem {
+                    key: "dest_port".into(),
+                    label: "Destination ports".into(),
+                    help: String::new(),
+                    active: true,
+                    children: vec![Widget::tokens("dest_port", "Include", "Port", &[], "")],
+                },
+                ConditionItem {
+                    key: "src_mac".into(),
+                    label: "Source MAC addresses".into(),
+                    help: String::new(),
+                    active: false,
+                    children: vec![],
+                },
+            ],
+        };
+        let json = serde_json::to_value(&widget).unwrap();
+        assert_eq!(json["type"], "conditions");
+        assert_eq!(json["items"][0]["key"], "dest_port");
+        assert_eq!(json["items"][0]["active"], true);
+        assert!(json["items"][1].get("active").is_none());
+        assert_eq!(json["items"][1]["children"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn a_checks_field_carries_its_members_and_a_token_list_its_style() {
+        let checks = Widget::checks(
+            "weekdays",
+            "Weekdays",
+            &["Mon".to_string()],
+            vec![SelectOption::new("Mon", "Mon"), SelectOption::new("Tue", "Tue")],
+        );
+        let json = serde_json::to_value(&checks).unwrap();
+        assert_eq!(json["kind"], "checks");
+        assert_eq!(json["values"], serde_json::json!(["Mon"]));
+
+        let tokens = Widget::tokens("dest_port", "Ports", "Port or range", &["53".into()], "");
+        let json = serde_json::to_value(&tokens).unwrap();
+        assert_eq!(json["style"], "tokens");
+        assert_eq!(json["prompt"], "Port or range");
+        assert!(json.get("errors").is_none());
+    }
+
+    #[test]
+    fn a_section_carries_its_control_beside_the_title() {
+        let widget = Widget::Section {
+            title: "Rule".into(),
+            sub: String::new(),
+            meta: String::new(),
+            meta_icon: String::new(),
+            meta_position: String::new(),
+            flush: true,
+            control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
+            children: vec![],
+        };
+        let json = serde_json::to_value(&widget).unwrap();
+        assert_eq!(json["flush"], true);
+        assert_eq!(json["control"]["type"], "switch");
+    }
+
+    #[test]
+    fn the_three_commit_shapes_are_distinguishable_on_the_wire() {
+        let set = commit("firewall", "allow_ping", serde_json::json!({"enabled": "0"}));
+        assert_eq!(
+            serde_json::to_value(&set).unwrap(),
+            serde_json::json!({
+                "config": "firewall", "section": "allow_ping", "values": {"enabled": "0"}
+            })
+        );
+
+        let created = commit_new("firewall", "rule", serde_json::json!({"target": "ACCEPT"}));
+        assert_eq!(
+            serde_json::to_value(&created).unwrap(),
+            serde_json::json!({
+                "config": "firewall", "section": "", "type": "rule",
+                "values": {"target": "ACCEPT"}
+            })
+        );
+
+        let removed = commit_delete("firewall", "allow_ping");
+        assert_eq!(
+            serde_json::to_value(&removed).unwrap(),
+            serde_json::json!({"config": "firewall", "section": "allow_ping", "delete": true})
+        );
+
+        // A null among the values clears that one option.
+        let cleared = commit(
+            "firewall",
+            "allow_ping",
+            serde_json::json!({"dest_port": null}),
+        );
+        assert_eq!(
+            serde_json::to_value(&cleared).unwrap()["values"],
+            serde_json::json!({"dest_port": null})
+        );
+    }
+
+    #[test]
+    fn a_row_drawer_states_only_what_it_carries() {
+        let closed = TableRow {
+            id: "nas".into(),
+            cells: vec![TableCell::default()],
+            drawer: Some(RowDrawer {
+                title: "Edit reservation — nas".into(),
+                children: vec![Widget::text("body")],
+                ..RowDrawer::default()
+            }),
+            ..TableRow::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&closed).unwrap()["drawer"],
+            serde_json::json!({
+                "title": "Edit reservation — nas",
+                "children": [{"type": "text", "markdown": "body"}]
+            })
+        );
+
+        // A refused submission comes back with its drawer already open.
+        let refused = RowDrawer {
+            title: "Edit record — nas.lan".into(),
+            size: "wide".into(),
+            hide_title: true,
+            open: true,
+            children: Vec::new(),
+        };
+        let json = serde_json::to_value(&refused).unwrap();
+        assert_eq!(json["size"], "wide");
+        assert_eq!(json["hide_title"], true);
+        assert_eq!(json["open"], true);
+
+        // A row without one says nothing about drawers at all.
+        let bare = TableRow {
+            cells: Vec::new(),
+            ..TableRow::default()
+        };
+        assert!(serde_json::to_value(&bare).unwrap().get("drawer").is_none());
+    }
+
+    #[test]
+    fn a_settings_seam_folds_its_own_rows() {
+        let block = Widget::Settings {
+            style: String::new(),
+            title: String::new(),
+            meta: String::new(),
+            items: vec![SettingsItem {
+                title: "Expand hosts".into(),
+                ..SettingsItem::default()
+            }],
+            seam: Some(SettingsSeam {
+                summary: "1 more option".into(),
+                items: vec![SettingsItem {
+                    title: "Skip /etc/hosts".into(),
+                    ..SettingsItem::default()
+                }],
+            }),
+        };
+        let json = serde_json::to_value(&block).unwrap();
+        assert_eq!(json["seam"]["summary"], "1 more option");
+        assert_eq!(json["seam"]["items"][0]["title"], "Skip /etc/hosts");
+
+        let plain = Widget::Settings {
+            style: String::new(),
+            title: String::new(),
+            meta: String::new(),
+            items: Vec::new(),
+            seam: None,
+        };
+        assert!(serde_json::to_value(&plain).unwrap().get("seam").is_none());
+    }
+
+    #[test]
+    fn settings_pills_speak_the_tone_vocabulary() {
+        let pill = SettingsPill {
+            variant: Tone::Success,
+            text: "accept".into(),
+        };
+        let json = serde_json::to_value(&pill).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"variant": "success", "text": "accept"})
+        );
     }
 }

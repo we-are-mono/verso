@@ -1,0 +1,7 @@
+{
+  "type": "link",
+  "label": "Add rule",
+  "icon": "plus",
+  "href": "/plugins/firewall/rules/new",
+  "style": "button"
+}
