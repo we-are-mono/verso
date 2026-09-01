@@ -9,6 +9,12 @@ import "io"
 // datatype express intent, never presentation. Value/Error carry the round-trip
 // state — a plugin re-renders the field with the submitted Value and an Error on
 // a failed POST (ADR-006 §5).
+//
+// Advanced marks a field as part of the advanced reading only (ADR-015). It is a
+// boolean rather than a section's three-state mode because a field has no simpler
+// face — a simplified representation is structural, which is what a section is
+// for. The declaring plugin drops the flag for a field whose value differs from
+// its default, so mode hides capability and never state.
 type Field struct {
 	Name         string   `json:"name"`
 	Label        string   `json:"label"`
@@ -18,6 +24,7 @@ type Field struct {
 	Prompt       string   `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link
 	Placeholder  string   `json:"placeholder,omitempty"`  // text input hint; never substitutes for a visible label where one is required
 	Autofocus    bool     `json:"autofocus,omitempty"`    // focus this field when its task-specific page opens
+	Advanced     bool     `json:"advanced,omitempty"`     // part of the advanced reading only (ADR-015)
 	Required     bool     `json:"required,omitempty"`
 	Value        string   `json:"value"`    // current/submitted value
 	Values       []string `json:"values"`   // kind "checks": the checked option values
