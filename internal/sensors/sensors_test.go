@@ -14,6 +14,7 @@ import (
 
 func TestLoadProfile(t *testing.T) {
 	const js = `{
+	  "id": "mono,gateway-dk",
 	  "name": "Mono Gateway Development Kit",
 	  "ports": ["eth1", "eth0"],
 	  "fans": [ { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1" } ],
@@ -23,11 +24,16 @@ func TestLoadProfile(t *testing.T) {
 	  ],
 	  "thermal": [ { "cluster-thermal": "cluster", "cpu": true } ]
 	}`
+	// The folder name (an underscore) is only storage; the match is the id, which
+	// carries the raw board_name's comma. The folder is recorded for the panel art.
 	fsys := fstest.MapFS{"mono_gateway-dk/profile.json": {Data: []byte(js)}}
 
-	p, ok := LoadProfile(fsys, "mono_gateway-dk")
+	p, ok := LoadProfile(fsys, "mono,gateway-dk")
 	if !ok {
 		t.Fatal("profile not loaded")
+	}
+	if p.Dir != "mono_gateway-dk" {
+		t.Fatalf("profile folder not recorded: %q", p.Dir)
 	}
 	if p.Name != "Mono Gateway Development Kit" || len(p.Ports) != 2 {
 		t.Fatalf("name/ports wrong: %q %v", p.Name, p.Ports)

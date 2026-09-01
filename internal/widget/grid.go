@@ -51,6 +51,7 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 // gridView is the template model: the responsive column classes the shell chose for
 // the declared count, plus the pre-rendered children.
 type gridView struct {
+	Strip    bool
 	Cols     string
 	Gap      string
 	Children []template.HTML
@@ -65,7 +66,7 @@ func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if g.Style == "form" {
 		gap = "gap-6"
 	}
-	return r.execute(out, "grid.html.tmpl", gridView{Cols: gridCols(g.Columns, g.Style), Gap: gap, Children: children})
+	return r.execute(out, "grid.html.tmpl", gridView{Strip: g.Style == "strip", Cols: gridCols(g.Columns, g.Style), Gap: gap, Children: children})
 }
 
 // gridCols maps a declared column count to responsive Tailwind classes — the shell's
@@ -81,6 +82,23 @@ func gridCols(n int, style string) string {
 			return "grid-cols-1 md:grid-cols-2"
 		default:
 			return "grid-cols-1 md:grid-cols-3"
+		}
+	}
+	// A strip divides evenly across its full width however many slots it has (the
+	// home page's status tiles, the hardware vitals) — fixed columns, no collapse,
+	// so the hairline dividers read as one instrument panel at any width.
+	if style == "strip" {
+		switch {
+		case n <= 1:
+			return "grid-cols-1"
+		case n == 2:
+			return "grid-cols-2"
+		case n == 3:
+			return "grid-cols-3"
+		case n == 4:
+			return "grid-cols-4"
+		default:
+			return "grid-cols-5"
 		}
 	}
 	switch {

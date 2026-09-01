@@ -38,6 +38,22 @@ type Meter struct {
 	// (plus per-part hooks) so the shell's client script can stream fresh
 	// readings into the track and text in place. A nameless meter is static.
 	Name string `json:"name,omitempty"`
+	// Compact renders the meter as one dense row — the label, a thin track, and
+	// the value with a status dot — for a headroom listing where many readings
+	// stack. The track fills 0→the reading's own ceiling, so each row measures
+	// against its own limit rather than a shared scale.
+	Compact bool `json:"compact,omitempty"`
+	// WarnMark and CritMark place tick marks on the compact track as a percent of
+	// its length (0 = no mark); the critical mark sits at the track's end.
+	WarnMark int `json:"warn_mark,omitempty"`
+	CritMark int `json:"crit_mark,omitempty"`
+	// Tone colours the compact fill and its status dot by state — "success" |
+	// "warning" | "danger" — since a temperature grades against its own limits,
+	// not the fill band. "" leaves the fill on the calm accent.
+	Tone string `json:"tone,omitempty"`
+	// NoTrack drops the compact track — a reading with no limits shows a neutral
+	// dot and its Detail as a quiet note, never a guessed bar.
+	NoTrack bool `json:"no_track,omitempty"`
 }
 
 func (*Meter) isWidget() {}
@@ -45,15 +61,20 @@ func (*Meter) isWidget() {}
 func (*Meter) children() []Widget { return nil }
 
 type meterView struct {
-	Label  string
-	Value  string
-	Unit   string
-	Detail string
-	Name   string
-	Icon   string
-	Role   string // decorative accent for the track + icon; "" colours by band
-	Band   string // the tone vocabulary: "success" | "warning" | "danger" | "info"
-	Width  string // width of the track's fill, e.g. "72%"
+	Label    string
+	Value    string
+	Unit     string
+	Detail   string
+	Name     string
+	Icon     string
+	Role     string // decorative accent for the track + icon; "" colours by band
+	Band     string // the tone vocabulary: "success" | "warning" | "danger" | "info"
+	Width    string // width of the track's fill, e.g. "72%"
+	Compact  bool
+	WarnMark string // tick position on the compact track, e.g. "89%"; "" hides it
+	CritMark string
+	Tone     string // compact fill + dot colour: "success" | "warning" | "danger" | ""
+	NoTrack  bool
 }
 
 // MeterBand is the track's colour band for a fill, in the tone vocabulary:
@@ -79,9 +100,20 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	} else if fill > 100 {
 		fill = 100
 	}
+	mark := func(pct int) string {
+		if pct <= 0 {
+			return ""
+		}
+		if pct > 100 {
+			pct = 100
+		}
+		return fmt.Sprintf("%d%%", pct)
+	}
 	return r.execute(out, "meter.html.tmpl", meterView{
 		Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
-		Width: fmt.Sprintf("%d%%", fill),
+		Width:   fmt.Sprintf("%d%%", fill),
+		Compact: m.Compact, WarnMark: mark(m.WarnMark), CritMark: mark(m.CritMark),
+		Tone: m.Tone, NoTrack: m.NoTrack,
 	})
 }

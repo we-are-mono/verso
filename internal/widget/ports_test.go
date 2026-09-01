@@ -101,3 +101,46 @@ func TestPortsWithoutIfaceIsStatic(t *testing.T) {
 		t.Errorf("static port must not carry live hooks:\n%s", got)
 	}
 }
+
+// TestPortsPanelArt: a profile's own back-panel SVG renders in place of the
+// generated strip, lit from the live port state — the shell tags the art's own
+// data-verso-port groups with the same is-linked/is-active/is-wan classes the
+// strip wears, so one stylesheet lights both.
+func TestPortsPanelArt(t *testing.T) {
+	r := newRenderer(t)
+	back := `<svg viewBox="0 0 100 40"><g data-verso-port="eth0" class="port"><rect class="led-link"/></g><g data-verso-port="eth3" class="port"><path/></g></svg>`
+	got := render(t, r, &Ports{
+		Back: back,
+		Items: []PortItem{
+			{Iface: "eth0", Linked: true, Active: true},
+			{Iface: "eth3", Role: "wan", Linked: true},
+		},
+	})
+	for _, want := range []string{
+		"verso-panel-art",
+		`data-verso-port="eth0" class="port is-linked is-active"`, // link + traffic tagged
+		`data-verso-port="eth3" class="port is-linked is-wan"`,    // link + WAN role tagged
+		"led-link", // the art's own live layer survives intact
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("panel art missing %q:\n%s", want, got)
+		}
+	}
+	// The generated chassis strip is not drawn when panel art is present.
+	if strings.Contains(got, "verso-ports-chassis") {
+		t.Errorf("panel art should replace the generated strip:\n%s", got)
+	}
+}
+
+// TestPortsGeneratedStripFallback: with no panel art, the generated connector
+// strip is still drawn.
+func TestPortsGeneratedStripFallback(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "eth0", Iface: "eth0", Linked: true}}})
+	if !strings.Contains(got, "verso-ports-chassis") {
+		t.Errorf("a board with no panel art falls back to the strip:\n%s", got)
+	}
+	if strings.Contains(got, "verso-panel-art") {
+		t.Errorf("no panel art means no panel container:\n%s", got)
+	}
+}

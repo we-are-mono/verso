@@ -6,6 +6,32 @@
      Connectors drawn to real spec: RJ45 (8P8C) ~11.68×8.0mm, SFP+ ~13.4×8.5mm. */}}
 <div class="verso-ports verso-ports--{{.Accent}}">
   {{if .Device}}<div class="verso-ports-name">{{.Device}}</div>{{end}}
+  {{if .HasPanel}}
+  {{/* The board profile's own panel art, lit from live state (litPanel tagged its
+       data-verso-port groups). One face carries no side label — which side the
+       connectors sit on is not the point; both faces earn a Front/Rear control. */}}
+  {{if .PanelBoth}}
+  <div class="verso-panel-art" x-data="{ face: 'rear' }">
+    <div class="mb-3 inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1 text-sm dark:border-gray-700 dark:bg-gray-800">
+      <button type="button" @click="face = 'rear'" :class="face === 'rear' ? 'bg-white text-slate-900 shadow-sm dark:bg-gray-700' : 'text-slate-500'" class="rounded-md px-3 py-1 font-medium transition-colors">{{ t "Rear" }}</button>
+      <button type="button" @click="face = 'front'" :class="face === 'front' ? 'bg-white text-slate-900 shadow-sm dark:bg-gray-700' : 'text-slate-500'" class="rounded-md px-3 py-1 font-medium transition-colors">{{ t "Front" }}</button>
+    </div>
+    <div x-show="face === 'rear'">{{.Back}}</div>
+    <div x-show="face === 'front'" x-cloak>{{.Front}}</div>
+  </div>
+  {{else}}
+  <div class="verso-panel-art">{{if .Back}}{{.Back}}{{else}}{{.Front}}{{end}}</div>
+  {{end}}
+  {{if .Legend}}
+  <div class="verso-ports-legend">
+    <span class="verso-ports-key"><span class="verso-ports-dot on"></span>{{ t "Connected" }}</span>
+    <span class="verso-ports-key"><span class="verso-ports-dot act"></span>{{ t "Traffic" }}</span>
+    <span class="verso-ports-key"><span class="verso-ports-dot"></span>{{ t "Not connected" }}</span>
+    {{if .HasWAN}}<span class="verso-ports-key">{{ t "Internet = your WAN connection" }}</span>{{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
   <div class="verso-ports-chassis-wrap">
     <div class="verso-ports-chassis">
       <span class="verso-ports-screw tl"></span><span class="verso-ports-screw tr"></span><span class="verso-ports-screw bl"></span><span class="verso-ports-screw br"></span>
@@ -58,4 +84,5 @@
     {{if .HasSFP}}<span class="verso-ports-key">{{ t "SFP+ = fiber" }}</span>{{end}}
   </div>
   {{end}}
+{{end}}
 </div>

@@ -7,6 +7,28 @@
      live (data-verso-meter*): the shell's client script streams fresh
      value/unit/detail and a new width into place (verso.js); "info" forces the
      accent for a rate. */}}
+{{if .Compact}}
+{{/* compact: one dense row — name · a thin track that fills 0→this reading's own
+     critical, with warn/critical tick marks · the value with a status dot. A
+     reading with no limits drops the track (never a guessed threshold) and keeps
+     a neutral dot. Colour is reserved for state (the fill + dot tone). */}}
+<div class="grid grid-cols-[9.5rem_1fr_6.5rem] items-center gap-5 border-b border-slate-100 py-2.5 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
+  <span class="truncate text-sm font-medium text-slate-900">{{.Label}}</span>
+  {{if .NoTrack}}
+  <span class="text-xs text-slate-300">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
+  {{else}}
+  <span class="relative h-1 rounded-full bg-slate-100">
+    <span class="verso-meter-bar absolute inset-y-0 left-0 rounded-full {{if eq .Tone "danger"}}bg-red-500{{else if eq .Tone "warning"}}bg-amber-500{{else}}bg-emerald-500{{end}}" style="width: {{.Width}}" data-verso-meter-bar></span>
+    {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-amber-500/60" style="left: {{.WarnMark}}"></span>{{end}}
+    {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-red-500" style="left: calc({{.CritMark}} - 2px)"></span>{{end}}
+  </span>
+  {{end}}
+  <span class="flex items-center justify-end gap-2 tabular-nums">
+    <span class="size-2 shrink-0 rounded-full {{if .NoTrack}}bg-slate-300{{else if eq .Tone "danger"}}bg-red-500{{else if eq .Tone "warning"}}bg-amber-500{{else}}bg-emerald-500{{end}}"></span>
+    <span class="text-[0.95rem] font-semibold text-slate-900"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-slate-500" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
+  </span>
+</div>
+{{else}}
 <div class="text-left"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <div class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
     {{if .Icon}}<span class="{{if eq .Role "sky"}}text-sky-500{{else if eq .Role "violet"}}text-violet-500{{else if eq .Role "emerald"}}text-emerald-500{{else if eq .Role "amber"}}text-amber-500{{else}}text-slate-400{{end}}">{{icon .Icon "size-4"}}</span>{{end}}
@@ -21,3 +43,4 @@
   </div>
   {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-slate-500" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>
+{{end}}

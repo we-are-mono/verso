@@ -536,6 +536,9 @@ html.verso-fonts-loading body {
      chassis is a physical object — deliberately dark in both themes. Display-only;
      the hover/focus tooltip is pure CSS (no JS). Connector art has no utility
      equivalent, so it lives here rather than in the template's classes. */
+  /* Bottom room so the legend never sits flush against whatever follows the panel
+     (the vitals grid) — the page's own space-y between blocks is a snug 1rem. */
+  .verso-ports { padding-bottom: 1.5rem; }
   .verso-ports-name { text-align: center; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-slate-500); }
   .verso-ports-chassis-wrap { text-align: center; }
   .verso-ports-chassis {
@@ -608,6 +611,28 @@ html.verso-fonts-loading body {
     .verso-port-jack, .verso-port-cage { height: 2.5rem; }
     .verso-ports-chassis { gap: 0.625rem; padding: 1.125rem 0.875rem 0.875rem; }
     .verso-port-label { font-size: 0.6875rem; } .verso-port-speed { font-size: 0.625rem; }
+  }
+
+  /* Panel art: a board profile's own rear/front SVG, shown in place of the
+     generated strip. The shell lights it through the art's own data-verso-port
+     groups (litPanel tags them), so these rules — not per-board code — carry the
+     live state, exactly as the generated strip's .verso-port rules do. A CSS
+     property beats the SVG's inline presentation attribute, so the art ships its
+     LEDs drawn dark and the shell paints the lit ones. The traffic LED lights
+     steadily here; its blink is a follow-up on the live stream. */
+  .verso-panel-art { max-width: 44rem; margin-inline: auto; }
+  .verso-panel-art svg { display: block; width: 100%; height: auto; }
+  .verso-panel-art [data-verso-port].is-linked .led-link { fill: #22c55e; filter: drop-shadow(0 0 3px rgb(34 197 94 / 0.85)); }
+  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-amber-500); filter: drop-shadow(0 0 3px rgb(245 158 11 / 0.8)); }
+  .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-sky-400); stroke-width: 1.8; }
+
+  /* The running-fan glyph (customGlyphs["fan-spin"]) turns while a fan runs — a
+     calm, unhurried rotation, stilled for reduced-motion. A stalled or absent
+     header draws the static Lucide "fan" instead, which never turns. */
+  .verso-glyph-fan-spin { transform-origin: center; animation: verso-fan-spin 2.6s linear infinite; }
+  @keyframes verso-fan-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-glyph-fan-spin { animation: none; }
   }
 
   /* chart widget: a generic time-series plot, drawn server-side to static SVG. Colours

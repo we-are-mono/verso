@@ -1,16 +1,17 @@
 {
+  "id": "mono,gateway-dk",
   "name": "Mono Gateway Development Kit",
 
   "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
 
   "fans": [
-    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1" },
+    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1",  "main": true },
     { "i2c-mux@70/i2c@3/fan-controller@2e/fan@1": "System Fan 2" }
   ],
 
   "power": [
-    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery" },
-    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU", "main": true },
+    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery", "main": true },
+    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU" },
     { "i2c-mux@70/i2c@0/power_sensor@42": "1V Core PSU" },
     { "i2c-mux@70/i2c@0/power_sensor@43": "1.2V DDR PSU" },
     { "i2c-mux@70/i2c@1/power_sensor@40": "1.35V SerDes PSU" },
@@ -24,6 +25,9 @@
     { "ddr-thermal": "Memory" },
     { "fman-thermal": "Network" },
     { "serdes-thermal": "SerDes" },
-    { "sec-thermal": "Crypto" }
+    { "sec-thermal": "Crypto" },
+    { "i2c-mux@70/i2c@1/temp-sensor@4c:temp1": "PCB near CPU" },
+    { "i2c-mux@70/i2c@1/temp-sensor@4c:temp2": "CPU (external diode)" },
+    { "i2c-mux@70/i2c@2/temp-sensor@4c:temp1": "SFP+ modules" }
   ]
 }

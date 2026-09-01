@@ -83,6 +83,52 @@ func TestMeterNamelessIsStatic(t *testing.T) {
 	}
 }
 
+// TestMeterCompact: the dense headroom row — a track that fills to the reading's
+// own critical, warn/critical tick marks, and a tone-coloured status dot.
+func TestMeterCompact(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"})
+	for _, want := range []string{
+		"Memory", ">47.0<", "°C",
+		"width: 49%",      // fills to the reading's own ceiling
+		"left: 89%",       // the warn tick
+		"bg-emerald-500",  // nominal tone on the fill + dot
+		"bg-amber-500/60", // the warn tick colour
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("compact meter missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestMeterCompactNoTrack: a reading with no limits shows no track and a neutral
+// dot — never a guessed threshold.
+func TestMeterCompactNoTrack(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Compact: true, Label: "Tctl", Value: "78", Unit: "°C", NoTrack: true})
+	if strings.Contains(got, "data-verso-meter-bar") {
+		t.Errorf("a no-limits reading must draw no track:\n%s", got)
+	}
+	for _, want := range []string{"no limits reported", "bg-slate-300"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("no-track meter missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestMeterCompactWarnTone: a reading over its warn trip colours the fill and dot
+// amber, not the calm accent.
+func TestMeterCompactWarnTone(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Compact: true, Label: "SoC", Value: "88", Unit: "°C", Fill: 92, WarnMark: 89, CritMark: 100, Tone: "warning"})
+	if !strings.Contains(got, "bg-amber-500") {
+		t.Errorf("warm reading should tint amber:\n%s", got)
+	}
+	if strings.Contains(got, "bg-emerald-500") {
+		t.Errorf("warm reading must not stay emerald:\n%s", got)
+	}
+}
+
 // TestMeterClampsFill: a Fill over 100 fills the whole track, not past it.
 func TestMeterClampsFill(t *testing.T) {
 	r := newRenderer(t)

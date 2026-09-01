@@ -23,6 +23,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system", s.handleSystemRoot)
 	s.mux.HandleFunc("GET /system/{$}", s.handleSystemRoot)
 
+	// Hardware: shell-owned "about this box" — the device's model, panel, and
+	// every sensor reading, read from local sysfs with no configuration to stage.
+	s.mux.HandleFunc("GET /system/hardware", s.handleSystemHardware)
+
 	// Shell-owned auth surface (ADR-009 §3): the shell serves the password page
 	// itself, since it mutates the credential that gates the shell.
 	s.mux.HandleFunc("GET /system/password", s.handlePasswordForm)

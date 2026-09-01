@@ -25,12 +25,18 @@ a file (below).
 
 ## How a profile is chosen
 
-The **directory name is the match** — it is the board's `board_name`, from `ubus
-call system board` (the same `/tmp/sysinfo/board_name` OpenWrt derives). On x86
-that's folded from DMI (`supermicro-h13sae-mf`), so PCs match by the same key — no
-separate DMI selectors, and no `id` field inside the file.
+The **`id` field in `profile.json` is the match** — it is the board's raw
+`board_name`, from `ubus call system board` (the same `/tmp/sysinfo/board_name`
+OpenWrt derives). The shell reads every `*/profile.json` and picks the one whose
+`id` equals the device's `board_name`. On a device tree that name is `vendor,model`
+(the DK reports **`mono,gateway-dk`**); on x86 it is folded from DMI
+(`supermicro-h13sae-mf`) — either way the `id` matches it verbatim.
 
-- **`aliases`** (optional, in `profile.json`): extra board_names this folder also
+- **The folder name is only storage.** It never has to equal the `board_name`, so a
+  name that carries a comma (`mono,gateway-dk`) lives in a plainly-named folder
+  (`mono_gateway-dk/`). The folder is where the profile's `back.svg`/`front.svg`
+  travel with it; the `id` is what selects it.
+- **`aliases`** (optional, in `profile.json`): extra `board_names` this profile also
   covers — for a board that reports different names across revisions or variants.
 - **No match → auto-detect.** When no directory matches the board_name, there is no
   fallback *file* — the shell simply enumerates whatever sysfs exposes. A plain
@@ -50,6 +56,7 @@ searching, no label-matching, no traversal — the key *is* the location.
 
 ```json
 {
+  "id": "mono,gateway-dk",
   "name": "Mono Gateway Development Kit",
 
   "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
@@ -92,14 +99,27 @@ This is why the key is stable where the obvious alternatives are not:
 
 ### How each kind resolves
 
-The uniform JSON hides three small mechanics — the resolver picks by kind:
+The uniform JSON hides four small mechanics — the resolver picks by kind:
 
 - **Single-sensor chip** (each `ina234` is its own hwmon): the key matches that
   hwmon's of_node directly → read its `*_input`.
-- **Multi-channel chip** (the `emc2305` is *one* hwmon with `fan@0`/`fan@1` child
-  nodes): the key points at the **child**. Resolve by finding the hwmon whose
-  of_node is the child's parent, then use the child's `reg` as the channel index —
-  `reg 0 → fan1_input`. (Verified on the DK: `fan@0` reg 0 → `fan1_input`.)
+- **Multi-channel chip with child nodes** (the `emc2305` is *one* hwmon with
+  `fan@0`/`fan@1` child nodes): the key points at the **child**. Resolve by finding
+  the hwmon whose of_node is the child's parent, then use the child's `reg` as the
+  channel index — `reg 0 → fan1_input`. (Verified on the DK: `fan@0` reg 0 →
+  `fan1_input`.)
+- **Multi-reading chip without child nodes** (a `tmp431` is *one* hwmon exposing
+  `temp1_input` from its local/on-die diode and `temp2_input` from a remote diode,
+  with no per-channel of_node child to point at): the key names the chip's of_node
+  tail followed by a **`:tempN` channel selector** — `…/temp-sensor@4c:temp1` reads
+  `temp1_input`, `:temp2` reads `temp2_input`. A key with no selector reads the
+  chip's sole channel (the single-sensor case above), so the selector is only
+  needed where one of_node carries more than one reading. (Verified on the DK
+  against the running kernel: two `tmp431` sit behind the i2c0 PCA9545 —
+  `i2c-mux@70/i2c@1/temp-sensor@4c` measuring the board near the CPU (local) and
+  the CPU through a remote diode (remote), and `…/i2c@2/temp-sensor@4c` measuring
+  the SFP+ area (local) with its remote diode unconnected, which reads 0 and is
+  left out of the profile.)
 - **Thermal zone** (not hwmon): match `/sys/class/thermal/thermal_zone*/type`
   against the key (`cluster-thermal`). The zone carries its own trip points, so a
   reading surfaces its warn/critical limits for free.

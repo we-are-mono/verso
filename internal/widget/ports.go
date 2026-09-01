@@ -3,7 +3,11 @@
 
 package widget
 
-import "io"
+import (
+	"html/template"
+	"io"
+	"strings"
+)
 
 // Ports renders a device's physical rear panel — the actual RJ45 and SFP+ connectors,
 // drawn to scale, lit when a cable is present — instead of a list of "interfaces" no
@@ -21,6 +25,15 @@ type Ports struct {
 	Accent string     `json:"accent"` // identity accent: sky (default) | emerald | violet | amber
 	Items  []PortItem `json:"ports"`
 	Legend bool       `json:"legend"` // show the explanatory key beneath the panel
+	// Back and Front carry a board profile's rear/front panel artwork — trusted,
+	// first-party SVG embedded in the shell. When either is set, the shell lights
+	// the art's own data-verso-port groups from the live port state and shows it
+	// in place of the generated connector strip; the caller still supplies Items,
+	// which drive the lighting. One side shows no side label (which face carries
+	// the connectors doesn't matter); both show a Front/Rear control. Empty falls
+	// back to the generated strip. These are server-supplied, never wire-decoded.
+	Back  string `json:"-"`
+	Front string `json:"-"`
 }
 
 // PortItem is one physical connector on the panel.
@@ -41,13 +54,17 @@ func (*Ports) isWidget() {}
 func (*Ports) children() []Widget { return nil }
 
 type portsView struct {
-	Device  string
-	Accent  string
-	Items   []PortItem
-	Legend  bool
-	HasWAN  bool
-	HasRJ45 bool
-	HasSFP  bool
+	Device    string
+	Accent    string
+	Items     []PortItem
+	Legend    bool
+	HasWAN    bool
+	HasRJ45   bool
+	HasSFP    bool
+	HasPanel  bool          // render the profile's own panel art, not the generated strip
+	PanelBoth bool          // both faces present → show a Front/Rear control
+	Back      template.HTML // the rear panel, lit from live state
+	Front     template.HTML // the front panel, lit from live state
 }
 
 func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -70,5 +87,46 @@ func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
 			v.HasWAN = true
 		}
 	}
+	if p.Back != "" || p.Front != "" {
+		v.HasPanel = true
+		v.PanelBoth = p.Back != "" && p.Front != ""
+		v.Back = litPanel(p.Back, p.Items)
+		v.Front = litPanel(p.Front, p.Items)
+	}
 	return r.execute(out, "ports.html.tmpl", v)
+}
+
+// litPanel tags a profile's panel art with the live port state: for each port,
+// the shell adds the same is-linked / is-active / is-wan classes the generated
+// strip wears onto the art's own data-verso-port group, so one set of stylesheet
+// rules lights both the art and the strip (ADR-005 — the shell owns every pixel).
+// The art is trusted first-party content embedded in the binary, rendered as-is.
+func litPanel(svg string, items []PortItem) template.HTML {
+	if svg == "" {
+		return ""
+	}
+	for _, it := range items {
+		if it.Iface == "" {
+			continue
+		}
+		var classes []string
+		if it.Linked {
+			classes = append(classes, "is-linked")
+		}
+		if it.Active {
+			classes = append(classes, "is-active")
+		}
+		if it.Role == "wan" {
+			classes = append(classes, "is-wan")
+		}
+		if len(classes) == 0 {
+			continue
+		}
+		// The panel contract (profiles/README.md, back.svg header) tags each
+		// connector group `data-verso-port="<iface>" class="port"`; extend that
+		// class list so the lighting rules match, exactly once per port.
+		anchor := `data-verso-port="` + it.Iface + `" class="port`
+		svg = strings.Replace(svg, anchor+`"`, anchor+" "+strings.Join(classes, " ")+`"`, 1)
+	}
+	return template.HTML(svg) //nolint:gosec // first-party art embedded in the binary; only a runtime-contributed profile would need sanitizing, and none exists
 }

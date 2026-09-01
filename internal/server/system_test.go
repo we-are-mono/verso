@@ -71,7 +71,7 @@ func TestStoppedSystemPluginWithdrawsGeneralRegistration(t *testing.T) {
 	s.probe = func(string) bool { return false }
 
 	rec := get(t, s, "/system")
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/hardware" {
 		t.Fatalf("redirect with stopped plugin = %d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	body := get(t, s, "/system/access").Body.String()

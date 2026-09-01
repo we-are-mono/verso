@@ -49,6 +49,13 @@ var lucideIcons = map[string]string{
 	"watch":       `<path d="M12 10v2.2l1.6 1" /><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05" /><path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05" /><circle cx="12" cy="12" r="6" />`,                                                                                                                                                                                                                                              // lucide: watch
 	"thermometer": `<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />`,                                                                                                                                                                                                                                                                                                                                                                                                                   // lucide: thermometer
 
+	// Sensor-kind glyphs for the Hardware page's readings table (the running-fan
+	// mark is the shell-owned spinning glyph "fan-spin"; "fan" here is the static
+	// Lucide fan a stalled header and the table use).
+	"zap":   `<path d="M15.914 4a1.5 1.5 0 0 0-2.474-1.561l-9 9A1.5 1.5 0 0 0 5.5 14h4.002a.5.5 0 0 1 .471.666L8.086 20a1.5 1.5 0 0 0 2.475 1.56l9-9A1.5 1.5 0 0 0 18.5 10h-3.997a.5.5 0 0 1-.472-.667z" />`,                             // lucide: zap
+	"fan":   `<path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z" /><path d="M12 12v.01" />`, // lucide: fan
+	"radio": `<path d="M16.247 7.761a6 6 0 0 1 0 8.478" /><path d="M19.075 4.933a10 10 0 0 1 0 14.134" /><path d="M4.925 19.067a10 10 0 0 1 0-14.134" /><path d="M7.753 16.239a6 6 0 0 1 0-8.478" /><circle cx="12" cy="12" r="2" />`,    // lucide: radio
+
 	// Structural glyphs (chrome + widget affordances), keyed by their Lucide name.
 	"chevron-right":  `<path d="m9 18 6-6-6-6" />`,
 	"chevron-down":   `<path d="m6 9 6 6 6-6" />`,
@@ -98,6 +105,9 @@ var lucideIcons = map[string]string{
 // renderer and the server's page templates. Plugin-supplied names reach it only as a
 // map key (never emitted), and the class is escaped, so it stays XSS-safe.
 func Icon(name, class string) template.HTML {
+	if glyph, ok := customGlyphs[name]; ok {
+		return customIcon(name, glyph, class)
+	}
 	inner, ok := lucideIcons[name]
 	if !ok {
 		inner = lucideIcons["device"]
@@ -109,6 +119,44 @@ func Icon(name, class string) template.HTML {
 	b.WriteString(iconStrokeWidth)
 	b.WriteString(`" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">`)
 	b.WriteString(inner)
+	b.WriteString(`</svg>`)
+	return template.HTML(b.String())
+}
+
+// customGlyph is a shell-owned mark that does not fit the Lucide stroke model — a
+// filled figure with its own geometry (ADR-005 §5, the same footing as the port
+// connectors). name + viewBox + inner elements.
+type customGlyph struct {
+	viewBox string
+	inner   string
+}
+
+// customGlyphs hold the non-Lucide art the shell draws itself. The running fan is
+// the one icon the Hardware page carves out of the Lucide set: a multi-blade
+// impeller that rotates while the fan runs (the CSS class verso-glyph-fan-spin spins
+// it, honouring prefers-reduced-motion) — a stalled or absent header falls back to
+// the static Lucide "fan" instead. Its blades take currentColor; its ring is the
+// same colour at low opacity, so one ink drives the whole mark in light and dark.
+var customGlyphs = map[string]customGlyph{
+	"fan-spin": {
+		viewBox: "60 60 492 492",
+		inner: `<circle cx="306" cy="306" r="242" fill="none" stroke="currentColor" stroke-opacity="0.28" stroke-width="12"/>` +
+			`<path fill="currentColor" d="M524.976,260.924c-1.238-6.015-3.819-10.307-8.554-14.218c-37.84-31.272-90.317-29.17-157.433,6.305c-4.38-4.38-9.121-8.082-14.434-11.27c46.257-41.499,88.423-58.921,126.495-52.269c11.225,1.961,18.998-10.901,12.043-19.926c-15.437-20.035-33.006-36.347-54.128-50.259c-5.13-3.378-9.989-4.586-16.103-4.005c-48.869,4.645-84.49,43.238-106.863,115.78c-6.195,0-12.165,0.734-18.175,2.237c3.365-62.052,20.86-104.187,52.486-126.405c9.324-6.55,5.725-21.141-5.574-22.607c-25.083-3.251-49.04-2.363-73.813,2.737c-6.015,1.238-10.307,3.819-14.218,8.554c-31.272,37.84-29.17,90.317,6.305,157.433c-4.38,4.38-8.082,9.121-11.27,14.434c-41.499-46.257-58.921-88.423-52.269-126.495c1.961-11.225-10.901-18.998-19.926-12.044c-20.035,15.437-36.347,33.006-50.259,54.128c-3.378,5.13-4.586,9.989-4.005,16.103c4.645,48.869,43.238,84.49,115.78,106.863c0,6.195,0.734,12.165,2.237,18.175c-62.052-3.365-104.187-20.86-126.405-52.486c-6.55-9.324-21.141-5.725-22.607,5.574c-3.251,25.083-2.363,49.04,2.737,73.813c1.238,6.015,3.819,10.307,8.554,14.218c37.84,31.272,90.317,29.17,157.433-6.305c4.38,4.38,9.121,8.082,14.434,11.27c-46.257,41.499-88.423,58.921-126.495,52.269c-11.225-1.961-18.998,10.901-12.043,19.926c15.437,20.035,33.006,36.347,54.128,50.259c5.13,3.378,9.989,4.586,16.103,4.005c48.869-4.645,84.49-43.238,106.863-115.78c6.195,0,12.165-0.734,18.175-2.238c-3.365,62.052-20.86,104.187-52.486,126.405c-9.324,6.55-5.725,21.141,5.574,22.607c25.083,3.251,49.04,2.363,73.813-2.737c6.015-1.238,10.307-3.819,14.218-8.554c31.272-37.84,29.17-90.317-6.305-157.433c4.38-4.38,8.082-9.121,11.27-14.434c41.499,46.257,58.921,88.423,52.269,126.495c-1.961,11.225,10.901,18.998,19.926,12.043c20.035-15.437,36.347-33.006,50.259-54.128c3.378-5.13,4.586-9.989,4.005-16.103c-4.645-48.869-43.238-84.49-115.78-106.863c0-6.195-0.734-12.165-2.237-18.175c62.052,3.365,104.187,20.86,126.405,52.486c6.55,9.324,21.141,5.725,22.607-5.574C530.964,309.653,530.076,285.698,524.976,260.924z M306,368.449c-34.489,0-62.449-27.96-62.449-62.449s27.96-62.449,62.449-62.449s62.449,27.96,62.449,62.449S340.489,368.449,306,368.449z"/>`,
+	},
+}
+
+// customIcon wraps a shell-owned glyph in its own viewBox (no Lucide stroke
+// frame), tagging it verso-glyph-<name> so the stylesheet can animate it.
+func customIcon(name string, g customGlyph, class string) template.HTML {
+	var b strings.Builder
+	b.WriteString(`<svg class="verso-glyph-`)
+	b.WriteString(name)
+	b.WriteByte(' ')
+	b.WriteString(template.HTMLEscapeString(class))
+	b.WriteString(`" viewBox="`)
+	b.WriteString(g.viewBox)
+	b.WriteString(`" aria-hidden="true">`)
+	b.WriteString(g.inner)
 	b.WriteString(`</svg>`)
 	return template.HTML(b.String())
 }

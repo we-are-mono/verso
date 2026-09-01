@@ -32,6 +32,7 @@ func (s *Server) systemPages(active string) []pageTab {
 		}
 	}
 	for _, item := range []struct{ label, href string }{
+		{"Hardware", "/system/hardware"},
 		{"Access", "/system/access"},
 		{"Packages", "/system/packages"},
 		{"Services", "/system/services"},

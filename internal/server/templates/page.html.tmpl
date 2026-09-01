@@ -73,7 +73,7 @@
        everything that maintains it. The amber mark appears only when this router
        has actually found something to install. */}}
   <div class="space-y-1 border-t border-slate-100 p-3">
-    <a href="/system/maintenance" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
+    <a href="/system/hardware" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
       <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
         {{icon "router" "size-5"}}
         {{if .UpdateReady}}<span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>{{end}}
@@ -143,14 +143,17 @@
     {{/* pt equals px, so the masthead sits as far from the top edge as from the
          left one. The bottom padding becomes the natural gap before the footer. */}}
     <div class="px-8 pt-8 pb-10">
-    {{if or .Kicker .Subheading}}
+    {{if or .Kicker .Subheading .Display}}
     {{/* Artifact-style masthead a page opts into: an uppercase kicker (with a live dot),
          a serif display headline, and a lede. Falls back to the plain heading below. */}}
     <div class="mb-10">
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-emerald-500"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-emerald-600">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
         <div class="min-w-0">
-          <h1 class="verso-page-heading">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h1>
+          {{/* A Display masthead's heading is the page's own subject (the device
+               name), so it carries no "— <tab>" detail — that suffix labels a
+               section page, and would only wrap a long device name onto its own line. */}}
+          <h1 class="verso-page-heading">{{.Heading}}{{if and .HeadingDetail (not .Display)}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h1>
           {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
         </div>
         {{if .Modes}}

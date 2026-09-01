@@ -23,8 +23,8 @@
           <span class="flex items-baseline gap-3">
             <span class="text-sm font-semibold text-slate-900">{{.Group.Label}}</span>
             <span class="flex-1"></span>
-            <span class="font-mono text-base font-semibold text-slate-500">{{.Group.Chain}}</span>
-            <span class="text-sm text-slate-500">· {{.Group.Count}} {{if eq .Group.Count 1}}rule{{else}}rules{{end}}</span>
+            {{if .Group.Chain}}<span class="font-mono text-base font-semibold text-slate-500">{{.Group.Chain}}</span>{{end}}
+            {{if .Group.Count}}<span class="text-sm text-slate-500">· {{.Group.Count}} {{if eq .Group.Count 1}}rule{{else}}rules{{end}}</span>{{end}}
           </span>
         </th>
       </tr>
@@ -229,7 +229,10 @@
      vertical scrollbar on the last row. overflow-y-hidden clips that overhang (the
      tooltip is a hover hint, not content) with no scrollbar. The card style keeps
      its overflow visible so its ring-offset frame is never clipped. */}}
-<div class="overflow-x-auto{{if .Card}} {{template "verso-card-frame"}} px-5 pb-2{{else}} overflow-y-hidden{{if .Lined}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{else if .Condensed}} [&_td]:py-1.5 [&_th]:pt-2.5 [&_th]:pb-2{{end}}{{end}}">
+{{/* Lined (edge inset) and Condensed (tighter rows) stack: a condensed listing
+     that also insets its edges pulls the inset in to match its tighter rhythm
+     (pl-2 vs pl-3), so the combination reads as one deliberately compact table. */}}
+<div class="overflow-x-auto{{if .Card}} {{template "verso-card-frame"}} px-5 pb-2{{else}} overflow-y-hidden{{if .Condensed}} [&_td]:py-1.5 [&_th]:pt-2.5 [&_th]:pb-2{{end}}{{if .Lined}}{{if .Condensed}} [&_td:first-child]:pl-2 [&_th:first-child]:pl-2 [&_td:last-child]:pr-2 [&_th:last-child]:pr-2{{else}} [&_td:first-child]:pl-3 [&_th:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th:last-child]:pr-3{{end}}{{end}}{{end}}">
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush
        left title, flush right link), a hairline under it so it reads as the

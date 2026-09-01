@@ -497,6 +497,7 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
+	Display       bool               // opt into the serif display masthead without a kicker or lede
 	Subheading    string             // optional lede under the heading
 	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
 	Width         string             // content-column width preset: "narrow" | "normal" (default) | "wide"
@@ -554,11 +555,15 @@ type pageHeader struct {
 	KickerStatus string
 	Immediate    bool
 	Live         bool
-	Subheading   string
-	Action       *plugin.PageAction // the page's one primary doorway, hard right on the heading row
-	Banner       *plugin.Banner
-	Notice       *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
-	Modes        []pageTab
+	// Display opts a page into the serif display masthead even without a kicker or
+	// lede — for a page whose heading is its own subject (the device's name on the
+	// Hardware page), not a section label.
+	Display    bool
+	Subheading string
+	Action     *plugin.PageAction // the page's one primary doorway, hard right on the heading row
+	Banner     *plugin.Banner
+	Notice     *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
+	Modes      []pageTab
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -618,6 +623,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
 		Kicker:        tr(hdr.Kicker),
+		Display:       hdr.Display,
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		Subheading:    tr(hdr.Subheading),

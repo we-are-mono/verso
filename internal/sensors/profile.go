@@ -11,17 +11,29 @@ package sensors
 import (
 	"encoding/json"
 	"io/fs"
+	"path"
 )
 
 // Profile is one board's sensor map: ordered arrays of location→name entries per
 // kind. The keys are device-tree of_node path tails; the values are the chosen
 // display names. main/cpu flags lift one entry each onto the home dashboard.
+//
+// ID is the device's raw board_name this profile claims (e.g. "mono,gateway-dk"),
+// and the match key — the folder name is only storage, so a board_name may carry a
+// comma or any character a path segment should not. Aliases cover a board that
+// reports different names across revisions. Dir is the folder the profile was
+// loaded from, recorded so its panel art (back.svg/front.svg) loads from the same
+// place; it never comes from JSON.
 type Profile struct {
+	ID      string   `json:"id"`
+	Aliases []string `json:"aliases"`
 	Name    string   `json:"name"`
 	Ports   []string `json:"ports"`
 	Fans    []Entry  `json:"fans"`
 	Power   []Entry  `json:"power"`
 	Thermal []Entry  `json:"thermal"`
+
+	Dir string `json:"-"`
 }
 
 // Entry is one sensor: its of_node path tail (Path), the display Name, and the
@@ -61,20 +73,43 @@ func (e *Entry) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// LoadProfile reads the profile for boardName from fsys (the embedded profiles
-// tree), addressed as "<boardName>/profile.json". It reports ok=false when the
-// board has no folder — the caller then falls back to generic auto-detection.
+// LoadProfile finds the profile in fsys (the embedded profiles tree) whose id — or
+// one of its aliases — equals the device's raw board_name, and returns it with the
+// folder it lives in recorded (its panel art loads from there). The folder name is
+// not the match key, so a board_name like "mono,gateway-dk" needs no folder to be
+// named for it. A board with no matching profile reports ok=false, and the caller
+// falls back to generic auto-detection.
 func LoadProfile(fsys fs.FS, boardName string) (*Profile, bool) {
 	if boardName == "" {
 		return nil, false
 	}
-	data, err := fs.ReadFile(fsys, boardName+"/profile.json")
-	if err != nil {
-		return nil, false
+	paths, _ := fs.Glob(fsys, "*/profile.json")
+	for _, file := range paths {
+		data, err := fs.ReadFile(fsys, file)
+		if err != nil {
+			continue
+		}
+		var p Profile
+		if err := json.Unmarshal(data, &p); err != nil {
+			continue
+		}
+		if p.matches(boardName) {
+			p.Dir = path.Dir(file)
+			return &p, true
+		}
 	}
-	var p Profile
-	if err := json.Unmarshal(data, &p); err != nil {
-		return nil, false
+	return nil, false
+}
+
+// matches reports whether the profile claims a board_name as its id or an alias.
+func (p *Profile) matches(boardName string) bool {
+	if p.ID == boardName {
+		return true
 	}
-	return &p, true
+	for _, alias := range p.Aliases {
+		if alias == boardName {
+			return true
+		}
+	}
+	return false
 }

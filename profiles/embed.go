@@ -9,7 +9,10 @@ package profiles
 
 import "embed"
 
-// FS holds every board's profile.json, addressed as "<board_name>/profile.json".
+// FS holds every board's profile.json and its optional panel artwork, addressed
+// as "<board_name>/profile.json" and "<board_name>/back.svg" (or front.svg). The
+// panel art is first-party content shipped in the binary, so the Hardware page
+// renders it as trusted core content.
 //
-//go:embed */profile.json
+//go:embed */profile.json */*.svg
 var FS embed.FS

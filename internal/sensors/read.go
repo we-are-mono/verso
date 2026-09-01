@@ -19,11 +19,14 @@ type Reader struct {
 }
 
 // Zone is one thermal zone: its stable type (the match key), the current reading
-// in milli-°C, and its trip points (which give warn/critical without a profile).
+// in milli-°C, its trip points (which give warn/critical without a profile), and
+// the device-tree node it reads (OfNode) — the shared of_node lets the full
+// enumeration drop a hwmon twin that mirrors the same sensor.
 type Zone struct {
 	Type   string
 	MilliC int
 	Trips  []Trip
+	OfNode string
 }
 
 // Trip is one thermal trip point: its kind ("passive"/"hot"/"critical") and the
@@ -34,11 +37,14 @@ type Trip struct {
 }
 
 // Hwmon is one hwmon chip: its driver Name, its device-tree node path (OfNode,
-// empty on non-DT systems like x86), and its readings per channel index — temps
-// in milli-°C, fans in RPM, power in micro-W.
+// empty on non-DT systems like x86), the sysfs directory it was read from (Dir,
+// so the full enumeration can pull a channel's auxiliary attributes — limits,
+// fault flags, labels, voltage, current, pwm — without re-globbing), and its
+// readings per channel index — temps in milli-°C, fans in RPM, power in micro-W.
 type Hwmon struct {
 	Name   string
 	OfNode string
+	Dir    string
 	Temp   map[int]int
 	Fan    map[int]int
 	Power  map[int]int64
@@ -65,6 +71,7 @@ func (r *Reader) Zones() []Zone {
 			Type:   typ,
 			MilliC: readInt(filepath.Join(d, "temp")),
 			Trips:  readTrips(d),
+			OfNode: ofNodePath(filepath.Join(d, "device", "of_node")),
 		})
 	}
 	return out
@@ -96,6 +103,7 @@ func (r *Reader) Hwmons() []Hwmon {
 		h := Hwmon{
 			Name:   readStr(filepath.Join(d, "name")),
 			OfNode: ofNodePath(filepath.Join(d, "device", "of_node")),
+			Dir:    d,
 			Temp:   readChannels(d, "temp"),
 			Fan:    readChannels(d, "fan"),
 			Power:  readChannels64(d, "power"),
@@ -165,4 +173,38 @@ func readStr(path string) string {
 func readInt(path string) int {
 	n, _ := strconv.Atoi(readStr(path))
 	return n
+}
+
+// readIntOK reads an integer attribute, reporting present=false when the file is
+// absent or unparsable — the caller needs to tell a real 0 from a missing limit.
+func readIntOK(path string) (int, bool) {
+	s := readStr(path)
+	if s == "" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// readInt64OK is readIntOK for the 64-bit channels (power, optical microwatts).
+func readInt64OK(path string) (int64, bool) {
+	s := readStr(path)
+	if s == "" {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// readFlag reads a boolean sysfs attribute — a non-zero integer is true, and an
+// absent file is false (the chip does not report that alarm).
+func readFlag(path string) bool {
+	n, ok := readIntOK(path)
+	return ok && n != 0
 }
