@@ -212,3 +212,27 @@ func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
 		t.Errorf("an incomplete acl.read entry must be skipped: got=%d problems=%d", len(got), len(problems))
 	}
 }
+
+// TestDiscoverParsesNavModeAndIcon: a nav entry may name the reading it belongs
+// to (ADR-015) and the shell glyph its row draws (ADR-005). Both are optional —
+// an entry declaring neither is the ordinary case and parses to empty.
+func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/n/manifest.json": `{"manifest_version":1,"id":"n","name":"N","socket":"/run/verso/n.sock",` +
+			`"schema_version":1,"nav":[` +
+			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","mode":"advanced"},` +
+			`{"section":"Network","label":"DHCP","path":"/"}]}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(problems) != 0 || len(got) != 1 {
+		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
+	}
+	nav := got[0].Nav
+	if nav[0].Icon != "globe" || nav[0].Mode != "advanced" {
+		t.Errorf("nav[0] icon/mode not parsed: %+v", nav[0])
+	}
+	if nav[1].Icon != "" || nav[1].Mode != "" {
+		t.Errorf("nav[1] should declare neither: %+v", nav[1])
+	}
+}

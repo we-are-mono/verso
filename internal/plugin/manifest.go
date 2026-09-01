@@ -56,10 +56,17 @@ type ACLScope struct {
 // NavEntry places one of a plugin's pages in the shell's navigation. A plugin
 // may declare several, each auto-grouped under its section. Path is relative to
 // the plugin's /plugins/<id>/ mount ("" is treated as "/").
+//
+// Icon names a Lucide glyph the shell owns (ADR-005): a plugin references an icon
+// by name and never ships one. An entry naming none takes its section's glyph.
+// Mode is the reading the entry belongs to (ADR-015): "basic", "advanced", or
+// empty for both.
 type NavEntry struct {
 	Section string `json:"section"`
 	Label   string `json:"label"`
 	Path    string `json:"path"`
+	Icon    string `json:"icon,omitempty"`
+	Mode    string `json:"mode,omitempty"`
 }
 
 // validate enforces the required fields and a URL-safe id. A manifest that fails
