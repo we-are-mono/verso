@@ -201,6 +201,7 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
         meta: String::new(),
         meta_icon: String::new(),
         meta_position: String::new(),
+        mode: String::new(),
         flush: true,
         control: Some(Box::new(Widget::Switch {
             name: "enabled".into(),

@@ -5,6 +5,7 @@
   "meta": "3 peers",
   "meta_icon": "shield",
   "meta_position": "inline",
+  "mode": "advanced",
   "flush": true,
   "control": {
     "type": "switch",

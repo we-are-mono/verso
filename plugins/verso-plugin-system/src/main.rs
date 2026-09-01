@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use verso_plugin::{
     commit, commit_new, json, serve, ApplyAction, Envelope, Form, Request, SelectOption, Snapshot,
-    Widget,
+    Widget, MODE_ADVANCED,
 };
 
 mod timezones;
@@ -218,6 +218,7 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         meta: now_display,
         meta_icon: "clock".into(),
         meta_position: "inline".into(),
+        mode: String::new(),
         flush: false,
         control: None,
         children: vec![
@@ -233,12 +234,16 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         ],
     };
 
+    // How the clock is kept is machinery: which servers are asked, in what order,
+    // and the hand-set fallback when nobody is. The timezone above is the fact a
+    // person came for, so this region belongs to the advanced reading (ADR-015).
     let sync = Widget::Section {
         title: "Time synchronization".into(),
         sub: "Keep the clock accurate automatically using trusted time servers.".into(),
         meta: "Last synchronization not reported".into(),
         meta_icon: "clock".into(),
         meta_position: "inline".into(),
+        mode: MODE_ADVANCED.into(),
         flush: false,
         control: None,
         children: vec![
@@ -257,6 +262,7 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
                     name: "datetime".into(),
                     label: "Date and time".into(),
                     kind: "datetime-local".into(),
+                    advanced: false,
                     value: datetime,
                     values: Vec::new(),
                     placeholder: String::new(),
@@ -364,8 +370,47 @@ fn local_time() -> (String, String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{valid_local_datetime, valid_posix_tz, ZONES};
+    use super::{page, valid_local_datetime, valid_posix_tz, Facts, ZONES};
     use std::collections::HashSet;
+
+    /// The General page as the shell receives it, from a device with a name, a
+    /// zone, and automatic time.
+    fn general() -> serde_json::Value {
+        let envelope = page(
+            Facts {
+                hostname: "router".into(),
+                zonename: "Europe/Ljubljana".into(),
+                timezone: "CET-1CEST,M3.5.0,M10.5.0/3".into(),
+                ntp_section: "ntp".into(),
+                ntp_enabled: true,
+                servers: vec!["0.openwrt.pool.ntp.org".into()],
+                datetime: String::new(),
+            },
+            "",
+            "",
+        );
+        serde_json::to_value(&envelope).expect("serialize")
+    }
+
+    /// The name and the timezone are what a person came to General for; how the
+    /// clock is kept is machinery, and belongs to the advanced reading (ADR-015).
+    #[test]
+    fn time_synchronization_is_the_advanced_reading_of_this_page() {
+        let body = general();
+        let regions = &body["widget"]["fields"];
+        assert_eq!(regions[0]["title"], "Device identity");
+        assert!(
+            regions[0].get("mode").is_none(),
+            "the device's name belongs to both readings"
+        );
+        assert_eq!(regions[1]["title"], "Time and region");
+        assert!(
+            regions[1].get("mode").is_none(),
+            "the timezone belongs to both readings"
+        );
+        assert_eq!(regions[2]["title"], "Time synchronization");
+        assert_eq!(regions[2]["mode"], "advanced");
+    }
 
     #[test]
     fn timezone_catalog_is_complete_and_unique() {

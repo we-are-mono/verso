@@ -155,6 +155,7 @@ fn identity(rule: &RuleForm, errors: &Errors) -> Widget {
         meta: String::new(),
         meta_icon: String::new(),
         meta_position: String::new(),
+        mode: String::new(),
         flush: true,
         control: Some(Box::new(Widget::Switch {
             name: "enabled".into(),
@@ -207,6 +208,12 @@ fn traffic_path(model: &Firewall, rule: &RuleForm, errors: &Errors) -> Widget {
                     select_field("dest", "To", &rule.dest, ends(&rule.dest), errors),
                 ],
             ),
+            // Most rules are about a path and a protocol and never name an address
+            // family: fw4 then matches both, which is what an operator means. So the
+            // control belongs to the advanced reading — but only while it sits at
+            // that default. A rule someone narrowed to one family carries live
+            // state, and state is visible to every reader whatever mode they are in
+            // (ADR-015 §4): the plugin knows the default, so the plugin decides.
             select_field(
                 "family",
                 "Address family",
@@ -217,7 +224,8 @@ fn traffic_path(model: &Firewall, rule: &RuleForm, errors: &Errors) -> Widget {
                     ("ipv6", "IPv6 only"),
                 ]),
                 errors,
-            ),
+            )
+            .advanced_when(rule.family.is_empty()),
             token_list(
                 "proto",
                 "Protocols",
@@ -411,6 +419,7 @@ pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Err
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
+        advanced: false,
         value: value.into(),
         values: Vec::new(),
         placeholder: String::new(),
@@ -664,6 +673,43 @@ mod tests {
         assert!(switched_on(&plain, "enabled"));
         assert!(switched_on(&plain, "counter"));
         assert_eq!(control(&plain, "log")["checked"], false);
+    }
+
+    /// The reference case for "mode hides capability, never state" (ADR-015 §4):
+    /// the address family is part of the advanced reading while it sits at fw4's
+    /// default, and the moment a rule narrows it the tag is gone — so a basic
+    /// reader is never shown a rule that hides what it actually does.
+    #[test]
+    fn the_address_family_hides_only_while_it_is_at_its_default() {
+        let untouched = open("plain");
+        assert_eq!(
+            control(&untouched, "family")["advanced"],
+            true,
+            "a rule matching both families keeps the control out of the basic reading"
+        );
+
+        let narrowed = open("everything");
+        assert_eq!(control(&narrowed, "family")["value"], "ipv4");
+        assert!(
+            control(&narrowed, "family").get("advanced").is_none(),
+            "a rule narrowed to one family states that in every reading"
+        );
+
+        // A submission that drops the family puts the control back in the advanced
+        // reading, since the rule is back at the default it started from.
+        let cleared = submit(
+            "everything",
+            &[("src", "guest"), ("target", "ACCEPT"), ("counter", "1")],
+        );
+        assert_eq!(control(&cleared, "family")["advanced"], true);
+
+        // Nothing else on the path is hidden: the essentials are the basic reading.
+        for essential in ["src", "dest", "proto", "target", "name"] {
+            assert!(
+                control(&untouched, essential).get("advanced").is_none(),
+                "{essential} is one of the fields a rule needs to work"
+            );
+        }
     }
 
     #[test]

@@ -111,6 +111,7 @@ name = "verso-plugin-system"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "serde_json",
  "verso-plugin",
 ]
 
