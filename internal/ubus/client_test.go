@@ -3,7 +3,30 @@
 
 package ubus
 
-import "testing"
+import (
+	"errors"
+	"fmt"
+	"testing"
+)
+
+// TestStatusErrorUnwrap confirms a non-zero ubus status surfaces as a typed
+// *StatusError a caller can inspect — the renewer distinguishes a vanished
+// session (UBUS_STATUS_NOT_FOUND) from a transport failure by this type.
+func TestStatusErrorUnwrap(t *testing.T) {
+	err := error(&StatusError{Code: StatusNotFound, Context: `invoke "access"`})
+	wrapped := fmt.Errorf("openwrt: renew: %w", err)
+
+	var se *StatusError
+	if !errors.As(wrapped, &se) {
+		t.Fatalf("errors.As did not find *StatusError in %v", wrapped)
+	}
+	if se.Code != StatusNotFound {
+		t.Errorf("Code = %d, want %d", se.Code, StatusNotFound)
+	}
+	if got, want := se.Error(), `ubus: invoke "access": status 4`; got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+}
 
 // TestClientAgainstRealUbus exercises the full client against a live ubus. It
 // skips where no socket is present (dev hosts, CI), and runs inside the OpenWrt

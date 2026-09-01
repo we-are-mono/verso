@@ -17,6 +17,23 @@ const (
 	defaultTimeout = 5 * time.Second
 )
 
+// StatusNotFound is UBUS_STATUS_NOT_FOUND (enum ubus_msg_status). rpcd answers
+// session methods for an unknown session id with it, which lets a caller tell a
+// vanished session from a transport failure.
+const StatusNotFound = 4
+
+// StatusError is a non-zero ubus status reply — a request that reached ubusd and
+// came back refused, as distinct from a transport error (a dropped socket, a
+// timeout). Code mirrors enum ubus_msg_status; Context names the failed call.
+type StatusError struct {
+	Code    int
+	Context string
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("ubus: %s: status %d", e.Context, e.Code)
+}
+
 // Client is a synchronous ubus client over the unix socket. It is not safe for
 // concurrent use; dial one per call or guard with a mutex.
 type Client struct {
@@ -153,7 +170,7 @@ func (c *Client) Lookup(name string) (uint32, error) {
 			}
 		case msgStatus:
 			if code := statusCode(body); code != 0 {
-				return 0, fmt.Errorf("ubus: lookup %q: status %d", name, code)
+				return 0, &StatusError{Code: code, Context: fmt.Sprintf("lookup %q", name)}
 			}
 			if !found {
 				return 0, fmt.Errorf("ubus: object %q not found", name)
@@ -223,7 +240,7 @@ func (c *Client) invoke(objID uint32, method string, tableBody []byte) (map[stri
 			}
 		case msgStatus:
 			if code := statusCode(body); code != 0 {
-				return nil, fmt.Errorf("ubus: invoke %q: status %d", method, code)
+				return nil, &StatusError{Code: code, Context: fmt.Sprintf("invoke %q", method)}
 			}
 			if result == nil {
 				result = map[string]any{}
