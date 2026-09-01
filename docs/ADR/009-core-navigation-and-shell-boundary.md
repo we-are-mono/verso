@@ -7,7 +7,8 @@
   ADR-006 (the plugin contract — every section, core or not, is served through it),
   ADR-007 (privilege gating — core sections are privileged like any plugin),
   ADR-010 (UCI staging does not govern immediate platform operations),
-  ADR-011 (shell-owned package, plugin, and service management).
+  ADR-011 (shell-owned package, plugin, and service management),
+  ADR-015 (the reader mode that filters which nav entries render).
 
 ## Context
 
@@ -58,14 +59,15 @@ call: **on a gateway the firewall is not optional, so it is core.**
    the top-level slots — but it does not drive the top-level chrome directly. The
    sidebar is device-first: a few everyday, plain-language rows (Home, Internet,
    Devices, Wi-Fi, Family, Security, System — several still `#` placeholders) sit up
-   top for the least-technical operator, and the remaining core sections sit below
-   them under a collapsible **Advanced settings** seam. Three sections are not
-   groups in that seam. Status is the **Home** overview at the head of the everyday
-   rows, so status never appears twice and the nav carries no live state; Security
-   and System are everyday rows of their own, each leading to the first live page
-   registered under it and lit anywhere inside that domain. Within Advanced the
-   remaining sections render in this canonical order, ahead of any non-core section,
-   so the seam is coherent and deterministic regardless of plugin discovery order.
+   top for the least-technical operator, and the remaining core sections render
+   below them as advanced-mode rows — entries that exist only when the reader's
+   mode is advanced (ADR-015). Three sections are not advanced-mode rows. Status
+   is the **Home** overview at the head of the everyday rows, so status never
+   appears twice and the nav carries no live state; Security and System are
+   everyday rows of their own, each leading to the first live page registered
+   under it and lit anywhere inside that domain. The advanced-mode sections
+   render in this canonical order, ahead of any non-core section, so the sidebar
+   is coherent and deterministic regardless of plugin discovery order.
 
 3. **The shell serves its own machinery and generic platform administration
    directly; feature-specific device configuration is a plugin.** Four bounded
@@ -167,8 +169,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
 5. **Plugins extend the taxonomy; unknown sections sort after core.** A plugin's
    `nav[].section` (ADR-006) either names a core section — its links join that
    section in place — or names a new one. New (non-core) sections render **after**
-   all core sections within the Advanced-settings seam, ordered deterministically
-   (by section title, then plugin id).
+   all core sections among the advanced-mode rows (ADR-015), ordered
+   deterministically (by section title, then plugin id).
    This is the direct analog of a LuCI app filling the **Services** or **VPN**
    slot, and it is the flexibility the design requires: feature applications LuCI
    delivers as `luci-app-*` (VPN, DDNS, statistics) arrive in Verso as a
@@ -222,8 +224,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
   needs its own narrow argument schema, rpcd ACL, native validation, failure tests,
   and destructive-action confirmation; a generic command runner is never acceptable.
 - nav.go carries the core-first ordering (`buildNav`) beneath a device-first
-  sidebar (`buildSidebar`) — everyday rows plus the Advanced-settings seam — so the
-  chrome is a shell concern a plugin cannot rearrange.
+  sidebar (`buildSidebar`) — everyday rows plus the mode-filtered section rows
+  (ADR-015) — so the chrome is a shell concern a plugin cannot rearrange.
 
 ### Neutral
 - Whether Verso pre-declares *empty* core slots (LuCI's Services/VPN-style 404

@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-23
 - **Deciders:** tomaz@zaman.io
-- **Relates to:** ADR-001 (single static binary), ADR-004 (frontend stack). The
+- **Relates to:** ADR-001 (single static binary), ADR-004 (frontend stack),
+  ADR-015 (the reader mode the vocabulary's visibility props declare). The
   *mechanical* plugin contract (manifest format, socket protocol, schema versioning)
   is a separate, later ADR — this one governs only the visual/consistency model.
 
@@ -22,6 +23,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    props (`variant`, `size`, `label`, `datatype`), never *presentational* ones (color,
    spacing, font). Authors express intent; Verso maps intent → Tailwind's palette → pixels.
    Example: `{"type":"badge","variant":"success","text":"up"}` — never a color.
+   Reader-mode visibility is part of this vocabulary: a `section` carries an
+   optional `mode` (`"basic"` | `"advanced"`), a `field` an optional
+   `advanced: true` — the author declares which reading a thing belongs to, and
+   the shell filters at render, under ADR-015's invariant that mode hides
+   capability, never state.
 2. **The shell owns all appearance, via Tailwind's palette.** Plugins emit semantic
    schema; the shell renders it to HTML styled with Tailwind's default palette — `sky`
    for accent, `slate` for neutrals, `red`/`green`/`amber` for states. The consistency
