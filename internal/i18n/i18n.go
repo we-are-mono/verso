@@ -40,6 +40,31 @@ type Catalog map[string]string
 type Bundle struct {
 	catalogs map[string]map[string]Catalog
 	codes    []string // installed codes, sorted — the negotiation candidate set
+	record   func(code, component, key string, translated bool)
+}
+
+// Recorded returns a view of b whose translators report every lookup for an
+// installed language to sink: the requested source string, the component it was
+// requested through, and whether a translation existed (false is a fallback to
+// English — an untranslated string). English and uninstalled codes report
+// nothing; there is nothing to miss. The view shares b's catalogs; b itself
+// stays silent. This is the audit seam: the translators are the one place that
+// knows a key fell back, so an audit records there instead of guessing from
+// source text (the i18n-pot extractor is partial by design).
+func (b *Bundle) Recorded(sink func(code, component, key string, translated bool)) *Bundle {
+	view := *b
+	view.record = sink
+	return &view
+}
+
+// sink returns the per-lookup callback for one translator, or nil when nothing
+// should be recorded: no recorder installed, English (code ""), or a language
+// with no catalogs (negotiation could never select it).
+func (b *Bundle) sink(code, component string) func(key string, translated bool) {
+	if b.record == nil || code == "" || b.catalogs[code] == nil {
+		return nil
+	}
+	return func(key string, translated bool) { b.record(code, component, key, translated) }
 }
 
 // Load reads every catalog matched by glob within fsys. Each file is one
@@ -74,18 +99,9 @@ func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 			problems = append(problems, fmt.Errorf("i18n: %s: region/script variant %q unsupported; name the base language", p, code))
 			continue
 		}
-		data, err := fs.ReadFile(fsys, p)
+		cat, err := readCatalog(fsys, p)
 		if err != nil {
-			problems = append(problems, fmt.Errorf("i18n: read %s: %w", p, err))
-			continue
-		}
-		var cat Catalog
-		if err := json.Unmarshal(data, &cat); err != nil {
-			problems = append(problems, fmt.Errorf("i18n: parse %s: %w", p, err))
-			continue
-		}
-		if len(cat) == 0 {
-			problems = append(problems, fmt.Errorf("i18n: %s: empty catalog, skipped", p))
+			problems = append(problems, err)
 			continue
 		}
 		if b.catalogs[code] == nil {
@@ -97,11 +113,86 @@ func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 		}
 		b.catalogs[code][component] = cat
 	}
+	b.refreshCodes()
+	return b, problems
+}
+
+// LoadPlugins merges each plugin's travelling catalog into b (ADR-012 §1):
+// files matched by glob within fsys (the plugins directory), laid out as
+// "<plugin-dir>/i18n/<code>.json" — the language is the file's basename and
+// the component is the plugin directory's name (the plugin id, the same
+// convention that keys the mount). Resilient exactly like Load: a malformed
+// file is skipped and reported, never fatal. A travelling catalog overrides a
+// same code+component catalog already loaded from the shell's i18n directory —
+// the file that ships with the plugin binary is version-locked to it.
+func (b *Bundle) LoadPlugins(fsys fs.FS, glob string) []error {
+	matches, err := fs.Glob(fsys, glob)
+	if err != nil {
+		return []error{fmt.Errorf("i18n: bad plugin glob %q: %w", glob, err)}
+	}
+	sort.Strings(matches)
+
+	var problems []error
+	for _, p := range matches {
+		component := strings.ToLower(topDir(p))
+		code := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
+		if component == "" || code == "" || code == "en" {
+			continue // no plugin dir, or English (the source needs no catalog)
+		}
+		if strings.ContainsRune(code, '-') {
+			problems = append(problems, fmt.Errorf("i18n: %s: region/script variant %q unsupported; name the base language", p, code))
+			continue
+		}
+		cat, err := readCatalog(fsys, p)
+		if err != nil {
+			problems = append(problems, err)
+			continue
+		}
+		if b.catalogs[code] == nil {
+			b.catalogs[code] = make(map[string]Catalog)
+		}
+		b.catalogs[code][component] = cat
+	}
+	b.refreshCodes()
+	return problems
+}
+
+// topDir returns the first segment of a slash path — the plugin directory a
+// travelling catalog belongs to.
+func topDir(p string) string {
+	dir, _, _ := strings.Cut(p, "/")
+	if dir == p {
+		return ""
+	}
+	return dir
+}
+
+// readCatalog reads and parses one catalog file, treating unreadable, invalid,
+// and empty files as reportable problems.
+func readCatalog(fsys fs.FS, p string) (Catalog, error) {
+	data, err := fs.ReadFile(fsys, p)
+	if err != nil {
+		return nil, fmt.Errorf("i18n: read %s: %w", p, err)
+	}
+	var cat Catalog
+	if err := json.Unmarshal(data, &cat); err != nil {
+		return nil, fmt.Errorf("i18n: parse %s: %w", p, err)
+	}
+	if len(cat) == 0 {
+		return nil, fmt.Errorf("i18n: %s: empty catalog, skipped", p)
+	}
+	return cat, nil
+}
+
+// refreshCodes rebuilds the sorted negotiation candidate set from the loaded
+// catalogs — a travelling catalog may introduce a language base has none of,
+// and per-key English fallback covers the shell's own chrome there.
+func (b *Bundle) refreshCodes() {
+	b.codes = b.codes[:0]
 	for code := range b.catalogs {
 		b.codes = append(b.codes, code)
 	}
 	sort.Strings(b.codes)
-	return b, problems
 }
 
 // Codes returns the installed language codes, sorted. English is not among them.
@@ -113,7 +204,8 @@ func (b *Bundle) Codes() []string {
 // a lookup of the base catalog with English fallback. An empty or unknown code, or
 // a missing/blank key, returns the source string.
 func (b *Bundle) Translator(code string) func(string) string {
-	return lookup(b.catalogs[strings.ToLower(code)][BaseComponent], nil)
+	code = strings.ToLower(code)
+	return lookup(b.catalogs[code][BaseComponent], nil, b.sink(code, BaseComponent))
 }
 
 // PluginTranslator returns the translate function for a plugin's page and manifest
@@ -122,25 +214,37 @@ func (b *Bundle) Translator(code string) func(string) string {
 // still resolve from base. A key present in both resolves to the plugin's value.
 // English fallback throughout.
 func (b *Bundle) PluginTranslator(code, plugin string) func(string) string {
-	comps := b.catalogs[strings.ToLower(code)]
-	return lookup(comps[BaseComponent], comps[strings.ToLower(plugin)])
+	code = strings.ToLower(code)
+	plugin = strings.ToLower(plugin)
+	comps := b.catalogs[code]
+	return lookup(comps[BaseComponent], comps[plugin], b.sink(code, plugin))
 }
 
 // lookup builds a source→translation function that tries the overlay first, then
 // the base, then the source itself. A nil catalog contributes nothing; two nil
-// catalogs yield the identity, so English (no catalogs) is a no-op.
-func lookup(base, overlay Catalog) func(string) string {
-	if base == nil && overlay == nil {
+// catalogs yield the identity, so English (no catalogs) is a no-op. A non-nil
+// onLookup observes every non-empty request and whether it resolved.
+func lookup(base, overlay Catalog, onLookup func(key string, translated bool)) func(string) string {
+	if base == nil && overlay == nil && onLookup == nil {
 		return func(s string) string { return s }
 	}
 	return func(s string) string {
 		if overlay != nil {
 			if t, ok := overlay[s]; ok && t != "" {
+				if onLookup != nil && s != "" {
+					onLookup(s, true)
+				}
 				return t
 			}
 		}
 		if t, ok := base[s]; ok && t != "" {
+			if onLookup != nil && s != "" {
+				onLookup(s, true)
+			}
 			return t
+		}
+		if onLookup != nil && s != "" {
+			onLookup(s, false)
 		}
 		return s
 	}

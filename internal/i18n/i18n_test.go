@@ -152,3 +152,129 @@ func TestNegotiate(t *testing.T) {
 		t.Errorf("no available languages must yield English, got %q", got)
 	}
 }
+
+// lookupRecord is one observed translator lookup, for the recorder tests.
+type lookupRecord struct {
+	code, component, key string
+	translated           bool
+}
+
+// TestRecordedReportsEveryLookup pins the audit seam: a Recorded view reports
+// each request for an installed language with its outcome — translated, or a
+// fallback to English (an untranslated string) — labeled by component.
+func TestRecordedReportsEveryLookup(t *testing.T) {
+	var got []lookupRecord
+	rec := testBundle(t).Recorded(func(code, component, key string, translated bool) {
+		got = append(got, lookupRecord{code, component, key, translated})
+	})
+
+	tr := rec.Translator("sl")
+	tr("Discard") // translated in sl/base
+	tr("Reboot")  // absent from sl/base — a miss
+	ptr := rec.PluginTranslator("sl", "firewall")
+	ptr("Zones")         // overlay hit (plugin catalog wins)
+	ptr("Save & Apply")  // base hit through the overlay fallthrough
+	ptr("Traffic rules") // absent everywhere — a miss
+
+	want := []lookupRecord{
+		{"sl", "base", "Discard", true},
+		{"sl", "base", "Reboot", false},
+		{"sl", "firewall", "Zones", true},
+		{"sl", "firewall", "Save & Apply", true},
+		{"sl", "firewall", "Traffic rules", false},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("recorded %d lookups, want %d: %v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("lookup %d = %v, want %v", i, got[i], w)
+		}
+	}
+}
+
+// TestRecordedStaysSilentWhereNothingCanMiss: English and uninstalled languages
+// have no catalog to miss, the empty string is not a source string, and the
+// bundle the view derives from keeps translating without a recorder.
+func TestRecordedStaysSilentWhereNothingCanMiss(t *testing.T) {
+	b := testBundle(t)
+	calls := 0
+	rec := b.Recorded(func(string, string, string, bool) { calls++ })
+
+	rec.Translator("")("Discard")   // English: the identity
+	rec.Translator("fr")("Discard") // not installed: negotiation can't select it
+	rec.Translator("sl")("")        // empty string is not a key
+	rec.PluginTranslator("", "firewall")("Zones")
+	if calls != 0 {
+		t.Errorf("recorded %d lookups, want 0", calls)
+	}
+
+	if got := b.Translator("sl")("Discard"); got != "Zavrzi" {
+		t.Errorf("original bundle translation = %q, want Zavrzi", got)
+	}
+	if got := rec.Translator("sl")("Discard"); got != "Zavrzi" {
+		t.Errorf("recorded view translation = %q, want Zavrzi", got)
+	}
+}
+
+// TestLoadPluginsMergesTravellingCatalogs pins the travelling-catalog layout
+// (ADR-012 §1): <plugin-dir>/i18n/<code>.json merges as that plugin's
+// component, a language only a plugin carries becomes negotiable, and the
+// usual resilience applies (English skipped, region variants and broken files
+// reported, never fatal).
+func TestLoadPluginsMergesTravellingCatalogs(t *testing.T) {
+	b := testBundle(t)
+	problems := b.LoadPlugins(fstest.MapFS{
+		"firewall/i18n/sl.json":  {Data: []byte(`{"Rules":"Pravila"}`)},
+		"wireless/i18n/fr.json":  {Data: []byte(`{"Radios":"Radios FR"}`)}, // a language base has none of
+		"firewall/i18n/en.json":  {Data: []byte(`{"Rules":"no"}`)},         // English is the source, skipped
+		"broken/i18n/pt-br.json": {Data: []byte(`{"x":"y"}`)},              // region variant, rejected
+		"broken/i18n/de.json":    {Data: []byte(`{not json`)},              // parse error, reported
+	}, "*/i18n/*.json")
+
+	if len(problems) != 2 {
+		t.Fatalf("problems = %v, want 2 (pt-br, broken de)", problems)
+	}
+	if got := b.PluginTranslator("sl", "firewall")("Rules"); got != "Pravila" {
+		t.Errorf("travelling catalog not applied: %q", got)
+	}
+	if got := b.PluginTranslator("sl", "firewall")("Save & Apply"); got != "Shrani in uveljavi" {
+		t.Errorf("base fallthrough lost under a travelling catalog: %q", got)
+	}
+	codes := b.Codes()
+	found := false
+	for _, c := range codes {
+		if c == "fr" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("a plugin-only language must join negotiation, codes = %v", codes)
+	}
+	if got := b.PluginTranslator("fr", "wireless")("Radios"); got != "Radios FR" {
+		t.Errorf("plugin-only language catalog not applied: %q", got)
+	}
+}
+
+// TestTravellingCatalogOverridesShellDir: a catalog shipped beside the plugin's
+// manifest is version-locked to its binary, so it wins over a same
+// code+component file installed into the shell's i18n directory.
+func TestTravellingCatalogOverridesShellDir(t *testing.T) {
+	b := testBundle(t) // sl/firewall.json: {"Zones":"Območja","Firewall":"Požarni zid"}
+	problems := b.LoadPlugins(fstest.MapFS{
+		"firewall/i18n/sl.json": {Data: []byte(`{"Zones":"Cone (novo)"}`)},
+	}, "*/i18n/*.json")
+	if len(problems) != 0 {
+		t.Fatalf("problems = %v", problems)
+	}
+	tr := b.PluginTranslator("sl", "firewall")
+	if got := tr("Zones"); got != "Cone (novo)" {
+		t.Errorf("travelling catalog must override the shell-dir one, got %q", got)
+	}
+	// The override replaces the component's catalog wholesale — a key only the
+	// stale shell-dir file carried falls back to English, never to the stale
+	// translation of a different plugin version.
+	if got := tr("Firewall"); got != "Firewall" {
+		t.Errorf("stale shell-dir key must fall back to source, got %q", got)
+	}
+}
