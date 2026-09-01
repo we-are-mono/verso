@@ -481,6 +481,13 @@ explanation with a compact callout in a compact stack.
 ] }
 ```
 
+A row's value is prose unless it declares otherwise, and the declaration also
+tells the shell's localization what the value is: `mono` sets a machine string
+in monospace, `chip` renders an entity identity, and `verbatim` marks data that
+keeps sans type — a size, a rate, an uptime. Declare one of them on every value
+that is data, not words; an undeclared value is treated as prose and translated
+when a catalog covers it.
+
 ### table — config sections as identical rows
 
 The Advanced-view listing: one row per config section under fixed columns. Every
@@ -1008,6 +1015,58 @@ not a style choice — each has an owner: the envelope's `notice` for outcomes,
 ```json
 { "type": "raw", "markdown": "WireGuard keeps a tunnel silent until traffic flows, so a peer can look idle while it is perfectly healthy." }
 ```
+
+## Translations
+
+Write only English. The shell localizes your envelopes for you (ADR-012): the
+English source string is the catalog key, and translation happens in the
+shell's render walk — your plugin never calls a translation function, in any
+language, with or without the SDK.
+
+To ship a language, drop a catalog beside your manifest:
+
+```
+my-plugin/
+  manifest.json
+  i18n/
+    sl.json        ← {"Rules": "Pravila", "Add rule": "Dodaj pravilo", …}
+    de.json
+```
+
+The file's basename is the base language code (`sl`, never `sl-SI`), the keys
+are your English source strings exactly as your envelopes emit them, and the
+catalog installs and uninstalls with your package — prose and translation stay
+version-locked. A key the catalog misses renders your English, per key; shell
+widget defaults (Save, Details) and the section your nav entries join are
+translated from the shell's own catalog, so a plugin with no catalog at all
+still sits in an otherwise localized page. Community translations are pull
+requests against your repository, not files someone installs beside your
+plugin.
+
+**What your catalog covers.** The shell translates your envelope's prose: the
+page `title` and `subheading`, `pages` and manifest `nav` labels, and every
+prose field of every widget — section titles and subs, field labels, help and
+placeholder text, option labels, form submits, callout and empty-state bodies,
+table column labels and prose cells, confirm messages, `raw` Markdown. It
+deliberately leaves your data alone: entity chips and tags, machine-kind table
+cells (`name`, `mono`, `keyword`, `num`, …), `mono`/`chip`/`verbatim` property
+values, hrefs, icons, form field names, and datatype validation messages
+(shell-owned). Your catalog holds prose keys only.
+
+**Keep data out of prose.** A string assembled from English and data —
+`"Delete “" + name + "”?"`, `"3 more options"` — makes a new key every render,
+so no catalog can ever match it: it stays English in every language. Emit
+fixed sentences, and carry the data in the fields built for it (a cell in a
+machine-kind column, a `verbatim` property, a chip). Where a property value
+can be either words or data, declare the data (`mono`, `chip`, `verbatim`),
+so a device named "Online" can never come back translated into words. Select
+option labels are translated as prose; an identity in an option (a zone, an
+interface) misses the catalog and passes through unchanged.
+
+**Checking coverage.** A dev shell started with `VERSO_I18N_RECORD=1` logs
+every string that falls back to English as it renders, labeled with your
+plugin id — browse your pages in your target language and the log is your
+catalog's to-do list.
 
 ## Validation
 

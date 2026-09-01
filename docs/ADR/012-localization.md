@@ -44,24 +44,38 @@ source text with the source as the fallback; a language is a flat
 English all render the source. Plugins and shell code keep their English strings
 unchanged; localization is added around them, not woven through them.
 
-1. **Catalogs are per-component data packages discovered at runtime.** A component
-   is the shell or one plugin, and each owns its own catalog of the same shape:
-   `verso-i18n-base-<code>` carries the shell's strings, `verso-i18n-<plugin>-<code>`
-   carries one plugin's strings. Each apk drops a JSON map into a per-language
-   directory keyed by component — `/usr/share/verso/i18n/<code>/base.json`,
-   `/usr/share/verso/i18n/<code>/<plugin-id>.json`. The shell loads them all with
-   the same resilient, injected-`fs.FS` glob it uses for plugin manifests (ADR-006):
-   a malformed catalog is skipped and reported, never fatal, and installing one
-   triggers the existing manifest rescan — no restart. English ships in each binary
-   as the source; it has no catalog. **Base language codes only** (`sl`, `de`) — a
-   region or script variant (`pt-br`, `zh-hant`) is rejected with a reported problem
-   rather than loaded into a slot negotiation could never select; carrying full
-   BCP-47 tags is a later scope expansion.
+1. **Catalogs are per-component data discovered at runtime, and a plugin's
+   catalog travels with the plugin.** A component is the shell or one plugin,
+   and each owns its own catalog of the same shape, found in two places:
+
+   - **The shell's own strings** ship as per-language data packages
+     (`verso-i18n-base-<code>`), each dropping a JSON map into the shell's
+     per-language directory — `/usr/share/verso/i18n/<code>/base.json` — so a
+     device installs only the languages its operators read.
+   - **A plugin's strings travel inside the plugin's own package**, as
+     `i18n/<code>.json` beside its `manifest.json`; the file's language is its
+     basename and its component is the plugin directory's name (the plugin id,
+     the same convention that keys the mount). One package carries the plugin
+     and every catalog for it, so prose and translation are version-locked by
+     construction, and installing or removing the plugin installs or removes
+     its languages with it. A same-component file in the shell's i18n
+     directory still loads, and the travelling catalog overrides it — the
+     file that shipped with the binary wins over one installed beside it.
+
+   The shell loads both with the same resilient, injected-`fs.FS` glob it uses
+   for plugin manifests (ADR-006): a malformed catalog is skipped and reported,
+   never fatal, and a plugin install triggers the existing manifest rescan —
+   catalogs re-read with the manifests, no restart. English ships in each
+   binary as the source; it has no catalog. **Base language codes only**
+   (`sl`, `de`) — a region or script variant (`pt-br`, `zh-hant`) is rejected
+   with a reported problem rather than loaded into a slot negotiation could
+   never select; carrying full BCP-47 tags is a later scope expansion.
 
    The split is by **ownership**: a plugin's translations live with the plugin,
-   authored by its author or a translator, installed and removed with it. The shell
-   never curates a plugin's strings into its own catalog. It *applies* the right
-   catalog per render (§5) but *owns* only `base`.
+   authored by its author or contributed to its repository, installed and
+   removed with it. The shell never curates a plugin's strings into its own
+   catalog. It *applies* the right catalog per render (§5) but *owns* only
+   `base`.
 
 2. **Language is negotiated per request from `Accept-Language`.** The shell picks
    the best *installed* catalog for the request header (quality values honored and
@@ -106,10 +120,11 @@ unchanged; localization is added around them, not woven through them.
 
 ## Consequences
 
-- Adding a language is a data change (an apk), never a code change. A plugin
-  author writes only English and is localized for free — its language is a
-  `verso-i18n-<plugin>-<code>` package anyone can author, ship, and remove
-  independently of the shell and of every other plugin.
+- Adding a language is a data change, never a code change. A plugin author
+  writes only English and is localized by dropping `i18n/<code>.json` beside
+  the manifest — no code, no SDK call, no rebuild of anything but the package;
+  a community translation is a pull request against the plugin's repository.
+  The shell's own languages remain independently installable apks.
 - Partial and stale catalogs degrade gracefully to English, per key. A plugin with
   no catalog for the negotiated language renders English inside an otherwise
   localized page, with no special casing.

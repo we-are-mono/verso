@@ -58,6 +58,32 @@ first: they hold the decisions and rationale. This file is the short "how we wor
   testbed) — for the Go shell and the Rust helper alike. Narrow it with `make build-arm64`
   or `make build ARCHES=arm64`.
 
+## Localization (ADR-012)
+
+- **English is the source and the key.** Write user-facing prose once, in English,
+  exactly as rendered — translation is a per-key catalog lookup with English
+  fallback. Never pre-translate widget prose: the shell's render walk localizes
+  every widget tree, shell-composed and plugin envelopes alike.
+- **Compose through `tr`.** A string that mixes prose with data (a count, a
+  timestamp, a limit) translates its *format* at the point of composition —
+  `fmt.Sprintf(tr("%d pending changes"), n)` — because the walk matches only
+  whole catalog keys. Plurals are flat: two keys, `"1 thing"` / `"%d things"`.
+- **Machine strings never translate.** Declare data as data — machine column
+  kinds on table cells; `mono`, `chip`, or `verbatim` on values — so an identity
+  (an interface named `dev`, a device named "Online") can never come back as
+  words. The typography contract and the translation walk share these
+  declarations.
+- **Client-side strings go through `T`.** `verso.js` has no translator; every
+  string it writes into the page reads the `#verso-i18n` blob via `T(...)`, and a
+  new one joins the key list in `renderPage`'s `jsCatalog`.
+- **`make i18n-audit` is the check.** It renders every page reachable from `/`
+  in each installed language and reports, exactly, the strings that fell back to
+  English and the catalog keys nothing requested. A change that adds UI strings
+  lands together with its `i18n/sl/base.json` entries and a clean audit.
+- **A plugin's catalog travels with the plugin** — `i18n/<code>.json` beside its
+  `manifest.json`, in this repo under `plugins/verso-plugin-*/i18n/`. Guidance
+  for third-party authors is the Translations section of `docs/plugins.md`.
+
 ## Build · test · run
 
 A fresh checkout needs only Go 1.24+, `rustup`, Docker, and `make` — no host cross-gcc.
