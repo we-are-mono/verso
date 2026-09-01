@@ -65,6 +65,8 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 | `nav[].section` | which shell nav group the entry appears under |
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
+| `nav[].icon` | optional Lucide glyph *name* for the row; the shell owns the artwork, and an entry naming none takes its section's glyph |
+| `nav[].mode` | optional reading the entry belongs to: `"basic"`, `"advanced"`, or absent for both ([below](#basic-and-advanced-the-reader-mode)) |
 | `contributions` | optional list of fragments inserted at published shell hooks |
 | `contributions[].id` | contribution id, unique within the plugin; namespaces its fields |
 | `contributions[].hook` | globally unique shell hook id |
@@ -644,6 +646,59 @@ your plugin. Declare the same `pages` on every subpage's envelope.
   "widget": { /* … */ } }
 ```
 
+A tab may carry `"mode"`, filtered exactly as a manifest `nav` entry is
+([below](#basic-and-advanced-the-reader-mode)).
+
+### Basic and Advanced — the reader mode
+
+Verso has one app-wide reader mode, `basic` (the default) or `advanced`, chosen
+by a single switch in the shell chrome (ADR-015). Expertise is a property of the
+reader, not of a page: you never own the switch, read the mode, or filter
+anything yourself. You **declare** which reading your content belongs to and the
+shell filters at render.
+
+- a `section` carries `"mode": "basic" | "advanced"` — absent means both,
+- a `field` carries `"advanced": true` — absent means both,
+- a `nav` entry and a `pages` tab carry the same `"mode"` as a section.
+
+```json
+{ "type": "section", "title": "Time synchronization", "mode": "advanced",
+  "children": [ /* the servers, the hand-set fallback */ ] }
+```
+
+A `"basic"` section is the *simplified face* of what its `"advanced"`
+counterpart states in full — the mode picks exactly one of them, so no reader
+ever sees the same fact twice.
+
+**Mode hides capability, never state.** A tag hides what somebody *could* do,
+never what is already done, and you are the only party that knows your defaults:
+
+- Drop `advanced` from a field whose value differs from its default. Tags travel
+  per render, so this is a per-render decision. The bundled firewall shows the
+  shape — its rule editor tags the address family only while the rule matches
+  both families, so a rule someone narrowed says so in every reading.
+- An advanced-only section is honest only while its contents are at their
+  defaults, or while a paired basic-mode section represents the same facts. A
+  section hiding live configuration makes basic mode lie about the router.
+- A form submitted in basic mode omits its hidden advanced fields, and you treat
+  each absent field as its default — the same "absent means default" convention
+  as everywhere else. Because live values are never hidden, absence genuinely
+  means default.
+
+The shell's filter is deliberately mechanical — drop what is tagged for the other
+reading, and drop a container the filter emptied so no heading outlives its
+contents. Everything untagged renders identically in both modes. Mode is never a
+privilege boundary: a direct URL to an advanced page renders in basic mode, and
+every write stays gated by ADR-007 whatever the reader's mode.
+
+In the Rust SDK:
+
+```rust
+Widget::section("Time synchronization", "", children).in_mode(MODE_ADVANCED)
+Widget::select("family", "Address family", &value, options, "")
+    .advanced_when(value.is_empty())   // tagged only while it is at its default
+```
+
 ### filter — the page-wide lens
 
 One field that narrows **every** listing on the page at once — the scale answer
@@ -755,6 +810,8 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 - `datatype`: a datatype name the shell enforces (see [Datatypes](#datatypes)). Optional.
 - `autocomplete`: optional browser autofill purpose. Password fields default to
   `new-password`; use `current-password` only for the existing credential.
+- `advanced`: keeps the field out of the basic reading — set it only while the
+  field is at its default ([the reader mode](#basic-and-advanced-the-reader-mode)).
 - `error`: an inline error to show under the field (you set this on a 422).
 - For `kind:"select"`, supply `options` and set `value` to the selected one:
 
