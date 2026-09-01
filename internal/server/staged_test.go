@@ -53,7 +53,7 @@ func TestCapsuleRendersPendingChanges(t *testing.T) {
 
 	body := get(t, s, "/").Body.String()
 	for _, want := range []string{
-		"1 staged change",                         // the undeclared config is filtered out
+		"1 pending change",                        // the undeclared config is filtered out
 		"system: @system[0].hostname = verso-lab", // mechanical humanization
 		"verso-capsule-review",                    // the review affordance appears with changes
 	} {
@@ -120,7 +120,7 @@ func TestImmediatePluginPageOmitsCleanCapsule(t *testing.T) {
 	dirty := newServerWith(t, fakeBackend{changes: map[string][][]string{
 		"system": {{"set", "@system[0]", "hostname", "pending"}},
 	}}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
-	if body := get(t, dirty, "/plugins/demo/").Body.String(); !strings.Contains(body, "1 staged change") {
+	if body := get(t, dirty, "/plugins/demo/").Body.String(); !strings.Contains(body, "1 pending change") {
 		t.Error("an immediate-command page must still reveal pending changes from elsewhere")
 	}
 }

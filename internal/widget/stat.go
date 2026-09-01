@@ -15,14 +15,22 @@ import "io"
 // (ADR-005): the big number stays ink so figures read consistently across the UI,
 // and state is carried by the accent, not by recolouring the number.
 type Stat struct {
-	Label   string `json:"label"`
-	Value   string `json:"value"`
-	Unit    string `json:"unit"`    // optional small suffix on the value, e.g. "Mbps"
-	Sub     string `json:"sub"`     // optional supporting line under the value
-	Icon    string `json:"icon"`    // optional: globe | devices | speed | shield
-	Variant string `json:"variant"` // the tone vocabulary: "neutral" (default) | "success" | "warning" | "danger"
-	Dot     bool   `json:"dot"`     // show a status dot on the sub line (pulses when good)
-	Href    string `json:"href"`    // optional: makes the whole tile a doorway to a detail page
+	Label string `json:"label"`
+	Value string `json:"value"`
+	// Verbatim declares the value a measurement or figure — data, not words —
+	// so the localization walk leaves it exactly as authored. A status tile
+	// whose value is prose ("Online") stays undeclared and translates.
+	Verbatim bool   `json:"verbatim,omitempty"`
+	Unit     string `json:"unit"` // optional small suffix on the value, e.g. "Mbps"
+	Sub      string `json:"sub"`  // optional supporting line under the value
+	// SubVerbatim declares the sub line data or an already-composed string (a
+	// sensor's name, prose localized at composition) — the walk leaves it
+	// exactly as authored. A plain prose sub stays undeclared and translates.
+	SubVerbatim bool   `json:"sub_verbatim,omitempty"`
+	Icon        string `json:"icon"`    // optional: globe | devices | speed | shield
+	Variant     string `json:"variant"` // the tone vocabulary: "neutral" (default) | "success" | "warning" | "danger"
+	Dot         bool   `json:"dot"`     // show a status dot on the sub line (pulses when good)
+	Href        string `json:"href"`    // optional: makes the whole tile a doorway to a detail page
 	// Style: "" wears the framed card; "bare" is label over number on the
 	// open canvas — for tile rows inside panels that already carry a frame.
 	Style string `json:"style,omitempty"`

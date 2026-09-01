@@ -45,8 +45,11 @@ func TestTranslateSchemaWalksEveryTextField(t *testing.T) {
 				&Field{Name: "host", Label: "Hostname", Datatype: "hostname"},
 			}},
 			&Table{
-				Columns: []TableColumn{{Label: "Devices", Kind: "name"}},
-				Rows:    []TableRow{{Cells: []TableCell{{Text: "Online", Variant: "success"}}}},
+				Columns: []TableColumn{{Label: "Devices", Kind: "name"}, {Kind: "status"}},
+				Rows: []TableRow{{Cells: []TableCell{
+					{Text: "Online"}, // a name cell: an identity, even one spelling a word
+					{Text: "Online", Variant: "success"},
+				}}},
 			},
 		},
 	}
@@ -70,8 +73,115 @@ func TestTranslateSchemaWalksEveryTextField(t *testing.T) {
 	if table.Columns[0].Label != "Naprave" {
 		t.Errorf("column label = %q, want translated", table.Columns[0].Label)
 	}
-	if got := table.Rows[0].Cells[0].Text; got != "Povezano" {
-		t.Errorf("cell text = %q, want translated", got)
+	if got := table.Rows[0].Cells[0].Text; got != "Online" {
+		t.Errorf("name cell = %q, must stay verbatim (identity column)", got)
+	}
+	if got := table.Rows[0].Cells[1].Text; got != "Povezano" {
+		t.Errorf("status cell = %q, want translated", got)
+	}
+}
+
+// TestTranslateSkipsMachineContent pins the typography contract at the walk: a
+// machine-kind column's Text/Sub, an overflow cell beyond the declared columns,
+// and a Mono or Chip property value all stay verbatim, while action prose in
+// the same cells and plain property values still translate. A machine string
+// that happens to collide with a catalog key ("Online" as a device's name) must
+// not come back as words.
+func TestTranslateSkipsMachineContent(t *testing.T) {
+	tr := fakeCatalog(map[string]string{
+		"Online": "Povezano", "Remove": "Odstrani", "Address": "Naslov",
+		"br0": "MISTRANSLATED", "Receiving light": "Sprejema svetlobo",
+	})
+
+	table := &Table{
+		Columns: []TableColumn{{Kind: "mono"}, {Kind: "num"}, {Kind: "text"}},
+		Rows: []TableRow{{Cells: []TableCell{
+			{Text: "br0", Sub: "Online", Button: "Remove"},
+			{Text: "Online"},
+			{Text: "Online"},
+			{Text: "br0"}, // overflow: no declared column, stays verbatim
+		}}},
+	}
+	translateSchema(table, tr)
+	cells := table.Rows[0].Cells
+	if cells[0].Text != "br0" || cells[0].Sub != "Online" {
+		t.Errorf("mono cell = %q/%q, must stay verbatim", cells[0].Text, cells[0].Sub)
+	}
+	if cells[0].Button != "Odstrani" {
+		t.Errorf("button in a mono column = %q, want translated", cells[0].Button)
+	}
+	if cells[1].Text != "Online" {
+		t.Errorf("num cell = %q, must stay verbatim", cells[1].Text)
+	}
+	if cells[2].Text != "Povezano" {
+		t.Errorf("text cell = %q, want translated", cells[2].Text)
+	}
+	if cells[3].Text != "br0" {
+		t.Errorf("overflow cell = %q, must stay verbatim", cells[3].Text)
+	}
+
+	props := &Properties{Items: []Property{
+		{Label: "Address", Value: "br0", Mono: true},
+		{Label: "Address", Value: "Online", Chip: true},
+		{Label: "Address", Value: "Receiving light"},
+		{Label: "Address", Value: "Online", Verbatim: true},
+	}}
+	translateSchema(props, tr)
+	if props.Items[0].Value != "br0" || props.Items[1].Value != "Online" {
+		t.Errorf("mono/chip values = %q/%q, must stay verbatim", props.Items[0].Value, props.Items[1].Value)
+	}
+	if props.Items[0].Label != "Naslov" {
+		t.Errorf("mono row label = %q, want translated", props.Items[0].Label)
+	}
+	if props.Items[2].Value != "Sprejema svetlobo" {
+		t.Errorf("prose value = %q, want translated", props.Items[2].Value)
+	}
+	if props.Items[3].Value != "Online" {
+		t.Errorf("verbatim value = %q, must stay verbatim", props.Items[3].Value)
+	}
+}
+
+// TestTranslateHonorsVerbatimDeclarations covers the remaining dual-use fields:
+// a Stat's value, a Section's meta, and a row drawer's title each hold words in
+// one page and data in another, so each carries its own verbatim declaration.
+func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
+	tr := fakeCatalog(map[string]string{"Online": "Povezano", "up to date": "posodobljeno"})
+
+	measured := &Stat{Label: "Devices", Value: "Online", Verbatim: true}
+	prose := &Stat{Label: "Devices", Value: "Online"}
+	translateSchema(measured, tr)
+	translateSchema(prose, tr)
+	if measured.Value != "Online" {
+		t.Errorf("verbatim stat value = %q, must stay verbatim", measured.Value)
+	}
+	if prose.Value != "Povezano" {
+		t.Errorf("prose stat value = %q, want translated", prose.Value)
+	}
+
+	composed := &Section{Title: "Devices", Meta: "up to date", MetaVerbatim: true}
+	worded := &Section{Title: "Devices", Meta: "up to date"}
+	translateSchema(composed, tr)
+	translateSchema(worded, tr)
+	if composed.Meta != "up to date" {
+		t.Errorf("verbatim meta = %q, must stay verbatim", composed.Meta)
+	}
+	if worded.Meta != "posodobljeno" {
+		t.Errorf("prose meta = %q, want translated", worded.Meta)
+	}
+
+	table := &Table{
+		Columns: []TableColumn{{Kind: "text"}},
+		Rows: []TableRow{
+			{Cells: []TableCell{{}}, Drawer: &RowDrawer{Title: "Online", Verbatim: true}},
+			{Cells: []TableCell{{}}, Drawer: &RowDrawer{Title: "Online"}},
+		},
+	}
+	translateSchema(table, tr)
+	if got := table.Rows[0].Drawer.Title; got != "Online" {
+		t.Errorf("verbatim drawer title = %q, must stay verbatim", got)
+	}
+	if got := table.Rows[1].Drawer.Title; got != "Povezano" {
+		t.Errorf("prose drawer title = %q, want translated", got)
 	}
 }
 

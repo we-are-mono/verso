@@ -214,13 +214,15 @@ type overviewView struct {
 	Interfaces template.HTML
 }
 
-// orUnavailable falls a missing live fact back to a localized "unavailable" so the
-// System panel degrades honestly rather than showing a stale placeholder.
-func orUnavailable(tr func(string) string, s string) string {
-	if s == "" {
-		return tr("unavailable")
+// sysProp builds one System fact row. A live value is data (a model name, an
+// uptime) and declares itself Verbatim; a missing one degrades to
+// "unavailable" — prose, left in source form for the schema walk to localize
+// exactly once, without the mono treatment.
+func sysProp(label, value string, mono bool) Property {
+	if value == "" {
+		return Property{Label: label, Value: "unavailable"}
 	}
-	return s
+	return Property{Label: label, Value: value, Mono: mono, Verbatim: true}
 }
 
 func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -294,10 +296,10 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	sysLeft, err := o.renderWidget(r, &Properties{Style: "system", Items: []Property{
-		{Label: "Model", Value: orUnavailable(r.tr, o.Model)},
-		{Label: "Firmware", Value: orUnavailable(r.tr, o.Firmware), Mono: true},
-		{Label: "Kernel", Value: orUnavailable(r.tr, o.Kernel), Mono: true},
-		{Label: "Uptime", Value: orUnavailable(r.tr, o.Uptime)},
+		sysProp("Model", o.Model, false),
+		sysProp("Firmware", o.Firmware, true),
+		sysProp("Kernel", o.Kernel, true),
+		sysProp("Uptime", o.Uptime, false),
 	}}, csrf)
 	if err != nil {
 		return err
@@ -425,16 +427,16 @@ func (o *Overview) sysMeters() []*Meter {
 func (o *Overview) sysRight() *Properties {
 	rows := make([]Property, 0, 4)
 	if o.Temperature != "" {
-		rows = append(rows, Property{Label: "Temperature", Value: o.Temperature, Dot: o.TempDot, Key: "temperature"})
+		rows = append(rows, Property{Label: "Temperature", Value: o.Temperature, Verbatim: true, Dot: o.TempDot, Key: "temperature"})
 	}
 	if o.Fan != "" {
-		rows = append(rows, Property{Label: "Fan", Value: o.Fan, Key: "fan"})
+		rows = append(rows, Property{Label: "Fan", Value: o.Fan, Verbatim: true, Key: "fan"})
 	}
 	if o.Power != "" {
-		rows = append(rows, Property{Label: "Power draw", Value: o.Power, Key: "power"})
+		rows = append(rows, Property{Label: "Power draw", Value: o.Power, Verbatim: true, Key: "power"})
 	}
 	if o.SensorSummary != "" {
-		rows = append(rows, Property{Label: "Sensors", Value: o.SensorSummary, Key: "summary"})
+		rows = append(rows, Property{Label: "Sensors", Value: o.SensorSummary, Verbatim: true, Key: "summary"})
 	}
 	return &Properties{Style: "system", Items: rows}
 }
@@ -569,21 +571,23 @@ func interfaceKindLabel(kind string) string {
 // interfaceDrawer carries the complete counters and UCI facts without widening
 // the main topology table.
 func (o *Overview) interfaceDrawer(n OverviewInterface) *RowDrawer {
+	// Every value but Type is data — an operstate, an identity, a rate — and
+	// declares itself Verbatim; only the kind label is words.
 	facts := &Properties{Items: []Property{
 		{Label: "Type", Value: interfaceKindLabel(n.Kind)},
-		{Label: "State", Value: orDash(n.State)},
-		{Label: "Network", Value: orDash(strings.Join(n.Networks, ", "))},
-		{Label: "Role", Value: map[bool]string{true: "WAN", false: "—"}[n.WAN]},
-		{Label: "Protocol", Value: orDash(n.Proto)},
-		{Label: "Subnet", Value: orDash(n.Subnet)},
-		{Label: "Zone", Value: orDash(n.Zone)},
-		{Label: "VLAN", Value: orDash(n.VLAN)},
-		{Label: "RX rate", Value: n.RxRate},
-		{Label: "TX rate", Value: n.TxRate},
-		{Label: "RX packets", Value: n.RxPackets},
-		{Label: "TX packets", Value: n.TxPackets},
-		{Label: "RX total", Value: n.RxTotal},
-		{Label: "TX total", Value: n.TxTotal},
+		{Label: "State", Value: orDash(n.State), Verbatim: true},
+		{Label: "Network", Value: orDash(strings.Join(n.Networks, ", ")), Verbatim: true},
+		{Label: "Role", Value: map[bool]string{true: "WAN", false: "—"}[n.WAN], Verbatim: true},
+		{Label: "Protocol", Value: orDash(n.Proto), Verbatim: true},
+		{Label: "Subnet", Value: orDash(n.Subnet), Verbatim: true},
+		{Label: "Zone", Value: orDash(n.Zone), Verbatim: true},
+		{Label: "VLAN", Value: orDash(n.VLAN), Verbatim: true},
+		{Label: "RX rate", Value: n.RxRate, Verbatim: true},
+		{Label: "TX rate", Value: n.TxRate, Verbatim: true},
+		{Label: "RX packets", Value: n.RxPackets, Verbatim: true},
+		{Label: "TX packets", Value: n.TxPackets, Verbatim: true},
+		{Label: "RX total", Value: n.RxTotal, Verbatim: true},
+		{Label: "TX total", Value: n.TxTotal, Verbatim: true},
 	}}
 	children := []Widget{facts}
 	if len(n.Relations) != 0 {
@@ -596,7 +600,7 @@ func (o *Overview) interfaceDrawer(n OverviewInterface) *RowDrawer {
 		}
 		children = append([]Widget{topology}, children...)
 	}
-	return &RowDrawer{Title: n.Name, Size: "wide", Children: children}
+	return &RowDrawer{Title: n.Name, Verbatim: true, Size: "wide", Children: children}
 }
 
 func zoneChip(name string) []TableChip {

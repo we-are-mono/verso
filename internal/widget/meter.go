@@ -22,12 +22,15 @@ import (
 // how full it is (emerald/amber/red); Variant "info" overrides that with the
 // accent, for a rate like speed that has no "getting full".
 type Meter struct {
-	Label   string `json:"label"`
-	Value   string `json:"value"`   // the big number in its native unit ("23", "1.2", "300", "18")
-	Unit    string `json:"unit"`    // "GB" | "Mbps" | "%" | …
-	Fill    int    `json:"fill"`    // track fill, 0–100 percent (the proportion; may differ from Value)
-	Detail  string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
-	Variant string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)
+	Label string `json:"label"`
+	// Verbatim declares the label an identity (a sensor's kernel channel name)
+	// rather than prose — the localization walk leaves it exactly as authored.
+	Verbatim bool   `json:"verbatim,omitempty"`
+	Value    string `json:"value"`   // the big number in its native unit ("23", "1.2", "300", "18")
+	Unit     string `json:"unit"`    // "GB" | "Mbps" | "%" | …
+	Fill     int    `json:"fill"`    // track fill, 0–100 percent (the proportion; may differ from Value)
+	Detail   string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
+	Variant  string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)
 	// Icon sits in front of the label — a glyph naming the metric.
 	Icon string `json:"icon,omitempty"`
 	// Role paints the track (and the icon) a fixed decorative accent instead of

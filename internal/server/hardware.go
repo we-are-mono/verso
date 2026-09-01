@@ -56,16 +56,18 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 	if panel := s.hardwarePanel(r, board, profile); panel != nil {
 		out = append(out, panel)
 	}
-	if grid := hardwareVitals(inv); grid != nil {
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	if grid := hardwareVitals(tr, inv); grid != nil {
 		out = append(out, grid)
 	}
-	if temps := hardwareTemps(profile, inv); temps != nil {
+	if temps := hardwareTemps(tr, profile, inv); temps != nil {
 		out = append(out, temps)
 	}
-	if power := hardwarePower(inv); power != nil {
+	if power := hardwarePower(tr, inv); power != nil {
 		out = append(out, power)
 	}
-	if fans := hardwareFans(inv); fans != nil {
+	if fans := hardwareFans(tr, inv); fans != nil {
 		out = append(out, fans)
 	}
 	if fibre := hardwareFibre(inv); fibre != nil {
@@ -161,7 +163,7 @@ func panelPorts(profile *sensors.Profile, snapshot telemetry.Snapshot, wan openw
 			role = "wan"
 		}
 		items = append(items, widget.PortItem{
-			Kind: "rj45", Label: name, Iface: name, Linked: linked, Active: active, Role: role,
+			Kind: "rj45", Label: name, Verbatim: true, Iface: name, Linked: linked, Active: active, Role: role,
 		})
 	}
 	return items
@@ -171,19 +173,19 @@ func panelPorts(profile *sensors.Profile, snapshot telemetry.Snapshot, wan openw
 // power draw, and the main fan, each pulled out of the detail below. A box that
 // reports less shows fewer tiles; when it reports neither power nor a fan, the
 // warmest sensor stands beside the CPU so the grid is never a lonely single tile.
-func hardwareVitals(inv sensors.Inventory) widget.Widget {
+func hardwareVitals(tr func(string) string, inv sensors.Inventory) widget.Widget {
 	var tiles []widget.Widget
 	if cpu := inv.CPUTemp(); cpu != nil {
-		tiles = append(tiles, cpuTile(cpu))
+		tiles = append(tiles, cpuTile(tr, cpu))
 	}
 	if p := inv.MainPower(); p != nil {
-		tiles = append(tiles, powerTile(p))
+		tiles = append(tiles, powerTile(tr, p))
 	}
 	if f := inv.MainFan(); f != nil {
-		tiles = append(tiles, fanTile(f))
+		tiles = append(tiles, fanTile(tr, f))
 	}
 	if len(tiles) == 1 {
-		if warm := warmestTile(inv); warm != nil {
+		if warm := warmestTile(tr, inv); warm != nil {
 			tiles = append(tiles, warm)
 		}
 	}
@@ -193,42 +195,49 @@ func hardwareVitals(inv sensors.Inventory) widget.Widget {
 	return &widget.Grid{Style: "strip", Columns: len(tiles), Children: tiles}
 }
 
-func cpuTile(t *sensors.TempReading) widget.Widget {
-	sub := "no limit reported"
+func cpuTile(tr func(string) string, t *sensors.TempReading) widget.Widget {
+	// Composed prose translates its format at the point of composition — the
+	// schema walk can only match whole catalog keys ("warns at 81 °C" is not
+	// one) — and rides SubVerbatim; the plain fallback is a whole key the walk
+	// localizes itself.
+	sub, subVerbatim := "no limit reported", false
 	if t.Warn > 0 {
-		sub = fmt.Sprintf("warns at %s", celsiusRound(t.Warn))
+		sub, subVerbatim = fmt.Sprintf(tr("warns at %s"), celsiusRound(t.Warn)), true
 	} else if t.Crit > 0 {
-		sub = fmt.Sprintf("protects at %s", celsiusRound(t.Crit))
+		sub, subVerbatim = fmt.Sprintf(tr("protects at %s"), celsiusRound(t.Crit)), true
 	}
 	return &widget.Stat{
 		Style: "bare", Label: "Processor", Icon: "thermometer",
-		Value: celsiusWhole(t.MilliC), Unit: "°C", Sub: sub,
+		Value: celsiusWhole(t.MilliC), Verbatim: true, Unit: "°C",
+		Sub: sub, SubVerbatim: subVerbatim,
 		Variant: tempVariant(t.Level),
 	}
 }
 
-func powerTile(p *sensors.PowerReading) widget.Widget {
+func powerTile(tr func(string) string, p *sensors.PowerReading) widget.Widget {
 	return &widget.Stat{
 		Style: "bare", Label: "Power draw", Icon: "zap",
-		Value: watts(p.MicroW), Unit: "W", Sub: p.Name + " · the input",
+		Value: watts(p.MicroW), Verbatim: true, Unit: "W",
+		Sub: p.Name + " · " + tr("the input"), SubVerbatim: true,
 		Variant: "success",
 	}
 }
 
-func fanTile(f *sensors.FanReading) widget.Widget {
+func fanTile(tr func(string) string, f *sensors.FanReading) widget.Widget {
 	sub := f.Name
 	if f.HasDuty {
-		sub = fmt.Sprintf("%s · %d%% duty", f.Name, f.Duty)
+		sub = f.Name + " · " + fmt.Sprintf(tr("%d%% duty"), f.Duty)
 	}
 	return &widget.Stat{
 		Style: "bare", Label: "Cooling", Icon: "fan-spin",
-		Value: rpmGroup(f.RPM), Unit: "rpm", Sub: sub, Variant: "success",
+		Value: rpmGroup(f.RPM), Verbatim: true, Unit: "rpm",
+		Sub: sub, SubVerbatim: true, Variant: "success",
 	}
 }
 
 // warmestTile is the unprofiled grid's second instrument: the warmest reading the
 // box has (preferring one with a real limit so its headroom is meaningful).
-func warmestTile(inv sensors.Inventory) widget.Widget {
+func warmestTile(tr func(string) string, inv sensors.Inventory) widget.Widget {
 	var pick *sensors.TempReading
 	for i := range inv.Temps {
 		t := &inv.Temps[i]
@@ -248,11 +257,12 @@ func warmestTile(inv sensors.Inventory) widget.Widget {
 	}
 	sub := pick.Name
 	if pick.Warn > 0 {
-		sub = fmt.Sprintf("%s · warns at %s", pick.Name, celsiusRound(pick.Warn))
+		sub = pick.Name + " · " + fmt.Sprintf(tr("warns at %s"), celsiusRound(pick.Warn))
 	}
 	return &widget.Stat{
 		Style: "bare", Label: label, Icon: "thermometer",
-		Value: celsiusWhole(pick.MilliC), Unit: "°C", Sub: sub,
+		Value: celsiusWhole(pick.MilliC), Verbatim: true, Unit: "°C",
+		Sub: sub, SubVerbatim: true,
 		Variant: tempVariant(pick.Level),
 	}
 }
@@ -269,7 +279,7 @@ func betterWarmest(a, b *sensors.TempReading) bool {
 // hardwareTemps is the curated Temperatures section — the profile's picks (or the
 // auto-detected set), each a compact headroom bar scaled to its own critical, with
 // a quiet note pointing at the rest in the full table.
-func hardwareTemps(profile *sensors.Profile, inv sensors.Inventory) widget.Widget {
+func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors.Inventory) widget.Widget {
 	curated := inv.CuratedTemps()
 	if len(curated) == 0 {
 		return nil
@@ -285,7 +295,8 @@ func hardwareTemps(profile *sensors.Profile, inv sensors.Inventory) widget.Widge
 	if profile != nil {
 		sec.Sub = "The processor's temperature leads the grid above; these are the other places the board measures itself. Each bar runs to the point where the hardware would protect itself."
 		if cpu := inv.CPUTemp(); cpu != nil && cpu.Crit > 0 {
-			sec.Meta = fmt.Sprintf("warns at %s · protects at %s", celsiusRound(cpu.Warn), celsiusRound(cpu.Crit))
+			sec.Meta = fmt.Sprintf(tr("warns at %s"), celsiusRound(cpu.Warn)) + " · " + fmt.Sprintf(tr("protects at %s"), celsiusRound(cpu.Crit))
+			sec.MetaVerbatim = true
 		}
 	} else {
 		sec.Sub = "No profile exists for this board, so Verso reads whatever the kernel exposes and keeps the kernel's own names."
@@ -298,7 +309,7 @@ func hardwareTemps(profile *sensors.Profile, inv sensors.Inventory) widget.Widge
 // fills 0→this sensor's critical, with warn/critical ticks; a reading with no
 // limit shows no bar (never a guessed threshold).
 func tempRow(t *sensors.TempReading) widget.Widget {
-	m := &widget.Meter{Compact: true, Label: t.Name, Value: celsiusOne(t.MilliC), Unit: "°C"}
+	m := &widget.Meter{Compact: true, Label: t.Name, Verbatim: true, Value: celsiusOne(t.MilliC), Unit: "°C"}
 	ceiling := t.Crit
 	if ceiling == 0 {
 		ceiling = t.Warn
@@ -322,7 +333,7 @@ func tempRow(t *sensors.TempReading) widget.Widget {
 // watts the number that moves. The system total (the main rail) is the grid tile
 // above, so it is not repeated here. Rendered only where a profile named a main
 // rail; an unprofiled box has no honest "total" to itemize against.
-func hardwarePower(inv sensors.Inventory) widget.Widget {
+func hardwarePower(tr func(string) string, inv sensors.Inventory) widget.Widget {
 	if inv.MainPower() == nil {
 		return nil
 	}
@@ -349,9 +360,13 @@ func hardwarePower(inv sensors.Inventory) widget.Widget {
 		},
 		Rows: rows,
 	}
+	meta := fmt.Sprintf(tr("%d rails · sorted by draw"), len(rails))
+	if len(rails) == 1 {
+		meta = tr("1 rail · sorted by draw")
+	}
 	return &widget.Section{
 		Title: "Power", Hairline: true,
-		Meta:     fmt.Sprintf("%d %s · sorted by draw", len(rails), plural(int64(len(rails)), "rail", "rails")),
+		Meta: meta, MetaVerbatim: true,
 		Sub:      "Voltage is each rail's design point and barely moves; the current is the load, so watts is the number that changes. The system input is the figure in the grid above — these are the rails it feeds.",
 		Children: []widget.Widget{table},
 	}
@@ -360,14 +375,14 @@ func hardwarePower(inv sensors.Inventory) widget.Widget {
 // hardwareFans keeps a fan tile-strip only when two or more fans actually run —
 // one running fan leads the grid above and needs no section. An unpopulated header
 // (0 RPM, no alarm) shows quietly as absent.
-func hardwareFans(inv sensors.Inventory) widget.Widget {
+func hardwareFans(tr func(string) string, inv sensors.Inventory) widget.Widget {
 	if inv.RunningFans() < 2 {
 		return nil
 	}
 	others := inv.OtherFans()
 	tiles := make([]widget.Widget, 0, len(others))
 	for i := range others {
-		tiles = append(tiles, fanStripTile(&others[i]))
+		tiles = append(tiles, fanStripTile(tr, &others[i]))
 	}
 	return &widget.Section{
 		Title: "Fans", Hairline: true,
@@ -375,18 +390,18 @@ func hardwareFans(inv sensors.Inventory) widget.Widget {
 	}
 }
 
-func fanStripTile(f *sensors.FanReading) widget.Widget {
+func fanStripTile(tr func(string) string, f *sensors.FanReading) widget.Widget {
 	switch f.State {
 	case "running":
 		sub := f.Name
 		if f.HasDuty {
-			sub = fmt.Sprintf("%s · %d%% duty", f.Name, f.Duty)
+			sub = f.Name + " · " + fmt.Sprintf(tr("%d%% duty"), f.Duty)
 		}
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan-spin", Value: rpmGroup(f.RPM), Unit: "rpm", Sub: sub, Variant: "success"}
+		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan-spin", Value: rpmGroup(f.RPM), Verbatim: true, Unit: "rpm", Sub: sub, SubVerbatim: true, Variant: "success"}
 	case "fault":
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Sub: "stalled — alarm raised", Variant: "warning"}
+		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Verbatim: true, Sub: "stalled — alarm raised", Variant: "warning"}
 	default:
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Sub: "not connected"}
+		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Verbatim: true, Sub: "not connected"}
 	}
 }
 

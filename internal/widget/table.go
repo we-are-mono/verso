@@ -142,7 +142,11 @@ type TableGroup struct {
 // submission the plugin refused comes back with the failed drawer in front of
 // the operator instead of silently closed.
 type RowDrawer struct {
-	Title     string   `json:"title"`
+	Title string `json:"title"`
+	// Verbatim declares the title an identity (the interface, the rule, the
+	// device the drawer opens on) — data the localization walk leaves exactly
+	// as authored. A prose title stays undeclared and translates.
+	Verbatim  bool     `json:"verbatim,omitempty"`
 	Size      string   `json:"size,omitempty"`
 	HideTitle bool     `json:"hide_title,omitempty"`
 	Open      bool     `json:"open,omitempty"`

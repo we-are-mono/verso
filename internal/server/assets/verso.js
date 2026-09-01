@@ -5,6 +5,22 @@
 // interaction lives here, registered as Alpine components (the CSP build), so the
 // strict CSP needs no unsafe-eval. Widget templates reference only the property
 // and method names these components expose.
+
+// Server-rendered translations for the strings this script writes into the page
+// (ADR-012): client JS has no translator, so the render localizes a fixed set
+// of keys into the #verso-i18n JSON blob. A missing blob or key falls back to
+// the English source, exactly like the server's own translator.
+var versoI18N = {};
+try {
+  var versoI18NEl = document.getElementById("verso-i18n");
+  if (versoI18NEl) versoI18N = JSON.parse(versoI18NEl.textContent) || {};
+} catch (e) {
+  /* malformed blob; English fallback */
+}
+function T(s) {
+  return Object.prototype.hasOwnProperty.call(versoI18N, s) && versoI18N[s] ? versoI18N[s] : s;
+}
+
 document.addEventListener("alpine:init", function () {
   // copy: copy the widget's text to the clipboard and briefly show "Copied!".
   // Prefers the async Clipboard API; falls back to a hidden-textarea execCommand
@@ -129,7 +145,7 @@ document.addEventListener("alpine:init", function () {
       },
       hide: function () {
 		if (this.busy) return;
-        if (this._dirty && !window.confirm("You have unsaved changes. Close without saving?")) {
+        if (this._dirty && !window.confirm(T("You have unsaved changes. Close without saving?"))) {
           return;
         }
         this._dirty = false;
@@ -750,9 +766,9 @@ document.addEventListener(
       displays.sort();
     }
     var display;
-    if (kind === "toggle") display = values.length ? "On" : "Off";
-    else if (kind === "password") display = values.some(Boolean) ? "Set" : "Not set";
-    else display = displays.filter(Boolean).join(", ") || "Not set";
+    if (kind === "toggle") display = values.length ? T("On") : T("Off");
+    else if (kind === "password") display = values.some(Boolean) ? T("Set") : T("Not set");
+    else display = displays.filter(Boolean).join(", ") || T("Not set");
     return { name: name, label: label, kind: kind, key: JSON.stringify(values), display: display };
   }
 
@@ -767,7 +783,7 @@ document.addEventListener(
   }
 
   function pendingLabel(count) {
-    return count === 1 ? "1 pending change" : count + " pending changes";
+    return count === 1 ? T("1 pending change") : T("%d pending changes").replace("%d", count);
   }
 
   function appendText(parent, tag, className, value) {
@@ -788,7 +804,7 @@ document.addEventListener(
     scroll.className = "verso-drawer-scrollbar max-h-80 overflow-y-auto pr-1";
     var header = document.createElement("div");
     header.className = "hidden grid-cols-3 gap-4 border-b border-slate-200 pb-2 text-xs font-medium text-slate-400 sm:grid dark:border-gray-700 dark:text-gray-500";
-    ["Field", "Previous", "New"].forEach(function (value) { appendText(header, "span", "", value); });
+    ["Field", "Previous", "New"].forEach(function (value) { appendText(header, "span", "", T(value)); });
     scroll.appendChild(header);
     var list = document.createElement("ul");
     list.className = "divide-y divide-slate-200 dark:divide-gray-700";
@@ -835,13 +851,13 @@ document.addEventListener(
       baseline.forEach(function (_, name) { names.add(name); });
       current.forEach(function (_, name) { names.add(name); });
       names.forEach(function (name) {
-        var before = baseline.get(name) || { label: name, key: "[]", display: "Not set" };
-        var after = current.get(name) || { label: before.label, key: "[]", display: "Not set" };
+        var before = baseline.get(name) || { label: name, key: "[]", display: T("Not set") };
+        var after = current.get(name) || { label: before.label, key: "[]", display: T("Not set") };
         if (before.key !== after.key) {
           // An order change's honest review is that the order changed — two
           // runs of raw section ids answer nothing an operator asked.
           if (after.kind === "order" || before.kind === "order") {
-            localChanges.push({ label: after.label || before.label, previous: "Original order", next: "New order" });
+            localChanges.push({ label: after.label || before.label, previous: T("Original order"), next: T("New order") });
           } else {
             localChanges.push({ label: after.label || before.label, previous: before.display, next: after.display });
           }
@@ -849,7 +865,7 @@ document.addEventListener(
       });
     }
     var total = stagedCount + localChanges.length;
-    var label = total ? pendingLabel(total) : "No pending changes";
+    var label = total ? pendingLabel(total) : T("No pending changes");
     text.textContent = label;
     if (title) title.textContent = label;
     applyButton.disabled = total === 0;

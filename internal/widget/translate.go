@@ -122,7 +122,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.Prompt = t(n.Prompt)
 		n.Help = t(n.Help)
 	case *Meter:
-		n.Label = t(n.Label)
+		if !n.Verbatim {
+			n.Label = t(n.Label)
+		}
 	case *Modal:
 		n.Trigger = t(n.Trigger)
 		n.BusyTitle = t(n.BusyTitle)
@@ -154,18 +156,27 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Ports:
 		// The port's role name ("Internet", "Network 1") is prose; its interface,
-		// address, speed and hover Note are machine facts left verbatim.
+		// address, speed and hover Note are machine facts left verbatim, and a
+		// label declared Verbatim (a kernel name on an unprofiled board) is too.
 		for i := range n.Items {
-			n.Items[i].Label = t(n.Items[i].Label)
+			if !n.Items[i].Verbatim {
+				n.Items[i].Label = t(n.Items[i].Label)
+			}
 		}
 	case *Progress:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
 	case *Properties:
+		// A row's value is prose unless the row declares otherwise: Mono marks
+		// a monospaced machine string, Chip an entity identity, Verbatim data
+		// in sans type — none is ours to translate, and a machine value that
+		// collides with a catalog key must not come back as words.
 		for i := range n.Items {
 			n.Items[i].Label = t(n.Items[i].Label)
 			n.Items[i].Help = t(n.Items[i].Help)
-			n.Items[i].Value = t(n.Items[i].Value)
+			if !n.Items[i].Mono && !n.Items[i].Chip && !n.Items[i].Verbatim {
+				n.Items[i].Value = t(n.Items[i].Value)
+			}
 		}
 	case *Qr:
 		n.Caption = t(n.Caption)
@@ -181,9 +192,11 @@ func translateFields(w Widget, t func(string) string) {
 		n.Sub = t(n.Sub)
 		n.MetaLabel = t(n.MetaLabel)
 		// Meta is compact status text beside the title — prose ("Last synchronization
-		// not reported") in some sections, a live value (a timestamp, a subnet) in
-		// others; the latter simply misses the catalog and stays verbatim.
-		n.Meta = t(n.Meta)
+		// not reported") translates; a live value or pre-composed string declares
+		// MetaVerbatim and stays exactly as authored.
+		if !n.MetaVerbatim {
+			n.Meta = t(n.Meta)
+		}
 	case *Settings:
 		n.Title = t(n.Title)
 		translateSettingsItems(n.Items, t)
@@ -193,10 +206,15 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Stat:
 		n.Label = t(n.Label)
-		// Value is prose in a status tile ("Online") and a machine figure in a
-		// metric tile ("300") — the latter simply misses the catalog.
-		n.Value = t(n.Value)
-		n.Sub = t(n.Sub)
+		// Value is prose in a status tile ("Online") and a declared measurement
+		// in a metric tile ("300", Verbatim) that stays exactly as authored;
+		// the sub line carries its own declaration the same way.
+		if !n.Verbatim {
+			n.Value = t(n.Value)
+		}
+		if !n.SubVerbatim {
+			n.Sub = t(n.Sub)
+		}
 	case *Switch:
 		n.Label = t(n.Label)
 		n.OffLabel = t(n.OffLabel)
@@ -232,14 +250,25 @@ func translateSettingsItems(items []SettingsItem, t func(string) string) {
 	}
 }
 
+// machineCellKinds are the column kinds whose cell Text/Sub carry identities,
+// machine values, or a person's own text (a device name, a UCI comment) — never
+// shell prose. The walk leaves them verbatim: the typography contract sets them
+// in mono or muted type precisely because they are not words, and a machine
+// string that collides with a catalog key must not come back as prose.
+var machineCellKinds = map[string]bool{
+	"name": true, "reference": true, "mono": true, "keyword": true,
+	"comment": true, "num": true, "rate": true, "runtime": true,
+}
+
 // translateTable localizes a table's chrome and its cells' prose. Column labels,
 // the header band, the drawer action and group lane names are always prose; a
-// cell's Text/Sub is prose in a status/pill/text column and a machine value in a
-// mono/num column — the latter simply misses the catalog and stays verbatim. The
-// entity fields a cell can carry (Chip, Tag, endpoint/chip labels) are identities
-// (a zone, an interface, an address) and are deliberately left untranslated. Row
-// drawers' contents are widgets the walk reaches through the table's children
-// seam; only the drawer title is a table-owned field.
+// cell's Text/Sub is prose in a status/pill/text column and stays verbatim in a
+// machine-kind column (machineCellKinds) — the column's kind is the declaration.
+// The entity fields a cell can carry (Chip, Tag, endpoint/chip labels) are
+// identities (a zone, an interface, an address) and are deliberately left
+// untranslated in every column. Row drawers' contents are widgets the walk
+// reaches through the table's children seam; only the drawer title is a
+// table-owned field.
 func translateTable(n *Table, t func(string) string) {
 	n.Title = t(n.Title)
 	n.DrawerLabel = t(n.DrawerLabel)
@@ -250,27 +279,33 @@ func translateTable(n *Table, t func(string) string) {
 	if n.Action != nil {
 		n.Action.Label = t(n.Action.Label)
 	}
-	translateRows(n.Rows, t)
+	translateRows(n.Rows, n.Columns, t)
 	if n.Seam != nil {
 		n.Seam.Summary = t(n.Seam.Summary)
-		translateRows(n.Seam.Rows, t)
+		translateRows(n.Seam.Rows, n.Columns, t)
 	}
 }
 
-func translateRows(rows []TableRow, t func(string) string) {
+func translateRows(rows []TableRow, columns []TableColumn, t func(string) string) {
 	for i := range rows {
 		if rows[i].Group != nil {
 			rows[i].Group.Label = t(rows[i].Group.Label)
 		}
 		for j := range rows[i].Cells {
 			c := &rows[i].Cells[j]
-			c.Text = t(c.Text)
-			c.Sub = t(c.Sub)
+			// A cell's action prose (Button, Confirm) is always words; Text and
+			// Sub follow the column's declared kind. A row wider than its
+			// columns keeps its overflow verbatim — shape errors must not turn
+			// data into prose.
+			if j < len(columns) && !machineCellKinds[columns[j].Kind] {
+				c.Text = t(c.Text)
+				c.Sub = t(c.Sub)
+			}
 			c.Button = t(c.Button)
 			c.Confirm = t(c.Confirm)
 			c.ConfirmTitle = t(c.ConfirmTitle)
 		}
-		if rows[i].Drawer != nil {
+		if rows[i].Drawer != nil && !rows[i].Drawer.Verbatim {
 			rows[i].Drawer.Title = t(rows[i].Drawer.Title)
 		}
 	}

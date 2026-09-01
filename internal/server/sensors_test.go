@@ -12,7 +12,7 @@ import (
 func TestFormatSensors(t *testing.T) {
 	// A fully-instrumented board: temperature rounds from milli-°C, power from
 	// micro-watts, and the summary counts both kinds.
-	v := formatSensors("Mono Gateway Development Kit", sensors.Facts{
+	v := formatSensors(identityTranslator, "Mono Gateway Development Kit", sensors.Facts{
 		CPUTemp:      &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "warning"},
 		Fan:          &sensors.Fan{RPM: 3630},
 		Power:        &sensors.Power{MicroW: 12400000},
@@ -39,7 +39,7 @@ func TestFormatSensors(t *testing.T) {
 func TestFormatSensorsHidesAbsent(t *testing.T) {
 	// An unprofiled PC: temperature only, no fan, no power. Blank fields hide
 	// their rows; the summary drops the kind that has no sensors.
-	v := formatSensors("", sensors.Facts{
+	v := formatSensors(identityTranslator, "", sensors.Facts{
 		CPUTemp:      &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "success"},
 		ThermalCount: 3,
 	})

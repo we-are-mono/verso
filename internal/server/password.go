@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -112,6 +111,11 @@ func (s *Server) accessSessions(r *http.Request) []accessSession {
 		}
 		return items[i].lastSeen.After(items[j].lastSeen)
 	})
+	// The sessions table sets these in machine-kind columns the schema walk
+	// leaves verbatim, and they compose prose with data — so they localize
+	// here, at the point of composition.
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	out := make([]accessSession, 0, len(items))
 	for _, sess := range items {
 		address := sess.address
@@ -119,16 +123,16 @@ func (s *Server) accessSessions(r *http.Request) []accessSession {
 			address = "—"
 		}
 		out = append(out, accessSession{
-			ID: sess.id, Browser: browserLabel(sess.agent), Address: address,
-			SignedIn: formatSessionStart(sess.created, now), LastActive: relativeSessionTime(sess.lastSeen, now),
+			ID: sess.id, Browser: browserLabel(tr, sess.agent), Address: address,
+			SignedIn: formatSessionStart(tr, sess.created, now), LastActive: relativeSessionTime(tr, sess.lastSeen, now),
 			Current: sess.id == current.id,
 		})
 	}
 	return out
 }
 
-func browserLabel(ua string) string {
-	browser := "Unknown browser"
+func browserLabel(tr func(string) string, ua string) string {
+	browser := tr("Unknown browser")
 	switch {
 	case strings.Contains(ua, "Edg/"):
 		browser = "Edge"
@@ -162,34 +166,37 @@ func browserLabel(ua string) string {
 	return browser
 }
 
-func formatSessionStart(created, now time.Time) string {
+func formatSessionStart(tr func(string) string, created, now time.Time) string {
 	cy, cm, cd := created.Date()
 	ny, nm, nd := now.Date()
 	if cy == ny && cm == nm && cd == nd {
-		return "Today, " + created.Format("15:04")
+		return fmt.Sprintf(tr("Today, %s"), created.Format("15:04"))
 	}
 	return created.Format("2 Jan, 15:04")
 }
 
-func relativeSessionTime(last, now time.Time) string {
+// relativeSessionTime words a session's age. Two flat forms per unit (one, and
+// many) — the same plural shape the capsule label carries, with the same
+// TODO(i18n plurals) caveat: languages with more plural forms than two render
+// the "many" form for all of them.
+func relativeSessionTime(tr func(string) string, last, now time.Time) string {
 	age := now.Sub(last)
 	if age < time.Minute {
-		return "Now"
+		return tr("Now")
 	}
 	if age < time.Hour {
-		return strconv.Itoa(int(age/time.Minute)) + " min ago"
+		return fmt.Sprintf(tr("%d min ago"), int(age/time.Minute))
 	}
 	if age < 24*time.Hour {
-		return durationWords(int(age/time.Hour), "hour") + " ago"
+		if h := int(age / time.Hour); h != 1 {
+			return fmt.Sprintf(tr("%d hours ago"), h)
+		}
+		return tr("1 hour ago")
 	}
-	return durationWords(int(age/(24*time.Hour)), "day") + " ago"
-}
-
-func durationWords(n int, unit string) string {
-	if n != 1 {
-		unit += "s"
+	if d := int(age / (24 * time.Hour)); d != 1 {
+		return fmt.Sprintf(tr("%d days ago"), d)
 	}
-	return strconv.Itoa(n) + " " + unit
+	return tr("1 day ago")
 }
 
 func (s *Server) handlePasswordForm(w http.ResponseWriter, r *http.Request) {

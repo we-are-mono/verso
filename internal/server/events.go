@@ -88,8 +88,10 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	if b, err := s.backend.Board(r.Context(), sid); err == nil {
 		boardName = b.BoardName
 	}
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
 	sendSensors := func() bool {
-		payload, err := json.Marshal(resolveSensors(boardName))
+		payload, err := json.Marshal(resolveSensors(tr, boardName))
 		if err != nil {
 			return true // a formatting slip is not a stream killer
 		}

@@ -36,9 +36,13 @@ import (
 // advanced counterpart states in full, so the reader sees one face of a fact and
 // never two.
 type Section struct {
-	Title        string   `json:"title"`
-	Sub          string   `json:"sub,omitempty"`
-	Meta         string   `json:"meta,omitempty"`
+	Title string `json:"title"`
+	Sub   string `json:"sub,omitempty"`
+	Meta  string `json:"meta,omitempty"`
+	// MetaVerbatim declares Meta a machine value or an already-composed string
+	// — data the localization walk leaves exactly as authored. Prose meta
+	// stays undeclared and translates.
+	MetaVerbatim bool     `json:"meta_verbatim,omitempty"`
 	MetaLabel    string   `json:"meta_label,omitempty"`
 	MetaIcon     string   `json:"meta_icon,omitempty"`
 	MetaPosition string   `json:"meta_position,omitempty"`

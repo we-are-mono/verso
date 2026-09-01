@@ -46,7 +46,7 @@ func (s *Server) declaredConfigsUnion() map[string]bool {
 
 // capsule reads the pending changes for the session. A read failure logs and
 // yields an empty capsule — the page renders; the pill simply doesn't.
-func (s *Server) capsule(ctx context.Context, sid string) capsuleView {
+func (s *Server) capsule(ctx context.Context, sid string, tr func(string) string) capsuleView {
 	if sid == "" {
 		return capsuleView{}
 	}
@@ -71,13 +71,16 @@ func (s *Server) capsule(ctx context.Context, sid string) capsuleView {
 		}
 	}
 	v.Count = len(v.Items)
+	// The label localizes at composition — the template prints it raw, and the
+	// client script rewrites it live from the same catalog (verso.js T), so the
+	// two always speak one vocabulary: pending, like the capsule preview.
 	switch v.Count {
 	case 0:
-		v.Label = "No pending changes"
+		v.Label = tr("No pending changes")
 	case 1:
-		v.Label = "1 staged change"
+		v.Label = tr("1 pending change")
 	default:
-		v.Label = fmt.Sprintf("%d staged changes", v.Count)
+		v.Label = fmt.Sprintf(tr("%d pending changes"), v.Count)
 	}
 	return v
 }

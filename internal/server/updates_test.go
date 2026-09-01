@@ -624,7 +624,7 @@ func TestStagedVersoSettingReachesTheCapsule(t *testing.T) {
 	})
 
 	body := get(t, s, "/system/maintenance").Body.String()
-	for _, want := range []string{"1 staged change", "verso: updates.autocheck = 0"} {
+	for _, want := range []string{"1 pending change", "verso: updates.autocheck = 0"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the capsule is missing %q:\n%s", want, body)
 		}

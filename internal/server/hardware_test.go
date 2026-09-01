@@ -48,8 +48,8 @@ func TestHardwareProfiledComposition(t *testing.T) {
 	profile := &sensors.Profile{Name: "Mono Gateway Development Kit"}
 
 	sections := []widget.Widget{
-		hardwareVitals(inv), hardwareTemps(profile, inv),
-		hardwarePower(inv), hardwareFans(inv), hardwareFibre(inv),
+		hardwareVitals(identityTranslator, inv), hardwareTemps(identityTranslator, profile, inv),
+		hardwarePower(identityTranslator, inv), hardwareFans(identityTranslator, inv), hardwareFibre(inv),
 	}
 	sections = append(sections, hardwareReadings(inv)...)
 	var live []widget.Widget

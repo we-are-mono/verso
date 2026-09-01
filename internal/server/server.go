@@ -12,6 +12,7 @@ package server
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -523,6 +524,10 @@ type pageData struct {
 	UpdateReady   bool
 	Dev           bool        // dev session: inject the CSS hot-reload script
 	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
+	// JSStrings is the localized catalog for the strings the shell's client
+	// script writes into the page after load (verso.js T) — client JS has no
+	// translator, so the render hands it these as a JSON blob (ADR-012).
+	JSStrings template.JS
 	// ShowCapsule: staging pages carry the bar always (inert when clean — a
 	// real control at rest, ADR-010); pages whose actions are immediate
 	// (Plugins, Password, Overview) show it only when the shared stage holds
@@ -576,12 +581,36 @@ type pageHeader struct {
 // stages declares whether the page's own edits go through the uci stage: such
 // pages carry the staged-changes bar even when clean; immediate-action pages
 // get it only when the shared stage is non-empty.
+// jsCatalog localizes the fixed set of strings verso.js writes into the page
+// after load — capsule labels, local-change rows, the dirty-close confirm.
+// Client JS has no translator (ADR-012), so the render serializes these into
+// the #verso-i18n blob; an unknown key falls back to its English source in the
+// script exactly as it would in the translator.
+func jsCatalog(tr func(string) string) template.JS {
+	keys := []string{
+		"No pending changes", "1 pending change", "%d pending changes",
+		"Field", "Previous", "New",
+		"On", "Off", "Set", "Not set",
+		"Original order", "New order",
+		"You have unsaved changes. Close without saving?",
+	}
+	m := make(map[string]string, len(keys))
+	for _, k := range keys {
+		m[k] = tr(k)
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "{}"
+	}
+	return template.JS(b) //nolint:gosec // a marshalled map of catalog strings, not user input
+}
+
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	pluginTr := s.pluginTranslators(r)
 	mode := readerMode(r)
-	capsule := s.capsule(r.Context(), s.sessionSID(r))
+	capsule := s.capsule(r.Context(), s.sessionSID(r), tr)
 	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
 	flashVariant, flashMessage := s.takeFlash(r)
 	// A plugin's outcome notice rides the same flash slot as the shell's PRG
@@ -648,6 +677,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		UpdateReady:   updatesKnown && updates.Pending(),
 		Dev:           s.devCSS != "",
 		Capsule:       capsule,
+		JSStrings:     jsCatalog(tr),
 		ShowCapsule:   stages || capsule.Count > 0,
 		HasPageForm:   hasPageForm,
 		Pages:         localizedPages,
@@ -732,7 +762,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
 	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
-	s.applySensors(ov, board.BoardName)
+	_, t := s.localize(r)
+	s.applySensors(ov, board.BoardName, translatorOrIdentity(t))
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)

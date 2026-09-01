@@ -141,7 +141,7 @@ func packageRow(p openwrt.Package) widget.TableRow {
 		props = append(props, widget.Property{Label: "License", Value: p.License, Mono: true})
 	}
 	if p.Size > 0 {
-		props = append(props, widget.Property{Label: "Size", Value: humanSize(p.Size)})
+		props = append(props, widget.Property{Label: "Size", Value: humanSize(p.Size), Verbatim: true})
 	}
 	if len(p.RequiredBy) > 0 {
 		props = append(props, widget.Property{Label: "Required by", Value: strings.Join(p.RequiredBy, ", "), Mono: true})

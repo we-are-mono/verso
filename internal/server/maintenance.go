@@ -71,21 +71,24 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		log.Printf("verso: maintenance: system info unavailable: %v", systemErr)
 	}
 
-	value := func(v string) string {
+	// A live version string is data and rides verbatim (mono where it is a
+	// build id); a missing one degrades to "Unavailable" — prose the schema
+	// walk localizes, so the fallback drops the machine declarations.
+	verRow := func(label, v string, mono bool) widget.Property {
 		if v == "" {
-			return "Unavailable"
+			return widget.Property{Label: label, Value: "Unavailable", Emphasis: true}
 		}
-		return v
+		return widget.Property{Label: label, Value: v, Mono: mono, Verbatim: true, Emphasis: true}
 	}
 	software := &widget.Section{
 		Title: "Software",
 		Sub:   "Firmware updates replace the operating system while keeping your settings.",
 		Children: []widget.Widget{
 			&widget.Properties{Items: []widget.Property{
-				{Label: "OpenWrt version", Value: value(board.Firmware), Emphasis: true},
-				{Label: "Verso version", Value: version.Version, Emphasis: true},
-				{Label: "Kernel build", Value: value(board.KernelBuild), Mono: true, Emphasis: true},
-				{Label: "Target", Value: value(board.Target), Mono: true, Emphasis: true},
+				verRow("OpenWrt version", board.Firmware, false),
+				verRow("Verso version", version.Version, false),
+				verRow("Kernel build", board.KernelBuild, true),
+				verRow("Target", board.Target, true),
 			}},
 			s.firmwareModal(firmware, board),
 		},
@@ -104,14 +107,17 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		},
 	}
 
+	// A live uptime composes prose with data, so it localizes at composition
+	// and rides the meta verbatim; the fallback is a whole key the walk owns.
 	uptime := "Unavailable"
 	if systemErr == nil {
-		uptime = maintenanceUptime(si.Uptime)
+		_, t := s.localize(r)
+		uptime = maintenanceUptime(translatorOrIdentity(t), si.Uptime)
 	}
 	restart := &widget.Section{
 		Title: "Restart", Hairline: true,
 		Sub:       "The connection will disappear briefly; settings and installed software stay unchanged.",
-		MetaLabel: "Running for", Meta: uptime, MetaIcon: "clock",
+		MetaLabel: "Running for", Meta: uptime, MetaVerbatim: systemErr == nil, MetaIcon: "clock",
 		Children: []widget.Widget{&widget.Form{Action: "/system/maintenance/restart", NoSubmit: true, Fields: []widget.Widget{
 			&widget.Button{Label: "Restart router", Style: "secondary", Name: "action", Value: "restart"},
 		}}},
@@ -434,7 +440,10 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, "<!doctype html><title>Factory reset</title><p>The router is erasing its settings and restarting.</p>")
 }
 
-func maintenanceUptime(seconds int64) string {
+// maintenanceUptime words the router's uptime. Two flat forms per unit (one,
+// and many), translated at composition — the same plural shape the capsule
+// label carries, with the same TODO(i18n plurals) caveat.
+func maintenanceUptime(tr func(string) string, seconds int64) string {
 	if seconds < 0 {
 		seconds = 0
 	}
@@ -442,17 +451,19 @@ func maintenanceUptime(seconds int64) string {
 	minutes := (seconds % 3600) / 60
 	parts := make([]string, 0, 2)
 	if days > 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", days, plural(days, "day", "days")))
+		parts = append(parts, fmt.Sprintf(tr(plural(days, "1 day", "%d days")), days))
 	}
 	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", hours, plural(hours, "hour", "hours")))
+		parts = append(parts, fmt.Sprintf(tr(plural(hours, "1 hour", "%d hours")), hours))
 	}
 	if len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", minutes, plural(minutes, "minute", "minutes")))
+		parts = append(parts, fmt.Sprintf(tr(plural(minutes, "1 minute", "%d minutes")), minutes))
 	}
 	return strings.Join(parts, ", ")
 }
 
+// plural picks the flat one/many form; a "1 …" form carries no verb, so the
+// Sprintf over it is a no-op.
 func plural(n int64, one, many string) string {
 	if n == 1 {
 		return one

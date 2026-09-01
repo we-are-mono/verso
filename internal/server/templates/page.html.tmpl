@@ -228,6 +228,9 @@
     {{end}}
   </div>
 </main>
+{{/* Strings the shell's client script writes into the page (verso.js T),
+     localized at render — client JS has no translator (ADR-012). */}}
+<script type="application/json" id="verso-i18n">{{.JSStrings}}</script>
 {{/* Shell client-side JS (ADR-004), served first-party under the strict CSP.
      verso.js registers the shell's Alpine components before Alpine starts. */}}
 <script src="/assets/verso.js" defer></script>
