@@ -229,3 +229,49 @@ func TestPageFormCount(t *testing.T) {
 		}
 	}
 }
+
+// TestHoistFilter: the page-wide lens docks from the body's first child, so a
+// filter a page nested anywhere in its tree is lifted to the front — the fix that
+// stops a filter floating mid-page. A tree with no filter is untouched.
+func TestHoistFilter(t *testing.T) {
+	filter := &Filter{Placeholder: "find"}
+
+	// Nested inside a section, mid-tree: hoisted to the root's first child.
+	nested := &Stack{Children: []Widget{
+		&Section{Title: "Panel"},
+		&Section{Title: "Readings", Children: []Widget{filter, &Table{}}},
+	}}
+	got := HoistFilter(nested)
+	s, ok := got.(*Stack)
+	if !ok || len(s.Children) == 0 {
+		t.Fatalf("hoisted root is not a populated stack: %#v", got)
+	}
+	if _, first := s.Children[0].(*Filter); !first {
+		t.Errorf("filter was not hoisted to the first child: %#v", s.Children[0])
+	}
+	if n := countFilters(got); n != 1 {
+		t.Errorf("hoist should keep exactly one filter, found %d", n)
+	}
+
+	// Already first: order is unchanged.
+	front := &Stack{Children: []Widget{&Filter{}, &Section{}}}
+	if s := HoistFilter(front).(*Stack); s.Children[0] != front.Children[0] {
+		t.Error("a filter already first should stay first")
+	}
+
+	// No filter: the tree is returned as-is.
+	plain := &Stack{Children: []Widget{&Section{Title: "only"}}}
+	if HoistFilter(plain) != Widget(plain) {
+		t.Error("a tree with no filter should be returned unchanged")
+	}
+}
+
+func countFilters(w Widget) int {
+	n := 0
+	Walk(w, func(x Widget) {
+		if _, ok := x.(*Filter); ok {
+			n++
+		}
+	})
+	return n
+}

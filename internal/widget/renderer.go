@@ -125,6 +125,11 @@ func (r *Renderer) setFor(lang string) *template.Template {
 // widget set is closed, so an unknown type is a programming error, not an
 // extension point.
 func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken, lang string, t func(string) string) error {
+	// The one place a page's tree becomes markup: dock the page-wide lens here so
+	// every page — shell or plugin — renders it below the masthead wherever the page
+	// declared it, without each render site remembering to place it first. Whether a
+	// page carries a lens at all is the page's own decision, made before this.
+	w = HoistFilter(w)
 	if t != nil {
 		translateSchema(w, t)
 	}

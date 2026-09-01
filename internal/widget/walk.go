@@ -108,3 +108,47 @@ func StripFilters(w Widget) Widget {
 	}
 	return w
 }
+
+// firstFilter returns the first Filter anywhere in the tree, or nil.
+func firstFilter(w Widget) *Filter {
+	var found *Filter
+	Walk(w, func(n Widget) {
+		if found == nil {
+			if f, ok := n.(*Filter); ok {
+				found = f
+			}
+		}
+	})
+	return found
+}
+
+// HoistFilter moves a page-wide Filter to the body's first child, wherever a page
+// placed it in its tree. The still-lens is a sticky dock the stylesheet positions
+// from the body's first child; declared anywhere else it renders in flow and floats
+// mid-page. Hoisting makes placement the shell's job, not a convention each page has
+// to remember — a page declares the lens, the shell docks it below the masthead. A
+// tree with no Filter is returned unchanged.
+func HoistFilter(w Widget) Widget {
+	if w == nil {
+		return nil
+	}
+	if _, ok := w.(*Filter); ok {
+		return w // the body is the filter itself; nothing to reposition
+	}
+	filter := firstFilter(w)
+	if filter == nil {
+		return w
+	}
+	root := StripFilters(w)
+	if root == nil {
+		return filter
+	}
+	// A page's root is a vertical Stack; joining the filter as its first child
+	// reproduces exactly the structure a correctly-authored page has, so one
+	// stylesheet rule docks every page's lens. A non-Stack root is wrapped.
+	if s, ok := root.(*Stack); ok {
+		s.Children = append([]Widget{Widget(filter)}, s.Children...)
+		return s
+	}
+	return &Stack{Children: []Widget{filter, root}}
+}
