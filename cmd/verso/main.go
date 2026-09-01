@@ -76,14 +76,30 @@ func serve() {
 		i18nDir = "/usr/share/verso/i18n"
 	}
 	loadBundle := func() *i18n.Bundle {
-		// Catalogs live per component in a per-language directory:
-		// <i18nDir>/<code>/<component>.json (base.json for the shell, <plugin-id>.json
-		// for a plugin), so the glob reaches one level down (ADR-012).
+		// The shell's catalogs live per component in a per-language directory
+		// (<i18nDir>/<code>/base.json); each plugin's travel beside its manifest
+		// (<pluginsDir>/<id>/i18n/<code>.json) and override any same-component
+		// file in the shell's directory (ADR-012 §1).
 		bundle, i18nProblems := i18n.Load(os.DirFS(i18nDir), "*/*.json")
 		for _, p := range i18nProblems {
 			log.Printf("verso: %v", p)
 		}
-		log.Printf("verso: loaded %d language(s) in %s", len(bundle.Codes()), i18nDir)
+		for _, p := range bundle.LoadPlugins(os.DirFS(pluginsDir), "*/i18n/*.json") {
+			log.Printf("verso: %v", p)
+		}
+		log.Printf("verso: loaded %d language(s) in %s + %s", len(bundle.Codes()), i18nDir, pluginsDir)
+		// The live counterpart of `make i18n-audit`: with VERSO_I18N_RECORD set,
+		// every string that falls back to English for an installed language is
+		// logged as it renders — including plugin envelope prose the offline
+		// audit's fake world never reaches. Browse the pages in that language
+		// and the log is the untranslated set.
+		if os.Getenv("VERSO_I18N_RECORD") != "" {
+			return bundle.Recorded(func(code, component, key string, translated bool) {
+				if !translated {
+					log.Printf("verso: i18n miss [%s] %s: %q", code, component, key)
+				}
+			})
+		}
 		return bundle
 	}
 

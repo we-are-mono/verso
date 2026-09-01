@@ -92,7 +92,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-i18n apk-i18n-publish i18n-pot
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit
 
 all: lint test build
 
@@ -348,6 +348,15 @@ apk-i18n-publish: apk-i18n
 #      struct field or a bare argument elsewhere, not inside the tr(...) call.
 # Author the catalog from the code and the shipped sl.json, using this only to spot
 # drift in the explicit-seam subset.
+# i18n-audit renders every page reachable from / and /login in each installed
+# language — in the advanced reading, so nothing is pruned before it reaches
+# the translator (ADR-015) — and reports the source strings that fell back to
+# English plus the catalog keys no render requested. The translators record
+# their own misses (i18n.Bundle.Recorded), so the report is exact for
+# everything the crawl renders; i18n-pot below stays the quick partial grep.
+i18n-audit:
+	@VERSO_I18N_AUDIT=1 go test ./internal/server -run TestI18nAudit -count=1 -v | grep -vE '^(=== RUN|--- PASS|PASS|ok )'
+
 i18n-pot:
 	@{ grep -rhoE '\{\{[ ]*t "([^"]+)"' internal --include='*.tmpl' | sed -E 's/^\{\{[ ]*t "//; s/"$$//'; \
 	   grep -rhoE '\btr?\("([^"]+)"' internal cmd --include='*.go' | grep -v '_test.go' | sed -E 's/^\btr?\("//; s/"$$//'; \
