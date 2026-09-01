@@ -9,6 +9,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // nav builds a Server holding manifests and the one device reading the sidebar
@@ -28,6 +29,14 @@ func navServer(manifests ...plugin.Manifest) *Server {
 
 func manifest(id string, entries ...plugin.NavEntry) plugin.Manifest {
 	return plugin.Manifest{ID: id, Nav: entries}
+}
+
+// sidebar builds one path's sidebar in the advanced reading, where every section
+// renders — the ordering and liveness rules below are about what the sections
+// contain, not about which reading shows them. The mode cases state their own.
+func sidebar(s *Server, active string) navModel {
+	return s.buildSidebar(active, widget.ModeAdvanced, identityTranslator,
+		func(string) func(string) string { return identityTranslator })
 }
 
 func nav(section, label, path string) plugin.NavEntry {
@@ -126,13 +135,13 @@ func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
 	system := manifest("system", nav("System", "General", "/"))
 	system.Socket = "/system.sock"
 	s := navServer(system, manifest("net", nav("Network", "Interfaces", "/")))
-	model := s.buildSidebar("/plugins/system/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(s, "/plugins/system/")
 	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/plugins/system/" || !got.Active {
 		t.Fatalf("last basic row = %+v, want active System targeting registered General", got)
 	}
 	for _, group := range model.Advanced {
 		if group.Title == "System" {
-			t.Fatal("System must not also appear under Advanced settings")
+			t.Fatal("System must not also appear among the sections")
 		}
 	}
 }
@@ -158,14 +167,14 @@ func TestBuildSidebarPromotesSecurityAboveAdvanced(t *testing.T) {
 	firewall.Socket = "/firewall.sock"
 	s := navServer(firewall, manifest("net", nav("Network", "Interfaces", "/")))
 
-	model := s.buildSidebar("/plugins/firewall/zones", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(s, "/plugins/firewall/zones")
 	row := securityRow(t, model)
 	if row.Label != "Security" || row.Href != "/plugins/firewall/" || !row.Active {
 		t.Fatalf("Security row = %+v, want active Security targeting the registered page", row)
 	}
 	for _, group := range model.Advanced {
 		if group.Title == "Security" {
-			t.Fatal("Security must not also appear under Advanced settings")
+			t.Fatal("Security must not also appear among the sections")
 		}
 	}
 }
@@ -178,13 +187,13 @@ func TestBuildSidebarSecurityWithoutALivePluginLeadsNowhere(t *testing.T) {
 	s := navServer(firewall)
 	s.probe = func(string) bool { return false }
 
-	model := s.buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(s, "/")
 	if row := securityRow(t, model); row.Href != "#" || row.Active {
 		t.Fatalf("Security row = %+v, want an inert row", row)
 	}
 	// The stopped plugin's own URL still belongs to the domain, so the row lights
 	// up there and the page can explain itself.
-	model = s.buildSidebar("/plugins/firewall/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model = sidebar(s, "/plugins/firewall/")
 	if row := securityRow(t, model); !row.Active {
 		t.Fatalf("Security row = %+v, want Active on a stopped plugin's own URL", row)
 	}
@@ -207,12 +216,12 @@ func basicRow(t *testing.T, model navModel, icon string) navLink {
 func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 	s := navServer()
 	s.neighbors = testNeighbors
-	model := s.buildSidebar(devicesPath, identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(s, devicesPath)
 	row := basicRow(t, model, "devices")
 	if row.Href != devicesPath || !row.Active || row.Detail != "2" {
 		t.Fatalf("Devices row = %+v, want the active roster row counting both kernel-vouched devices", row)
 	}
-	if elsewhere := basicRow(t, s.buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator }), "devices"); elsewhere.Active {
+	if elsewhere := basicRow(t, sidebar(s, "/"), "devices"); elsewhere.Active {
 		t.Errorf("Devices row = %+v, want inactive away from the roster", elsewhere)
 	}
 }
@@ -220,7 +229,7 @@ func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 // A box that cannot count its devices shows the row without a number rather
 // than an invented or stale one.
 func TestBuildSidebarDevicesRowDegradesWithoutACount(t *testing.T) {
-	model := navServer().buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(navServer(), "/")
 	if row := basicRow(t, model, "devices"); row.Detail != "" {
 		t.Fatalf("Devices row = %+v, want no detail when the count is unavailable", row)
 	}
@@ -229,7 +238,7 @@ func TestBuildSidebarDevicesRowDegradesWithoutACount(t *testing.T) {
 // Every everyday row leads to a page that exists — the Family placeholder is
 // gone, and its icon with it.
 func TestBuildSidebarHasNoFamilyRow(t *testing.T) {
-	model := navServer().buildSidebar("/", identityTranslator, func(string) func(string) string { return identityTranslator })
+	model := sidebar(navServer(), "/")
 	for _, row := range model.Basic {
 		if row.Label == "Family" || row.Icon == "users" {
 			t.Fatalf("the Family placeholder row should be gone: %+v", row)
@@ -245,7 +254,7 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	s := navServer(system, vpn)
 	s.probe = func(path string) bool { return path == "/live/system.sock" }
 
-	pages := s.systemPages("/plugins/system/")
+	pages := s.systemPages("/plugins/system/", widget.ModeAdvanced)
 	if len(pages) != 6 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
 		t.Fatalf("System pages = %+v, want live General followed by five shell pages", pages)
 	}

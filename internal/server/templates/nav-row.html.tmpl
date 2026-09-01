@@ -1,0 +1,15 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* verso-nav-row: one sidebar destination — icon tile, label, and the optional
+     trailing detail a live row carries. Every row in the rail is this one shape,
+     the everyday rows and the section rows of the advanced reading alike
+     (ADR-015 §5): one kind of entry, so depth changes what the sidebar lists and
+     never how a listing reads. */}}
+{{define "verso-nav-row"}}
+<li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50 dark:bg-menu-interaction{{else}}hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
+  <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
+  <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
+  {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "success"}}text-emerald-700{{else}}text-slate-400{{end}}">
+    {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "success"}}verso-live-dot bg-emerald-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
+</a></li>
+{{end}}

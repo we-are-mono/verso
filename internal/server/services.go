@@ -299,7 +299,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -308,7 +308,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "System",
 		Subheading: "The processes this router runs — procd's service table, live.",
-	}, "wide", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "wide", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name and

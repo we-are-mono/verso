@@ -47,7 +47,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// registration filter used by every other plugin page.
 	if pluginNavSectionAt(m, r.PathValue("path")) == "System" {
 		hdr.Heading = "System"
-		pages = s.systemPages(r.URL.Path)
+		pages = s.systemPages(r.URL.Path, readerMode(r))
 	}
 	// Configuration pages keep the staging capsule at rest. A page made only of
 	// immediate commands may omit the clean capsule; an existing stage still
@@ -144,23 +144,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return s.unavailable(m, tr), http.StatusOK
 	}
 
-	// The page-wide lens is the shell's call, not each plugin's constant: a
-	// plugin declares the filter it would like and the shell keeps it only on a
-	// page with enough to sift (ADR-005 §5 — the vocabulary decides what a widget
-	// is worth). Below the threshold the widget is removed rather than hidden, so
-	// the page carries no dead dock and no "/" shortcut into nothing.
-	if widget.FilterableCount(wdg) <= widget.FilterThreshold {
-		wdg = widget.StripFilters(wdg)
-	}
-
-	// The capsule binds to exactly one page form. A page composing more than
-	// one — a page-style form beside a reorderable listing, two reorderable
-	// listings — mis-wires silently in the browser, so the breach is at least
-	// named where an author will look.
-	if n := widget.PageFormCount(wdg); n > 1 {
-		log.Printf("verso: plugin %q page %q composes %d page forms; the capsule binds to one — drags or saves beyond the first are lost", m.ID, pluginPath, n)
-	}
-
 	// The raw gauge (ADR-005 §5): raw is instrumented because its usage is the
 	// demand signal for the next widget. Dev sessions log it; production pays
 	// nothing (s.devCSS is set only under scripts/dev.sh).
@@ -206,6 +189,30 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		}
 	}
 
+	// Everything above judged what the plugin declared; everything below renders
+	// what this reader sees. The mode filter (ADR-015) runs on that boundary: the
+	// datatype gate and the brokered write are never softened by a reading, and the
+	// page-wide lens is then weighed against the content that survives.
+	mode := readerMode(r)
+	wdg = widget.FilterMode(wdg, mode)
+
+	// The page-wide lens is the shell's call, not each plugin's constant: a
+	// plugin declares the filter it would like and the shell keeps it only on a
+	// page with enough to sift (ADR-005 §5 — the vocabulary decides what a widget
+	// is worth). Below the threshold the widget is removed rather than hidden, so
+	// the page carries no dead dock and no "/" shortcut into nothing.
+	if widget.FilterableCount(wdg) <= widget.FilterThreshold {
+		wdg = widget.StripFilters(wdg)
+	}
+
+	// The capsule binds to exactly one page form. A page composing more than
+	// one — a page-style form beside a reorderable listing, two reorderable
+	// listings — mis-wires silently in the browser, so the breach is at least
+	// named where an author will look.
+	if n := widget.PageFormCount(wdg); n > 1 {
+		log.Printf("verso: plugin %q page %q composes %d page forms; the capsule binds to one — drags or saves beyond the first are lost", m.ID, pluginPath, n)
+	}
+
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)
@@ -230,21 +237,26 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	*width = env.Width
 	// The subpage tabs carry the plugin id, so renderPage localizes their labels
 	// from the plugin's catalog (ADR-012 §5) — no need to pre-translate here.
-	*pages = subpageTabsAt(m, pluginPath, env.Pages)
+	*pages = subpageTabsAt(m, pluginPath, env.Pages, mode)
 	return template.HTML(b.String()), status
 }
 
 // subpageTabs builds the top bar (the third navigation tier) from a plugin's
 // declared subpages. Paths are relative to the plugin's mount — the shell
 // builds every href and marks the active tab from the request, so the bar can
-// never point outside the plugin.
-func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab) []pageTab {
+// never point outside the plugin. A tab declaring the other reading is absent
+// (ADR-015 §5), filtered by the same rule as a manifest nav entry; its URL still
+// answers, so the operator standing on it keeps their page.
+func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab, mode string) []pageTab {
 	if len(declared) == 0 {
 		return nil
 	}
 	cur := strings.Trim(pluginPath, "/")
 	tabs := make([]pageTab, 0, len(declared))
 	for _, p := range declared {
+		if !modeShows(p.Mode, mode) {
+			continue
+		}
 		rel := strings.Trim(p.Path, "/")
 		href := "/plugins/" + m.ID + "/"
 		if rel != "" {

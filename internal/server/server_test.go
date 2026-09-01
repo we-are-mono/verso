@@ -434,7 +434,16 @@ func demoManifest() plugin.Manifest {
 	}
 }
 
+// get reads a page the way a browser that never touched the Advanced switch does:
+// in the basic mode every reader starts in (ADR-015).
 func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	return getMode(t, srv, path, widget.ModeBasic)
+}
+
+// getMode reads a page in one reading. Basic carries no cookie at all — its
+// absence is what basic means; advanced carries the one the switch sets.
+func getMode(t *testing.T, srv *Server, path, mode string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	// Authenticate by default: mint a session and attach its cookie, so the
@@ -444,6 +453,9 @@ func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
 		t.Fatalf("session: %v", err)
 	}
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	if mode == widget.ModeAdvanced {
+		req.AddCookie(&http.Cookie{Name: modeCookie, Value: widget.ModeAdvanced})
+	}
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec
@@ -1692,7 +1704,7 @@ func TestValidateSchemaCoversNestedContainers(t *testing.T) {
 func TestNavListsPlugins(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{demoManifest()})
 
-	rec := get(t, s, "/")
+	rec := getMode(t, s, "/", widget.ModeAdvanced)
 	body := rec.Body.String()
 	for _, want := range []string{"Apps", "Demo", `href="/plugins/demo/"`} {
 		if !strings.Contains(body, want) {
@@ -1711,7 +1723,7 @@ func TestNavMultipleEntriesPerPlugin(t *testing.T) {
 	}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 
-	body := get(t, s, "/").Body.String()
+	body := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
 	for _, want := range []string{"General", "Time", `href="/plugins/demo/"`, `href="/plugins/demo/time"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("nav missing %q", want)

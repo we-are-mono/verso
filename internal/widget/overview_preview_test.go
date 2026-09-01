@@ -9,8 +9,8 @@ import (
 )
 
 // TestRenderOverviewPreview: the workbench renders the home masthead — verdict,
-// view switch, tile strip, connection facts — from authored data, through the
-// same define the real page uses, with no live hooks.
+// tile strip, connection facts — from authored data, through the same define the
+// real page uses, with no live hooks.
 func TestRenderOverviewPreview(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &OverviewPreview{
@@ -28,7 +28,6 @@ func TestRenderOverviewPreview(t *testing.T) {
 	})
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "font-serif", // the verdict sentence
-		"Basic", "Advanced", // the view switch
 		"grid grid-cols-4",                                      // four tiles, four columns
 		"INTERNET", "Connected", "for 2h 14m", "text-amber-700", // tiles, warning word tinted
 		"IPV4", "DHCP", `font-mono font-semibold">172.30.1.171/24`, `x-data="copy"`, // facts + copy control

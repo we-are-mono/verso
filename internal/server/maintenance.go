@@ -130,14 +130,14 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	// them — the way in when no server can build for this device.
 	root := &widget.Stack{Children: []widget.Widget{s.updatesSection(r.Context(), sid), software, backup, restart, factory}}
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, root), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
 	s.renderPage(w, r, status, pageHeader{
 		Heading:    "System",
 		Subheading: "Keep this router current, backed up, and recoverable.",
-	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

@@ -60,7 +60,6 @@ func TestRenderOverview(t *testing.T) {
 	})
 	for _, want := range []string{
 		"ALL GOOD", "healthy", "font-serif", // verdict in Fraunces
-		"Basic", "Advanced", // the view switch
 		"INTERNET", "for 2h 14m", "data-verso-tile-caption=\"internet-uptime\"",
 		"WI-FI", "SECURITY", "SOFTWARE", // status tiles
 		// Security leads to the plugin that serves the domain; software to the page
@@ -87,11 +86,9 @@ func TestRenderOverview(t *testing.T) {
 		// Entity reference chips carry their Lucide type icon so interface / zone /
 		// port never blur: network glyph on the interface chip, ethernet-port glyph
 		// on the port chips.
-		"M12 12V8",                              // network icon → an interface topology chip
-		"M10 8v1",                               // ethernet-port icon → the interface's port chips
-		"M20 13c0 5-3.5 7.5",                    // zone icon → the shared firewall-zone chip
-		"dark:border-gray-700 dark:bg-gray-800", // dark segmented-control track
-		"dark:bg-gray-700 dark:text-gray-100",   // active Advanced segment
+		"M12 12V8",           // network icon → an interface topology chip
+		"M10 8v1",            // ethernet-port icon → the interface's port chips
+		"M20 13c0 5-3.5 7.5", // zone icon → the shared firewall-zone chip
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)

@@ -275,10 +275,10 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	var body strings.Builder
 	lang, t := s.localize(r)
 	access := accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r), translatorOrIdentity(t))
-	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, access), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
 	hdr := pageHeader{Heading: "System", Immediate: true, Subheading: "Control who can sign in to this router, and end access you no longer recognize."}
-	s.renderPage(w, r, status, hdr, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	s.renderPage(w, r, status, hdr, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }

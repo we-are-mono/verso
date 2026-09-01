@@ -220,22 +220,6 @@ html.verso-fonts-loading body {
   .verso-page-enter { animation: verso-page-enter 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
   @media (prefers-reduced-motion: reduce) { .verso-page-enter { animation: none; } }
 
-  /* Advanced-settings sidebar seam: a grid-rows reveal (0fr → 1fr) so it animates open
-     without measuring height. State lives on the button's aria-expanded (set by verso.js
-     "advseam"); the adjacent .verso-adv-wrap and the chevron key off it. */
-  .verso-adv-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.32s ease; }
-  .verso-adv-wrap > .verso-adv { overflow: hidden; min-height: 0; opacity: 0; transform: translateY(-0.2rem); transition: opacity 0.26s ease, transform 0.26s ease; }
-  /* Open state is a class on <html>, set before paint by verso-boot.js from localStorage —
-     so the seam renders in its saved state with no flash and no re-animation on every
-     navigation, while a real toggle (a class change after load) still animates. */
-  .verso-adv-open .verso-adv-wrap { grid-template-rows: 1fr; }
-  .verso-adv-open .verso-adv-wrap > .verso-adv { opacity: 1; transform: none; }
-  .verso-chev { transition: transform 0.3s ease; }
-  .verso-adv-open .verso-chev { transform: rotate(180deg); }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-adv-wrap, .verso-adv-wrap > .verso-adv, .verso-chev { transition: none; }
-  }
-
   /* Sidebar as a mobile off-canvas drawer: slid off-screen by default, in when open
      (verso.js "sidebar" adds .verso-drawer-open). On desktop (md+) it's a static rail
      with no transform. Position is Tailwind's job (fixed on mobile, sticky on md+); this

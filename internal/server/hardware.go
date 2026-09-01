@@ -37,14 +37,14 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, root), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading: hardwareModel(board, profile),
 		Display: true,
-	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }
 
 // hardwareBody composes the page's widget tree: the panel, the vitals grid, the

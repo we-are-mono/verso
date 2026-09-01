@@ -88,7 +88,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -98,7 +98,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		Heading:    "System",
 		Subheading: "The software installed on this router — every package, from every feed.",
 		Modes:      packageModes(r.URL.Path),
-	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }
 
 func packageModes(active string) []pageTab {
@@ -402,7 +402,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -410,7 +410,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		Heading:    "System",
 		Subheading: "Search the packages available from your configured feeds.",
 		Modes:      packageModes(r.URL.Path),
-	}, "narrow", s.systemPages(r.URL.Path), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
 }
 
 // freshnessLine is the honest age of the package index, beside the Refresh

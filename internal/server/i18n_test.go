@@ -13,6 +13,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // fakeSL is a partial Slovenian catalog: enough to prove both localization seams —
@@ -22,13 +23,15 @@ import (
 var fakeSL = fstest.MapFS{
 	"sl/base.json": {Data: []byte(`{
 		"Home": "Domov",
-		"Advanced settings": "Napredne nastavitve",
+		"Advanced": "Napredno",
 		"Sign in": "Prijava"
 	}`)},
 }
 
 // getLang issues an authenticated GET carrying an Accept-Language header, so the
-// per-request negotiation is exercised the way a real browser drives it.
+// per-request negotiation is exercised the way a real browser drives it. It reads
+// in the advanced mode (ADR-015), where the section titles and the plugin nav
+// labels are on the page for the localization to reach.
 func getLang(t *testing.T, srv *Server, path, acceptLanguage string) string {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -40,6 +43,7 @@ func getLang(t *testing.T, srv *Server, path, acceptLanguage string) string {
 		t.Fatalf("session: %v", err)
 	}
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	req.AddCookie(&http.Cookie{Name: modeCookie, Value: widget.ModeAdvanced})
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec.Body.String()
@@ -64,9 +68,9 @@ func TestAcceptLanguageRendersSlovenian(t *testing.T) {
 
 	body := getLang(t, srv, "/system/access", "sl-SI,sl;q=0.9,en;q=0.5")
 	for _, want := range []string{
-		`<html lang="sl">`,      // negotiated language on the root element
-		">Domov<",               // a nav label localized in Go (tr)
-		">Napredne nastavitve<", // page chrome localized in the template ({{ t }})
+		`<html lang="sl">`, // negotiated language on the root element
+		">Domov<",          // a nav label localized in Go (tr)
+		">Napredno<",       // page chrome localized in the template ({{ t }})
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sl render missing %q", want)
@@ -81,12 +85,12 @@ func TestNoAcceptLanguageRendersEnglish(t *testing.T) {
 	withFakeSL(t, srv)
 
 	body := getLang(t, srv, "/system/access", "")
-	for _, want := range []string{`<html lang="en">`, ">Home<", ">Advanced settings<"} {
+	for _, want := range []string{`<html lang="en">`, ">Home<", ">Advanced<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("English render missing %q", want)
 		}
 	}
-	if strings.Contains(body, "Domov") || strings.Contains(body, "Napredne nastavitve") {
+	if strings.Contains(body, "Domov") || strings.Contains(body, "Napredno") {
 		t.Errorf("English render must not contain Slovenian: %s", body)
 	}
 }

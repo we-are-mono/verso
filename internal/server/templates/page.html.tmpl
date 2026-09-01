@@ -12,8 +12,8 @@
 <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
-{{/* Synchronous, pre-paint: restores the Advanced-settings seam's saved state so it
-     never flashes or re-animates on navigation (CSP-safe, first-party). */}}
+{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready and
+     re-applies the saved theme, so neither flashes on navigation (CSP-safe, first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex bg-canvas text-slate-900 antialiased font-sans text-sm leading-normal">
@@ -35,44 +35,47 @@
   <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
     {{/* Everyday rows — plain labels + icons, no status (the homepage owns that). */}}
     <ul class="space-y-0.5">
-      {{range .Nav.Basic}}
-      <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50 dark:bg-menu-interaction{{else}}hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
-        <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
-        <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
-        {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "success"}}text-emerald-700{{else}}text-slate-400{{end}}">
-          {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "success"}}verso-live-dot bg-emerald-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
-      </a></li>
-      {{end}}
+      {{range .Nav.Basic}}{{template "verso-nav-row" .}}{{end}}
     </ul>
-    {{/* Advanced settings — a collapsible seam; verso.js toggles aria-expanded + persists
-         it, the grid-rows CSS drives the reveal. Groups are the real manifest sections. */}}
-    <div x-data="advseam" class="mt-2.5 border-t border-slate-100 pt-2.5">
-      <button type="button" @click="toggle" :aria-expanded="open" aria-controls="verso-adv" class="verso-seam group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
-        <span class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-600">{{icon "sliders-horizontal" "size-5"}}</span>
-        <span class="text-sm font-medium text-slate-700 transition group-hover:translate-x-1 group-hover:text-slate-900">{{ t "Advanced settings" }}</span>
-        <span class="verso-chev ml-auto text-slate-400">{{icon "chevron-down" "size-4"}}</span>
-      </button>
-      <div id="verso-adv" class="verso-adv-wrap">
-        <div class="verso-adv space-y-3 pt-1.5">
-          {{range .Nav.Advanced}}
-          <div>
-            <div class="px-3 pb-0.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
-            <ul class="space-y-0.5">
-              {{range .Links}}
-              <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors {{if .Active}}bg-slate-50 font-medium text-sky-600 dark:bg-menu-interaction{{else}}text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
-                <span class="size-1 shrink-0 rounded-full transition {{if .Active}}bg-sky-600{{else}}bg-slate-300 group-hover:translate-x-1 group-hover:bg-sky-600{{end}}"></span><span class="transition {{if not .Active}}group-hover:translate-x-1{{end}}">{{.Label}}</span></a></li>
-              {{end}}
-            </ul>
-          </div>
-          {{end}}
-        </div>
+    {{/* The sections, part of the advanced reading only (ADR-015 §5): in basic mode
+         the shell renders none of this, and the switch at the sidebar's foot is the
+         one disclosure. Every entry is an ordinary row — same tile, same label —
+         under the title of the section it belongs to. */}}
+    {{if .Nav.Advanced}}
+    <div class="mt-2.5 space-y-3 border-t border-slate-100 pt-2.5">
+      {{range .Nav.Advanced}}
+      <div>
+        <div class="px-3 pb-0.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
+        <ul class="space-y-0.5">
+          {{range .Links}}{{template "verso-nav-row" .}}{{end}}
+        </ul>
       </div>
+      {{end}}
     </div>
+    {{end}}
   </nav>
   {{/* Bottom: the device's own row — its name, the release it runs, and the way to
        everything that maintains it. The amber mark appears only when this router
        has actually found something to install. */}}
   <div class="space-y-1 border-t border-slate-100 p-3">
+    {{/* The reader mode (ADR-015): one quiet switch — off is the product, on is the
+         advanced reading. It lives where its effect shows: flip it and the section
+         rows appear in the nav directly above. A plain form, so the server owns the
+         state: the cookie flips, the page re-renders, and the browser is handed only
+         what this reading contains. */}}
+    <form method="post" action="/mode">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+      <input type="hidden" name="mode" value="{{if .Advanced}}basic{{else}}advanced{{end}}">
+      <input type="hidden" name="next" value="{{.ModeReturn}}">
+      <button type="submit" role="switch" aria-checked="{{if .Advanced}}true{{else}}false{{end}}" class="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
+        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">{{icon "sliders-horizontal" "size-5"}}</span>
+        <span class="min-w-0 flex-1 truncate text-left text-sm font-medium">{{ t "Advanced" }}</span>
+        <span class="relative inline-flex h-4 w-7 shrink-0 items-center">
+          <span class="absolute inset-0 rounded-full transition {{if .Advanced}}bg-emerald-500{{else}}bg-slate-300{{end}}"></span>
+          <span class="relative mx-0.5 size-3 rounded-full bg-white shadow transition{{if .Advanced}} translate-x-3{{end}}"></span>
+        </span>
+      </button>
+    </form>
     <a href="/system/hardware" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
       <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
         {{icon "router" "size-5"}}

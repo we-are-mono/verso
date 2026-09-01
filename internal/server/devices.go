@@ -36,7 +36,7 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, widget.DevicesTable(roster), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, widget.DevicesTable(roster)), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

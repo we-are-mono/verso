@@ -1,13 +1,14 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* overview.masthead: the home page's top block — the verdict sentence with its
-     live-dot kicker and the Basic|Advanced switch, the divided status-tile strip,
-     and the IPv4/IPv6 connection facts. One define, two callers: the real page
-     (overview.html.tmpl) and the overview-preview styleguide workbench, so the
-     block cannot drift between them. */}}
+{{/* overview.masthead: the home page's top block — the verdict sentence under its
+     live-dot kicker, the divided status-tile strip, and the IPv4/IPv6 connection
+     facts. One define, two callers: the real page (overview.html.tmpl) and the
+     overview-preview styleguide workbench, so the block cannot drift between them.
+
+     The reading is chosen once, app-wide, by the shell's own switch (ADR-015 §1);
+     this page states its verdict and shows what that reading contains. */}}
 {{define "overview.masthead"}}
-  {{/* Verdict: kicker above, then the headline with the Basic/Advanced switch on
-       its row (Basic is a view still to be built; the switch states the intent). */}}
+  {{/* Verdict: kicker above, then the headline. */}}
   <div>
     <div class="flex items-center gap-2.5">
       <span class="size-2.5 shrink-0 rounded-full bg-emerald-500 verso-live-dot"></span>
@@ -15,10 +16,6 @@
     </div>
     <div class="mt-3.5 flex items-center justify-between gap-4">
       <h1 class="font-serif text-4xl font-semibold leading-tight tracking-tight text-slate-900">{{.Lead}}<span class="text-emerald-600">{{.Accent}}</span></h1>
-      <span class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-gray-700 dark:bg-gray-800">
-        <span class="rounded-md px-3 py-1 text-sm font-medium text-slate-500 dark:text-gray-400">{{ t "Basic" }}</span>
-        <span class="rounded-md bg-white px-3 py-1 text-sm font-medium text-slate-900 shadow-sm dark:bg-gray-700 dark:text-gray-100 dark:shadow-none">{{ t "Advanced" }}</span>
-      </span>
     </div>
   </div>
 
@@ -42,7 +39,9 @@
     {{end}}
   </div>
 
-  {{/* Connection facts: IPv4 and IPv6 side by side, label → mono value with copy. */}}
+  {{/* Connection facts: IPv4 and IPv6 side by side, label → mono value with copy.
+       The advanced reading only — a basic reader has the internet tile above. */}}
+  {{if .Facts}}
   <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
     {{range .Facts}}
     <div class="py-6 {{if eq .Side "left"}}pr-8{{else}}pl-8{{end}}">
@@ -54,4 +53,5 @@
     </div>
     {{end}}
   </div>
+  {{end}}
 {{end}}
