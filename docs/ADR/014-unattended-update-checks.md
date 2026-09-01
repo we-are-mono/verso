@@ -1,6 +1,6 @@
 # ADR-014 — Unattended update checks
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-08-31
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-013 (the gate is Verso's first setting), ADR-007 (the

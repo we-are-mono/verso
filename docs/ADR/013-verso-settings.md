@@ -1,6 +1,6 @@
 # ADR-013 — Verso's own settings live in uci
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-08-31
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-007 (every write rides the sid-gated rpcd path), ADR-010
