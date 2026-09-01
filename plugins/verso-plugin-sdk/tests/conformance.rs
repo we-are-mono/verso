@@ -207,6 +207,7 @@ fn write_widget_fixtures() {
                     label: "Endpoint".into(),
                     value: "203.0.113.7:51820".into(),
                     mono: true,
+                    verbatim: false,
                     copy: true,
                 }],
             },

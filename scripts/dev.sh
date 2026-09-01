@@ -91,6 +91,23 @@ deploy_helper() {
 	fi
 }
 
+# deploy_i18n lands the localization catalogs — ADR-012 data files the shell
+# reads from disk, never part of the binary — under the shell's i18n dir and
+# restarts the shell so it reloads them. On a real device these arrive as
+# verso-i18n-* packages; the dev loop syncs the repo's catalogs directly.
+deploy_i18n() {
+	local d code
+	for d in i18n/*/; do
+		[ -d "$d" ] || continue
+		code="$(basename "$d")"
+		docker exec "$CONTAINER" mkdir -p "/usr/share/verso/i18n/$code"
+		docker cp "$d/." "$CONTAINER":"/usr/share/verso/i18n/$code/"
+	done
+	docker exec "$CONTAINER" sh -c 'chown -R root:root /usr/share/verso/i18n; find /usr/share/verso/i18n -type f -exec chmod 0644 {} +' 2>/dev/null || true
+	docker exec "$CONTAINER" /etc/init.d/verso restart >/dev/null 2>&1 || true
+	log "i18n catalogs reloaded"
+}
+
 # deploy_bundled_plugins discovers plugins by a checked-in `bundled` marker.
 # Adding another bundled Rust plugin therefore makes `make dev` install and
 # activate it without teaching this script its name. Independent/reference
@@ -107,6 +124,13 @@ deploy_bundled_plugins() {
 			docker cp "$dir/target/x86_64-unknown-linux-musl/release/$name" "$CONTAINER:/usr/bin/.$name.new"
 			docker cp "$dir/rootfs/etc/init.d/$name" "$CONTAINER:/etc/init.d/.$name.new"
 			docker cp "$dir/manifest.json" "$CONTAINER:/usr/share/verso/plugins/$id/.manifest.json.new"
+			# The plugin's travelling catalogs (i18n/<code>.json, ADR-012) ride
+			# beside the manifest; the shell re-reads them on its next start.
+			if [ -d "$dir/i18n" ]; then
+				docker exec "$CONTAINER" mkdir -p "/usr/share/verso/plugins/$id/i18n"
+				docker cp "$dir/i18n/." "$CONTAINER:/usr/share/verso/plugins/$id/i18n/"
+				docker exec "$CONTAINER" sh -c "chown -R root:root /usr/share/verso/plugins/$id/i18n; find /usr/share/verso/plugins/$id/i18n -type f -exec chmod 0644 {} +"
+			fi
 			docker exec "$CONTAINER" sh -c "chown root:root /usr/bin/.$name.new /etc/init.d/.$name.new /usr/share/verso/plugins/$id/.manifest.json.new; chmod 0755 /usr/bin/.$name.new /etc/init.d/.$name.new; chmod 0644 /usr/share/verso/plugins/$id/.manifest.json.new; mv /usr/bin/.$name.new /usr/bin/$name; mv /etc/init.d/.$name.new /etc/init.d/$name; mv /usr/share/verso/plugins/$id/.manifest.json.new /usr/share/verso/plugins/$id/manifest.json; /etc/init.d/$name enable; /etc/init.d/$name start"
 			log "$name reloaded"
 		else
@@ -167,6 +191,7 @@ deploy_shell() {
 sync_all() {
 	deploy_acls
 	deploy_rpcd_acls
+	deploy_i18n
 	deploy_helper
 	deploy_bundled_plugins
 	deploy_shell
@@ -197,6 +222,7 @@ plugins_sig() {
 	} 2>/dev/null | sha1sum
 }
 acl_sig() { find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
+i18n_sig() { find i18n -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 css_sig() { find "$CSS_IN" -printf '%T@\n' 2>/dev/null | sha1sum; }
 
 ensure_container
@@ -207,6 +233,7 @@ last_shell="$(shell_sig)"
 last_helper="$(helper_sig)"
 last_plugins="$(plugins_sig)"
 last_acl="$(acl_sig)"
+last_i18n="$(i18n_sig)"
 last_css="$(css_sig)"
 sync_all
 
@@ -216,6 +243,7 @@ while sleep 1; do
 	cur_helper="$(helper_sig)"
 	cur_plugins="$(plugins_sig)"
 	cur_acl="$(acl_sig)"
+	cur_i18n="$(i18n_sig)"
 	cur_css="$(css_sig)"
 
 	if [ "$cur_acl" != "$last_acl" ]; then
@@ -223,6 +251,10 @@ while sleep 1; do
 		deploy_acls
 		deploy_rpcd_acls
 		log "ACLs reloaded (services uninterrupted)"
+	fi
+	if [ "$cur_i18n" != "$last_i18n" ]; then
+		last_i18n="$cur_i18n"
+		deploy_i18n
 	fi
 	if [ "$cur_helper" != "$last_helper" ]; then
 		last_helper="$cur_helper"

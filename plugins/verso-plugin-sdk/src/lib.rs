@@ -972,13 +972,19 @@ pub struct ConditionItem {
     pub children: Vec<Widget>,
 }
 
-/// Property is one row of a [`Widget::Properties`] fact sheet.
+/// Property is one row of a [`Widget::Properties`] fact sheet. `mono` sets a
+/// machine value in monospace type; `verbatim` declares a value that is data
+/// without the mono treatment — a size, a rate, an identity set in sans — so
+/// the shell's localization leaves it exactly as authored. Declare one of them
+/// on every value that is data, not words.
 #[derive(Serialize, Debug)]
 pub struct Property {
     pub label: String,
     pub value: String,
     #[serde(skip_serializing_if = "is_false")]
     pub mono: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub verbatim: bool,
     #[serde(skip_serializing_if = "is_false")]
     pub copy: bool,
 }
