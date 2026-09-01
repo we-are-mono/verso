@@ -5,7 +5,11 @@ package openwrt
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/we-are-mono/verso/internal/ubus"
 )
 
 // TestLoginRejectsPermissiveAccount: a passwordless/permissive account (rpcd
@@ -64,6 +68,45 @@ func TestVerifyDestroysProbeSession(t *testing.T) {
 	}
 	if destroyed != "VERIFY-SID" {
 		t.Errorf("verification sid was not destroyed: %q", destroyed)
+	}
+}
+
+// TestRenewReportsLiveness: Renew reports a session gone ONLY when rpcd answers
+// NOT_FOUND; a live session and a transport blip both leave it alive, so the
+// renewer never evicts an operator over a momentary rpcd stumble (ADR-007 §7).
+func TestRenewReportsLiveness(t *testing.T) {
+	cases := []struct {
+		name  string
+		err   error
+		alive bool
+	}{
+		{"live session", nil, true},
+		{"session gone", &ubus.StatusError{Code: ubus.StatusNotFound, Context: `invoke "access"`}, false},
+		{"gone, wrapped", fmt.Errorf("openwrt: %w", &ubus.StatusError{Code: ubus.StatusNotFound}), false},
+		{"other ubus status", &ubus.StatusError{Code: ubus.StatusNotFound + 1}, true},
+		{"transport error", errors.New("dial: connection refused"), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got string
+			a := &RPCDAuthenticator{accessFn: func(sid string) error { got = sid; return tc.err }}
+			if alive := a.Renew(context.Background(), "SID-1"); alive != tc.alive {
+				t.Errorf("Renew alive = %v, want %v", alive, tc.alive)
+			}
+			if got != "SID-1" {
+				t.Errorf("Renew probed sid %q, want SID-1", got)
+			}
+		})
+	}
+}
+
+// TestDestroyTearsDownSession: Destroy hands the sid to the teardown seam.
+func TestDestroyTearsDownSession(t *testing.T) {
+	var destroyed string
+	a := &RPCDAuthenticator{destroyFn: func(sid string) { destroyed = sid }}
+	a.Destroy(context.Background(), "SID-2")
+	if destroyed != "SID-2" {
+		t.Errorf("Destroy tore down %q, want SID-2", destroyed)
 	}
 }
 

@@ -56,6 +56,11 @@ var scriptFS embed.FS
 // which `docker cp` cannot write into.)
 const devCSSPath = "/usr/share/verso/verso-dev.css"
 
+// The production authenticator must satisfy sidKeeper, or the runtime assertion
+// in New silently skips sid renewal and the 300 s-vs-session mismatch returns
+// (ADR-007 §7). This guards that wiring at compile time.
+var _ sidKeeper = (*openwrt.RPCDAuthenticator)(nil)
+
 // Server is the Verso HTTP shell.
 type Server struct {
 	mux       *http.ServeMux
@@ -187,6 +192,12 @@ func New(
 	if _, err := os.Stat(devCSSPath); err == nil {
 		s.devCSS = devCSSPath
 		s.bootID = fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	// Keep each session's rpcd sid alive for the session's lifetime and tear it
+	// down when the session ends (ADR-007 §7). Only the native authenticator
+	// reaches rpcd; a test auth that cannot is left renewal-free.
+	if keeper, ok := auth.(sidKeeper); ok {
+		s.sessions.startRenewer(keeper, sessionRenewInterval)
 	}
 	s.routes()
 	return s, nil
@@ -360,6 +371,7 @@ func (s *Server) pluginTranslators(r *http.Request) func(pluginID string) func(s
 
 // Close stops background services owned by the shell.
 func (s *Server) Close() {
+	s.sessions.stopRenewer()
 	if s.telemetryStop != nil {
 		s.telemetryStop()
 	}

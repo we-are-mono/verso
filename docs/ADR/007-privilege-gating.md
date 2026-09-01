@@ -110,6 +110,21 @@ broken socket.**
    authorized by rpcd against the operator's sid. A Verso compromise is bounded by that
    operator's ACLs.
 
+7. **The operator's rpcd session is kept alive for as long as the Verso session
+   lives, and torn down with it.** The `sid` from `session.login` is rpcd's own
+   session, on rpcd's inactivity clock (`RPC_DEFAULT_SESSION_TIMEOUT`, 300 s) — far
+   shorter than a Verso session (30 min idle, 12 h absolute). Verso therefore treats
+   the `sid` as a resource its session owns: a background renewer touches each live
+   session's `sid` (`session.access`, which rpcd renews the session on) well inside
+   the 300 s window, and a session that ends — by idle expiry, absolute cap, or
+   logout — has its `sid` destroyed. Nothing else keeps the `sid` warm: an idle
+   operator's session renews on the renewer's clock, not on request traffic, so the
+   `sid` is ready the instant they act again and gone once their session is. Verso
+   never re-mints a `sid` on its own — it holds no credential to do so (it keeps the
+   `sid`, never the password) — so if rpcd reports a live session's `sid` unknown
+   (rpcd's own restart, say), Verso ends that Verso session and the operator signs in
+   again, rather than presenting a half-working shell whose every gated read fails.
+
 ## Consequences
 
 ### Positive
@@ -167,6 +182,14 @@ broken socket.**
   shell/bus boundary but lets a compromised plugin `ptrace` a peer. The self-gated
   `verso-rpcd` helper plus per-plugin uids keep root actions in a minimal,
   session-authorized, mutually-isolated surface.
+- **For the sid lifecycle (Decision 7): re-mint the sid lazily when a gated call
+  is refused, or widen rpcd's session timeout to match Verso's.** Lazy re-mint is
+  impossible by construction — Verso keeps only the sid, never the password (the
+  point of holding it server-side), so it has no credential to log in again with.
+  Widening rpcd's timeout only moves the mismatch: it leaves two independent clocks
+  to keep in sync by hand, and silently regresses the moment either changes. The
+  renewer ties the sid's life to the session's by construction, with no second
+  number to maintain.
 
 ## Implementation notes
 
@@ -227,6 +250,17 @@ cross-plugin path — a plugin connecting to a peer's socket over the shared gro
 an HTTP-only surface with no memory or `ptrace` access — is a lesser residual left
 to tighten (a per-plugin socket group) if a plugin ever handles a secret a peer
 must never reach.
+
+The sid renewer (Decision 7) lives with the session store: one goroutine that, on
+its own interval (well under rpcd's 300 s), calls `session.access` for each live
+session's sid — rpcd touches the session on that call — and destroys the sid of any
+session the store has swept or a logout has ended. rpcd answers `session.access` for
+an unknown sid with `UBUS_STATUS_NOT_FOUND`, distinct from a transport error, so the
+renewer tells a genuinely dead session (evict the Verso session, so the next request
+lands on the login page with the expiry notice) from a momentary rpcd blip (leave it,
+retry next tick). Renewal reads the session store without sliding its idle clock, so a
+page left open still signs out on inactivity — the renewer keeps the sid ready for a
+live session, it does not keep the session alive.
 
 The root-action helper (Decision 5) installs at `/usr/sbin/verso-rpcd` and runs
 under procd. Its socket is `/var/run/verso/verso-rpcd.sock`: the containing

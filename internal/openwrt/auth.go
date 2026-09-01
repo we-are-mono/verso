@@ -31,9 +31,11 @@ var ErrInvalidCredentials = errors.New("openwrt: invalid credentials")
 // may not be able to do.
 type RPCDAuthenticator struct {
 	socket string // "" = default ubus socket
-	// loginFn / destroyFn seam the rpcd calls for tests; nil uses the real ubus.
+	// loginFn / destroyFn / accessFn seam the rpcd calls for tests; nil uses the
+	// real ubus.
 	loginFn   func(username, password string) (sid string, err error)
 	destroyFn func(sid string)
+	accessFn  func(sid string) error
 }
 
 // NewRPCDAuthenticator returns an authenticator using the default ubus socket.
@@ -69,6 +71,55 @@ func (a *RPCDAuthenticator) Verify(ctx context.Context, username, password strin
 	if sid != "" {
 		a.destroy(sid)
 	}
+	return err
+}
+
+// Renew touches the rpcd session behind sid so rpcd resets its inactivity timer
+// (rpcd renews a session merely by looking it up for a session.access call,
+// before it evaluates any ACL). It reports whether the session still exists:
+// false only when rpcd positively answers that the sid is unknown
+// (UBUS_STATUS_NOT_FOUND). A transport failure leaves it true, so a momentary
+// rpcd blip never evicts a live operator — the caller retries next tick. This is
+// what keeps the sid alive for the Verso session's lifetime (ADR-007 §7).
+func (a *RPCDAuthenticator) Renew(_ context.Context, sid string) bool {
+	err := a.access(sid)
+	var se *ubus.StatusError
+	if errors.As(err, &se) && se.Code == ubus.StatusNotFound {
+		return false
+	}
+	return true
+}
+
+// Destroy tears down the rpcd session behind sid, called when the Verso session
+// that owned it ends — idle expiry, absolute cap, or logout (ADR-007 §7). Best
+// effort: an undestroyed session would expire on rpcd's own clock regardless.
+func (a *RPCDAuthenticator) Destroy(_ context.Context, sid string) {
+	a.destroy(sid)
+}
+
+// access runs rpcd's session.access for sid — through the test seam when set,
+// else the real ubus socket. The scope/object/function triple is immaterial: the
+// call exists to make rpcd touch (renew) the session and to report whether the
+// session is still there, not to read the ACL result.
+func (a *RPCDAuthenticator) access(sid string) error {
+	if a.accessFn != nil {
+		return a.accessFn(sid)
+	}
+	c, err := ubus.Dial(a.socket)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	id, err := c.Lookup("session")
+	if err != nil {
+		return err
+	}
+	_, err = c.InvokeArgs(id, "access", map[string]string{
+		"ubus_rpc_session": sid,
+		"scope":            "ubus",
+		"object":           "session",
+		"function":         "access",
+	})
 	return err
 }
 

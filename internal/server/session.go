@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"sync"
@@ -14,7 +15,23 @@ const (
 	sessionCookie          = "verso_session"
 	sessionIdleTimeout     = 30 * time.Minute
 	sessionAbsoluteTimeout = 12 * time.Hour
+	// sessionRenewInterval is how often the renewer touches each live session's
+	// rpcd sid. It must stay well inside rpcd's session timeout
+	// (RPC_DEFAULT_SESSION_TIMEOUT, 300 s) so a sid never lapses mid-session
+	// (ADR-007 §7); 60 s leaves a 5× margin against a missed tick.
+	sessionRenewInterval = 60 * time.Second
 )
+
+// sidKeeper renews and tears down the rpcd session behind a Verso session. The
+// rpcd sid runs on rpcd's own inactivity clock (300 s), far shorter than a Verso
+// session, so it is kept warm while its session lives and destroyed when the
+// session ends (ADR-007 §7). Renew reports whether rpcd still knows the sid, so a
+// vanished session (rpcd restart) can be signed out rather than left half-working.
+// Injected so the store stays testable without a real ubus.
+type sidKeeper interface {
+	Renew(ctx context.Context, sid string) (alive bool)
+	Destroy(ctx context.Context, sid string)
+}
 
 // session is server-side state keyed by an opaque cookie token. The rpcd sid is
 // held here and never sent to the browser — unlike LuCI, which exposes the sid
@@ -44,6 +61,16 @@ type Sessions struct {
 	now      func() time.Time
 	idle     time.Duration
 	absolute time.Duration
+	// keeper renews and destroys the rpcd sid behind each session; nil disables
+	// renewal (tests that need no ubus). pendingKill holds sids whose sessions
+	// have ended, queued under the lock and drained by the renewer outside it.
+	keeper      sidKeeper
+	pendingKill []string
+	// renewCancel and renewDone are the renewer goroutine's handle, guarded by mu:
+	// non-nil renewCancel means a renewer is running. Both start (once, with a
+	// keeper) and stop are idempotent, and stop before start is a safe no-op.
+	renewCancel context.CancelFunc
+	renewDone   chan struct{}
 }
 
 func newSessions() *Sessions { return newSessionsClock(time.Now) }
@@ -94,6 +121,7 @@ func (s *Sessions) get(token string) (session, bool) {
 	}
 	if s.expired(sess, now) {
 		delete(s.items, token)
+		s.killSID(sess.sid)
 		return session{}, false
 	}
 	sess.lastSeen = now
@@ -116,6 +144,7 @@ func (s *Sessions) alive(token string) bool {
 	}
 	if s.expired(sess, now) {
 		delete(s.items, token)
+		s.killSID(sess.sid)
 		return false
 	}
 	return true
@@ -160,7 +189,10 @@ func (s *Sessions) TakeFlash(token string) (variant, message string) {
 
 func (s *Sessions) destroy(token string) {
 	s.mu.Lock()
-	delete(s.items, token)
+	if sess, ok := s.items[token]; ok {
+		delete(s.items, token)
+		s.killSID(sess.sid)
+	}
 	s.mu.Unlock()
 }
 
@@ -185,6 +217,7 @@ func (s *Sessions) destroyID(id string) bool {
 	for token, sess := range s.items {
 		if sess.id == id {
 			delete(s.items, token)
+			s.killSID(sess.sid)
 			return true
 		}
 	}
@@ -195,10 +228,118 @@ func (s *Sessions) expired(sess session, now time.Time) bool {
 	return now.Sub(sess.lastSeen) > s.idle || now.Sub(sess.created) > s.absolute
 }
 
-// sweep deletes expired sessions. The caller holds the lock.
+// sweep deletes expired sessions, queuing each one's sid for teardown. The
+// caller holds the lock.
 func (s *Sessions) sweep(now time.Time) {
 	for token, sess := range s.items {
 		if s.expired(sess, now) {
+			delete(s.items, token)
+			s.killSID(sess.sid)
+		}
+	}
+}
+
+// killSID queues a sid for the renewer to destroy in rpcd. The caller holds the
+// lock. A no-op without a keeper (tests), so the queue never grows unbounded
+// where nothing drains it.
+func (s *Sessions) killSID(sid string) {
+	if s.keeper != nil {
+		s.pendingKill = append(s.pendingKill, sid)
+	}
+}
+
+// startRenewer wires the sid keeper and starts the background renewer: one
+// goroutine that keeps every live session's rpcd sid warm and tears down the sids
+// of sessions that have ended (ADR-007 §7). Idempotent — a second call while one
+// runs is a no-op; a nil keeper or a non-positive interval starts nothing,
+// leaving the store renewal-free.
+func (s *Sessions) startRenewer(keeper sidKeeper, interval time.Duration) {
+	if keeper == nil || interval <= 0 {
+		return
+	}
+	s.mu.Lock()
+	if s.renewCancel != nil { // already running
+		s.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.keeper = keeper
+	s.renewCancel = cancel
+	s.renewDone = make(chan struct{})
+	s.mu.Unlock()
+	go s.renewLoop(ctx, interval)
+}
+
+// stopRenewer halts the renewer and waits for it to exit. Idempotent, and a safe
+// no-op when no renewer is running (including a stop before any start) — it never
+// consumes the ability to start one later.
+func (s *Sessions) stopRenewer() {
+	s.mu.Lock()
+	cancel, done := s.renewCancel, s.renewDone
+	s.renewCancel = nil
+	s.mu.Unlock()
+	if cancel == nil {
+		return
+	}
+	cancel()
+	<-done
+}
+
+func (s *Sessions) renewLoop(ctx context.Context, interval time.Duration) {
+	defer close(s.renewDone)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.renewTick(ctx)
+		}
+	}
+}
+
+// renewTick is one renewal pass: destroy the sids of ended sessions, then renew
+// the sids of live ones — evicting any session whose sid rpcd no longer knows, so
+// its browser is sent to sign in again rather than shown a half-working shell.
+// Keeper I/O runs outside the store lock. It is the unit the timer drives, and
+// the seam tests call directly for a deterministic pass.
+func (s *Sessions) renewTick(ctx context.Context) {
+	live, dead := s.collect()
+	for _, sid := range dead {
+		s.keeper.Destroy(ctx, sid)
+	}
+	for _, sid := range live {
+		if !s.keeper.Renew(ctx, sid) {
+			s.evictBySID(sid)
+		}
+	}
+}
+
+// collect sweeps expired sessions (queuing their sids to destroy), then returns
+// the live sids to renew and the queued dead sids. It slides no idle clock:
+// renewal keeps a session's sid ready, it does not keep the session alive.
+func (s *Sessions) collect() (live, dead []string) {
+	now := s.now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sweep(now)
+	for _, sess := range s.items {
+		live = append(live, sess.sid)
+	}
+	dead = s.pendingKill
+	s.pendingKill = nil
+	return live, dead
+}
+
+// evictBySID drops every session carrying sid — the response to rpcd reporting
+// that sid unknown. The sid is already gone in rpcd, so nothing is queued to
+// destroy; the browser's next request lands on the login page.
+func (s *Sessions) evictBySID(sid string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for token, sess := range s.items {
+		if sess.sid == sid {
 			delete(s.items, token)
 		}
 	}
