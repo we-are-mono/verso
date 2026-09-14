@@ -5,12 +5,12 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2"
+serde_json = "1"
 verso-plugin = { path = "../verso-plugin-sdk" }
 
 # The page tests assert on the serialized envelope, which is the contract the
 # shell decodes; serde_json is the only way to look at it.
-[dev-dependencies]
-serde_json = "1"
+
 
 [profile.release]
 opt-level = "z"

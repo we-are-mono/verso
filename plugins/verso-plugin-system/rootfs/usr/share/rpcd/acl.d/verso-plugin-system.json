@@ -1,0 +1,33 @@
+{
+  "verso-plugin-system": {
+    "description": "Verso system configuration",
+    "read": {
+      "uci": [
+        "system",
+        "network",
+        "dropbear",
+        "uhttpd"
+      ],
+      "ubus": {
+        "verso": [
+          "accessCredentials"
+        ]
+      }
+    },
+    "write": {
+      "uci": [
+        "system",
+        "network",
+        "dropbear",
+        "uhttpd"
+      ],
+      "ubus": {
+        "verso": [
+          "setSystemTime",
+          "setAuthorizedKeys",
+          "setWebCertificate"
+        ]
+      }
+    }
+  }
+}

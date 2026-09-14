@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
-
 use std::collections::BTreeMap;
 use std::mem::MaybeUninit;
+use std::net::{IpAddr, Ipv6Addr};
 use std::time::{SystemTime, UNIX_EPOCH};
-
 use verso_plugin::{
     commit, commit_new, json, serve, ApplyAction, Envelope, Form, Request, SelectOption, Snapshot,
-    Widget, MODE_ADVANCED,
+    Tone, Widget,
 };
-
+mod access;
+mod credentials;
 mod timezones;
-
 use timezones::ZONES;
-
 #[derive(Default)]
 struct Facts {
     hostname: String,
@@ -22,292 +20,305 @@ struct Facts {
     ntp_section: String,
     ntp_enabled: bool,
     servers: Vec<String>,
-    datetime: String,
+    ula: String,
+    steering: bool,
+    serve: bool,
 }
-
 fn main() {
     serve("system", get, post);
 }
-
-// The system plugin is one page, so it answers every sub-path with that page.
-fn get(request: &Request) -> Envelope {
-    page(facts(&request.snapshot), "", "")
+fn get(r: &Request) -> Envelope {
+    if r.path.starts_with("/access") {
+        return access::get(r);
+    }
+    page(facts(&r.snapshot), &BTreeMap::new())
 }
-
-fn post(_request: &Request, form: &Form) -> Envelope {
-    let hostname = form.get("hostname").trim().to_string();
-    let zonename = form.get("zonename").trim().to_string();
-    let original_zonename = form.get("original_zonename");
-    let original_timezone = form.get("original_timezone");
-    let timezone = ZONES
-        .iter()
-        .find(|(name, _)| *name == zonename)
-        .map(|(_, value)| (*value).to_string())
-        .or_else(|| {
-            // Preserve an existing custom TZ the catalog doesn't list, but only if
-            // the browser-supplied value is a well-formed POSIX TZ — never an
-            // arbitrary string (newlines, control chars) into system config.
-            (zonename == original_zonename
-                && !original_timezone.is_empty()
-                && valid_posix_tz(&original_timezone))
-            .then_some(original_timezone)
-        });
-    let servers: Vec<String> = form
+fn post(r: &Request, f: &Form) -> Envelope {
+    if r.path.starts_with("/access") {
+        return access::post(r, f);
+    }
+    let before = facts(&r.snapshot);
+    let mut values = facts(&r.snapshot);
+    let mut errors = BTreeMap::new();
+    values.hostname = f.get("hostname").trim().into();
+    values.ula = f.get("ula_prefix").trim().into();
+    values.steering = f.get("packet_steering") == "1";
+    values.zonename = f.get("zonename");
+    values.ntp_enabled = f.get("ntp_enabled") == "1";
+    values.serve = f.get("enable_server") == "1";
+    let mut seen = std::collections::BTreeSet::new();
+    values.servers = f
         .all("server")
         .into_iter()
-        .map(|server| server.trim().to_string())
-        .filter(|server| !server.is_empty())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && seen.insert(s.clone()))
         .collect();
-    let datetime = form.get("datetime").trim().to_string();
-    let values = Facts {
-        hostname: hostname.clone(),
-        zonename: zonename.clone(),
-        timezone: timezone.clone().unwrap_or_default(),
-        ntp_section: form.get("ntp_section"),
-        ntp_enabled: form.get("ntp_enabled") == "1",
-        servers: servers.clone(),
-        datetime: datetime.clone(),
-    };
-
-    if timezone.is_none() {
-        return page(values, "Choose one of the available timezones.", "");
+    if f.get("_action") == "clock" {
+        let datetime = f.get("_client_time");
+        if !valid_local_datetime(&datetime) {
+            errors.insert(
+                "clock".into(),
+                "The computer's time could not be read. Try again.".into(),
+            );
+            return page(values, &errors);
+        }
+        let mut result = page(values, &errors).with_notice(Tone::Success, "Router time updated.");
+        result.commands = vec![ApplyAction {
+            name: "set-system-time".into(),
+            args: BTreeMap::from([
+                ("datetime".into(), datetime),
+                ("timezone".into(), "UTC".into()),
+            ]),
+        }];
+        return result;
     }
-    if !values.ntp_enabled && !valid_local_datetime(&datetime) {
+    if !valid_hostname(&values.hostname) {
+        errors.insert(
+            "hostname".into(),
+            "Use 1–63 letters, numbers or hyphens, without a leading or trailing hyphen.".into(),
+        );
+    }
+    if !values.ula.is_empty() && !valid_ula(&values.ula) {
+        errors.insert(
+            "ula_prefix".into(),
+            "Enter a private IPv6 prefix, such as fd42:1:1::/48, or leave it empty.".into(),
+        );
+    }
+    let timezone = ZONES
+        .iter()
+        .find(|(name, _)| *name == values.zonename)
+        .map(|(_, tz)| tz.to_string())
+        .or_else(|| {
+            (values.zonename == before.zonename && valid_posix_tz(&before.timezone))
+                .then_some(before.timezone)
+        });
+    if let Some(tz) = timezone {
+        values.timezone = tz;
+    } else {
+        errors.insert(
+            "zonename".into(),
+            "Choose one of the available timezones.".into(),
+        );
+    }
+    if values.servers.iter().any(|s| !valid_server(s)) {
+        errors.insert(
+            "server".into(),
+            "Enter valid hostnames or IP addresses for time servers.".into(),
+        );
+    }
+    if values.ntp_enabled && values.servers.is_empty() {
+        errors.insert(
+            "server".into(),
+            "Add at least one time server, or turn off internet time synchronization.".into(),
+        );
+    }
+    if !errors.is_empty() {
+        return page(values, &errors);
+    }
+    let Some(system) = r
+        .snapshot
+        .sections_of_type("system", "system")
+        .into_iter()
+        .next()
+    else {
         return page(
             values,
-            "",
-            "Enter a valid local date and time, including seconds.",
+            &BTreeMap::from([(
+                "form".into(),
+                "The router's system configuration could not be read.".into(),
+            )]),
         );
-    }
-    let timezone = timezone.unwrap_or_default();
-    let ntp_enabled = values.ntp_enabled;
-    let ntp_section = values.ntp_section.clone();
-
+    };
     let mut operations = vec![commit(
         "system",
-        "@system[0]",
-        json!({
-            "hostname": hostname,
-            "zonename": zonename,
-            "timezone": timezone.clone()
-        }),
+        &system.name(),
+        json!({"hostname":values.hostname,"zonename":values.zonename,"timezone":values.timezone}),
     )];
-    let ntp_values = json!({
-        "enabled": if ntp_enabled { "1" } else { "0" },
-        "server": servers
-    });
-    if ntp_section.is_empty() {
-        // A missing timeserver section is created by type (docs/plugins.md).
-        operations.push(commit_new("system", "timeserver", ntp_values));
+    let globals = json!({"ula_prefix":if values.ula.is_empty(){serde_json::Value::Null}else{json!(values.ula)},"packet_steering":if values.steering{"1"}else{"0"}});
+    if let Some(g) = r.snapshot.sections_of_type("network", "globals").first() {
+        operations.push(commit("network", &g.name(), globals));
     } else {
-        operations.push(commit("system", &ntp_section, ntp_values));
+        let mut op = commit_new("network", "globals", globals);
+        op.section = "globals".into();
+        operations.push(op);
     }
-
-    let mut result = page(values, "", "").with_commit(operations);
-    if !ntp_enabled {
-        result = result.with_apply(vec![ApplyAction {
-            name: "set-system-time".into(),
-            args: BTreeMap::from([("datetime".into(), datetime), ("timezone".into(), timezone)]),
-        }]);
-    }
-    result
+    let ntp = json!({"enabled":if values.ntp_enabled{"1"}else{"0"},"server":if values.servers.is_empty(){serde_json::Value::Null}else{json!(values.servers)},"enable_server":if values.serve{"1"}else{"0"}});
+    operations.push(if values.ntp_section.is_empty() {
+        commit_new("system", "timeserver", ntp)
+    } else {
+        commit("system", &values.ntp_section, ntp)
+    });
+    page(values, &errors)
+        .with_commit(operations)
+        .with_notice(Tone::Success, "General settings saved.")
 }
-
-fn facts(snapshot: &Snapshot) -> Facts {
-    let system = snapshot.sections_of_type("system", "system");
-    let hostname = system
-        .first()
-        .map(|section| section.scalar("hostname"))
-        .unwrap_or_default();
-    let timezone = system
-        .first()
-        .map(|section| section.scalar("timezone"))
-        .unwrap_or_default();
-    let mut zonename = system
-        .first()
-        .map(|section| section.scalar("zonename"))
-        .unwrap_or_default();
-    if zonename.is_empty() && (timezone == "UTC" || timezone == "GMT0") {
+fn facts(s: &Snapshot) -> Facts {
+    let system = s.sections_of_type("system", "system");
+    let system = system.first();
+    let ntp = s.sections_of_type("system", "timeserver");
+    let ntp = ntp.first();
+    let globals = s.sections_of_type("network", "globals");
+    let globals = globals.first();
+    let timezone = system.map(|s| s.scalar("timezone")).unwrap_or_default();
+    let mut zonename = system.map(|s| s.scalar("zonename")).unwrap_or_default();
+    if zonename.is_empty() && matches!(timezone.as_str(), "UTC" | "GMT0" | "") {
         zonename = "UTC".into();
     }
-
-    let ntp = snapshot.section("system", "ntp").or_else(|| {
-        snapshot
-            .sections_of_type("system", "timeserver")
-            .into_iter()
-            .next()
-    });
     Facts {
-        hostname,
+        hostname: system.map(|s| s.scalar("hostname")).unwrap_or_default(),
         zonename,
         timezone,
-        ntp_section: ntp
-            .as_ref()
-            .map(|section| section.name())
-            .unwrap_or_default(),
-        ntp_enabled: ntp
-            .as_ref()
-            .map(|section| section.scalar("enabled") != "0")
-            .unwrap_or(true),
-        servers: ntp
-            .as_ref()
-            .map(|section| section.list("server"))
-            .unwrap_or_default(),
-        datetime: String::new(),
+        ntp_section: ntp.map(|s| s.name()).unwrap_or_default(),
+        ntp_enabled: ntp.is_some_and(|s| s.scalar("enabled") != "0"),
+        servers: ntp.map(|s| s.list("server")).unwrap_or_default(),
+        ula: globals.map(|s| s.scalar("ula_prefix")).unwrap_or_default(),
+        steering: globals.is_some_and(|s| s.scalar("packet_steering") == "1"),
+        serve: ntp.is_some_and(|s| s.scalar("enable_server") == "1"),
     }
 }
-
-fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
-    let (now_display, now_input) = local_time();
-    let datetime = if values.datetime.is_empty() {
-        now_input
-    } else {
-        values.datetime.clone()
-    };
-    let mut zones: Vec<SelectOption> = ZONES
-        .iter()
-        .map(|(value, _)| SelectOption {
-            value: (*value).into(),
-            label: (*value).into(),
-        })
-        .collect();
-    if !values.zonename.is_empty() && !ZONES.iter().any(|(name, _)| *name == values.zonename) {
-        zones.insert(
-            0,
-            SelectOption {
-                value: values.zonename.clone(),
-                label: values.zonename.clone(),
-            },
-        );
+fn keyed(
+    name: &str,
+    label: &str,
+    key: &str,
+    value: &str,
+    errors: &BTreeMap<String, String>,
+) -> Widget {
+    let mut w = Widget::field(name, label, value, "", "").writes(key);
+    if let Widget::Field { error, .. } = &mut w {
+        *error = errors.get(name).cloned().unwrap_or_default();
     }
-    let servers = if values.servers.is_empty() {
+    w
+}
+fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
+    let (clock, _) = local_time();
+    let mut zones: Vec<_> = ZONES.iter().map(|(n, _)| SelectOption::new(n, n)).collect();
+    if !v.zonename.is_empty() && !zones.iter().any(|z| z.value == v.zonename) {
+        zones.insert(0, SelectOption::new(&v.zonename, &v.zonename));
+    }
+    let mut servers =
+        Widget::list("server", "Time servers", "host", &v.servers, "").writes("server");
+    if let Widget::List {
+        style,
+        prompt,
+        errors,
+        ..
+    } = &mut servers
+    {
+        *style = "rows".into();
+        *prompt = "Add a server".into();
+        if let Some(error) = e.get("server") {
+            errors.insert("0".into(), error.clone());
+        }
+    }
+    let mut clock_button = Widget::button("Use my computer's time", "secondary");
+    if let Widget::Button { name, value, .. } = &mut clock_button {
+        *name = "_action".into();
+        *value = "clock".into();
+    }
+    let mut time = Widget::section(
+        "Time",
+        "",
         vec![
-            "0.openwrt.pool.ntp.org".to_string(),
-            "1.openwrt.pool.ntp.org".to_string(),
-        ]
-    } else {
-        values.servers.clone()
-    };
-
-    let compact = |children: Vec<Widget>| Widget::Stack {
-        flush: Default::default(),
-
-        width: "compact".into(),
-        compact: false,
-        inline: false,
-        divided: false,
-        children,
-    };
-
-    let identity = Widget::section(
-        "Device identity",
-        "The name this router uses on your network and in Verso.",
-        vec![compact(vec![Widget::field(
-            "hostname",
-            "Hostname",
-            &values.hostname,
-            "hostname",
-            "Use letters, numbers, and hyphens. Devices may find it using the local network suffix.",
-        )])],
-    );
-
-    let region = Widget::Section {
-        anchor: Default::default(),
-        kicker: Default::default(),
-        hairline: Default::default(),
-
-        title: "Time and region".into(),
-        sub: "Used for logs, schedules, certificates, and every time shown by the router.".into(),
-        meta: now_display,
-        meta_icon: "clock".into(),
-        meta_position: "inline".into(),
-        mode: String::new(),
-        flush: false,
-        control: None,
-        children: vec![
-            compact(vec![Widget::select(
+            Widget::hidden("_client_time", ""),
+            Widget::select(
                 "zonename",
-                "Timezone",
-                &values.zonename,
+                "Time zone",
+                &v.zonename,
                 zones,
-                timezone_error,
-            )]),
-            Widget::hidden("original_zonename", &values.zonename),
-            Widget::hidden("original_timezone", &values.timezone),
+                e.get("zonename").map(String::as_str).unwrap_or(""),
+            )
+            .writes("zonename"),
+            Widget::switch_keyed(
+                "ntp_enabled",
+                "Keep the clock synced over the internet",
+                "enabled",
+                "",
+                v.ntp_enabled,
+            ),
+            servers,
+            Widget::switch_keyed(
+                "enable_server",
+                "Provide time to devices on this network",
+                "enable_server",
+                "",
+                v.serve,
+            ),
         ],
-    };
-
-    // How the clock is kept is machinery: which servers are asked, in what order,
-    // and the hand-set fallback when nobody is. The timezone above is the fact a
-    // person came for, so this region belongs to the advanced reading (ADR-015).
-    let sync = Widget::Section {
-        anchor: Default::default(),
-        kicker: Default::default(),
-        hairline: Default::default(),
-
-        title: "Time synchronization".into(),
-        sub: "Keep the clock accurate automatically using trusted time servers.".into(),
-        meta: "Last synchronization not reported".into(),
-        meta_icon: "clock".into(),
-        meta_position: "inline".into(),
-        mode: MODE_ADVANCED.into(),
-        flush: false,
-        control: None,
-        children: vec![
-            Widget::Conditional {
-        key: Default::default(),
-        help: Default::default(),
-
-                name: "ntp_enabled".into(),
-                label: "Set the time automatically".into(),
-                checked: values.ntp_enabled,
-                fields: vec![compact(vec![Widget::list(
-                    "server",
-                    "Time servers",
-                    "host",
-                    &servers,
-                    "Servers are tried in order; leave several so time still works if one is unavailable.",
-                )])],
-                otherwise: vec![compact(vec![Widget::Field {
-        key: Default::default(),
-        tip: Default::default(),
-        source: Default::default(),
-        unit: Default::default(),
-        pair: Default::default(),
-        remove: Default::default(),
-        style: Default::default(),
-
-                    name: "datetime".into(),
-                    label: "Date and time".into(),
-                    kind: "datetime-local".into(),
-                    advanced: false,
-                    value: datetime,
-                    values: Vec::new(),
-                    placeholder: String::new(),
-                    datatype: String::new(),
-                    options: Vec::new(),
-                    error: datetime_error.into(),
-                    help: "Interpreted in the selected timezone and applied to the router clock."
-                        .into(),
-                }])],
-            },
-            Widget::hidden("ntp_section", &values.ntp_section),
-        ],
-    };
-
-    Envelope::page(
-        "System",
-        Widget::Form {
-            note: Default::default(),
-
-            style: "page".into(),
-            submit: String::new(),
-            error: String::new(),
-            fields: vec![identity, region, sync],
-        },
     )
-    .with_subheading("The name, place, and clock shared by everything on this router.")
-    .with_width("narrow")
+    .ruled();
+    if let Widget::Section {
+        meta,
+        meta_position,
+        control,
+        ..
+    } = &mut time
+    {
+        *meta = clock;
+        *meta_position = "inline".into();
+        *control = Some(Box::new(clock_button));
+    }
+    let form = Widget::Form {
+        style: "page".into(),
+        submit: "Save".into(),
+        note: String::new(),
+        error: if e.is_empty() {
+            String::new()
+        } else {
+            e.values().next().cloned().unwrap_or_default()
+        },
+        fields: vec![
+            Widget::section(
+                "",
+                "",
+                vec![
+                    keyed("hostname", "Router name", "hostname", &v.hostname, e),
+                    keyed("ula_prefix", "Private IPv6 prefix", "ula_prefix", &v.ula, e).explained(
+                        "Devices get a stable local address even without an ISP prefix.",
+                        "network globals",
+                    ),
+                    Widget::switch_keyed(
+                        "packet_steering",
+                        "Spread packet handling over all cores",
+                        "packet_steering",
+                        "",
+                        v.steering,
+                    ),
+                ],
+            )
+            .ruled(),
+            time,
+        ],
+    };
+    Envelope::page("General", form)
+        .with_width("form")
+        .with_tone("neutral")
+        .ruled()
+}
+fn valid_ula(value: &str) -> bool {
+    let Some((address, prefix)) = value.split_once('/') else {
+        return false;
+    };
+    let Ok(address) = address.parse::<Ipv6Addr>() else {
+        return false;
+    };
+    let Ok(prefix) = prefix.parse::<u32>() else {
+        return false;
+    };
+    (7..=64).contains(&prefix)
+        && address.octets()[0] & 0xfe == 0xfc
+        && (u128::from(address) & (u128::MAX >> prefix)) == 0
+}
+fn valid_server(v: &str) -> bool {
+    v.parse::<IpAddr>().is_ok() || v.len() <= 253 && v.split('.').all(valid_hostname)
+}
+// valid_hostname accepts a single DNS label: letters, digits and hyphens, not
+// empty, not starting or ending with a hyphen, at most 63 characters.
+fn valid_hostname(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 63
+        && !name.starts_with('-')
+        && !name.ends_with('-')
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
 fn valid_local_datetime(value: &str) -> bool {
@@ -389,120 +400,4 @@ fn local_time() -> (String, String) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{page, valid_local_datetime, valid_posix_tz, Facts, ZONES};
-    use std::collections::HashSet;
-
-    /// The General page as the shell receives it, from a device with a name, a
-    /// zone, and automatic time.
-    fn general() -> serde_json::Value {
-        let envelope = page(
-            Facts {
-                hostname: "router".into(),
-                zonename: "Europe/Ljubljana".into(),
-                timezone: "CET-1CEST,M3.5.0,M10.5.0/3".into(),
-                ntp_section: "ntp".into(),
-                ntp_enabled: true,
-                servers: vec!["0.openwrt.pool.ntp.org".into()],
-                datetime: String::new(),
-            },
-            "",
-            "",
-        );
-        serde_json::to_value(&envelope).expect("serialize")
-    }
-
-    /// The name and the timezone are what a person came to General for; how the
-    /// clock is kept is machinery, and belongs to the advanced reading (ADR-015).
-    #[test]
-    fn time_synchronization_is_the_advanced_reading_of_this_page() {
-        let body = general();
-        let regions = &body["widget"]["fields"];
-        assert_eq!(regions[0]["title"], "Device identity");
-        assert!(
-            regions[0].get("mode").is_none(),
-            "the device's name belongs to both readings"
-        );
-        assert_eq!(regions[1]["title"], "Time and region");
-        assert!(
-            regions[1].get("mode").is_none(),
-            "the timezone belongs to both readings"
-        );
-        assert_eq!(regions[2]["title"], "Time synchronization");
-        assert_eq!(regions[2]["mode"], "advanced");
-    }
-
-    #[test]
-    fn timezone_catalog_is_complete_and_unique() {
-        assert!(
-            ZONES.len() >= 400,
-            "timezone catalog has only {} entries",
-            ZONES.len()
-        );
-
-        let mut names = HashSet::new();
-        for (name, tzstring) in ZONES {
-            assert!(!name.is_empty(), "timezone name must not be empty");
-            assert!(!tzstring.is_empty(), "{name} has no POSIX TZ string");
-            assert!(names.insert(*name), "duplicate timezone {name}");
-        }
-
-        for expected in [
-            "UTC",
-            "Africa/Johannesburg",
-            "America/New_York",
-            "Asia/Tokyo",
-            "Australia/Sydney",
-            "Europe/Ljubljana",
-            "Pacific/Auckland",
-        ] {
-            assert!(
-                names.contains(expected),
-                "timezone catalog is missing {expected}"
-            );
-        }
-    }
-
-    #[test]
-    fn timezone_catalog_keeps_openwrt_posix_values() {
-        let lookup = |name| {
-            ZONES
-                .iter()
-                .find(|(candidate, _)| *candidate == name)
-                .map(|(_, tzstring)| *tzstring)
-        };
-        assert_eq!(lookup("UTC"), Some("GMT0"));
-        assert_eq!(
-            lookup("Europe/Ljubljana"),
-            Some("CET-1CEST,M3.5.0,M10.5.0/3")
-        );
-        assert_eq!(lookup("America/New_York"), Some("EST5EDT,M3.2.0,M11.1.0"));
-    }
-
-    #[test]
-    fn local_datetime_validation_is_calendar_aware() {
-        for value in ["2026-08-30T12:34:56", "2024-02-29T00:00:00"] {
-            assert!(valid_local_datetime(value), "rejected {value}");
-        }
-        for value in [
-            "",
-            "2026-08-30T12:34",
-            "2026-02-29T12:34:56",
-            "2026-13-01T12:34:56",
-            "2026-08-30T24:00:00",
-        ] {
-            assert!(!valid_local_datetime(value), "accepted {value}");
-        }
-    }
-
-    #[test]
-    fn posix_tz_charset_rejects_control_and_meta() {
-        for value in ["GMT0", "CET-1CEST,M3.5.0,M10.5.0/3", "<+08>-8"] {
-            assert!(valid_posix_tz(value), "rejected {value:?}");
-        }
-        for value in ["", "UTC\nfoo", "US/x;rm -rf /", "a b"] {
-            assert!(!valid_posix_tz(value), "accepted {value:?}");
-        }
-        assert!(!valid_posix_tz(&"A".repeat(65)), "accepted 65-char tz");
-    }
-}
+mod tests;

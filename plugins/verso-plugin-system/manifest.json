@@ -5,15 +5,77 @@
   "socket": "/var/run/verso/system.sock",
   "schema_version": 1,
   "nav": [
-    { "section": "System", "label": "General", "path": "/" }
+    {
+      "section": "System",
+      "label": "General",
+      "path": "/"
+    }
   ],
   "acl": {
     "read": [
-      { "scope": "uci", "object": "system", "function": "read" }
+      {
+        "scope": "uci",
+        "object": "system",
+        "function": "read"
+      },
+      {
+        "scope": "uci",
+        "object": "network",
+        "function": "read"
+      },
+      {
+        "scope": "uci",
+        "object": "dropbear",
+        "function": "read"
+      },
+      {
+        "scope": "uci",
+        "object": "uhttpd",
+        "function": "read"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "accessCredentials"
+      }
     ],
     "write": [
-      { "scope": "uci", "object": "system", "function": "write" },
-      { "scope": "ubus", "object": "verso", "function": "setSystemTime" }
+      {
+        "scope": "uci",
+        "object": "system",
+        "function": "write"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "setSystemTime"
+      },
+      {
+        "scope": "uci",
+        "object": "network",
+        "function": "write"
+      },
+      {
+        "scope": "uci",
+        "object": "dropbear",
+        "function": "write"
+      },
+      {
+        "scope": "uci",
+        "object": "uhttpd",
+        "function": "write"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "setAuthorizedKeys"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "setWebCertificate"
+      }
     ]
-  }
+  },
+  "system_access": "/access"
 }
