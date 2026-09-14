@@ -91,6 +91,48 @@ deploy_helper() {
 	fi
 }
 
+# seed_dev_forward gives the port-forwards listing one plausible entry so the
+# populated state is what dev sessions see; deleting it through the UI shows the
+# empty state and STAYS deleted — the marker file makes the seed once-ever.
+seed_dev_forward() {
+	docker exec "$CONTAINER" sh -c '
+		[ -e /etc/verso-dev-forward-seeded ] && exit 0
+		uci show firewall 2>/dev/null | grep -q "=redirect" && exit 0
+		uci add firewall redirect >/dev/null
+		uci set firewall.@redirect[-1].name="Minecraft server"
+		uci set firewall.@redirect[-1].src="wan"
+		uci set firewall.@redirect[-1].src_dport="25565"
+		uci set firewall.@redirect[-1].dest="lan"
+		uci set firewall.@redirect[-1].dest_ip="10.0.0.30"
+		uci set firewall.@redirect[-1].dest_port="25565"
+		uci set firewall.@redirect[-1].proto="tcp"
+		uci set firewall.@redirect[-1].target="DNAT"
+		uci commit firewall
+		touch /etc/verso-dev-forward-seeded
+	' && log "seeded a dev port forward (delete it in the UI to see the empty state)"
+}
+
+# seed_dev_livelog gives the firewall's Activity page something to be about:
+# firewall4 logs only what is asked of it, so with nothing asking, the page is
+# honestly empty. One logging rule on the wan zone is the archetype — the
+# internet's background noise arriving and dying at the policy — and it is what
+# the live stream reads. Marker-guarded like the port forward: delete the rule
+# in the UI to see the empty state, and it stays deleted.
+seed_dev_livelog() {
+	docker exec "$CONTAINER" sh -c '
+		[ -e /etc/verso-dev-livelog-seeded ] && exit 0
+		uci add firewall rule >/dev/null
+		uci set firewall.@rule[-1].name="Log-WAN-probes"
+		uci set firewall.@rule[-1].src="wan"
+		uci set firewall.@rule[-1].proto="tcp"
+		uci set firewall.@rule[-1].target="DROP"
+		uci set firewall.@rule[-1].log="1"
+		uci commit firewall
+		fw4 reload >/dev/null 2>&1 || /etc/init.d/firewall reload >/dev/null 2>&1 || true
+		touch /etc/verso-dev-livelog-seeded
+	' && log "seeded a logging firewall rule — Firewall → Activity reads it (in Docker the kernel emits none: scripts/dev-livelog-feed.sh)"
+}
+
 # deploy_i18n lands the localization catalogs — ADR-012 data files the shell
 # reads from disk, never part of the binary — under the shell's i18n dir and
 # restarts the shell so it reloads them. On a real device these arrive as
@@ -124,6 +166,15 @@ deploy_bundled_plugins() {
 			docker cp "$dir/target/x86_64-unknown-linux-musl/release/$name" "$CONTAINER:/usr/bin/.$name.new"
 			docker cp "$dir/rootfs/etc/init.d/$name" "$CONTAINER:/etc/init.d/.$name.new"
 			docker cp "$dir/manifest.json" "$CONTAINER:/usr/share/verso/plugins/$id/.manifest.json.new"
+			# A plugin whose manifest declares uci scopes ships the rpcd acl.d
+			# file that makes them grantable (ADR-007). rpcd reads acl.d at login,
+			# and every hot swap ends the session anyway, so the next sign-in has
+			# the grant without restarting anything.
+			if [ -d "$dir/rootfs/usr/share/rpcd/acl.d" ]; then
+				docker cp "$dir/rootfs/usr/share/rpcd/acl.d/." "$CONTAINER:/usr/share/rpcd/acl.d/"
+				docker exec "$CONTAINER" sh -c \
+					"chown root:root /usr/share/rpcd/acl.d/$name.json; chmod 0644 /usr/share/rpcd/acl.d/$name.json"
+			fi
 			# The plugin's travelling catalogs (i18n/<code>.json, ADR-012) ride
 			# beside the manifest; the shell re-reads them on its next start.
 			if [ -d "$dir/i18n" ]; then
@@ -174,7 +225,13 @@ push_css() {
 deploy_shell() {
 	log "building shell…"
 	compile_css || true # embedded CSS stays last-good; the failure is already logged
-	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$BIN" "$CMD" 2>&1; then
+	# The dev binary states its lineage and its nature at once: "<ver>-dev" —
+	# a packaged build wears the bare version, an unstamped one plain "dev".
+	local dev_version="dev"
+	if [ -f VERSION ]; then
+		dev_version="$(tr -d '[:space:]' <VERSION)-dev"
+	fi
+	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/we-are-mono/verso/internal/version.Version=$dev_version" -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0
 	fi
@@ -191,17 +248,20 @@ deploy_shell() {
 sync_all() {
 	deploy_acls
 	deploy_rpcd_acls
+	seed_dev_forward
+	seed_dev_livelog
 	deploy_i18n
 	deploy_helper
 	deploy_bundled_plugins
 	deploy_shell
 }
 
-# Signatures deliberately exclude build output directories. input.css also has
-# its own fast path, while a shell rebuild recompiles it before embedding assets.
+# Signatures exclude build outputs and test-only files: running checks must not
+# restart services. input.css has its own fast path, while a shell rebuild
+# recompiles it before embedding assets.
 shell_sig() {
 	{
-		find cmd internal -type f ! -path "$CSS_IN" ! -path "$CSS_OUT" -printf '%T@ %p\n'
+		find cmd internal -type f ! -name '*_test.go' ! -path '*/testdata/*' ! -path "$CSS_IN" ! -path "$CSS_OUT" -printf '%T@ %p\n'
 		find docker/rootfs/etc/init.d/verso -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum
 }
@@ -214,10 +274,10 @@ helper_sig() {
 }
 plugins_sig() {
 	{
-		find plugins/verso-plugin-sdk -type f -printf '%T@ %p\n'
+		find plugins/verso-plugin-sdk \( -name target -o -name tests -o -name testdata \) -prune -o -type f -printf '%T@ %p\n'
 		for marker in $BUNDLED_PLUGIN_GLOB; do
 			[ -e "$marker" ] || continue
-			find "$(dirname "$marker")" -path '*/target' -prune -o -type f -printf '%T@ %p\n'
+			find "$(dirname "$marker")" \( -name target -o -name tests -o -name testdata \) -prune -o -type f -printf '%T@ %p\n'
 		done
 	} 2>/dev/null | sha1sum
 }

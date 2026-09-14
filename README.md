@@ -130,6 +130,14 @@ make dev            # watch sources -> hot-swap only the component that changed
 Edit, save, and refresh the browser. CSS hot-swaps without a restart; shell,
 `verso-rpcd`, bundled plugins, and ACLs reload independently. This keeps an
 in-flight helper operation alive while UI code is rebuilt. No image rebuild.
+Build outputs and test fixtures do not trigger reloads.
+
+In this Docker setup, `procd` can report `failed adding instance cgroup` when a
+service starts: Docker exposes a read-only cgroup tree, so OpenWrt cannot create
+per-service cgroups inside it. The service still starts, supervised by `procd`;
+Docker manages the container's cgroup. This is a development-container limitation,
+not a Verso startup failure. Normal shell, helper, and plugin startup messages go
+to stdout (`info` in `logread`); failures go to stderr (`err`).
 
 ## Decisions (ADRs)
 

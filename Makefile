@@ -370,7 +370,7 @@ apk-i18n: apk-preflight
 	rm -rf $(I18N_PAYLOAD)
 	install -Dm644 $(I18N_SRC) $(I18N_PAYLOAD)/usr/share/verso/i18n/$(I18N_CODE)/$(I18N_COMPONENT).json
 	fakeroot -- sh -c 'chown -R 0:0 "$(I18N_PAYLOAD)" && "$(APK)" mkpkg \
-	  --info name:$(I18N_PKG) --info version:$(VER) --info arch:all \
+	  --info name:$(I18N_PKG) --info version:$(VER) --info arch:noarch \
 	  --info "description:Verso localization catalog ($(I18N_COMPONENT), $(I18N_CODE))" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
@@ -378,7 +378,7 @@ apk-i18n: apk-preflight
 	  --files "$(I18N_PAYLOAD)" \
 	  --sign-key "$(KEY)" \
 	  --output "$(I18N_OUT)"'
-	@echo "built and signed: $(I18N_OUT)  (arch all, version $(VER))"
+	@echo "built and signed: $(I18N_OUT)  (arch noarch, version $(VER))"
 
 # apk-i18n-publish drops the catalog package alongside verso in the per-arch dev
 # repo and re-indexes what is present (an arch:all package installs on the router's

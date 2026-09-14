@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // Package version carries the build's release string, stamped into the binary
-// at link time. A build with no stamp — `go run`, `go test`, the `make dev`
-// hot-reload loop — reports "dev", which is itself a useful signal: the login
-// page shows "dev" for a working build and a real version only for a packaged
-// (apk) one.
+// at link time. A build with no stamp — `go run`, `go test` — reports "dev";
+// the `make dev` hot-reload loop stamps "<ver>-dev", so a working build states
+// both its lineage and its nature, and a bare version means a packaged (apk)
+// build.
 package version
 
 // Version is the release string. It is overwritten at link time via
