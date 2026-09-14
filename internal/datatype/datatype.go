@@ -20,13 +20,16 @@ import (
 type Validator func(value string) error
 
 var registry = map[string]Validator{
-	"hostname": hostname,
-	"fqdn":     fqdn,
-	"ip4addr":  ip4addr,
-	"ip6addr":  ip6addr,
-	"ipaddr":   ipaddr,
-	"host":     host,
-	"port":     port,
+	"dnsserver":  dnsserver,
+	"dnsforward": dnsforward,
+	"dnsaddress": dnsaddress,
+	"hostname":   hostname,
+	"fqdn":       fqdn,
+	"ip4addr":    ip4addr,
+	"ip6addr":    ip6addr,
+	"ipaddr":     ipaddr,
+	"host":       host,
+	"port":       port,
 }
 
 // Validate checks value against the named datatype. An unknown name is an error
@@ -117,3 +120,50 @@ func port(v string) error {
 	}
 	return nil
 }
+
+// DNS list entries retain dnsmasq's scoped forwarding notation. The plugin
+// additionally validates newly added entries and preserves existing expert syntax.
+func dnsserver(v string) error {
+	parts := strings.Split(v, "@")
+	address := strings.Split(parts[0], "#")
+	if len(address) > 2 || ipaddr(address[0]) != nil {
+		return fmt.Errorf("Enter a valid DNS address or domain/server entry.")
+	}
+	if len(address) == 2 && port(address[1]) != nil {
+		return fmt.Errorf("Enter a valid DNS address or domain/server entry.")
+	}
+	for _, source := range parts[1:] {
+		if source == "" || strings.ContainsAny(source, " /\\\t\r\n") {
+			return fmt.Errorf("Enter a valid DNS address or domain/server entry.")
+		}
+	}
+	return nil
+}
+func dnsscope(v string, address bool) error {
+	invalid := fmt.Errorf("Enter a valid DNS address or domain/server entry.")
+	if !strings.HasPrefix(v, "/") {
+		return invalid
+	}
+	parts := strings.Split(v[1:], "/")
+	if len(parts) < 2 {
+		return invalid
+	}
+	for _, name := range parts[:len(parts)-1] {
+		if name != "#" && hostname(strings.TrimSuffix(strings.TrimPrefix(name, "*"), ".")) != nil {
+			return invalid
+		}
+	}
+	target := parts[len(parts)-1]
+	if target == "#" || target == "" {
+		return nil
+	}
+	if address {
+		if ipaddr(target) != nil {
+			return invalid
+		}
+		return nil
+	}
+	return dnsserver(target)
+}
+func dnsforward(v string) error { return dnsscope(v, false) }
+func dnsaddress(v string) error { return dnsscope(v, true) }

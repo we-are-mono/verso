@@ -20,14 +20,27 @@ import (
 
 // fakeStats is the canned local-kernel source for the overview meters.
 type fakeStats struct {
-	cpu     int
+	cpu     float64
 	cpuErr  error
 	root    sysstat.Storage
 	rootErr error
 }
 
-func (f fakeStats) CPUPercent() (int, error)       { return f.cpu, f.cpuErr }
+func (f fakeStats) CPUPercent() (float64, error)   { return f.cpu, f.cpuErr }
 func (f fakeStats) Root() (sysstat.Storage, error) { return f.root, f.rootErr }
+
+type changingCPUStats struct {
+	fakeStats
+	values []float64
+}
+
+func (f *changingCPUStats) CPUPercent() (float64, error) {
+	value := f.values[0]
+	if len(f.values) > 1 {
+		f.values = f.values[1:]
+	}
+	return value, nil
+}
 
 // metersBackend has 2 GiB of memory with 0.8 GiB available — 60% full.
 func metersBackend() fakeBackend {
@@ -53,7 +66,10 @@ func decodeMeters(t *testing.T, payload string) []meterReading {
 // stream streams, and the payload is the readings JSON.
 func TestOverviewEventsStream(t *testing.T) {
 	s := newServer(t, metersBackend())
-	s.stats = fakeStats{cpu: 18, root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}}
+	s.stats = &changingCPUStats{
+		fakeStats: fakeStats{root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}},
+		values:    []float64{0.4, 0.6},
+	}
 	s.eventInterval = 5 * time.Millisecond
 
 	ts := httptest.NewServer(s.Handler())
@@ -107,11 +123,36 @@ func TestOverviewEventsStream(t *testing.T) {
 	if len(meters) != 4 || meters[0].Name != "sys-load" {
 		t.Fatalf("first event payload = %+v", meters)
 	}
+	for i, want := range []string{"0.4", "0.6"} {
+		readings := decodeMeters(t, payloads[i])
+		if len(readings) != 4 || readings[1].Name != "sys-cpu" || readings[1].Value != want || readings[1].Unit != "%" {
+			t.Errorf("event %d should carry CPU %s%%: %+v", i, want, readings)
+		}
+	}
+}
+
+func TestIndexCPUPercentPrecision(t *testing.T) {
+	for _, tc := range []struct {
+		cpu  float64
+		want string
+	}{{0, "0"}, {0.4, "0.4"}, {0.64, "0.6"}, {18, "18"}, {99.9, "99.9"}} {
+		t.Run(tc.want, func(t *testing.T) {
+			s := newServer(t, metersBackend())
+			s.stats = fakeStats{cpu: tc.cpu}
+			rec := get(t, s, "/")
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET /: status = %d", rec.Code)
+			}
+			_, cpu, found := strings.Cut(rec.Body.String(), `data-verso-meter="sys-cpu"`)
+			if !found || !strings.Contains(strings.SplitN(cpu, "data-verso-meter-bar", 2)[0], "data-verso-meter-value>"+tc.want+"</span>") {
+				t.Errorf("CPU %g should render as %s%%", tc.cpu, tc.want)
+			}
+		})
+	}
 }
 
 // TestIndexWithoutMetersStillRenders: the overview renders (and answers 200)
-// even with every live source down — its System panel is hardcoded for now, so
-// the page never depends on the meter sources.
+// even with every live source down, omitting unavailable readings.
 func TestIndexWithoutMetersStillRenders(t *testing.T) {
 	s := newServer(t, fakeBackend{err: errors.New("bus down")})
 	s.stats = fakeStats{cpuErr: errors.New("no proc"), rootErr: errors.New("no statfs")}
@@ -119,7 +160,7 @@ func TestIndexWithoutMetersStillRenders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if !strings.Contains(rec.Body.String(), "font-serif") {
+	if !strings.Contains(rec.Body.String(), "text-3xl leading-[1.1] font-semibold tracking-tight") {
 		t.Error("GET /: overview should render regardless of the meter sources")
 	}
 }

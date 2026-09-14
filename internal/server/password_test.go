@@ -28,7 +28,7 @@ func TestPasswordFormRenders(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		`name="current_password"`, `name="password"`, `name="confirm"`, `type="password"`,
-		"Administrator account", "New password", "Repeat new password", "Update password", "Active sessions", "this session",
+		"Router password", "New password", "Repeat new password", "Change password", "Signed in now", "this browser",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("form missing %q", want)
@@ -40,7 +40,7 @@ func TestPasswordFormRenders(t *testing.T) {
 	}
 }
 
-func TestPasswordlessAccessOmitsCurrentPasswordAndCapsule(t *testing.T) {
+func TestPasswordlessAccessOmitsCurrentPasswordAndShowsNoStagedChip(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{rootNoPassword: true}), "/system/access").Body.String()
 	for _, want := range []string{"No administrator password is set.", "Set password", "New password", "Repeat new password"} {
 		if !strings.Contains(body, want) {
@@ -50,8 +50,8 @@ func TestPasswordlessAccessOmitsCurrentPasswordAndCapsule(t *testing.T) {
 	if strings.Contains(body, `name="current_password"`) {
 		t.Error("passwordless Access must not ask for a current password")
 	}
-	if strings.Contains(body, `id="verso-capsule"`) {
-		t.Error("the immediate Access form must not create a clean staging capsule")
+	if !strings.Contains(body, stagedChipHidden) {
+		t.Error("the immediate Access form stages nothing, so the chip stays hidden")
 	}
 }
 
@@ -92,7 +92,7 @@ func TestAccessListsAndEndsOtherSessionWithoutExposingBearer(t *testing.T) {
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{"Firefox · Linux", "Safari · iPhone", "10.0.0.232", "10.0.10.117", "this session", "End session", "end-session:" + other.id} {
+	for _, want := range []string{"Firefox · Linux", "Safari · iPhone", "10.0.0.232", "10.0.10.117", "this browser", "Revoke", "end-session:" + other.id} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sessions table missing %q", want)
 		}
@@ -214,7 +214,7 @@ func TestPasswordBackendFailureIsContained(t *testing.T) {
 		t.Error("backend-failure notice not shown")
 	}
 	// Still the styled form, not a bare error string.
-	if !strings.Contains(body, "Update password") {
+	if !strings.Contains(body, "Change password") {
 		t.Error("form should re-render on backend failure")
 	}
 }

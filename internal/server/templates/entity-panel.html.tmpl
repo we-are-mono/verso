@@ -1,0 +1,53 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* The entity panel's inside: one tab per plugin contributing controls for
+     the subject. The frame — the sliding
+     aside, the scrim, the close — belongs to the drawer that fetched this; what
+     follows is only the contents, so opening a panel is one request and the
+     listing behind it carries none of this until someone asks.
+
+     The tab strip reflects the available contributors: several tabs get the
+     strip, one tab gets its body directly (a strip that decides nothing is
+     chrome), none leaves just the subject heading. */}}
+
+{{template "verso-drawer-header" .Title}}
+
+{{if gt (len .Tabs) 1}}
+<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8" aria-label="{{ t "Sections" }}">
+  {{range .Tabs}}
+  <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"{{if .Active}} aria-current="page"{{end}}
+    class="flex shrink-0 items-center gap-2 whitespace-nowrap text-base transition-colors {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}
+    {{/* Where the subject stands under this tab, so the strip answers the
+         question the panel was opened to ask before a tab is chosen. The chip
+         takes the tab's own weight: denim on the one in force, quiet on the
+         rest. */}}
+    {{if .State}}<span class="{{template "verso-chip-box"}} {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
+  {{end}}
+</nav>
+{{end}}
+
+{{/* The tab in force. A subject no plugin claims has nothing here — the facts
+     in the body are the whole panel, which is the honest reading of a board where
+     nothing is installed that can act on it. */}}
+<div class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-8 pt-7 pb-8">
+  {{if .Body}}<div>{{.Body}}</div>{{end}}
+  {{if .CTA}}
+  {{/* The commit row travels with the tab, not with the panel: the verb and the
+       consequence are the contributing plugin's, because only it knows what
+       applying its own change costs. */}}
+  <div class="mt-7 flex flex-wrap items-center gap-4 border-t border-rule pt-5">
+    <div class="flex flex-none gap-2">
+      {{/* The commit row sits outside the tab's form — the form is the plugin's
+           body, the row is the panel's frame — so it posts the panel's own
+           inputs rather than submitting an element it does not contain. The
+           answer swaps back into the panel, so the drawer stays open over the
+           listing that opened it. */}}
+      <button type="button" hx-post="{{.Post}}" hx-include="closest [data-verso-entity-body]"
+        hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"
+        class="flex h-9 cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep">{{.CTA}}</button>
+      <button type="button" @click="hide" class="flex h-9 cursor-pointer items-center rounded-xs border border-rule-strong px-4 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:border-faint hover:bg-quiet">{{ t "Cancel" }}</button>
+    </div>
+    {{if .Note}}<span class="ml-auto min-w-0 text-sm leading-snug text-meta">{{.Note}}</span>{{end}}
+  </div>
+  {{end}}
+</div>

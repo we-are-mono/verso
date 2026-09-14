@@ -30,7 +30,6 @@ import (
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/updatecheck"
-	"github.com/we-are-mono/verso/internal/version"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -44,7 +43,12 @@ var cssText string
 // /assets. The page chrome loads the scripts (ADR-004); CSS loads the embedded
 // font subsets without a third-party request.
 //
-//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso.js assets/verso-dev.js assets/verso-boot.js assets/login.js
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js assets/verso-boot.js
+//go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
+//go:embed assets/verso-packages.js
+//go:embed assets/verso-system.js
+//go:embed assets/verso-stream.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
+//go:embed assets/verso-login.js
 //go:embed assets/fonts
 var scriptFS embed.FS
 
@@ -76,7 +80,7 @@ type Server struct {
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
 	// pendingApply is the non-UCI tail a plugin POST prepares, keyed by the
-	// operator's session. Save & Apply drains and clears the session's entry only
+	// operator's session. The apply drains and clears the session's entry only
 	// after rpcd applies the UCI stage, so one operator's tail can never fire under
 	// another operator's apply, and a drained or failed action never lingers.
 	pendingApplyMu sync.Mutex
@@ -93,7 +97,9 @@ type Server struct {
 	auth         Authenticator
 	sessions     *Sessions
 	loginLimiter *loginLimiter
-	allowedHosts map[string]bool
+	// loginInternet reads only the public uplink boolean, without an rpcd session.
+	loginInternet func() (bool, error)
+	allowedHosts  map[string]bool
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -168,6 +174,7 @@ func New(
 		auth:             auth,
 		sessions:         newSessions(),
 		loginLimiter:     newLoginLimiter(time.Now),
+		loginInternet:    openwrt.InternetAvailable,
 		css:              template.CSS(cssText),
 		probe:            probeSocket,
 		stats:            sysstat.New(),
@@ -211,9 +218,15 @@ func identityTranslator(s string) string { return s }
 // function, so each installed language gets its own set (html/template binds funcs
 // at parse time). icon is bound as it is for the widget renderer.
 func parsePageTemplates(t func(string) string) (*template.Template, error) {
-	return template.New("page").
+	set, err := template.New("page").
 		Funcs(template.FuncMap{"icon": widget.Icon, "t": t}).
 		ParseFS(templateFS, "templates/*.tmpl")
+	if err != nil {
+		return nil, err
+	}
+	// The shared partials, parsed into the same set: a page that renders a fact
+	// the way a table cell does renders it with the same markup (widget.Partials).
+	return set.ParseFS(widget.Partials(), "templates/properties.html.tmpl", "templates/shared.html.tmpl")
 }
 
 // SetBundle installs a freshly loaded catalog set (ADR-012): it rebuilds the
@@ -333,6 +346,25 @@ func localizeAction(a *plugin.PageAction, tr func(string) string) *plugin.PageAc
 	c := *a
 	c.Label = tr(c.Label)
 	c.Href = widget.SafeHref(c.Href)
+	return &c
+}
+
+// localizeBack returns a copy of the masthead back-link with its label localized
+// and its glyph fixed, or nil for none. An empty label becomes "Cancel" — the
+// quiet default an edit page leans on — and the icon is always the left arrow,
+// since the back-link's glyph is the shell's to choose, never the plugin's. The
+// href is a shell route, sanitized like any plugin-supplied link.
+func localizeBack(a *plugin.PageAction, tr func(string) string) *plugin.PageAction {
+	if a == nil {
+		return nil
+	}
+	c := *a
+	c.Label = tr(c.Label)
+	if c.Label == "" {
+		c.Label = tr("Cancel")
+	}
+	c.Href = widget.SafeHref(c.Href)
+	c.Icon = "arrow-left"
 	return &c
 }
 
@@ -503,6 +535,8 @@ func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
 }
 
 type pageData struct {
+	Overview      bool
+	UpdateNotice  string
 	Lang          string // negotiated language for <html lang>, "en" when English
 	Title         string
 	Heading       string
@@ -510,10 +544,13 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
-	Display       bool               // opt into the serif display masthead without a kicker or lede
+	Display       bool               // opt into the display masthead without a kicker or lede
+	Tone          string             // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
+	Ruled         bool               // the masthead ends in a hairline, ruled off from the page's first section
 	Subheading    string             // optional lede under the heading
 	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
-	Width         string             // content-column width preset: "narrow" | "normal" (default) | "wide"
+	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
+	Width         string             // content-column width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
 	Nav           navModel
 	Body          template.HTML
@@ -527,33 +564,34 @@ type pageData struct {
 	// SessionExpiry is the moment this session ends (RFC3339, UTC), restated by
 	// every render: the browser follows it out rather than waiting for a click.
 	SessionExpiry string
-	// The sidebar's device row: the router's own name, the Verso release it runs
-	// as the quiet trailing detail, and UpdateReady when the cached update truth
-	// names something to install — the row's amber mark is that truth's only
-	// claim on a person's attention anywhere in the chrome.
-	DeviceName    string
-	DeviceVersion string
-	UpdateReady   bool
-	Dev           bool        // dev session: inject the CSS hot-reload script
-	Capsule       capsuleView // pending uci changes the staged-changes capsule shows (ADR-010)
+	// Nameplate is the identity the top bar wears: the running router hostname,
+	// falling back to prose when a fresh box has no
+	// readable name yet. The bar is the device's, not the software's; Verso
+	// the name lives on the login page and in Maintenance. Maker and Model sit
+	// beside it — who built this board and what they call it, read from
+	// /etc/board.json; both empty on a board that says neither.
+	Nameplate string
+	Maker     string
+	Model     string
+	Dev       bool       // dev session: inject the CSS hot-reload script
+	Staged    stagedView // pending uci changes the staged-changes chip shows (ADR-010)
 	// JSStrings is the localized catalog for the strings the shell's client
 	// script writes into the page after load (verso.js T) — client JS has no
 	// translator, so the render hands it these as a JSON blob (ADR-012).
 	JSStrings template.JS
-	// ShowCapsule: staging pages carry the bar always (inert when clean — a
-	// real control at rest, ADR-010); pages whose actions are immediate
-	// (Plugins, Password, Overview) show it only when the shared stage holds
-	// changes from elsewhere — there it is a truth-carrier, not furniture.
-	ShowCapsule bool
-	// HasPageForm marks a page whose fields are submitted by the capsule's
-	// single Save & Apply action rather than by an extra in-content button.
-	HasPageForm bool
-	Pages       []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
-	Modes       []pageTab // optional local views, rendered as a compact switch beside the heading
+	Pages     []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
+	Modes     []pageTab // optional local views, rendered as a compact switch beside the heading
 	// Flash is the one-shot outcome at the top of the content: the PRG
 	// confirmation from a redirect, or a plugin envelope's notice.
 	FlashVariant string // the tone vocabulary: "success" | "warning" | "danger" | "info" | "" (no flash)
 	FlashMessage string
+}
+
+// Flash is the page's one-shot outcome as the shared flash partial draws it —
+// the same treatment a panel gives its own outcome, so a save reads the same
+// wherever it lands.
+func (d pageData) Flash() widget.Flash {
+	return widget.Flash{Variant: d.FlashVariant, Message: d.FlashMessage}
 }
 
 // pageTab is one entry in the top bar: the shell-built href and whether it is
@@ -576,15 +614,54 @@ type pageHeader struct {
 	KickerStatus string
 	Immediate    bool
 	Live         bool
-	// Display opts a page into the serif display masthead even without a kicker or
+	// Display opts a page into the display masthead even without a kicker or
 	// lede — for a page whose heading is its own subject (the device's name on the
 	// Hardware page), not a section label.
-	Display    bool
-	Subheading string
-	Action     *plugin.PageAction // the page's one primary doorway, hard right on the heading row
-	Banner     *plugin.Banner
-	Notice     *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
-	Modes      []pageTab
+	Display bool
+	// Tone declares the heading a message about now rather than a place-label:
+	// it tints in the closed tone vocabulary ("info" | "success" | "warning" |
+	// "danger" | "neutral" — never a colour) and the " — <tab>" navigation
+	// suffix drops, both from the one word. "neutral" drops the suffix without
+	// a tint. Unknown values are ignored; absent means the plain masthead.
+	Tone string
+	// Ruled ends the masthead in a hairline: the title and lede are the first
+	// of the page's subjects, set off from the next the way its ruled sections
+	// are from each other. A listing, whose toolbar follows the heading, is not.
+	Ruled bool
+	// PanelOnly marks a render that answered with one panel's contents rather
+	// than a page — the gateway then sends the body alone, with none of the
+	// chrome the frame around it already has.
+	PanelOnly bool
+	// PreviewOnly marks a render that answered with one live preview block — what
+	// the form on screen would write — and nothing else. The page around it is
+	// not being replaced: the operator is mid-edit in it.
+	PreviewOnly bool
+	// PanelDone marks a render that answered a panel's own submission with the
+	// outcome alone: the change is in the stage and the panel is closing on it,
+	// so the frame swaps nothing and says the outcome where the panel was.
+	PanelDone bool
+	// StagedStructure marks a staged commit that changed which sections a config
+	// holds — one made or removed — rather than the values of ones it already
+	// had. The listing drawn from it gains or loses a row, which only a fresh
+	// page can show.
+	StagedStructure bool
+	Subheading      string
+	Action          *plugin.PageAction // the page's one primary doorway, hard right on the heading row
+	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
+	// back-link in the masthead above the heading. The plugin supplies the Href and
+	// optionally a Label; the shell defaults the label to "Cancel" and fixes the
+	// arrow-left glyph (localizeBack).
+	Back   *plugin.PageAction
+	Banner *plugin.Banner
+	Notice *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
+	Modes  []pageTab
+	// StagedCommit records that this render staged a uci commit (a successful
+	// editor submit). The gateway reads it to send an editor back to its listing
+	// after a save, rather than re-rendering the form
+	// in place; a listing's inline toggle stages too, but is not a page form, so
+	// it is synced in place instead of redirected.
+	CommandDone  bool
+	StagedCommit bool
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -594,17 +671,43 @@ type pageHeader struct {
 // pages carry the staged-changes bar even when clean; immediate-action pages
 // get it only when the shared stage is non-empty.
 // jsCatalog localizes the fixed set of strings verso.js writes into the page
-// after load — capsule labels, local-change rows, the dirty-close confirm.
+// after load — the staged-changes chip's words, an inline field's refusal.
 // Client JS has no translator (ADR-012), so the render serializes these into
 // the #verso-i18n blob; an unknown key falls back to its English source in the
 // script exactly as it would in the translator.
 func jsCatalog(tr func(string) string) template.JS {
 	keys := []string{
-		"No pending changes", "1 pending change", "%d pending changes",
-		"Field", "Previous", "New",
-		"On", "Off", "Set", "Not set",
-		"Original order", "New order",
-		"You have unsaved changes. Close without saving?",
+		"Enter a valid hostname or IP address.", "Enter a valid IP address.",
+		// The staged-changes chip, kept in step after an act on the page
+		// stages something, and how an apply went.
+		"1 staged change", "%d staged changes",
+		"1 change applied", "%d changes applied", "Apply rolled back",
+		"Couldn’t apply — check the settings and try again",
+		"Couldn’t confirm — the router may have rolled back",
+		"Couldn’t discard — try again",
+		// Inline-field validation, shown beneath the field on blur.
+		"Enter a value.",
+		"Use letters, numbers and hyphens — no spaces.",
+		"Couldn’t save that just now — try again.",
+		// The live listing: its pause control, the shelf of plucked values,
+		// what the section's meta says while events flow, and the words a
+		// row's age is stated in.
+		"Pause", "Resume", "Resume · %d new", "Clear",
+		"%d of %d events shown", "~%d events/s",
+		"now", "%d s", "%d min", "%d h",
+		// Package and service actions.
+		"Packages could not be loaded. Try again.",
+		"Could not check refresh status. Try again.",
+		"Installed files could not be loaded. Try again.",
+		"Could not confirm the action. Check the service state before trying again.",
+		"Searching…",
+		"Installing…",
+		"Removing…",
+		"Upgrading…",
+		"Refresh index", "Refreshing index…",
+		// System logs and staged reboot controls.
+		"Paused", "Logs unavailable", "Live", "Connecting…", "Nothing matches.",
+		"The operation could not be completed. Review staged changes before retrying.",
 	}
 	m := make(map[string]string, len(keys))
 	for _, k := range keys {
@@ -617,13 +720,23 @@ func jsCatalog(tr func(string) string) template.JS {
 	return template.JS(b) //nolint:gosec // a marshalled map of catalog strings, not user input
 }
 
-func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, stages bool, body template.HTML) {
+// pageTone bounds a declared masthead tone to the closed vocabulary; anything
+// else renders the plain masthead, mechanically, the way every unknown semantic
+// value degrades (ADR-005).
+func pageTone(tone string) string {
+	switch tone {
+	case "info", "success", "warning", "danger", "neutral":
+		return tone
+	}
+	return ""
+}
+
+func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, body template.HTML) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	pluginTr := s.pluginTranslators(r)
 	mode := readerMode(r)
-	capsule := s.capsule(r.Context(), s.sessionSID(r), tr)
-	hasPageForm := strings.Contains(string(body), "data-verso-page-form")
+	staged := s.staged(r.Context(), s.sessionSID(r), tr, pluginTr)
 	flashVariant, flashMessage := s.takeFlash(r)
 	// A plugin's outcome notice rides the same flash slot as the shell's PRG
 	// flash (one treatment for one meaning); the redirect flash, being the
@@ -655,28 +768,28 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	if hpErr != nil {
 		hasPassword = true
 	}
-	// The device row names the router itself. A box whose hostname cannot be read
-	// still has a row — it just says what it is rather than who it is.
-	deviceName, hostErr := s.backend.Hostname(r.Context(), s.sessionSID(r))
-	if hostErr != nil || deviceName == "" {
-		deviceName = tr("This device")
-	}
-	updates, updatesKnown := s.updateTruth()
+	nameplate := s.nameplate(r)
+	hw := board()
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "page.html.tmpl", pageData{
+		Overview:      r.URL.Path == "/",
+		UpdateNotice:  s.homeUpdateNotice(r, tr),
 		Lang:          langAttr(lang),
 		Title:         "Verso",
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
 		Kicker:        tr(hdr.Kicker),
 		Display:       hdr.Display,
+		Tone:          pageTone(hdr.Tone),
+		Ruled:         hdr.Ruled,
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		Subheading:    tr(hdr.Subheading),
 		Action:        localizeAction(hdr.Action, tr),
+		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
 		CSS:           s.currentCSS(),
-		Nav:           s.buildSidebar(r.URL.Path, mode, tr, pluginTr),
+		Nav:           s.buildSidebar(r.URL.Path, mode, tr, pluginTr, localizedPages),
 		Body:          body,
 		Advanced:      mode == widget.ModeAdvanced,
 		ModeReturn:    r.URL.RequestURI(),
@@ -684,14 +797,12 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Banner:        localizeBanner(hdr.Banner, tr),
 		CSRFToken:     s.sessionCSRF(r),
 		SessionExpiry: s.sessionExpiryStamp(r),
-		DeviceName:    deviceName,
-		DeviceVersion: version.Version,
-		UpdateReady:   updatesKnown && updates.Pending(),
+		Nameplate:     nameplate,
+		Maker:         hw.Maker,
+		Model:         hw.Model,
 		Dev:           s.devCSS != "",
-		Capsule:       capsule,
+		Staged:        staged,
 		JSStrings:     jsCatalog(tr),
-		ShowCapsule:   stages || capsule.Count > 0,
-		HasPageForm:   hasPageForm,
 		Pages:         localizedPages,
 		Modes:         localizedModes,
 		FlashVariant:  flashVariant,
@@ -709,13 +820,15 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 // plugin page, this is the shell's own content, so a render failure is a real
 // 500, not a contained notice.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// The advanced overview, transferred hardcoded from the design: verdict,
-	// status tiles, IPv4/IPv6 facts, the traffic graph, System, and the Interfaces
-	// listing (a flat Table). It opens on the verdict, so the page carries no
-	// masthead heading. The System panel's firmware/kernel/uptime are live; the
-	// shell fills them, degrading to "unavailable" on a backend miss.
+	// The shell owns the landing page's composition and reads its live facts.
+	// Plugin destinations come from their manifests; no plugin markup crosses
+	// into this page. A failed source leaves an explicit unavailable state.
 	sid := s.sessionSID(r)
-	ov := &widget.Overview{}
+	lang, catalog := s.localize(r)
+	tr := translatorOrIdentity(catalog)
+	now := time.Now()
+	zone, offset := now.Zone()
+	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset}
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model
@@ -723,26 +836,26 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		log.Printf("verso: overview: board unavailable: %v", boardErr)
 	}
 	if si, err := s.backend.SystemInfo(r.Context(), sid); err == nil {
-		ov.Uptime = formatUptime(si.Uptime)
+		ov.Uptime = loginDuration(tr, si.Uptime)
 	} else {
 		log.Printf("verso: overview: system info unavailable: %v", err)
 	}
 	// The process-wide sampler normally supplies an already-warm minute. WAN data
 	// can still use the low-cost netifd device counters if sampling fails.
 	var d, u float64
-	wan, wanErr := s.backend.WANStatus(r.Context(), sid)
+	wan, wanErr := s.wanStatus(r)
 	primaryWAN, primaryWANOK := wan.Primary()
 	if wanErr == nil {
 		ov.WANKnown, ov.WANUp = true, wan.Up()
 		if primaryWANOK {
 			ov.WANDevice = primaryWAN.Device
-			ov.WANUptime = formatUptime(primaryWAN.Uptime)
+			ov.WANUptime = loginDuration(tr, primaryWAN.Uptime)
 		}
 	} else {
 		log.Printf("verso: overview: wan status unavailable: %v", wanErr)
 	}
 	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
-	ov.WiFiPresent = telemetryOK && len(snapshot.WirelessPHYs) != 0
+	ov.InterfacesKnown = telemetryOK
 	if telemetryOK && wanErr == nil && primaryWANOK {
 		if device, found := snapshot.Interface(primaryWAN.Device); found {
 			ov.DownSeries, ov.UpSeries = telemetryInterfaceRates(device.History)
@@ -765,6 +878,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
 			ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
 			ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn)
+			for i := range ov.V6 {
+				if ov.V6[i].Label == "Expires" {
+					ov.V6[i].Value = loginDuration(tr, conn.V6Valid)
+				}
+			}
 		} else {
 			log.Printf("verso: overview: wan connection unavailable: %v", err)
 			unavailable := []widget.OverviewFact{{Label: "Status", Value: "unavailable"}}
@@ -772,50 +890,39 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
-	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid))
+	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid, tr))
 	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
-	_, t := s.localize(r)
-	s.applySensors(ov, board.BoardName, translatorOrIdentity(t))
+	s.applySensors(ov, board.BoardName, tr)
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
-	// The roster is its own page; the tile carries the one number and the way in.
+	// Devices remain their own page; the Interfaces tile carries their count.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
-	ov.DevicesHref = devicesPath
-	// Each remaining tile is the doorway to the page its fact belongs to. Security
-	// resolves through the same section resolver the sidebar's row uses, so the two
-	// surfaces can never disagree about where the domain lives — or that it is not
-	// there. The software tile reads the cached update truth and nothing live: the
-	// home page never waits on a package feed.
-	ov.SecurityHref = liveSectionHref(s.sectionHref("Security"))
-	ov.SoftwareHref, ov.UpdatesHref = packagesPath, maintenancePath
-	if truth, known := s.updateTruth(); known {
-		ov.UpdatesKnown = true
-		ov.UpdatesPackages = len(truth.Packages)
-		ov.UpdatesFirmware = truth.Firmware.State == openwrt.FirmwareUpdateAvailable
-		ov.UpdatesCheckedAgo = humanAgo(time.Since(truth.CheckedAt))
-	}
+	// Resolve each domain by its registered navigation entry, leaving a tile
+	// unlinked while no running plugin serves its destination.
+	ov.SecurityHref = s.navLabelHref("Firewall")
+	ov.TunnelsHref = s.navLabelHref("Tunnels")
+	ov.InterfacesHref = s.navLabelHref("Interfaces")
 
 	var body strings.Builder
-	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, ov), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, ov), s.sessionCSRF(r), lang, catalog); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{}, "", nil, false, template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, template.HTML(body.String()))
 }
 
 // sysMetricsToWidget maps the System readings onto the overview's gauge fields,
 // resolving each metric's icon by name.
 func sysMetricsToWidget(rs []meterReading) []widget.OverviewMeter {
 	icons := map[string]string{
-		"sys-load": "activity", "sys-cpu": "cpu",
+		"sys-load": "activity", "sys-cpu": "settings",
 		"sys-memory": "memory-stick", "sys-storage": "hard-drive",
 	}
 	out := make([]widget.OverviewMeter, 0, len(rs))
 	for _, r := range rs {
 		out = append(out, widget.OverviewMeter{
-			Name: r.Name, Label: r.Label, Icon: icons[r.Name], Role: r.Role,
+			Name: r.Name, Label: r.Label, Icon: icons[r.Name], Band: r.Band,
 			Value: r.Value, Unit: r.Unit, Fill: r.Fill, Detail: r.Detail,
 		})
 	}

@@ -107,11 +107,7 @@ const DAEMON_FOLDED: [Row; 3] = [
         "Read /etc/ethers",
         "Load classic MAC→IP pairs from the file.",
     ),
-    read(
-        "leasefile",
-        "Lease file",
-        "Where live leases are recorded.",
-    ),
+    read("leasefile", "Lease file", "Where live leases are recorded."),
 ];
 
 const NETWORKS_SUB: &str = "One card per network — `config dhcp`. The range is shown as real \
@@ -139,22 +135,25 @@ fn render(
 ) -> Envelope {
     page::dhcp(Widget::stack(vec![
         page::filter("Filter everything — network, device, IP, option…"),
-        page::page_form(refused, vec![
-            Widget::section(
-                "Networks",
-                NETWORKS_SUB,
-                vec![Widget::grid(
-                    2,
-                    model
-                        .networks
-                        .iter()
-                        .map(|pool| card(model, leases, pool))
-                        .collect(),
-                )],
-            ),
-            hosts::section(model, leases, refusal),
-            Widget::section("Rarely needed", EXTRAS_SUB, vec![extras(model)]),
-        ]),
+        page::page_form(
+            refused,
+            vec![
+                Widget::section(
+                    "Networks",
+                    NETWORKS_SUB,
+                    vec![Widget::grid(
+                        2,
+                        model
+                            .networks
+                            .iter()
+                            .map(|pool| card(model, leases, pool))
+                            .collect(),
+                    )],
+                ),
+                hosts::section(model, leases, refusal),
+                Widget::section("Rarely needed", EXTRAS_SUB, vec![extras(model)]),
+            ],
+        ),
     ]))
 }
 
@@ -167,6 +166,8 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
     let mut items = options::items(&HANDOUT, pool, &prefix);
     let Some(subnet) = subnet else {
         return Widget::Settings {
+            condensed: Default::default(),
+
             style: "card".into(),
             title: name.into(),
             meta: UPLINK_META.into(),
@@ -178,18 +179,20 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
         title: "Address range".into(),
         desc: "Devices get an address from this span.".into(),
         code: "start · limit".into(),
-        value: format::range_label(
-            Some(subnet),
-            pool.scalar("start"),
-            pool.scalar("limit"),
-        ),
+        value: format::range_label(Some(subnet), pool.scalar("start"), pool.scalar("limit")),
         ..SettingsItem::default()
     });
     items.extend(options::items(&LEASE, pool, &prefix));
     Widget::Settings {
+        condensed: Default::default(),
+
         style: "card".into(),
         title: name.into(),
-        meta: format!("{} · {}", subnet.cidr(), format::devices_label(leases.on(&subnet))),
+        meta: format!(
+            "{} · {}",
+            subnet.cidr(),
+            format::devices_label(leases.on(&subnet))
+        ),
         items,
         seam: options::fold(
             "IPv6 & advanced — ",
@@ -216,6 +219,8 @@ fn extras(model: &Dnsdhcp) -> Widget {
         model.boots,
     ));
     Widget::Settings {
+        condensed: Default::default(),
+
         style: String::new(),
         title: String::new(),
         meta: String::new(),
@@ -417,7 +422,10 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
             })
         );
         // wan sets `ignore 1`, so its switch is off.
-        assert_eq!(cards[2]["items"][0]["toggle"], serde_json::json!({"name": "wan.ignore"}));
+        assert_eq!(
+            cards[2]["items"][0]["toggle"],
+            serde_json::json!({"name": "wan.ignore"})
+        );
     }
 
     #[test]
@@ -435,7 +443,10 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
         assert_eq!(seam["summary"], "IPv6 & advanced — 6 more options");
         assert_eq!(seam["items"][0]["code"], "ra");
         assert_eq!(seam["items"][0]["value"], "server");
-        assert!(seam["items"][0].get("name").is_none(), "a mode word is stated, not toggled");
+        assert!(
+            seam["items"][0].get("name").is_none(),
+            "a mode word is stated, not toggled"
+        );
         assert_eq!(
             seam["items"][2]["toggle"],
             serde_json::json!({"name": "lan.ra_slaac", "on": true})
@@ -511,7 +522,10 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
     #[test]
     fn the_reservations_drawers_are_answered_on_their_own() {
         let saved = answer("_form=host&_section=host_thermo&_delete=1");
-        assert_eq!(saved["notice"], serde_json::json!({"level": "success", "text": "Reservation deleted."}));
+        assert_eq!(
+            saved["notice"],
+            serde_json::json!({"level": "success", "text": "Reservation deleted."})
+        );
         assert_eq!(
             saved["commit"],
             serde_json::json!([{"config": "dhcp", "section": "host_thermo", "delete": true}])
@@ -532,7 +546,8 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
 
     #[test]
     fn a_body_this_page_did_not_draw_changes_nothing() {
-        let unknown = answer("_form=record&_section=cname_photos&kind=CNAME&name=a.lan&target=b.lan");
+        let unknown =
+            answer("_form=record&_section=cname_photos&kind=CNAME&name=a.lan&target=b.lan");
         assert!(unknown.get("commit").is_none());
         assert_eq!(unknown["notice"]["text"], form::UNKNOWN);
     }

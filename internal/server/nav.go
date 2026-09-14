@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // coreSectionOrder is the shell-owned core taxonomy (ADR-009 §2): these sections
@@ -42,7 +40,7 @@ type navSection struct {
 type navLink struct {
 	Label  string
 	Href   string
-	Icon   string // the row's Lucide glyph: the manifest's, or its section's default
+	Icon   string
 	Active bool
 	// Mode is the reading this entry belongs to (ADR-015): "basic", "advanced",
 	// or empty for both. It comes from the manifest and filters the row.
@@ -59,116 +57,171 @@ type navLink struct {
 	Variant string
 }
 
-// navModel is the device-first sidebar: a few everyday rows on top, then — for a
-// reader in advanced mode — the technical pages under their section titles
-// (ADR-015 §5). Security and System are stable top-level destinations of their own
-// — System's frame combines live plugin registrations with the shell-owned
-// administration pages, Security is one plugin's domain — so neither also appears
-// among the sections. The remaining manifest-driven sections live there. The
-// everyday rows are the plain-language destinations a non-technical person reaches
-// for, and they are the whole sidebar in basic mode.
+// navModel is the rail: one flat list of destinations, with subpages under
+// the active row.
 type navModel struct {
-	Basic    []navLink
-	Advanced []navGroup
+	Rows []navRow
 }
 
-// navGroup is one titled cluster of advanced-mode rows.
-type navGroup struct {
-	Title string
-	Links []navLink
+// navRow is one destination in the rail. The row you are in opens its subpages
+// beneath it, so the rail carries the whole path rather than handing the last
+// step to a bar somewhere else on the page.
+type navRow struct {
+	Label  string
+	Href   string
+	Icon   string
+	Active bool
+	// Children are the active row's subpages, already localized. Only the active
+	// row has them: a plugin declares its pages in the envelope it answers with,
+	// so the shell knows them for the page in hand and for no other.
+	Children []pageTab
+	// Detail rides hard right — a count, a rate. Dot marks a state beside the
+	// label instead, tinted by Variant ("success", "danger").
+	Detail  string
+	Dot     bool
+	Variant string
+	// PluginID names the plugin that authored this row's label ("" for a
+	// shell-owned row), so the label is localized from that plugin's catalog
+	// rather than the shell's base (ADR-012 §5).
+	PluginID string
 }
 
-// sectionIcons gives a section's rows a glyph when the manifest entry names none,
-// so an advanced row has the same anatomy as an everyday one — icon tile, label —
-// rather than a second, lesser kind of link. Only the sections that render as
-// groups need an entry: Status, Security and System are everyday rows, which carry
-// their own glyphs. Anything a plugin introduces takes the neutral sliders.
-var sectionIcons = map[string]string{
-	"Network": "network",
+// railOrder is the order the design canvas gives the rail. Matching on the
+// English label is what lets a plugin land in its designed place without the
+// shell knowing anything about that plugin: the labels buildNav carries are
+// still English at this point, localized only at the display edge below. A
+// destination the canvas does not name follows these, keeping the core section
+// order buildNav already sorted it into (ADR-009 §5), so a new plugin appears in
+// the rail with no shell change.
+var railOrder = []string{
+	"Overview", "Devices", "Traffic", "Journal", "Interfaces", "Wireless",
+	"Firewall", "DNS & DHCP", "Routing", "Tunnels", "Storage", "System",
 }
 
-// sectionIcon resolves the glyph for one entry: the manifest's own choice, else
-// its section's, else the neutral fallback.
-func sectionIcon(section, declared string) string {
-	if declared != "" {
-		return declared
+// railRank returns a label's position in the designed order, and whether the
+// canvas names it at all.
+func railRank(label string) (int, bool) {
+	for i, l := range railOrder {
+		if l == label {
+			return i, true
+		}
 	}
-	if icon, ok := sectionIcons[section]; ok {
-		return icon
-	}
-	return "sliders-horizontal"
+	return 0, false
 }
 
-// buildSidebar assembles the device-first sidebar for the current path: the everyday
-// rows, then — in advanced mode only — the manifest-driven sections (via buildNav)
-// as titled groups of ordinary rows. Labels are localized at the display edge
-// (ADR-012): shell-owned labels and the section titles from base (tr), each
-// plugin's label from that plugin's catalog (pluginTr(id)). The section titles
-// buildNav uses for ordering and filtering stay English internally.
-func (s *Server) buildSidebar(active, mode string, tr func(string) string, pluginTr func(id string) func(string) string) navModel {
-	basic := func(label, icon, href string) navLink {
-		return navLink{Label: tr(label), Icon: icon, Href: href, Active: isActive(active, href)}
+// navIcon chooses a shell-owned glyph before labels are localized. Designed
+// destinations have their own identity; other entries inherit their section's
+// glyph unless the plugin names one in its manifest.
+func navIcon(label, section string) string {
+	switch label {
+	case "Overview":
+		return "house"
+	case "Devices":
+		return "phone"
+	case "Traffic":
+		return "activity"
+	case "Journal":
+		return "menu"
+	case "Interfaces":
+		return "ethernet-port"
+	case "Wireless":
+		return "wifi"
+	case "Firewall":
+		return "zone"
+	case "DNS & DHCP":
+		return "globe"
+	case "Routing":
+		return "route"
+	case "Tunnels":
+		return "network"
+	case "Storage":
+		return "hard-drive"
+	case "System":
+		return "settings"
 	}
-	// Security and System are domain rows rather than page links: each leads to the
-	// first live registered page filed under its section and stays Active anywhere
-	// inside that domain, plugin URLs included. System also holds shell-owned pages,
-	// so it always resolves somewhere; Security is one plugin, and leads nowhere
-	// while that plugin is not answering.
-	security := basic("Security", "shield", s.sectionHref("Security"))
-	security.Active = s.isSectionPath("Security", active)
-	system := basic("System", "settings", "/system")
-	if pages := s.systemPages(active, mode); len(pages) > 0 {
-		system.Href = pages[0].Href
+	switch section {
+	case "Status":
+		return "activity"
+	case "Network":
+		return "network"
+	case "Security":
+		return "zone"
+	case "System":
+		return "settings"
+	default:
+		return "menu"
 	}
-	system.Active = s.isSystemPath(active)
+}
+
+// buildSidebar assembles the rail for the current path: one flat list of
+// destinations in the designed order, the active one carrying the subpages it
+// opens. Labels are localized at the display edge (ADR-012): shell-owned labels
+// from base (tr), each plugin's from that plugin's catalog (pluginTr(id)), which
+// is why the ordering above happens while they are still English.
+func (s *Server) buildSidebar(active, mode string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
+	rows := []navRow{{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")}}
 
 	// Devices is a live row: its detail is how many are on the network right now,
 	// counted from the kernel's neighbour table. A box that cannot answer shows
 	// the row without a number rather than a stale or invented one.
-	devices := basic("Devices", "devices", devicesPath)
+	devices := navRow{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)}
 	if online, ok := s.onlineDevices(); ok {
 		devices.Detail = strconv.Itoa(online)
 	}
+	rows = append(rows, devices)
 
-	m := navModel{Basic: []navLink{
-		basic("Home", "house", "/"),
-		{Label: tr("Internet"), Icon: "globe", Href: "#", Detail: tr("Online"), Dot: true, Variant: "success"},
-		devices,
-		basic("Wi-Fi", "wifi", "#"),
-		security,
-		system,
-	}}
-	// The everyday rows are the whole sidebar in basic mode: the sections are the
-	// advanced reading, and the switch at the sidebar's foot is their disclosure
-	// (ADR-015 §5) — absent, not collapsed or dimmed.
-	if mode != widget.ModeAdvanced {
-		return m
-	}
+	// Every section the manifests register becomes rows here — no titles between
+	// them, because the rail is a list of places and not a taxonomy. Status is
+	// already served by Overview above; System collapses to one row whose
+	// subpages are the shell-owned pages and the plugin-owned ones together.
 	for _, sec := range s.buildNav(active) {
-		if sec.Title == "Status" || sec.Title == "Security" || sec.Title == "System" {
-			continue // Home, Security and System are first-class destinations above the sections
-		}
-		links := make([]navLink, 0, len(sec.Links))
-		for _, l := range sec.Links {
-			if !modeShows(l.Mode, mode) {
-				continue
-			}
-			if l.PluginID == "" {
-				l.Label = tr(l.Label)
-			} else {
-				l.Label = pluginTr(l.PluginID)(l.Label)
-			}
-			l.Icon = sectionIcon(sec.Title, l.Icon)
-			links = append(links, l)
-		}
-		// A section every entry left is no section: the title would introduce
-		// nothing.
-		if len(links) == 0 {
+		if sec.Title == "Status" {
 			continue
 		}
-		m.Advanced = append(m.Advanced, navGroup{Title: tr(sec.Title), Links: links})
+		if sec.Title == "System" {
+			system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
+			if sysPages := s.systemPages(active, mode); len(sysPages) > 0 {
+				system.Href = sysPages[0].Href
+			}
+			rows = append(rows, system)
+			continue
+		}
+		for _, l := range sec.Links {
+			rows = append(rows, navRow{Label: l.Label, Href: l.Href, Icon: l.Icon, Active: l.Active, PluginID: l.PluginID})
+		}
 	}
-	return m
+
+	// The designed order, with anything the canvas does not name kept in the
+	// order buildNav produced. Stable, so discovery order still decides between
+	// two rows the canvas is silent about.
+	sort.SliceStable(rows, func(a, b int) bool {
+		ra, oka := railRank(rows[a].Label)
+		rb, okb := railRank(rows[b].Label)
+		if oka != okb {
+			return oka
+		}
+		if !oka {
+			return false
+		}
+		return ra < rb
+	})
+
+	// The one open row carries the subpages, and it is the only row that can:
+	// the shell learns a plugin's pages from the envelope it has just rendered.
+	for i := range rows {
+		if rows[i].Active {
+			rows[i].Children = pages
+			break
+		}
+	}
+	for i := range rows {
+		if rows[i].PluginID == "" {
+			rows[i].Label = tr(rows[i].Label)
+		} else {
+			rows[i].Label = pluginTr(rows[i].PluginID)(rows[i].Label)
+		}
+	}
+	return navModel{Rows: rows}
 }
 
 // buildNav assembles the sidebar for the current path. The shell's own pages come
@@ -186,6 +239,9 @@ func (s *Server) buildNav(active string) []navSection {
 	// plugin's, so buildSidebar localizes each label from the right catalog
 	// (ADR-012 §5).
 	add := func(section string, link navLink) {
+		if link.Icon == "" {
+			link.Icon = navIcon(link.Label, section)
+		}
 		i, ok := index[section]
 		if !ok {
 			i = len(sections)
@@ -281,35 +337,6 @@ func (s *Server) isSectionPath(section, active string) bool {
 	return false
 }
 
-// sectionHref is a domain row's destination: the first live registered page
-// filed under that section, in discovery (id-sorted) order. A section no
-// answering plugin fills has no destination — the row leads nowhere rather than
-// to a URL that reports the plugin is unavailable.
-func (s *Server) sectionHref(section string) string {
-	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
-			continue
-		}
-		for _, entry := range m.Nav {
-			if entry.Section == section {
-				return pluginHref(m.ID, entry.Path)
-			}
-		}
-	}
-	return "#"
-}
-
-// liveSectionHref turns a section destination into a link only when something
-// actually serves it. The sidebar's rows keep the placeholder "#" — a row with no
-// href would collapse the list's rhythm — but a status tile has no such obligation
-// and simply stops being a doorway.
-func liveSectionHref(href string) string {
-	if href == "#" {
-		return ""
-	}
-	return href
-}
-
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount
 // joined with the manifest's (mount-relative) nav path.
 func pluginHref(id, navPath string) string {
@@ -321,4 +348,17 @@ func isActive(current, href string) bool {
 		return current == "/"
 	}
 	return current == href || strings.HasPrefix(current, href)
+}
+
+// navLabelHref resolves a particular destination without confusing it with
+// another plugin in the same section. Missing destinations stay unlinked.
+func (s *Server) navLabelHref(label string) string {
+	for _, manifest := range s.manifestList() {
+		for _, entry := range manifest.Nav {
+			if entry.Label == label && s.probe(manifest.Socket) {
+				return pluginHref(manifest.ID, entry.Path)
+			}
+		}
+	}
+	return ""
 }

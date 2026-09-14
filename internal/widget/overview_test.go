@@ -8,227 +8,133 @@ import (
 	"testing"
 )
 
-// TestRenderOverview: the overview draws every section — verdict, tiles, IPv4/IPv6
-// facts (with copy), the injected traffic chart, System, and the injected flat-Table
-// Interfaces listing — with the headline in the serif display face. The live System
-// facts are filled from the fields; an empty Overview shows them as "unavailable".
 func TestRenderOverview(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Overview{
-		WiFiPresent:   true,
-		DevicesOnline: 9, DevicesKnown: true, DevicesHref: "/devices",
-		SecurityHref: "/plugins/firewall/", SoftwareHref: "/system/packages",
-		UpdatesKnown: true, UpdatesPackages: 3, UpdatesHref: "/system/maintenance",
-		Model:    "Mono Gateway Development Kit",
-		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6d 4h 0m",
-		WANKnown: true, WANUp: true, WANUptime: "2h 14m",
-		Temperature: "52 °C · Normal", TempDot: "success",
-		Fan: "3630 rpm", Power: "12.4 W", SensorSummary: "8 power · 5 thermal",
+	got := render(t, newRenderer(t), &Overview{
+		WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min",
+		InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 9,
+		SecurityHref: "/plugins/firewall/", Model: "Mono Gateway Development Kit",
+		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6 d 04:00",
+		Clock: "14:52:07", Zone: "CEST",
+		Temperature: "52 °C", TempDot: "success", Fan: "3630 rpm", Power: "12.4 W",
 		V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
-		SysMetrics: []OverviewMeter{
-			{Name: "sys-load", Label: "LOAD", Icon: "activity", Role: "sky", Value: "1.16", Fill: 29},
-			{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Role: "violet", Value: "27", Unit: "%", Fill: 27},
-			{Name: "sys-memory", Label: "MEMORY", Icon: "memory-stick", Role: "emerald", Value: "60", Unit: "%", Fill: 60},
-			{Name: "sys-storage", Label: "STORAGE", Icon: "hard-drive", Role: "amber", Value: "78", Unit: "%", Fill: 78},
-		},
+		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
-			{
-				Name: "eth0", Kind: "port", State: "down", Physical: true,
-				RxRate: "0 bps", TxRate: "0 bps", RxTotal: "0 B", TxTotal: "0 B",
-				RxPackets: "0 pkt/s", TxPackets: "0 pkt/s",
-			},
-			{
-				Name: "eth4", Kind: "port", State: "up", Physical: true, WAN: true, Zone: "wan",
-				Relations: []OverviewInterfaceRelation{{Name: "eth4.3900"}},
-				RxRate:    "18.4 Mbps", TxRate: "2.1 Mbps", RxTotal: "18.4 GiB", TxTotal: "2.1 GiB",
-				RxPackets: "1200 pkt/s", TxPackets: "180 pkt/s",
-			},
-			{
-				Name: "br-lan.20", Kind: "vlan", State: "up", Networks: []string{"guest"},
-				VLAN: "20", Subnet: "192.168.20.0/24", Zone: "guest", Proto: "static",
-				Relations: []OverviewInterfaceRelation{{Name: "br-lan"}, {Name: "eth3", Physical: true}},
-				RxRate:    "115 Kbps", TxRate: "0 bps", RxTotal: "6.8 GiB", TxTotal: "4.6 GiB",
-				RxPackets: "13 pkt/s", TxPackets: "0 pkt/s",
-			},
-			{
-				Name: "uap0", Kind: "wifi", State: "up", Networks: []string{"lan"}, Zone: "lan",
-				RxRate: "8.2 Mbps", TxRate: "1.4 Mbps", RxTotal: "2.1 GiB", TxTotal: "640 MiB",
-				RxPackets: "820 pkt/s", TxPackets: "210 pkt/s",
-			},
+			{Name: "eth0", Kind: "port", State: "up", Physical: true, RxRate: "18.4 Mbps", TxRate: "2.1 Mbps"},
+			{Name: "wg-home", Kind: "tunnel", State: "up", Proto: "wireguard", Subnet: "10.200.0.1/24"},
 		},
 	})
 	for _, want := range []string{
-		"ALL GOOD", "healthy", "font-serif", // verdict in Fraunces
-		"INTERNET", "for 2h 14m", "data-verso-tile-caption=\"internet-uptime\"",
-		"WI-FI", "SECURITY", "SOFTWARE", // status tiles
-		// Security leads to the plugin that serves the domain; software to the page
-		// that installs what the cached check found.
-		`href="/plugins/firewall/"`, "3 packages ready", `href="/system/maintenance"`,
-		// The Devices tile states the live count and is the doorway to the roster.
-		"DEVICES", "9 devices online", `href="/devices"`,
-		"IPV4", "172.30.1.171/24", "IPV6", "fd42:7ea:aa00::/56",
-		"x-data=\"copy\"",                             // copy control on the IP values
-		"Internet traffic", "live · WAN", "Mbps down", // chart header + legend
-		"verso-chart", "verso-chart-area", // the injected chart + its gradient fill
-		"System", "LOAD", "CPU", "MEMORY", "STORAGE",
-		"data-verso-meter=\"sys-cpu\"", // named gauge, so the stream can update it
-		"Mono Gateway Development Kit",
-		"OpenWrt 25.12.4", "Linux 6.12.101", "6d 4h 0m", // live System facts
-		// Resolved hardware sensors (profile-keyed); the temp dot reads emerald.
-		"Temperature", "52 °C · Normal", "bg-emerald-500",
-		"Fan", "3630 rpm", "Power draw", "12.4 W", "8 power · 5 thermal",
-		// One telemetry-backed interface table contains physical and logical
-		// devices. A physical interface carries the requested RJ45 "port" chip.
-		"Interfaces", "4 interfaces", "eth0", "eth4", "br-lan.20", "uap0",
-		"Ethernet", "VLAN", "Topology", ">RX<", ">TX<",
-		">port<", ">WAN<", "18.4 Mbps", "2.1 Mbps", "192.168.20.0/24",
-		// Entity reference chips carry their Lucide type icon so interface / zone /
-		// port never blur: network glyph on the interface chip, ethernet-port glyph
-		// on the port chips.
-		"M12 12V8",           // network icon → an interface topology chip
-		"M10 8v1",            // ethernet-port icon → the interface's port chips
-		"M20 13c0 5-3.5 7.5", // zone icon → the shared firewall-zone chip
+		`data-overview`, "Internet is working", `class="text-green">online`, "for 2 h 14 min", "pppoe-wan",
+		"Firewall", `href="/plugins/firewall/"`, "Tunnels", "All ports linked", "2 interfaces", "9 devices connected",
+		"IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
+		"Internet traffic", "Mbit/s down", "Mbit/s up", "verso-chart-area", "verso-chart--emerald", `data-chart-padding="0"`,
+		`id="overview-tunnels"`, "wg-home", "WireGuard", "10.200.0.1/24",
+		"System", "CPU", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "OpenWrt 25.12.4", "Linux 6.12.101",
+		"14:52:07", "CEST", "6 d 04:00", "52 °C", "3630 rpm", "12.4 W",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)
 		}
 	}
-	for _, want := range []string{
-		`font-mono font-semibold">172.30.1.171/24`,
-		`class="text-base font-medium text-slate-900"`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("overview monospace value missing fixed Tailwind typography %q:\n%s", want, got)
-		}
+	if strings.Contains(got, "(two)") || strings.Contains(got, "(few)") {
+		t.Error("plural context leaked into English")
 	}
-	// The software tile reads amber; the warning stops nowhere else recolours the number.
-	if !strings.Contains(got, "text-amber-700") {
-		t.Errorf("the software (update) tile should read amber")
+	if strings.Contains(got, `id="overview-interfaces"`) || strings.Contains(got, "<table") {
+		t.Error("the homepage must not render an interface inventory")
 	}
-	if !strings.Contains(got, "</svg></span>port</span>") {
-		t.Errorf("a physical interface should carry an RJ45 port chip")
+	if strings.Contains(got, "Protected") {
+		t.Error("an answering plugin is not proof the firewall protects the network")
 	}
-	if strings.Contains(got, "Network / role") {
-		t.Errorf("the sparse network/role column should not be rendered")
-	}
-	if !strings.Contains(got, "[&_td]:align-top") {
-		t.Errorf("interface table cells should be aligned to the top")
-	}
-	if strings.Count(got, "w-32 min-w-32 max-w-32") < 4 {
-		t.Errorf("the live RX and TX columns should both have a stable fixed width")
-	}
-	if !strings.Contains(got, "grid grid-cols-5") {
-		t.Errorf("Wi-Fi hardware and a counted roster should render the five-column status strip")
-	}
-	if !strings.Contains(got, "</svg></span>Wi-Fi</span>") {
-		t.Errorf("a wireless interface should carry a Wi-Fi chip")
-	}
-	// A missing live fact degrades to "unavailable" rather than a stale placeholder,
-	// and an unreadable sensor drops its row entirely (no fabricated "Power draw").
+}
+
+func TestOverviewDegradesWithoutInventingState(t *testing.T) {
+	r := newRenderer(t)
 	bare := render(t, r, &Overview{})
-	if !strings.Contains(bare, "unavailable") {
-		t.Errorf("an empty overview should mark its live facts unavailable")
+	for _, want := range []string{"Status unavailable", "Tunnel status unavailable", "none reported", "System readings unavailable"} {
+		if !strings.Contains(bare, want) {
+			t.Errorf("missing fallback %q", want)
+		}
 	}
-	if strings.Contains(bare, "Power draw") {
-		t.Errorf("an unreadable power sensor should hide its row, not show a zero")
+	for _, falseClaim := range []string{"healthy", "All ports linked", "All interfaces up", "Power draw", "Both bands active"} {
+		if strings.Contains(bare, falseClaim) {
+			t.Errorf("unknown router claims %q", falseClaim)
+		}
 	}
-	if strings.Contains(bare, "WI-FI") || !strings.Contains(bare, "grid grid-cols-3") {
-		t.Errorf("an overview without Wi-Fi hardware should use three full-width status columns")
+	down := render(t, r, &Overview{WANKnown: true, WANUp: false, InterfacesKnown: true})
+	if !strings.Contains(down, "Your network is offline") || !strings.Contains(down, `data-tone="danger"`) {
+		t.Error("offline WAN must change the verdict and tile")
 	}
-	// A roster the box could not count states no number and offers no doorway
-	// rather than claiming nobody is here.
-	if strings.Contains(bare, "DEVICES") {
-		t.Errorf("an uncounted roster should draw no tile")
+	unknown := render(t, r, &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "wg0", Kind: "tunnel", State: "unknown", Proto: "wireguard"}}})
+	if !strings.Contains(unknown, "State unknown") || strings.Contains(unknown, "All interfaces up") {
+		t.Error("a tunnel's unknown kernel state is not a connected peer")
 	}
 }
 
-// TestRenderOverviewDevicesTileCounts: the tile says what one device and no
-// device mean, in words rather than a bare number.
-func TestRenderOverviewDevicesTileCounts(t *testing.T) {
-	r := newRenderer(t)
-	for _, tc := range []struct {
-		online int
-		want   string
-	}{
-		{0, "Nobody connected"},
-		{1, "1 device online"},
-		{12, "12 devices online"},
-	} {
-		got := render(t, r, &Overview{DevicesKnown: true, DevicesOnline: tc.online})
-		if !strings.Contains(got, tc.want) {
-			t.Errorf("devices tile for %d online should read %q", tc.online, tc.want)
+func TestOverviewConnectionAbsenceKeepsIPv6Column(t *testing.T) {
+	got := render(t, newRenderer(t), &Overview{V4: []OverviewFact{{Label: "Address", Value: "192.0.2.1/24", Copy: true}}, V6: []OverviewFact{{Label: "Status", Value: "Not configured"}}})
+	if !strings.Contains(got, `aria-label="IPv6"`) || !strings.Contains(got, "No IPv6 connection · no prefix was delegated") {
+		t.Error("missing IPv6 needs its own retained column")
+	}
+}
+
+func TestRenderOverviewTrafficAutoScale(t *testing.T) {
+	got := render(t, newRenderer(t), &Overview{DownSeries: []float64{80, 400, 120}, UpSeries: []float64{20, 40, 30}})
+	for _, want := range []string{">460 Mbit/s<", ">345<", ">230<", ">115<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("existing shared-scale renderer missing %q", want)
 		}
 	}
 }
 
-// TestRenderOverviewSecurityTileIsADoorwayOnlyWhenServed: the Security tile links
-// to whichever plugin serves the domain, and stops being a link when none does —
-// the resolver, not the tile, decides, so the sidebar and the strip agree.
-func TestRenderOverviewSecurityTileIsADoorwayOnlyWhenServed(t *testing.T) {
-	r := newRenderer(t)
-	live := render(t, r, &Overview{SecurityHref: "/plugins/firewall/"})
-	if !strings.Contains(live, `<a href="/plugins/firewall/"`) {
-		t.Errorf("a served Security section should make its tile a link:\n%s", live)
+func TestOverviewStatusFollowsReadings(t *testing.T) {
+	tr := func(s string) string { return s }
+	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up"}, {Name: "wg0", Kind: "tunnel", State: "up"}}}
+	status := o.LiveStatus(tr)
+	if status.Tone != "success" || status.Accent != "online" {
+		t.Fatalf("up = %+v", status)
 	}
-	stopped := render(t, r, &Overview{})
-	if strings.Contains(stopped, "/plugins/firewall/") {
-		t.Errorf("an unserved Security section should leave a plain status tile")
+	o.Interfaces[1].State = "down"
+	status = o.LiveStatus(tr)
+	if status.Tone != "warning" || status.Kicker != "1 needs attention" || status.Tiles[1].Tone != "danger" {
+		t.Fatalf("tunnel down = %+v", status)
 	}
-}
-
-// TestRenderOverviewSoftwareTile: the tile claims nothing before a check has run,
-// states what a completed check found, and becomes the doorway to the page that
-// installs it only when there is something to install.
-func TestRenderOverviewSoftwareTile(t *testing.T) {
-	r := newRenderer(t)
-	base := Overview{SoftwareHref: "/system/packages", UpdatesHref: "/system/maintenance"}
-
-	unchecked := render(t, r, &base)
-	if !strings.Contains(unchecked, "Installed software") || strings.Contains(unchecked, "Update available") {
-		t.Errorf("an unchecked router should claim neither an update nor being up to date:\n%s", unchecked)
+	o.Interfaces[1].State = "up"
+	o.SysMetrics = []OverviewMeter{{Band: "danger"}}
+	if status = o.LiveStatus(tr); status.Tone != "warning" {
+		t.Fatalf("resource at critical = %+v", status)
 	}
-	if !strings.Contains(unchecked, `<a href="/system/packages"`) {
-		t.Errorf("the software tile should always lead to the software surface")
+	o.WANUp = false
+	if status = o.LiveStatus(tr); status.Tone != "danger" || status.Lead != "Your network is offline" {
+		t.Fatalf("WAN down = %+v", status)
 	}
-
-	clean := base
-	clean.UpdatesKnown, clean.UpdatesCheckedAgo = true, "5 min ago"
-	if got := render(t, r, &clean); !strings.Contains(got, "Up to date") || !strings.Contains(got, "checked 5 min ago") {
-		t.Errorf("a checked router with nothing to install should say so, with the age:\n%s", got)
+	o.WANKnown = false
+	if status = o.LiveStatus(tr); status.Tone != "neutral" || status.Kicker != "Status unavailable" {
+		t.Fatalf("read failed = %+v", status)
 	}
-
-	pending := base
-	pending.UpdatesKnown, pending.UpdatesPackages = true, 1
-	got := render(t, r, &pending)
-	if !strings.Contains(got, "Update available") || !strings.Contains(got, "1 package ready") {
-		t.Errorf("one upgradable package should read as one:\n%s", got)
-	}
-	if !strings.Contains(got, `<a href="/system/maintenance"`) {
-		t.Errorf("a pending update should point the tile at the page that installs it")
-	}
-	if !strings.Contains(got, "text-amber-700") {
-		t.Errorf("a pending update should read amber")
-	}
-
-	firmware := base
-	firmware.UpdatesKnown, firmware.UpdatesFirmware = true, true
-	if got := render(t, r, &firmware); !strings.Contains(got, "A newer system build") {
-		t.Errorf("an available firmware build should be the tile's caption:\n%s", got)
+	o.Interfaces[0].State = "unknown"
+	if tile := o.interfacesTile(tr); tile.Status == "All ports linked" {
+		t.Fatal("unknown link state claimed connected")
 	}
 }
 
-// TestRenderOverviewTrafficAutoScale: WAN traffic uses the tallest value across
-// both directions, with headroom, instead of clipping to the former fixed range.
-func TestRenderOverviewTrafficAutoScale(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Overview{
-		DownSeries: []float64{80, 400, 120},
-		UpSeries:   []float64{20, 40, 30},
-	})
-	for _, want := range []string{">460 Mbps<", ">345<", ">230<", ">115<"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("auto-scaled overview chart missing %q:\n%s", want, got)
+func TestOverviewCountGrammarAndFallback(t *testing.T) {
+	catalog := map[string]string{"%d interface": "%d vmesnik", "%d interfaces (two)": "%d vmesnika", "%d interfaces (few)": "%d vmesniki", "%d interfaces": "%d vmesnikov"}
+	tr := func(key string) string {
+		if v, ok := catalog[key]; ok {
+			return v
+		}
+		return key
+	}
+	for _, tc := range []struct {
+		n      int
+		en, sl string
+	}{{0, "0 interfaces", "0 vmesnikov"}, {1, "1 interface", "1 vmesnik"}, {2, "2 interfaces", "2 vmesnika"}, {3, "3 interfaces", "3 vmesniki"}, {4, "4 interfaces", "4 vmesniki"}, {5, "5 interfaces", "5 vmesnikov"}, {101, "101 interfaces", "101 vmesnik"}, {102, "102 interfaces", "102 vmesnika"}} {
+		if got := interfaceCount(func(s string) string { return s }, tc.n); got != tc.en {
+			t.Errorf("en(%d)=%q", tc.n, got)
+		}
+		if got := interfaceCount(tr, tc.n); got != tc.sl {
+			t.Errorf("sl(%d)=%q", tc.n, got)
 		}
 	}
 }

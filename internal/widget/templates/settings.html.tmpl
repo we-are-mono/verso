@@ -14,24 +14,62 @@
        divide with hairlines — bare rows flush to the edge, card rows inside the
        box's padding. */}}
   {{/* A row that carries a control is a field like any other: it declares its
-       change-tracking hooks so the staged-changes capsule counts it, reviews it,
-       and submits the page form it sits in. A row that only reads declares none —
-       there is nothing about it to change. */}}
-  <div class="flex items-center gap-3 py-2.5 border-b border-slate-200 last:border-b-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
-    <div class="shrink-0 text-[0.95rem] font-semibold text-slate-900">{{.Title}}</div>
-    {{if .Code}}<span class="shrink-0 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-xs text-slate-500">{{.Code}}</span>{{end}}
-    <div class="min-w-0 flex-1 truncate text-sm text-slate-500"{{if .Desc}} title="{{.Desc}}"{{end}}>{{.Desc}}</div>
-    {{range .PillsHTML}}{{.}}{{end}}
-    {{if .Toggle}}{{template "switch.html.tmpl" .Toggle}}{{end}}
-    {{/* the in-place field: fixed width (no resize while typing), the pencil
-         inside its right edge. */}}
-    {{if .Name}}<label class="flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 inset-shadow-sm transition-colors focus-within:border-sky-600 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
-      <input type="text" name="{{.Name}}" value="{{.Value}}"
-        class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-[0.9rem] tabular-nums text-slate-900 focus:outline-none">
-      {{icon "pencil" "size-3.5 shrink-0 text-slate-400"}}
-    </label>
-    {{else if .Value}}<span class="shrink-0 font-mono text-[0.9rem] tabular-nums text-slate-900">{{.Value}}</span>{{end}}
+       change-tracking hooks, so it is counted as a change of the page form it
+       sits in and staged when that form is submitted. A row that only reads
+       declares none — there is nothing about it to change. */}}
+  {{/* items-start: the control belongs to the row's first line — the name it
+       switches — not to the middle of however tall the description made the
+       row; each control nudges itself to sit optically centred on that line. */}}
+  {{if and .Name .Inline}}
+  {{/* Inline-field variant (manage-page): the label and its option chip share
+       one line, the field sits beneath them, and its help follows the field.
+       The field itself is unchanged — the SAME element in both states, only its
+       border and background changing, so it never jumps when it opens
+       (inline-settings-commit-model); ✎ becomes ✓✗ in a fixed-width slot so the
+       value's left edge never moves. verso.js drives the read↔edit toggle and
+       stages the change on commit, the counterpart of a row switch. The field
+       takes the same compact width as ordinary inputs, with its actions inset
+       into the right edge. */}}
+  <div class="{{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 [&:has(+details)]:border-b-0">
+    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Title}}</label>
+
+    </div>
+    {{/* A plain input that stages on blur/Enter — the "done" a person expects, no
+         edit/confirm icons (inline-settings-commit-model). verso.js validates on
+         blur: an invalid value gets aria-invalid + the error slot below, does not
+         stage, and the page scrolls to the topmost error. */}}
+    <div data-verso-inline-field class="mt-2 max-w-md">
+      <input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}" data-verso-inline-input{{if .Datatype}} data-verso-datatype="{{.Datatype}}"{{end}}
+        class="{{template "verso-input-class"}} box-border border-rule-strong tabular-nums hover:border-faint focus:border-denim aria-invalid:border-crimson">
+      <p data-verso-inline-error hidden class="mt-1.5 text-sm text-crimson-deep"></p>
+    </div>
+    {{if .Desc}}<p class="mt-1.5 text-sm leading-snug text-body">{{.Desc}}</p>{{end}}
   </div>
+  {{else}}
+  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
+    {{/* The name and its chip share the first line; the description sits below
+         them at the row's full reading width, wrapping as it needs — a sentence
+         cut by an ellipsis is a sentence withheld. The control keeps the hard
+         right edge, centred against however tall the words made the row. */}}
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div class="text-base font-semibold text-ink">{{.Title}}</div>
+
+      </div>
+      {{if .Desc}}<div class="mt-0.5 text-sm leading-snug text-pretty text-body">{{.Desc}}</div>{{end}}
+    </div>
+    {{range .PillsHTML}}{{.}}{{end}}
+    {{/* the checkbox sits centred on the name's own 24px line. */}}
+    {{if .Toggle}}<span class="flex h-6 shrink-0 items-center">{{template "switch.html.tmpl" .Toggle}}</span>{{end}}
+    {{if .Name}}<label class="-mt-0.5 flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-xs border border-rule-strong bg-ground px-2 transition-colors hover:border-denim focus-within:border-denim-deep">
+      <input type="text" name="{{.Name}}" value="{{.Value}}"
+        class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-sm tabular-nums text-ink focus:outline-none">
+      {{icon "square-pen" "size-3.5 shrink-0 text-faint"}}
+    </label>
+    {{else if .Value}}<span class="mt-0.5 shrink-0 font-mono text-base font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
+  </div>
+  {{end}}
 {{end}}
 {{/* bare by default: rows sit straight on the page, hairlines doing the
      separating. style "card" opts into the box for the select places that
@@ -42,26 +80,26 @@
      hover wash to the rounded edge. */}}
 {{/* the card frame is one hairline border — a card reads as a deliberate
      object on the white canvas without leaning on shadow. */}}
-<div class="{{if .Card}}overflow-hidden {{template "verso-card-frame"}} px-5 pb-2.5 {{if .Title}}pt-2.5{{else}}pt-1.5{{end}}{{end}}">
+<div>
   {{/* the group label lives inside its card (same treatment as table column
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline
        under the label; framed cards stay ruleless. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-slate-200 {{end}}text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-rule-strong {{end}}text-xs font-semibold uppercase text-meta">
     <span>{{.Title}}</span>
-    {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case tracking-normal text-slate-400">{{.Meta}}</span>{{end}}
+    {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case text-faint">{{.Meta}}</span>{{end}}
   </div>{{end}}
   {{range .Items}}{{template "settings.row" .}}{{end}}
   {{if .SeamSummary}}
-  <details class="{{if .Card}}-mx-5 -mb-2.5 border-t border-slate-200{{end}}">
+  <details class="border-t border-rule">
     {{/* the chevron sits with the label (an orphaned right-edge chevron fades)
-         and the pair wears the interactive sky, so the fold reads as a place
-         to go without button chrome. */}}
-    <summary class="flex cursor-pointer items-center gap-1.5 {{if .Card}}px-5{{else}}px-3{{end}} py-3 text-sm font-semibold text-sky-700 transition-colors select-none hover:bg-slate-50 hover:text-sky-800 [&::-webkit-details-marker]:hidden">
+         and the pair wears the action colour, so the fold reads as a place to
+         go without button chrome. */}}
+    <summary class="flex cursor-pointer items-center gap-1.5 px-3 py-3 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden">
       {{icon "chevron-right" "verso-chevron size-4"}}
       {{.SeamSummary}}
     </summary>
-    <div class="{{if .Card}}px-5 pb-1{{end}}">
+    <div class="pb-1">
       {{range .SeamItems}}{{template "settings.row" .}}{{end}}
     </div>
   </details>

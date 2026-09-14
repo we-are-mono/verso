@@ -20,10 +20,10 @@ func TestRenderSectionSub(t *testing.T) {
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
-		"mb-1",                   // title pulled tight to its description
-		"mb-6",                   // the gap moves below the sub
+		"mb-2",                   // title pulled tight to its description
+		"mb-5",                   // the gap moves below the sub
 		"<strong>Input</strong>", // sub renders Markdown
-		"text-slate-500",         // sub is muted head-matter, not body prose
+		"text-body",              // sub is muted head-matter, not body prose
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section sub missing %q:\n%s", want, got)
@@ -31,7 +31,7 @@ func TestRenderSectionSub(t *testing.T) {
 	}
 
 	plain := render(t, r, &Section{Title: "Zones", Children: []Widget{&Text{Markdown: "body"}}})
-	if !strings.Contains(plain, "mb-3") || strings.Contains(plain, "mb-6") {
+	if !strings.Contains(plain, "mb-5") {
 		t.Errorf("section without sub should keep its original title spacing:\n%s", plain)
 	}
 }
@@ -48,7 +48,7 @@ func TestRenderSectionMeta(t *testing.T) {
 	for _, want := range []string{
 		"justify-between",
 		"Current time",
-		"font-semibold text-slate-700",
+		"font-semibold text-body",
 		"2026-08-29 22:14:08",
 		lucideIcons["clock"],
 	} {
@@ -94,10 +94,41 @@ func TestRenderSectionFlush(t *testing.T) {
 	}
 }
 
+// A section a link elsewhere on the page points at has to be addressable, and has
+// to stop short of the viewport's top edge when someone is sent to it. Without the
+// id the rail beside a long page is a list of links to nowhere, which is what the
+// firewall's settings rail was.
+func TestRenderSectionAnchor(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Section{Title: "Speed", Anchor: "speed"})
+	for _, want := range []string{`id="speed"`, "scroll-mt-16 md:scroll-mt-0"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("anchored section missing %q:\n%s", want, got)
+		}
+	}
+	plain := render(t, r, &Section{Title: "Speed"})
+	if strings.Contains(plain, "id=") || strings.Contains(plain, "scroll-mt") {
+		t.Errorf("a section nobody points at takes no address:\n%s", plain)
+	}
+}
+
+// A kicker names the list under it. It is set at the meta size in caps, because a
+// second display heading beside a rail's list of headings reads as one of them.
+func TestRenderSectionKicker(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Section{Title: "On this page", Kicker: true})
+	if !strings.Contains(got, `<h3 class="text-xs font-semibold text-meta uppercase">On this page</h3>`) {
+		t.Errorf("kicker is not set as one:\n%s", got)
+	}
+	if strings.Contains(got, "text-lg") {
+		t.Errorf("a kicker is not a heading:\n%s", got)
+	}
+}
+
 func TestRenderSectionHairline(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})
-	if strings.Contains(plain, "border-slate-200") {
+	if strings.Contains(plain, "border-t border-rule") {
 		t.Errorf("section should omit its hairline by default:\n%s", plain)
 	}
 
@@ -106,7 +137,7 @@ func TestRenderSectionHairline(t *testing.T) {
 		Hairline: true,
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
-	if !strings.Contains(divided, "border-slate-200") {
+	if !strings.Contains(divided, "border-rule") {
 		t.Errorf("section with hairline=true should include divider styling:\n%s", divided)
 	}
 }

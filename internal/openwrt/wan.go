@@ -10,6 +10,15 @@ import (
 
 const mainRouteTable uint32 = 254
 
+// InternetAvailable is the pre-session counterpart of WANState.Up: whether
+// the kernel has a forwarding default. It exposes no address, route, or config
+// and needs no rpcd credential. Like the signed-in overview, it reports an
+// available uplink, not an active reachability probe to an external service.
+func InternetAvailable() (bool, error) {
+	routes, err := kernelDefaultRoutes()
+	return len(routes) > 0, err
+}
+
 // kernelRoute is a forwarding default route already filtered through the
 // kernel's active FIB-rule reachability. One multipath route yields one record
 // per live nexthop.

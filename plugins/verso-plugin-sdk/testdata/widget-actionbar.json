@@ -1,0 +1,21 @@
+{
+  "type": "actionbar",
+  "tabs": [
+    {
+      "label": "All",
+      "count": 22,
+      "active": true
+    },
+    {
+      "label": "IPv6",
+      "count": 19,
+      "match": "ipv6"
+    }
+  ],
+  "filter": "Find a rule",
+  "live": "Pause",
+  "action": {
+    "label": "Add rule",
+    "href": "/plugins/firewall/rules/new"
+  }
+}

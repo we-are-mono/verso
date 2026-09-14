@@ -8,5 +8,9 @@
   "placeholder": "router.lan",
   "datatype": "fqdn",
   "error": "must be a fully-qualified domain name",
-  "help": "The device's name."
+  "help": "The device's name.",
+  "key": "hostname",
+  "tip": "The name this router answers to on the local network.",
+  "source": "system system",
+  "style": "segmented"
 }

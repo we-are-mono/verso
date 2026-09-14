@@ -5,9 +5,11 @@
      page theme. An optional download sits beneath as a quiet link, so the code and
      its "can't scan?" fallback read as one centred unit. */}}
 <div class="flex flex-col items-center gap-3 text-center">
-  <div class="size-52 rounded-2xl border border-slate-200 bg-white p-3 shadow-md">
+  {{/* The code's own ground stays pure white whatever the page is: a scanner reads
+       the quiet zone around the modules, and the page's warm ground is not one. */}}
+  <div class="size-52 rounded-2xl border border-rule bg-white p-3 shadow-md">
     {{.SVG}}
   </div>
-  {{if .Caption}}<p class="max-w-[30ch] text-sm text-slate-500">{{.Caption}}</p>{{end}}
-  {{if .DownloadHref}}<a href="{{.DownloadHref}}" download="{{.DownloadName}}" class="text-sm font-medium text-sky-600 underline underline-offset-2 hover:text-sky-700">{{.DownloadLabel}}</a>{{end}}
+  {{if .Caption}}<p class="max-w-[30ch] text-sm text-body">{{.Caption}}</p>{{end}}
+  {{if .DownloadHref}}<a href="{{.DownloadHref}}" download="{{.DownloadName}}" class="text-sm font-medium text-denim underline underline-offset-2 hover:text-denim-deep">{{.DownloadLabel}}</a>{{end}}
 </div>

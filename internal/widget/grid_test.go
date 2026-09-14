@@ -4,6 +4,9 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -69,5 +72,62 @@ func TestDecodeGridChildren(t *testing.T) {
 
 	if _, err := Decode([]byte(`{"type":"grid","children":[{"type":"nope"}]}`)); err == nil {
 		t.Error("grid with an unknown child should fail to decode, not vanish")
+	}
+}
+
+// TestGridRail: a rail is the page's work beside a narrower column that comments
+// on it — a fixed reading measure and a fixed rail, not an even split, with the
+// page's own side padding as the gutter between them. The two columns are the
+// whole of the wide page, so they are keyed to the grid's own container rather
+// than to the window; narrower than that the rail stacks under the work, where
+// two columns would leave neither readable.
+func TestGridRail(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{
+		Style: "rail", Columns: 2,
+		Children: []Widget{&Callout{Body: "the work"}, &Callout{Body: "the rail"}},
+	})
+	for _, want := range []string{
+		`<div class="@container">`,
+		"grid grid-cols-1 gap-11 @6xl:grid-cols-[40rem_29.25rem]",
+		"the work", "the rail",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("rail grid missing %q:\n%s", want, got)
+		}
+	}
+	// A rail is never the even split an ordinary grid draws.
+	if strings.Contains(got, "md:grid-cols-2") {
+		t.Errorf("a rail must not fall back to even columns:\n%s", got)
+	}
+}
+
+// TestGridColumnsReachTheStylesheet: every column class a grid can render is a
+// rule in the built stylesheet. The stylesheet is compiled from the templates
+// alone, so a class that only Go named was never compiled — and a grid whose
+// column class is missing does not fail, it silently draws one column. Render
+// every style at every count and look each class up in the CSS as the selector
+// Tailwind writes for it.
+func TestGridColumnsReachTheStylesheet(t *testing.T) {
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "verso.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	attr := regexp.MustCompile(`class="([^"]*)"`)
+	escape := strings.NewReplacer("@", `\@`, ":", `\:`, "[", `\[`, "]", `\]`, ".", `\.`)
+	r := newRenderer(t)
+	for _, style := range []string{"", "form", "strip", "rail"} {
+		for columns := 1; columns <= 5; columns++ {
+			got := render(t, r, &Grid{Style: style, Columns: columns, Children: []Widget{&Callout{Body: "a"}, &Callout{Body: "b"}}})
+			for _, m := range attr.FindAllStringSubmatch(got, -1) {
+				for _, class := range strings.Fields(m[1]) {
+					if !strings.Contains(class, "grid-cols") && !strings.HasPrefix(class, "gap-") && class != "@container" {
+						continue
+					}
+					if sel := "." + escape.Replace(class); !strings.Contains(string(css), sel+"{") && !strings.Contains(string(css), sel+",") {
+						t.Errorf("style %q, %d columns: class %q is not in the built stylesheet", style, columns, class)
+					}
+				}
+			}
+		}
 	}
 }

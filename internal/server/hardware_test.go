@@ -99,14 +99,14 @@ func TestHardwarePanelArtEmbedded(t *testing.T) {
 	}
 }
 
-// The Hardware page names the box in its serif display masthead (no eyebrow), and
+// The Hardware page names the box in its display masthead (no eyebrow), and
 // appears as the first System tab, active on its own page.
 func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
 		"Supermicro H13SAE-MF",                           // the model is the headline
-		"verso-page-heading",                             // rendered as the serif display masthead (no kicker)
+		"verso-page-heading",                             // rendered as the display masthead (no kicker)
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
 		"All sensors", // the full instrument panel
 	} {

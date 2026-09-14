@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* stack: layout of pre-rendered children, with no surface of its own. Inline forms
-     a wrapping row; Divided draws hairlines; Compact tightens the default vertical
-     rhythm. */}}
-<div class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-3{{else if .Divided}}divide-y divide-slate-200{{else if .Compact}}space-y-3{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>
+     a wrapping row; Between (inline only) spreads its groups to opposite edges;
+     Divided draws hairlines; Compact tightens the default vertical rhythm. */}}
+<div class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-3{{if .Between}} w-full justify-between{{end}}{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}space-y-8{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>

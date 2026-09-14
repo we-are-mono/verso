@@ -1,17 +1,25 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* badge: a status pill. The shell maps the semantic variant to palette classes;
-     the plugin never names a colour (ADR-005). */}}
-{{/* the pill is fully round at grid scale; the lg banner chip squares off to
-     the chip radius the rest of the app uses. */}}
-<span class="inline-flex items-center font-medium ring-1 ring-inset
-  {{if eq .Size "lg"}}gap-2 rounded-md px-3 py-3 text-sm{{else}}gap-1.5 rounded-full px-2.5 py-1 text-xs{{end}}
-  {{if eq .Variant "success"}}bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20
-  {{else if eq .Variant "warning"}}bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20
-  {{else if eq .Variant "danger"}}bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20
-  {{else if eq .Variant "info"}}bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-400 dark:ring-sky-500/20
-  {{else}}bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}">
+     the plugin never names a colour (ADR-005). Plain drops the pill chrome to a
+     tone dot + plain-ink words — a resting status line, not a chip. */}}
+{{/* A pill in a row is a chip, so it is built out of the chip's own box rather
+     than out of metrics of its own: one height for every small bordered thing on
+     the page, and one place to retune it. Only the tone is the badge's. The lg
+     banner chip is not in a row and keeps its own, larger box. */}}
+{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}<span class="size-1.5 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}{{.Text}}</span>
+{{/* Each verdict on its own soft ground, worded in the step of that hue that can
+     carry words — the full-chroma value stays a mark, on the dot. */}}
+{{else}}<span class="{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-box"}} font-mono{{end}}
+  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
+  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
+  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
+  {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep
+  {{/* A pill with no hue is still a verdict — the firewall's drop, which says
+       nothing at all rather than answering — so it stands a step above the
+       reference chip's quiet ground and keeps its word in full ink. */}}
+  {{else}}border-rule-strong bg-mid text-ink{{end}}">
   {{if .Icon}}{{if eq .Size "lg"}}{{icon .Icon "size-4 shrink-0"}}{{else}}{{icon .Icon "size-3.5 shrink-0"}}{{end}}{{end}}
   {{if .Dot}}<span class="size-1.5 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}
   {{.Text}}
-</span>
+</span>{{end}}

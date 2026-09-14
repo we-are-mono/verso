@@ -37,8 +37,6 @@ func TestWalkReachesNestedWidgets(t *testing.T) {
 		{"canvas", &Canvas{Children: []Widget{leaf()}}, 1},
 		{"disclosure", &Disclosure{Children: []Widget{leaf()}}, 1},
 		{"empty", &Empty{Children: []Widget{leaf()}}, 1},
-		{"capsule preview", &CapsulePreview{Children: []Widget{leaf()}}, 1},
-		{"hero", &Hero{Children: []Widget{leaf()}}, 1},
 		{"modal", &Modal{Children: []Widget{leaf()}}, 1},
 		{"drawer", &Drawer{Trigger: []Widget{leaf()}, Children: []Widget{leaf()}}, 2},
 		{"conditional", &Conditional{Fields: []Widget{leaf()}, Otherwise: []Widget{leaf()}}, 2},
@@ -113,8 +111,6 @@ func TestStripFiltersReachesEveryContainer(t *testing.T) {
 		{"canvas", &Canvas{Children: []Widget{lens()}}},
 		{"disclosure", &Disclosure{Children: []Widget{lens()}}},
 		{"empty", &Empty{Children: []Widget{lens()}}},
-		{"capsule preview", &CapsulePreview{Children: []Widget{lens()}}},
-		{"hero", &Hero{Children: []Widget{lens()}}},
 		{"modal", &Modal{Children: []Widget{lens()}}},
 		{"drawer", &Drawer{Trigger: []Widget{lens()}, Children: []Widget{lens()}}},
 		{"conditional", &Conditional{Fields: []Widget{lens()}, Otherwise: []Widget{lens()}}},
@@ -183,6 +179,12 @@ func TestFilterableCount(t *testing.T) {
 		{"one past the threshold", &Stack{Children: []Widget{
 			&Section{Children: []Widget{&Table{Rows: rows(21)}}},
 		}}, 21},
+		// A live listing renders with nothing in it and fills afterwards. What
+		// the lens will sift is the ring it keeps, so the page earns its lens
+		// on the strength of the stream, not of the empty table it starts as.
+		{"a live listing counts its ring", &Table{Stream: &TableStream{Source: StreamSourceFirewallLog}}, StreamRingDefault},
+		{"a declared ring is what it keeps", &Table{Stream: &TableStream{Source: StreamSourceFirewallLog, Ring: 40}}, 40},
+		{"a source nobody serves sifts nothing", &Table{Stream: &TableStream{Source: "syslog"}}, 0},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -193,40 +195,6 @@ func TestFilterableCount(t *testing.T) {
 	}
 	if FilterThreshold != 20 {
 		t.Errorf("FilterThreshold = %d, want 20", FilterThreshold)
-	}
-}
-
-// TestPageFormCount: the capsule binds to one page form, so the count is what
-// the gateway holds a page's composition to — a page-style form and a
-// reorderable listing each bring one; a reorder column without its config
-// brings none.
-func TestPageFormCount(t *testing.T) {
-	reorderable := &Table{
-		ReorderConfig: "firewall",
-		Columns:       []TableColumn{{Kind: "reorder"}},
-		Rows:          []TableRow{{ID: "r1", Cells: []TableCell{{}}}},
-	}
-	inert := &Table{
-		Columns: []TableColumn{{Kind: "reorder"}},
-		Rows:    []TableRow{{ID: "r1", Cells: []TableCell{{}}}},
-	}
-	pageForm := &Form{Style: "page"}
-	plain := &Form{}
-
-	cases := []struct {
-		name string
-		root Widget
-		want int
-	}{
-		{"one reorderable listing", &Stack{Children: []Widget{reorderable}}, 1},
-		{"reorder column without config", &Stack{Children: []Widget{inert}}, 0},
-		{"page form beside a reorderable listing", &Stack{Children: []Widget{pageForm, reorderable}}, 2},
-		{"a plain form counts nothing", &Stack{Children: []Widget{plain}}, 0},
-	}
-	for _, c := range cases {
-		if got := PageFormCount(c.root); got != c.want {
-			t.Errorf("%s: PageFormCount = %d, want %d", c.name, got, c.want)
-		}
 	}
 }
 

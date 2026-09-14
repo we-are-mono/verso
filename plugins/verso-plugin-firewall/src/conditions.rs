@@ -88,6 +88,9 @@ pub fn widget(rule: &RuleForm, errors: &Errors, model: &Firewall) -> Widget {
 
 fn item(key: &str, label: &str, help: &str, active: bool, children: Vec<Widget>) -> ConditionItem {
     ConditionItem {
+        group: Default::default(),
+        hint: Default::default(),
+
         key: key.into(),
         label: label.into(),
         help: help.into(),
@@ -357,13 +360,7 @@ fn dscp(rule: &RuleForm, errors: &Errors) -> ConditionItem {
             2,
             vec![
                 comparison("dscp_match", &rule.dscp, "Equals", "Does not equal"),
-                select_field(
-                    "dscp",
-                    "DSCP",
-                    &rule.dscp.value,
-                    dscp_options(),
-                    errors,
-                ),
+                select_field("dscp", "DSCP", &rule.dscp.value, dscp_options(), errors),
             ],
         )],
     )
@@ -387,10 +384,7 @@ fn rate(rule: &RuleForm, errors: &Errors) -> ConditionItem {
                         "limit_match",
                         "Match",
                         matching,
-                        options(&[
-                            ("below", "At or below the rate"),
-                            ("over", "Over the rate"),
-                        ]),
+                        options(&[("below", "At or below the rate"), ("over", "Over the rate")]),
                         errors,
                     ),
                     text_field("limit", "Packets", &rule.rate.count, "", errors),
@@ -399,7 +393,13 @@ fn rate(rule: &RuleForm, errors: &Errors) -> ConditionItem {
             form_grid(
                 2,
                 vec![
-                    select_field("limit_unit", "Per", &rule.rate.unit, options(&RATE_UNITS), errors),
+                    select_field(
+                        "limit_unit",
+                        "Per",
+                        &rule.rate.unit,
+                        options(&RATE_UNITS),
+                        errors,
+                    ),
                     text_field(
                         "limit_burst",
                         "Initial burst",

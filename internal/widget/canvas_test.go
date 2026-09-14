@@ -15,7 +15,7 @@ func TestRenderCanvas(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Canvas{Children: []Widget{&Text{Markdown: "inside the canvas"}}})
 	for _, want := range []string{
-		"rounded-2xl", "border-slate-200", "bg-slate-50",
+		"rounded-2xl", "border-rule", "bg-quiet",
 		"padding: 3rem",     // uniform default padding
 		"inside the canvas", // the child rendered within
 	} {

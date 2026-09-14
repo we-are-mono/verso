@@ -1,0 +1,9 @@
+{
+  "type": "button",
+  "label": "Pause",
+  "icon": "pause",
+  "style": "secondary",
+  "name": "_action",
+  "value": "pause",
+  "live": true
+}

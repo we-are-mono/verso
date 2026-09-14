@@ -11,81 +11,319 @@
      active, unless the person prefers reduced motion. */}}
 {{define "verso-press"}}active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0{{end}}
 
+{{/* verso-btn-box: the shape every button and button-shaped link takes — one
+     height for the whole app, the app's radius, and the padding that goes with
+     them. A button set beside a field then ends exactly where the field does,
+     because both are 36px and both carry a 1px border. Colour comes from the
+     chains below; this says nothing about colour. */}}
+{{define "verso-btn-box"}}inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xs px-4 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2{{end}}
+
 {{/* verso-btn-primary: the primary action's colour + interaction chain. The
      call site owns layout (flex, gap, padding, radius, focus treatment). */}}
-{{define "verso-btn-primary"}}bg-sky-600 text-white transition-colors hover:bg-sky-700 active:bg-sky-800 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900 {{template "verso-press"}}{{end}}
+{{define "verso-btn-primary"}}border border-denim bg-denim text-white transition-colors hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-secondary: the quiet bordered action that warms to the accent on
      hover. Layout stays at the call site, as with verso-btn-primary. */}}
-{{define "verso-btn-secondary"}}border-slate-300 bg-white text-slate-700 transition-colors hover:border-sky-600 hover:text-sky-600 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900 {{template "verso-press"}}{{end}}
+{{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-ink transition-colors hover:border-faint hover:bg-quiet {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-danger: the destructive action's colour + interaction chain —
      one red across the confirm widget and the table's confirmed row action. */}}
-{{define "verso-btn-danger"}}bg-red-600 text-white transition-colors hover:bg-red-700 dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950 {{template "verso-press"}}{{end}}
+{{define "verso-btn-danger"}}border border-crimson bg-crimson text-white transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
 
 {{/* verso-input-border: a form control's border/focus halo, switching to the
      error treatment when the argument (the field's error) is set. */}}
-{{define "verso-input-border"}}{{if .}}border-red-600 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50{{else}}border-slate-300 focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 dark:focus:border-sky-400 dark:focus:ring-sky-400/50{{end}}{{end}}
+{{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-crimson-deep{{else}}border-rule-strong hover:border-denim focus:border-denim-deep{{end}}{{end}}
+
+{{/* verso-input-class: one control, one treatment. A value someone types into a
+     router is a machine string — an address, a name a daemon will answer to — so
+     the field is set in mono at the reading size, on the page's own ground
+     rather than on a raised white card. */}}
+{{define "verso-input-class"}}h-9 w-full rounded-xs border bg-white px-3 font-mono text-base font-medium text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors focus:outline-none{{end}}
+
+{{/* verso-chip-box: every chip's shape, stated once. A chip is one height
+     wherever it appears — beside a field's label, in a table's group band, on a
+     panel's tab, after a row's name — because a reader who sees two heights
+     reads two kinds of thing, and a chip is one kind of thing.
+
+     22px, and the arithmetic that gets there rather than a height anyone has to
+     honour by hand: a 14px value in a 16px line box (leading-4), 2px of padding
+     above and below, and the 1px hairline. Retune it by moving the line box or
+     the padding and the whole vocabulary follows. */}}
+{{/* verso-chip-shape is that box with the type left out, for the one chip whose
+     words are not chip-sized — a traffic endpoint, which reads at the mono
+     reading size because it is an address someone could type. The 16px line box
+     is what holds every chip to one height whatever size its words are. */}}
+{{define "verso-chip-shape"}}inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap{{end}}
+
+{{/* The one form row, whatever control ends it. What the setting is on the left,
+     growing; the control on the right at a fixed width, because a column of
+     controls that all begin and end in the same place is what makes a form
+     scannable — the labels are words and may be any length.
+
+     A value to type and a state to flip are the same question asked of the same
+     object, so they are the same row: every widget that is one setting renders
+     through these three, and none of them may spell its own geometry. That is
+     the whole reason a settings page reads as one page rather than as a pile of
+     controls that each brought their own layout.
+
+     Nothing rules between rows: fields inside a section already belong together,
+     and a hairline every 40px turns a form into a table. Rules separate
+     sections; space separates rows. */}}
+{{define "verso-field-row-class"}}flex max-w-[40rem] flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-8{{end}}
+{{/* The control column holds a control's own height as its floor, so a row that
+     ends in a 20px switch is exactly as tall as one that ends in a 36px box. A
+     column of rows that changed height with the kind of control in it would read
+     as a list of different things. */}}
+{{define "verso-field-control-class"}}flex w-full min-w-0 flex-col justify-center gap-1.5 sm:w-64 sm:min-h-9 sm:flex-none{{end}}
+
+{{/* verso-row-remove: the glyph that takes one row out of a set. It wears the
+     same quiet treatment every icon act in a table wears, because that is what
+     it is — taking a condition off a rule changes nothing on the device until the
+     whole change is applied, so dressing it in crimson would promise a severity
+     it does not have. The red is reserved for acts that cannot be taken back. */}}
+{{define "verso-remove-glyph-class"}}grid size-7 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{define "verso-row-remove"}}<button type="button" data-verso-remove-field="{{.Name}}" aria-label="{{ t "Remove" }} {{.Label}}"
+  class="group/act relative mt-1 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>{{end}}
+
+{{/* The row's left column: what the setting is called, the option it writes, and
+     — on a label that carries an explanation — the help cursor and tab stop that
+     say the label is the thing to hover. Without one the label is inert, as
+     every label was. */}}
+{{define "verso-field-label"}}
+<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:pt-2">
+  {{if .Label}}<label for="{{.For}}" class="text-sm font-semibold text-ink{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}>{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}</label>{{end}}
+  {{if .Key}}<span class="{{template "verso-chip-class"}}">{{.Key}}</span>{{end}}
+</div>
+{{end}}
+{{/* A chip's word is set at the regular weight. The box already separates it
+     from the prose around it, so weight on top of a border and a fill is one
+     emphasis too many — and a page of bolded chips reads as a page of shouting.
+     The endpoint chips are the exception and spell their own weight: what they
+     carry is an address someone will retype, and it holds the row's eye. */}}
+{{define "verso-chip-box"}}{{template "verso-chip-shape"}} text-sm font-normal{{end}}
 
 {{/* verso-chip-class: the neutral category/reference chip — the one chip
-     treatment an entity cited inside another row wears everywhere. */}}
-{{define "verso-chip-class"}}inline-flex items-center gap-1 rounded-md ring-1 ring-inset ring-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-medium text-slate-600 whitespace-nowrap dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20{{end}}
+     treatment an entity cited inside another row wears everywhere. Mono,
+     because what it states is a machine string someone could type elsewhere. */}}
+{{define "verso-chip-class"}}{{template "verso-chip-box"}} border-rule bg-quiet font-mono text-meta{{end}}
+
+{{/* verso-chip-accent-class: the same chip where what it states is the action
+     colour's business — an address pinned by a reservation, say. Denim on its
+     own soft ground, so it reads as a decision someone made rather than as one
+     more fact about the row. */}}
+{{define "verso-chip-accent-class"}}{{template "verso-chip-box"}} border-denim-line bg-denim-soft font-mono text-denim-deep{{end}}
+
+{{/* verso-chip-raised: the neutral chip on a surface that is itself quiet — a
+     table's group band — where the chip has to sit a step above its ground
+     rather than on it. */}}
+{{define "verso-chip-raised"}}{{template "verso-chip-box"}} border-rule bg-ground font-mono text-meta{{end}}
+
+{{/* verso-token-chip: the one chip that is not a citation. Every chip above
+     states a fact somewhere in the page's prose and is sized to the words around
+     it; this one is a value a person put inside a control and can take back out,
+     so it is sized to the control instead — 30px inside a 36px box, 2px of the
+     box's own ground showing all round it. At citation size it read as a label
+     that had wandered into a field, and left its remove glyph too small to wear
+     the hover every other icon act wears.
+
+     The value is set at the box's own reading size and weight, because what is in
+     the chip is exactly what was typed into the box beside it. */}}
+{{define "verso-token-chip"}}inline-flex h-7.5 items-center gap-1.5 rounded-xs border border-rule bg-quiet px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
+
+{{/* The glyph that takes one value out. Twenty pixels, so the quiet fill it
+     takes on hover is a target rather than an outline of the glyph — the same act
+     a table's row icons are, at the same size, with the same hover. It pulls 4px
+     into the chip's right padding so the fill sits inside the chip's edge. */}}
+{{define "verso-token-chip-remove"}}grid size-5 -mr-1 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+
+{{/* verso-entity-drawer: the same sliding frame as a row's own drawer, with
+     nothing in it. A row whose subject several plugins have a say about does not
+     carry its panel: the shell assembles that from every contributing plugin,
+     and doing so for every row of a listing would mean asking each of them once
+     per row before anyone had clicked anything. So the frame ships empty and
+     fetches its contents the first time it opens. */}}
+{{define "verso-entity-drawer"}}<template x-teleport="body">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
+    {{template "verso-overlay-backdrop"}}
+    <aside x-show="open"
+      x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+      x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+      x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+      class="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      {{/* The panel's contents are fetched when the drawer is opened, by the
+           shell's own modal component rather than by a trigger on this element:
+           what is asked for depends on which icon opened it, and an open that
+           wants the tab already showing asks for nothing at all. Until then this
+           is a spinner and the url it would fetch. */}}
+      <div data-verso-entity-body data-verso-entity-url="{{.Entity}}" class="flex min-h-0 flex-1 flex-col">
+        <div class="flex flex-1 items-center justify-center text-glyph">{{template "verso-waiting" ""}}</div>
+      </div>
+    </aside>
+  </div>
+</template>{{end}}
+
+{{/* verso-tip-class: the one tooltip — a small card in the page's own palette
+     rather than an inverted bubble, because nothing else in Verso is inverted.
+     It rests above whatever raises it and flush to that thing's right edge, so a
+     tip on the last column stays inside the table. Hidden until its named group
+     is hovered or focused; the caller supplies those variants. */}}
+{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity{{end}}
+
+{{/* verso-tip-wide: the tooltip that carries a sentence rather than a word —
+     a form label explaining what the thing it names actually is. The narrow tip
+     above states a control's name and so can sit on one line; this one wraps at
+     a reading measure and hangs below its label, where a panel's first field
+     has room for it and the label above stays legible while it is open.
+
+     It ends on the option it explains and what reads that option, ruled off in
+     mono: the prose is for someone meeting the setting for the first time, the
+     footer for someone who already knows the config and wants the line.
+
+     The raising element carries `group/tip` and `data-verso-tip`: the first
+     reveals this on hover and focus, the second is what verso.js measures and
+     what the stylesheet hangs the tip off, above or below. */}}
+{{define "verso-tip-wide"}}
+<span role="tooltip" id="{{.ID}}" class="pointer-events-none absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus-visible/tip:opacity-100">
+  <span class="text-sm leading-[1.45] text-ink">{{.Tip}}</span>
+  {{if .Footer}}<span class="flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta">{{.Footer}}</span>{{end}}
+</span>
+{{end}}
 
 {{/* verso-chip: the icon+label entity chip (an interface, a zone, a port) —
      the Lucide glyph names the kind, the label the one. */}}
-{{define "verso-chip"}}<span class="{{template "verso-chip-class"}}">{{if .Icon}}<span class="text-slate-400">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
+{{define "verso-chip"}}<span{{if .Title}} title="{{.Title}}" aria-label="{{.Title}}"{{end}} class="{{if eq .Tone "accent"}}{{template "verso-chip-accent-class"}}{{else if eq .Tone "success"}}{{template "verso-chip-box"}} border-green-line bg-green-soft font-mono text-green-deep{{else if eq .Tone "warning"}}{{template "verso-chip-box"}} border-marigold-line bg-marigold-soft font-mono text-marigold-deep{{else if eq .Tone "danger"}}{{template "verso-chip-box"}} border-crimson-line bg-crimson-soft font-mono text-crimson-deep{{else}}{{template "verso-chip-class"}}{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
 
 {{/* verso-tone-dot: the status dot's colour for a tone (the badge vocabulary);
      success pulses — it marks something live. */}}
-{{define "verso-tone-dot"}}{{if eq . "success"}}verso-live-dot bg-emerald-500{{else if eq . "warning"}}bg-amber-500{{else if eq . "danger"}}bg-red-500{{else if eq . "info"}}bg-sky-500{{else}}bg-slate-400{{end}}{{end}}
+{{define "verso-tone-dot"}}{{if eq . "success"}}verso-live-dot bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else if eq . "info"}}bg-denim{{else}}bg-glyph{{end}}{{end}}
+
+{{/* verso-tone-text: a tone worn as ink rather than as a pill — the badge's own
+     text treatment, light and dark. A tone outside the vocabulary emits nothing,
+     so the element keeps whatever colour it already carries. */}}
+{{define "verso-tone-text"}}{{if eq . "success"}}text-green-deep{{else if eq . "warning"}}text-marigold-deep{{else if eq . "danger"}}text-crimson-deep{{else if eq . "info"}}text-denim-deep{{end}}{{end}}
 
 {{/* verso-card-frame: the card's edge — one hairline border on white, no
      shadow — shared by card, settings, and table so every boxed surface
      speaks one card language. */}}
-{{define "verso-card-frame"}}rounded-2xl border border-slate-200 bg-white{{end}}
+{{define "verso-card-frame"}}rounded-xs border border-rule bg-ground{{end}}
 
-{{/* verso-overlay-backdrop: the dimmed, blurred click-to-close layer behind an
-     open modal, drawer, or confirm dialog. */}}
-{{define "verso-overlay-backdrop"}}<div x-show="open" x-transition.opacity @click="hide" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs dark:bg-black/60"></div>{{end}}
+{{/* verso-overlay-backdrop: the click-to-close layer behind an open modal,
+     drawer, or confirm dialog. Ink at 18% over a 2px blur, so what it covers
+     stays legible as texture and the panel in front is plainly the thing in
+     hand — a heavier scrim would make the page behind it look switched off.
+     It fades over 280ms, a touch under the panel's own 300ms slide, so the
+     dimming is already there as the panel arrives. */}}
+{{define "verso-overlay-backdrop"}}<div x-show="open" x-transition.opacity.duration.280ms @click="hide" class="absolute inset-0 bg-ink/18 backdrop-blur-[2px]"></div>{{end}}
 
 {{/* verso-close-btn: the × that dismisses an overlay. */}}
-{{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-sky-600">{{icon "x" "size-5"}}</button>{{end}}
+{{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>{{end}}
 
 {{/* verso-csrf: the hidden CSRF carrier every state-changing form posts;
      renders nothing without a token (a render outside a session). */}}
 {{define "verso-csrf"}}{{if .}}<input type="hidden" name="_csrf" value="{{.}}">{{end}}{{end}}
 
+{{/* verso-flash: the one-shot outcome — a PRG confirmation, a plugin envelope's
+     notice — toned by the tone vocabulary and drawn once. The page carries it
+     at the top of its content; a panel answering its own submission carries it
+     at the top of its body, because the page around it is not re-rendered to
+     say what happened. One definition, so the two cannot drift apart. Nothing
+     draws without a message. */}}
+{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-center gap-2 rounded-xs border px-4 py-3 text-sm {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}">
+  {{if eq .Variant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else if eq .Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0"}}{{else if eq .Variant "info"}}{{icon "info" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
+  <span>{{.Message}}</span>
+</div>{{end}}{{end}}
+
 {{/* verso-drawer-panel: the slide-in detail panel — the one drawer language,
      shared by the drawer widget and a table row's drawer (drawerPanelView).
      Behaviour is the shell's modal Alpine component; the caller provides the
-     x-data scope and the trigger. The title row can carry a status dot and the
-     category chip; HideTitle keeps the heading for readers only. The body
+     x-data scope and the trigger. The title band carries only the heading and close control. The body
      wrapper tames in-panel tables: the page-width floor and side padding go,
      the last column rides the right edge, hover tints go quiet (these rows
      open nothing), and a fact list following other content gets its own
      breath. */}}
+{{/* A panel whose submission is done says so from inside (verso-forms.js), and
+     the frame answers by finishing: closing, and letting go of what it holds
+     once it is out of sight. */}}
 {{define "verso-drawer-panel"}}<template x-teleport="body">
-  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" @verso-panel-done="finish" class="fixed inset-0 z-50">
     {{template "verso-overlay-backdrop"}}
-    <aside x-show="open" @input="markDirty" @change="markDirty"
+    <aside x-show="open"
       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
       x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-      class="verso-drawer-scrollbar absolute inset-y-0 right-0 flex w-full {{if .Wide}}max-w-2xl{{else}}max-w-md{{end}} flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl focus:outline-none">
-      {{if .HideTitle}}
-      <h3 class="sr-only">{{.Title}}</h3>
-      <span class="absolute top-5 right-5 z-10">{{template "verso-close-btn"}}</span>
-      {{else}}<header class="flex shrink-0 items-center justify-between px-6 py-4">
-        <div class="flex min-w-0 items-center gap-2.5">
-          {{if .Dot}}<span class="{{template "verso-tone-dot" .Dot}} size-2 shrink-0 rounded-full"></span>{{end}}
-          <h3 class="truncate text-base font-medium text-slate-900">{{.Title}}</h3>
-          {{if .Tag}}<span class="shrink-0 {{template "verso-chip-class"}}">{{.Tag}}</span>{{end}}
-        </div>
-        {{template "verso-close-btn"}}
-      </header>{{end}}
-      <div class="space-y-6 overflow-x-hidden px-6 {{if .HideTitle}}pt-6{{else}}pt-2{{end}} pb-6 [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
-        {{range .Body}}{{.}}{{end}}
-      </div>
+      class="absolute inset-y-0 right-0 flex w-full {{if or .Choices .Form}}max-w-[40rem]{{else if .Wide}}max-w-3xl{{else}}max-w-md{{end}} flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      <div data-verso-panel class="contents">{{template "verso-drawer-contents" .}}</div>
     </aside>
   </div>
 </template>{{end}}
+
+{{/* verso-drawer-fetched: the same frame with nothing in it. A listing's rows
+     ship this and nothing else: the panel's contents are one request away, made
+     the first time someone opens it, rather than N panels rendered for a page
+     where at most one will ever be looked at. The frame is what animates, and
+     because it is mounted once it animates once — switching tabs later swaps
+     what is inside it and the panel itself never moves. */}}
+{{define "verso-drawer-fetched"}}<template x-teleport="body">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" @verso-panel-done="finish" class="fixed inset-0 z-50">
+    {{template "verso-overlay-backdrop"}}
+    <aside x-show="open"
+      x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+      x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+      x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+      class="absolute inset-y-0 right-0 flex w-full max-w-3xl has-[[data-verso-panel-size=form]]:max-w-[40rem] flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      <div data-verso-panel{{if .}} data-verso-panel-url="{{.}}"{{end}} class="contents"></div>
+    </aside>
+  </div>
+</template>{{end}}
+
+{{/* The title band is shared by every drawer, including shell-assembled entity
+     panels. Only the title and close control belong here; facts live in the body. */}}
+{{define "verso-drawer-header"}}
+<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">
+  <h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h3>
+  <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-[#c1bab0] hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+</header>
+{{end}}
+
+{{/* verso-drawer-contents: what is inside the frame — the title band, tabs,
+     and the body. It is a template of its own because a fetch
+     answers with exactly this: the frame stays where it is and only what it
+     holds is replaced. */}}
+{{define "verso-drawer-contents"}}
+      {{if .Form}}<span hidden data-verso-panel-size="form"></span>{{end}}
+      {{template "verso-drawer-header" .Title}}
+      {{/* The strip cuts the body into the questions the object answers, each
+           carrying where the object stands under it. A panel with one thing to
+           say sends no tabs, and a strip that decides nothing is chrome. */}}
+      {{if .Tabs}}
+      <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8" aria-label="{{ t "Sections" }}">
+        {{range .Tabs}}
+        {{/* A reading is swapped into the panel that is already open, never
+             navigated to: the frame stays where it is, so it does not slide in
+             again to show a different answer about the same rule. The address
+             follows, so a reading is still a place you can link to — and with no
+             script the link is simply followed and the page answers with the
+             panel open on it. */}}
+        <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-panel]" hx-swap="innerHTML" hx-replace-url="true"{{if .Active}} aria-current="page"{{end}}
+          class="flex shrink-0 items-center gap-2 whitespace-nowrap text-base leading-[1.3] transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}
+          {{/* The state chip takes the tab's own colour — denim on the one in
+               force, quiet on the rest — but never its weight: the tab's label
+               is what the weight marks, and a bolded chip beside a bolded word
+               says the same thing twice. Sans, because what it states is a count
+               or a plain word rather than a string someone would type. A tighter
+               box than a row's chip, because it rides a line of text rather than
+               a 44px row and has to sit inside the label's own height. */}}
+          {{if .State}}<span class="inline-flex items-center rounded-xs border px-1.5 py-px text-xs leading-4 font-normal whitespace-nowrap {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
+        {{end}}
+      </nav>
+      {{end}}
+      {{/* A panel that answered its own submission leads with how it went,
+           where the page's flash slot would have said it: the page is not
+           being drawn around this, so the panel says it itself. */}}
+      <div data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-8 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}px-8 pt-7 pb-8{{end}} [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+        {{template "verso-flash" .Flash}}
+        {{range .Body}}{{.}}{{end}}
+      </div>
+{{end}}
+
+{{define "verso-waiting"}}<span data-verso-wait aria-hidden="true" class="relative block size-3.5 shrink-0"><span class="absolute top-0 left-0 size-1.5 rounded-[1px] bg-sand-5"></span><span class="absolute top-0 left-2 size-1.5 rounded-[1px] bg-sand-5"></span><span class="absolute top-2 left-2 size-1.5 rounded-[1px] bg-sand-5"></span><span class="absolute top-2 left-0 size-1.5 rounded-[1px] bg-sand-5"></span></span>{{end}}

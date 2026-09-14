@@ -232,38 +232,43 @@ pub fn page(model: &Dnsdhcp) -> Envelope {
 fn render(model: &Dnsdhcp, open: &Open) -> Envelope {
     page::dns(Widget::stack(vec![
         page::filter("Filter everything — name, server, option…"),
-        page::page_form(&open.refused, vec![
-            records::section(
-                model,
-                open.record.as_ref(),
-                block(model, "", &NAMES, &NAMES_FOLDED, ""),
-            ),
-            upstreams::section(
-                model,
-                open.upstream.as_ref(),
-                block(model, "", &LOOKUPS, &LOOKUPS_FOLDED, ""),
-            ),
-            Widget::section(
-                "Protection",
-                "What never leaves the house, and what never gets in.",
-                vec![block(model, "", &PROTECTION, &PROTECTION_FOLDED, "")],
-            ),
-            Widget::section(
-                "Advanced",
-                ADVANCED_SUB,
-                vec![
-                    block(model, "Cache & limits", &CACHE, &CACHE_FOLDED, ""),
-                    block(model, "DNSSEC", &DNSSEC, &[], ""),
-                    block(model, "Listening & logs", &LISTENING, &LISTENING_FOLDED, ""),
-                ],
-            ),
-        ]),
+        page::page_form(
+            &open.refused,
+            vec![
+                records::section(
+                    model,
+                    open.record.as_ref(),
+                    block(model, "", &NAMES, &NAMES_FOLDED, ""),
+                ),
+                upstreams::section(
+                    model,
+                    open.upstream.as_ref(),
+                    block(model, "", &LOOKUPS, &LOOKUPS_FOLDED, ""),
+                ),
+                Widget::section(
+                    "Protection",
+                    "What never leaves the house, and what never gets in.",
+                    vec![block(model, "", &PROTECTION, &PROTECTION_FOLDED, "")],
+                ),
+                Widget::section(
+                    "Advanced",
+                    ADVANCED_SUB,
+                    vec![
+                        block(model, "Cache & limits", &CACHE, &CACHE_FOLDED, ""),
+                        block(model, "DNSSEC", &DNSSEC, &[], ""),
+                        block(model, "Listening & logs", &LISTENING, &LISTENING_FOLDED, ""),
+                    ],
+                ),
+            ],
+        ),
     ]))
 }
 
 /// block renders one catalogue against the daemon section.
 fn block(model: &Dnsdhcp, title: &str, rows: &[Row], folded: &[Row], lead: &str) -> Widget {
     Widget::Settings {
+        condensed: Default::default(),
+
         style: String::new(),
         title: title.into(),
         meta: String::new(),
@@ -338,14 +343,7 @@ fn save(model: &mut Dnsdhcp, form: &verso_plugin::Form) -> Envelope {
         &LISTENING[..],
         &LISTENING_FOLDED[..],
     ] {
-        options::save(
-            rows,
-            &mut model.daemon,
-            DAEMON_TYPE,
-            "",
-            form,
-            &mut changes,
-        );
+        options::save(rows, &mut model.daemon, DAEMON_TYPE, "", form, &mut changes);
     }
     pair_local_domain(model, &was, &mut changes);
 
@@ -463,12 +461,18 @@ mod tests {
             names["items"][0]["code"], "domain · local",
             "the chip names every option the row moves"
         );
-        assert_eq!(names["items"][1]["toggle"], serde_json::json!({"name": "expandhosts", "on": true}));
+        assert_eq!(
+            names["items"][1]["toggle"],
+            serde_json::json!({"name": "expandhosts", "on": true})
+        );
         // The card states its long tail as it is; whether a tail this short is
         // worth a fold is the shell's call, and one row is not — it renders on
         // the card beside the rest.
         assert_eq!(names["seam"]["summary"], "1 more option");
-        assert_eq!(names["seam"]["items"][0]["toggle"], serde_json::json!({"name": "nohosts"}));
+        assert_eq!(
+            names["seam"]["items"][0]["toggle"],
+            serde_json::json!({"name": "nohosts"})
+        );
 
         let protection = &sections(&body)[2]["children"][0];
         // An option the config never states still reads as what the daemon does.
@@ -564,7 +568,8 @@ mod tests {
 
     #[test]
     fn a_drawer_submission_is_answered_by_the_drawer_and_not_the_page_form() {
-        let saved = answer("_form=record&_section=cname_photos&kind=CNAME&name=photos.lan&target=nas.lan");
+        let saved =
+            answer("_form=record&_section=cname_photos&kind=CNAME&name=photos.lan&target=nas.lan");
         assert_eq!(saved["notice"]["level"], "success");
         assert_eq!(saved["commit"][0]["section"], "cname_photos");
 

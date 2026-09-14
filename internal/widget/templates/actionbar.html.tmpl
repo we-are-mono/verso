@@ -1,0 +1,96 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* The listing's own controls, one row under the heading. Left is finding
+     things: the search first, then the coarse cuts as one segmented control,
+     each priced with its count and the one in force filled in the body ink.
+     Right is doing things: the fine cut, the live control, and last the one
+     forward act — the only thing on the bar that leaves the page, and the only
+     thing on it in the action colour. The bar keeps 32px between itself and
+     the listing it controls, whatever rhythm the page around it has. */}}
+<div data-verso-actionbar class="mb-8 flex flex-wrap items-center {{if eq .Style "interfaces"}}gap-x-5 gap-y-3{{else}}gap-4{{end}}">
+  {{if .Filter}}
+  {{/* The search box wears the app's one input treatment: white, an inset
+       shadow, the strong hairline that warms to the faint step under the
+       pointer and to the action colour while typing. */}}
+  <div class="relative flex max-w-full items-center">
+    <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
+    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}"
+      class="h-9 {{if eq .Style "interfaces"}}w-60{{else}}w-80{{end}} max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+  </div>
+  {{end}}
+  {{if eq .Style "interfaces"}}
+  {{range .Tabs}}<button type="button" data-verso-problem-filter{{if eq .Count 0}} hidden{{end}} data-verso-tab="{{.Match}}" aria-pressed="false" class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-2.5 text-sm text-body hover:border-faint aria-pressed:border-crimson-line aria-pressed:bg-crimson-soft aria-pressed:text-crimson-deep"><span class="size-1.5 rounded-[1px] bg-crimson" aria-hidden="true"></span>{{.Label}}<span data-verso-problem-count class="font-mono text-sm">{{.Count}}</span></button>{{end}}
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-meta" aria-label="{{t "Legend"}}">
+    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-[1px] border-[1.5px] border-inert"></span>{{t "physical port"}}</span>
+    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-full border-[1.5px] border-inert"></span>{{t "defined in software"}}</span>
+    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-1.5 rounded-[1px] bg-marigold"></span>{{t "worth a look"}}</span>
+  </div>
+  {{else if .Tabs}}
+  {{/* One segmented control: a quiet tray with a 2px inset, each segment 30px
+       tall so the tray is the input height. The segment in force is filled in
+       the body ink with white words and takes no pointer; the rest are plain
+       words that darken under the pointer. The count is mono at the label's
+       size, a step quieter than the word it prices. */}}
+  <div class="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xs border border-rule-strong bg-quiet p-0.5">
+    {{range .Tabs}}
+    <button type="button" data-verso-tab="{{.Match}}"{{if .Active}} data-active="true" aria-pressed="true"{{else}} aria-pressed="false"{{end}}
+      class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">
+      {{.Label}}<span class="font-mono text-sm font-medium {{if .Active}}text-white/70{{else}}text-meta{{end}}">{{.Count}}</span>
+    </button>
+    {{end}}
+  </div>
+  {{end}}
+  <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+    {{if .Select}}
+    <div class="relative flex max-w-full items-center">
+      <select data-verso-listing-select="{{.Select.Key}}"
+        class="h-9 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+        {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+      </select>
+      <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
+    </div>
+    {{end}}
+    {{/* the live control: the spinner says events are arriving, and the button
+         is how they stop. Every affordance stays — it is pressed to act, not to
+         wait — so it is the ordinary quiet button with a turning glyph. */}}
+    {{if .Live}}
+    <button type="button" data-verso-live class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+      {{template "verso-waiting" ""}}<span data-verso-live-label>{{.Live}}</span>
+    </button>
+    {{end}}
+    {{if .Action}}
+    {{if and .OpensPanel (not .HasPanel)}}
+    {{/* Making one opens the same panel that edits one, in place: the listing
+         stays where it is and no page is loaded to show a form. */}}
+    <span x-data="modal" class="contents">
+      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+      {{template "verso-drawer-fetched" ""}}
+    </span>
+    {{else if .HasPanel}}
+    {{/* Making one is editing one that does not exist yet, so it opens the same
+         panel a row's act opens rather than a page of its own. The modal scope
+         reads data-open on init, so an address asking for a new object arrives
+         with the panel already open; the anchor underneath is what a browser
+         with no script still follows. */}}
+    <span x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="contents">
+      <a href="{{.Action.Href}}" @click.prevent="show" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+      {{template "verso-drawer-panel" .Panel}}
+    </span>
+    {{else if .Entity}}
+    {{/* Making one is editing one that does not exist yet, so it opens the same
+         panel rather than a page of its own. */}}
+    <span x-data="modal" class="contents">
+      <button type="button" @click="show" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{.Action.Label}}</button>
+      {{template "verso-entity-drawer" .}}
+    </span>
+    {{else if .Action.Quiet}}
+    {{/* An act that takes something away from the page rather than leading
+         somewhere sits with the bar's other controls and wears their weight:
+         the filled colour is reserved for the one thing the listing is for. */}}
+    <a href="{{.Action.Href}}" class="flex h-9 shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+    {{else}}
+    <a href="{{.Action.Href}}" class="flex h-9 shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+    {{end}}
+    {{end}}
+  </div>
+</div>

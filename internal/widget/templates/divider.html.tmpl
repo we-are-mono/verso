@@ -7,9 +7,9 @@
      compact spacing for separating groups inside a card/panel. */}}
 {{if .Label}}
 <div class="relative text-center {{if .Tight}}my-6{{else}}my-20{{end}}">
-  <span class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-200"></span>
-  <span class="relative bg-slate-50 px-4 text-sm font-medium text-slate-400">{{.Label}}</span>
+  <span class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-rule"></span>
+  <span class="relative bg-ground px-4 text-sm font-medium text-meta">{{.Label}}</span>
 </div>
 {{else}}
-<hr class="border-slate-200 {{if .Tight}}my-6{{else}}my-20{{end}}">
+<hr class="border-rule {{if .Tight}}my-6{{else}}my-20{{end}}">
 {{end}}

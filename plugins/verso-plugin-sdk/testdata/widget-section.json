@@ -1,6 +1,7 @@
 {
   "type": "section",
   "title": "Rule",
+  "anchor": "rule",
   "sub": "Devices that may connect.",
   "meta": "3 peers",
   "meta_icon": "shield",

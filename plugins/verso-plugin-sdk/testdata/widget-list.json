@@ -13,5 +13,14 @@
   "errors": {
     "1": "must be a hostname"
   },
-  "help": "One per row."
+  "help": "One per row.",
+  "key": "system.ntp.server",
+  "tip": "The clocks this router asks for the time.",
+  "options": [
+    {
+      "value": "0.openwrt.pool.ntp.org",
+      "label": "OpenWrt pool"
+    }
+  ],
+  "remove": "yes"
 }

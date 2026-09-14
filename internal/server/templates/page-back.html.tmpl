@@ -1,0 +1,8 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* verso-page-back: an edit page's way home, sat in the masthead above the
+     heading like a breadcrumb. A left arrow and a word (the shell defaults it to
+     "Cancel"), in the accent ink so it reads as an action rather than a kicker —
+     it is a thing to click, the one exit that isn't Save. flex + w-fit keep it on
+     its own line above the heading while the click target hugs the words. */}}
+{{define "verso-page-back"}}<a href="{{.Href}}" class="mb-2 flex w-fit items-center gap-1.5 text-sm font-semibold text-denim transition-colors hover:text-denim-deep">{{icon .Icon "size-4"}}{{.Label}}</a>{{end}}

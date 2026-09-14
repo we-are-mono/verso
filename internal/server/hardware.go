@@ -44,7 +44,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading: hardwareModel(board, profile),
 		Display: true,
-	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
+	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
 }
 
 // hardwareBody composes the page's widget tree: the panel, the vitals grid, the
@@ -351,7 +351,7 @@ func hardwarePower(tr func(string) string, inv sensors.Inventory) widget.Widget 
 		}})
 	}
 	table := &widget.Table{
-		Condensed: true,
+		Dense: true,
 		Columns: []widget.TableColumn{
 			{Label: "Rail", Kind: "name"},
 			{Label: "Voltage", Kind: "num"},
@@ -478,7 +478,7 @@ func hardwareReadings(inv sensors.Inventory) []widget.Widget {
 		Title:    "All sensors",
 		Hairline: true,
 		Sub:      "Every temperature, power rail, fan, and fibre reading this router exposes — each by its own kernel name.",
-		Children: []widget.Widget{&widget.Table{Style: "lined", Condensed: true, Columns: readingColumns(), Rows: rows}},
+		Children: []widget.Widget{&widget.Table{Dense: true, Columns: readingColumns(), Rows: rows}},
 	}
 	return []widget.Widget{section}
 }

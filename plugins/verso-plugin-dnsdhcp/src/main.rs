@@ -134,7 +134,10 @@ mod tests {
         for path in ["/nowhere", "/dns/records", "", "/config/lan"] {
             let body = read(path);
             assert_eq!(body["title"], "DHCP", "{path}");
-            assert_eq!(body["widget"]["children"][1]["title"], "Active leases", "{path}");
+            assert_eq!(
+                body["widget"]["children"][1]["title"], "Active leases",
+                "{path}"
+            );
         }
     }
 
@@ -192,7 +195,11 @@ mod tests {
         // The reservation drawer belongs to both DHCP faces, and to neither on DNS.
         let reserve = "_form=host&_section=&name=iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142";
         for path in ["/", "/config"] {
-            assert_eq!(answer(path, reserve)["notice"]["level"], "success", "{path}");
+            assert_eq!(
+                answer(path, reserve)["notice"]["level"],
+                "success",
+                "{path}"
+            );
         }
         assert_eq!(answer(page::DNS, reserve)["notice"]["level"], "danger");
     }
@@ -210,7 +217,8 @@ mod tests {
 
         // A config with no daemon section runs on dnsmasq's own defaults, so
         // writing one of its options is what creates the section.
-        let body = serde_json::to_value(post(&request, &Form::parse("logdhcp=1"))).expect("serialize");
+        let body =
+            serde_json::to_value(post(&request, &Form::parse("logdhcp=1"))).expect("serialize");
         assert_eq!(
             body["commit"],
             serde_json::json!([{

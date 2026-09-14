@@ -148,7 +148,7 @@ call: **on a gateway the firewall is not optional, so it is core.**
    without claiming a navigation row. A shell-owned page therefore composes its own
    fields with, for example, a plugin-owned fragment contributed at a published hook
    on the same page.
-   The shell owns section placement and the one Save & Apply transaction; each plugin
+   The shell owns section placement and the one apply transaction; each plugin
    retains ownership of its fragment's semantics, validation, ACL, and declarative
    write intent. A missing or failed contribution degrades only its hook and never
    removes or blocks unchanged shell content.
@@ -190,7 +190,7 @@ call: **on a gateway the firewall is not optional, so it is core.**
 - One plugin mechanism for all feature-specific configuration: every contributed or
   standalone capability shares the ADR-006 gateway, ADR-005 rendering path, and
   ADR-007 privilege model. The bounded shell-owned settings use the same widget,
-  validation, intent-merge, and Save & Apply transaction, so mixed ownership does not
+  validation, intent-merge, and apply transaction, so mixed ownership does not
   produce a mixed user experience.
 - A freshly-flashed device shows a working overview and can set its first password
   with **zero plugins running**: the shell's baseline and auth surface never depend

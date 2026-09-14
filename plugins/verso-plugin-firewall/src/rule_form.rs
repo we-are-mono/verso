@@ -82,7 +82,17 @@ pub const TARGETS: [(&str, &str); 7] = [
 /// (/usr/share/firewall4/helpers). A helper outside it is one the packet filter
 /// cannot load, so offering it would be offering a rule that never applies.
 pub const HELPERS: [&str; 12] = [
-    "amanda", "ftp", "RAS", "Q.931", "irc", "netbios-ns", "pptp", "sane", "sip", "snmp", "tftp",
+    "amanda",
+    "ftp",
+    "RAS",
+    "Q.931",
+    "irc",
+    "netbios-ns",
+    "pptp",
+    "sane",
+    "sip",
+    "snmp",
+    "tftp",
     "rtsp",
 ];
 
@@ -570,7 +580,14 @@ impl RuleForm {
             "HELPER" => set("set_helper", json!(self.set_helper.clone())),
             "MARK" => {
                 let mark = join_mask(&self.set_mark, &self.set_mark_mask);
-                set(if self.mark_xor { "set_xmark" } else { "set_mark" }, json!(mark));
+                set(
+                    if self.mark_xor {
+                        "set_xmark"
+                    } else {
+                        "set_mark"
+                    },
+                    json!(mark),
+                );
             }
             "DSCP" => set("set_dscp", json!(self.set_dscp.clone())),
             _ => {}
@@ -769,7 +786,10 @@ impl RuleForm {
                 errors.field("limit", "Write how many packets, as a whole number.");
             }
             if !self.rate.burst.is_empty() && !valid_count(&self.rate.burst) {
-                errors.field("limit_burst", "Write the burst allowance as a whole number.");
+                errors.field(
+                    "limit_burst",
+                    "Write the burst allowance as a whole number.",
+                );
             }
         }
     }
@@ -899,7 +919,10 @@ fn read_log(section: &Section) -> Log {
 
 fn read_ipset(section: &Section) -> SetMatch {
     let written = Inverted::read(section, "ipset");
-    let mut parts = written.value.split([' ', '\t', ',']).filter(|p| !p.is_empty());
+    let mut parts = written
+        .value
+        .split([' ', '\t', ','])
+        .filter(|p| !p.is_empty());
     let name = parts.next().unwrap_or_default().to_string();
     let mut fields = [String::new(), String::new(), String::new()];
     for (slot, field) in fields.iter_mut().zip(parts) {
@@ -1091,7 +1114,10 @@ fn valid_icmp_type(value: &str) -> bool {
 
 fn valid_mark(value: &str) -> bool {
     let value = value.trim();
-    let (digits, radix) = match value.strip_prefix("0x").or_else(|| value.strip_prefix("0X")) {
+    let (digits, radix) = match value
+        .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
+    {
         Some(digits) => (digits, 16),
         None => (value, 10),
     };
@@ -1335,17 +1361,39 @@ mod tests {
             assert!(!valid_port(value), "{value}");
         }
 
-        for value in ["10.0.0.1", "10.0.0.0/24", "10.0.0.0/255.255.255.0", "fe80::/10", "::1", "!192.168.1.1"] {
+        for value in [
+            "10.0.0.1",
+            "10.0.0.0/24",
+            "10.0.0.0/255.255.255.0",
+            "fe80::/10",
+            "::1",
+            "!192.168.1.1",
+        ] {
             assert!(valid_address(value), "{value}");
         }
-        for value in ["", "10.0.0.256", "10.0.0.1/33", "fe80::/129", "not-an-address", "10.0.0"] {
+        for value in [
+            "",
+            "10.0.0.256",
+            "10.0.0.1/33",
+            "fe80::/129",
+            "not-an-address",
+            "10.0.0",
+        ] {
             assert!(!valid_address(value), "{value}");
         }
 
         for value in ["2026-01-01", "2026-01", "2026"] {
             assert!(valid_date(value), "{value}");
         }
-        for value in ["", "2026-13-01", "2026-01-32", "1969", "2039", "26-01-01", "today"] {
+        for value in [
+            "",
+            "2026-13-01",
+            "2026-01-32",
+            "1969",
+            "2039",
+            "26-01-01",
+            "today",
+        ] {
             assert!(!valid_date(value), "{value}");
         }
 
@@ -1363,7 +1411,11 @@ mod tests {
             assert!(!valid_mark(value), "{value}");
         }
 
-        for value in ["00:11:22:33:44:55", "00-11-22-33-44-55", "!aa:bb:cc:dd:ee:ff"] {
+        for value in [
+            "00:11:22:33:44:55",
+            "00-11-22-33-44-55",
+            "!aa:bb:cc:dd:ee:ff",
+        ] {
             assert!(valid_mac(value), "{value}");
         }
         for value in ["", "00:11:22:33:44", "gg:11:22:33:44:55"] {
@@ -1438,7 +1490,10 @@ mod tests {
             ..RuleForm::default()
         };
         let errors = rule.validate(&zones());
-        assert_eq!(errors.list("dest_port").keys().collect::<Vec<&String>>(), vec!["1"]);
+        assert_eq!(
+            errors.list("dest_port").keys().collect::<Vec<&String>>(),
+            vec!["1"]
+        );
         assert_eq!(errors.list("dest_port")["1"], PORT_HELP);
         assert!(errors.list("dest_port_not").is_empty());
     }

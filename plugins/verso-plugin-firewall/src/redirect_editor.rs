@@ -167,6 +167,8 @@ fn page(
         None => "New port forward",
     };
     let mut children = vec![Widget::Form {
+        note: Default::default(),
+
         style: "page".into(),
         submit: String::new(),
         error: String::new(),
@@ -196,6 +198,10 @@ fn page(
 /// object, not one of its settings.
 fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::Section {
+        anchor: Default::default(),
+        kicker: Default::default(),
+        hairline: Default::default(),
+
         title: "Port forward".into(),
         sub: String::new(),
         meta: String::new(),
@@ -204,6 +210,10 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
         mode: String::new(),
         flush: true,
         control: Some(Box::new(Widget::Switch {
+            key: Default::default(),
+            tip: Default::default(),
+            source: Default::default(),
+
             name: "enabled".into(),
             label: "Enabled".into(),
             off_label: "Disabled".into(),
@@ -564,7 +574,11 @@ mod tests {
         assert_eq!(control(&body, "proto")["value"], "tcp udp");
         assert_eq!(control(&body, "src")["value"], "");
         assert!(
-            body["widget"]["children"].as_array().expect("children").len() == 1,
+            body["widget"]["children"]
+                .as_array()
+                .expect("children")
+                .len()
+                == 1,
             "a forward that does not exist yet cannot be deleted"
         );
     }
@@ -645,16 +659,35 @@ mod tests {
     #[test]
     fn a_value_firewall4_would_refuse_is_marked_and_nothing_is_written() {
         let cases = [
-            ("a port range that runs backwards", ("src_dport", "99-22"), "src_dport"),
-            ("a destination port that is not one", ("dest_port", "howdy"), "dest_port"),
-            ("an address that is not one", ("dest_ip", "10.0.0.300"), "dest_ip"),
-            ("a zone this config does not define", ("src", "nowhere"), "src"),
+            (
+                "a port range that runs backwards",
+                ("src_dport", "99-22"),
+                "src_dport",
+            ),
+            (
+                "a destination port that is not one",
+                ("dest_port", "howdy"),
+                "dest_port",
+            ),
+            (
+                "an address that is not one",
+                ("dest_ip", "10.0.0.300"),
+                "dest_ip",
+            ),
+            (
+                "a zone this config does not define",
+                ("src", "nowhere"),
+                "src",
+            ),
         ];
         for (case, field, control_name) in cases {
             // The offending value leads, so a case that overrides one of the
             // forward's own fields is the value the form reads.
             let body = submit("https_to_nas", &[field, ("src", "wan")]);
-            assert!(body.get("commit").is_none(), "{case}: nothing may be written");
+            assert!(
+                body.get("commit").is_none(),
+                "{case}: nothing may be written"
+            );
             assert_eq!(body["notice"]["level"], "danger", "{case}");
             let marked = control(&body, control_name);
             assert!(
@@ -670,9 +703,8 @@ mod tests {
     fn a_forward_that_names_no_arrival_zone_is_refused() {
         for src in ["", "*"] {
             let model = fixture::firewall();
-            let body =
-                serde_json::to_value(create(&model, &Form::parse(&encode(&[("src", src)]))))
-                    .expect("serialize");
+            let body = serde_json::to_value(create(&model, &Form::parse(&encode(&[("src", src)]))))
+                .expect("serialize");
             assert!(body.get("commit").is_none(), "{src:?}");
             assert_eq!(
                 control(&body, "src")["error"],
@@ -696,9 +728,13 @@ mod tests {
             control(&body, "src_dport")["error"],
             "Give the forward something to rewrite: an incoming port, a destination address, or a destination port."
         );
-        for accepted in ["src=wan&src_dport=8443", "src=wan&dest_ip=10.0.0.30", "src=wan&dest_port=443"] {
-            let body = serde_json::to_value(create(&model, &Form::parse(accepted)))
-                .expect("serialize");
+        for accepted in [
+            "src=wan&src_dport=8443",
+            "src=wan&dest_ip=10.0.0.30",
+            "src=wan&dest_port=443",
+        ] {
+            let body =
+                serde_json::to_value(create(&model, &Form::parse(accepted))).expect("serialize");
             assert!(body.get("commit").is_some(), "{accepted}");
         }
     }

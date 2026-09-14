@@ -23,6 +23,14 @@ import (
 // ErrAccessDenied is returned when rpcd's ACLs refuse the session the operation.
 var ErrAccessDenied = errors.New("openwrt: access denied by rpcd ACL")
 
+// ErrOptionNotFound reports that an option-level clear found nothing to clear:
+// rpcd answers `uci delete` for an option a section does not carry with
+// UBUS_STATUS_NOT_FOUND. It is the domain reading of that status — the option is
+// already unset — so a caller can tell it from a refusal or a transport failure
+// without knowing anything about ubus. Only the option-level shape yields it: a
+// section that is not there is a different question, and one this never answers.
+var ErrOptionNotFound = errors.New("openwrt: uci option not set")
+
 // ZeroSID is rpcd's local-root convention: an all-zero session id, presented by
 // automation that runs as root on the device itself and therefore has no
 // operator session to borrow (ADR-014 §3). It authorizes nothing on its own —
@@ -40,6 +48,8 @@ type Backend interface {
 	// Board reads the device's identity from `ubus call system board` — the
 	// firmware release and kernel version — sid-gated like system info.
 	Board(ctx context.Context, sid string) (Board, error)
+	// Hostname is the running kernel hostname, also available before sign-in.
+	// Configured and staged names belong to the System plugin's UCI snapshot.
 	Hostname(ctx context.Context, sid string) (string, error)
 	// Access asks rpcd whether the session may call object.function within the
 	// given ACL scope. It is the enforcement point the shell uses to gate plugin
@@ -77,7 +87,7 @@ type Backend interface {
 	// object, carrying the sid; sections is the config's whole order, not a
 	// fragment. It realizes the drag of a reorderable listing — the shell, not
 	// the plugin, performs the structural change — and stages like every other
-	// write (ADR-010), so the capsule's apply is what makes the new order live.
+	// write (ADR-010), so the review drawer's apply is what makes the new order live.
 	UCIOrder(ctx context.Context, sid, config string, sections []string) error
 	// SetPassword asks the persistent root helper to set username's system
 	// password, carrying the operator's sid. The helper verifies the sid through
@@ -86,7 +96,7 @@ type Backend interface {
 	SetPassword(ctx context.Context, sid, username, password string) error
 	// SetSystemTime asks the persistent root helper to set the kernel clock from
 	// one validated local datetime and its POSIX timezone. It is the privileged,
-	// non-UCI tail of System → General's Save & Apply transaction.
+	// non-UCI tail of System → General's save-then-apply transaction.
 	SetSystemTime(ctx context.Context, sid, datetime, timezone string) error
 	// RootHasPassword reports whether root has a password set — read from
 	// /etc/shadow by the persistent root helper (the shell is unprivileged and
@@ -141,6 +151,10 @@ type Backend interface {
 	PkgStatus(ctx context.Context, sid string) (int64, error)
 	PkgUpdate(ctx context.Context, sid string) error
 	PkgSearch(ctx context.Context, sid, query string) ([]Package, int, error)
+	// PkgBrowse pages through the local index, including installed packages.
+	PkgBrowse(ctx context.Context, sid, query string, offset int) (PackagePage, error)
+	PkgFiles(ctx context.Context, sid, name string) ([]string, error)
+	PkgUpgradeOne(ctx context.Context, sid, name string) error
 	// PkgInstalled lists every installed package (no descriptions).
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
 	PkgInstall(ctx context.Context, sid, name string) error
@@ -155,6 +169,18 @@ type Backend interface {
 	// installs anything. A device the check cannot answer for is not an error: the
 	// result names the rung it landed on instead (see FirmwareUpdate.State).
 	FirmwareCheck(ctx context.Context, sid string) (FirmwareUpdate, error)
+	// FirmwareUpgrade is the act that check leads to: the helper has owut build,
+	// download and verify an image for this device, then starts the install. It
+	// carries no arguments at all — owut reads the board, the package set and uci
+	// on the device, so there is no version for a caller to name (ADR-007).
+	//
+	// It returns when the image is on the device and the install has been
+	// started, not when the router is running it: the install ends in sysupgrade,
+	// which takes the helper and this shell down with the rest of userspace. So
+	// nil means the image is on the device, verified, and being written; an
+	// error is a failure that happened before anything was written — the router
+	// is still running the build it started with, and the message is owut's own.
+	FirmwareUpgrade(ctx context.Context, sid string) error
 	// WANStatus discovers every live uplink from netifd's active default routes
 	// and the kernel FIB. Roles attach to exact L3 devices; logical-interface
 	// names and transport ancestry are never used as classifiers.
@@ -176,6 +202,40 @@ type Backend interface {
 	// raw JSON: the shell brokers it to a declaring plugin (ADR-007) and the plugin,
 	// not the shell, owns what a firewall counter means.
 	FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error)
+	// LogRead reads the tail of the device's log ring through logd's `log`
+	// object, sid-gated like the other live reads. lines bounds the tail; the
+	// records come back oldest-first, each carrying the monotonic id a reader
+	// uses as its cursor. It is the kernel's own account of what happened —
+	// firewall verdicts included — and the shell parses it, never the plugin.
+	LogRead(ctx context.Context, sid string, lines int) ([]LogEntry, error)
+	// NetworkInterfaces reads netifd's logical interfaces and the kernel device
+	// each one currently owns (`network.interface dump`), sid-gated. It is the
+	// join a kernel device name needs to become something a person named: a log
+	// line says eth0, the firewall config says "wan", and only netifd knows they
+	// are the same thing right now.
+	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
+}
+
+// LogEntry is one record from the device's log ring. ID is logd's monotonic
+// message counter — a reader remembers the highest one it has seen and takes
+// only what is newer. Source distinguishes the kernel's own messages from
+// userspace syslog; Time is milliseconds since the epoch, as logd stamps it.
+type LogEntry struct {
+	ID       int64
+	Priority int64
+	Source   int64
+	Time     int64
+	Msg      string
+}
+
+// NetIface is one netifd logical interface (the name a person and the firewall
+// config use) and the kernel L3 device it currently owns (the name the kernel
+// writes into a log line). The pair is the whole point: neither half alone can
+// turn "IN=eth0" into "mgmt".
+type NetIface struct {
+	Name   string
+	Device string
+	Up     bool
 }
 
 // WANState is the set of live L3 devices that own an active default route.
@@ -265,6 +325,13 @@ type Package struct {
 	Removable   bool     `json:"removable"`
 }
 
+type PackagePage struct {
+	Packages  []Package `json:"packages"`
+	Total     int       `json:"total"`
+	Count     int       `json:"count"`
+	Installed int       `json:"installed"`
+}
+
 // PackageUpgrade is one installed package the feeds hold a newer copy of, named
 // with both versions — what the device runs and what it would get.
 type PackageUpgrade struct {
@@ -314,6 +381,7 @@ const (
 // plus the oldest current process's age. Runtime fields stay empty for
 // process-less subsystems and completed startup tasks.
 type RCState struct {
+	Order       *int // init script START priority; nil when rc does not report it
 	Enabled     bool
 	Running     bool
 	Kind        ServiceKind
@@ -372,7 +440,7 @@ type Memory struct {
 // unit-testable with fakes; the real implementations dial the ubus socket and
 // go through rpcd (verified live, like the ubus client itself).
 type (
-	hostnameFn     func(ctx context.Context, sid string) (string, error)
+	hostnameFn     func() (string, error)
 	systemInfoFn   func(ctx context.Context, sid string) (map[string]any, error)
 	systemBoardFn  func(ctx context.Context, sid string) (map[string]any, error)
 	ipv6LeasesFn   func(ctx context.Context, sid string) (map[string]any, error)
@@ -399,6 +467,8 @@ type (
 	pkgStatusFn    func(ctx context.Context, sid string) (int64, error)
 	pkgUpdateFn    func(ctx context.Context, sid string) error
 	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
+	pkgBrowseFn    func(ctx context.Context, sid, query string, offset int) (PackagePage, error)
+	pkgFilesFn     func(ctx context.Context, sid, name string) ([]string, error)
 	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	pkgUpgradesFn  func(ctx context.Context, sid string) ([]PackageUpgrade, error)
@@ -407,6 +477,8 @@ type (
 	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
 	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
 	fwCountersFn   func(ctx context.Context, sid string) (json.RawMessage, error)
+	logReadFn      func(ctx context.Context, sid string, lines int) (map[string]any, error)
+	netIfacesFn    func(ctx context.Context, sid string) (map[string]any, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -414,52 +486,59 @@ type (
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
 type NativeBackend struct {
-	hostname      hostnameFn
-	systemInfo    systemInfoFn
-	systemBoard   systemBoardFn
-	ipv6Leases    ipv6LeasesFn
-	wanConn       wanConnFn
-	access        accessFn
-	uciSet        uciSetFn
-	uciCommit     uciCommitFn
-	uciConfig     uciConfigFn
-	uciAdd        uciAddFn
-	uciDelete     uciDeleteFn
-	uciOrder      uciOrderFn
-	setPassword   passwdFn
-	setTime       setTimeFn
-	rootPasswd    rootPasswdFn
-	createBackup  backupFn
-	restoreBackup backupFn
-	firmwareCheck firmwareFn
-	firmwareFlash backupFn
-	restart       maintenanceFn
-	factoryReset  maintenanceFn
-	kernelBuild   func() string
-	uciChanges    uciChangesFn
-	uciRevert     uciRevertFn
-	uciApply      uciApplyFn
-	uciConfirm    uciConfirmFn
-	rcList        rcListFn
-	rcInit        rcInitFn
-	pkgStatus     pkgStatusFn
-	pkgUpdate     pkgUpdateFn
-	pkgSearch     pkgSearchFn
-	pkgInstalled  pkgInstalledFn
-	pkgInstall    pkgActFn
-	pkgRemove     pkgActFn
-	pkgUpgrades   pkgUpgradesFn
-	pkgUpgrade    pkgUpgradeFn
-	firmwareUpd   firmwareUpdFn
-	wanStatus     wanStatusFn
-	deviceStats   deviceStatsFn
-	fwCounters    fwCountersFn
+	configFileCall configFileCall
+	hostname       hostnameFn
+	systemInfo     systemInfoFn
+	systemBoard    systemBoardFn
+	ipv6Leases     ipv6LeasesFn
+	wanConn        wanConnFn
+	access         accessFn
+	uciSet         uciSetFn
+	uciCommit      uciCommitFn
+	uciConfig      uciConfigFn
+	uciAdd         uciAddFn
+	uciDelete      uciDeleteFn
+	uciOrder       uciOrderFn
+	setPassword    passwdFn
+	setTime        setTimeFn
+	rootPasswd     rootPasswdFn
+	createBackup   backupFn
+	restoreBackup  backupFn
+	firmwareCheck  firmwareFn
+	firmwareFlash  backupFn
+	restart        maintenanceFn
+	factoryReset   maintenanceFn
+	kernelBuild    func() string
+	uciChanges     uciChangesFn
+	uciRevert      uciRevertFn
+	uciApply       uciApplyFn
+	uciConfirm     uciConfirmFn
+	rcList         rcListFn
+	rcInit         rcInitFn
+	pkgStatus      pkgStatusFn
+	pkgUpdate      pkgUpdateFn
+	pkgSearch      pkgSearchFn
+	pkgBrowse      pkgBrowseFn
+	pkgFiles       pkgFilesFn
+	pkgUpgradeOne  pkgActFn
+	pkgInstalled   pkgInstalledFn
+	pkgInstall     pkgActFn
+	pkgRemove      pkgActFn
+	pkgUpgrades    pkgUpgradesFn
+	pkgUpgrade     pkgUpgradeFn
+	firmwareUpd    firmwareUpdFn
+	firmwareUpg    maintenanceFn
+	wanStatus      wanStatusFn
+	deviceStats    deviceStatsFn
+	fwCounters     fwCountersFn
+	logRead        logReadFn
+	netIfaces      netIfacesFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:      dialHostname(""),
+		hostname:      os.Hostname,
 		systemInfo:    dialSystemInfo(""),
 		systemBoard:   dialSystemBoard(""),
 		ipv6Leases:    dialIPv6Leases(""),
@@ -487,30 +566,38 @@ func NewNativeBackend() *NativeBackend {
 			}
 			return strings.TrimSpace(string(data))
 		},
-		uciChanges:   dialUCIChanges(""),
-		uciRevert:    dialUCIRevert(""),
-		uciApply:     dialUCIApply(""),
-		uciConfirm:   dialUCIConfirm(""),
-		rcList:       dialRCList(""),
-		rcInit:       dialRCInit(""),
-		pkgStatus:    dialPkgStatus(""),
-		pkgUpdate:    dialPkgUpdate(""),
-		pkgSearch:    dialPkgSearch(""),
-		pkgInstalled: dialPkgInstalled(""),
-		pkgInstall:   dialPkgAct("", "pkgInstall"),
-		pkgRemove:    dialPkgAct("", "pkgRemove"),
-		pkgUpgrades:  dialPkgUpgradable(""),
-		pkgUpgrade:   dialPkgUpgrade(""),
-		firmwareUpd:  dialFirmwareCheck(""),
-		wanStatus:    dialWANStatus(""),
-		deviceStats:  dialDeviceStats(""),
-		fwCounters:   dialFirewallCounters(""),
+		uciChanges:     dialUCIChanges(""),
+		configFileCall: nativeConfigFileCall,
+		uciRevert:      dialUCIRevert(""),
+		uciApply:       dialUCIApply(""),
+		uciConfirm:     dialUCIConfirm(""),
+		rcList:         dialRCList(""),
+		rcInit:         dialRCInit(""),
+		pkgStatus:      dialPkgStatus(""),
+		pkgUpdate:      dialPkgUpdate(""),
+		pkgSearch:      dialPkgSearch(""),
+		pkgBrowse:      dialPkgBrowse(""),
+		pkgFiles:       dialPkgFiles(""),
+		pkgUpgradeOne:  dialPkgAct("", "pkgUpgradeOne"),
+		pkgInstalled:   dialPkgInstalled(""),
+		pkgInstall:     dialPkgAct("", "pkgInstall"),
+		pkgRemove:      dialPkgAct("", "pkgRemove"),
+		pkgUpgrades:    dialPkgUpgradable(""),
+		pkgUpgrade:     dialPkgUpgrade(""),
+		firmwareUpd:    dialFirmwareCheck(""),
+		firmwareUpg:    dialFirmwareUpgrade(""),
+		wanStatus:      dialWANStatus(""),
+		deviceStats:    dialDeviceStats(""),
+		fwCounters:     dialFirewallCounters(""),
+		logRead:        dialLogRead(""),
+		netIfaces:      dialNetworkInterfaces(""),
 	}
 }
 
-// Hostname reads the configured hostname through rpcd's ACL-gated `uci` object.
-func (b *NativeBackend) Hostname(ctx context.Context, sid string) (string, error) {
-	return b.hostname(ctx, sid)
+// Hostname reads the running name, just like the public sign-in page and
+// OpenWrt's system.board response. This kernel fact needs no rpcd session.
+func (b *NativeBackend) Hostname(_ context.Context, _ string) (string, error) {
+	return b.hostname()
 }
 
 // SystemInfo fetches and maps live system info, gated by an rpcd ACL check.
@@ -535,10 +622,33 @@ func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
 	}
 	if b.kernelBuild != nil {
 		if full := b.kernelBuild(); full != "" {
-			board.KernelBuild = full
+			board.KernelBuild = condenseKernelBuild(full, board.Kernel)
 		}
 	}
 	return board, nil
+}
+
+// condenseKernelBuild reads /proc/version down to what identifies the kernel: the
+// release and the build stamp. The full line carries the builder's address and
+// the whole compiler pedigree between them — provenance for a bug report, noise
+// on a facts row. A line that is not that shape falls back to the short release
+// ubus already stated, never to the unparsed line.
+//
+//	Linux version 6.12.101+deb13-amd64 (debian-kernel@…) (gcc … (…) …, GNU ld …) #1 SMP PREEMPT_DYNAMIC Debian 6.12.101-1 (2026-08-05)
+//	→ 6.12.101+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.101-1 (2026-08-05)
+func condenseKernelBuild(full, release string) string {
+	fields := strings.Fields(full)
+	if len(fields) < 3 || fields[0] != "Linux" || fields[1] != "version" {
+		return release
+	}
+	out := fields[2]
+	// The build stamp is everything from the "#N" word on; the parenthesised
+	// groups before it (builder, compiler — with nested parens of their own)
+	// are what this row does without.
+	if i := strings.Index(full, " #"); i >= 0 {
+		out += " " + strings.TrimSpace(full[i+1:])
+	}
+	return out
 }
 
 // Access reports whether rpcd grants the session object.function in scope.
@@ -568,9 +678,26 @@ func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType, name s
 }
 
 // UCIDelete removes a section — or one of its options — through rpcd, gated by
-// the sid.
+// the sid. An option rpcd cannot find is reported as ErrOptionNotFound: clearing
+// an option a section never carried is the state the caller asked for, and the
+// ubus status that says so stops here rather than travelling on as a bare
+// failure. A section-level delete is passed through as it comes.
+//
+// Only the *invoke* answers that question. The `uci` object lookup that precedes
+// every call answers a missing object with the same UBUS_STATUS_NOT_FOUND, and
+// rpcd off the bus is the opposite of "already in the state you asked for" —
+// nothing was read, nothing was written, and a save that swallowed it would
+// report success over a device it never reached.
 func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section, option string) error {
-	return b.uciDelete(ctx, sid, config, section, option)
+	err := b.uciDelete(ctx, sid, config, section, option)
+	if err == nil || option == "" {
+		return err
+	}
+	var status *ubus.StatusError
+	if errors.As(err, &status) && status.Code == ubus.StatusNotFound && status.Phase == ubus.PhaseInvoke {
+		return fmt.Errorf("openwrt: clear %s.%s.%s: %w", config, section, option, ErrOptionNotFound)
+	}
+	return err
 }
 
 // UCIOrder rewrites a config's section sequence through rpcd, gated by the sid.
@@ -624,22 +751,44 @@ func (b *NativeBackend) FactoryReset(ctx context.Context, sid string) error {
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
 // by the sid.
 func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string][][]string, error) {
-	return b.uciChanges(ctx, sid)
+	changes, err := b.uciChanges(ctx, sid)
+	if err != nil {
+		return nil, err
+	}
+	files, err := b.configFileState(ctx, sid)
+	if err != nil {
+		return nil, err
+	}
+	if changes == nil {
+		changes = make(map[string][][]string)
+	}
+	for _, f := range files.Files {
+		if f.Pending {
+			changes["dhcp"] = append(changes["dhcp"], []string{"file", f.Path, f.Content})
+		}
+	}
+	return changes, nil
 }
 
 // UCIRevert discards a config's staged changes through rpcd, gated by the sid.
 func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error {
-	return b.uciRevert(ctx, sid, config)
+	if err := b.uciRevert(ctx, sid, config); err != nil {
+		return err
+	}
+	if config == "dhcp" {
+		return b.fileAction(ctx, sid, "discard", false, 30)
+	}
+	return nil
 }
 
 // UCIApply commits all dirty configs with rpcd's rollback armed, gated by the sid.
 func (b *NativeBackend) UCIApply(ctx context.Context, sid string, timeout int) error {
-	return b.uciApply(ctx, sid, timeout)
+	return b.applyWithFiles(ctx, sid, timeout)
 }
 
 // UCIConfirm disarms a pending rollback through rpcd, gated by the sid.
 func (b *NativeBackend) UCIConfirm(ctx context.Context, sid string) error {
-	return b.uciConfirm(ctx, sid)
+	return b.confirmWithFiles(ctx, sid)
 }
 
 func (b *NativeBackend) RCList(ctx context.Context, sid string) (map[string]RCState, error) {
@@ -660,6 +809,18 @@ func (b *NativeBackend) PkgUpdate(ctx context.Context, sid string) error {
 
 func (b *NativeBackend) PkgSearch(ctx context.Context, sid, query string) ([]Package, int, error) {
 	return b.pkgSearch(ctx, sid, query)
+}
+
+func (b *NativeBackend) PkgBrowse(ctx context.Context, sid, query string, offset int) (PackagePage, error) {
+	return b.pkgBrowse(ctx, sid, query, offset)
+}
+
+func (b *NativeBackend) PkgFiles(ctx context.Context, sid, name string) ([]string, error) {
+	return b.pkgFiles(ctx, sid, name)
+}
+
+func (b *NativeBackend) PkgUpgradeOne(ctx context.Context, sid, name string) error {
+	return b.pkgUpgradeOne(ctx, sid, name)
 }
 
 func (b *NativeBackend) PkgInstalled(ctx context.Context, sid string) ([]Package, error) {
@@ -688,6 +849,12 @@ func (b *NativeBackend) FirmwareCheck(ctx context.Context, sid string) (Firmware
 	return b.firmwareUpd(ctx, sid)
 }
 
+// FirmwareUpgrade asks the privileged helper to run owut's download and start
+// its install, gated by the sid.
+func (b *NativeBackend) FirmwareUpgrade(ctx context.Context, sid string) error {
+	return b.firmwareUpg(ctx, sid)
+}
+
 func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, error) {
 	return b.wanStatus(ctx, sid)
 }
@@ -706,34 +873,115 @@ func (b *NativeBackend) FirewallCounters(ctx context.Context, sid string) (json.
 	return b.fwCounters(ctx, sid)
 }
 
-// dialHostname reads system.@system[0].hostname via rpcd's `uci get`, carrying
-// the sid so rpcd applies the session's ACLs.
-func dialHostname(socket string) hostnameFn {
-	return func(_ context.Context, sid string) (string, error) {
+// LogRead reads the tail of logd's ring and folds it to typed records.
+func (b *NativeBackend) LogRead(ctx context.Context, sid string, lines int) ([]LogEntry, error) {
+	m, err := b.logRead(ctx, sid, lines)
+	if err != nil {
+		return nil, err
+	}
+	return parseLogEntries(m), nil
+}
+
+// NetworkInterfaces reads netifd's dump and folds it to the logical-name →
+// kernel-device pairs a log line has to be read through.
+func (b *NativeBackend) NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error) {
+	m, err := b.netIfaces(ctx, sid)
+	if err != nil {
+		return nil, err
+	}
+	return parseNetIfaces(m), nil
+}
+
+// parseLogEntries folds logd's `{"log": [...]}` reply into typed records,
+// keeping only entries that carry a message — a malformed element costs its own
+// line, never the read.
+func parseLogEntries(m map[string]any) []LogEntry {
+	list, _ := m["log"].([]any)
+	out := make([]LogEntry, 0, len(list))
+	for _, e := range list {
+		rec, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		msg, _ := rec["msg"].(string)
+		if msg == "" {
+			continue
+		}
+		out = append(out, LogEntry{
+			ID:       asInt64(rec["id"]),
+			Priority: asInt64(rec["priority"]),
+			Source:   asInt64(rec["source"]),
+			Time:     asInt64(rec["time"]),
+			Msg:      msg,
+		})
+	}
+	return out
+}
+
+// parseNetIfaces folds `network.interface dump` into the logical/device pairs.
+// The L3 device is what the kernel writes into a log line, so it wins over the
+// configured device when netifd reports both (a protocol whose L3 device is a
+// tunnel above its physical carrier).
+func parseNetIfaces(dump map[string]any) []NetIface {
+	entries, _ := dump["interface"].([]any)
+	out := make([]NetIface, 0, len(entries))
+	for _, e := range entries {
+		rec, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := rec["interface"].(string)
+		if name == "" {
+			continue
+		}
+		device, _ := rec["l3_device"].(string)
+		if device == "" {
+			device, _ = rec["device"].(string)
+		}
+		up := false
+		switch v := rec["up"].(type) {
+		case bool:
+			up = v
+		case int64:
+			up = v != 0
+		}
+		out = append(out, NetIface{Name: name, Device: device, Up: up})
+	}
+	return out
+}
+
+// dialLogRead returns a logReadFn that reads the tail of logd's ring through the
+// `log` object, sid-gated by the same session.access pre-check every non-rpcd
+// ubus call uses. stream:false is what makes this a one-shot tail: logd's
+// default is a subscription that never returns.
+func dialLogRead(socket string) logReadFn {
+	return func(_ context.Context, sid string, lines int) (map[string]any, error) {
 		c, err := ubus.Dial(socket)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		defer c.Close()
 
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return "", err
+		if ok, err := probeAccess(c, sid, "ubus", "log", "read"); err != nil || !ok {
+			return nil, ErrAccessDenied
 		}
-		res, err := c.InvokeArgs(id, "get", map[string]string{
-			"ubus_rpc_session": sid,
-			"config":           "system",
-			"section":          "@system[0]",
-			"option":           "hostname",
+		id, err := c.Lookup("log")
+		if err != nil {
+			return nil, err
+		}
+		return c.InvokeTable(id, "read", map[string]any{
+			"lines":   lines,
+			"stream":  false,
+			"oneshot": true,
 		})
-		if err != nil {
-			return "", err
-		}
-		val, _ := res["value"].(string)
-		if val == "" {
-			return "", fmt.Errorf("openwrt: hostname not set in uci system config")
-		}
-		return val, nil
+	}
+}
+
+// dialNetworkInterfaces returns a netIfacesFn reading the same netifd dump the
+// uplink discovery reads — one shape, one ACL, one place it is fetched.
+func dialNetworkInterfaces(socket string) netIfacesFn {
+	return func(_ context.Context, sid string) (map[string]any, error) {
+		return fetchNetworkDump(socket, sid)
 	}
 }
 
@@ -1082,7 +1330,7 @@ func dialUCIChanges(socket string) uciChangesFn {
 // A tuple element may be a number — an order change carries the section's new
 // position (["order","cfg0792bd",5]) — so numeric fields render as their
 // decimal string rather than sinking the whole tuple; a staged reorder the
-// capsule cannot count is one it can neither review nor discard.
+// chip cannot count is one the drawer can neither review nor discard.
 func parseChanges(v any) map[string][][]string {
 	out := map[string][][]string{}
 	byConfig, ok := v.(map[string]any)
@@ -1376,7 +1624,12 @@ func dialRCList(socket string) rcListFn {
 				continue
 			}
 			_, managed[name] = t["running"]
-			out[name] = RCState{Enabled: asBool(t["enabled"]), Running: asBool(t["running"])}
+			st := RCState{Enabled: asBool(t["enabled"]), Running: asBool(t["running"])}
+			if value, ok := t["start"]; ok {
+				order := int(asInt64(value))
+				st.Order = &order
+			}
+			out[name] = st
 		}
 
 		details := map[string]serviceDetail{}
@@ -1587,6 +1840,24 @@ func dialPkgInstalled(socket string) pkgInstalledFn {
 	}
 }
 
+func dialPkgBrowse(socket string) pkgBrowseFn {
+	return func(ctx context.Context, sid, query string, offset int) (PackagePage, error) {
+		var result PackagePage
+		err := callHelper(ctx, socket, "pkgBrowse", sid, map[string]string{"query": query, "offset": strconv.Itoa(offset)}, &result)
+		return result, err
+	}
+}
+
+func dialPkgFiles(socket string) pkgFilesFn {
+	return func(ctx context.Context, sid, name string) ([]string, error) {
+		var result struct {
+			Files []string `json:"files"`
+		}
+		err := callHelper(ctx, socket, "pkgFiles", sid, map[string]string{"package": name}, &result)
+		return result.Files, err
+	}
+}
+
 func dialPkgAct(socket, methodName string) pkgActFn {
 	return func(ctx context.Context, sid, name string) error {
 		return callHelper(ctx, socket, methodName, sid, map[string]string{"package": name}, nil)
@@ -1617,6 +1888,16 @@ func dialFirmwareCheck(socket string) firmwareUpdFn {
 		var result FirmwareUpdate
 		err := callHelper(ctx, socket, "firmwareCheck", sid, nil, &result)
 		return result, err
+	}
+}
+
+// dialFirmwareUpgrade asks the helper to run the upgrade. The request carries no
+// arguments — the whole point of the verb is that owut decides everything on the
+// device — and the wait is the long one, because the build happens on the update
+// server before this router has anything to download.
+func dialFirmwareUpgrade(socket string) maintenanceFn {
+	return func(ctx context.Context, sid string) error {
+		return callHelperWithin(ctx, socket, "firmwareUpgrade", sid, nil, nil, firmwareUpgradeTimeout)
 	}
 }
 

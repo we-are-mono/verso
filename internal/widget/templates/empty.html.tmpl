@@ -6,10 +6,12 @@
      composes the same widgets as the populated page. Icons come from the shared Lucide
      set (icons.go); a "shield" here uses the alert variant — nothing is set up yet. */}}
 <div class="flex flex-col items-center px-6 py-12 text-center">
-  <span class="verso-empty-icon mb-4 grid size-20 place-items-center rounded-3xl">
+  <span class="verso-empty-icon{{if eq .Variant "success"}} verso-empty-icon--success{{end}} mb-4 grid size-20 place-items-center rounded-3xl">
     {{if eq .Icon "shield"}}{{icon "shield-alert" "size-9"}}{{else}}{{icon .Icon "size-9"}}{{end}}
   </span>
-  {{if .Title}}<h2 class="text-2xl font-bold tracking-tight text-slate-900 text-balance">{{.Title}}</h2>{{end}}
-  {{if .Body}}<p class="mt-2 max-w-[44ch] text-slate-500">{{.Body}}</p>{{end}}
+  {{if .Title}}<h2 class="text-2xl font-semibold tracking-[-0.025em] text-balance text-ink">{{.Title}}</h2>{{end}}
+  {{/* the body is Markdown, so it brings its own paragraph — the wrapper is a
+       div carrying the prose rules, exactly as a section's sub does. */}}
+  {{if .Body}}<div class="verso-prose mt-2 max-w-[44ch] text-body">{{.Body}}</div>{{end}}
   {{if .Children}}<div class="mt-8 flex w-full flex-col items-center gap-5">{{range .Children}}{{.}}{{end}}</div>{{end}}
 </div>

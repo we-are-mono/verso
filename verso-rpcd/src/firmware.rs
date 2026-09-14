@@ -125,6 +125,18 @@ fn out_of_date(stdout: &str) -> u64 {
         .unwrap_or(0)
 }
 
+/// complaint_of repeats back what a failed owut run said, so the page can quote
+/// it verbatim. An upgrade that never got started fails for the same reasons a
+/// check does — no server, a build the server refused, a device it cannot answer
+/// for — so the reading is the same one `summarize` applies, exposed for the runs
+/// that have no rung to land on.
+pub fn complaint_of(stdout: &[u8], stderr: &[u8]) -> String {
+    complaint(
+        &String::from_utf8_lossy(stderr),
+        &String::from_utf8_lossy(stdout),
+    )
+}
+
 // What to repeat back when there is no answer: owut's own complaint, stripped of
 // its severity prefix, or its last words if it failed without one.
 fn complaint(stderr: &str, stdout: &str) -> String {
@@ -229,6 +241,28 @@ mod tests {
         );
         assert_eq!(answer["state"], STATE_UNSUPPORTED);
         assert_eq!(answer["message"], "Checks reveal errors, do not upgrade");
+    }
+
+    // An upgrade that owut refused says why in owut's own words, so the page can
+    // quote the tool rather than paraphrase it.
+    #[test]
+    fn a_refused_upgrade_carries_owuts_own_words() {
+        assert_eq!(
+            complaint_of(
+                b"ASU-Server     https://sysupgrade.mono.si\n",
+                b"WARNING: There are 13 missing default packages\nERROR: Update checks reveal errors, can't proceed\n",
+            ),
+            "Update checks reveal errors, can't proceed"
+        );
+        // No ERROR line: owut's last words stand in, from stdout if that is all
+        // there is.
+        assert_eq!(
+            complaint_of(b"There are no changes to download (see '--force')\n", b""),
+            "There are no changes to download (see '--force')"
+        );
+        // A run that said nothing has nothing to quote; the caller supplies the
+        // plain sentence instead of inventing one here.
+        assert_eq!(complaint_of(b"", b""), "");
     }
 
     #[test]

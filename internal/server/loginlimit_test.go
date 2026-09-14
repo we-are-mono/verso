@@ -27,6 +27,33 @@ func TestLoginLimiterLocksThenReleases(t *testing.T) {
 	}
 }
 
+// The sign-in page reads the standing count off the limiter, so it has to track
+// the failures as they land — and go quiet at the lockout, where reaching the
+// limit clears the counter it was counting toward.
+func TestLoginLimiterCountsFailures(t *testing.T) {
+	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
+	l := newLoginLimiter(clk.now)
+
+	if got := l.failures("ip"); got != 0 {
+		t.Errorf("an address never seen has %d failures, want 0", got)
+	}
+	l.fail("ip")
+	l.fail("ip")
+	if got := l.failures("ip"); got != 2 {
+		t.Errorf("failures = %d, want 2", got)
+	}
+	if got := l.failures("other"); got != 0 {
+		t.Errorf("failures are per address; other = %d, want 0", got)
+	}
+
+	for i := l.failures("ip"); i < loginMaxFailures; i++ {
+		l.fail("ip")
+	}
+	if got := l.failures("ip"); got != 0 {
+		t.Errorf("the lockout clears the count, got %d", got)
+	}
+}
+
 func TestLoginLimiterSuccessResets(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	l := newLoginLimiter(clk.now)

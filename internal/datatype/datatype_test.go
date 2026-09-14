@@ -98,3 +98,18 @@ func TestValidateUnknownDatatypeFailsClosed(t *testing.T) {
 		t.Error("unknown datatype must return an error")
 	}
 }
+
+func TestDNSLists(t *testing.T) {
+	for kind, values := range map[string][]string{"dnsserver": {"1.1.1.1", "2001:4860:4860::8888", "10.0.0.1#5353", "10.0.0.1@eth0"}, "dnsforward": {"/corp.example/10.1.0.53#5353", "/one.example/two.example/1.1.1.1"}, "dnsaddress": {"/nas.lan/192.168.1.2", "/blocked.example/#"}} {
+		for _, v := range values {
+			if err := Validate(kind, v); err != nil {
+				t.Errorf("%s %q: %v", kind, v, err)
+			}
+		}
+	}
+	for kind, value := range map[string]string{"dnsserver": "1.1.1.1#65536", "dnsforward": "/corp.example/not-an-ip", "dnsaddress": "/nas.lan/999.1.1.1"} {
+		if Validate(kind, value) == nil {
+			t.Errorf("accepted %s %q", kind, value)
+		}
+	}
+}

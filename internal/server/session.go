@@ -112,6 +112,15 @@ func (s *Sessions) CreateWithMetadata(sid, username, address, agent string) (str
 // get returns a live session, sliding its idle window. An expired session is
 // removed and reported absent.
 func (s *Sessions) get(token string) (session, bool) {
+	return s.lookup(token, true)
+}
+
+// peek authenticates a background refresh without counting it as activity.
+func (s *Sessions) peek(token string) (session, bool) {
+	return s.lookup(token, false)
+}
+
+func (s *Sessions) lookup(token string, touch bool) (session, bool) {
 	now := s.now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -124,8 +133,10 @@ func (s *Sessions) get(token string) (session, bool) {
 		s.killSID(sess.sid)
 		return session{}, false
 	}
-	sess.lastSeen = now
-	s.items[token] = sess
+	if touch {
+		sess.lastSeen = now
+		s.items[token] = sess
+	}
 	return sess, true
 }
 

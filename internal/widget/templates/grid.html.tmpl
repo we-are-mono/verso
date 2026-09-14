@@ -1,12 +1,47 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* grid: responsive column layout of pre-rendered children. The shell chose the
-     responsive column classes (.Cols) and owns the gap; the plugin declared only the
-     target column count (ADR-005). The strip style is the home page's divided tile
-     row — hairline top and bottom, a divider between slots, each slot padded so the
-     rules frame it — for the shell's own status/instrument rows. */}}
-{{if .Strip}}
-<div class="grid {{.Cols}} divide-x divide-slate-100 border-y border-slate-100">{{range .Children}}<div class="px-6 py-5 first:pl-0 last:pr-0">{{.}}</div>{{end}}</div>
+{{/* grid: responsive column layout of pre-rendered children. The plugin declared
+     only a style and a target column count (ADR-005); turning the count into
+     columns is the shell's job, and the classes that do it are stated here and
+     only here. The stylesheet is built from the templates alone (input.css
+     scans no Go), so a class named in Go is a class the page never gets — which
+     is how every grid the shell built from Go once collapsed to one column. */}}
+{{if eq .Style "strip"}}
+{{/* The strip is the home page's divided tile row — hairline top and bottom, a
+     divider between slots, each slot padded so the rules frame it — for the
+     shell's own status/instrument rows. It divides evenly across its full width
+     however many slots it has: fixed columns, no collapse, so the dividers read
+     as one instrument panel at any width. */}}
+<div class="grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-2{{else if eq .Columns 3}}grid-cols-3{{else if eq .Columns 4}}grid-cols-4{{else}}grid-cols-5{{end}} divide-x divide-rule border-y border-rule">{{range .Children}}<div class="px-6 py-5 first:pl-0 last:pr-0">{{.}}</div>{{end}}</div>
+{{else if eq .Style "facts"}}
+<div class="grid min-w-0 grid-cols-1 gap-x-12 @2xl:grid-cols-2 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left">{{range .Children}}{{.}}{{end}}</div>
+{{else if eq .Style "configurations"}}
+<div class="mt-6 grid min-w-0 grid-cols-1 gap-x-12 gap-y-6 @2xl:grid-cols-2 [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-0 [&>div>span]:text-base">{{range .Children}}{{.}}{{end}}</div>
+{{else if eq .Style "settings"}}
+<div class="@container"><div class="grid min-w-0 grid-cols-1 gap-11 @5xl:grid-cols-[40rem_minmax(0,1fr)] [&>div:first-child]:max-w-[40rem] [&>div:last-child]:self-start @5xl:[&>div:last-child]:sticky @5xl:[&>div:last-child]:top-8 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem] [&_section[id]]:pb-8 [&_section[id]:first-of-type]:pt-8">{{range .Children}}<div class="min-w-0">{{.}}</div>{{end}}</div></div>
+{{else if eq .Style "editor"}}
+<div class="@container">
+  <div class="grid min-w-0 grid-cols-1 gap-11 @5xl:grid-cols-[40rem_minmax(0,1fr)] sm:[&_[data-verso-control]]:w-[23rem] [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range .Children}}<div class="min-w-0 first:max-w-[40rem]">{{.}}</div>{{end}}</div>
+</div>
+{{else if eq .Style "rail"}}
+{{/* A rail is not an even split: it is the page's work beside a narrower column
+     that comments on it — where you are, and what the work will write. The
+     reading column is fixed at the form measure so the controls stay where they
+     are whatever the rail holds, and the gutter between them is the page's own
+     side padding, so the three columns of air read as one measure. Together
+     they are the whole of the wide page (40 + 2.75 + 29.25 = 72rem), so the two
+     columns are keyed to the width this grid actually has — its own container —
+     and not to the window's, which says nothing about how much of it the nav
+     has taken. Short of that width the rail stacks under the work, where two
+     columns would leave neither readable. */}}
+<div class="@container">
+  <div class="grid grid-cols-1 gap-11 @6xl:grid-cols-[40rem_29.25rem]">{{range .Children}}{{.}}{{end}}</div>
+</div>
+{{else if eq .Style "form"}}
+{{/* Fields side by side from the tablet width up, and never on a phone. */}}
+<div class="grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-1 md:grid-cols-2{{else}}grid-cols-1 md:grid-cols-3{{end}} gap-6">{{range .Children}}{{.}}{{end}}</div>
 {{else}}
-<div class="grid {{.Cols}} {{.Gap}}">{{range .Children}}{{.}}{{end}}</div>
+{{/* Small tile and card grids go two-up on phones — never a lonely full-width
+     column — and widen on larger screens. */}}
+<div class="grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-2{{else if eq .Columns 3}}grid-cols-2 md:grid-cols-3{{else}}grid-cols-2 md:grid-cols-4{{end}} gap-8">{{range .Children}}{{.}}{{end}}</div>
 {{end}}

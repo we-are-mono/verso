@@ -21,7 +21,6 @@ type Modal struct {
 	Open         bool   // open immediately (server-rendered verified/error state)
 	BusyTitle    string // optional submit-time progress state
 	BusyBody     string
-	Preview      bool     // render the open window in-flow without trigger/backdrop/behaviour (styleguide use)
 	Title        string   // dialog heading
 	Children     []Widget // dialog body
 }
@@ -42,7 +41,6 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 		Open         bool              `json:"open"`
 		BusyTitle    string            `json:"busy_title"`
 		BusyBody     string            `json:"busy_body"`
-		Preview      bool              `json:"preview"`
 		Title        string            `json:"title"`
 		Children     []json.RawMessage `json:"children"`
 	}
@@ -55,7 +53,6 @@ func (m *Modal) UnmarshalJSON(data []byte) error {
 	m.Open = raw.Open
 	m.BusyTitle = raw.BusyTitle
 	m.BusyBody = raw.BusyBody
-	m.Preview = raw.Preview
 	m.Title = raw.Title
 	children, err := decodeChildren(raw.Children, "modal child")
 	if err != nil {
@@ -74,7 +71,6 @@ type modalView struct {
 	Open         bool
 	BusyTitle    string
 	BusyBody     string
-	Preview      bool
 	Title        string
 	Children     []template.HTML
 }
@@ -89,7 +85,7 @@ func (m *Modal) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	return r.execute(out, "modal.html.tmpl", modalView{
 		Trigger: m.Trigger, TriggerIcon: m.TriggerIcon, TriggerStyle: m.TriggerStyle, Open: m.Open,
-		BusyTitle: m.BusyTitle, BusyBody: m.BusyBody, Preview: m.Preview,
+		BusyTitle: m.BusyTitle, BusyBody: m.BusyBody,
 		Title: m.Title, Children: children,
 	})
 }

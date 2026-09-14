@@ -2,9 +2,19 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* button: a direct action. A nameless button is inert (useful in visual
      references); a named one submits its value from the form that contains it. */}}
-<button type="{{if .Name}}submit{{else}}button{{end}}"{{if .Name}} name="{{.Name}}" value="{{.Value}}"{{end}}{{if or .Disabled .Loading}} disabled{{end}}{{if .Loading}} aria-busy="true"{{end}}
-  class="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+{{/* Live is the spinner without the surrender: the loader turns beside the
+     label to say the thing this button governs is running, and every
+     affordance stays — it is pressed to stop that thing. Loading, the
+     in-flight submit, still disables. The label sits in its own span so the
+     shell's stream client can rewrite it (Pause ⇄ Resume · N new) without
+     touching the spinner beside it. */}}
+<button type="{{if .Name}}submit{{else}}button{{end}}"{{if .Name}} name="{{.Name}}" value="{{.Value}}"{{end}}{{if or .Disabled .Loading}} disabled{{end}}{{if .Loading}} aria-busy="true"{{end}}{{if .Live}} data-verso-live{{end}}
+  {{/* 36px tall, the one button height on the page, and a 1px border on every
+       style — including the ones that draw it transparent — so a button dropped
+       beside a field or another button lines up without anyone adjusting it. */}}
+  class="inline-flex h-9 items-center justify-center gap-2 rounded-xs border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2
   {{if or .Disabled .Loading}}cursor-wait opacity-70{{else}}cursor-pointer active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0{{end}}
-  {{if eq .Style "secondary"}}border border-slate-300 bg-white text-slate-700 {{if not (or .Disabled .Loading)}}hover:border-slate-400{{end}} focus-visible:ring-sky-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 {{if not (or .Disabled .Loading)}}dark:hover:border-gray-600 dark:hover:bg-gray-700{{end}}
-  {{else if eq .Style "danger"}}bg-red-600 text-white {{if not (or .Disabled .Loading)}}hover:bg-red-700{{end}} focus-visible:ring-red-600 dark:bg-red-600 dark:text-gray-100 {{if not (or .Disabled .Loading)}}dark:hover:bg-red-500{{end}}
-  {{else}}bg-sky-600 text-white {{if not (or .Disabled .Loading)}}hover:bg-sky-700 active:bg-sky-800{{end}} focus-visible:ring-sky-600 dark:bg-sky-700 dark:text-gray-100 {{if not (or .Disabled .Loading)}}dark:hover:bg-sky-800 dark:active:bg-sky-900{{end}}{{end}}">{{if .Loading}}{{icon "loader-circle" "size-4 animate-spin"}}{{else if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>
+  {{if eq .Style "secondary"}}border-rule-strong bg-ground text-ink {{if not (or .Disabled .Loading)}}hover:border-faint hover:bg-quiet{{end}} focus-visible:outline-denim
+  {{else if eq .Style "ghost"}}border-transparent text-body {{if not (or .Disabled .Loading)}}hover:bg-mid/50 hover:text-ink{{end}} focus-visible:outline-denim
+  {{else if eq .Style "danger"}}border-crimson bg-crimson text-white {{if not (or .Disabled .Loading)}}hover:border-crimson-deep hover:bg-crimson-deep{{end}} focus-visible:outline-crimson-deep
+  {{else}}border-denim bg-denim text-white {{if not (or .Disabled .Loading)}}hover:border-denim-deep hover:bg-denim-deep{{end}} focus-visible:outline-denim-deep{{end}}">{{if or .Loading .Live}}{{template "verso-waiting" ""}}{{else if .Icon}}{{icon .Icon "size-4"}}{{end}}{{if .Live}}<span data-verso-live-label>{{.Label}}</span>{{else}}{{.Label}}{{end}}</button>

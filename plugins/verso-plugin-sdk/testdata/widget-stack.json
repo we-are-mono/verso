@@ -4,6 +4,7 @@
   "compact": true,
   "inline": true,
   "divided": true,
+  "flush": true,
   "children": [
     {
       "type": "text",

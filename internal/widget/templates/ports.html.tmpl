@@ -12,9 +12,14 @@
        connectors sit on is not the point; both faces earn a Front/Rear control. */}}
   {{if .PanelBoth}}
   <div class="verso-panel-art" x-data="{ face: 'rear' }">
-    <div class="mb-3 inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1 text-sm dark:border-gray-700 dark:bg-gray-800">
-      <button type="button" @click="face = 'rear'" :class="face === 'rear' ? 'bg-white text-slate-900 shadow-sm dark:bg-gray-700' : 'text-slate-500'" class="rounded-md px-3 py-1 font-medium transition-colors">{{ t "Rear" }}</button>
-      <button type="button" @click="face = 'front'" :class="face === 'front' ? 'bg-white text-slate-900 shadow-sm dark:bg-gray-700' : 'text-slate-500'" class="rounded-md px-3 py-1 font-medium transition-colors">{{ t "Front" }}</button>
+    {{/* Which face of the board you are looking at: the app's segmented control,
+         which is a quiet strip with the chosen segment filled in the action colour
+         (verso-tabs in input.css). This drew its own out of a stock grey ramp,
+         with a white pill, a radius no other control uses, and dark-mode variants
+         for a face this app does not have. */}}
+    <div class="mb-3 inline-flex items-center gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5 text-sm">
+      <button type="button" @click="face = 'rear'" :class="face === 'rear' ? 'bg-denim text-white' : 'text-body hover:text-ink'" class="h-7 rounded-xs px-3.5 font-semibold transition-colors">{{ t "Rear" }}</button>
+      <button type="button" @click="face = 'front'" :class="face === 'front' ? 'bg-denim text-white' : 'text-body hover:text-ink'" class="h-7 rounded-xs px-3.5 font-semibold transition-colors">{{ t "Front" }}</button>
     </div>
     <div x-show="face === 'rear'">{{.Back}}</div>
     <div x-show="face === 'front'" x-cloak>{{.Front}}</div>

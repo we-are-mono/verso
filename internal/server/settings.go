@@ -10,7 +10,7 @@ import (
 )
 
 // Verso configures everything on the router, including itself: its own settings
-// are one uci config like every other owner's (ADR-013). That buys the capsule,
+// are one uci config like every other owner's (ADR-013). That buys the review drawer,
 // `uci changes`, `uci show verso`, hand edits over SSH, sysupgrade's config-keep
 // and Verso's own backup with no new machinery — and lets a root script read a
 // setting with one `uci get` while Verso is not running.
@@ -37,9 +37,9 @@ const (
 
 // shellConfigs is the set of uci configs the shell itself owns. Plugins declare
 // theirs in their manifests; the shell declares this one here, so a staged Verso
-// setting counts, reviews, and discards through the capsule exactly like a
+// setting counts, reviews, and discards through the stage exactly like a
 // firewall rule (ADR-013 §3, ADR-010).
-var shellConfigs = []string{versoConfig}
+var shellConfigs = []string{versoConfig, "system"}
 
 // versoOption reads one option of Verso's own config through the same brokered
 // snapshot the shell hands plugins — never by opening the file. ADR-007's posture
@@ -65,7 +65,7 @@ func (s *Server) versoOption(ctx context.Context, sid, section, option string) (
 // the operator's sid like every other write (ADR-007). It creates the named typed
 // section first when the config has none — a fresh install ships the file empty,
 // so the first setting an owner changes is also the section's first appearance.
-// Nothing is committed here: the capsule's Save & Apply is what makes it live
+// Nothing is committed here: the review drawer's apply is what makes it live
 // (ADR-010).
 func (s *Server) stageVersoOption(ctx context.Context, sid, section, option, value string) error {
 	snapshot, err := s.backend.UCIConfig(ctx, sid, versoConfig)

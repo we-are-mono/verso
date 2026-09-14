@@ -29,42 +29,21 @@ type credentialVerifier interface {
 // create UCI stage entries; an unrelated existing global stage may still appear.
 
 func accessForm(hasPassword bool, fieldErrs map[string]string, formErr, success string) *widget.Form {
-	fields := make([]widget.Widget, 0, 2)
+	fields := make([]widget.Widget, 0, 3)
 	if hasPassword {
-		fields = append(fields, &widget.Grid{Style: "form", Columns: 3, Children: []widget.Widget{
-			&widget.Field{Name: "current_password", Label: "Current password", Kind: "password", Autocomplete: "current-password", Error: fieldErrs["current_password"]},
-		}})
+		fields = append(fields, &widget.Field{Name: "current_password", Label: "Current password", Kind: "password", Autocomplete: "current-password", Error: fieldErrs["current_password"]})
 	}
-	fields = append(fields, &widget.Grid{Style: "form", Columns: 3, Children: []widget.Widget{
-		&widget.Field{Name: "password", Label: "New password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["password"]},
-		&widget.Field{Name: "confirm", Label: "Repeat new password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["confirm"]},
-	}})
+	fields = append(fields, &widget.Field{Name: "password", Label: "New password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["password"]}, &widget.Field{Name: "confirm", Label: "Repeat new password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["confirm"]})
 	label := "Set password"
 	if hasPassword {
-		label = "Update password"
+		label = "Change password"
 	}
-	return &widget.Form{Submit: label, Success: success, Error: formErr, Fields: fields}
+	return &widget.Form{Style: "page", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields, Note: "Takes effect immediately — other sessions stay signed in."}
 }
-
-func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
+func accessBody(hasPassword bool, _ string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
 	return &widget.Stack{Children: []widget.Widget{
-		&widget.Section{
-			Title: "Administrator account",
-			Sub:   "The root password is used to sign in to Verso and approve sensitive actions.",
-			Children: []widget.Widget{
-				&widget.Stack{Compact: true, Children: []widget.Widget{
-					&widget.Properties{Style: "identity", Items: []widget.Property{{Label: "Username", Value: username, Mono: true, Emphasis: true}}},
-					&widget.Callout{Variant: "neutral", Compact: true, Body: "Main system username cannot be changed."},
-				}},
-				accessForm(hasPassword, fieldErrs, formErr, success),
-			},
-		},
-		&widget.Section{
-			Title:    "Active sessions",
-			Sub:      "Browsers currently signed in to Verso. End anything you do not recognize.",
-			Hairline: true,
-			Children: []widget.Widget{accessSessionsTable(sessions, tr)},
-		},
+		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, fieldErrs, formErr, success)}},
+		&widget.Section{Title: "Signed in now", Hairline: true, Children: []widget.Widget{accessSessionsTable(sessions, tr)}},
 	}}
 }
 
@@ -75,27 +54,18 @@ type accessSession struct {
 
 func accessSessionsTable(sessions []accessSession, tr func(string) string) *widget.Table {
 	rows := make([]widget.TableRow, 0, len(sessions))
-	for _, sess := range sessions {
-		var access widget.TableCell
-		if sess.Current {
-			access = widget.TableCell{Text: "this session", Variant: "success"}
+	for _, session := range sessions {
+		source := widget.TableCell{Text: session.Address, Sub: session.Browser}
+		action := widget.TableCell{}
+		if session.Current {
+			source.Tag = tr("this browser")
+			source.TagVariant = "success"
 		} else {
-			access = widget.TableCell{
-				Button: "End session", Action: "end-session:" + sess.ID,
-				ConfirmTitle: "End this session?",
-				Confirm:      fmt.Sprintf(tr("Anyone using %s will be signed out of Verso immediately. They’ll need the administrator password to sign in again."), sess.Browser),
-			}
+			action = widget.TableCell{Button: tr("Revoke"), Name: "_action", Action: "end-session:" + session.ID, Confirm: tr("Revoke this session?"), ConfirmTitle: tr("Revoke session"), Variant: "danger"}
 		}
-		rows = append(rows, widget.TableRow{ID: sess.ID, Cells: []widget.TableCell{
-			{Text: sess.Browser}, {Text: sess.Address, Emphasis: true},
-			{Text: sess.SignedIn}, {Text: sess.LastActive}, access,
-		}})
+		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, {Text: session.SignedIn}, {Text: session.LastActive}, action}})
 	}
-	return &widget.Table{Style: "flat", Columns: []widget.TableColumn{
-		{Label: "Browser", Kind: "name"}, {Label: "Address", Kind: "mono"},
-		{Label: "Signed in", Kind: "num"}, {Label: "Last active", Kind: "num"},
-		{Label: "Access", Kind: "pill"},
-	}, Rows: rows}
+	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Started", Kind: "mono"}, {Label: "Last seen", Kind: "mono"}, {Kind: "pill"}}, Rows: rows}
 }
 
 func (s *Server) accessSessions(r *http.Request) []accessSession {
@@ -176,7 +146,7 @@ func formatSessionStart(tr func(string) string, created, now time.Time) string {
 }
 
 // relativeSessionTime words a session's age. Two flat forms per unit (one, and
-// many) — the same plural shape the capsule label carries, with the same
+// many) — the same plural shape the staged-changes chip carries, with the same
 // TODO(i18n plurals) caveat: languages with more plural forms than two render
 // the "many" form for all of them.
 func relativeSessionTime(tr func(string) string, last, now time.Time) string {
@@ -204,12 +174,22 @@ func (s *Server) handlePasswordForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
+
 	if err := r.ParseForm(); err != nil {
 		s.renderAccess(w, r, http.StatusBadRequest, nil, "Could not read the form.", "")
 		return
 	}
 	if action := r.PostForm.Get("_action"); strings.HasPrefix(action, "end-session:") {
 		s.handleEndSession(w, r, strings.TrimPrefix(action, "end-session:"))
+		return
+	}
+
+	if id := r.URL.Query().Get("plugin"); id != "" {
+		if m, ok := s.manifestByID(id); !ok || m.SystemAccess == "" {
+			s.renderAccess(w, r, http.StatusBadRequest, nil, "These settings are no longer available. Reload the page.", "")
+			return
+		}
+		s.renderAccess(w, r, http.StatusOK, nil, "", "")
 		return
 	}
 
@@ -286,6 +266,33 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	hdr := pageHeader{Heading: "System", Immediate: true, Subheading: "Control who can sign in to this router, and end access you no longer recognize."}
-	s.renderPage(w, r, status, hdr, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
+	hdr := pageHeader{Heading: "Access", Tone: "neutral", Ruled: true}
+	for _, manifest := range s.manifestList() {
+		if manifest.SystemAccess == "" {
+			continue
+		}
+		request := r.Clone(r.Context())
+		if r.URL.Query().Get("plugin") != manifest.ID {
+			request.Method = http.MethodGet
+			request.Body = nil
+			request.Form = nil
+			request.PostForm = nil
+		}
+		var pluginHeader pageHeader
+		var pluginWidth string
+		var pluginPages []pageTab
+		contribution, code := s.pluginBodyAt(request, manifest, manifest.SystemAccess, &pluginHeader, &pluginWidth, &pluginPages)
+		if err := s.pageSet(lang).ExecuteTemplate(&body, "access-contribution.html.tmpl", contribution); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+			return
+		}
+		if code >= http.StatusBadRequest {
+			status = code
+		}
+		if pluginHeader.Notice != nil {
+			hdr.Notice = pluginHeader.Notice
+		}
+	}
+
+	s.renderPage(w, r, status, hdr, "form", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
 }

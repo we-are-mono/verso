@@ -86,6 +86,19 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    round-trip's
    *mechanics* are the mechanical contract's (ADR-006); what a plugin may *emit* is
    this ADR's.
+8. **An object lives in its drawer.** The slide-in surfaces — the `drawer`
+   widget, a table row's `drawer`, and the entity panel — are where an object is
+   read, made and edited without leaving the listing it belongs to: the row
+   opens it filled, the listing's add opens it blank, and both draw one form
+   from one set of field builders, so an object never has two spellings of one
+   setting. The drawer holds whatever the object needs — its facts, a callout
+   naming what depends on it, its form, and action buttons (one or several),
+   guarded by `confirm` where an act deserves a pause — and its Save stages
+   (ADR-010): nothing is live until Apply from the review drawer. A page edits
+   only what has no row: a settings face is its own form and saves itself.
+   Below the drawer the ladder keeps its lower rungs — an in-place control for
+   a single fact, a direct row action for a command that needs no showing — and
+   the right surface is the lowest rung that holds the whole truth.
 
 ## Consequences
 

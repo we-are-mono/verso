@@ -10,10 +10,10 @@
   {{range $i, $t := .Tabs}}
   <input type="radio" name="{{$.Group}}" id="{{$.Group}}-{{$i}}" class="verso-tab-radio sr-only"{{if $t.First}} checked{{end}}>
   {{end}}
-  <div class="verso-tab-list relative mb-5 inline-grid grid-flow-col auto-cols-fr rounded-full border border-slate-200 bg-slate-50 p-1" role="tablist">
+  <div class="verso-tab-list relative mb-5 inline-grid grid-flow-col auto-cols-fr rounded-xs border border-rule-strong bg-quiet p-0.5" role="tablist">
     <span class="verso-tab-indicator" aria-hidden="true"></span>
     {{range $i, $t := .Tabs}}
-    <label for="{{$.Group}}-{{$i}}" class="verso-tab-label relative z-10 inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition-colors">
+    <label for="{{$.Group}}-{{$i}}" class="verso-tab-label relative z-10 inline-flex h-7 cursor-pointer items-center justify-center gap-2 rounded-xs px-3.5 text-sm font-semibold text-body transition-colors">
       {{if $t.Icon}}{{icon $t.Icon "size-4"}}{{end}}
       {{$t.Label}}
     </label>

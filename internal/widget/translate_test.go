@@ -30,7 +30,7 @@ var slLoud = map[string]string{
 	"Cancel":   "Prekliči",
 	"Details":  "Podrobnosti",
 	"Online":   "Povezano",
-	"Field":    "Polje", // a {{ t }} template literal (changes.html.tmpl)
+	"Copy":     "Kopiraj", // a {{ t }} template literal (properties.html.tmpl)
 }
 
 // TestTranslateSchemaWalksEveryTextField mirrors the validateSchema walk tests: a
@@ -96,7 +96,7 @@ func TestTranslateSkipsMachineContent(t *testing.T) {
 	table := &Table{
 		Columns: []TableColumn{{Kind: "mono"}, {Kind: "num"}, {Kind: "text"}},
 		Rows: []TableRow{{Cells: []TableCell{
-			{Text: "br0", Sub: "Online", Button: "Remove"},
+			{Text: "br0", Sub: "Online", Button: "Remove", Actions: []TableRowAct{{Title: "Remove", Name: "Online", Value: "br0"}}},
 			{Text: "Online"},
 			{Text: "Online"},
 			{Text: "br0"}, // overflow: no declared column, stays verbatim
@@ -109,6 +109,9 @@ func TestTranslateSkipsMachineContent(t *testing.T) {
 	}
 	if cells[0].Button != "Odstrani" {
 		t.Errorf("button in a mono column = %q, want translated", cells[0].Button)
+	}
+	if action := cells[0].Actions[0]; action.Title != "Odstrani" || action.Name != "Online" || action.Value != "br0" {
+		t.Errorf("action titles translate; submission targets stay verbatim: %+v", action)
 	}
 	if cells[1].Text != "Online" {
 		t.Errorf("num cell = %q, must stay verbatim", cells[1].Text)
@@ -245,7 +248,7 @@ func TestRenderEnglishWhenNoTranslator(t *testing.T) {
 func TestTranslatedValuesAreEscaped(t *testing.T) {
 	evil := fakeCatalog(map[string]string{
 		"Devices": `<script>alert(1)</script>`,    // a walked struct field (Card.Title)
-		"Field":   `<img src=x onerror=alert(2)>`, // a {{ t }} template literal (changes.html.tmpl)
+		"Copy":    `<img src=x onerror=alert(2)>`, // a {{ t }} template literal (properties.html.tmpl)
 	})
 	r := newRenderer(t)
 	if err := r.SetLanguages([]string{"xx"}, func(string) func(string) string { return evil }); err != nil {
@@ -253,7 +256,7 @@ func TestTranslatedValuesAreEscaped(t *testing.T) {
 	}
 
 	var b strings.Builder
-	tree := &Card{Title: "Devices", Children: []Widget{&Changes{Items: []Change{{Label: "x"}}}}}
+	tree := &Card{Title: "Devices", Children: []Widget{&Properties{Items: []Property{{Label: "x", Value: "y", Copy: true}}}}}
 	if err := r.RenderWithToken(&b, tree, "", "xx", evil); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
@@ -309,14 +312,14 @@ func TestPerLanguageTemplateSelection(t *testing.T) {
 		t.Fatalf("SetLanguages: %v", err)
 	}
 
-	// changes.html.tmpl carries the {{ t "Field" }} header literal.
-	widget := &Changes{Items: []Change{{Label: "x", Previous: "a", Next: "b"}}}
+	// properties.html.tmpl carries the {{ t "Copy" }} literal on a copyable row.
+	widget := &Properties{Items: []Property{{Label: "x", Value: "y", Copy: true}}}
 
 	var sl strings.Builder
 	if err := r.RenderWithToken(&sl, widget, "", "sl", tr); err != nil {
 		t.Fatalf("RenderWithToken(sl): %v", err)
 	}
-	if !strings.Contains(sl.String(), "Polje") || strings.Contains(sl.String(), ">Field<") {
+	if !strings.Contains(sl.String(), "Kopiraj") || strings.Contains(sl.String(), ">Copy<") {
 		t.Errorf("sl render must use the sl template set: %s", sl.String())
 	}
 
@@ -324,7 +327,7 @@ func TestPerLanguageTemplateSelection(t *testing.T) {
 	if err := r.RenderWithToken(&en, widget, "", "", nil); err != nil {
 		t.Fatalf("RenderWithToken(en): %v", err)
 	}
-	if !strings.Contains(en.String(), ">Field<") || strings.Contains(en.String(), "Polje") {
+	if !strings.Contains(en.String(), ">Copy<") || strings.Contains(en.String(), "Kopiraj") {
 		t.Errorf("English render must use the English template set: %s", en.String())
 	}
 }

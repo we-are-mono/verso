@@ -1,12 +1,34 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* link: a labelled hyperlink, optionally a download, in one of a few styles. */}}
-{{if eq .Style "button"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium {{template "verso-btn-primary"}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+{{/* a link wearing a button's clothes is the same button: one height, one radius,
+     one border — stated in the same place the form's own buttons take theirs. */}}
+{{if eq .Style "status"}}
+<a href="{{.Href}}" class="flex items-center gap-3 border-y border-rule py-4 text-sm text-ink hover:text-denim-deep"><span aria-hidden="true" class="size-2 shrink-0 border border-faint"></span><span class="font-semibold">{{if .Code}}{{.Code}} {{end}}{{.Label}}</span><span class="min-w-0 flex-1 text-meta">{{.Desc}}</span>{{icon "arrow-right" "size-4 shrink-0"}}</a>
+{{else if eq .Style "choice"}}
+<a href="{{.Href}}" class="group flex items-start gap-3.5 border-b border-rule px-8 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+  {{if .Icon}}<span class="mt-0.5 shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
+  <span class="min-w-0 flex-1"><span class="flex flex-wrap items-baseline gap-2 text-sm"><span class="font-semibold">{{.Label}}</span>{{if .Code}}<span class="rounded-xs border border-rule bg-quiet px-1.5 font-mono text-sm font-normal text-meta">{{.Code}}</span>{{end}}</span>
+  {{if .Desc}}<span class="mt-1 block text-sm leading-relaxed text-body">{{.Desc}}</span>{{end}}</span>
+  <span class="mt-0.5 shrink-0 text-faint group-hover:text-denim">{{icon "chevron-right" "size-4"}}</span>
+</a>
+{{else if eq .Style "button"}}
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "ghost"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-900">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border border-rule-strong bg-transparent text-ink transition-colors hover:border-faint hover:bg-quiet {{template "verso-press"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+{{else if eq .Style "rail"}}
+{{/* One place on this page, in the list of them. It is a block so a run of them
+     is a column, and it carries its own left hairline so the run draws one
+     continuous line without a container having to know it is a rail. Which one
+     you are reading is the shell's to say — it marks this link aria-current, and
+     verso.css draws the bar. */}}
+{{/* The colour is the named rule's, not a utility's: resting, hovered and current
+     are one set of three states, and a utility for any of them would beat the
+     rule that draws the other two — the utility layer wins the cascade whatever
+     the specificity. */}}
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm transition-colors">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "secondary"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium {{template "verso-btn-secondary"}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 underline underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{end}}

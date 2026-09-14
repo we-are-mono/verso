@@ -40,6 +40,112 @@ pub fn installed() -> Result<Value, String> {
     ))
 }
 
+// Read the cached index in one command, rather than spawning apk info for every
+// result. Installed copies win the merge, including their removal protection.
+// Pagination bounds the helper response even for an unfiltered All listing.
+pub fn browse(query: &str, offset: usize) -> Result<Value, String> {
+    let output = Command::new("apk")
+        .args([
+            "query",
+            "--network=no",
+            "--fields",
+            "name,version,origin,description,license,url,file-size",
+            "--format",
+            "json",
+            "*",
+        ])
+        .output()
+        .map_err(|error| format!("apk query: {error}"))?;
+    if !output.status.success() {
+        return Err(format!("apk query: {}", output_tail(&output.stderr)));
+    }
+    let available: Vec<Value> = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("apk query returned invalid JSON: {error}"))?;
+    let inventory = installed()?;
+    Ok(browse_page(
+        &available,
+        inventory.as_array().unwrap(),
+        query,
+        offset,
+    ))
+}
+
+fn browse_page(available: &[Value], inventory: &[Value], query: &str, offset: usize) -> Value {
+    let mut by_name = std::collections::BTreeMap::new();
+    for raw in available {
+        let mut package = normalize_installed(raw, &HashMap::new());
+        package["installed"] = json!(false);
+        package["removable"] = json!(false);
+        by_name.insert(
+            package["name"].as_str().unwrap_or_default().to_string(),
+            package,
+        );
+    }
+    for package in inventory {
+        by_name.insert(
+            package["name"].as_str().unwrap_or_default().to_string(),
+            package.clone(),
+        );
+    }
+    let count = by_name.len();
+    let query = query.to_lowercase();
+    let matches = by_name
+        .into_values()
+        .filter(|p| {
+            ["name", "description"].iter().any(|key| {
+                p[key]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_lowercase()
+                    .contains(&query)
+            })
+        })
+        .collect::<Vec<_>>();
+    let total = matches.len();
+    json!({"packages": matches.into_iter().skip(offset).take(SEARCH_LIMIT).collect::<Vec<_>>(),
+        "total": total, "count": count, "installed": inventory.len()})
+}
+
+pub fn files(name: &str) -> Result<Value, String> {
+    let output = Command::new("apk")
+        .args([
+            "query",
+            "--network=no",
+            "--installed",
+            "--fields",
+            "name,contents",
+            "--format",
+            "json",
+            name,
+        ])
+        .output()
+        .map_err(|error| format!("apk query --installed: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "apk query --installed: {}",
+            output_tail(&output.stderr)
+        ));
+    }
+    let packages: Vec<Value> = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("apk query returned invalid JSON: {error}"))?;
+    let package = packages
+        .iter()
+        .find(|p| p["name"] == name)
+        .ok_or_else(|| format!("{name} is not installed"))?;
+    let mut paths = string_array(package, "contents")
+        .map(|path| format!("/{}", path.trim_start_matches('/')))
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths.dedup();
+    Ok(json!(paths))
+}
+
+pub fn upgrade_one(name: &str) -> Result<String, String> {
+    // Require the exact installed package before invoking apk's selective upgrade.
+    files(name)?;
+    command_ok("apk upgrade", Command::new("apk").args(["upgrade", name]))
+}
+
 pub fn required_by(name: &str) -> Result<Vec<String>, String> {
     let packages = installed_packages()?;
     Ok(dependency_graph(&packages).remove(name).unwrap_or_default())
@@ -49,6 +155,7 @@ fn installed_packages() -> Result<Vec<Value>, String> {
     let output = Command::new("apk")
         .args([
             "query",
+            "--network=no",
             "--installed",
             "--fields",
             "name,version,origin,description,license,url,file-size,contents,depends,provides",
@@ -73,60 +180,11 @@ fn installed_packages() -> Result<Vec<Value>, String> {
 }
 
 pub fn search(query: &str) -> Result<(Value, usize), String> {
-    let pattern = format!("*{query}*");
-    let output = Command::new("apk")
-        .args(["list", &pattern])
-        .output()
-        .map_err(|error| format!("apk list: {error}"))?;
-    if !output.status.success() {
-        return Err(format!("apk list: {}", output_tail(&output.stderr)));
-    }
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut packages = merge_by_name(&text);
-    let total = packages.len();
-    packages.truncate(SEARCH_LIMIT);
-    for package in &mut packages {
-        let Some(object) = package.as_object_mut() else {
-            continue;
-        };
-        object.insert(
-            "description".into(),
-            Value::String(description(object["name"].as_str().unwrap_or_default())),
-        );
-    }
-    if packages
-        .iter()
-        .any(|package| package.get("installed").and_then(Value::as_bool) == Some(true))
-    {
-        let inventory = installed()?;
-        let installed = inventory
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|package| {
-                package
-                    .get("name")
-                    .and_then(Value::as_str)
-                    .map(|name| (name.to_string(), package))
-            })
-            .collect::<HashMap<_, _>>();
-        for package in &mut packages {
-            let Some(object) = package.as_object_mut() else {
-                continue;
-            };
-            let Some(found) = object
-                .get("name")
-                .and_then(Value::as_str)
-                .and_then(|name| installed.get(name))
-            else {
-                continue;
-            };
-            object.insert("removable".into(), found["removable"].clone());
-            object.insert("required_by".into(), found["required_by"].clone());
-        }
-    }
-    Ok((Value::Array(packages), total))
+    let page = browse(query, 0)?;
+    Ok((
+        page["packages"].clone(),
+        page["total"].as_u64().unwrap_or(0) as usize,
+    ))
 }
 
 // merge_by_name reduces an `apk list` listing to one entry per package name. apk
@@ -137,6 +195,7 @@ pub fn search(query: &str) -> Result<(Value, usize), String> {
 // it carries the state the row shows, and a row that says "installed" has to name
 // the version the device actually holds. Entries keep apk's order of first
 // appearance.
+#[cfg(test)]
 fn merge_by_name(listing: &str) -> Vec<Value> {
     let mut packages: Vec<Value> = Vec::new();
     let mut position: HashMap<String, usize> = HashMap::new();
@@ -166,7 +225,7 @@ fn merge_by_name(listing: &str) -> Vec<Value> {
 // rather than from joining two queries whose sets could disagree.
 pub fn upgradable() -> Result<Value, String> {
     let output = Command::new("apk")
-        .args(["list", "--upgradable"])
+        .args(["list", "--network=no", "--upgradable"])
         .output()
         .map_err(|error| format!("apk list --upgradable: {error}"))?;
     if !output.status.success() {
@@ -384,20 +443,6 @@ fn feed_of(origin: &str) -> &str {
     "base"
 }
 
-fn description(name: &str) -> String {
-    let Ok(output) = Command::new("apk").args(["info", "-d", name]).output() else {
-        return String::new();
-    };
-    if !output.status.success() {
-        return String::new();
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
-    text.trim()
-        .split_once('\n')
-        .map(|(_, description)| description.trim().to_string())
-        .unwrap_or_default()
-}
-
 fn command_ok(label: &str, command: &mut Command) -> Result<String, String> {
     let output = command
         .output()
@@ -425,6 +470,31 @@ fn output_tail(output: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browsing_merges_inventory_searches_descriptions_and_pages_without_losing_matches() {
+        let available = (0..65).map(|i| json!({"name":format!("pkg{i:02}"), "version":"2", "description":"Network tool"})).collect::<Vec<_>>();
+        let installed = vec![
+            json!({"name":"pkg01", "version":"1", "description":"Installed tool", "installed":true, "removable":false, "required_by":["verso"]}),
+        ];
+        let first = browse_page(&available, &installed, "", 0);
+        assert_eq!(first["count"], 65);
+        assert_eq!(first["total"], 65);
+        assert_eq!(first["installed"], 1);
+        assert_eq!(first["packages"].as_array().unwrap().len(), 30);
+        assert_eq!(first["packages"][1], installed[0]);
+        let last = browse_page(&available, &installed, "", 60);
+        assert_eq!(last["packages"].as_array().unwrap().len(), 5);
+        assert_eq!(last["packages"][0]["name"], "pkg60");
+        let found = browse_page(&available, &installed, "INSTALLED TOOL", 0);
+        assert_eq!(found["total"], 1);
+        assert_eq!(found["count"], 65);
+        assert_eq!(found["packages"][0]["name"], "pkg01");
+        assert!(browse_page(&available, &installed, "", 90)["packages"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+    }
 
     #[test]
     fn package_names_are_tightly_bounded() {

@@ -1,13 +1,75 @@
 {
-	"user": "verso",
-	"access": {
-		"session": { "methods": [ "login", "access", "list" ] },
-		"uci": { "methods": [ "get", "set", "commit", "apply", "changes", "add", "delete", "order", "rename", "confirm", "revert" ] },
-		"system": { "methods": [ "info", "board" ] },
-		"dhcp": { "methods": [ "ipv6leases" ] },
-		"rc": { "methods": [ "list", "init" ] },
-		"service": { "methods": [ "list" ] },
-		"network.interface": { "methods": [ "dump" ] },
-		"network.device": { "methods": [ "status" ] }
-	}
+  "user": "verso",
+  "access": {
+    "session": {
+      "methods": [
+        "login",
+        "access",
+        "list"
+      ]
+    },
+    "uci": {
+      "methods": [
+        "get",
+        "set",
+        "commit",
+        "apply",
+        "changes",
+        "add",
+        "delete",
+        "order",
+        "rename",
+        "confirm",
+        "revert"
+      ]
+    },
+    "system": {
+      "methods": [
+        "info",
+        "board"
+      ]
+    },
+    "dhcp": {
+      "methods": [
+        "ipv6leases"
+      ]
+    },
+    "rc": {
+      "methods": [
+        "list",
+        "init"
+      ]
+    },
+    "service": {
+      "methods": [
+        "list"
+      ]
+    },
+    "network.interface": {
+      "methods": [
+        "dump"
+      ]
+    },
+    "network.device": {
+      "methods": [
+        "status"
+      ]
+    },
+    "log": {
+      "methods": [
+        "read"
+      ]
+    },
+    "network.interface.*": {
+      "methods": [
+        "up",
+        "down"
+      ]
+    },
+    "network": {
+      "methods": [
+        "get_proto_handlers"
+      ]
+    }
+  }
 }

@@ -95,6 +95,8 @@ fn drawer(upstream: &Upstream, errors: &Errors, open: bool) -> Option<verso_plug
         open,
         vec![
             Widget::Form {
+        note: Default::default(),
+
                 style: String::new(),
                 submit: "Save".into(),
                 error: String::new(),
@@ -197,10 +199,12 @@ fn validate(upstream: &Upstream) -> Errors {
     let mut errors = Errors::default();
     // dnsmasq reads `/domain/` with no server as "answer this domain from
     // nowhere", so an empty server is a value — but only alongside a domain.
-    let server = upstream.server.split_once('#').map_or(
-        (upstream.server.as_str(), None),
-        |(address, port)| (address, Some(port)),
-    );
+    let server = upstream
+        .server
+        .split_once('#')
+        .map_or((upstream.server.as_str(), None), |(address, port)| {
+            (address, Some(port))
+        });
     let addressed = form::valid_ipv4(server.0) || form::valid_ipv6(server.0);
     let ported = server.1.is_none_or(|port| form::valid_number(port, 65535));
     errors.check(
@@ -210,11 +214,7 @@ fn validate(upstream: &Upstream) -> Errors {
     );
     errors.check(
         "domain",
-        upstream.domain.is_empty()
-            || upstream
-                .domain
-                .split('/')
-                .all(form::valid_hostname),
+        upstream.domain.is_empty() || upstream.domain.split('/').all(form::valid_hostname),
         "Write the domain this server answers for, such as corp.example.com.",
     );
     errors
@@ -227,9 +227,12 @@ mod tests {
     use serde_json::Value as Json;
 
     fn rows(model: &Dnsdhcp, refusal: Option<&Refusal>) -> Vec<Json> {
-        let json = serde_json::to_value(section(model, refusal, Widget::text("")))
-            .expect("serialize");
-        json["children"][0]["rows"].as_array().expect("rows").clone()
+        let json =
+            serde_json::to_value(section(model, refusal, Widget::text(""))).expect("serialize");
+        json["children"][0]["rows"]
+            .as_array()
+            .expect("rows")
+            .clone()
     }
 
     fn submit(body: &str) -> (Dnsdhcp, Saved) {
@@ -249,7 +252,10 @@ mod tests {
     fn an_entry_renders_split_and_carries_its_position() {
         let rows = rows(&fixture::dnsdhcp(), None);
         assert_eq!(rows[0]["cells"][0]["text"], "1.1.1.1");
-        assert_eq!(rows[0]["cells"][1], serde_json::json!({"text": "—", "muted": true}));
+        assert_eq!(
+            rows[0]["cells"][1],
+            serde_json::json!({"text": "—", "muted": true})
+        );
         assert_eq!(rows[2]["cells"][0]["text"], "10.66.0.53");
         assert_eq!(rows[2]["cells"][1]["text"], "corp.example.com");
 
@@ -270,9 +276,12 @@ mod tests {
             let mut model = fixture::dnsdhcp();
             model.upstreams.clear();
             model.daemon.set("noresolv", noresolv.then_some("1"));
-            let json = serde_json::to_value(section(&model, None, Widget::text("")))
-                .expect("serialize");
-            json["children"][0]["empty_text"].as_str().unwrap_or("").to_string()
+            let json =
+                serde_json::to_value(section(&model, None, Widget::text(""))).expect("serialize");
+            json["children"][0]["empty_text"]
+                .as_str()
+                .unwrap_or("")
+                .to_string()
         };
         assert_eq!(empty(false), EMPTY_FALLBACK);
         assert_eq!(empty(true), EMPTY_NOWHERE);
@@ -280,7 +289,8 @@ mod tests {
 
     #[test]
     fn saving_one_entry_rewrites_the_whole_list() {
-        let (model, saved) = submit("_form=server&_index=2&server=10.66.0.54&domain=corp.example.com");
+        let (model, saved) =
+            submit("_form=server&_index=2&server=10.66.0.54&domain=corp.example.com");
         assert_eq!(
             ops(&saved),
             serde_json::json!([{
@@ -309,7 +319,10 @@ mod tests {
         let mut model = fixture::dnsdhcp();
         model.upstreams.truncate(1);
         let saved = save(&mut model, &Form::parse("_form=server&_index=0&_delete=1"));
-        assert_eq!(ops(&saved)[0]["values"], serde_json::json!({"server": null}));
+        assert_eq!(
+            ops(&saved)[0]["values"],
+            serde_json::json!({"server": null})
+        );
     }
 
     #[test]
@@ -318,34 +331,41 @@ mod tests {
             ("_form=server&_index=0&server=nowhere", "server"),
             ("_form=server&_index=0&server=", "server"),
             ("_form=server&_index=0&server=1.1.1.1%23http", "server"),
-            ("_form=server&_index=0&server=1.1.1.1&domain=not+a+domain", "domain"),
+            (
+                "_form=server&_index=0&server=1.1.1.1&domain=not+a+domain",
+                "domain",
+            ),
         ] {
             let (_, saved) = submit(body);
             let Saved::Refused(refusal) = saved else {
                 panic!("{body}: the submission should have been refused");
             };
-            assert!(!refusal.errors.get(field).is_empty(), "{body}: {field} carries no error");
+            assert!(
+                !refusal.errors.get(field).is_empty(),
+                "{body}: {field} carries no error"
+            );
         }
 
         // A domain with no server is dnsmasq's "answer this from nowhere".
         let (_, saved) = submit("_form=server&_index=0&server=&domain=ads.example.com");
-        assert_eq!(
-            ops(&saved)[0]["values"]["server"][0],
-            "/ads.example.com/"
-        );
+        assert_eq!(ops(&saved)[0]["values"]["server"][0], "/ads.example.com/");
     }
 
     #[test]
     fn a_refused_entry_comes_back_open_carrying_what_was_typed() {
         let mut model = fixture::dnsdhcp();
-        let Saved::Refused(refusal) =
-            save(&mut model, &Form::parse("_form=server&_index=1&server=nowhere"))
-        else {
+        let Saved::Refused(refusal) = save(
+            &mut model,
+            &Form::parse("_form=server&_index=1&server=nowhere"),
+        ) else {
             panic!("the submission should have been refused");
         };
         let rows = rows(&model, Some(&refusal));
         assert_eq!(rows[1]["drawer"]["open"], true);
-        assert_eq!(rows[1]["drawer"]["children"][0]["fields"][2]["value"], "nowhere");
+        assert_eq!(
+            rows[1]["drawer"]["children"][0]["fields"][2]["value"],
+            "nowhere"
+        );
         assert!(rows[0]["drawer"].get("open").is_none());
     }
 

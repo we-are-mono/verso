@@ -4,7 +4,7 @@
 - **Date:** 2026-08-31
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-007 (every write rides the sid-gated rpcd path), ADR-010
-  (a settings change stages and applies through the capsule like any other),
+  (a settings change stages and applies through the review drawer like any other),
   ADR-006 (plugins own their declared configs — this one is the shell's),
   ADR-014 (the first setting: the unattended update check's gate).
 
@@ -22,7 +22,7 @@ person turns it off over SSH at two in the morning.
 The temptation is a small JSON file under `/etc/verso/`. Everything Verso has
 built this month argues against it: a parallel store needs its own privileged
 writer (the shell runs unprivileged and writes nothing itself, ADR-007), its
-own review presentation (the capsule renders `uci changes`, not file diffs),
+own review presentation (the review drawer renders `uci changes`, not file diffs),
 its own entry in sysupgrade's keep list, its own backup handling, and its own
 conventions for hand edits. That is a second settings system, built for the
 product whose purpose is making the first one humane.
@@ -48,7 +48,7 @@ category does not exist until something real needs it.**
 
 3. **The shell owns it; writes ride the standard path.** Verso pages change
    these options through the same sid-gated rpcd `uci` calls that broker every
-   plugin write (ADR-007), staged and applied by the capsule (ADR-010) — a
+   plugin write (ADR-007), staged and applied from the review drawer (ADR-010) — a
    Verso setting is reviewed, discarded, and committed exactly like a firewall
    rule. The shell's rpcd ACL policy grants `uci verso` read and write.
    Plugins do not touch this config: a plugin wanting product-level behavior
@@ -68,14 +68,14 @@ category does not exist until something real needs it.**
 
 ## Consequences
 
-- The capsule, `uci changes`, hand edits over SSH, `uci export verso`,
+- The review drawer, `uci changes`, hand edits over SSH, `uci export verso`,
   sysupgrade config-keep, and Verso's backup flow all cover Verso's settings
   from day one, with no new machinery.
 - A root script reads a Verso setting with one `uci get`, whether or not any
   Verso process is running — which is exactly what ADR-014's cron gate needs.
 - The package ships the empty `/etc/config/verso`; the shell's rpcd ACL file
   gains the `verso` config in its `uci` read and write lists.
-- The config is enumerable by the capsule's pending-changes union the moment
+- The config is enumerable by the stage's declared-configs union the moment
   the shell declares it, so a staged Verso setting counts and reviews like
   everything else.
 - Homelabbers meet the store they expect: `uci show verso` answers what Verso

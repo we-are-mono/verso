@@ -3,6 +3,8 @@
 
 package widget
 
+import "strconv"
+
 // The Devices roster: one row per device the box has seen, and behind each row
 // the whole story the row has no space for. It is the shell's own page content
 // — like the overview, outside the plugin vocabulary and never decoded — built
@@ -20,12 +22,23 @@ package widget
 // reservation, and ReserveHref is where that offer leads.
 type Device struct {
 	Name      string
+	Maker     string // who built it, when the MAC's OUI names someone; empty otherwise, and the row simply omits it
 	Icon      string // device-type Lucide glyph, resolved deterministically from MAC OUI / hostname (internal/deviceicon)
 	MAC       string
 	V4        string
 	V6        string
 	Interface string
 	Presence  string
+
+	// Where the device sits, as the listing groups it: the network's own name
+	// and the subnet that name resolves to. Port is the bridge port its MAC was
+	// learned on — where it physically attaches.
+	Network     string
+	NetworkCIDR string
+	Port        string
+	// ThisBrowser marks the device the page is being read on. It is the one row
+	// a person can place without thinking, so the listing says so.
+	ThisBrowser bool
 
 	DUID       string
 	Zone       string
@@ -35,9 +48,8 @@ type Device struct {
 	Traffic    string
 	Conns      string
 
-	Leased      bool
-	Reserved    bool
-	ReserveHref string
+	Leased   bool
+	Reserved bool
 }
 
 // DeviceAddr is one row of a device's full address list in the drawer: the
@@ -48,102 +60,212 @@ type DeviceAddr struct {
 	State  string
 }
 
-// DevicesTable is the roster: a device-type icon + name, the interface it sits
-// on with its zone chip, the MAC, the IPv4 address, and presence. The row
-// carries only the IPv4; each row's Details opens a drawer with the full address
-// list (both families) and the rest of the story. This is the unified view (all
-// devices, both families, DHCP or not), not a lease dump.
-func DevicesTable(devices []Device) *Table {
+// DeviceActTitles name each action without repeating the row's device name.
+// The shell supplies the glyphs and their order.
+func DeviceActTitles() map[string]string {
+	return map[string]string{
+		"reserve":   "Reserve an address",
+		"unreserve": "Remove reservation",
+		"block":     "Block internet",
+		"shape":     "Edit limits and schedule",
+	}
+}
+
+// DevicesTable is the roster, grouped by the network each device sits on: the
+// name and whatever qualifies it, the port it attaches through, its address, its
+// MAC, and whether it is here right now. Each row's acts sit at its trailing
+// edge, and its Details opens the full story — every address, both families.
+// This is the unified view (all devices, both families, DHCP or not), not a
+// lease dump.
+//
+// Devices arrive already ordered by their network; the caller decides that
+// order, and every change of network opens a band.
+func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 	rows := make([]TableRow, 0, len(devices))
-	for _, d := range devices {
-		rows = append(rows, TableRow{
+	network := ""
+	for i, d := range devices {
+		row := TableRow{
+			// A device that is not here reads at the secondary step, all of it:
+			// the values stay exact, the row stops competing for the eye.
+			Muted: d.Presence != "online",
+			Tags:  deviceTags(d),
+			Facet: map[string]string{"network": d.Network},
 			Cells: []TableCell{
-				{Text: d.Name, LeadIcon: d.Icon},
-				{Text: d.Interface, Chips: zoneChip(d.Zone)},
-				{Text: d.MAC, Copy: true, Emphasis: true},
+				{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d)},
+				{Text: d.Port},
 				{Text: d.V4, Copy: true, Emphasis: true},
+				{Text: d.MAC, Copy: true, Emphasis: true},
 				presenceCell(d.Presence),
+				{Actions: acts(d)},
 			},
-			Drawer: deviceDrawer(d),
-		})
+			// The device's panel is the shell's — every plugin with a say about
+			// a device contributes a tab to it — so the row carries the subject's
+			// address and nothing else.
+			Entity: &EntityRef{Kind: "device", ID: d.MAC},
+		}
+		if i == 0 || d.Network != network {
+			network = d.Network
+			row.Group = &TableGroup{
+				Key: d.Network, Label: networkLabel(d.Network), Chain: d.NetworkCIDR,
+				Tally: networkTally(devices, d.Network),
+			}
+		}
+		rows = append(rows, row)
 	}
 	return &Table{
-		Style: "flat", Align: "top", Title: "Connected devices", Detail: countLabel(len(rows), "device"),
+		Style: "flat", Align: "top",
+		// Every column but the device's own is fixed, so the grid holds its shape
+		// whatever this particular network happens to be named and however short
+		// one device's address is.
 		Columns: []TableColumn{
-			{Label: "Device", Kind: "name"}, {Label: "Interface", Kind: "reference"},
-			{Label: "MAC", Kind: "mono"}, {Label: "IPv4", Kind: "addr"},
-			{Label: "Status", Kind: "status"},
+			{Label: "Device", Kind: "name"},
+			{Label: "Port", Kind: "mono", Width: "6rem"},
+			{Label: "Address", Kind: "mono", Width: "11rem"},
+			{Label: "MAC address", Kind: "mono", Width: "12.5rem"},
+			{Label: "Status", Kind: "status", Width: "8rem"},
+			{Kind: "actions", Width: "7rem"},
 		},
-		Rows:      rows,
+		Rows: rows,
+		Legend: []TableLegend{
+			{Variant: "success", Label: "holding a lease now"},
+			{Label: "known, not present"},
+		},
+		Note:      "Offline devices stay listed until their lease expires.",
 		EmptyText: "Nothing has joined this network yet.",
 	}
 }
 
-// presenceCell renders a device's presence as a status dot + word: online reads
-// emerald, idle amber, offline a quiet grey.
-func presenceCell(p string) TableCell {
-	switch p {
-	case "online":
-		return TableCell{Text: "Online", Variant: "success"}
-	case "idle":
-		return TableCell{Text: "Idle", Variant: "warning"}
-	default:
-		return TableCell{Text: "Offline", Variant: "neutral"}
+// deviceTags are the flags the action bar's tabs cut this listing by. They are
+// not exclusive on purpose: a reserved device that is not here right now carries
+// both "offline" and "reserved", and each tab finds it.
+func deviceTags(d Device) []string {
+	tags := []string{"offline"}
+	if d.Presence == "online" {
+		tags = []string{"online"}
 	}
-}
-
-// deviceDrawer builds the Details panel for one device: its full address list, a
-// facts block (connection, DHCP lease, traffic), and — for a device holding an
-// address it could keep — the door to the reservation that would keep it.
-func deviceDrawer(d Device) *RowDrawer {
-	addrRows := make([]TableRow, 0, len(d.Addresses))
-	for _, a := range d.Addresses {
-		addrRows = append(addrRows, TableRow{Cells: []TableCell{
-			{Text: a.Addr, Copy: true, Emphasis: true},
-			{Text: a.Family, Variant: family(a.Family)},
-			{Text: orDash(a.State), Muted: true},
-		}})
-	}
-	addresses := &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{
-			{Label: "Address", Kind: "mono"}, {Label: "Family", Kind: "pill"},
-			{Label: "State", Kind: "text"},
-		},
-		Rows: addrRows,
-	}
-
-	items := []Property{
-		{Label: "MAC", Value: d.MAC},
-		{Label: "DUID", Value: orDash(d.DUID)},
-		{Label: "Interface", Value: orDash(d.Interface)},
-		{Label: "Zone", Value: orDash(d.Zone)},
-		{Label: "Connection", Value: orDash(d.Connection)},
-		{Label: "DHCP lease", Value: orDash(d.Lease)},
-	}
-	// A reservation is a fact about the address, so it reads beside the lease
-	// rather than as an action; the address itself is one panel above.
 	if d.Reserved {
-		items = append(items, Property{Label: "Reservation", Value: "Address reserved for this device"})
+		tags = append(tags, "reserved")
 	}
-	items = append(items,
-		Property{Label: "Traffic", Value: orDash(d.Traffic)},
-		Property{Label: "Connections", Value: orDash(d.Conns)},
-	)
-
-	children := []Widget{addresses, &Properties{Items: items}}
-	// The offer only makes sense for a device that holds an address it does not
-	// already own: the DHCP page is where an address becomes permanent.
-	if d.Leased && !d.Reserved && d.ReserveHref != "" {
-		children = append(children, &Link{Label: "Reserve its address", Href: d.ReserveHref, Style: "button"})
-	}
-	return &RowDrawer{Title: d.Name, Size: "wide", Children: children}
+	return tags
 }
 
-// family maps an address family to the pill palette — v6 the calmer tint.
-func family(fam string) string {
-	if fam == "IPv6" {
-		return "info"
+// DevicesBar is the roster's own controls: the cuts a person makes on a list of
+// devices — which are here, which are pinned — the search over what is on
+// screen, the network to look at, and the one act the page offers.
+func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string) string) *ActionBar {
+	online, offline, reserved := 0, 0, 0
+	for _, d := range devices {
+		if d.Presence == "online" {
+			online++
+		} else {
+			offline++
+		}
+		if d.Reserved {
+			reserved++
+		}
 	}
-	return "neutral"
+	bar := &ActionBar{
+		Tabs: []ActionTab{
+			{Label: "All", Count: len(devices), Active: true},
+			{Label: "Online", Count: online, Match: "online"},
+			{Label: "Offline", Count: offline, Match: "offline"},
+			{Label: "Reserved", Count: reserved, Match: "reserved"},
+		},
+		Select: &ActionPick{Key: "network", Options: []ActionOption{{Label: "All networks"}}},
+	}
+	seen := map[string]bool{}
+	for _, d := range devices {
+		if d.Network == "" || seen[d.Network] {
+			continue
+		}
+		seen[d.Network] = true
+		bar.Select.Options = append(bar.Select.Options, ActionOption{Label: networkLabel(d.Network), Value: d.Network})
+	}
+	// The act is offered only where it leads somewhere: with no plugin serving
+	// reservations there is nothing to reserve an address with.
+	if reserveHref != "" {
+		// The href is the fallback a browser with no script follows; with one,
+		// the act opens the same panel a row's own reserve icon opens — on the
+		// device it would most likely be about, so the panel arrives with that
+		// device's own facts pinned rather than as an empty form.
+		bar.Action = &TableAction{Label: "Reserve an address", Href: reserveHref}
+		bar.Entity = panelHref(reservableDevice(devices))
+	}
+	return bar
+}
+
+// reservableDevice is the device the listing's own act opens on: one that holds
+// an address it does not yet own, preferring one that is here right now. It is a
+// guess, and a stated one — the panel that opens names the device it is about,
+// and every other device is one row away.
+//
+// Empty when every device is already reserved, and the panel then opens on no
+// subject at all: an empty form is the honest answer when there is nothing left
+// to keep.
+func reservableDevice(devices []Device) string {
+	fallback := ""
+	for _, d := range devices {
+		if d.Reserved || !d.Leased {
+			continue
+		}
+		if d.Presence == "online" {
+			return d.MAC
+		}
+		if fallback == "" {
+			fallback = d.MAC
+		}
+	}
+	return fallback
+}
+
+// deviceChips are the qualifiers that ride after a device's name: that its
+// address is pinned, and that this is the browser you are reading on.
+func deviceChips(d Device) []TableChip {
+	var chips []TableChip
+	if d.Reserved {
+		chips = append(chips, TableChip{Icon: "lock", Label: "reserved", Tone: "accent"})
+	}
+	if d.ThisBrowser {
+		chips = append(chips, TableChip{Label: "this browser"})
+	}
+	return chips
+}
+
+// networkLabel words a network's own name. The config's handle is the chip
+// beside it, so this is the sentence-case reading of the same thing.
+func networkLabel(name string) string {
+	switch name {
+	case "":
+		return "Elsewhere"
+	case "lan":
+		return "Local network"
+	}
+	return name
+}
+
+// networkTally is what a network's band says on its right: how many of its
+// devices are here now, and how many are only known.
+func networkTally(devices []Device, network string) string {
+	online, offline := 0, 0
+	for _, d := range devices {
+		if d.Network != network {
+			continue
+		}
+		if d.Presence == "online" {
+			online++
+		} else {
+			offline++
+		}
+	}
+	return strconv.Itoa(online) + " online · " + strconv.Itoa(offline) + " offline"
+}
+
+// presenceCell renders a device's presence as a dot and the word for it. Only a
+// device the kernel confirms right now fills its dot; everything else wears the
+// empty ring, which is what the listing's legend explains.
+func presenceCell(p string) TableCell {
+	if p == "online" {
+		return TableCell{Text: "Online", Variant: "success"}
+	}
+	return TableCell{Text: "Offline"}
 }

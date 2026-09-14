@@ -42,6 +42,7 @@ func (s *Server) systemPages(active, mode string) []pageTab {
 		{"Packages", "/system/packages", ""},
 		{"Services", "/system/services", widget.ModeAdvanced},
 		{"Maintenance", "/system/maintenance", ""},
+		{"Logs", "/system/logs", ""},
 	} {
 		if !modeShows(item.mode, mode) {
 			continue

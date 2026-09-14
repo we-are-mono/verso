@@ -3,37 +3,58 @@
 {{/* form switch: the labelled form companion to the compact switch shared by
      table and settings rows. On/off state is always a switch; membership in a
      set remains a checkbox field. Every style declares the change hooks on its
-     wrapper, so a page-form submission that flips only a switch still arms the
-     staged-changes capsule. */}}
-{{if eq .Style "inline"}}
+     wrapper, so a page-form submission that flips only a switch still counts as
+     a change. */}}
+{{if eq .Style "checkbox"}}
+<div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
+{{template "verso-field-label" .LabelView}}
+<div data-verso-control class="{{template "verso-field-control-class"}}"><label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label></div></div>
+{{else if eq .Style "inline"}}
 <label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
-  <span aria-hidden="true" class="size-1 rounded-full bg-slate-300"></span>
+  <span aria-hidden="true" class="size-1 rounded-full bg-inert"></span>
   <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .}}</span>
-  <span class="verso-inline-switch-on ml-2 translate-y-px text-slate-900">{{.Label}}</span>
-  <span class="verso-inline-switch-off ml-2 translate-y-px text-slate-900">{{if .OffLabel}}{{.OffLabel}}{{else}}{{ t "Disabled" }}{{end}}</span>
+  <span class="verso-inline-switch-on ml-2 translate-y-px text-ink">{{.Label}}</span>
+  <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{if .OffLabel}}{{.OffLabel}}{{else}}{{ t "Disabled" }}{{end}}</span>
 </label>
 {{else if eq .Style "hero"}}
 {{/* the status-hero: a beacon, the state read in plain language, the big
      switch. Pure CSS — the checkbox's :checked drives the headline swap and
      the beacon via verso.css (.verso-toggle), never utilities, so the
      utility layer can't win the cascade. */}}
-<div class="verso-toggle flex items-center justify-between gap-6 rounded-md border border-slate-300 bg-white px-6 py-5 shadow-md"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
+<div class="verso-toggle flex items-center justify-between gap-6 rounded-xs border border-rule-strong bg-ground px-6 py-5"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   <div class="flex min-w-0 items-center gap-4">
-    <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xl">{{icon .Icon "size-6"}}</span>
+    <span class="verso-beacon flex size-12 shrink-0 items-center justify-center rounded-xs">{{icon .Icon "size-6"}}</span>
     <div class="min-w-0">
-      <div class="verso-toggle-on text-lg font-semibold text-slate-900">{{.Label}}</div>
-      <div class="verso-toggle-off text-lg font-semibold text-slate-900">{{.OffLabel}}</div>
-      {{if .Meta}}<div class="verso-toggle-meta mt-0.5 text-sm text-slate-500">{{.Meta}}</div>{{end}}
+      <div class="verso-toggle-on text-lg font-semibold text-ink">{{.Label}}</div>
+      <div class="verso-toggle-off text-lg font-semibold text-ink">{{.OffLabel}}</div>
+      {{if .Meta}}<div class="verso-toggle-meta mt-0.5 text-sm text-meta">{{.Meta}}</div>{{end}}
     </div>
   </div>
-  <label class="relative inline-flex h-[1.875rem] w-[3.25rem] shrink-0 cursor-pointer items-center">
+  {{/* the one switch that is larger than the row switch, because it is the
+       page's subject rather than one line of it: the same track, the same knob,
+       both a step up, and the same dark sand when it is on. */}}
+  <label class="relative inline-flex h-7 w-13 shrink-0 cursor-pointer items-center">
     <input type="checkbox" name="{{.Name}}" {{if .On}}checked{{end}}
       aria-label="{{.Label}}" class="peer sr-only">
-    <span class="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-500 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-600"></span>
-    <span class="absolute left-[0.1875rem] size-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[1.375rem]"></span>
+    <span class="absolute inset-0 rounded-full bg-inert transition-colors peer-checked:bg-body peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim"></span>
+    <span class="relative mx-0.5 size-6 rounded-full bg-ground transition-transform peer-checked:translate-x-6"></span>
   </label>
 </div>
-{{else}}<div class="space-y-1.5"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
-  {{template "switch.row" .}}
-  {{if .Help}}<p class="pl-9 text-sm text-slate-500">{{.Help}}</p>{{end}}
+{{else}}
+{{/* A state to flip is one setting, so it is the form's one row — the same
+     measure, the same label column with the option it writes beside it, the
+     same fixed control column. The switch simply is what ends this one, where
+     another row ends in a box to type in. Before, this row put its control
+     first and its explanation in a paragraph indented under it, which made a
+     settings page read as two forms stacked. */}}
+<div class="{{template "verso-field-row-class"}}"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
+  {{template "verso-field-label" .LabelView}}
+  <div data-verso-control class="{{template "verso-field-control-class"}}">
+    {{/* The input the switch is made of is screen-reader-only: the track and knob
+         are what a person sees, so the control has to sit inside a label or
+         pressing the thing itself does nothing. The label in the left column
+         points at the same input by id, which is what makes the setting's name
+         clickable too. */}}
+    <label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label>
+  </div>
 </div>{{end}}

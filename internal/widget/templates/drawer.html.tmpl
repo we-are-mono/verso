@@ -10,7 +10,7 @@
        its own, bare with the row hover tint inside a hairline-divided list, or
        the primary action button for an "Add …" whose editor is the drawer. */}}
   <button type="button" @click="show"
-    class="{{if .Button}}inline-flex cursor-pointer items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-sky-700 active:bg-sky-800 [&_.verso-prose]:!text-sm [&_.verso-prose]:!text-white{{else}}block w-full{{end}} text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 {{if .Bare}}transition-colors hover:bg-slate-50{{else if not .Button}}rounded-xl border border-slate-200 bg-white px-4 py-1 shadow-sm transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md{{end}}">
+    class="{{if .Button}}inline-flex h-9 cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold text-white transition-colors hover:border-denim-deep hover:bg-denim-deep [&_.verso-prose]:!text-sm [&_.verso-prose]:!text-white{{else}}block w-full{{end}} text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{if .Bare}}transition-colors hover:bg-quiet{{else if not .Button}}rounded-xs border border-rule bg-ground px-4 py-1 transition-colors hover:border-denim{{end}}">
     {{.Trigger}}
   </button>
   {{template "verso-drawer-panel" .Panel}}

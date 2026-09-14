@@ -201,6 +201,8 @@ pub fn reserve_drawer(host: &Host, errors: &Errors, open: bool) -> Option<RowDra
 /// host_form is the reservation form both panels carry.
 fn host_form(submit: &str, host: &Host, errors: &Errors) -> Widget {
     Widget::Form {
+        note: Default::default(),
+
         style: String::new(),
         submit: submit.into(),
         error: String::new(),
@@ -380,9 +382,12 @@ mod tests {
     use serde_json::Value as Json;
 
     fn rows(model: &Dnsdhcp, refusal: Option<&Refusal>) -> Vec<Json> {
-        let json = serde_json::to_value(section(model, &fixture::leases(), refusal))
-            .expect("serialize");
-        json["children"][0]["rows"].as_array().expect("rows").clone()
+        let json =
+            serde_json::to_value(section(model, &fixture::leases(), refusal)).expect("serialize");
+        json["children"][0]["rows"]
+            .as_array()
+            .expect("rows")
+            .clone()
     }
 
     fn submit(body: &str) -> (Dnsdhcp, Saved) {
@@ -404,8 +409,8 @@ mod tests {
     fn no_reservations_points_at_where_one_comes_from() {
         let mut model = fixture::dnsdhcp();
         model.hosts.clear();
-        let json = serde_json::to_value(section(&model, &fixture::leases(), None))
-            .expect("serialize");
+        let json =
+            serde_json::to_value(section(&model, &fixture::leases(), None)).expect("serialize");
         let table = &json["children"][0];
         assert_eq!(table["empty_text"], EMPTY);
         assert!(table["rows"].as_array().expect("rows").is_empty());
@@ -418,10 +423,16 @@ mod tests {
         assert_eq!(rows[0]["cells"][0]["text"], "nas");
         assert_eq!(rows[0]["cells"][1]["text"], "30:9C:23:5E:88:01");
         assert_eq!(rows[0]["cells"][3]["text"], "::30");
-        assert_eq!(rows[0]["cells"][4], serde_json::json!({"text": "online", "variant": "success"}));
+        assert_eq!(
+            rows[0]["cells"][4],
+            serde_json::json!({"text": "online", "variant": "success"})
+        );
         // A reservation whose device is not here says nothing rather than "offline".
         assert_eq!(rows[1]["cells"][4], serde_json::json!({}));
-        assert_eq!(rows[1]["cells"][3], serde_json::json!({"text": "—", "muted": true}));
+        assert_eq!(
+            rows[1]["cells"][3],
+            serde_json::json!({"text": "—", "muted": true})
+        );
 
         let drawer = &rows[0]["drawer"];
         assert_eq!(drawer["title"], "Edit reservation — nas");
@@ -436,9 +447,8 @@ mod tests {
 
     #[test]
     fn reserving_a_lease_creates_the_section_it_needs() {
-        let (model, saved) = submit(
-            "_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142",
-        );
+        let (model, saved) =
+            submit("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
         assert_eq!(
             ops(&saved),
             serde_json::json!([{
@@ -452,7 +462,8 @@ mod tests {
 
     #[test]
     fn saving_a_reservation_clears_every_option_it_no_longer_states() {
-        let (model, saved) = submit("_form=host&_section=host_nas&name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.30");
+        let (model, saved) =
+            submit("_form=host&_section=host_nas&name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.30");
         assert_eq!(
             ops(&saved),
             serde_json::json!([{
@@ -481,10 +492,22 @@ mod tests {
     fn a_reservation_the_daemons_would_skip_is_marked_and_nothing_is_written() {
         for (body, field) in [
             ("_form=host&_section=&mac=not-a-mac&ip=10.0.0.9", "mac"),
-            ("_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.256", "ip"),
-            ("_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&name=not+a+name", "name"),
-            ("_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&hostid=::zz", "hostid"),
-            ("_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever", "leasetime"),
+            (
+                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.256",
+                "ip",
+            ),
+            (
+                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&name=not+a+name",
+                "name",
+            ),
+            (
+                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&hostid=::zz",
+                "hostid",
+            ),
+            (
+                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever",
+                "leasetime",
+            ),
             // A reservation that matches a device and then hands it nothing.
             ("_form=host&_section=&mac=30:9c:23:5e:88:01", "ip"),
         ] {
@@ -492,7 +515,10 @@ mod tests {
             let Saved::Refused(refusal) = saved else {
                 panic!("{body}: the submission should have been refused");
             };
-            assert!(!refusal.errors.get(field).is_empty(), "{body}: {field} carries no error");
+            assert!(
+                !refusal.errors.get(field).is_empty(),
+                "{body}: {field} carries no error"
+            );
         }
     }
 
@@ -507,7 +533,10 @@ mod tests {
         };
         let rows = rows(&model, Some(&refusal));
         assert_eq!(rows[0]["drawer"]["open"], true);
-        assert_eq!(rows[0]["drawer"]["children"][0]["fields"][3]["value"], "nope");
+        assert_eq!(
+            rows[0]["drawer"]["children"][0]["fields"][3]["value"],
+            "nope"
+        );
         assert!(rows[1]["drawer"].get("open").is_none());
     }
 

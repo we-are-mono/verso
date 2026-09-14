@@ -17,7 +17,7 @@ func TestRenderMeter(t *testing.T) {
 		"Storage", ">23<", ">GB<", "9 GB free",
 		"data-verso-meter-bar", // the fill element
 		"width: 72%",           // filled by Fill
-		"bg-emerald-600",       // 72% is still healthy (amber starts at 80)
+		"bg-denim",             // 72% is an ordinary quantity: the accent, not a warning
 		"tabular-nums",
 	} {
 		if !strings.Contains(got, want) {
@@ -29,7 +29,7 @@ func TestRenderMeter(t *testing.T) {
 // TestMeterBands: the track colours itself from Fill (not from the displayed Value).
 func TestMeterBands(t *testing.T) {
 	r := newRenderer(t)
-	cases := map[int]string{45: "bg-emerald-600", 85: "bg-amber-500", 95: "bg-red-600"}
+	cases := map[int]string{45: "bg-denim", 85: "bg-marigold", 95: "bg-crimson"}
 	for fill, want := range cases {
 		got := render(t, r, &Meter{Label: "x", Value: "x", Fill: fill})
 		if !strings.Contains(got, want) {
@@ -40,15 +40,27 @@ func TestMeterBands(t *testing.T) {
 
 // TestMeterInfoVariant: "info" forces the accent and shows the value in its own unit,
 // bypassing the fill-based auto-colour (a rate like speed has no "getting full").
+// What it is asserting is that behaviour, not a colour of its own: the accent is the
+// colour of any ordinary reading, and "info" means this one stays ordinary however
+// full it looks — a 96% link is a fast link, not a warning.
 func TestMeterInfoVariant(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Label: "Speed", Value: "300", Unit: "Mbps", Fill: 30, Variant: "info", Detail: "24 Mbps up"})
-	for _, want := range []string{">300<", ">Mbps<", "bg-sky-600", "24 Mbps up"} {
+	for _, want := range []string{">300<", ">Mbps<", "bg-denim", "24 Mbps up"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("speed meter missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "bg-emerald-600") {
+	full := render(t, r, &Meter{Label: "Speed", Value: "960", Unit: "Mbps", Fill: 96, Variant: "info"})
+	if !strings.Contains(full, "bg-denim") {
+		t.Errorf("an info reading near its ceiling still reads as a quantity:\n%s", full)
+	}
+	for _, never := range []string{"bg-crimson", "bg-marigold"} {
+		if strings.Contains(full, never) {
+			t.Errorf("info variant must not auto-colour, got %q:\n%s", never, full)
+		}
+	}
+	if strings.Contains(got, "bg-marigold") || strings.Contains(got, "bg-crimson") {
 		t.Errorf("info variant must not auto-colour:\n%s", got)
 	}
 }
@@ -90,10 +102,15 @@ func TestMeterCompact(t *testing.T) {
 	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"})
 	for _, want := range []string{
 		"Memory", ">47.0<", "°C",
-		"width: 49%",      // fills to the reading's own ceiling
-		"left: 89%",       // the warn tick
-		"bg-emerald-500",  // nominal tone on the fill + dot
-		"bg-amber-500/60", // the warn tick colour
+		"width: 49%", // fills to the reading's own ceiling
+		"left: 89%",  // the warn tick
+		// A reading in its ordinary range is a quantity, not a verdict, so the bar
+		// is the action colour — what the canvas draws for every normal meter.
+		// Green stays where the palette puts it: the dot beside the value.
+		"bg-denim",
+		"bg-green",
+		"bg-marigold-deep", // the warn tick
+		"bg-crimson",       // the critical tick
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("compact meter missing %q:\n%s", want, got)
@@ -109,23 +126,45 @@ func TestMeterCompactNoTrack(t *testing.T) {
 	if strings.Contains(got, "data-verso-meter-bar") {
 		t.Errorf("a no-limits reading must draw no track:\n%s", got)
 	}
-	for _, want := range []string{"no limits reported", "bg-slate-300"} {
+	for _, want := range []string{"no limits reported", "bg-glyph"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("no-track meter missing %q:\n%s", want, got)
 		}
 	}
 }
 
-// TestMeterCompactWarnTone: a reading over its warn trip colours the fill and dot
-// amber, not the calm accent.
+// TestMeterCompactWarnTone: a reading over its warn trip turns marigold, fill and
+// dot together, and stops reading as an ordinary quantity.
 func TestMeterCompactWarnTone(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Compact: true, Label: "SoC", Value: "88", Unit: "°C", Fill: 92, WarnMark: 89, CritMark: 100, Tone: "warning"})
-	if !strings.Contains(got, "bg-amber-500") {
-		t.Errorf("warm reading should tint amber:\n%s", got)
+	if strings.Count(got, "bg-marigold\"") < 1 && !strings.Contains(got, "bg-marigold ") {
+		t.Errorf("warm reading should tint marigold:\n%s", got)
 	}
-	if strings.Contains(got, "bg-emerald-500") {
-		t.Errorf("warm reading must not stay emerald:\n%s", got)
+	for _, never := range []string{"bg-denim", "bg-green"} {
+		if strings.Contains(got, never) {
+			t.Errorf("warm reading must not keep %q, the ordinary-range colours:\n%s", never, got)
+		}
+	}
+}
+
+// The meter's colours are the palette's, in both faces of the widget. A stock
+// Tailwind ramp here is a colour no design names — and the live layer repaints
+// these same elements from verso-stream.js, so a ramp in one of them is a reading
+// that changes colour the moment it updates.
+func TestMeterUsesThePalette(t *testing.T) {
+	r := newRenderer(t)
+	for _, m := range []*Meter{
+		{Compact: true, Label: "Memory", Value: "47", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"},
+		{Compact: true, Label: "Tctl", Value: "78", Unit: "°C", NoTrack: true},
+		{Label: "Storage", Value: "2.1", Unit: "GB", Fill: 62},
+	} {
+		got := render(t, r, m)
+		for _, ramp := range []string{"slate-", "gray-", "emerald-", "amber-", "red-", "sky-", "violet-"} {
+			if strings.Contains(got, ramp) {
+				t.Errorf("meter %q still carries the stock ramp %q:\n%s", m.Label, ramp, got)
+			}
+		}
 	}
 }
 

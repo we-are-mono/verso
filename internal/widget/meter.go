@@ -22,7 +22,8 @@ import (
 // how full it is (emerald/amber/red); Variant "info" overrides that with the
 // accent, for a rate like speed that has no "getting full".
 type Meter struct {
-	Label string `json:"label"`
+	Overview bool   `json:"-"` // shell landing-page typography; the live hooks are shared
+	Label    string `json:"label"`
 	// Verbatim declares the label an identity (a sensor's kernel channel name)
 	// rather than prose — the localization walk leaves it exactly as authored.
 	Verbatim bool   `json:"verbatim,omitempty"`
@@ -64,6 +65,7 @@ func (*Meter) isWidget() {}
 func (*Meter) children() []Widget { return nil }
 
 type meterView struct {
+	Overview bool
 	Label    string
 	Value    string
 	Unit     string
@@ -113,7 +115,8 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 		return fmt.Sprintf("%d%%", pct)
 	}
 	return r.execute(out, "meter.html.tmpl", meterView{
-		Label: m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
+		Overview: m.Overview,
+		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
 		Width:   fmt.Sprintf("%d%%", fill),
 		Compact: m.Compact, WarnMark: mark(m.WarnMark), CritMark: mark(m.CritMark),

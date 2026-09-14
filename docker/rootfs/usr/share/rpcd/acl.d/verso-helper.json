@@ -1,15 +1,42 @@
 {
-	"verso-helper": {
-		"description": "Verso persistent privileged helper actions",
-		"read": {
-			"ubus": {
-				"verso": [ "firewallCounters", "pkgUpgradable", "firmwareCheck" ]
-			}
-		},
-		"write": {
-			"ubus": {
-				"verso": [ "setPassword", "setSystemTime", "rootHasPassword", "createBackup", "restoreBackup", "validateFirmware", "installFirmware", "restart", "factoryReset", "pkgStatus", "pkgUpdate", "pkgSearch", "pkgInstalled", "pkgInstall", "pkgRemove", "pkgUpgrade" ]
-			}
-		}
-	}
+  "verso-helper": {
+    "description": "Verso persistent privileged helper actions",
+    "read": {
+      "ubus": {
+        "verso": [
+          "firewallCounters",
+          "pkgUpgradable",
+          "firmwareCheck",
+          "configFiles"
+        ]
+      }
+    },
+    "write": {
+      "ubus": {
+        "verso": [
+          "setPassword",
+          "setSystemTime",
+          "rootHasPassword",
+          "createBackup",
+          "restoreBackup",
+          "validateFirmware",
+          "installFirmware",
+          "restart",
+          "factoryReset",
+          "pkgStatus",
+          "pkgUpdate",
+          "pkgSearch",
+          "pkgBrowse",
+          "pkgFiles",
+          "pkgUpgradeOne",
+          "pkgInstalled",
+          "pkgInstall",
+          "pkgRemove",
+          "pkgUpgrade",
+          "firmwareUpgrade",
+          "applyConfigFiles"
+        ]
+      }
+    }
+  }
 }

@@ -5,19 +5,46 @@
      never collapses against the previous element. With a sub, the description sits
      tight under the title (they read as one head unit) and the saved space moves
      below the sub — the title-to-content distance stays what it was without one. */}}
-{{/* Hairline is opt-in. When enabled, a section that follows another draws the
-     page's divider rule with air on both sides. */}}
-<section class="{{if not .Flush}}pt-6{{end}}{{if .Hairline}} [section+&]:mt-10 [section+&]:border-t [section+&]:border-slate-200 [section+&]:pt-10{{end}}">
+{{/* Hairline is opt-in, and it means one of two things.
+
+     A ruled section is one of a page's subjects, set off from the last by a rule
+     and its own air. first-of-type, not first-child: a form opens with its
+     hidden CSRF carrier, so the leading section is never the first child of
+     anything and would draw a rule with nothing above it to divide from.
+
+     Ruled AND flush is the other thing a rule can mean: not a new subject but a
+     continuation of the rows above — the control that adds another one. It
+     always draws its rule, because a continuation of nothing is not a case, and
+     it cancels the standoff its container would give it: the rule under the last
+     row IS the separation, and air above that rule would detach it from the set
+     it belongs to. */}}
+{{/* A section someone can be sent to stops short of the viewport's top edge: far
+     enough that the phone's own bar is not covering the heading that was asked
+     for, and on a wider screen no further than the air the section already keeps
+     above itself. */}}
+<section{{if .Anchor}} id="{{.Anchor}}"{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}border-t border-rule pt-8 pb-2 first-of-type:border-t-0{{else if not .Flush}}pt-6{{end}}">
   {{if or .Title .Meta .Control}}
-  <div class="{{if .Sub}}mb-1{{else}}mb-3{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <div class="{{if .Sub}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
     <div class="flex flex-wrap items-center gap-3">
-      {{if .Title}}<h3 class="text-xl font-semibold tracking-tight text-slate-900">{{.Title}}</h3>{{end}}
-      {{if and .Meta .MetaInline}}<span class="text-slate-300" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-slate-500">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-slate-400"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span class="font-medium">{{.Meta}}</span></span>{{end}}
-      {{if .Control}}{{.Control}}{{end}}
+      {{/* A kicker names the group under it and nothing more, so it is set at the
+           meta size in caps rather than as a heading — a second 18px heading
+           beside a rail's list of headings would read as one of them. */}}
+      {{if .Title}}{{if .Kicker}}<h3 class="text-xs font-semibold text-meta uppercase">{{.Title}}</h3>{{else}}<h3 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h3>{{end}}{{end}}
+      {{/* the meta value carries a stable hook: a section whose content is live
+           (a streaming listing) has the shell rewrite this one string — how
+           many events are shown, how fast they arrive — and nothing else. */}}
+      {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
+      {{/* the control beside a heading is the same control as anywhere else.
+           It used to be scaled down a step, from when a button's size was its
+           padding's business; now every button is one height, and a second,
+           smaller one here would be a second button. */}}
+      {{if .Control}}<span class="flex items-center">{{.Control}}</span>{{end}}
     </div>
-    {{if and .Meta (not .MetaInline)}}<span class="inline-flex items-center gap-1.5 text-sm">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-slate-500"}}{{end}}{{if .MetaLabel}}<span class="text-slate-500">{{.MetaLabel}}</span>{{end}}<span class="font-semibold text-slate-700">{{.Meta}}</span></span>{{end}}
+    {{if and .Meta (not .MetaInline)}}<span class="inline-flex items-center gap-1.5 text-sm">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="text-meta">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-semibold text-body">{{.Meta}}</span></span>{{end}}
   </div>
   {{end}}
-  {{if .Sub}}<div class="verso-prose mb-6 max-w-[72ch] text-sm text-slate-500">{{.Sub}}</div>{{end}}
-  <div class="space-y-8">{{range .Children}}{{.}}{{end}}</div>
+  {{if .Sub}}<div class="verso-prose mb-5 max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div>{{end}}
+  {{/* Blocks stand off from each other; form rows sit flush. The rule is named
+       in input.css, where the two declarations can be ordered deliberately. */}}
+  <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </section>

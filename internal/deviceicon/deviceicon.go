@@ -34,6 +34,7 @@ var hostnameData string
 
 var (
 	ouiIcons  = parseOUI(ouiData)           // OUI (6 upper hex) → icon
+	ouiMakers = parseMakers(ouiData)        // OUI (6 upper hex) → the vendor's own name
 	hostRules = parseHostname(hostnameData) // ordered; first substring match wins
 )
 
@@ -110,6 +111,36 @@ func parseOUI(data string) map[string]string {
 			continue
 		}
 		out[oui] = fields[1]
+	}
+	return out
+}
+
+// Maker names who built a device, from the vendor label the OUI table carries
+// alongside each icon. Empty whenever the table cannot say — a randomized MAC,
+// an OUI the curated seed does not list — and a listing that shows the maker
+// simply omits it for that device rather than guessing.
+func Maker(mac string) string {
+	oui, ok := ouiOf(mac)
+	if !ok {
+		return ""
+	}
+	return ouiMakers[oui]
+}
+
+// parseMakers reads the same table's trailing vendor label, which parseOUI
+// ignores: the rest of the line after the OUI and the icon, verbatim.
+func parseMakers(data string) map[string]string {
+	out := make(map[string]string)
+	for _, line := range strings.Split(data, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 || strings.HasPrefix(fields[0], "#") {
+			continue
+		}
+		oui := strings.ToUpper(fields[0])
+		if len(oui) != 6 {
+			continue
+		}
+		out[oui] = strings.Join(fields[2:], " ")
 	}
 	return out
 }

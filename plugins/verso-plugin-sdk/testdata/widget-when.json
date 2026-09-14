@@ -1,0 +1,16 @@
+{
+  "type": "when",
+  "name": "proto",
+  "value": "static",
+  "active": true,
+  "children": [
+    {
+      "type": "field",
+      "name": "ipaddr",
+      "label": "Address",
+      "kind": "text",
+      "value": "192.168.1.1",
+      "datatype": "ipaddr"
+    }
+  ]
+}

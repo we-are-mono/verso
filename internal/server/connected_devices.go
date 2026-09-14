@@ -6,7 +6,8 @@ package server
 import (
 	"context"
 	"log"
-	"net/url"
+	"net"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ import (
 // a device with its friendly name and expiry when there is one. So a static host,
 // a v6-only SLAAC device, and a DHCP client all appear alike, keyed by MAC — the
 // identity a person recognises, not the DHCPv6 DUID.
-func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Device {
+func (s *Server) connectedDevices(ctx context.Context, sid, client string) []widget.Device {
 	neigh, err := s.neighbors()
 	if err != nil {
 		log.Printf("verso: devices: neighbour table unavailable: %v", err)
@@ -96,9 +97,6 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Devi
 	}
 
 	now := time.Now()
-	// Resolved once: the liveness check behind it is a socket connect, and every
-	// row would otherwise repeat it.
-	reserveDoor := s.reserveDoor()
 	out := make([]widget.Device, 0, len(macs))
 	for mac := range macs {
 		entries := agg[mac]
@@ -121,10 +119,19 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Devi
 		if zone == "" {
 			zone = zoneOfDevice[iface]
 		}
+		// The network is how the listing groups a device, so it is always the
+		// configured one — the kernel interface a neighbour entry names is the
+		// device it attaches through, a finer fact that belongs in the row.
+		network, cidr := netForAddr(nets, zoneAddr)
 		out = append(out, widget.Device{
 			Name:        deviceName(host, mac),
+			Maker:       deviceicon.Maker(mac),
 			Icon:        deviceicon.Resolve(mac, host),
 			MAC:         mac,
+			Network:     network,
+			NetworkCIDR: cidr,
+			Port:        ports[mac],
+			ThisBrowser: v4 != "" && v4 == client,
 			DUID:        duidFor(all, duidByAddr),
 			V4:          v4,
 			V6:          v6,
@@ -136,16 +143,61 @@ func (s *Server) connectedDevices(ctx context.Context, sid string) []widget.Devi
 			Lease:       leaseFact(l, hasLease, now),
 			Leased:      hasLease,
 			Reserved:    reserved[mac],
-			ReserveHref: reserveDoor(mac),
 		})
 	}
+	// Grouped by network first, because that is how the listing bands them, then
+	// by presence and name inside each band — the devices that are here lead.
 	sort.Slice(out, func(i, j int) bool {
+		if out[i].Network != out[j].Network {
+			return networkRank(out[i].Network) < networkRank(out[j].Network)
+		}
 		if pi, pj := presenceRank(out[i].Presence), presenceRank(out[j].Presence); pi != pj {
 			return pi > pj
 		}
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+// deviceByMAC finds one device in the roster. The panel reads the roster fresh
+// rather than trusting the id it was handed: a MAC in a URL is a claim, and the
+// facts a panel pins had better be the ones the box can still see.
+func (s *Server) deviceByMAC(r *http.Request, mac string) (widget.Device, bool) {
+	want := strings.ToLower(strings.TrimSpace(mac))
+	for _, d := range s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r)) {
+		if strings.ToLower(d.MAC) == want {
+			return d, true
+		}
+	}
+	return widget.Device{}, false
+}
+
+// networkRank orders the bands: the local network leads, every other named one
+// follows alphabetically, and devices the config places nowhere come last.
+func networkRank(name string) string {
+	switch name {
+	case "":
+		return "￿" // nowhere: after every named network
+	case "lan":
+		return "\x00" // home first
+	}
+	return name
+}
+
+// netForAddr names the configured network an address belongs to, and the subnet
+// that name resolves to. Empty for an address no configured network covers — a
+// device on a segment this router only routes for.
+func netForAddr(nets []ifaceNet, addr string) (name, cidr string) {
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return "", ""
+	}
+	for _, n := range nets {
+		if n.cidr != nil && n.cidr.Contains(ip) {
+			return n.name, n.cidr.String()
+		}
+	}
+	return "", ""
 }
 
 // neighborInterface returns the kernel interface that owns a device's primary
@@ -292,24 +344,6 @@ func reservedMACs(cfg map[string]any) map[string]bool {
 		}
 	}
 	return out
-}
-
-// dnsdhcpPluginID owns reservations: the DHCP page is where an address a device
-// holds becomes an address it keeps.
-const dnsdhcpPluginID = "dnsdhcp"
-
-// reserveDoor returns the link builder for a device's reservation form, or one
-// that leads nowhere while no plugin serves that page — a door with nothing
-// behind it is worse than none. The MAC rides as a query parameter the Leases
-// page reads to open that device's panel.
-func (s *Server) reserveDoor() func(mac string) string {
-	m, ok := s.manifestByID(dnsdhcpPluginID)
-	if !ok || !s.probe(m.Socket) {
-		return func(string) string { return "" }
-	}
-	return func(mac string) string {
-		return pluginHref(dnsdhcpPluginID, "/") + "?reserve=" + url.QueryEscape(mac)
-	}
 }
 
 // onlineDevices counts the devices on the network right now: everything the

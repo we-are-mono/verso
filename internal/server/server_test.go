@@ -35,12 +35,17 @@ type fakeBackend struct {
 	accessErr      error
 	uciErr         error                     // returned by UCISet/UCICommit
 	uciReadErr     error                     // returned by UCIConfig (a read the shell brokers)
+	uciReads       *int                      // counts UCIConfig calls (pointer: fakeBackend is by value)
 	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
 	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
 	addReturns     string                    // section id UCIAdd returns
 	adds           *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
 	deletes        *[]string                 // records "config.section[.option]" per UCIDelete
 	orders         *[]string                 // records "config: a,b,c" per UCIOrder
+	// deleteErr answers one UCIDelete by what it was asked to remove — how a test
+	// stages an option rpcd cannot find (openwrt.ErrOptionNotFound) beside options
+	// it can. Nil means "succeed unless uciErr says otherwise".
+	deleteErr func(config, section, option string) error
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword      func(ctx context.Context, sid, username, password string) error
@@ -66,14 +71,16 @@ type fakeBackend struct {
 	rcInits  *[]string // records "service action" per RCInit
 	// The helper's package verbs (ADR-011 §4): canned search results and
 	// records of what the shell installed, removed, or refreshed.
-	pkgCheckedAt     int64
-	pkgFound         []openwrt.Package
-	pkgInstalledList []openwrt.Package
-	pkgTotal         int
-	pkgErr           error
-	pkgUpdates       *int      // counts PkgUpdate calls
-	pkgInstalls      *[]string // records installed names
-	pkgRemoves       *[]string // records removed names
+	pkgCheckedAt      int64
+	pkgFound          []openwrt.Package
+	pkgInstalledList  []openwrt.Package
+	pkgTotal          int
+	pkgErr            error
+	pkgUpdates        *int      // counts PkgUpdate calls
+	pkgInstalls       *[]string // records installed names
+	pkgRemoves        *[]string // records removed names
+	pkgSingleUpgrades *[]string
+	pkgFiles          []string
 	// The update truths (Stage L): the upgradable set, the firmware check's answer,
 	// and a count of the upgrades the shell started.
 	pkgUpgradable    []openwrt.PackageUpgrade
@@ -82,6 +89,10 @@ type fakeBackend struct {
 	pkgUpgradeErr    error
 	firmware         openwrt.FirmwareUpdate
 	firmwareErr      error
+	// The firmware act: a count of the upgrades the shell started (pointer:
+	// fakeBackend is used by value) and the failure owut is made to report.
+	firmwareUpgrades   *int
+	firmwareUpgradeErr error
 	// The wan side of the overview meters: canned uplink state and a queue of
 	// device-counter snapshots, popped one per DeviceStats call (pointer:
 	// fakeBackend is used by value); the last snapshot repeats.
@@ -95,6 +106,14 @@ type fakeBackend struct {
 	// shell forwards to a declaring plugin, and the failure that degrades it away.
 	fwCounters json.RawMessage
 	fwErr      error
+	// The device's log ring and netifd's logical/device join — what the live
+	// activity stream reads. logEntries is served whole, filtered by the caller's
+	// cursor; logReads counts the polls (pointer: fakeBackend is used by value).
+	logEntries []openwrt.LogEntry
+	logErr     error
+	logReads   *int
+	netIfaces  []openwrt.NetIface
+	netIfErr   error
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
@@ -170,6 +189,9 @@ func (f fakeBackend) UCICommit(_ context.Context, _, config string) error {
 // plugin reads through rpcd, ADR-007). An absent config yields an empty snapshot,
 // mirroring an operator who may not read it.
 func (f fakeBackend) UCIConfig(_ context.Context, _, config string) (map[string]any, error) {
+	if f.uciReads != nil {
+		*f.uciReads++
+	}
 	if f.uciReadErr != nil {
 		return nil, f.uciReadErr
 	}
@@ -200,6 +222,9 @@ func (f fakeBackend) UCIDelete(_ context.Context, _, config, section, option str
 			record += "." + option
 		}
 		*f.deletes = append(*f.deletes, record)
+	}
+	if f.deleteErr != nil {
+		return f.deleteErr(config, section, option)
 	}
 	return f.uciErr
 }
@@ -264,6 +289,21 @@ func (f fakeBackend) PkgSearch(context.Context, string, string) ([]openwrt.Packa
 	return f.pkgFound, f.pkgTotal, f.pkgErr
 }
 
+func (f fakeBackend) PkgBrowse(context.Context, string, string, int) (openwrt.PackagePage, error) {
+	return openwrt.PackagePage{Packages: f.pkgFound, Total: f.pkgTotal, Count: f.pkgTotal, Installed: len(f.pkgInstalledList)}, f.pkgErr
+}
+
+func (f fakeBackend) PkgFiles(context.Context, string, string) ([]string, error) {
+	return f.pkgFiles, f.pkgErr
+}
+
+func (f fakeBackend) PkgUpgradeOne(_ context.Context, _ string, name string) error {
+	if f.pkgSingleUpgrades != nil {
+		*f.pkgSingleUpgrades = append(*f.pkgSingleUpgrades, name)
+	}
+	return f.pkgUpgradeErr
+}
+
 func (f fakeBackend) PkgInstalled(context.Context, string) ([]openwrt.Package, error) {
 	return f.pkgInstalledList, f.pkgErr
 }
@@ -295,6 +335,13 @@ func (f fakeBackend) PkgUpgrade(context.Context, string) error {
 
 func (f fakeBackend) FirmwareCheck(context.Context, string) (openwrt.FirmwareUpdate, error) {
 	return f.firmware, f.firmwareErr
+}
+
+func (f fakeBackend) FirmwareUpgrade(context.Context, string) error {
+	if f.firmwareUpgrades != nil {
+		*f.firmwareUpgrades++
+	}
+	return f.firmwareUpgradeErr
 }
 
 func (f fakeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
@@ -354,6 +401,17 @@ func (f fakeBackend) FirewallCounters(context.Context, string) (json.RawMessage,
 	return f.fwCounters, f.fwErr
 }
 
+func (f fakeBackend) LogRead(context.Context, string, int) ([]openwrt.LogEntry, error) {
+	if f.logReads != nil {
+		*f.logReads++
+	}
+	return f.logEntries, f.logErr
+}
+
+func (f fakeBackend) NetworkInterfaces(context.Context, string) ([]openwrt.NetIface, error) {
+	return f.netIfaces, f.netIfErr
+}
+
 func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
 	if f.factoryReset != nil {
 		return f.factoryReset(ctx, sid)
@@ -365,16 +423,24 @@ func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
 // canned envelope or error and records the request the gateway forwarded, so the
 // gateway is testable with no plugin process and no socket.
 type fakeTransport struct {
-	env        *plugin.Envelope
-	err        error
-	lastSocket string
-	lastReq    plugin.Request
+	env          *plugin.Envelope
+	err          error
+	lastSocket   string
+	lastReq      plugin.Request
+	descriptions []plugin.Description // what Describe returns
+	describeErr  error
+	lastDescribe []plugin.DescribeChange
 }
 
 func (f *fakeTransport) Fetch(_ context.Context, socket string, req plugin.Request) (*plugin.Envelope, error) {
 	f.lastSocket = socket
 	f.lastReq = req
 	return f.env, f.err
+}
+
+func (f *fakeTransport) Describe(_ context.Context, _ string, changes []plugin.DescribeChange, _ plugin.UCI) ([]plugin.Description, error) {
+	f.lastDescribe = changes
+	return f.descriptions, f.describeErr
 }
 
 // fakeAuth is the authenticator seam double (ADR-003): no ubus, no device.
@@ -475,6 +541,36 @@ func postForm(t *testing.T, srv *Server, path string, form url.Values) *httptest
 // end rather than short-circuited by the auth or CSRF middleware.
 func postPlugin(t *testing.T, srv *Server, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
+	rec, _ := postPluginRequest(t, srv, path, form, nil)
+	return rec
+}
+
+// postPluginAs is the same submission, marked as one kind of interaction — the
+// header the shell's own controls send, which is how a preview says it is asking
+// rather than saving.
+func postPluginAs(t *testing.T, srv *Server, path string, form url.Values, interaction string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec, _ := postPluginRequest(t, srv, path, form, func(req *http.Request) {
+		req.Header.Set("X-Verso-Interaction", interaction)
+	})
+	return rec
+}
+
+// postPluginFromPanel is the same submission made from inside an open panel —
+// marked as htmx marks its own requests, which is how the frame asks for its
+// contents alone rather than for a page. The session's token comes back too,
+// for what an answer leaves waiting in the session.
+func postPluginFromPanel(t *testing.T, srv *Server, path string, form url.Values) (*httptest.ResponseRecorder, string) {
+	t.Helper()
+	return postPluginRequest(t, srv, path, form, func(req *http.Request) {
+		req.Header.Set("HX-Request", "true")
+	})
+}
+
+// postPluginRequest is the submission the three above dress: authenticated,
+// CSRF-valid, and marked by mark before it is sent (nil sends it plain).
+func postPluginRequest(t *testing.T, srv *Server, path string, form url.Values, mark func(*http.Request)) (*httptest.ResponseRecorder, string) {
+	t.Helper()
 	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	if err != nil {
 		t.Fatalf("session: %v", err)
@@ -487,14 +583,49 @@ func postPlugin(t *testing.T, srv *Server, path string, form url.Values) *httpte
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	if mark != nil {
+		mark(req)
+	}
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
-	return rec
+	return rec, token
 }
 
-// TestPluginSubpageBar: a plugin's declared subpages render as the shell's top
-// bar — shell-built hrefs, the active tab marked from the request path.
-func TestPluginSubpageBar(t *testing.T) {
+// TestTopBarCarriesTheNameplateAndTheWayOut: the bar across the top holds the
+// device's identity on the left — the hostname, the way home — and the way out
+// on the right, aligned to the content column rather than to the bar's edge.
+// On a phone it also holds the hamburger. The rail under it is a list of
+// destinations and carries neither.
+func TestTopBarCarriesTheNameplateAndTheWayOut(t *testing.T) {
+	body := get(t, newServer(t, fakeBackend{hn: "gdk-edge-01"}), "/").Body.String()
+	start, end := strings.Index(body, "<header"), strings.Index(body, "</header>")
+	if start < 0 || end < 0 {
+		t.Fatalf("no top bar:\n%s", firstLines(body, 0))
+	}
+	header := body[start:end]
+	for _, want := range []string{
+		`href="/"`, ">gdk-edge-01</a>",
+		`aria-label="Open menu"`,
+		`action="/logout"`, ">root<", ">Log out<",
+		"md:left-72", "max-w-6xl",
+	} {
+		if !strings.Contains(header, want) {
+			t.Errorf("top bar missing %q:\n%s", want, header)
+		}
+	}
+	aside := body[strings.Index(body, "<aside"):strings.Index(body, "</aside>")]
+	for _, unwanted := range []string{"gdk-edge-01", "/logout", "Log out"} {
+		if strings.Contains(aside, unwanted) {
+			t.Errorf("the rail must not carry %q:\n%s", unwanted, aside)
+		}
+	}
+}
+
+// TestPluginSubpagesOpenInTheRail: a plugin's declared subpages hang under its
+// rail row while that row is the one you are in — shell-built hrefs, the active
+// one marked from the request path. There is no bar above the content: the rail
+// carries the whole path, so a page's depth is read in one place.
+func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "DNS & DHCP", Status: http.StatusOK,
 		Pages: []plugin.PageTab{
@@ -506,40 +637,44 @@ func TestPluginSubpageBar(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 	body := get(t, s, "/plugins/demo/dnsdhcp").Body.String()
+	if strings.Contains(body, `aria-label="Subpages"`) {
+		t.Error("the top subpage bar should be gone; the rail opens them instead")
+	}
+	nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
 	for _, want := range []string{
-		`aria-label="Subpages"`,
-		`bg-white px-5 md:sticky`,
-		`dark:bg-menu-interaction`,
-		`dark:hover:bg-menu-interaction dark:active:bg-menu-interaction`,
 		`href="/plugins/demo/dnsdhcp"`,
 		`href="/plugins/demo/dnsdhcp/config"`,
-		`aria-current="page"`,
+		"border-l border-rule",      // the hairline the subpages hang from
+		`<path d="m6 9 6 6 6-6" />`, // the open row's chevron, turned down
 	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("subpage bar missing %q", want)
+		if !strings.Contains(nav, want) {
+			t.Errorf("rail missing %q:\n%s", want, nav)
 		}
 	}
-	// The active marker sits on the Leases tab (the requested path), not Configuration.
-	if !strings.Contains(body, `href="/plugins/demo/dnsdhcp"`+" aria-current") &&
-		!strings.Contains(body, `href="/plugins/demo/dnsdhcp" aria-current="page"`) {
-		t.Errorf("active tab not marked on the requested path:\n%s", body)
+	// The active marker sits on Leases (the requested path), not Configuration,
+	// and the open parent hands it down rather than keeping one of its own.
+	if !strings.Contains(nav, `href="/plugins/demo/dnsdhcp" aria-current="page"`) {
+		t.Errorf("active subpage not marked on the requested path:\n%s", nav)
 	}
-	if strings.Contains(body, `href="/plugins/demo/dnsdhcp/config" aria-current`) {
-		t.Error("the inactive tab must not carry aria-current")
+	if strings.Contains(nav, `href="/plugins/demo/dnsdhcp/config" aria-current`) {
+		t.Error("the inactive subpage must not carry aria-current")
+	}
+	if !strings.Contains(nav, "shadow-[inset_0.125rem_0_0_var(--color-ink)]") {
+		t.Error("the active subpage should wear the rail's marker")
 	}
 }
 
-// TestPluginKickerStatus: a page may mark a styleguide/reference state beside
-// its kicker without burying that state in the lede.
+// TestPluginKickerStatus: a page may mark a reference state beside its kicker
+// without burying that state in the lede.
 func TestPluginKickerStatus(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "System", Kicker: "Styleguide", KickerStatus: "Complete",
+		SchemaVersion: 1, Title: "System", Kicker: "Reference", KickerStatus: "Complete",
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 	body := get(t, s, "/plugins/demo/").Body.String()
-	for _, want := range []string{"Styleguide", "· Complete", "text-emerald-600"} {
+	for _, want := range []string{"Reference", "· Complete", "text-green-deep"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("kicker status missing %q", want)
 		}
@@ -633,9 +768,9 @@ func TestIndexRendersOverview(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"ALL GOOD", "healthy", "Internet traffic", "System", "Interfaces",
-		"OpenWrt 25.12.4", "Linux 6.12.101", "1h 1m", // live System facts
-		"Connected", "for 2h 14m", "live · pppoe-upstream", // live WAN state, device, and uptime
+		"Internet is working", "online", "Internet traffic", "System", "Interfaces",
+		"OpenWrt 25.12.4", "Linux 6.12.101", "1 h 01 min", // live System facts
+		"Connected", "for 2 h 14 min", "pppoe-upstream", // live WAN state, device, and uptime
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
@@ -644,8 +779,8 @@ func TestIndexRendersOverview(t *testing.T) {
 	if wanCalls != 1 {
 		t.Errorf("WAN discovery calls = %d, want one consistent page snapshot", wanCalls)
 	}
-	if got := strings.Count(body, "</svg></span>WAN</span>"); got != 1 {
-		t.Errorf("WAN badges = %d, want only the exact pppoe-upstream L3 row", got)
+	if strings.Contains(body, `data-verso-row="interface:`) {
+		t.Error("the homepage must not include the interfaces table")
 	}
 }
 
@@ -657,7 +792,7 @@ func TestIndexDegradesWhenBackendFails(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /: status = %d, want 200 (must degrade, not 500)", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "font-serif") {
+	if !strings.Contains(rec.Body.String(), "text-3xl leading-[1.1] font-semibold tracking-tight") {
 		t.Errorf("GET /: overview should render regardless of backend")
 	}
 }
@@ -1263,6 +1398,290 @@ func TestPluginCommitBrokered(t *testing.T) {
 	}
 }
 
+// TestPluginPreviewStagesNothing: a submission marked as a preview asks the
+// plugin what the form on screen would write and gets back that block alone.
+// The operator is still typing — half a port number is not a change anybody
+// asked to make — so nothing is staged, whatever the plugin returns with it.
+func TestPluginPreviewStagesNothing(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Saved", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[
+			{"type":"field","name":"hostname","label":"Name","kind":"text","value":"verso-lab"},
+			{"type":"code","label":"/etc/config/system","value":"config system\n\toption hostname 'verso-lab'\n","live":true}]}`),
+		// The plugin answers a POST the way it always does, commit and all. The
+		// shell is what decides this one is a question.
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "verso-lab"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPluginAs(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}}, "preview")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("a preview staged %d write(s); it must stage none: %+v", len(calls), calls)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "data-verso-preview") {
+		t.Errorf("the answer is not the preview block:\n%s", body)
+	}
+	if strings.Contains(body, `name="hostname"`) {
+		t.Errorf("the answer carries the form as well as the preview — the page is already on screen:\n%s", body)
+	}
+}
+
+// openPanelEnvelope is a listing with one row's panel open on a form — the
+// shape a rules listing answers with while a rule is being edited beside it,
+// and the shape it answers that panel's submission with.
+func openPanelEnvelope(status int, notice *plugin.Notice, field string) *plugin.Envelope {
+	return &plugin.Envelope{
+		SchemaVersion: 1, Title: "Rules", Status: status, Notice: notice,
+		Widget: json.RawMessage(`{"type":"table","columns":[{"label":"Name","kind":"name"}],"rows":[
+			{"id":"r1","cells":[{"text":"Allow-Ping"}],"panel":"/plugins/demo/?open=r1","drawer":{"title":"Allow-Ping","open":true,
+				"tabs":[{"label":"Match","href":"/plugins/demo/?open=r1","active":true}],
+				"children":[{"type":"form","submit":"Save & apply","fields":[` + field + `]}]}},
+			{"id":"r2","cells":[{"text":"Allow-DHCP"}],"panel":"/plugins/demo/?open=r2"}]}`),
+	}
+}
+
+// TestPluginPanelSubmissionThatStagedValuesIsDone: a panel's form posts from
+// inside the frame that holds it, marked as htmx marks its own requests. The
+// submission is a real save — the plugin's write is staged through rpcd exactly
+// as a page post's is — and, a row's values having changed and nothing else, the
+// panel is done: the answer is the outcome alone, the plugin's half and the
+// shell's, and the frame is told to swap nothing, because the panel is closing
+// on it and the listing behind it is already on screen.
+func TestPluginPanelSubmissionThatStagedValuesIsDone(t *testing.T) {
+	calls := []uciWrite{}
+	env := openPanelEnvelope(http.StatusOK, &plugin.Notice{Level: "success", Text: "Rule saved."},
+		`{"type":"field","name":"src","label":"From","kind":"text","value":"wan"}`)
+	env.Commit = []plugin.CommitOp{{Config: "system", Section: "r1", Values: map[string]any{"src": "wan"}}}
+	tr := &fakeTransport{env: env}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec, token := postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"src": {"wan"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200:\n%s", rec.Code, rec.Body.String())
+	}
+	if len(calls) != 1 || calls[0].section != "r1" {
+		t.Fatalf("staged %+v, want the panel's one write on r1", calls)
+	}
+	if got := tr.lastReq.Form["src"]; tr.lastReq.Method != http.MethodPost || len(got) != 1 || got[0] != "wan" {
+		t.Errorf("the plugin should be asked to save what was submitted, got %s %v", tr.lastReq.Method, tr.lastReq.Form)
+	}
+	if got := rec.Header().Get("HX-Reswap"); got != "none" {
+		t.Errorf("HX-Reswap = %q, want none: the panel is closing, not being replaced", got)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`<div class="verso-flash`, "border-green-line", "Rule saved. Nothing is live until you apply."} {
+		if !strings.Contains(body, want) {
+			t.Errorf("outcome missing %q:\n%s", want, body)
+		}
+	}
+	for _, unwanted := range []string{"<form", "<html", "<table", "Allow-DHCP"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("the outcome is said alone, not with %q:\n%s", unwanted, body)
+		}
+	}
+	// The outcome went to the frame, so nothing waits in the session for a page
+	// that is not going to be drawn.
+	if variant, message := s.sessions.TakeFlash(token); message != "" {
+		t.Errorf("flash = %q %q, want none", variant, message)
+	}
+}
+
+// TestPluginPanelSubmissionThatComputedAnswersWithThePanel: a panel's form may
+// post to have the plugin compute on it rather than save — a secondary action,
+// a generated key — and the plugin answers with the panel and no write. That
+// panel swaps in where the form was, marked to be posted again in place.
+func TestPluginPanelSubmissionThatComputedAnswersWithThePanel(t *testing.T) {
+	env := openPanelEnvelope(http.StatusOK, nil,
+		`{"type":"field","name":"src","label":"From","kind":"text","value":"computed"}`)
+	s := newServerWith(t, fakeBackend{access: true}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
+
+	rec, _ := postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"_action": {"compute"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200:\n%s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("HX-Reswap") != "" {
+		t.Error("a panel that has more to say is swapped in, not dismissed")
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`value="computed"`, `hx-target="closest [data-verso-panel]"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("panel answer missing %q:\n%s", want, body)
+		}
+	}
+	// The frame, the listing behind it, and the chrome are already on screen.
+	for _, unwanted := range []string{"<html", "<table", "Allow-DHCP", "verso-staged", "x-teleport"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("a panel answer must not carry %q:\n%s", unwanted, body)
+		}
+	}
+}
+
+// TestPluginPanelSubmissionThatAddedARowGoesToThePage: a submission that made a
+// section — a rule that did not exist — changes which rows the listing has, and
+// only a fresh page can show that. The plugin answered with the blank panel
+// still open, but the frame is sent to the page instead, and the outcome waits
+// there as the flash.
+func TestPluginPanelSubmissionThatAddedARowGoesToThePage(t *testing.T) {
+	calls := []uciWrite{}
+	env := openPanelEnvelope(http.StatusOK, &plugin.Notice{Level: "success", Text: "Rule added."},
+		`{"type":"field","name":"src","label":"From","kind":"text","value":"wan"}`)
+	env.Commit = []plugin.CommitOp{{Config: "system", Type: "rule", Values: map[string]any{"src": "wan"}}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, addReturns: "cfg0a1b2c"}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
+
+	rec, token := postPluginFromPanel(t, s, "/plugins/demo/?open=new", url.Values{"src": {"wan"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200:\n%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("HX-Redirect"); got != "/plugins/demo/" {
+		t.Errorf("HX-Redirect = %q, want the listing's own address", got)
+	}
+	if len(calls) != 1 || calls[0].section != "cfg0a1b2c" {
+		t.Errorf("staged %+v, want the new section's values", calls)
+	}
+	if variant, message := s.sessions.TakeFlash(token); variant != "success" || message != "Rule added. Nothing is live until you apply." {
+		t.Errorf("flash = %q %q, want the composed outcome waiting for the listing", variant, message)
+	}
+}
+
+// TestStagedSubmissionSaysWhatItMeans: whichever way a submission that changed
+// the stage is answered, the sentence is the same — the plugin's half and the
+// shell's — so a page post lands on the same words a closing panel says.
+func TestStagedSubmissionSaysWhatItMeans(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Rules", Status: http.StatusOK,
+		Notice: &plugin.Notice{Level: "success", Text: "Rule saved."},
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "r1", Values: map[string]any{"src": "wan"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	body := postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}).Body.String()
+	if !strings.Contains(body, "Rule saved. Nothing is live until you apply.") {
+		t.Errorf("a page post should say what the stage means in its flash:\n%s", body)
+	}
+	// A plugin that said nothing still gets the plain word.
+	tr.env.Notice = nil
+	body = postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}).Body.String()
+	if !strings.Contains(body, "Saved. Nothing is live until you apply.") {
+		t.Errorf("a silent plugin's save should still be said:\n%s", body)
+	}
+}
+
+// TestPluginPanelRefusalSwapsInAt422: a refused save answers with the panel
+// re-rendered from what was submitted, the refusal on the controls, and the
+// plugin's 422 — so the frame swaps the refusal in rather than showing nothing.
+// Nothing is staged, whatever the plugin returned beside its refusal.
+func TestPluginPanelRefusalSwapsInAt422(t *testing.T) {
+	calls := []uciWrite{}
+	env := openPanelEnvelope(http.StatusUnprocessableEntity,
+		&plugin.Notice{Level: "danger", Text: "Some values aren’t ones the firewall accepts."},
+		`{"type":"field","name":"src","label":"From","kind":"text","value":"nowhere","error":"Not a zone."}`)
+	env.Commit = []plugin.CommitOp{{Config: "system", Section: "r1", Values: map[string]any{"src": "nowhere"}}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
+
+	rec, _ := postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"src": {"nowhere"}})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 propagated from the plugin", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("a refused save staged %d write(s); it must stage none", len(calls))
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`value="nowhere"`, "Not a zone.", "Some values aren’t ones the firewall accepts.", "border-crimson-line"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("refusal missing %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "<html") {
+		t.Errorf("a refusal is the panel, not the page:\n%s", body)
+	}
+}
+
+// TestPluginPanelSubmissionThePanelDoesNotSurviveGoesToThePage: a submission the
+// panel does not survive — a delete — is answered with the listing and no panel.
+// The frame cannot hold a page, so it is told where the page went, and the
+// outcome waits there as the flash — what a native submit would have landed on.
+func TestPluginPanelSubmissionThePanelDoesNotSurviveGoesToThePage(t *testing.T) {
+	deletes := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Rules", Status: http.StatusOK,
+		Notice: &plugin.Notice{Level: "success", Text: "Rule deleted."},
+		Widget: json.RawMessage(`{"type":"table","columns":[{"label":"Name","kind":"name"}],"rows":[
+			{"id":"r2","cells":[{"text":"Allow-DHCP"}],"panel":"/plugins/demo/?open=r2"}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "r1", Delete: true}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, deletes: &deletes}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec, token := postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"_delete": {"1"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200:\n%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("HX-Redirect"); got != "/plugins/demo/" {
+		t.Errorf("HX-Redirect = %q, want the listing's own address", got)
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("a redirected frame is sent no body to swap:\n%s", rec.Body.String())
+	}
+	// The delete was staged all the same.
+	if len(deletes) != 1 || deletes[0] != "system.r1" {
+		t.Errorf("staged deletes = %v, want the one on r1", deletes)
+	}
+	// And the outcome is waiting on the page the frame is sent to, composed as
+	// every staged outcome is.
+	if variant, message := s.sessions.TakeFlash(token); variant != "success" || message != "Rule deleted. Nothing is live until you apply." {
+		t.Errorf("flash = %q %q, want the composed outcome waiting for the listing", variant, message)
+	}
+}
+
+// TestPluginPanelSubmissionThatFailsToStageKeepsItsStatus: a stage that fails is
+// a contained notice at its own status even from a panel. The frame is not sent
+// away from the values just typed — it is told what happened, where the person
+// is, and the notice reaches the shell's script as the error it is.
+func TestPluginPanelSubmissionThatFailsToStageKeepsItsStatus(t *testing.T) {
+	env := openPanelEnvelope(http.StatusOK, &plugin.Notice{Level: "success", Text: "Rule saved."},
+		`{"type":"field","name":"src","label":"From","kind":"text","value":"wan"}`)
+	env.Commit = []plugin.CommitOp{{Config: "system", Section: "r1", Values: map[string]any{"src": "wan"}}}
+	s := newServerWith(t, fakeBackend{access: true, uciErr: errors.New("rpcd down")}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
+
+	rec, _ := postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"src": {"wan"}})
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503: nothing was staged, so nothing was saved", rec.Code)
+	}
+	if rec.Header().Get("HX-Redirect") != "" {
+		t.Error("a failed stage must not send the frame away from what was typed")
+	}
+	if !strings.Contains(rec.Body.String(), "Save failed") {
+		t.Errorf("the answer should say the save failed:\n%s", rec.Body.String())
+	}
+}
+
+// TestPluginPreviewWithoutOneAnswersEmpty: a page that declares no live preview
+// has nothing to answer a preview with. It leaves as an empty 204 rather than as
+// the page, because falling through would stage a submission nobody made.
+func TestPluginPreviewWithoutOneAnswersEmpty(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[{"type":"code","label":"Key","value":"abc","copy":true}]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "x"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPluginAs(t, s, "/plugins/demo/", url.Values{"hostname": {"x"}}, "preview")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("a preview staged %d write(s); it must stage none", len(calls))
+	}
+}
+
 // TestPluginCommitCreatesSection: a commit op with no section and a type
 // creates the section through the backend, then sets the values on the id the
 // add returned — one staged step, so an Add drawer's Save yields its row.
@@ -1412,6 +1831,154 @@ func TestPluginCommitAllNullsWritesNothing(t *testing.T) {
 	}
 	if len(dels) != 1 || len(calls) != 0 {
 		t.Errorf("clears = %v, writes = %v; want one clear and no write", dels, calls)
+	}
+}
+
+// TestPluginCommitClearOfAnAbsentOptionStagesOn: an editor that owns a set of
+// options states all of them on every save, and the ones a stock section never
+// carried come through as nulls. rpcd answers `uci delete` for an option that is
+// not set with NOT_FOUND — already the state the clear asked for — so the stage
+// carries on and the rest of the save is written.
+func TestPluginCommitClearOfAnAbsentOptionStagesOn(t *testing.T) {
+	calls := []uciWrite{}
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{
+			"enabled": "1", "server": nil, "interface": nil,
+		}}},
+	}}
+	be := fakeBackend{access: true, writes: &calls, deletes: &dels,
+		deleteErr: func(_, _, option string) error {
+			if option == "interface" {
+				return fmt.Errorf("openwrt: clear system.ntp.interface: %w", openwrt.ErrOptionNotFound)
+			}
+			return nil
+		}}
+	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: an option that was never set is already clear", rec.Code)
+	}
+	if len(dels) != 2 {
+		t.Fatalf("clears = %v, want both attempted", dels)
+	}
+	if len(calls) != 1 || calls[0].values["enabled"] != "1" {
+		t.Fatalf("brokered write = %+v; want the save to have gone through", calls)
+	}
+}
+
+// TestPluginCommitAllClearsAbsentChecksTheSectionIsThere: an op whose every
+// option came back "already absent" wrote nothing at all — so nothing in it has
+// yet proved the section it addressed exists. A stale id (a section deleted in
+// another tab, a plugin holding an old snapshot) would otherwise stage nothing
+// and be reported as saved. The backstop is one read of that config.
+func TestPluginCommitAllClearsAbsentChecksTheSectionIsThere(t *testing.T) {
+	commit := []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{
+		"server": nil, "interface": nil,
+	}}}
+	absent := func(_, _, option string) error {
+		return fmt.Errorf("openwrt: clear system.ntp.%s: %w", option, openwrt.ErrOptionNotFound)
+	}
+
+	t.Run("the section is gone", func(t *testing.T) {
+		dels, reads := []string{}, 0
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Status: http.StatusOK,
+			Widget: json.RawMessage(`{"type":"card","children":[]}`), Commit: commit,
+		}}
+		be := fakeBackend{access: true, deletes: &dels, deleteErr: absent, uciReads: &reads,
+			uci: map[string]map[string]any{"system": {"cfg07led": map[string]any{".type": "led"}}}}
+		s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+		rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}})
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("status = %d, want 503: nothing was staged, so nothing was saved", rec.Code)
+		}
+		if reads != 1 {
+			t.Errorf("config reads = %d, want exactly one backstop read", reads)
+		}
+	})
+
+	t.Run("the section is there", func(t *testing.T) {
+		dels, reads := []string{}, 0
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Status: http.StatusOK,
+			Widget: json.RawMessage(`{"type":"card","children":[]}`), Commit: commit,
+		}}
+		be := fakeBackend{access: true, deletes: &dels, deleteErr: absent, uciReads: &reads,
+			uci: map[string]map[string]any{"system": {"ntp": map[string]any{".type": "timeserver"}}}}
+		s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+		if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200: a section that carries none of those options is already as asked", rec.Code)
+		}
+		if len(dels) != 2 {
+			t.Errorf("clears = %v, want both attempted", dels)
+		}
+	})
+
+	t.Run("a config that cannot be read is not a success", func(t *testing.T) {
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Status: http.StatusOK,
+			Widget: json.RawMessage(`{"type":"card","children":[]}`), Commit: commit,
+		}}
+		be := fakeBackend{access: true, deletes: &[]string{}, deleteErr: absent,
+			uciReadErr: errors.New("rpcd denied")}
+		s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+		if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("status = %d, want 503: a section nobody could confirm is not one that was saved", rec.Code)
+		}
+	})
+}
+
+// TestPluginCommitWithARealWriteNeverReadsBack: the backstop above costs a read
+// only where a whole op touched nothing. A save that set even one value has
+// already proved the section is there, and pays nothing.
+func TestPluginCommitWithARealWriteNeverReadsBack(t *testing.T) {
+	calls, dels, reads := []uciWrite{}, []string{}, 0
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "ntp", Values: map[string]any{
+			"enabled": "1", "server": nil,
+		}}},
+	}}
+	be := fakeBackend{access: true, writes: &calls, deletes: &dels, uciReads: &reads,
+		deleteErr: func(_, _, option string) error {
+			return fmt.Errorf("openwrt: clear system.ntp.%s: %w", option, openwrt.ErrOptionNotFound)
+		}}
+	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}}); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if reads != 0 {
+		t.Errorf("config reads = %d, want none: the write itself is the proof", reads)
+	}
+}
+
+// TestPluginCommitSectionDeleteNotFoundStillFails: the tolerance above is the
+// option-level clear's alone. A section the backend cannot act on is a genuine
+// failure, and the stage stops on it.
+func TestPluginCommitSectionDeleteNotFoundStillFails(t *testing.T) {
+	dels := []string{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "cfg07led", Delete: true}},
+	}}
+	be := fakeBackend{access: true, deletes: &dels,
+		deleteErr: func(_, _, _ string) error {
+			return fmt.Errorf("openwrt: clear system.cfg07led: %w", openwrt.ErrOptionNotFound)
+		}}
+	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
+
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503: a failed section delete is never tolerated", rec.Code)
 	}
 }
 
@@ -1617,7 +2184,7 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 	body := get(t, s, "/plugins/demo/").Body.String()
-	for _, want := range []string{`<div class="verso-flash`, "Takes effect on the next reload.", "border-amber-200"} {
+	for _, want := range []string{`<div class="verso-flash`, "Takes effect on the next reload.", "border-marigold-line"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("notice flash missing %q", want)
 		}
@@ -1639,9 +2206,41 @@ func TestPluginActionRendersBesideTheHeading(t *testing.T) {
 		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 		body := get(t, s, "/plugins/demo/").Body.String()
-		for _, want := range []string{`href="/plugins/demo/rules/new"`, ">New rule</a>", "bg-sky-600"} {
+		for _, want := range []string{`href="/plugins/demo/rules/new"`, ">New rule</a>", "bg-denim"} {
 			if !strings.Contains(body, want) {
 				t.Errorf("page action missing %q (subheading %q):\n%s", want, sub, body)
+			}
+		}
+	}
+}
+
+// TestRuledMastheadEndsInAHairline: a page whose subjects are ruled sections
+// asks for its title to be ruled off from the first of them the same way — the
+// rule 24px under the title, or under the lede when there is one, in place of
+// the 20px standoff an ordinary unruled masthead keeps, with or without a lede.
+// A page that does not ask keeps the standoff and no rule.
+func TestRuledMastheadEndsInAHairline(t *testing.T) {
+	for _, tc := range []struct {
+		sub, standoff string
+	}{
+		{"The baseline every zone falls back to.", `<div class="mb-5">`},
+		{"", `<div class="mb-5">`},
+	} {
+		for _, ruled := range []bool{true, false} {
+			tr := &fakeTransport{env: &plugin.Envelope{
+				SchemaVersion: 1, Status: http.StatusOK,
+				Title:      "Firewall settings",
+				Subheading: tc.sub,
+				Ruled:      ruled,
+				Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
+			}}
+			s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+			body := get(t, s, "/plugins/demo/").Body.String()
+			if hairline := strings.Contains(body, `<div class="border-b border-rule pb-6">`); hairline != ruled {
+				t.Errorf("lede %q ruled=%v: masthead hairline drawn=%v:\n%s", tc.sub, ruled, hairline, body)
+			}
+			if standoff := strings.Contains(body, tc.standoff); standoff == ruled {
+				t.Errorf("lede %q ruled=%v: the standoff drawn=%v:\n%s", tc.sub, ruled, standoff, body)
 			}
 		}
 	}
@@ -1706,10 +2305,14 @@ func TestNavListsPlugins(t *testing.T) {
 
 	rec := getMode(t, s, "/", widget.ModeAdvanced)
 	body := rec.Body.String()
-	for _, want := range []string{"Apps", "Demo", `href="/plugins/demo/"`} {
+	for _, want := range []string{"Demo", `href="/plugins/demo/"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("nav missing %q", want)
 		}
+	}
+	// The rail names the destination, never the section a manifest filed it under.
+	if strings.Contains(body, ">Apps<") {
+		t.Error("the rail should not print a section title")
 	}
 }
 
@@ -1843,9 +2446,8 @@ func TestExpiredSessionRedirectsAnnotated(t *testing.T) {
 	}
 }
 
-// TestLoginNoticeOnExpiredMarker: the marker turns into one calm line in the
-// login page's notice slot, in the info tone — never the error styling, which
-// belongs to a rejected attempt. Without the marker the slot stays empty, so a
+// TestLoginNoticeOnExpiredMarker: the marker turns into one line in the
+// login page's marigold notice slot. Without the marker the slot stays empty, so a
 // deliberate sign-out and a first visit say nothing.
 func TestLoginNoticeOnExpiredMarker(t *testing.T) {
 	const notice = "You were signed out after a period of inactivity."
@@ -1860,8 +2462,10 @@ func TestLoginNoticeOnExpiredMarker(t *testing.T) {
 	if !strings.Contains(body, notice) {
 		t.Errorf("expired login page is missing the notice")
 	}
-	if !strings.Contains(body, "bg-sky-50") {
-		t.Errorf("the notice should carry the info tone, not the error's")
+	_, status, _ := strings.Cut(body, `<div role="status"`)
+	noticeMarkup, _, _ := strings.Cut(status, "</div>")
+	if !strings.Contains(noticeMarkup, "bg-marigold-soft") || !strings.Contains(noticeMarkup, "text-marigold-deep") {
+		t.Errorf("the notice should carry the marigold warning tone")
 	}
 
 	plain := httptest.NewRecorder()
@@ -1883,9 +2487,14 @@ func TestLoginPageIsPublic(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "Sign in") {
 		t.Errorf("login page missing the form")
 	}
-	for _, font := range []string{"hanken.woff2", "fraunces.woff2", "inconsolata-latin.woff2"} {
+	// The preloaded names must be files the embedded fonts directory actually
+	// holds — a stale name 404s silently and the FOUT fix quietly stops working.
+	for _, font := range []string{"hanken-latin.woff2", "inconsolata-latin.woff2"} {
 		if !strings.Contains(rec.Body.String(), `rel="preload" href="/assets/fonts/`+font+`"`) {
 			t.Errorf("login page does not preload %s", font)
+		}
+		if _, err := scriptFS.ReadFile("assets/fonts/" + font); err != nil {
+			t.Errorf("preloaded font %s is not in the embedded assets: %v", font, err)
 		}
 	}
 }
@@ -1919,14 +2528,18 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "Invalid") {
 		t.Errorf("expected an error message")
 	}
+	// A rejected attempt is explained beside the password, with an accessible
+	// association and a cleared password. The submitted username stays editable.
 	for _, want := range []string{
-		"dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20",
-		"active:translate-y-px", "active:shadow-none", "motion-reduce:active:translate-y-0",
-		"dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900",
+		`aria-invalid="true"`, `aria-describedby="login-error"`, `id="login-error" role="alert"`,
+		`name="username" type="text" value="root"`,
 	} {
 		if !strings.Contains(rec.Body.String(), want) {
-			t.Errorf("login dark-mode styling missing %q", want)
+			t.Errorf("login error missing %q", want)
 		}
+	}
+	if strings.Contains(rec.Body.String(), `value="bad"`) {
+		t.Error("a rejected password must never be rendered back into the page")
 	}
 }
 
@@ -2057,10 +2670,9 @@ func TestNoPasswordBanner(t *testing.T) {
 	for _, want := range []string{
 		"No administrator password is set.",
 		"Anyone who can reach this router can change its settings.",
-		"border-red-200 bg-red-50",
-		"text-red-600",
-		"dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300",
-		"dark:text-red-400",
+		"border-crimson bg-crimson-soft",
+		"text-crimson-deep",
+		"text-crimson", // the glyph at full chroma — a mark, beside words at the step that carries them
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-password warning missing %q", want)
@@ -2080,14 +2692,16 @@ func TestNoPasswordBanner(t *testing.T) {
 	}}
 	withPages := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
 	body = get(t, withPages, "/plugins/demo/access").Body.String()
-	navAt := strings.Index(body, `aria-label="Subpages"`)
-	warnAt := strings.Index(body, "No administrator password is set.")
-	if navAt < 0 || warnAt < navAt {
-		t.Errorf("password warning must sit below the secondary menu: nav=%d warning=%d", navAt, warnAt)
+	// Index within <main> only: the compiled stylesheet is inlined above it and
+	// carries every class name the page could mention.
+	main := body[strings.Index(body, "<main "):]
+	warnAt := strings.Index(main, "No administrator password is set.")
+	bodyAt := strings.Index(main, `class="verso-page-body"`)
+	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt {
+		t.Errorf("the warning belongs at the head of the content area, above the page: warning=%d body=%d", warnAt, bodyAt)
 	}
-	if !strings.Contains(body, "after:bg-red-600") || !strings.Contains(body, "dark:text-red-400 dark:after:bg-red-500") ||
-		!strings.Contains(body, "-mt-px flex h-12") || !strings.Contains(body, "border-b border-red-200 dark:border-red-500/20") {
-		t.Error("password warning and active subpage must form one red, menu-height seam")
+	if !strings.Contains(body, "-mt-px flex h-12") {
+		t.Error("the warning keeps its own menu-height band")
 	}
 
 	// A page may declare another important state at the same seam. The shell's
@@ -2102,9 +2716,10 @@ func TestNoPasswordBanner(t *testing.T) {
 	}}
 	pageBanner := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
 	body = get(t, pageBanner, "/plugins/demo/access").Body.String()
-	navAt = strings.Index(body, `aria-label="Subpages"`)
-	warnAt = strings.Index(body, "No administrator password is set.")
-	if navAt < 0 || warnAt < navAt || !strings.Contains(body, "border-red-200 bg-red-50") || !strings.Contains(body, "after:bg-red-600") {
-		t.Errorf("declared danger banner must sit below the secondary menu: nav=%d warning=%d", navAt, warnAt)
+	main = body[strings.Index(body, "<main "):]
+	warnAt = strings.Index(main, "No administrator password is set.")
+	bodyAt = strings.Index(main, `class="verso-page-body"`)
+	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt || !strings.Contains(body, "border-crimson-line bg-crimson-soft") {
+		t.Errorf("a declared danger banner takes the same seam: warning=%d body=%d", warnAt, bodyAt)
 	}
 }

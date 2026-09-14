@@ -1,22 +1,46 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* callout: a boxed notice, coloured by semantic variant with a matching icon. The
-     plugin names intent (variant); the shell maps it to palette + a Lucide glyph
-     (icons.go). */}}
-<div class="flex w-full items-start border text-left text-sm{{if .Compact}} gap-2 rounded-md px-3 py-2{{else}} gap-3 rounded-lg p-4{{end}}
-  {{if eq .Variant "success"}}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300
-  {{else if eq .Variant "warning"}}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-300
-  {{else if eq .Variant "danger"}}border-red-200 bg-red-50 text-red-800 dark:border-red-500/15 dark:bg-red-500/10 dark:text-red-300
-  {{else if eq .Variant "neutral"}}border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-400/15 dark:bg-slate-400/10 dark:text-slate-700
-  {{else}}border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300{{end}}">
-  {{if eq .Variant "success"}}{{if .Compact}}{{icon "circle-check" "mt-0.5 size-4 shrink-0 text-emerald-500"}}{{else}}{{icon "circle-check" "mt-0.5 size-5 shrink-0 text-emerald-500"}}{{end}}
-  {{else if eq .Variant "warning"}}{{if .Compact}}{{icon "triangle-alert" "mt-0.5 size-4 shrink-0 text-amber-500"}}{{else}}{{icon "triangle-alert" "mt-0.5 size-5 shrink-0 text-amber-500"}}{{end}}
-  {{else if eq .Variant "danger"}}{{if .Compact}}{{icon "circle-x" "mt-0.5 size-4 shrink-0 text-red-500"}}{{else}}{{icon "circle-x" "mt-0.5 size-5 shrink-0 text-red-500"}}{{end}}
-  {{else if eq .Variant "neutral"}}{{if .Compact}}{{icon "info" "mt-0.5 size-4 shrink-0 text-slate-400"}}{{else}}{{icon "info" "mt-0.5 size-5 shrink-0 text-slate-400"}}{{end}}
-  {{else}}{{if .Compact}}{{icon "info" "mt-0.5 size-4 shrink-0 text-sky-500"}}{{else}}{{icon "info" "mt-0.5 size-5 shrink-0 text-sky-500"}}{{end}}{{end}}
+{{/* callout: a notice in context, toned by intent. The plugin names the intent
+     (variant); the shell maps it to the palette.
+
+     A tone at full chroma is a mark and never sets type, so a band is built the
+     way the palette says: the tone's soft ground, its deep step carrying the
+     words, and — compact — a small square of the tone itself as the mark. No
+     glyph: the colour and the mark already say what kind of thing this is, and a
+     triangle beside three words of prose only crowds them.
+
+     Compact is the contextual note that sits under a control and explains what
+     it just did; the full form is the standing block a page leads with, where
+     the tone's hairline frames it instead of a mark. */}}
+{{if .Compact}}
+<div class="flex w-full items-start gap-2 rounded-xs px-3 py-2 text-left text-sm leading-[1.45]
+  {{if eq .Variant "success"}}bg-green-soft text-green-deep
+  {{else if eq .Variant "warning"}}bg-marigold-soft text-marigold-deep
+  {{else if eq .Variant "danger"}}bg-crimson-soft text-crimson-deep
+  {{else if eq .Variant "neutral"}}bg-quiet text-body
+  {{else}}bg-denim-soft text-denim-deep{{end}}">
+  {{/* The mark sits on the first line's optical centre: 7px down a 20px line. */}}
+  <span class="mt-[0.4375rem] size-1.5 flex-none
+    {{if eq .Variant "success"}}bg-green
+    {{else if eq .Variant "warning"}}bg-marigold
+    {{else if eq .Variant "danger"}}bg-crimson
+    {{else if eq .Variant "neutral"}}bg-glyph
+    {{else}}bg-denim{{end}}"></span>
   <div class="min-w-0">
-    {{if .Title}}<p class="font-semibold {{if eq .Variant "success"}}dark:text-emerald-400{{else if eq .Variant "warning"}}dark:text-amber-400{{else if eq .Variant "danger"}}dark:text-red-400{{else if eq .Variant "neutral"}}dark:text-slate-900{{else}}dark:text-sky-400{{end}}">{{.Title}}</p>{{end}}
-    {{if .Body}}<p class="{{if .Title}}mt-0.5 {{end}}opacity-90">{{.Body}}</p>{{end}}
+    {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
+    {{if .Body}}<p{{if .Title}} class="mt-0.5"{{end}}>{{.Body}}</p>{{end}}
     {{if .RenderedLink}}<div class="mt-1.5">{{.RenderedLink}}</div>{{end}}
   </div>
 </div>
+{{else}}
+<div class="flex w-full flex-col gap-2.5 rounded-xs border px-5 py-4 text-left text-sm leading-[1.45]
+  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
+  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
+  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
+  {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body
+  {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
+  {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
+  {{if .Body}}<p>{{.Body}}</p>{{end}}
+  {{if .RenderedLink}}<div>{{.RenderedLink}}</div>{{end}}
+</div>
+{{end}}

@@ -1,16 +1,27 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* switch: the compact on/off control shared by table toggle cells and settings
-     rows. CSS-only (peer): the checkbox drives the track colour and knob travel.
-     Callers pass any value with On (bool) and Name (form name, optional). */}}
-{{define "switch.control"}}<span class="relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center">
-  <input type="checkbox" data-verso-switch class="peer sr-only" value="1"{{if .On}} checked{{end}}{{if .Name}} name="{{.Name}}"{{end}}>
-  <span class="absolute inset-0 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-600"></span>
-  <span class="relative mx-0.5 size-3 rounded-full bg-white shadow transition peer-checked:translate-x-3"></span>
+{{/* switch: the compact on/off control shared by table toggle cells, settings
+     rows, the form row and the conditional's gate. It is a checkbox, never a
+     toggle: nothing in this app flips live — every state here is staged for the
+     commit — and a toggle's knob would promise that it had. CSS-only (peer): the
+     checkbox drives the box's fill and its check. Callers pass any value with
+     On (bool) and Name (form name, optional).
+
+     The control is a bare span, so a caller can wrap it in whatever label the row
+     around it calls for without nesting one label inside another. Where it has a
+     form name it carries that as its id too, so a label elsewhere in the row —
+     the conditional's, at the form's own measure — points at it. */}}
+{{/* An 18px box in the input's own dress — white, the inset shadow, the strong
+     hairline — with no hover state. Checked, it fills in the body ink, the same
+     ink a selected segment takes and never the action colour, and a white check
+     sits in it. */}}
+{{define "switch.control"}}<span class="relative inline-flex size-4.5 shrink-0 cursor-pointer items-center justify-center">
+  <input type="checkbox" data-verso-switch{{if .Name}} id="{{.Name}}" name="{{.Name}}"{{end}} class="peer sr-only" value="1"{{if .On}} checked{{end}}>
+  <span class="absolute inset-0 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors peer-checked:border-body peer-checked:bg-body peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim"></span>
+  <span class="relative text-white opacity-0 peer-checked:opacity-100">{{icon "check" "size-3.5 [stroke-width:3]"}}</span>
 </span>{{end}}
-{{/* switch.row: the labelled form row — the control with its label beside it.
-     Shared by the switch widget and the conditional's controlling toggle. */}}
-{{define "switch.row"}}<label class="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-slate-900">
+{{/* switch.row: the labelled form row — the control with its label beside it. */}}
+{{define "switch.row"}}<label class="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-ink">
   {{template "switch.control" .}}
   <span>{{.Label}}</span>
 </label>{{end}}

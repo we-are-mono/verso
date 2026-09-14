@@ -1,0 +1,69 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<div data-verso-maintenance{{if .Checking}} data-verso-update-busy{{end}} class="flex flex-col items-start gap-11 xl:flex-row">
+  <div class="w-full min-w-0 max-w-[40rem] shrink-0 border-t border-rule">
+    {{.Notices}}
+    <section id="firmware" class="scroll-mt-20 py-8">
+      <h3 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Firmware"}}</h3>
+      <div class="flex min-h-11 flex-wrap items-center gap-3 border-t border-rule bg-quiet px-4 py-2">
+        {{if .Checking}}{{template "verso-waiting" ""}}{{end}}
+        <span class="text-base font-semibold tracking-tight text-body">{{.Status}}</span>
+        {{if .Checked}}<span class="text-sm text-meta">· {{.Checked}}</span>{{end}}
+        <form method="post" action="/system/maintenance/updates/check" class="ml-auto">
+          {{template "verso-csrf" .CSRFToken}}
+          <button type="submit"{{if .Checking}} disabled{{end}} class="h-7 cursor-pointer rounded-xs border border-rule-strong px-2.5 text-sm font-medium text-ink hover:border-faint hover:bg-mid disabled:pointer-events-none disabled:text-glyph">{{t "Check again"}}</button>
+        </form>
+      </div>
+      <div class="border-y border-rule px-4">{{.Identity}}</div>
+      <div class="mt-5 flex flex-wrap items-center gap-4 [&_button]:h-7 [&_button]:px-2.5">{{.Details}}</div>
+      <div class="mt-6">{{.Manual}}</div>
+    </section>
+    {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
+    <section id="backup" class="scroll-mt-20 border-t border-rule py-8">
+      <h3 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h3>
+      <div class="flex flex-wrap items-center gap-3">
+        <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
+        <span class="text-meta">{{t "or"}}</span>{{.Restore}}
+      </div>
+      <div class="mt-4 flex items-start gap-2 rounded-xs bg-quiet px-3 py-2 text-sm leading-[1.45] text-body"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-glyph"></span><span>{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</span></div>
+    </section>
+    <section id="reboot" class="scroll-mt-20 border-t border-rule py-8">
+      <h3 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Reboot"}}</h3>
+      {{if .Staged}}<div class="mb-4 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
+      <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
+        {{template "verso-csrf" .CSRFToken}}
+        {{if .Staged}}
+        <button type="submit" name="stage" value="apply" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Apply changes, then reboot"}}</button>
+        <button type="submit" name="stage" value="discard" class="h-9 cursor-pointer rounded-xs border border-rule-strong px-4 font-semibold text-crimson-deep hover:border-crimson hover:bg-crimson-soft">{{t "Discard and reboot"}}</button>
+        {{else}}<button type="submit" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Reboot now"}}</button>{{end}}
+        <span class="text-sm text-meta">{{t "Running for"}} {{.Uptime}}</span>
+        <p data-verso-reboot-error hidden role="alert" class="w-full text-sm text-crimson-deep"></p>
+      </form>
+    </section>
+    <section id="factory-reset" class="scroll-mt-20 border-t border-rule py-8">
+      <h3 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h3>
+      <div class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-[1.45] text-crimson-deep"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span>{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</span></div>
+      <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="mt-5 flex flex-col gap-5">
+        {{template "verso-csrf" .CSRFToken}}
+        {{if .Hostname}}<div class="flex flex-col gap-2"><label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label><input id="reset-host" name="hostname" required autocomplete="off" class="h-9 w-56 max-w-full rounded-xs border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"></div>{{end}}
+        <div class="flex flex-col gap-2"><label for="reset-password" class="text-sm font-semibold">{{t "Administrator password"}}</label><input id="reset-password" name="password" type="password" required autocomplete="current-password" class="h-9 w-56 max-w-full rounded-xs border border-rule-strong bg-white px-3 text-sm shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"></div>
+        <button type="submit" class="mt-2 h-9 w-fit cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
+      </form>
+    </section>
+  </div>
+  <aside class="hidden min-w-0 flex-1 xl:block">
+    <h3 class="mb-3 text-xs font-medium tracking-[.08em] text-meta uppercase">{{t "On this page"}}</h3>
+    <nav class="flex flex-col border-l border-rule">
+      <a data-verso-rail-link href="#firmware" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm font-semibold text-ink hover:text-denim-deep">{{t "Firmware"}}</a>
+      <a data-verso-rail-link href="#backup" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Back up and restore"}}</a>
+      <a data-verso-rail-link href="#reboot" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Reboot"}}</a>
+      <a data-verso-rail-link href="#factory-reset" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Factory reset"}}</a>
+    </nav>
+    <div class="mt-7 flex flex-col gap-2 border-t border-rule pt-4 text-sm leading-[1.45] text-body">
+      <h3 class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{t "Before you flash"}}</h3>
+      <p class="flex items-start gap-2.5"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{t "Download a backup before replacing the firmware."}}</p>
+      <p class="flex items-start gap-2.5"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>{{t "Use an image built for this board."}}</p>
+      <p class="flex items-start gap-2.5"><span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>{{t "Keep the router connected to power during the upgrade."}}</p>
+    </div>
+  </aside>
+</div>

@@ -13,9 +13,13 @@ import (
 // reveal the contents beneath. It is the home for the advanced-but-usually-untouched
 // (server keys, ports) — present and honest, but folded away so it never crowds the
 // common path. Native <details>, so it is pure HTML: no JavaScript.
+//
+// Open renders it already expanded — for content that is the page's focus right
+// now (an update's package manifest) yet still folds away once read.
 type Disclosure struct {
 	Style    string   `json:"style,omitempty"`
 	Summary  string   `json:"summary"`
+	Open     bool     `json:"open,omitempty"`
 	Children []Widget `json:"children"`
 }
 
@@ -31,12 +35,13 @@ func (d *Disclosure) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Style    string            `json:"style"`
 		Summary  string            `json:"summary"`
+		Open     bool              `json:"open"`
 		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	d.Style, d.Summary = raw.Style, raw.Summary
+	d.Style, d.Summary, d.Open = raw.Style, raw.Summary, raw.Open
 	children, err := decodeChildren(raw.Children, "disclosure child")
 	if err != nil {
 		return err
@@ -50,6 +55,7 @@ func (d *Disclosure) UnmarshalJSON(data []byte) error {
 type disclosureView struct {
 	Style    string
 	Summary  string
+	Open     bool
 	Children []template.HTML
 }
 
@@ -58,5 +64,5 @@ func (d *Disclosure) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "disclosure.html.tmpl", disclosureView{Style: d.Style, Summary: d.Summary, Children: children})
+	return r.execute(out, "disclosure.html.tmpl", disclosureView{Style: d.Style, Summary: d.Summary, Open: d.Open, Children: children})
 }

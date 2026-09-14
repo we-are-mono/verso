@@ -16,6 +16,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 )
 
 // mgmtManifest is an installed plugin with declared powers, as the management
@@ -53,15 +54,15 @@ func TestPackagesInventory(t *testing.T) {
 	for _, want := range []string{
 		`href="/system/packages" aria-current="page"`,
 		`href="/system/packages/discover"`,
-		">Installed</a>", ">Available</a>",
+		`data-verso-tab=""`, `data-verso-tab="upgradable"`,
 		"htop", "3.5.1-r1", "packages", // the row
-		"font-mono text-base font-semibold",             // package versions use the fixed 16px/600 mono treatment
+		"font-mono text-base font-medium",               // package versions use the fixed 16px/500 mono treatment
 		"Process viewer", "GPL-2.0", ">Remove</button>", // the drawer's story and act
-		"max-w-4xl", // package management uses the focused content width
-		"border-slate-200 bg-slate-50 text-slate-700",                       // description uses the neutral callout
-		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link stays in the callout and opens safely outside Verso
-		"space-y-0", "border-t border-slate-100 py-3", // facts match the Overview System DL
-		`<header class="flex shrink-0 items-center justify-between px-6 py-4">`, // the shared drawer panel's header, no divider
+		"max-w-6xl",           // package management uses the focused content width
+		"verso-prose text-sm", // description is plain body prose
+		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link opens safely outside Verso
+		"space-y-0", "border-t border-mid py-2", // facts match the Overview System DL
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`, // shared title band
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("inventory missing %q", want)
@@ -88,6 +89,84 @@ func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
 	}
 	if !strings.Contains(body, "Required by") {
 		t.Error("the drawer should explain why the package cannot be removed")
+	}
+}
+
+func TestPackageSearchStaysInItsPanel(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true, pkgFound: []openwrt.Package{{Name: "htop", Description: "Process viewer"}}, pkgTotal: 1}, true)
+	res, _ := postPluginFromPanel(t, s, "/system/packages/discover", url.Values{"_primary": {"search"}, "q": {"htop"}})
+	if res.Code != http.StatusOK || res.Header().Get("Location") != "" || strings.Contains(res.Body.String(), "<main") {
+		t.Fatalf("search returned a page/redirect: %d %v", res.Code, res.Header())
+	}
+	for _, want := range []string{"Process viewer", `hx-post="/system/packages/discover"`, `hx-post="/system/packages"`} {
+		if !strings.Contains(res.Body.String(), want) {
+			t.Errorf("panel missing %q", want)
+		}
+	}
+}
+
+func TestInstalledSearchResultOffersItsSinglePackageUpgrade(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true, pkgFound: []openwrt.Package{{Name: "htop", Version: "1", Installed: true}}, pkgTotal: 1}, true)
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "htop", Installed: "1", Available: "2"}}})
+	res, _ := postPluginFromPanel(t, s, "/system/packages/discover", url.Values{"_primary": {"search"}, "q": {"htop"}})
+	if res.Code != 200 || !strings.Contains(res.Body.String(), `value="upgrade"`) {
+		t.Fatalf("installed search result lost its upgrade: %s", res.Body.String())
+	}
+}
+
+func TestPackagePanelActionsReturnOutcomes(t *testing.T) {
+	for _, verb := range []string{"install", "remove", "upgrade"} {
+		t.Run(verb, func(t *testing.T) {
+			var installed, removed, upgraded []string
+			var bulk int
+			s := pluginsServer(t, fakeBackend{access: true, pkgInstalls: &installed, pkgRemoves: &removed, pkgSingleUpgrades: &upgraded, pkgUpgrades: &bulk}, true)
+			res, _ := postPluginFromPanel(t, s, "/system/packages", url.Values{"package": {"htop"}, "_primary": {verb}})
+			if res.Code != http.StatusOK || res.Header().Get("HX-Reswap") != "none" || res.Header().Get("X-Verso-Packages") != "changed" || strings.Contains(res.Body.String(), "<main") {
+				t.Fatalf("action must close on an outcome: %d %v %s", res.Code, res.Header(), res.Body.String())
+			}
+			if !strings.Contains(res.Body.String(), "data-package-navigation") {
+				t.Fatal("package mutation must refresh plugin navigation with its outcome")
+			}
+			calls := append(append(installed, removed...), upgraded...)
+			if len(calls) != 1 || calls[0] != "htop" || bulk != 0 {
+				t.Fatalf("calls %v, bulk %d", calls, bulk)
+			}
+		})
+	}
+	s := pluginsServer(t, fakeBackend{access: true, pkgErr: errors.New("dependency refused")}, true)
+	res, _ := postPluginFromPanel(t, s, "/system/packages", url.Values{"package": {"htop"}, "_primary": {"remove"}})
+	if res.Code != http.StatusBadGateway || res.Header().Get("HX-Reswap") != "" || !strings.Contains(res.Body.String(), "dependency refused") || strings.Contains(res.Body.String(), "<main") {
+		t.Fatalf("refusal must keep the form: %d %s", res.Code, res.Body.String())
+	}
+}
+
+func TestAllPackagesIsAPaginatedListingFragment(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true, pkgTotal: 75, pkgFound: []openwrt.Package{{Name: "available-package", Description: "Available"}}}, true)
+	req := httptest.NewRequest("GET", "/system/packages?tab=all&offset=30", nil)
+	token, _ := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	req.Header.Set("X-Verso-Interaction", "packages")
+	res := httptest.NewRecorder()
+	s.Handler().ServeHTTP(res, req)
+	body := res.Body.String()
+	if res.Code != 200 || strings.Contains(body, "<main") {
+		t.Fatalf("not a fragment: %d", res.Code)
+	}
+	for _, want := range []string{`data-package-all="true"`, "available-package", "offset=0", "offset=60"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("listing missing %q", want)
+		}
+	}
+}
+
+func TestInstalledFilesAreEscapedAndNamesValidated(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true, pkgFiles: []string{"/usr/bin/htop", "/etc/<script>alert(1)</script>"}}, true)
+	res := get(t, s, "/system/packages/files?package=htop")
+	if res.Code != 200 || !strings.Contains(res.Body.String(), "/usr/bin/htop") || strings.Contains(res.Body.String(), "<script>") {
+		t.Fatalf("files not escaped: %s", res.Body.String())
+	}
+	if res := get(t, s, "/system/packages/files?package=../etc/passwd"); res.Code != http.StatusBadRequest {
+		t.Fatalf("invalid name accepted: %d", res.Code)
 	}
 }
 
@@ -127,8 +206,8 @@ func TestFlashConfirmsActions(t *testing.T) {
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); !strings.Contains(body, "htop removed.") {
 		t.Error("the redirect target must show the confirmation")
-	} else if !strings.Contains(body, "dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300") {
-		t.Error("success flashes should match the verified modal's dark success palette")
+	} else if !strings.Contains(body, "border-green-line bg-green-soft text-green-deep") {
+		t.Error("a success flash wears green's soft ground and its text step")
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); strings.Contains(body, "htop removed.") {
 		t.Error("a flash shows once, not twice")
@@ -147,27 +226,29 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover?q=htop").Body.String()
-	if !strings.Contains(body, "max-w-4xl") {
+	if !strings.Contains(body, "max-w-6xl") {
 		t.Error("Available must use the narrow package-management width")
 	}
 	if !strings.Contains(body, "max-w-sm") {
 		t.Error("Available's search field should use the compound search width")
 	}
-	for _, want := range []string{"[&_input[type=text]]:pr-28", "absolute inset-y-1 right-1", "bg-sky-600"} {
+	// bg-denim, not a stock ramp: the page inlines the whole stylesheet, so asking
+	// for a colour the app does not use still found it — Tailwind had compiled the
+	// class because this line named it.
+	for _, want := range []string{"[&_input[type=text]]:pr-28", "absolute inset-y-1 right-1", "bg-denim"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Available's compound search control missing %q", want)
 		}
 	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",
-		"font-mono text-base font-semibold", // Available versions match Installed
-		"installed",                         // the already-present package carries its state
-		"Install — htop",                    // drawer verb for the absent one
-		"Remove — htop-lang",                // drawer verb for the present one
-		"Feeds checked",                     // freshness honesty
-		`href="/system/packages"`,           // the local switch links the faces
-		`href="/system/packages/discover" aria-current="page"`,
-		">Installed</a>", ">Available</a>",
+		"font-mono text-base font-medium", // Available versions match Installed
+		"installed",                       // the already-present package carries its state
+		"htop-lang",                       // package identities label their drawers
+		"Index refreshed",                 // freshness honesty
+		`href="/system/packages"`,         // the local switch links the faces
+		`action="/system/packages/discover"`,
+		"Install packages",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("discover missing %q", want)
@@ -205,6 +286,21 @@ func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-results state missing %q", want)
 		}
+	}
+}
+
+// TestAvailableNoResultsQuotesTheQueryLiterally: the empty state's body is
+// Markdown prose, and what was typed into the search box is not prose — it is
+// the operator's own string, quoted back. It reads as itself: no emphasis, no
+// link, whatever punctuation Markdown would have claimed.
+func TestAvailableNoResultsQuotesTheQueryLiterally(t *testing.T) {
+	s := pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest())
+	body := get(t, s, "/system/packages/discover?q="+url.QueryEscape("*luci*_x_ http://evil.example")).Body.String()
+	if !strings.Contains(body, "*luci*_x_ http://evil.example") {
+		t.Errorf("the query must read back exactly as typed: %s", body)
+	}
+	if strings.Contains(body, "<em>luci</em>") || strings.Contains(body, `<a href="http://evil.example"`) {
+		t.Errorf("a search box is not a Markdown editor: %s", body)
 	}
 }
 
@@ -429,7 +525,7 @@ func TestFeedRefreshRunsInTheBackground(t *testing.T) {
 	if !strings.Contains(body, "Refreshing the feeds") {
 		t.Error("a running refresh must be stated on the page")
 	}
-	if strings.Contains(body, ">Refresh feeds</button>") {
+	if strings.Contains(body, ">Refresh index</button>") {
 		t.Error("a refresh under way must not offer itself again")
 	}
 
@@ -437,7 +533,7 @@ func TestFeedRefreshRunsInTheBackground(t *testing.T) {
 	waitFeedRefreshIdle(t)
 
 	body = get(t, s, "/system/packages/discover").Body.String()
-	if !strings.Contains(body, ">Refresh feeds</button>") {
+	if !strings.Contains(body, ">Refresh index</button>") {
 		t.Error("the finished refresh must return the button")
 	}
 	if strings.Contains(body, "Refreshing the feeds") {

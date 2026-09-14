@@ -2,9 +2,28 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* conditional: shell-owned field-set branches gated by a toggle, shown via
      pure CSS (ADR-005 §7). The plugin declared only the intent; the shell owns
-     the toggle and the show/hide — no JavaScript. */}}
-<div class="verso-conditional space-y-4" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
-  {{template "switch.row" .}}
-  <div class="verso-conditional-body space-y-6">{{range .Fields}}{{.}}{{end}}</div>
-  {{if .Otherwise}}<div class="verso-conditional-otherwise space-y-6">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
+     the toggle and the show/hide — no JavaScript.
+
+     The toggle is a form row like any other: what it is on the left at the same
+     fixed measure a field's label takes, the control and whatever explains it on
+     the right. A gate that looked unlike the fields it gates would read as a
+     different kind of thing, and it is not — it is the setting the rest depend
+     on.
+
+     The gate and whichever branch is showing are one row, so the row's own
+     padding sits outside both. What the branch is decides how close it hangs:
+     a note about the state the toggle is in belongs to the toggle and sits under
+     it at a helper line's distance, while a field-set the toggle reveals is more
+     rows of the form and stands off at a row's. */}}
+<div class="verso-conditional py-3 first:pt-0 last:pb-0" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
+  <div class="verso-conditional-gate {{template "verso-field-row-class"}} !py-0">
+    {{template "verso-field-label" .LabelView}}
+    <div data-verso-control class="{{template "verso-field-control-class"}}">
+      <label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label>
+    </div>
+  </div>
+  {{/* A revealed field-set carries its own rows, and a field row zeroes its top
+       padding when it is first — so the standing-off is this block's to state. */}}
+  <div class="verso-conditional-body mt-5">{{range .Fields}}{{.}}{{end}}</div>
+  {{if .Otherwise}}<div class="verso-conditional-otherwise mt-2">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
 </div>

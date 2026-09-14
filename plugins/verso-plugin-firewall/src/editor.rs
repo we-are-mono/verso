@@ -48,7 +48,9 @@ pub fn edit(snapshot: &Snapshot, model: &Firewall, section: &str) -> Option<Enve
     let rule = model.rule(section)?;
     let uci = snapshot.section(CONFIG, section)?;
     let form = RuleForm::read(&uci);
-    Some(page(model, Some(section), &form, &Errors::default()).with_subheading(&heading(&rule.name)))
+    Some(
+        page(model, Some(section), &form, &Errors::default()).with_subheading(&heading(&rule.name)),
+    )
 }
 
 /// blank answers a visit to the new-rule editor: firewall4's own defaults, so
@@ -81,7 +83,10 @@ pub fn save(
     section: &str,
     form: &Form,
 ) -> Option<Envelope> {
-    let index = model.rules.iter().position(|rule| rule.section == section)?;
+    let index = model
+        .rules
+        .iter()
+        .position(|rule| rule.section == section)?;
     if form.get(DELETE_FIELD) == "1" {
         let removed = model.rules.remove(index);
         return Some(
@@ -93,8 +98,7 @@ pub fn save(
 
     let rule = RuleForm::submitted(form);
     let errors = rule.validate(&model.zone_names());
-    let answer =
-        page(model, Some(section), &rule, &errors).with_subheading(&heading(&rule.name));
+    let answer = page(model, Some(section), &rule, &errors).with_subheading(&heading(&rule.name));
     if !errors.is_empty() {
         return Some(answer.with_notice(Tone::Danger, REFUSED));
     }
@@ -126,13 +130,19 @@ fn page(model: &Firewall, section: Option<&str>, rule: &RuleForm, errors: &Error
         None => "New rule",
     };
     let mut children = vec![Widget::Form {
+        note: Default::default(),
+
         style: "page".into(),
         submit: String::new(),
         error: String::new(),
         fields: vec![
             identity(rule, errors),
             traffic_path(model, rule, errors),
-            Widget::section("", CONDITIONS_SUB, vec![conditions::widget(rule, errors, model)]),
+            Widget::section(
+                "",
+                CONDITIONS_SUB,
+                vec![conditions::widget(rule, errors, model)],
+            ),
             action(rule, errors),
             observability(rule, errors),
         ],
@@ -150,6 +160,10 @@ fn page(model: &Firewall, section: Option<&str>, rule: &RuleForm, errors: &Error
 /// one of its settings.
 fn identity(rule: &RuleForm, errors: &Errors) -> Widget {
     Widget::Section {
+        anchor: Default::default(),
+        kicker: Default::default(),
+        hairline: Default::default(),
+
         title: "Rule".into(),
         sub: String::new(),
         meta: String::new(),
@@ -158,6 +172,10 @@ fn identity(rule: &RuleForm, errors: &Errors) -> Widget {
         mode: String::new(),
         flush: true,
         control: Some(Box::new(Widget::Switch {
+            key: Default::default(),
+            tip: Default::default(),
+            source: Default::default(),
+
             name: "enabled".into(),
             label: "Enabled".into(),
             off_label: "Disabled".into(),
@@ -314,12 +332,18 @@ fn observability(rule: &RuleForm, errors: &Errors) -> Widget {
         "Observability",
         "",
         vec![Widget::Stack {
+            flush: Default::default(),
+
             width: String::new(),
             compact: true,
             inline: false,
             divided: false,
             children: vec![
                 Widget::Switch {
+                    key: Default::default(),
+                    tip: Default::default(),
+                    source: Default::default(),
+
                     name: "counter".into(),
                     label: "Count matching packets".into(),
                     off_label: String::new(),
@@ -330,6 +354,9 @@ fn observability(rule: &RuleForm, errors: &Errors) -> Widget {
                     on: rule.counter,
                 },
                 Widget::Conditional {
+                    key: Default::default(),
+                    help: Default::default(),
+
                     name: "log".into(),
                     label: "Log matching packets".into(),
                     checked: rule.log.on,
@@ -376,12 +403,16 @@ fn rule_delete_form(rule: &RuleForm) -> Widget {
 /// the submit, so this form draws no Save of its own.
 pub fn delete_form(action: &str, message: &str) -> Widget {
     Widget::Form {
+        note: Default::default(),
+
         style: String::new(),
         submit: String::new(),
         error: String::new(),
         fields: vec![
             Widget::hidden(DELETE_FIELD, "1"),
             Widget::Confirm {
+                title: Default::default(),
+
                 trigger: action.into(),
                 message: message.into(),
                 confirm: action.into(),
@@ -416,6 +447,14 @@ pub fn form_grid(columns: u32, children: Vec<Widget>) -> Widget {
 /// wrong about it.
 pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
     Widget::Field {
+        key: Default::default(),
+        tip: Default::default(),
+        source: Default::default(),
+        unit: Default::default(),
+        pair: Default::default(),
+        remove: Default::default(),
+        style: Default::default(),
+
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
@@ -452,6 +491,11 @@ pub fn token_list(
     errors: &Errors,
 ) -> Widget {
     Widget::List {
+        key: Default::default(),
+        tip: Default::default(),
+        options: Default::default(),
+        remove: Default::default(),
+
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
@@ -590,17 +634,26 @@ mod tests {
             serde_json::json!(["10.0.20.5"]),
             "an inverted value belongs in the exclude list, without its mark"
         );
-        assert_eq!(control(&body, "dest_port")["items"], serde_json::json!(["53"]));
+        assert_eq!(
+            control(&body, "dest_port")["items"],
+            serde_json::json!(["53"])
+        );
         assert_eq!(
             control(&body, "dest_port_not")["items"],
             serde_json::json!(["5353"])
         );
-        assert_eq!(control(&body, "src_port")["items"], serde_json::json!(["1024-65535"]));
+        assert_eq!(
+            control(&body, "src_port")["items"],
+            serde_json::json!(["1024-65535"])
+        );
         assert_eq!(
             control(&body, "icmp_type")["items"],
             serde_json::json!(["echo-request"])
         );
-        assert_eq!(control(&body, "proto")["items"], serde_json::json!(["tcp", "udp"]));
+        assert_eq!(
+            control(&body, "proto")["items"],
+            serde_json::json!(["tcp", "udp"])
+        );
     }
 
     #[test]
@@ -719,11 +772,18 @@ mod tests {
         assert_eq!(control(&body, "enabled")["on"], true);
         assert_eq!(control(&body, "counter")["on"], true);
         assert_eq!(control(&body, "target")["value"], "ACCEPT");
-        assert_eq!(control(&body, "proto")["items"], serde_json::json!(["tcp", "udp"]));
+        assert_eq!(
+            control(&body, "proto")["items"],
+            serde_json::json!(["tcp", "udp"])
+        );
         assert_eq!(control(&body, "name")["value"], "");
         assert_eq!(body["subheading"], NEW_SUBHEADING);
         assert!(
-            body["widget"]["children"].as_array().expect("children").len() == 1,
+            body["widget"]["children"]
+                .as_array()
+                .expect("children")
+                .len()
+                == 1,
             "a rule that does not exist yet cannot be deleted"
         );
     }
@@ -922,10 +982,7 @@ mod tests {
 
     #[test]
     fn a_switch_the_submission_left_out_turns_its_option_off() {
-        let body = submit(
-            "everything",
-            &[("src", "guest"), ("target", "ACCEPT")],
-        );
+        let body = submit("everything", &[("src", "guest"), ("target", "ACCEPT")]);
         assert_eq!(values(&body)["enabled"], "0");
         assert_eq!(values(&body)["counter"], "0");
     }
@@ -970,7 +1027,10 @@ mod tests {
                 &[refusal.field, ("src", "guest"), ("target", "ACCEPT")],
             );
             let case = refusal.case;
-            assert!(body.get("commit").is_none(), "{case}: nothing may be written");
+            assert!(
+                body.get("commit").is_none(),
+                "{case}: nothing may be written"
+            );
             assert_eq!(body["notice"]["level"], "danger", "{case}");
             let marked = control(&body, refusal.control);
             assert!(
@@ -1019,7 +1079,10 @@ mod tests {
         let body = serde_json::to_value(&envelope).expect("serialize");
 
         assert_eq!(body["title"], "Firewall");
-        assert_eq!(body["notice"], serde_json::json!({"level": "success", "text": "Rule deleted."}));
+        assert_eq!(
+            body["notice"],
+            serde_json::json!({"level": "success", "text": "Rule deleted."})
+        );
         assert_eq!(
             body["commit"],
             serde_json::json!([{
@@ -1057,7 +1120,10 @@ mod tests {
 
         let body = serde_json::to_value(missing(&model, &Counters::default())).expect("serialize");
         assert_eq!(body["notice"]["level"], "danger");
-        assert_eq!(fixture::section(&body, "Traffic rules")["title"], "Traffic rules");
+        assert_eq!(
+            fixture::section(&body, "Traffic rules")["title"],
+            "Traffic rules"
+        );
     }
 
     #[test]

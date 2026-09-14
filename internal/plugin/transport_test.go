@@ -59,6 +59,64 @@ func TestSocketTransportFetchGET(t *testing.T) {
 	}
 }
 
+// TestSocketTransportDescribe proves a describe call reaches the plugin marked as
+// one, carries the change list and the uci snapshot, and decodes the plain-language
+// answer — including a sentence that folds several changes together.
+func TestSocketTransportDescribe(t *testing.T) {
+	var gotDescribe, gotSnapshot bool
+	var gotBody describeRequest
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotDescribe = r.Header.Get(HeaderDescribe) != ""
+		if raw := r.Header.Get(HeaderUCI); raw != "" {
+			if dec, err := base64.StdEncoding.DecodeString(raw); err == nil {
+				var snap UCI
+				if json.Unmarshal(dec, &snap) == nil {
+					_, gotSnapshot = snap["firewall"]
+				}
+			}
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		envelopeJSON(w, http.StatusOK,
+			`{"descriptions":[{"plain":"Added the rule “Allow DNS”.","covers":[0,1]}]}`)
+	}))
+
+	changes := []DescribeChange{
+		{Config: "firewall", Op: "add-section", Section: "cfg99", Option: "rule"},
+		{Config: "firewall", Op: "set", Section: "cfg99", Option: "name", Value: "Allow DNS"},
+	}
+	snap := UCI{"firewall": {"cfg99": map[string]any{".type": "rule"}}}
+	descs, err := NewSocketTransport().Describe(context.Background(), sock, changes, snap)
+	if err != nil {
+		t.Fatalf("Describe: %v", err)
+	}
+	if !gotDescribe {
+		t.Error("plugin did not see the X-Verso-Describe marker")
+	}
+	if !gotSnapshot {
+		t.Error("plugin did not receive the uci snapshot")
+	}
+	if len(gotBody.Changes) != 2 || gotBody.Changes[0].Op != "add-section" {
+		t.Errorf("plugin received changes = %+v", gotBody.Changes)
+	}
+	if len(descs) != 1 || descs[0].Plain != "Added the rule “Allow DNS”." {
+		t.Fatalf("descriptions = %+v", descs)
+	}
+	if want := []int{0, 1}; len(descs[0].Covers) != 2 || descs[0].Covers[0] != want[0] || descs[0].Covers[1] != want[1] {
+		t.Errorf("covers = %v, want %v", descs[0].Covers, want)
+	}
+}
+
+// TestSocketTransportDescribeBadStatus turns a non-200 into an error so the caller
+// falls back to raw lines rather than rendering a broken drawer.
+func TestSocketTransportDescribeBadStatus(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	if _, err := NewSocketTransport().Describe(context.Background(), sock, nil, nil); err == nil {
+		t.Fatal("Describe: want error on non-200, got nil")
+	}
+}
+
 // TestSocketTransportDecodesCommitShapes proves the three write shapes survive
 // the wire: a set, a section delete, and a null that clears one option (which
 // must arrive as a present key with a nil value, not as an absent key).

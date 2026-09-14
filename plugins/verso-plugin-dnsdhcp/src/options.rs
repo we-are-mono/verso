@@ -65,10 +65,7 @@ pub enum Control {
     /// A switch. On_when_absent is what the daemon does without the option;
     /// Invert makes the row the opposite of the option, for an option written as
     /// a refusal.
-    Toggle {
-        on_when_absent: bool,
-        invert: bool,
-    },
+    Toggle { on_when_absent: bool, invert: bool },
     /// A value edited in place.
     Value(Check),
     /// A value the page states but does not edit: visible truth, not editable
@@ -340,10 +337,23 @@ mod tests {
     use verso_plugin::Snapshot;
 
     const ROWS: [Row; 4] = [
-        inverted("ignore", "Hand out addresses", "This router assigns addresses."),
+        inverted(
+            "ignore",
+            "Hand out addresses",
+            "This router assigns addresses.",
+        ),
         on_by_default("ra_slaac", "SLAAC", "Devices derive their own address."),
-        value("leasetime", "Lease length", "How long an address stays.", Check::Leasetime),
-        read("dhcp_option", "Extra DHCP options", "Options handed to clients."),
+        value(
+            "leasetime",
+            "Lease length",
+            "How long an address stays.",
+            Check::Leasetime,
+        ),
+        read(
+            "dhcp_option",
+            "Extra DHCP options",
+            "Options handed to clients.",
+        ),
     ];
 
     fn pool() -> Options {
@@ -376,7 +386,10 @@ mod tests {
             })
         );
         // A switch the daemon already has on states so without an option.
-        assert_eq!(json[1]["toggle"], serde_json::json!({"name": "lan.ra_slaac", "on": true}));
+        assert_eq!(
+            json[1]["toggle"],
+            serde_json::json!({"name": "lan.ra_slaac", "on": true})
+        );
         // A value row is edited in place, under its own name.
         assert_eq!(json[2]["value"], "12h");
         assert_eq!(json[2]["name"], "lan.leasetime");

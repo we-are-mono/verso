@@ -7,24 +7,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#ffffff">
 <title>{{ t "Backup restored" }} · OpenWrt</title>
-<link rel="preload" href="/assets/fonts/hanken.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>{{.CSS}}</style>
 <script src="/assets/verso-boot.js"></script>
 </head>
-<body class="m-0 min-h-screen bg-canvas font-sans text-sm leading-normal text-slate-900 antialiased">
+<body class="m-0 min-h-screen bg-canvas font-sans text-sm leading-normal text-ink">
   <main class="flex min-h-screen items-center px-6 py-12 sm:px-8">
     <div class="w-full max-w-lg">
       <p class="verso-kicker">{{ t "BACKUP RESTORED" }}</p>
-      <h1 class="font-serif text-4xl font-medium tracking-tight text-slate-900">{{ t "Your router is restarting" }}</h1>
-      <p class="mt-4 max-w-md text-base leading-7 text-slate-500">
+      <h1 class="text-4xl font-medium tracking-tight text-ink">{{ t "Your router is restarting" }}</h1>
+      <p class="mt-4 max-w-md text-base leading-7 text-body">
         {{ t "OpenWrt is applying your saved settings and bringing network services back online. The web interface will be unavailable during this time." }}
       </p>
 
-      <a href="/" class="mt-8 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-sky-700 active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">
+      {{/* The same one act, in the same treatment every forward act wears. */}}
+      <a href="/" class="mt-8 inline-flex items-center justify-center gap-2 rounded-xs border border-denim bg-denim px-4 py-2.5 font-semibold text-white transition-colors hover:border-denim-deep hover:bg-denim-deep active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
         {{ t "Return to OpenWrt in about 2 minutes" }}
       </a>
-      <p class="mt-3 text-sm text-slate-400">{{ t "If the router is not ready when you return, wait a little longer and try again." }}</p>
+      <p class="mt-3 text-sm text-meta">{{ t "If the router is not ready when you return, wait a little longer and try again." }}</p>
     </div>
   </main>
 </body>

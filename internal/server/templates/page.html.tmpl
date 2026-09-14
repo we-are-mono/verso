@@ -7,233 +7,204 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {{if .CSRFToken}}<meta name="verso-csrf" content="{{.CSRFToken}}">{{end}}
 {{if .SessionExpiry}}<meta name="verso-session-expiry" content="{{.SessionExpiry}}">{{end}}
+{{/* What htmx does with an answer, by status. A refusal (422) swaps in like a
+     success: it is the panel re-rendered with the offending controls marked,
+     and a refusal that showed nothing would read as a save that did nothing.
+     Every other 4xx/5xx stays out of the swap and reaches the shell's script
+     as an error, which shows it where the person is. */}}
+<meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
 <title>{{.Title}}</title>
-<link rel="preload" href="/assets/fonts/hanken.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
 {{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready and
      re-applies the saved theme, so neither flashes on navigation (CSP-safe, first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
-<body x-data="sidebar" class="min-h-screen m-0 flex bg-canvas text-slate-900 antialiased font-sans text-sm leading-normal">
-{{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
-<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-black/50 md:hidden"></div>
-{{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind a hamburger
-     (verso.js "sidebar"); on desktop it's the static rail. */}}
-<aside class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto" :class="drawerClass" @keydown.escape.window="close">
-  <div class="flex items-center justify-between px-5 py-5">
-    <a href="/" class="text-lg font-semibold tracking-tight">Verso</a>
-    <div class="flex items-center gap-1">
-      {{/* Light/dark toggle — flips .dark on <html> and persists it (verso.js
-           toggleTheme); the palette vars under :root.dark do the rest, and
-           verso-boot.js re-applies the choice pre-paint on every page. */}}
-      <button type="button" @click="toggleTheme" aria-label="{{ t "Toggle theme" }}" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "moon" "size-5 verso-theme-moon"}}{{icon "sun" "size-5 verso-theme-sun"}}</button>
-      <button type="button" @click="close" aria-label="{{ t "Close menu" }}" class="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction md:hidden">{{icon "x" "size-5"}}</button>
-    </div>
-  </div>
-  <nav class="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-    {{/* Everyday rows — plain labels + icons, no status (the homepage owns that). */}}
-    <ul class="space-y-0.5">
-      {{range .Nav.Basic}}{{template "verso-nav-row" .}}{{end}}
-    </ul>
-    {{/* The sections, part of the advanced reading only (ADR-015 §5): in basic mode
-         the shell renders none of this, and the switch at the sidebar's foot is the
-         one disclosure. Every entry is an ordinary row — same tile, same label —
-         under the title of the section it belongs to. */}}
-    {{if .Nav.Advanced}}
-    <div class="mt-2.5 space-y-3 border-t border-slate-100 pt-2.5">
-      {{range .Nav.Advanced}}
-      <div>
-        <div class="px-3 pb-0.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{{.Title}}</div>
-        <ul class="space-y-0.5">
-          {{range .Links}}{{template "verso-nav-row" .}}{{end}}
-        </ul>
-      </div>
-      {{end}}
-    </div>
-    {{end}}
-  </nav>
-  {{/* Bottom: the device's own row — its name, the release it runs, and the way to
-       everything that maintains it. The amber mark appears only when this router
-       has actually found something to install. */}}
-  <div class="space-y-1 border-t border-slate-100 p-3">
-    {{/* The reader mode (ADR-015): one quiet switch — off is the product, on is the
-         advanced reading. It lives where its effect shows: flip it and the section
-         rows appear in the nav directly above. A plain form, so the server owns the
-         state: the cookie flips, the page re-renders, and the browser is handed only
-         what this reading contains. */}}
-    <form method="post" action="/mode">
-      <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-      <input type="hidden" name="mode" value="{{if .Advanced}}basic{{else}}advanced{{end}}">
-      <input type="hidden" name="next" value="{{.ModeReturn}}">
-      <button type="submit" role="switch" aria-checked="{{if .Advanced}}true{{else}}false{{end}}" class="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
-        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">{{icon "sliders-horizontal" "size-5"}}</span>
-        <span class="min-w-0 flex-1 truncate text-left text-sm font-medium">{{ t "Advanced" }}</span>
-        <span class="relative inline-flex h-4 w-7 shrink-0 items-center">
-          <span class="absolute inset-0 rounded-full transition {{if .Advanced}}bg-emerald-500{{else}}bg-slate-300{{end}}"></span>
-          <span class="relative mx-0.5 size-3 rounded-full bg-white shadow transition{{if .Advanced}} translate-x-3{{end}}"></span>
-        </span>
-      </button>
-    </form>
-    <a href="/system/hardware" class="group relative flex items-center gap-3 rounded-xl px-2 py-2 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">
-      <span class="relative grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-600">
-        {{icon "router" "size-5"}}
-        {{if .UpdateReady}}<span class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"></span>{{end}}
-      </span>
-      <span class="min-w-0 truncate text-sm font-medium transition group-hover:translate-x-1">{{.DeviceName}}</span>
-      {{if .UpdateReady}}<span class="ml-auto shrink-0 text-xs font-medium text-amber-700">{{ t "Update ready" }}</span>
-      {{else if .DeviceVersion}}<span class="ml-auto shrink-0 font-mono text-xs text-slate-400">{{.DeviceVersion}}</span>{{end}}
-    </a>
-    {{/* Account chip: who's signed in + a quick sign-out. */}}
-    <div class="flex items-center gap-3 rounded-xl px-2 py-2">
-      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">A</span>
-      <div class="min-w-0 flex-1">
-        <div class="truncate text-sm font-medium text-slate-900">{{ t "Administrator" }}</div>
-        <div class="flex items-center gap-1.5 text-xs text-slate-500"><span class="size-1.5 shrink-0 rounded-full bg-emerald-500"></span>{{ t "Signed in" }}</div>
-      </div>
-      <form method="post" action="/logout">
+<body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
+{{/* The top bar: the device's nameplate on the left — the hostname in mono,
+     then who built the board and what they call it; a fresh box with no
+     readable name says what it is instead — and, on the right, the way out.
+     The right-hand group is aligned to the content column rather than to the
+     bar's own edge, so what sits there lines up with a page's primary action
+     below it. White, a step above the paper the page sits on, and it stays at
+     the top while the page scrolls under it. On a phone it also holds the
+     hamburger that opens the rail. Only the home page adds app-wide warnings
+     here. */}}
+<header class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-rule bg-canvas px-6">
+  <button type="button" @click="toggle" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
+  {{/* One line whatever the name's length; where the bar has to cut it, the
+       whole name is a hover away. */}}
+  <a href="/"{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
+  {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
+  <span class="hidden min-w-0 truncate text-sm font-light text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
+  <div class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
+    <div class="mx-4 flex min-w-0 max-w-6xl flex-1 items-center justify-end gap-2 sm:mx-6 md:ml-11 md:mr-11 md:gap-4">
+      {{if and .Overview .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm font-semibold text-crimson-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span class="sr-only xl:not-sr-only xl:truncate">{{ t "No administrator password" }}</span></a>
+      {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-denim"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
+      {{/* Logging out is a plain act with the identity it ends beside it: the
+           account is a decided constant (ADR-007: one root credential, the shell
+           its authority), so the button states the name and the verb — no
+           avatar, no presence, nothing an account system would imply. */}}
+      {{/* The stage's chip: how many changes wait and that nothing is live
+           yet, opening the review drawer — the one place the stage is applied
+           or let go from (ADR-010). Left of Log out on every page, for as long
+           as the stage holds something. */}}
+      {{template "verso-staged-chip" .Staged}}
+      <form method="post" action="/logout" class="pointer-events-auto">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <button type="submit" aria-label="{{ t "Sign out" }}" class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "log-out" "size-5"}}</button>
+        <button type="submit" title="{{ t "End this session" }}" class="flex h-8 cursor-pointer items-center gap-2 rounded-xs border border-transparent px-3 text-sm font-medium text-body transition-colors hover:border-rule-strong hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+          <span class="flex text-meta">{{icon "user" "size-4"}}</span>
+          <span class="font-mono text-base font-medium">root</span>
+          <span class="h-3.5 w-px bg-rule-strong"></span>
+          <span class="font-normal">{{ t "Log out" }}</span>
+        </button>
       </form>
     </div>
   </div>
-</aside>
-<main class="min-w-0 flex-1{{if .Pages}} verso-haspages{{end}}">
-  {{/* The top bar — third navigation tier (sidebar → domain, top bar → this
-       domain's subpages, in-page → position). Full width of the content area,
-       offset past the sidebar by construction; sticky on desktop so switching
-       stays one click from any depth. */}}
-  {{if .Pages}}
-  {{/* Tabs keep 12px of internal horizontal padding for a comfortable target.
-       The bar therefore starts 12px before the 32px content gutter, placing
-       the first label and its active underline exactly on the content edge. */}}
-  <nav class="z-30 flex h-12 items-center gap-1 border-b {{if or .NoPassword (and .Banner (eq .Banner.Variant "danger"))}}border-red-200 dark:border-red-500/20{{else}}border-slate-200{{end}} bg-white px-5 md:sticky md:top-0" aria-label="Subpages">
-    {{range .Pages}}
-    <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}
-      class="relative flex h-full items-center px-3 text-sm font-medium transition-colors {{if .Active}}dark:bg-menu-interaction {{if or $.NoPassword (and $.Banner (eq $.Banner.Variant "danger"))}}text-red-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-red-600 dark:text-red-400 dark:after:bg-red-500{{else}}text-slate-900 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-sky-600{{end}}{{else}}text-slate-500 hover:text-slate-900 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">{{.Label}}</a>
-    {{end}}
+</header>
+{{/* Under the bar: the rail and the page, side by side. */}}
+<div class="flex min-h-0 flex-1">
+{{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
+<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-ink/40 md:hidden"></div>
+{{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind the bar's
+     hamburger (verso.js "sidebar"); on desktop it's the static rail under the
+     bar, as tall as what the bar leaves of the screen. No fill of its own —
+     one hairline separates it from the page, and only the active row is a
+     surface. */}}
+<aside class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-rule bg-ground md:sticky md:inset-y-auto md:top-14 md:left-auto md:z-auto md:h-[calc(100vh-3.5rem)]" :class="drawerClass" @keydown.escape.window="close">
+  {{/* On a phone the rail is a drawer over the bar, so it carries its own way
+       shut. */}}
+  <div class="flex items-center justify-end px-4 pt-4 md:hidden">
+    <button type="button" @click="close" aria-label="{{ t "Close menu" }}" class="grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink">{{icon "x" "size-5"}}</button>
+  </div>
+  {{/* One flat list of destinations — no titles, no rules. The row you are in
+       opens its subpages beneath it, so the rail carries the whole path. */}}
+  <nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4">
+    <ul data-verso-nav-rows class="flex flex-col gap-0.5">
+      {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
+    </ul>
   </nav>
-  {{end}}
-  {{/* Security state sits at the navigation seam, not inside one page's content:
-       below the secondary menu when present, in that same top position otherwise. */}}
-  {{if .NoPassword}}
-  <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y border-red-200 bg-red-50 px-8 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-    {{icon "triangle-alert" "size-4 shrink-0 text-red-600 dark:text-red-400"}}
-    <span><span class="font-semibold dark:text-red-400">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
+</aside>
+{{/* A page whose subject is a running stream rather than a document asks for the
+     whole viewport: it fills the height, scrolls inside itself, and runs to the
+     right and bottom edges instead of sitting in the reading measure. The frame
+     hands it that by becoming a column and giving it the leftover height; what
+     goes in it is the page's own business. */}}
+<main class="min-w-0 flex-1{{if eq .Width "full"}} flex h-[calc(100vh-3.5rem)] min-h-0 flex-col{{end}}">
+  {{/* Subpages are the rail's business — the active row opens them beneath
+       itself, so a page's own depth is read in one place and the content area
+       starts at the content. */}}
+  {{/* Security state sits at the navigation seam, not inside one page's content. */}}
+  {{if and .NoPassword (not .Overview)}}
+  <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 text-sm text-crimson-deep">
+    {{icon "triangle-alert" "size-4 shrink-0 text-crimson"}}
+    <span><span class="font-semibold">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
   </div>
   {{else if .Banner}}
   <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y px-8 text-sm
-    {{if eq .Banner.Variant "danger"}}border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300
-    {{else if eq .Banner.Variant "warning"}}border-amber-200 bg-amber-50 text-amber-800
-    {{else}}border-sky-200 bg-sky-50 text-sky-800{{end}}">
-    {{if eq .Banner.Variant "danger"}}{{icon "triangle-alert" "size-4 shrink-0 text-red-600 dark:text-red-400"}}
-    {{else if eq .Banner.Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0 text-amber-600"}}
-    {{else}}{{icon "info" "size-4 shrink-0 text-sky-600"}}{{end}}
-    <span>{{if .Banner.Title}}<span class="font-semibold{{if eq .Banner.Variant "danger"}} dark:text-red-400{{end}}">{{.Banner.Title}}</span>{{end}}{{if and .Banner.Title .Banner.Body}} {{end}}{{.Banner.Body}}</span>
+    {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
+    {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
+    {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
+    {{if eq .Banner.Variant "danger"}}{{icon "triangle-alert" "size-4 shrink-0 text-crimson"}}
+    {{else if eq .Banner.Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0 text-marigold"}}
+    {{else}}{{icon "info" "size-4 shrink-0 text-denim"}}{{end}}
+    <span>{{if .Banner.Title}}<span class="font-semibold">{{.Banner.Title}}</span>{{end}}{{if and .Banner.Title .Banner.Body}} {{end}}{{.Banner.Body}}</span>
   </div>
   {{end}}
-  {{/* Mobile top bar: the hamburger opens the drawer. */}}
-  <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
-    <button type="button" @click="toggle" aria-label="{{ t "Open menu" }}" class="grid size-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction">{{icon "menu" "size-5"}}</button>
-    <a href="/" class="text-base font-semibold tracking-tight">Verso</a>
-  </div>
-  {{/* Content width is a per-page preset the page declares (default normal),
-       left-aligned against the rail (no centring — better on wide monitors).
-       The outer width also governs the staged-changes footer: its rules touch
-       the rail on the left and stop at this same page boundary on the right. */}}
-  <div class="verso-page-enter {{if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
+  {{/* The page's frame: 40px of air on every side, and inside it a measure the
+       page declares (default normal). The padding is outside the cap, so the
+       cap is the content's real width rather than a box the padding eats into —
+       a wide page is 1152px of content, which is what every canvas is drawn
+       against. Left-aligned against the rail; no centring, which reads better
+       on a wide monitor. */}}
+  <div{{if eq .Width "full"}} class="flex min-h-0 flex-1 flex-col"{{end}}>
     {{/* pt equals px, so the masthead sits as far from the top edge as from the
-         left one. The bottom padding becomes the natural gap before the footer. */}}
-    <div class="px-8 pt-8 pb-10">
+         left one. The bottom padding becomes the natural gap before the footer.
+         A full page keeps the side and top air for its masthead but never the
+         bottom: what is below the masthead runs to the edge. */}}
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-10{{else if .Overview}}px-4 pt-9 pb-16 sm:px-6 md:px-11{{else}}px-10 pt-10 pb-10{{end}}">
+    <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-[40rem]{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if or .Kicker .Subheading .Display}}
-    {{/* Artifact-style masthead a page opts into: an uppercase kicker (with a live dot),
-         a serif display headline, and a lede. Falls back to the plain heading below. */}}
-    <div class="mb-10">
-      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-emerald-500"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-emerald-600">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
+    {{/* The heading block keeps a 20px gap to the content, with or without a
+         subtitle. Ruled mastheads retain their divider. */}}
+    <div class="{{if .Ruled}}border-b border-rule pb-6{{else}}mb-5{{end}}">
+      {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
+      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
         <div class="min-w-0">
           {{/* A Display masthead's heading is the page's own subject (the device
                name), so it carries no "— <tab>" detail — that suffix labels a
-               section page, and would only wrap a long device name onto its own line. */}}
-          <h1 class="verso-page-heading">{{.Heading}}{{if and .HeadingDetail (not .Display)}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h1>
+               section page, and would only wrap a long device name onto its own line.
+               A toned heading is a message about now, not a place-label: it tints
+               in the tone vocabulary and drops the suffix the same way ("neutral"
+               drops the suffix without a tint). */}}
+          <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Display) (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
           {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
         </div>
         {{if .Modes}}
-        <nav aria-label="{{ t "Page view" }}" class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-gray-700 dark:bg-gray-800">
-          {{range .Modes}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="rounded-md px-3 py-1 text-sm font-medium transition-colors {{if .Active}}bg-white text-slate-900 shadow-sm dark:bg-gray-700 dark:text-gray-100 dark:shadow-none{{else}}text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200{{end}}">{{.Label}}</a>{{end}}
+        {{/* The one segmented tray every switch in the app wears: the view in
+             force filled in the body ink, the rest plain words that darken
+             under the pointer — never the action colour, which is for what
+             leads somewhere. */}}
+        <nav aria-label="{{ t "Page view" }}" class="inline-flex shrink-0 gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
+          {{range .Modes}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex h-7.5 items-center rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">{{.Label}}</a>{{end}}
         </nav>
         {{end}}
         {{if .Action}}{{template "verso-page-action" .Action}}{{end}}
       </div>
     </div>
     {{else if .Heading}}
-    <div class="mb-10 flex flex-wrap items-start justify-between gap-5">
-      <h2 class="text-2xl font-normal tracking-tight">{{.Heading}}{{if .HeadingDetail}}<span class="text-slate-400"> — {{.HeadingDetail}}</span>{{end}}</h2>
-      {{if .Action}}{{template "verso-page-action" .Action}}{{end}}
+    <div class="{{if .Ruled}}border-b border-rule pb-6{{else}}mb-5{{end}}">
+      {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
+      <div class="flex flex-wrap items-start justify-between gap-5">
+        <h2 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h2>
+        {{if .Action}}{{template "verso-page-action" .Action}}{{end}}
+      </div>
     </div>
     {{end}}
     {{/* The flash: the one-shot outcome at the top of the content — a PRG
          confirmation, or a plugin envelope's notice. Coloured by the tone
-         vocabulary; rendered once by the chrome, gone on the next view. */}}
-    {{if .FlashMessage}}
-    <div class="verso-flash mb-6 flex items-center gap-2 rounded-md border px-4 py-3 text-sm {{if eq .FlashVariant "danger"}}border-red-200 bg-red-50 text-red-700 dark:border-red-500/15 dark:bg-red-500/10 dark:text-red-300{{else if eq .FlashVariant "warning"}}border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-300{{else if eq .FlashVariant "info"}}border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300{{else}}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300{{end}}">
-      {{if eq .FlashVariant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else if eq .FlashVariant "warning"}}{{icon "triangle-alert" "size-4 shrink-0"}}{{else if eq .FlashVariant "info"}}{{icon "info" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
-      <span>{{.FlashMessage}}</span>
-    </div>
-    {{end}}
+         vocabulary; rendered once by the chrome, gone on the next view. The
+         partial is shared with the panel that answers its own submission, so
+         an outcome reads the same wherever it lands. */}}
+    {{template "verso-flash" .Flash}}
     <div class="verso-page-body">{{.Body}}</div>
     </div>
-
-    {{/* Staged-changes footer (shell-owned, verso.js "capsule"): it follows
-         the page content in flow. Its top and bottom rules span from the sidebar
-         boundary to the page's right edge, while its controls align with the
-         content padding. It renders from UCI's own stage (ADR-010): the count
-         and review list are the pending `uci changes`, server-rendered; the
-         buttons post to /uci/*. Staging pages show it always (inert when clean);
-         immediate-action pages only when the shared stage holds changes from
-         elsewhere. Apply carries the auto-rollback promise. */}}
-    {{if .ShowCapsule}}
-    <div id="verso-capsule" data-csrf="{{.CSRFToken}}" data-staged-count="{{.Capsule.Count}}"
-      class="verso-capsule mr-8 mb-10 rounded-r-sm border-y border-r border-slate-200 bg-surface-subtle dark:border-gray-700">
-      <div class="relative flex flex-wrap items-center gap-3 px-8 py-5">
-      <button type="button" id="verso-capsule-apply"{{if not .Capsule.Count}} disabled{{end}}
-        class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:pointer-events-none disabled:opacity-40 dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">{{ t "Save & Apply" }}</button>
-      <button type="button" id="verso-capsule-discard"{{if not .Capsule.Count}} disabled{{end}}
-        class="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-950">{{ t "Discard" }}</button>
-      {{if or .Capsule.Count .HasPageForm}}<button type="button" id="verso-capsule-review" aria-expanded="false"{{if not .Capsule.Count}} disabled{{end}}
-        class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 transition-colors enabled:cursor-pointer enabled:hover:text-slate-900 disabled:pointer-events-none dark:text-gray-400 dark:enabled:hover:text-gray-200">
-        <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full {{if .Capsule.Count}}bg-sky-500{{else}}bg-slate-300 dark:bg-gray-600{{end}}"></span>
-        <span id="verso-capsule-text">{{.Capsule.Label}}</span>
-      </button>{{else}}<span class="ml-auto inline-flex items-center gap-2 text-sm text-slate-500 dark:text-gray-400">
-        <span id="verso-capsule-dot" class="size-2 shrink-0 rounded-full bg-slate-300 dark:bg-gray-600"></span>
-        <span id="verso-capsule-text">{{.Capsule.Label}}</span>
-      </span>{{end}}
-      {{if or .Capsule.Count .HasPageForm}}
-      <div id="verso-capsule-list" aria-hidden="true" class="verso-capsule-review absolute bottom-full z-10 rounded-t-sm border border-b-0 border-slate-200 bg-surface-subtle dark:border-gray-700">
-        <div class="flex items-center justify-between gap-4 px-8 pt-3 pb-2">
-          <div id="verso-capsule-list-title" class="text-sm font-semibold text-slate-900 dark:text-gray-100">{{.Capsule.Label}}</div>
-          <button type="button" id="verso-capsule-close" aria-label="{{ t "Close change review" }}" class="grid size-7 shrink-0 place-items-center rounded text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 dark:hover:text-gray-100">
-            {{icon "chevron-down" "size-4"}}
-          </button>
-        </div>
-        <div id="verso-capsule-local-changes" class="hidden px-8 pb-4"></div>
-        {{if .Capsule.Count}}<ul id="verso-capsule-staged-changes" class="verso-drawer-scrollbar max-h-80 space-y-1 overflow-y-auto px-8 pb-4 font-mono text-sm font-medium text-slate-700 dark:text-gray-200">
-          {{range .Capsule.Items}}<li>{{.}}</li>{{end}}
-        </ul>{{end}}
-      </div>
-      {{end}}
-      </div>
     </div>
-    {{end}}
   </div>
+
 </main>
+</div>
+{{/* The outcome layer: where an act made in place says how it went. A page you
+     arrive at says what happened before it at the top, in the flash; an act
+     taken on this page says what just happened here, at the right, under the
+     bar, where the panel it came from has just gone (verso-page.js). The same
+     flash element, the same words and tones; only the place and the lifetime
+     differ. A live region, so the sentence is read aloud as it arrives. */}}
+<div id="verso-outcome" role="status" aria-live="polite" hidden class="verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md">
+  <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
+  <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+</div>
 {{/* Strings the shell's client script writes into the page (verso.js T),
      localized at render — client JS has no translator (ADR-012). */}}
 <script type="application/json" id="verso-i18n">{{.JSStrings}}</script>
-{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP.
-     verso.js registers the shell's Alpine components before Alpine starts. */}}
+{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP. One
+     file per concern, each explaining itself at its top; verso.js is the
+     translator and the Alpine components the others stand on, so it comes first,
+     and all of them come before Alpine — the components have to be registered
+     before it boots. Deferred scripts run in the order they appear here, which is
+     the whole of the ordering this needs: no file calls into another at load. */}}
 <script src="/assets/verso.js" defer></script>
+<script src="/assets/verso-forms.js" defer></script>
+<script src="/assets/verso-tables.js" defer></script>
+<script src="/assets/verso-commit.js" defer></script>
+<script src="/assets/verso-stream.js" defer></script>
+<script src="/assets/verso-listing.js" defer></script>
+<script src="/assets/verso-takeover.js" defer></script>
+<script src="/assets/verso-page.js" defer></script>
+<script src="/assets/verso-system.js" defer></script>
+<script src="/assets/verso-packages.js" defer></script>
 <script src="/assets/htmx.min.js" defer></script>
 <script src="/assets/alpine.csp.min.js" defer></script>
 {{if .Dev}}<script src="/assets/verso-dev.js" defer></script>{{end}}

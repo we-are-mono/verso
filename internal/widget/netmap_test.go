@@ -22,7 +22,7 @@ func TestRenderNetMap(t *testing.T) {
 	for _, want := range []string{
 		"Internet", "Router", "Wi-Fi", "Ethernet",
 		"Fibre · 300/40", "8 devices", "4 devices",
-		"border-emerald-300", // the good source node
+		"border-green-line", // the good source node
 		"<svg", "verso-netants",
 	} {
 		if !strings.Contains(got, want) {

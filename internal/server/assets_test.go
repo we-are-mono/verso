@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package server
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+var scriptTag = regexp.MustCompile(`<script src="(/assets/[^"]+)"`)
+
+// TestEveryScriptThePageAsksForIsServed walks the rendered page for its own script
+// tags and fetches each one. The shell's behaviours are several files, one per
+// concern (ADR-004), and each is named in three places: the page that loads it,
+// the embed directive that ships it, and the stylesheet's source list. A name that
+// falls out of step with any of them fails silently — the browser 404s one file,
+// the console says so to nobody, and whole interactions are simply dead. This is
+// the test that notices.
+func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	if err != nil {
+		t.Fatalf("session: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /: status = %d, want 200", rec.Code)
+	}
+
+	matches := scriptTag.FindAllStringSubmatch(rec.Body.String(), -1)
+	if len(matches) < 8 {
+		t.Fatalf("the page loads %d scripts; the behaviours alone are more than that", len(matches))
+	}
+	seen := make(map[string]bool, len(matches))
+	for _, m := range matches {
+		src := m[1]
+		if seen[src] {
+			t.Errorf("%s is loaded twice", src)
+		}
+		seen[src] = true
+		asset := httptest.NewRequest(http.MethodGet, src, nil)
+		got := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(got, asset)
+		if got.Code != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200 — the page asks for a file nothing serves", src, got.Code)
+		}
+		if got.Body.Len() == 0 {
+			t.Errorf("%s is served empty", src)
+		}
+	}
+
+	// Order. Deferred scripts run in the order the document names them, and two
+	// things depend on that: verso.js defines the T() every behaviour file calls,
+	// and Alpine boots on load and fires alpine:init exactly once, so a component
+	// registered after Alpine is never registered at all.
+	//
+	// verso-boot.js is not in this reckoning: it runs in the head, before the page
+	// paints, because what it does has to happen before anything is drawn.
+	order := make([]string, 0, len(matches))
+	for _, m := range matches {
+		order = append(order, m[1])
+	}
+	at := func(src string) int {
+		for i, s := range order {
+			if s == src {
+				return i
+			}
+		}
+		return -1
+	}
+	core, alpine := at("/assets/verso.js"), at("/assets/alpine.csp.min.js")
+	if core < 0 {
+		t.Fatal("the page does not load verso.js")
+	}
+	if alpine < 0 {
+		t.Fatal("the page does not load Alpine")
+	}
+	behaviour := func(src string) bool {
+		return strings.HasPrefix(src, "/assets/verso-") &&
+			src != "/assets/verso-boot.js" && src != "/assets/verso-dev.js"
+	}
+	for i, src := range order {
+		if behaviour(src) && i < core {
+			t.Errorf("%s loads before verso.js, whose T() it calls", src)
+		}
+		if (behaviour(src) || src == "/assets/verso.js") && i > alpine {
+			t.Errorf("%s loads after Alpine; a component it registers would never be registered", src)
+		}
+	}
+	// And the split is real: the concerns are separate files, not one again.
+	var count int
+	for _, src := range order {
+		if behaviour(src) {
+			count++
+		}
+	}
+	if count < 5 {
+		t.Errorf("the page loads %d behaviour files beside verso.js; the concerns are more separate than that", count)
+	}
+}
+
+// TestEveryBehaviourFileIsEmbedded is the other half: a file on disk that nothing
+// ships is a behaviour that works in a dev session and is missing from the binary.
+func TestEveryBehaviourFileIsEmbedded(t *testing.T) {
+	onDisk, err := os.ReadDir("assets")
+	if err != nil {
+		t.Skipf("asset directory not readable: %v", err)
+	}
+	for _, entry := range onDisk {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasPrefix(name, "verso") || !strings.HasSuffix(name, ".js") {
+			continue
+		}
+		if _, err := scriptFS.ReadFile("assets/" + name); err != nil {
+			t.Errorf("%s is on disk but not embedded: %v", name, err)
+		}
+	}
+}

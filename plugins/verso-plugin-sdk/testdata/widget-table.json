@@ -3,7 +3,7 @@
   "style": "flat",
   "title": "Zones",
   "detail": "4 zones · 2 forwardings",
-  "condensed": true,
+  "dense": true,
   "align": "top",
   "reorder_config": "firewall",
   "reorder_label": "Rule order",
@@ -13,7 +13,8 @@
     },
     {
       "label": "Zone",
-      "kind": "name"
+      "kind": "name",
+      "width": "12rem"
     },
     {
       "label": "Address",
@@ -43,6 +44,9 @@
     },
     {
       "kind": "pill"
+    },
+    {
+      "kind": "actions"
     }
   ],
   "rows": [
@@ -50,10 +54,15 @@
       "id": "cfg02zone",
       "key": "zone:lan",
       "group": {
-        "label": "LAN → Router",
-        "chain": "input_lan",
-        "count": 2
+        "key": "input_lan",
+        "label": "LAN",
+        "to": "Router",
+        "tally": "2 rules"
       },
+      "tags": [
+        "ipv4",
+        "ipv6"
+      ],
       "cells": [
         {},
         {
@@ -103,6 +112,21 @@
         {
           "button": "Edit",
           "disabled": true
+        },
+        {
+          "actions": [
+            {
+              "icon": "square-pen",
+              "title": "Edit",
+              "href": "/zones/lan/edit"
+            },
+            {
+              "icon": "power-off",
+              "title": "Disable lan",
+              "name": "cfg02zone",
+              "value": "off"
+            }
+          ]
         }
       ],
       "drawer": {
@@ -129,6 +153,7 @@
     },
     {
       "id": "cfg03zone",
+      "muted": true,
       "cells": [
         {},
         {
@@ -165,11 +190,13 @@
         {
           "button": "Edit",
           "disabled": true
-        }
+        },
+        {}
       ]
     }
   ],
   "drawer_label": "Edit",
   "drawer_icon": "pencil",
-  "empty_text": "No zones yet."
+  "empty_text": "No zones yet.",
+  "note": "Source rewrites are not listed here."
 }

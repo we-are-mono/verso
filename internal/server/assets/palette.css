@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * The palette, and nothing else. Every colour Verso paints is named here once,
+ * transcribed from Palette.dc.html in the Designs repo beside this one — the canvas is the source of truth
+ * and this file is its transcription, so a value changes there first.
+ *
+ * Five families, one rule each:
+ *
+ *   Sand      the ground. Hairlines, surfaces and ink. Carries no meaning, so
+ *             nothing on the page reads into it.
+ *   Denim     the action colour. It means act on this, or this changed.
+ *             Nothing else is denim.
+ *   Green     up, healthy, accept.
+ *   Marigold  worth a look — a real trade-off, not an alarm.
+ *   Crimson   down, invalid, rejected.
+ *   Amethyst  the second series on a graph. One job, and it is not a verdict.
+ *
+ * Each of the four hues carries four steps with fixed jobs: the bare name is the
+ * full-chroma mark, -deep is the dark step that carries words, -line is its
+ * hairline and -soft its ground. Two rules hold the whole thing together:
+ *
+ *   A hue at full chroma is a MARK — a dot, a border, a line, a fill behind
+ *   white. It never sets type. The -deep step is the one that carries words,
+ *   and only on its own -soft ground.
+ *
+ *   Below 4.5 : 1 against the page ground nothing carries words. That floor
+ *   rules out `faint` and `glyph` for text, and every bare hue but amethyst.
+ *
+ * Contrast figures below are against the page ground (#faf9f7) unless stated.
+ */
+
+@theme {
+  /*
+   * Sand — hue ~80°, chroma under .012. Eleven steps, each with one job, so a
+   * surface is chosen by what it is rather than by how dark it looks.
+   */
+  --color-ground: #faf9f7; /* the page, and every card */
+  --color-quiet: #f5f2ec; /* every quiet surface — bands, the commit bar, drop zones, chips, row hover */
+  --color-mid: #ece8e0; /* the only mid ground: the gateway card, and every icon-button hover */
+  --color-rule: #e4e0d8; /* hairlines inside a card */
+  --color-rule-strong: #d2ccc2; /* hairlines between sections, and every input border */
+  --color-inert: #c9c3b8; /* a switch track when off, an empty port */
+  --color-sand-5: #c1bab0; /* the waiting mark's parked packets */
+  --color-faint: #a09a8e; /* decorative icons, the breadcrumb slash — 2.7 : 1, never text */
+  --color-glyph: #8b857a; /* action icons, tree lines, resting dots — 3.5 : 1, never text */
+  --color-meta: #6f6a60; /* kickers, meta, units — 5.2 : 1, and 4.4 on mid */
+  --color-body: #5c574f; /* body copy, and every label on a card — 6.8 : 1, and 5.7 on mid */
+  --color-ink: #1b1917; /* headings, values, a switch when on — 16.1 : 1 */
+
+  /* Denim — L 50, C .11, H 254°, sand's near-complement. */
+  --color-denim: #3568a8; /* primary fill, links and focus — 5.0 : 1 */
+  --color-denim-deep: #285184; /* the same one step darker, for hover and for focus rings — 7.3 : 1 */
+  --color-denim-line: #cbd8e6; /* chip hairlines, link underlines, a progress track */
+  --color-denim-soft: #e8eef5; /* selected rows, chip fill, secondary button hover */
+
+  /* Green — L 58, C .13, H 164°. */
+  --color-green: #0e9b6e; /* state dots, the accept chip's mark — 3.1 : 1, marks only */
+  --color-green-deep: #066b4b; /* 6.0 : 1 on green-soft */
+  --color-green-line: #b3ddcb;
+  --color-green-soft: #e4f2ec; /* the accept chip, a confirmation band */
+
+  /* Marigold — L 76, C .155, H 78°. */
+  --color-marigold: #f0a419; /* warning dots, a caveat band's mark — 1.9 : 1, marks only */
+  --color-marigold-deep: #96590a; /* 4.9 : 1 on marigold-soft */
+  --color-marigold-line: #f5d494;
+  --color-marigold-soft: #fdf0d4; /* caveat bands — the large soft areas */
+
+  /* Crimson — L 58, C .18, H 26°. */
+  --color-crimson: #d63b3b; /* no-link dots, an errored field's border — 4.0 : 1, marks only */
+  --color-crimson-deep: #9e2222; /* error text, a rolled-back state — 7.0 : 1 */
+  --color-crimson-line: #f0c2c2;
+  --color-crimson-soft: #fbe9e9; /* validation errors, the alarm */
+
+  /*
+   * Amethyst — L 56, C .16, H 305°. The one accent that clears the 4.5 : 1
+   * floor and could carry words. It stays a mark anyway, so all five families
+   * behave alike.
+   */
+  --color-amethyst: #8b52be; /* the upload series — line, fill and legend — 4.9 : 1 */
+  --color-amethyst-deep: #6d3d99; /* 6.8 : 1 on amethyst-soft */
+  --color-amethyst-line: #e3d1f0;
+  --color-amethyst-soft: #f4ebfa; /* the upload area's fill */
+}

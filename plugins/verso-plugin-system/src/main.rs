@@ -107,10 +107,7 @@ fn post(_request: &Request, form: &Form) -> Envelope {
     if !ntp_enabled {
         result = result.with_apply(vec![ApplyAction {
             name: "set-system-time".into(),
-            args: BTreeMap::from([
-                ("datetime".into(), datetime),
-                ("timezone".into(), timezone),
-            ]),
+            args: BTreeMap::from([("datetime".into(), datetime), ("timezone".into(), timezone)]),
         }]);
     }
     result
@@ -193,6 +190,8 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
     };
 
     let compact = |children: Vec<Widget>| Widget::Stack {
+        flush: Default::default(),
+
         width: "compact".into(),
         compact: false,
         inline: false,
@@ -213,6 +212,10 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
     );
 
     let region = Widget::Section {
+        anchor: Default::default(),
+        kicker: Default::default(),
+        hairline: Default::default(),
+
         title: "Time and region".into(),
         sub: "Used for logs, schedules, certificates, and every time shown by the router.".into(),
         meta: now_display,
@@ -238,6 +241,10 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
     // and the hand-set fallback when nobody is. The timezone above is the fact a
     // person came for, so this region belongs to the advanced reading (ADR-015).
     let sync = Widget::Section {
+        anchor: Default::default(),
+        kicker: Default::default(),
+        hairline: Default::default(),
+
         title: "Time synchronization".into(),
         sub: "Keep the clock accurate automatically using trusted time servers.".into(),
         meta: "Last synchronization not reported".into(),
@@ -248,6 +255,9 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
         control: None,
         children: vec![
             Widget::Conditional {
+        key: Default::default(),
+        help: Default::default(),
+
                 name: "ntp_enabled".into(),
                 label: "Set the time automatically".into(),
                 checked: values.ntp_enabled,
@@ -259,6 +269,14 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
                     "Servers are tried in order; leave several so time still works if one is unavailable.",
                 )])],
                 otherwise: vec![compact(vec![Widget::Field {
+        key: Default::default(),
+        tip: Default::default(),
+        source: Default::default(),
+        unit: Default::default(),
+        pair: Default::default(),
+        remove: Default::default(),
+        style: Default::default(),
+
                     name: "datetime".into(),
                     label: "Date and time".into(),
                     kind: "datetime-local".into(),
@@ -280,6 +298,8 @@ fn page(values: Facts, timezone_error: &str, datetime_error: &str) -> Envelope {
     Envelope::page(
         "System",
         Widget::Form {
+            note: Default::default(),
+
             style: "page".into(),
             submit: String::new(),
             error: String::new(),

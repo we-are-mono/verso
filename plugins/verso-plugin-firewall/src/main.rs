@@ -49,10 +49,8 @@ fn get(request: &Request) -> Envelope {
         Route::EditRule(section) => editor::edit(&request.snapshot, &model, &section)
             .unwrap_or_else(|| editor::missing(&model, &counters)),
         Route::NewRedirect => redirect_editor::blank(&model),
-        Route::EditRedirect(section) => {
-            redirect_editor::edit(&request.snapshot, &model, &section)
-                .unwrap_or_else(|| redirect_editor::missing(&model, &counters))
-        }
+        Route::EditRedirect(section) => redirect_editor::edit(&request.snapshot, &model, &section)
+            .unwrap_or_else(|| redirect_editor::missing(&model, &counters)),
     }
 }
 
@@ -270,7 +268,11 @@ mod tests {
     fn an_unpublished_sub_path_answers_with_the_rules_listing() {
         for path in ["/nowhere", "/zones/lan", ""] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
-            assert_eq!(listing(&body, "Traffic rules")["title"], "Traffic rules", "{path}");
+            assert_eq!(
+                listing(&body, "Traffic rules")["title"],
+                "Traffic rules",
+                "{path}"
+            );
         }
     }
 
@@ -302,7 +304,10 @@ mod tests {
             .as_array()
             .expect("rows")
             .clone();
-        let ping = rows.iter().find(|row| row["id"] == "allow_ping").expect("row");
+        let ping = rows
+            .iter()
+            .find(|row| row["id"] == "allow_ping")
+            .expect("row");
         assert_eq!(ping["cells"][8], serde_json::json!({"name": "allow_ping"}));
 
         let on = answer("/", "block_telnet=on");
@@ -355,8 +360,8 @@ mod tests {
             snapshot: Snapshot::from_value(json!({"firewall": {}, "network": {}})),
             ubus: Ubus::from_value(Value::Null),
         };
-        let body =
-            serde_json::to_value(post(&request, &Form::parse("drop_invalid=on"))).expect("serialize");
+        let body = serde_json::to_value(post(&request, &Form::parse("drop_invalid=on")))
+            .expect("serialize");
         assert_eq!(
             body["commit"],
             serde_json::json!([{
@@ -414,7 +419,11 @@ mod tests {
         for path in ["/rules", "/rules/"] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], "Firewall", "{path}");
-            assert_eq!(listing(&body, "Traffic rules")["title"], "Traffic rules", "{path}");
+            assert_eq!(
+                listing(&body, "Traffic rules")["title"],
+                "Traffic rules",
+                "{path}"
+            );
         }
     }
 
@@ -434,8 +443,8 @@ mod tests {
 
     #[test]
     fn a_port_forward_sub_path_opens_that_forwards_editor() {
-        let body = serde_json::to_value(get(&request("/port-forwards/https_to_nas")))
-            .expect("serialize");
+        let body =
+            serde_json::to_value(get(&request("/port-forwards/https_to_nas"))).expect("serialize");
         assert_eq!(body["title"], "Edit port forward");
         assert_eq!(body["subheading"], "HTTPS-to-NAS");
 

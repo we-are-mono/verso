@@ -37,8 +37,11 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
         page::filter("Filter — zone, protocol, port, comment…"),
         Widget::section("Traffic rules", SECTION_SUB, vec![table(model, counters)]),
     ];
-    page::envelope(SUBHEADING, Widget::stack(children))
-        .with_action("New rule", &page::new_rule_href(), "plus")
+    page::envelope(SUBHEADING, Widget::stack(children)).with_action(
+        "New rule",
+        &page::new_rule_href(),
+        "plus",
+    )
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -56,6 +59,8 @@ fn columns() -> Vec<TableColumn> {
     ]
     .into_iter()
     .map(|(label, kind)| TableColumn {
+        width: Default::default(),
+
         label: label.into(),
         kind: kind.into(),
     })
@@ -70,19 +75,30 @@ fn table(model: &Firewall, counters: &Counters) -> Widget {
             let mut row = row(rule, counters);
             if position == 0 {
                 row.group = Some(TableGroup {
+                    key: Default::default(),
+                    to: Default::default(),
+                    add_label: Default::default(),
+                    add_href: Default::default(),
+                    add_panel: Default::default(),
+
                     label: label.clone(),
                     chain: lane.chain.clone(),
-                    count: lane.rules.len() as u32,
+                    tally: format!("{} rules", lane.rules.len()),
                 });
             }
             rows.push(row);
         }
     }
     Widget::Table {
+        add_label: Default::default(),
+        add_href: Default::default(),
+        note: Default::default(),
+        stream: Default::default(),
+
         style: String::new(),
         title: String::new(),
         detail: String::new(),
-        condensed: false,
+        dense: false,
         align: String::new(),
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
@@ -96,6 +112,12 @@ fn table(model: &Firewall, counters: &Counters) -> Widget {
 
 fn row(rule: &Rule, counters: &Counters) -> TableRow {
     TableRow {
+        expanded: Default::default(),
+        depth: Default::default(),
+        muted: Default::default(),
+        tags: Default::default(),
+        panel: Default::default(),
+
         id: rule.section.clone(),
         key: String::new(),
         group: None,
@@ -207,7 +229,14 @@ mod tests {
                 (
                     group["label"].as_str().unwrap_or_default().to_string(),
                     group["chain"].as_str().unwrap_or_default().to_string(),
-                    group["count"].as_u64().unwrap_or_default(),
+                    group["tally"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or_default()
+                        .parse::<u64>()
+                        .unwrap_or_default(),
                 )
             })
             .collect();
@@ -221,11 +250,7 @@ mod tests {
                     "forward_wan".to_string(),
                     2
                 ),
-                (
-                    "Guest → LAN".to_string(),
-                    "forward_guest".to_string(),
-                    1
-                ),
+                ("Guest → LAN".to_string(), "forward_guest".to_string(), 1),
             ]
         );
         // Every rule is in exactly one lane, and a lane's run is contiguous.
@@ -277,7 +302,9 @@ mod tests {
             "adding a rule is the page's one doorway, not a control inside it"
         );
         assert!(
-            fixture::section(&body, "Traffic rules").get("control").is_none(),
+            fixture::section(&body, "Traffic rules")
+                .get("control")
+                .is_none(),
             "the heading of the listing carries no second Add"
         );
         let table = table_of(&body);
@@ -336,7 +363,10 @@ mod tests {
             serde_json::json!([{"kind": "device", "label": "10.0.31.213"}])
         );
         assert_eq!(printer["cells"][3]["text"], "tcp/udp");
-        assert_eq!(printer["cells"][4], serde_json::json!({"text": "—", "muted": true}));
+        assert_eq!(
+            printer["cells"][4],
+            serde_json::json!({"text": "—", "muted": true})
+        );
     }
 
     #[test]
@@ -347,8 +377,14 @@ mod tests {
             .iter()
             .find(|row| row["id"] == "block_telnet")
             .expect("row");
-        assert_eq!(telnet["cells"][5], serde_json::json!({"text": "drop", "variant": "danger"}));
-        assert_eq!(telnet["cells"][8], serde_json::json!({"name": "block_telnet"}));
+        assert_eq!(
+            telnet["cells"][5],
+            serde_json::json!({"text": "drop", "variant": "danger"})
+        );
+        assert_eq!(
+            telnet["cells"][8],
+            serde_json::json!({"name": "block_telnet"})
+        );
     }
 
     #[test]

@@ -25,11 +25,14 @@ import (
 // CSS properties but not inside SVG attributes, so a .verso-chart-* class carries the
 // palette while geometry (viewBox, d, cx/cy) stays on the element.
 type Chart struct {
-	Series []ChartSeries `json:"series"` // 1–2 series, drawn back to front
-	Size   string        `json:"size"`   // "full" (hero) | "panel" (fixed-height detail) | "spark" (compact, the default)
-	Max    float64       `json:"max"`    // fixed top of scale; 0 auto-scales to the data
-	Label  string        `json:"label"`  // accessible description of the whole plot
-	Idle   bool          `json:"idle"`   // draw calm grey — a quiet or empty source
+	// Notebook is the shell overview's edge-to-edge plot treatment. It reuses
+	// the same series, scale and live renderer; plugin charts keep their layout.
+	Notebook bool          `json:"-"`
+	Series   []ChartSeries `json:"series"` // 1–2 series, drawn back to front
+	Size     string        `json:"size"`   // "full" (hero) | "panel" (fixed-height detail) | "spark" (compact, the default)
+	Max      float64       `json:"max"`    // fixed top of scale; 0 auto-scales to the data
+	Label    string        `json:"label"`  // accessible description of the whole plot
+	Idle     bool          `json:"idle"`   // draw calm grey — a quiet or empty source
 	// Name is a stable handle for a live chart: the rendered SVG carries it
 	// (plus per-series role hooks) so the shell's client script can stream
 	// fresh series into the drawn paths. A nameless chart is static.
@@ -88,6 +91,7 @@ func chartDimsFor(size string) chartDims {
 }
 
 type chartView struct {
+	Notebook bool
 	Label    string
 	Name     string // live handle (data-verso-chart), empty for a static chart
 	Class    string // size class on the svg root: verso-chart--full | verso-chart--panel | verso-chart--spark
@@ -147,6 +151,9 @@ type chartSeriesView struct {
 
 func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	dims := chartDimsFor(c.Size)
+	if c.Notebook {
+		dims.H, dims.Pad, dims.Dot, dims.Grid = 240, 0, 0, false
+	}
 
 	// Scale to the fixed Max, or auto-scale to the tallest point across every series
 	// with a little headroom so the peak never touches the top. Never divide by zero.
@@ -173,7 +180,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		class = "verso-chart--panel"
 	}
 
-	view := chartView{Label: c.Label, Name: c.Name, Class: class, W: dims.W, H: dims.H, Stretch: c.Size == "panel"}
+	view := chartView{Notebook: c.Notebook, Label: c.Label, Name: c.Name, Class: class, W: dims.W, H: dims.H, Stretch: c.Size == "panel"}
 	scaleY := func(v float64) float64 { return dims.H - dims.Pad - (v/max)*(dims.H-2*dims.Pad) }
 	switch {
 	case c.Axis && c.Size == "panel":

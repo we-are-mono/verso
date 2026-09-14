@@ -49,6 +49,16 @@ type restoreState struct {
 }
 
 func (s *Server) handleSystemMaintenance(w http.ResponseWriter, r *http.Request) {
+	// While a firmware upgrade is in flight — or has failed and no one has yet
+	// been shown why — the maintenance area is the takeover, not the ordinary
+	// page: a full-screen, chrome-less surface that holds the person on the one
+	// outcome that matters. Because the branch is server-authoritative, a reload,
+	// a second tab, and the back button all land back here for as long as the job
+	// owns the router; nothing else renders until it lets go.
+	if firmwareTakeoverActive() {
+		s.renderUpgrading(w, r)
+		return
+	}
 	s.renderMaintenance(w, r, http.StatusOK, restoreState{})
 }
 
@@ -71,79 +81,92 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		log.Printf("verso: maintenance: system info unavailable: %v", systemErr)
 	}
 
-	// A live version string is data and rides verbatim (mono where it is a
-	// build id); a missing one degrades to "Unavailable" — prose the schema
-	// walk localizes, so the fallback drops the machine declarations.
-	verRow := func(label, v string, mono bool) widget.Property {
-		if v == "" {
-			return widget.Property{Label: label, Value: "Unavailable", Emphasis: true}
-		}
-		return widget.Property{Label: label, Value: v, Mono: mono, Verbatim: true, Emphasis: true}
-	}
-	software := &widget.Section{
-		Title: "Software",
-		Sub:   "Firmware updates replace the operating system while keeping your settings.",
-		Children: []widget.Widget{
-			&widget.Properties{Items: []widget.Property{
-				verRow("OpenWrt version", board.Firmware, false),
-				verRow("Verso version", version.Version, false),
-				verRow("Kernel build", board.KernelBuild, true),
-				verRow("Target", board.Target, true),
-			}},
-			s.firmwareModal(firmware, board),
-		},
-	}
-
-	restoreModal := s.restoreModal(restore)
-	backup := &widget.Section{
-		Title: "Backup and restore", Hairline: true,
-		Sub: "Download a copy before a larger change, or restore a setup you saved earlier.",
-		Children: []widget.Widget{
-			&widget.Stack{Inline: true, Children: []widget.Widget{
-				&widget.Link{Style: "button", Label: "Download backup", Icon: "download", Href: "/system/maintenance/backup", Download: "openwrt-backup.tar.gz"},
-				&widget.Text{Markdown: "or"}, restoreModal,
-			}},
-			&widget.Callout{Variant: "neutral", Compact: true, Body: "The backup contains system and plugin settings registered with OpenWrt. It does not execute plugin code."},
-		},
-	}
-
-	// A live uptime composes prose with data, so it localizes at composition
-	// and rides the meta verbatim; the fallback is a whole key the walk owns.
-	uptime := "Unavailable"
-	if systemErr == nil {
-		_, t := s.localize(r)
-		uptime = maintenanceUptime(translatorOrIdentity(t), si.Uptime)
-	}
-	restart := &widget.Section{
-		Title: "Restart", Hairline: true,
-		Sub:       "The connection will disappear briefly; settings and installed software stay unchanged.",
-		MetaLabel: "Running for", Meta: uptime, MetaVerbatim: systemErr == nil, MetaIcon: "clock",
-		Children: []widget.Widget{&widget.Form{Action: "/system/maintenance/restart", NoSubmit: true, Fields: []widget.Widget{
-			&widget.Button{Label: "Restart router", Style: "secondary", Name: "action", Value: "restart"},
-		}}},
-	}
-	factory := &widget.Section{
-		Title: "Factory reset", Hairline: true,
-		Sub: "Erase settings, installed plugins, and local data, then return the router to its first-run state.",
-		Children: []widget.Widget{&widget.Form{Action: "/system/maintenance/factory-reset", NoSubmit: true, Fields: []widget.Widget{
-			&widget.Confirm{Trigger: "Erase everything and reset", Message: "Enter your administrator password to erase all settings, installed plugins, and local data. This cannot be undone.", Confirm: "Factory reset", Cancel: "No, I changed my mind", RequirePassword: true},
-		}}},
-	}
-
-	var body strings.Builder
-	// Updates lead: what the router could install is the question a person opens
-	// this page with. The manual image upload below is the permanent floor under
-	// them — the way in when no server can build for this device.
-	root := &widget.Stack{Children: []widget.Widget{s.updatesSection(r.Context(), sid), software, backup, restart, factory}}
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, root), s.sessionCSRF(r), lang, t); err != nil {
+	tr := translatorOrIdentity(t)
+	var renderErr error
+	render := func(w widget.Widget) template.HTML {
+		var b strings.Builder
+		if err := s.widgets.RenderWithToken(&b, s.reading(r, w), s.sessionCSRF(r), lang, t); err != nil {
+			renderErr = err
+		}
+		return template.HTML(b.String())
+	}
+	verRow := func(label, value string) widget.Property {
+		if value == "" {
+			return widget.Property{Label: label, Value: "Unavailable"}
+		}
+		return widget.Property{Label: label, Value: value, Mono: true, Verbatim: true}
+	}
+	kernel := board.KernelBuild
+	if kernel == "" {
+		kernel = board.Kernel
+	}
+	identity := render(&widget.Properties{Style: "overview-system", Items: []widget.Property{
+		verRow("OpenWrt", board.Firmware), verRow("Verso", version.Version),
+		verRow("Kernel", kernel), verRow("Target", board.Target),
+	}})
+	truth, known := s.updateTruth()
+	checking := updateChecks.running()
+	statusWord := tr("Not checked yet")
+	switch {
+	case checking:
+		statusWord = tr("Checking for updates…")
+	case known && truth.Firmware.State == openwrt.FirmwareCurrent:
+		statusWord = tr("Up to date")
+	case known && truth.Firmware.State == openwrt.FirmwareUpdateAvailable:
+		statusWord = fmt.Sprintf(tr("%s is available"), truth.Firmware.To)
+	case known:
+		statusWord = tr("Firmware check unavailable")
+	}
+	// Details keeps the existing firmware checks, automatic-check setting and
+	// install confirmation together, while the resting page states one verdict.
+	lane := firmwareLane(truth, known, checking, nil).(*widget.Section)
+	detailChildren := []widget.Widget{}
+	if lane.Sub != "" {
+		detailChildren = append(detailChildren, &widget.Text{Markdown: lane.Sub})
+	}
+	detailChildren = append(detailChildren, lane.Children...)
+	detailChildren = append(detailChildren, s.autocheckLane(r.Context(), sid))
+	details := render(&widget.Modal{Title: "Firmware", Trigger: "Details", TriggerStyle: "secondary", Children: detailChildren})
+	manual := s.firmwareModal(firmware, board)
+	manual.Trigger, manual.TriggerStyle, manual.TriggerIcon = "Upload a custom image…", "link", "upload"
+	var notices []widget.Widget
+	if err := updateChecks.takeFailure(); err != nil {
+		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
+	}
+	if err := packageUpgrade.takeFailure(); err != nil {
+		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Package update failed: %v"), err)})
+	}
+	packages := template.HTML("")
+	if len(truth.Packages) > 0 || packageUpgrade.running() {
+		packages = render(softwareLane(truth, known, checking))
+	}
+	uptime := tr("Unavailable")
+	if systemErr == nil {
+		uptime = maintenanceUptime(tr, si.Uptime)
+	}
+	checked := ""
+	if known && !checking {
+		checked = fmt.Sprintf(tr("Checked %s"), localizedAgo(time.Since(truth.CheckedAt), tr))
+	}
+	stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
+	data := struct {
+		Identity, Details, Manual, Restore, Packages, Notices    template.HTML
+		CSRFToken, Status, Checked, Uptime, Hostname, StageLabel string
+		Checking, Staged                                         bool
+	}{identity, details, render(manual), render(s.restoreModal(restore)), packages,
+		render(&widget.Stack{Children: notices}), s.sessionCSRF(r), statusWord,
+		checked, uptime, s.nameplate(r), stage.Label, checking, stage.Count > 0}
+	if renderErr != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{
-		Heading:    "System",
-		Subheading: "Keep this router current, backed up, and recoverable.",
-	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
+	var body strings.Builder
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "maintenance.html.tmpl", data); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {
@@ -413,12 +436,26 @@ func (s *Server) renderRestoreComplete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRestart(w http.ResponseWriter, r *http.Request) {
-	if err := s.backend.Restart(r.Context(), s.sessionSID(r)); err != nil {
-		log.Printf("verso: restart: %v", err)
-		http.Error(w, "Could not restart the router.", http.StatusBadGateway)
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	changes, err := s.backend.UCIChanges(r.Context(), s.sessionSID(r))
+	if err != nil {
+		http.Error(w, tr("Could not check staged changes."), http.StatusBadGateway)
 		return
 	}
-	_, _ = io.WriteString(w, "<!doctype html><title>Restarting</title><p>The router is restarting.</p>")
+	for _, changes := range changes {
+		if len(changes) > 0 {
+			http.Error(w, tr("Review and apply or discard staged changes before rebooting."), http.StatusConflict)
+			return
+		}
+	}
+
+	if err := s.backend.Restart(r.Context(), s.sessionSID(r)); err != nil {
+		log.Printf("verso: restart: %v", err)
+		http.Error(w, tr("Could not restart the router."), http.StatusBadGateway)
+		return
+	}
+	_, _ = fmt.Fprintf(w, "<!doctype html><title>%s</title><p>%s</p>", template.HTMLEscapeString(tr("Restarting")), template.HTMLEscapeString(tr("The router is restarting.")))
 }
 
 func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
@@ -441,7 +478,7 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 }
 
 // maintenanceUptime words the router's uptime. Two flat forms per unit (one,
-// and many), translated at composition — the same plural shape the capsule
+// and many), translated at composition — the same plural shape the staged-changes chip
 // label carries, with the same TODO(i18n plurals) caveat.
 func maintenanceUptime(tr func(string) string, seconds int64) string {
 	if seconds < 0 {

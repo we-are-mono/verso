@@ -19,7 +19,7 @@ import (
 )
 
 // TestI18nAudit is the deterministic untranslated-string report (`make
-// i18n-audit`), not a pass/fail gate: it loads the repo's real catalogs,
+// i18n-audit`): missing translations fail the opt-in audit. It loads the real catalogs,
 // installs a recording bundle (the translators are the one seam that knows a
 // key fell back to English — the i18n-pot extractor is partial by design), and
 // crawls every page reachable from / and /login for each installed language.
@@ -115,6 +115,9 @@ func TestI18nAudit(t *testing.T) {
 		}
 		sort.Strings(miss)
 		t.Logf("[%s] %d untranslated strings reached a render:", code, len(miss))
+		if len(miss) > 0 {
+			t.Errorf("[%s] localization audit found %d missing translations", code, len(miss))
+		}
 		for _, key := range miss {
 			t.Logf("[%s]   MISSING  %s", code, key)
 		}

@@ -21,9 +21,26 @@ type Conditional struct {
 	Checked   bool     // whether the toggle starts on
 	Fields    []Widget // the field-set revealed when the toggle is on
 	Otherwise []Widget // optional field-set revealed when the toggle is off
+	// Key is the option the toggle writes, worn as the mono chip a field's label
+	// wears — the toggle is a form row like any other, so it reads like one.
+	Key string
+	// Help is the line under the toggle: what turning it on means, in the place
+	// a field's helper line sits.
+	Help string
 }
 
 func (*Conditional) isWidget() {}
+
+// LabelView is the gate's left column — the same shape a field's and a switch's
+// is. A gate that looked unlike the fields it gates would read as a different
+// kind of thing, and it is not: it is the setting the rest depend on.
+func (c *Conditional) LabelView() fieldLabel {
+	tip := (&Field{Name: c.Name, Key: c.Key, Help: c.Help}).TipView()
+	return fieldLabel{
+		For: c.Name, Label: c.Label, Key: c.Key,
+		Explained: c.Help != "", Tip: tip,
+	}
+}
 
 func (c *Conditional) children() []Widget {
 	return append(append([]Widget{}, c.Fields...), c.Otherwise...)
@@ -40,6 +57,8 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Name      string            `json:"name"`
 		Label     string            `json:"label"`
+		Key       string            `json:"key"`
+		Help      string            `json:"help"`
 		Checked   bool              `json:"checked"`
 		Fields    []json.RawMessage `json:"fields"`
 		Otherwise []json.RawMessage `json:"otherwise"`
@@ -49,6 +68,8 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 	}
 	c.Name = raw.Name
 	c.Label = raw.Label
+	c.Key = raw.Key
+	c.Help = raw.Help
 	c.Checked = raw.Checked
 	var err error
 	if c.Fields, err = decodeChildren(raw.Fields, "conditional field"); err != nil {
@@ -64,7 +85,9 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 // fields, already rendered to trusted HTML.
 type conditionalView struct {
 	Name, Label string
+	Key, Help   string
 	On          bool
+	LabelView   fieldLabel
 	Fields      []template.HTML
 	Otherwise   []template.HTML
 }
@@ -82,7 +105,7 @@ func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error 
 		return err
 	}
 	return r.execute(out, "conditional.html.tmpl", conditionalView{
-		Name: c.Name, Label: c.Label, On: c.Checked,
-		Fields: fields, Otherwise: otherwise,
+		Name: c.Name, Label: c.Label, Key: c.Key, Help: c.Help, On: c.Checked,
+		LabelView: c.LabelView(), Fields: fields, Otherwise: otherwise,
 	})
 }

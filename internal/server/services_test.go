@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,40 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 )
+
+type serviceRuntimeBackend struct {
+	fakeBackend
+	inventoryReads int
+	runtimeReads   int
+}
+
+func (b *serviceRuntimeBackend) PkgInstalled(ctx context.Context, sid string) ([]openwrt.Package, error) {
+	b.inventoryReads++
+	return b.fakeBackend.PkgInstalled(ctx, sid)
+}
+
+func (b *serviceRuntimeBackend) RCList(ctx context.Context, sid string) (map[string]openwrt.RCState, error) {
+	b.runtimeReads++
+	return b.fakeBackend.RCList(ctx, sid)
+}
+
+func TestServiceActionReadsOnlyRuntimeAndReturnsAffectedCells(t *testing.T) {
+	var calls []string
+	b := &serviceRuntimeBackend{fakeBackend: fakeBackend{access: true, rcInits: &calls,
+		rcStates: map[string]openwrt.RCState{"dnsmasq": {Kind: openwrt.ServiceDaemon, Running: true, PIDs: []int{42}, MemoryBytes: 2048}}}}
+	s := newServer(t, b)
+	res := postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"restart:dnsmasq"}}, "act")
+	if res.Code != 200 || b.inventoryReads != 0 || b.runtimeReads != 1 || len(calls) != 1 {
+		t.Fatalf("status %d, reads %d/%d, calls %v", res.Code, b.inventoryReads, b.runtimeReads, calls)
+	}
+	if strings.Contains(res.Body.String(), "<main") || !strings.Contains(res.Body.String(), `data-verso-row-patch="3,4,5,6"`) {
+		t.Fatalf("not a runtime patch: %s", res.Body.String())
+	}
+	res = postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"stop:firewall"}}, "act")
+	if res.Code != http.StatusConflict || len(calls) != 1 || b.inventoryReads != 0 || b.runtimeReads != 1 {
+		t.Fatalf("refused act fetched or mutated: %d %v", res.Code, calls)
+	}
+}
 
 // TestServicesTable: procd's whole table renders flush-edged (not striped), all
 // facts as columns, no drawers — service/type, providing package, state,
@@ -36,26 +71,26 @@ func TestServicesTable(t *testing.T) {
 
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
-		"Proceed with care",
-		"Stopping or disabling system services can make OpenWrt unstable or inaccessible.",
-		`name="svc:dnsmasq"`,           // a plain service's switch
-		">dnsmasq</td>",                // …and its providing package in the Package column
-		`name="on:demo"`,               // the plugin's switch, manifest-addressed
-		"running for 6h 14m",           // process age belongs with live state
-		">Runtime</th>",                // process facts share one compact column
-		"PID 1842 · 2.3 MiB",           // runtime keeps process identity and aggregate RSS
-		"tabular-nums text-slate-500",  // runtime matches the landing-page RX/TX ink
-		">Restart</th>",                // immediate restart sits before the switch
-		`aria-label="Restart dnsmasq"`, // the icon-only action remains accessible
-		`name="_action" value="restart"`,
-		">Enabled</th>", // the switch names and reflects persistent boot policy
-		"startup task",  // lifecycle type is carried beside the service name
+		"Find a service",
+		`data-verso-tab="daemon"`,
+		`value="stop:dnsmasq"`,           // live stop leaves boot policy alone
+		">dnsmasq</span>",                // …and its providing package in the Package column
+		`value="stop:verso-plugin-demo"`, // the plugin's live action
+		"6h 14m",                         // process age belongs with live state
+		">PID</th>",                      // process facts share one compact column
+		"2.3 MiB",                        // runtime keeps process identity and aggregate RSS
+		"tabular-nums text-meta",         // runtime matches the landing-page RX/TX ink
+		">Memory</th>",                   // immediate restart sits before the switch
+		`aria-label="Restart"`,           // the icon-only action remains accessible
+		`name="_service_action" value="restart:dnsmasq"`,
+		">State</th>",  // the switch names and reflects persistent boot policy
+		"startup task", // lifecycle type is carried beside the service name
 		"subsystem",
-		"runs at boot",                      // one-shot tasks are not misreported as stopped
-		"ring-slate-200 bg-slate-50 px-1.5", // type reuses the homepage topology-chip treatment
-		">verso</td>",                       // APK ownership joins verso-rpcd to the verso package
-		"font-mono text-base font-semibold", // package ownership uses fixed 16px/600 mono type
-		"max-w-6xl",                         // runtime fits without forcing a horizontal scroller
+		"runs at boot",                    // one-shot tasks are not misreported as stopped
+		"border-rule bg-quiet font-mono",  // type reuses the one chip treatment
+		">verso</span>",                   // APK ownership joins verso-rpcd to the verso package
+		"font-mono text-base font-medium", // package ownership uses fixed 16px/500 mono type
+		"max-w-6xl",                       // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
@@ -73,11 +108,11 @@ func TestServicesTable(t *testing.T) {
 	if strings.Contains(body, ">Starts at boot</th>") {
 		t.Error("boot policy must not be duplicated beside the Enabled switch")
 	}
-	if strings.Contains(body, `aria-label="Restart boot"`) {
+	if strings.Contains(body, `name="service" value="boot"`) {
 		t.Error("a completed startup task must not offer a meaningless restart action")
 	}
 	for _, service := range []string{"verso", "verso-rpcd"} {
-		if strings.Contains(body, `aria-label="Restart `+service+`"`) {
+		if strings.Contains(body, `name="service" value="`+service+`"`) {
 			t.Errorf("keep-listed service %s must not offer a restart action", service)
 		}
 	}
@@ -103,19 +138,19 @@ func TestServicesTable(t *testing.T) {
 		t.Fatal("firewall table row malformed")
 	}
 	firewallRow := body[firewallRowAt : firewallRowAt+firewallRowEnd]
-	if strings.Contains(firewallRow, "stopped") {
+	if strings.Contains(firewallRow, ">Stopped<") {
 		t.Errorf("a PID-less subsystem must not be called stopped: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `text-slate-500">—</span>`) {
+	if !strings.Contains(firewallRow, `text-meta">—</span>`) {
 		t.Errorf("an indeterminate State must use the same secondary dash as Runtime: %s", firewallRow)
 	}
 	if strings.Contains(firewallRow, `name="svc:firewall"`) {
 		t.Errorf("firewall must not offer an enabled toggle: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `aria-label="Firewall must remain enabled"`) {
+	if !strings.Contains(firewallRow, `aria-label="Cannot be stopped from here"`) {
 		t.Errorf("firewall must explain its locked enablement: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `aria-label="Restart firewall"`) {
+	if !strings.Contains(firewallRow, `aria-label="Restart"`) {
 		t.Errorf("firewall must remain restartable: %s", firewallRow)
 	}
 	nameAt := strings.Index(body, ">verso-rpcd<")
@@ -127,7 +162,7 @@ func TestServicesTable(t *testing.T) {
 		t.Fatal("verso-rpcd table row start missing")
 	}
 	rowEnd := strings.Index(body[rowAt:], "</tr>")
-	if rowEnd < 0 || !strings.Contains(body[rowAt:rowAt+rowEnd], "running") || strings.Contains(body[rowAt:rowAt+rowEnd], "stopped") {
+	if rowEnd < 0 || !strings.Contains(body[rowAt:rowAt+rowEnd], "Running") || strings.Contains(body[rowAt:rowAt+rowEnd], ">Stopped<") {
 		t.Errorf("successful helper call must show verso-rpcd running: %s", body[rowAt:])
 	}
 }
@@ -153,7 +188,7 @@ func TestServicesStatePills(t *testing.T) {
 		want  string
 	}{
 		{"dead socket", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: true, Running: true}}, false, "not responding"},
-		{"stopped", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: false, Running: false}}, true, "stopped"},
+		{"stopped", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: false, Running: false}}, true, "Stopped"},
 		{"unmanaged", map[string]openwrt.RCState{}, true, "not managed"},
 	}
 	for _, tc := range cases {

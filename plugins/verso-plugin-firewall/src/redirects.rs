@@ -42,8 +42,11 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
             vec![content(&forwards, counters)],
         ),
     ];
-    page::envelope(SUBHEADING, Widget::stack(children))
-        .with_action("Add forward", &page::new_redirect_href(), "plus")
+    page::envelope(SUBHEADING, Widget::stack(children)).with_action(
+        "Add forward",
+        &page::new_redirect_href(),
+        "plus",
+    )
 }
 
 /// content is the listing, or — with nothing to list — the invitation to make
@@ -53,6 +56,8 @@ pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
 fn content(forwards: &[&Redirect], counters: &Counters) -> Widget {
     if forwards.is_empty() {
         return Widget::Empty {
+            variant: Default::default(),
+
             icon: "arrow-right".into(),
             title: EMPTY_TITLE.into(),
             body: EMPTY_BODY.into(),
@@ -79,6 +84,8 @@ fn columns() -> Vec<TableColumn> {
     ]
     .into_iter()
     .map(|(label, kind)| TableColumn {
+        width: Default::default(),
+
         label: label.into(),
         kind: kind.into(),
     })
@@ -87,10 +94,15 @@ fn columns() -> Vec<TableColumn> {
 
 fn table(forwards: &[&Redirect], counters: &Counters) -> Widget {
     Widget::Table {
+        add_label: Default::default(),
+        add_href: Default::default(),
+        note: Default::default(),
+        stream: Default::default(),
+
         style: String::new(),
         title: String::new(),
         detail: String::new(),
-        condensed: false,
+        dense: false,
         align: String::new(),
         reorder_config: String::new(),
         reorder_label: String::new(),
@@ -113,6 +125,12 @@ fn row(redirect: &Redirect, counters: &Counters) -> TableRow {
         vec![redirect.dest_ip.clone()]
     };
     TableRow {
+        expanded: Default::default(),
+        depth: Default::default(),
+        muted: Default::default(),
+        tags: Default::default(),
+        panel: Default::default(),
+
         id: redirect.section.clone(),
         key: String::new(),
         group: None,
@@ -188,7 +206,9 @@ mod tests {
     #[test]
     fn a_config_with_no_port_forwards_invites_the_first_one() {
         let mut model = fixture::firewall();
-        model.redirects.retain(|redirect| !redirect.is_port_forward());
+        model
+            .redirects
+            .retain(|redirect| !redirect.is_port_forward());
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
 
         let section = fixture::section(&body, "Port forwards and redirects");

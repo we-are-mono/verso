@@ -5,6 +5,8 @@ package server
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -31,12 +33,32 @@ func manifest(id string, entries ...plugin.NavEntry) plugin.Manifest {
 	return plugin.Manifest{ID: id, Nav: entries}
 }
 
-// sidebar builds one path's sidebar in the advanced reading, where every section
-// renders — the ordering and liveness rules below are about what the sections
-// contain, not about which reading shows them. The mode cases state their own.
+// sidebar builds one path's rail with no subpages; the rules below describe
+// which rows the rail holds and where they lead.
 func sidebar(s *Server, active string) navModel {
 	return s.buildSidebar(active, widget.ModeAdvanced, identityTranslator,
-		func(string) func(string) string { return identityTranslator })
+		func(string) func(string) string { return identityTranslator }, nil)
+}
+
+// railRow returns the rail row carrying one label.
+func railRow(t *testing.T, model navModel, label string) navRow {
+	t.Helper()
+	for _, row := range model.Rows {
+		if row.Label == label {
+			return row
+		}
+	}
+	t.Fatalf("no rail row labelled %q", label)
+	return navRow{}
+}
+
+// railLabels is the rail's rows in the order it draws them.
+func railLabels(model navModel) []string {
+	labels := make([]string, len(model.Rows))
+	for i, row := range model.Rows {
+		labels[i] = row.Label
+	}
+	return labels
 }
 
 func nav(section, label, path string) plugin.NavEntry {
@@ -131,84 +153,94 @@ func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
 	}
 }
 
-func TestBuildSidebarPromotesSystemAboveAdvanced(t *testing.T) {
+// System is one row, not a group: it targets the first page its frame resolves
+// to and stays lit anywhere inside the domain.
+func TestBuildSidebarSystemIsOneRow(t *testing.T) {
 	system := manifest("system", nav("System", "General", "/"))
 	system.Socket = "/system.sock"
 	s := navServer(system, manifest("net", nav("Network", "Interfaces", "/")))
+
 	model := sidebar(s, "/plugins/system/")
-	if got := model.Basic[len(model.Basic)-1]; got.Label != "System" || got.Href != "/plugins/system/" || !got.Active {
-		t.Fatalf("last basic row = %+v, want active System targeting registered General", got)
+	row := railRow(t, model, "System")
+	if row.Href != "/plugins/system/" || !row.Active {
+		t.Fatalf("System row = %+v, want active System targeting registered General", row)
 	}
-	for _, group := range model.Advanced {
-		if group.Title == "System" {
-			t.Fatal("System must not also appear among the sections")
+	if n := strings.Count(strings.Join(railLabels(model), "\x00"), "System"); n != 1 {
+		t.Fatalf("rail = %v, want System exactly once", railLabels(model))
+	}
+	// The row's own registration must not also stand on its own in the rail.
+	for _, label := range railLabels(model) {
+		if label == "General" {
+			t.Fatal("a System page belongs under the System row, not beside it")
 		}
 	}
 }
 
-// securityRow returns the sidebar's Security row, which sits directly above
-// System among the everyday rows.
-func securityRow(t *testing.T, model navModel) navLink {
-	t.Helper()
-	for _, row := range model.Basic {
-		if row.Icon == "shield" {
-			return row
-		}
-	}
-	t.Fatal("Security row missing from the sidebar")
-	return navLink{}
-}
-
-// Security is an everyday row, not an Advanced group: it targets the firewall
-// plugin's own page and stays lit anywhere inside the domain, the same way
-// System does.
-func TestBuildSidebarPromotesSecurityAboveAdvanced(t *testing.T) {
+// A plugin is its own row, at the label the design gives it: no "Security"
+// domain row stands in front of the firewall.
+func TestBuildSidebarPluginIsItsOwnRow(t *testing.T) {
 	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
 	firewall.Socket = "/firewall.sock"
 	s := navServer(firewall, manifest("net", nav("Network", "Interfaces", "/")))
 
 	model := sidebar(s, "/plugins/firewall/zones")
-	row := securityRow(t, model)
-	if row.Label != "Security" || row.Href != "/plugins/firewall/" || !row.Active {
-		t.Fatalf("Security row = %+v, want active Security targeting the registered page", row)
+	row := railRow(t, model, "Firewall")
+	if row.Href != "/plugins/firewall/" || !row.Active {
+		t.Fatalf("Firewall row = %+v, want the active row targeting the registered page", row)
 	}
-	for _, group := range model.Advanced {
-		if group.Title == "Security" {
-			t.Fatal("Security must not also appear among the sections")
+	for _, label := range railLabels(model) {
+		if label == "Security" {
+			t.Fatal("the rail names destinations, not the sections they were filed under")
 		}
 	}
 }
 
-// With no plugin answering under Security the row leads nowhere rather than to a
-// URL that only reports the plugin is unavailable.
-func TestBuildSidebarSecurityWithoutALivePluginLeadsNowhere(t *testing.T) {
+// A plugin whose socket does not answer contributes no row — the same rule
+// every other registration follows. A dead door is worse than a missing one,
+// and the plugin's own URL still answers and explains itself.
+func TestBuildSidebarDropsARowWithoutALivePlugin(t *testing.T) {
 	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
 	firewall.Socket = "/dead/firewall.sock"
 	s := navServer(firewall)
 	s.probe = func(string) bool { return false }
 
-	model := sidebar(s, "/")
-	if row := securityRow(t, model); row.Href != "#" || row.Active {
-		t.Fatalf("Security row = %+v, want an inert row", row)
-	}
-	// The stopped plugin's own URL still belongs to the domain, so the row lights
-	// up there and the page can explain itself.
-	model = sidebar(s, "/plugins/firewall/")
-	if row := securityRow(t, model); !row.Active {
-		t.Fatalf("Security row = %+v, want Active on a stopped plugin's own URL", row)
+	for _, label := range railLabels(sidebar(s, "/")) {
+		if label == "Firewall" {
+			t.Fatal("a plugin that is not answering must not hold a row in the rail")
+		}
 	}
 }
 
-// basicRow returns the everyday row carrying one icon.
-func basicRow(t *testing.T, model navModel, icon string) navLink {
-	t.Helper()
-	for _, row := range model.Basic {
-		if row.Icon == icon {
-			return row
-		}
+// The rail follows the order the design canvas gives it, whatever order the
+// plugins were discovered in.
+func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
+	dns := manifest("dnsdhcp", nav("Network", "DNS & DHCP", "/"))
+	dns.Socket = "/dns.sock"
+	wireless := manifest("wireless", nav("Network", "Wireless", "/"))
+	wireless.Socket = "/wireless.sock"
+	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall.Socket = "/firewall.sock"
+	// Discovery is id-sorted, so the manifests arrive dnsdhcp, firewall,
+	// wireless — nothing like the order the rail must draw them in.
+	s := navServer(dns, firewall, wireless)
+
+	want := []string{"Overview", "Devices", "Wireless", "Firewall", "DNS & DHCP", "System"}
+	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
+		t.Fatalf("rail = %v, want %v", got, want)
 	}
-	t.Fatalf("no basic row with icon %q", icon)
-	return navLink{}
+}
+
+// A destination the canvas does not name still appears — after the ones it does,
+// so a plugin lands in the rail with no shell change.
+func TestBuildSidebarKeepsUnnamedDestinationsLast(t *testing.T) {
+	extra := manifest("extra", nav("Extra", "Landing", "/"))
+	extra.Socket = "/extra.sock"
+	s := navServer(extra)
+
+	labels := railLabels(sidebar(s, "/"))
+	if labels[len(labels)-1] != "Landing" {
+		t.Fatalf("rail = %v, want the unnamed destination last", labels)
+	}
 }
 
 // The Devices row leads to the roster page and lights up there, carrying the
@@ -216,12 +248,11 @@ func basicRow(t *testing.T, model navModel, icon string) navLink {
 func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 	s := navServer()
 	s.neighbors = testNeighbors
-	model := sidebar(s, devicesPath)
-	row := basicRow(t, model, "devices")
+	row := railRow(t, sidebar(s, devicesPath), "Devices")
 	if row.Href != devicesPath || !row.Active || row.Detail != "2" {
 		t.Fatalf("Devices row = %+v, want the active roster row counting both kernel-vouched devices", row)
 	}
-	if elsewhere := basicRow(t, sidebar(s, "/"), "devices"); elsewhere.Active {
+	if elsewhere := railRow(t, sidebar(s, "/"), "Devices"); elsewhere.Active {
 		t.Errorf("Devices row = %+v, want inactive away from the roster", elsewhere)
 	}
 }
@@ -229,19 +260,37 @@ func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 // A box that cannot count its devices shows the row without a number rather
 // than an invented or stale one.
 func TestBuildSidebarDevicesRowDegradesWithoutACount(t *testing.T) {
-	model := sidebar(navServer(), "/")
-	if row := basicRow(t, model, "devices"); row.Detail != "" {
+	if row := railRow(t, sidebar(navServer(), "/"), "Devices"); row.Detail != "" {
 		t.Fatalf("Devices row = %+v, want no detail when the count is unavailable", row)
 	}
 }
 
-// Every everyday row leads to a page that exists — the Family placeholder is
-// gone, and its icon with it.
-func TestBuildSidebarHasNoFamilyRow(t *testing.T) {
+// Every rail row leads to a page that exists — no placeholders.
+func TestBuildSidebarHasNoPlaceholderRows(t *testing.T) {
 	model := sidebar(navServer(), "/")
-	for _, row := range model.Basic {
-		if row.Label == "Family" || row.Icon == "users" {
-			t.Fatalf("the Family placeholder row should be gone: %+v", row)
+	for _, row := range model.Rows {
+		if row.Label == "Family" || row.Href == "#" || row.Href == "" {
+			t.Fatalf("a rail row leads nowhere: %+v", row)
+		}
+	}
+}
+
+// Only the row you are in opens its subpages: the shell learns a plugin's pages
+// from the envelope it just rendered, so it can speak for that page and no other.
+func TestBuildSidebarOpensOnlyTheActiveRow(t *testing.T) {
+	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall.Socket = "/firewall.sock"
+	s := navServer(firewall)
+	pages := []pageTab{{Label: "Rules", Href: "/plugins/firewall/", Active: true}, {Label: "Zones", Href: "/plugins/firewall/zones"}}
+
+	model := s.buildSidebar("/plugins/firewall/", widget.ModeAdvanced, identityTranslator,
+		func(string) func(string) string { return identityTranslator }, pages)
+	for _, row := range model.Rows {
+		switch {
+		case row.Label == "Firewall" && len(row.Children) != 2:
+			t.Fatalf("the active row should open its subpages, got %+v", row.Children)
+		case row.Label != "Firewall" && len(row.Children) != 0:
+			t.Fatalf("row %q opened subpages that are not its own: %+v", row.Label, row.Children)
 		}
 	}
 }
@@ -255,8 +304,8 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	s.probe = func(path string) bool { return path == "/live/system.sock" }
 
 	pages := s.systemPages("/plugins/system/", widget.ModeAdvanced)
-	if len(pages) != 6 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
-		t.Fatalf("System pages = %+v, want live General followed by five shell pages", pages)
+	if len(pages) != 7 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
+		t.Fatalf("System pages = %+v, want live General followed by six shell pages", pages)
 	}
 	for _, page := range pages {
 		if page.Label == "VPN" {

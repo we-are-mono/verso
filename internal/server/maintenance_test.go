@@ -37,15 +37,17 @@ func maintenanceSession(t *testing.T, srv *Server) (string, session) {
 func TestMaintenanceShowsFullBuildFacts(t *testing.T) {
 	srv := newServer(t, fakeBackend{
 		board: openwrt.Board{
-			Firmware:    "OpenWrt 25.12.4 r32933-4ccb782af7",
-			KernelBuild: "Linux version 6.12.101 (builder@host) #1 SMP PREEMPT_DYNAMIC",
+			Firmware: "OpenWrt 25.12.4 r32933-4ccb782af7",
+			// The condensed shape Board() returns: release + build stamp, no
+			// builder address, no compiler pedigree.
+			KernelBuild: "6.12.101 #1 SMP PREEMPT_DYNAMIC",
 			Target:      "qualcommax/ipq807x",
 		},
 	})
 	rr := get(t, srv, "/system/maintenance")
 	for _, want := range []string{
 		"OpenWrt 25.12.4 r32933-4ccb782af7",
-		"Linux version 6.12.101 (builder@host) #1 SMP PREEMPT_DYNAMIC",
+		"6.12.101 #1 SMP PREEMPT_DYNAMIC",
 		"qualcommax/ipq807x", "Download backup", "Restore a backup",
 		"Drop an OpenWrt backup here", `x-show="idle"`, `data-verso-autosubmit`,
 		`accept=".tar.gz,.tgz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar"`,
@@ -54,12 +56,12 @@ func TestMaintenanceShowsFullBuildFacts(t *testing.T) {
 			t.Errorf("Maintenance page missing %q", want)
 		}
 	}
-	// Maintenance is a page of immediate acts — each button names its own verb —
-	// with exactly one exception: the automatic-check setting stages like every
-	// other setting and so carries the page's only Save. A second one means an
-	// immediate action grew a stray generated submit.
-	if n := strings.Count(rr.Body.String(), ">Save</button>"); n != 1 {
-		t.Errorf("Maintenance rendered %d Save buttons, want only the automatic-check setting's", n)
+	// Maintenance is a page of immediate acts — each button names its own verb.
+	// The automatic-check setting stages through its self-posting switch, so no
+	// Save button belongs anywhere; one appearing means an immediate action
+	// grew a stray generated submit.
+	if n := strings.Count(rr.Body.String(), ">Save</button>"); n != 0 {
+		t.Errorf("Maintenance rendered %d Save buttons, want none", n)
 	}
 	if strings.Contains(rr.Body.String(), ">Check backup</button>") {
 		t.Error("Restore should submit on file selection, not require a second button")

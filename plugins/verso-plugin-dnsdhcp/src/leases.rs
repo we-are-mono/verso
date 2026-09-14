@@ -164,8 +164,9 @@ pub fn post(model: &mut Dnsdhcp, leases: &Leases, form: &Form, reserve: &str) ->
         hosts::Saved::Ops(ops, said) => render(model, leases, None, reserve)
             .with_notice(Tone::Success, said)
             .with_commit(ops),
-        hosts::Saved::Refused(refusal) => render(model, leases, Some(&refusal), reserve)
-            .with_notice(Tone::Danger, form::REFUSED),
+        hosts::Saved::Refused(refusal) => {
+            render(model, leases, Some(&refusal), reserve).with_notice(Tone::Danger, form::REFUSED)
+        }
         hosts::Saved::Unknown => {
             render(model, leases, None, reserve).with_notice(Tone::Danger, form::UNKNOWN)
         }
@@ -207,20 +208,21 @@ mod tests {
     fn the_page_watches_rather_than_edits() {
         let body = body(&fixture::leases());
         assert_eq!(body["title"], "DHCP");
-        assert_eq!(body["pages"], serde_json::json!([
-            {"label": "Leases", "path": ""},
-            {"label": "Configuration", "path": "config"}
-        ]));
+        assert_eq!(
+            body["pages"],
+            serde_json::json!([
+                {"label": "Leases", "path": ""},
+                {"label": "Configuration", "path": "config"}
+            ])
+        );
         assert_eq!(body["widget"]["children"][0]["type"], "filter");
         assert_eq!(body["widget"]["children"][1]["title"], "Active leases");
         // No page form: there is nothing on this page to stage.
-        assert!(
-            !body["widget"]["children"]
-                .as_array()
-                .expect("children")
-                .iter()
-                .any(|child| child["type"] == "form")
-        );
+        assert!(!body["widget"]["children"]
+            .as_array()
+            .expect("children")
+            .iter()
+            .any(|child| child["type"] == "form"));
     }
 
     #[test]
@@ -237,7 +239,10 @@ mod tests {
         // A device that offered no name is still called something.
         assert_eq!(rows[1]["cells"][0]["text"], "Device 0e:57");
         // A device with no IPv6 says so rather than showing an empty cell.
-        assert_eq!(rows[1]["cells"][2], serde_json::json!({"text": "—", "muted": true}));
+        assert_eq!(
+            rows[1]["cells"][2],
+            serde_json::json!({"text": "—", "muted": true})
+        );
         // A lease on another network carries that network's chip.
         assert_eq!(rows[3]["cells"][0]["chip"], "guest");
     }
@@ -246,12 +251,18 @@ mod tests {
     fn a_reserved_device_reads_as_reserved_and_offers_nothing_to_open() {
         let rows = rows(&body(&fixture::leases()));
         let nas = &rows[2];
-        assert_eq!(nas["cells"][5], serde_json::json!({"text": "reserved", "variant": "info"}));
+        assert_eq!(
+            nas["cells"][5],
+            serde_json::json!({"text": "reserved", "variant": "info"})
+        );
         assert!(nas.get("drawer").is_none());
 
         // A dynamic lease offers to become one, prefilled from the device.
         let iphone = &rows[0];
-        assert_eq!(iphone["cells"][5], serde_json::json!({"button": "Reserve IP"}));
+        assert_eq!(
+            iphone["cells"][5],
+            serde_json::json!({"button": "Reserve IP"})
+        );
         let fields = &iphone["drawer"]["children"][0]["fields"];
         assert_eq!(iphone["drawer"]["title"], "Reserve address — toms-iphone");
         assert_eq!(iphone["drawer"]["children"][0]["submit"], "Reserve");
@@ -264,15 +275,28 @@ mod tests {
         assert_eq!(fields[3]["value"], "42:e6:ad:ff:b7:af");
         assert_eq!(fields[4]["value"], "10.0.0.142");
         // Reserving is not deleting: the panel carries no confirm.
-        assert_eq!(iphone["drawer"]["children"].as_array().expect("children").len(), 1);
+        assert_eq!(
+            iphone["drawer"]["children"]
+                .as_array()
+                .expect("children")
+                .len(),
+            1
+        );
     }
 
     #[test]
     fn reserving_writes_the_section_and_the_answer_already_reads_it_as_reserved() {
-        let saved = answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
-        assert_eq!(saved["notice"], serde_json::json!({"level": "success", "text": "Address reserved."}));
+        let saved =
+            answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
+        assert_eq!(
+            saved["notice"],
+            serde_json::json!({"level": "success", "text": "Address reserved."})
+        );
         assert_eq!(saved["commit"][0]["type"], "host");
-        assert_eq!(rows(&saved)[0]["cells"][5], serde_json::json!({"text": "reserved", "variant": "info"}));
+        assert_eq!(
+            rows(&saved)[0]["cells"][5],
+            serde_json::json!({"text": "reserved", "variant": "info"})
+        );
     }
 
     // Arriving with a device named opens that device's panel and no other; a MAC
@@ -301,12 +325,16 @@ mod tests {
 
     #[test]
     fn a_refused_reservation_comes_back_open_on_the_device_it_was_about() {
-        let refused = answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.999");
+        let refused =
+            answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.999");
         assert!(refused.get("commit").is_none());
         assert_eq!(refused["notice"]["level"], "danger");
         let rows = rows(&refused);
         assert_eq!(rows[0]["drawer"]["open"], true);
-        assert_eq!(rows[0]["drawer"]["children"][0]["fields"][4]["value"], "10.0.0.999");
+        assert_eq!(
+            rows[0]["drawer"]["children"][0]["fields"][4]["value"],
+            "10.0.0.999"
+        );
         assert!(rows[1]["drawer"].get("open").is_none());
     }
 

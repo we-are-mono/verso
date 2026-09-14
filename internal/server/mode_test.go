@@ -100,67 +100,58 @@ func TestModeSwitchIsCSRFGated(t *testing.T) {
 	}
 }
 
-// TestSidebarShowsOneSwitchInEachReading: the chrome carries exactly one switch,
-// stating the reading the server rendered and offering the other one.
-func TestSidebarShowsOneSwitchInEachReading(t *testing.T) {
+// TestChromeCarriesNoModeSwitch: no reading has a switch in the rail. The mode
+// still exists server-side and still filters page content, but the control that
+// flipped it is gone from the chrome until a design says what it looks like.
+func TestChromeCarriesNoModeSwitch(t *testing.T) {
 	s := newServer(t, fakeBackend{})
 
-	basic := get(t, s, "/").Body.String()
-	for _, want := range []string{
-		`action="/mode"`,
-		`name="mode" value="advanced"`, // the switch offers the other reading
-		`aria-checked="false"`,
-		`name="next" value="/"`,
+	for _, body := range []string{
+		get(t, s, "/").Body.String(),
+		getMode(t, s, "/", widget.ModeAdvanced).Body.String(),
 	} {
-		if !strings.Contains(basic, want) {
-			t.Errorf("basic sidebar switch missing %q", want)
+		for _, unwanted := range []string{`action="/mode"`, `name="mode" value=`, `role="switch"`} {
+			if strings.Contains(body, unwanted) {
+				t.Errorf("the chrome still ships the mode switch: %q", unwanted)
+			}
 		}
-	}
-	advanced := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
-	for _, want := range []string{`name="mode" value="basic"`, `aria-checked="true"`} {
-		if !strings.Contains(advanced, want) {
-			t.Errorf("advanced sidebar switch missing %q", want)
-		}
-	}
-	if n := strings.Count(advanced, `action="/mode"`); n != 1 {
-		t.Errorf("the chrome renders %d mode switches, want exactly one", n)
 	}
 }
 
-// TestSidebarSectionsAreTheAdvancedReading: in basic mode the sections are not
-// collapsed or dimmed — they are not in the markup at all. In advanced mode each
-// entry is an ordinary row: the everyday rows' own anatomy, with a glyph.
-func TestSidebarSectionsAreTheAdvancedReading(t *testing.T) {
+// TestSidebarListsEveryDestinationInEveryReading: with no switch to reveal them,
+// a rail that filtered would be a rail with destinations no one could reach.
+// Each entry is an ordinary row — one anatomy, with an icon and no section title
+// or rule between them.
+func TestSidebarListsEveryDestinationInEveryReading(t *testing.T) {
 	m := demoManifest()
 	m.Nav = []plugin.NavEntry{{Section: "Network", Label: "DNS", Path: "/dns"}}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 
-	// The section band is the title's one appearance in the rail; the word itself
-	// is a column heading elsewhere on the page, so the band is what to look for.
-	const band = `uppercase tracking-wider text-slate-400">Network<`
-	basic := get(t, s, "/").Body.String()
-	for _, unwanted := range []string{band, `href="/plugins/demo/dns"`} {
-		if strings.Contains(basic, unwanted) {
-			t.Errorf("the basic sidebar ships %q, which belongs to the advanced reading", unwanted)
-		}
-	}
-
-	advanced := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
-	for _, want := range []string{
-		band, `href="/plugins/demo/dns"`,
-		// The everyday row's own anatomy — same tile, same label size.
-		`class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2`,
-		`<path d="M12 12V8" />`, // the section's network glyph, from the shell's one icon source
+	for name, body := range map[string]string{
+		"basic":    get(t, s, "/").Body.String(),
+		"advanced": getMode(t, s, "/", widget.ModeAdvanced).Body.String(),
 	} {
-		if !strings.Contains(advanced, want) {
-			t.Errorf("advanced sidebar missing %q", want)
+		for _, want := range []string{
+			`href="/plugins/demo/dns"`,
+			`class="flex items-center gap-3 border-l-2 py-2 pr-6 pl-6`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s sidebar missing %q", name, want)
+			}
+		}
+		nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+		for _, unwanted := range []string{"uppercase", "border-t ", "border-t-"} {
+			if strings.Contains(nav, unwanted) {
+				t.Errorf("%s rail groups its rows with %q; the design has one flat list", name, unwanted)
+			}
 		}
 	}
 }
 
-// TestManifestNavModeFiltersTheSidebar: a plugin may file an entry into one
-// reading (ADR-006), and the shell honours it at tier one.
-func TestManifestNavModeFiltersTheSidebar(t *testing.T) {
+// TestManifestNavModeDoesNotFilterTheSidebar: a plugin may still file an entry
+// into one reading (ADR-006), but with no switch in the chrome the rail lists
+// every entry — a destination the rail hides is a destination with no way in.
+func TestManifestNavModeDoesNotFilterTheSidebar(t *testing.T) {
 	m := demoManifest()
 	m.Nav = []plugin.NavEntry{
 		{Section: "Apps", Label: "Everyday", Path: "/", Mode: widget.ModeBasic},
@@ -169,25 +160,35 @@ func TestManifestNavModeFiltersTheSidebar(t *testing.T) {
 	}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 
-	advanced := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
-	if !strings.Contains(advanced, "Machinery") || !strings.Contains(advanced, "Both") {
-		t.Error("the advanced reading should list the advanced and the untagged entries")
-	}
-	if strings.Contains(advanced, "Everyday") {
-		t.Error("a basic-only entry must not appear in the advanced reading")
+	for name, body := range map[string]string{
+		"basic":    get(t, s, "/").Body.String(),
+		"advanced": getMode(t, s, "/", widget.ModeAdvanced).Body.String(),
+	} {
+		for _, want := range []string{"Everyday", "Machinery", "Both"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s sidebar does not list %q", name, want)
+			}
+		}
 	}
 }
 
-// TestManifestNavIconNamesAShellGlyph: a plugin references an icon by name and
-// ships none; the row draws the shell's own glyph.
-func TestManifestNavIconNamesAShellGlyph(t *testing.T) {
+// Tier 1 draws the shell's destination icons and honors a manifest's choice.
+func TestSidebarDrawsDestinationIcons(t *testing.T) {
 	m := demoManifest()
 	m.Nav = []plugin.NavEntry{{Section: "Apps", Label: "Demo", Path: "/", Icon: "wifi"}}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 
-	body := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
-	if !strings.Contains(body, `<path d="M12 20h.01" />`) {
-		t.Error("the entry's declared Lucide glyph is missing from its row")
+	body := get(t, s, "/").Body.String()
+	nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+	for _, glyph := range []string{
+		string(widget.Icon("house", "size-4 shrink-0 text-ink")),
+		string(widget.Icon("phone", "size-4 shrink-0 text-glyph")),
+		string(widget.Icon("wifi", "size-4 shrink-0 text-glyph")),
+		string(widget.Icon("settings", "size-4 shrink-0 text-glyph")),
+	} {
+		if !strings.Contains(nav, glyph) {
+			t.Errorf("sidebar missing destination icon %s", glyph)
+		}
 	}
 }
 
@@ -277,16 +278,16 @@ func TestHomeConnectionFactsAreTheAdvancedReading(t *testing.T) {
 	}})
 
 	basic := get(t, s, "/").Body.String()
-	if !strings.Contains(basic, "INTERNET") || !strings.Contains(basic, "SECURITY") {
+	if !strings.Contains(basic, "Internet") || !strings.Contains(basic, "Firewall") {
 		t.Error("the basic home page lost the tile strip")
 	}
-	for _, unwanted := range []string{"IPV4", "10.0.0.2/24", "fd00::/56"} {
+	for _, unwanted := range []string{"IPv4", "10.0.0.2/24", "fd00::/56"} {
 		if strings.Contains(basic, unwanted) {
 			t.Errorf("the basic home page ships %q", unwanted)
 		}
 	}
 	advanced := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
-	for _, want := range []string{"INTERNET", "IPV4", "10.0.0.2/24", "IPV6", "fd00::/56"} {
+	for _, want := range []string{"Internet", "IPv4", "10.0.0.2/24", "IPv6", "fd00::/56"} {
 		if !strings.Contains(advanced, want) {
 			t.Errorf("the advanced home page is missing %q", want)
 		}

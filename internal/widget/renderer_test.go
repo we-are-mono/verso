@@ -49,7 +49,7 @@ func TestRenderFormError(t *testing.T) {
 	if !strings.Contains(got, "start port must be") {
 		t.Errorf("form-level error not rendered: %s", got)
 	}
-	if !strings.Contains(got, "red-600") {
+	if !strings.Contains(got, "border-crimson-line bg-crimson-soft") || !strings.Contains(got, "text-crimson-deep") {
 		t.Errorf("form-level error not styled as danger: %s", got)
 	}
 	if strings.Contains(got, "must be <= end") {
@@ -104,7 +104,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6"><div class="mb-4"><h3 class="text-base font-medium text-slate-900">empty</h3></div><div class="space-y-4"></div></section>`
+	want := `<section><div class="mb-5"><h3 class="text-lg font-semibold tracking-tight text-ink">empty</h3></div><div class="space-y-5"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -113,10 +113,10 @@ func TestRenderCardChrome(t *testing.T) {
 func TestRenderCardSubtitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
-	if !strings.Contains(got, `<h3 class="text-base font-medium text-slate-900">Your gateway</h3>`) {
+	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight text-ink">Your gateway</h3>`) {
 		t.Errorf("card title missing:\n%s", got)
 	}
-	if !strings.Contains(got, `<p class="mt-1 text-sm text-slate-500">the back of the box</p>`) {
+	if !strings.Contains(got, `<p class="mt-1 text-sm leading-snug text-body">the back of the box</p>`) {
 		t.Errorf("card subtitle missing or not styled as a subtitle:\n%s", got)
 	}
 }
@@ -125,7 +125,7 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{})
-	want := `<section class="rounded-2xl border border-slate-200 bg-white p-6"><div class="space-y-4"></div></section>`
+	want := `<section><div class="space-y-5"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -141,7 +141,7 @@ func TestRenderCardNestsChild(t *testing.T) {
 	}
 
 	got := render(t, r, card)
-	body := strings.Index(got, `<div class="space-y-4">`)
+	body := strings.Index(got, `<div class="space-y-5">`)
 	table := strings.Index(got, "<table")
 	if body < 0 || table < 0 || table < body {
 		t.Errorf("nested table not rendered inside card body: %s", got)
@@ -211,17 +211,20 @@ func TestRenderBadge(t *testing.T) {
 	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
 	for _, want := range []string{
 		"Connected", "rounded-full",
-		"bg-emerald-50 text-emerald-700 ring-emerald-600/20", // light treatment is unchanged
-		"dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20",
+		"border-green-line bg-green-soft text-green-deep", // light treatment is unchanged
+		"rounded-xs border",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("success badge missing %q in: %s", want, got)
 		}
 	}
-	// An unknown/neutral variant falls back to slate, never leaks the variant name.
+	// An unknown/neutral variant falls back to sand, never leaks the variant
+	// name. A pill with no hue is still a verdict — the firewall's drop — so it
+	// stands a step above the reference chip's quiet ground and keeps its word
+	// in full ink.
 	neutral := render(t, r, &Badge{Variant: "neutral", Text: "Offline"})
-	if !strings.Contains(neutral, "dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20") {
-		t.Errorf("neutral badge should use slate: %s", neutral)
+	if !strings.Contains(neutral, "border-rule-strong bg-mid text-ink") {
+		t.Errorf("neutral badge should use the sand verdict step: %s", neutral)
 	}
 	if strings.Contains(neutral, "size-1.5") {
 		t.Errorf("badge without Dot should not render a dot: %s", neutral)
@@ -239,10 +242,13 @@ func TestRenderHeroSwitch(t *testing.T) {
 	for _, want := range []string{
 		"verso-toggle", // the pure-CSS state scope
 		`type="checkbox"`, `name="vpn_on"`,
-		"Your home VPN is on",         // on headline
-		"Your home VPN is off",        // off headline (CSS hides it while checked)
-		"2 of 3 devices connected",    // meta
-		"peer-checked:bg-emerald-500", // switch reflects state without JS
+		"Your home VPN is on",      // on headline
+		"Your home VPN is off",     // off headline (CSS hides it while checked)
+		"2 of 3 devices connected", // meta
+		// The switch reflects state without JS, and it is on in the same colour
+		// every switch in the app is on in — the action colour, not a second
+		// green that would read as a verdict.
+		"peer-checked:bg-body",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("hero switch missing %q in: %s", want, got)
@@ -294,6 +300,38 @@ func TestRenderTabs(t *testing.T) {
 	two := render(t, r, &Tabs{Tabs: []Tab{{Label: "A"}, {Label: "B"}}})
 	if strings.Contains(got, `name="verso-tabs-1"`) && strings.Contains(two, `name="verso-tabs-1"`) {
 		t.Errorf("two tab groups shared a radio group name: %s", two)
+	}
+}
+
+// TestRenderSegmentedFieldsWearTheOneTray: a segmented pick — one of three
+// verdicts, or the days of a schedule — wears the tray every switch in the app
+// wears: the segment in force filled in the body ink, the rest plain words,
+// never the action colour. Radios and checkboxes underneath, so it posts as
+// the box it replaces.
+func TestRenderSegmentedFieldsWearTheOneTray(t *testing.T) {
+	r := newRenderer(t)
+	pick := render(t, r, &Field{Name: "input", Label: "Traffic to this router", Kind: "select", Style: "segmented", Value: "reject",
+		Options: []Option{{Value: "accept", Label: "accept"}, {Value: "reject", Label: "reject"}, {Value: "drop", Label: "drop"}}})
+	days := render(t, r, &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Values: []string{"mon"},
+		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
+	for _, got := range []string{pick, days} {
+		for _, want := range []string{
+			`<div class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
+			`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white">`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("segmented field missing %q:\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, "bg-denim") {
+			t.Errorf("a selected segment is never the action colour:\n%s", got)
+		}
+	}
+	if !strings.Contains(pick, `type="radio" name="input" value="reject" checked`) {
+		t.Errorf("the verdict in force is the checked radio:\n%s", pick)
+	}
+	if !strings.Contains(days, `type="checkbox" name="days" value="mon" checked`) {
+		t.Errorf("a day in the set is a checked box:\n%s", days)
 	}
 }
 
@@ -372,7 +410,7 @@ func TestRenderWizard(t *testing.T) {
 		t.Errorf("want exactly one checked step radio, got %d: %s", n, got)
 	}
 	// The Continue label on step 1 targets step 2's radio (id ...-1).
-	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-sky-600`) {
+	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium border border-denim bg-denim`) {
 		t.Errorf("Continue label does not target the next step's radio: %s", got)
 	}
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
@@ -394,7 +432,7 @@ func TestRenderDrawer(t *testing.T) {
 		`x-teleport="body"`, // panel escapes the content flow
 		`role="dialog"`,
 		"translate-x-full", // slides in from the right
-		"dark:bg-black/60", // dark overlay stays dark despite the inverted slate palette
+		"bg-ink/18",        // the canvas scrim: ink at 18% over a 2px blur
 		"My Phone",         // trigger + title
 		"<svg",             // qr child rendered in the body
 		"Added",            // text child rendered in the body
@@ -430,6 +468,34 @@ func TestRenderEmpty(t *testing.T) {
 	}
 }
 
+// TestRenderEmptyBodyIsMarkdown: an empty state's one line of reassurance is
+// prose, and prose in this schema is Markdown — the same pass a section's sub
+// gets. It is where a first-run state names the control that ends it, and a
+// literal `**Log matching packets**` on the screen is the schema showing through.
+// The sanitising engine is the same one the raw bridge uses, so an empty state
+// cannot become a way to inject markup.
+func TestRenderEmptyBodyIsMarkdown(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Empty{
+		Icon: "activity", Title: "Nothing is being logged",
+		Body: "Turn on **Log matching packets** on a rule to see verdicts here.",
+	})
+	if !strings.Contains(got, "<strong>Log matching packets</strong>") {
+		t.Errorf("empty body not rendered as Markdown: %s", got)
+	}
+	if strings.Contains(got, "**") {
+		t.Errorf("empty body still shows its own markup: %s", got)
+	}
+	// Markdown emits its own <p>; nesting that inside one would be invalid.
+	if strings.Contains(got, "<p") && strings.Contains(got, "<p><p") {
+		t.Errorf("empty body must not nest paragraphs: %s", got)
+	}
+	unsafe := render(t, r, &Empty{Title: "t", Body: `<script>alert(1)</script>`})
+	if strings.Contains(unsafe, "<script") {
+		t.Errorf("an empty body must never carry markup through: %s", unsafe)
+	}
+}
+
 // TestRenderBadgeLiveDot proves a connected (success) dot gets the live pulse hook,
 // while other dots stay calm.
 func TestRenderBadgeLiveDot(t *testing.T) {
@@ -447,7 +513,7 @@ func TestRenderBadgeLiveDot(t *testing.T) {
 func TestRenderDivider(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Divider{Label: "First-run / empty state"})
-	for _, want := range []string{"First-run / empty state", "bg-slate-200", "my-20"} {
+	for _, want := range []string{"First-run / empty state", "bg-rule", "my-20"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("divider missing %q in: %s", want, got)
 		}
@@ -491,54 +557,6 @@ func TestRenderProperties(t *testing.T) {
 	}
 }
 
-func TestRenderChanges(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Changes{Items: []Change{{
-		Label: "Device name", Previous: "OpenWrt", Next: "Mono Gateway",
-	}}})
-	for _, want := range []string{"Field", "Previous", "New", "Device name", "OpenWrt", "Mono Gateway", `font-mono`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("changes missing %q in: %s", want, got)
-		}
-	}
-}
-
-func TestRenderCompactChanges(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Changes{Compact: true, Items: []Change{{Label: "Timezone", Previous: "UTC", Next: "CET"}}})
-	if !strings.Contains(got, "py-2 first:pt-1.5") {
-		t.Errorf("compact changes should reduce row padding: %s", got)
-	}
-}
-
-func TestRenderGroupedChanges(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Changes{Groups: []ChangeGroup{{
-		Label: "Allow WireGuard", Operation: "Added", Summary: "WAN → Router · UDP · 51820 · Accept", Expanded: true,
-		Values: []ChangeValue{{Label: "Source zone", Value: "WAN"}, {Label: "Action", Value: "Accept"}},
-	}}})
-	for _, want := range []string{"verso-drawer-scrollbar", "Allow WireGuard", "Added", "WAN → Router", "2 settings", "Source zone", "Accept", " open"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("grouped changes missing %q in: %s", want, got)
-		}
-	}
-}
-
-func TestRenderCapsulePreview(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &CapsulePreview{Count: 2, Children: []Widget{&Text{Markdown: "Review body"}}})
-	for _, want := range []string{"2 pending changes", "Review body", "Save &amp; Apply", "Discard", "pt-96", "verso-capsule-review is-open", "verso-review-open", "bottom-full", "border-b-0", "border-y border-r", "rounded-r-sm", "mr-8", "bg-surface-subtle", "px-8 py-5", `aria-label="Close change review"`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("capsule preview missing %q: %s", want, got)
-		}
-	}
-	for _, unwanted := range []string{"-bottom-2", "rotate-45", "max-w-2xl", "max-w-3xl", "shadow-lg"} {
-		if strings.Contains(got, unwanted) {
-			t.Errorf("attached review tray must not retain tooltip pointer %q: %s", unwanted, got)
-		}
-	}
-}
-
 // TestRenderPropertiesStyles: the row style resolves to hairlines (default),
 // no separators, or the larger single-identity treatment.
 func TestRenderPropertiesStyles(t *testing.T) {
@@ -546,20 +564,20 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	items := []Property{{Label: "A", Value: "1"}, {Label: "B", Value: "2"}}
 
 	divided := render(t, r, &Properties{Items: items}) // default
-	if !strings.Contains(divided, "divide-y divide-slate-200") {
+	if !strings.Contains(divided, "divide-y divide-mid") {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
 	}
 	// Striping is retired: a "striped" request falls through to the hairline
 	// default and never zebra-shades.
 	striped := render(t, r, &Properties{Style: "striped", Items: items})
-	if strings.Contains(striped, "odd:bg-slate-50") {
+	if strings.Contains(striped, "odd:bg-quiet") {
 		t.Errorf("striped is retired; must not zebra-shade:\n%s", striped)
 	}
-	if !strings.Contains(striped, "divide-y divide-slate-200") {
+	if !strings.Contains(striped, "divide-y divide-mid") {
 		t.Errorf("retired striped should render as the hairline default:\n%s", striped)
 	}
 	bare := render(t, r, &Properties{Style: "plain", Items: items})
-	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-slate-50") {
+	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-quiet") {
 		t.Errorf("plain properties should have no separators:\n%s", bare)
 	}
 	identity := render(t, r, &Properties{Style: "identity", Items: []Property{{
@@ -578,8 +596,11 @@ func TestRenderPropertiesStyles(t *testing.T) {
 		{Label: "Kernel", Value: "Linux 6.12", Mono: true},
 	}})
 	for _, want := range []string{
-		"space-y-0", "border-t border-slate-100 py-3", "text-sm text-slate-500",
-		"text-base font-medium text-slate-900", "font-mono font-semibold",
+		// The 44px row: the value's 24px line inset 10px, the label raised to
+		// the same line, and the value a flex line so its copy control cannot
+		// lift it.
+		"space-y-0", "border-t border-mid py-2", "text-sm leading-6 text-meta",
+		"flex items-center text-sm font-medium text-ink", "font-mono text-base font-medium",
 	} {
 		if !strings.Contains(system, want) {
 			t.Errorf("system properties missing %q:\n%s", want, system)
@@ -590,12 +611,56 @@ func TestRenderPropertiesStyles(t *testing.T) {
 		{Label: "Target", Value: "aarch64_generic", Mono: true, Emphasis: true},
 	}})
 	for _, want := range []string{
-		`<dt class="shrink-0 text-slate-500">Installed</dt>`,
-		`<dd class="text-right text-base font-medium text-slate-700">`,
-		`class="font-mono font-semibold">aarch64_generic</span>`,
+		`<dt class="shrink-0 text-meta">Installed</dt>`,
+		`<dd class="flex min-w-0 items-center justify-end text-right text-base font-medium text-ink">`,
+		`class="min-w-0 wrap-anywhere font-mono text-base font-medium">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
 			t.Errorf("emphasised properties missing %q:\n%s", want, emphasised)
+		}
+	}
+}
+
+// TestRenderPropertyVariantTonesTheValue: a row may declare a semantic tone on
+// its value — the badge vocabulary, never a colour (ADR-005) — and the shell
+// maps it to the same text treatment a badge of that tone wears, in both
+// themes. The tone rides the value, not the row: the label stays quiet ink.
+// A tone the vocabulary does not hold renders plainly, mechanically.
+func TestRenderPropertyVariantTonesTheValue(t *testing.T) {
+	r := newRenderer(t)
+	toned := render(t, r, &Properties{Style: "system", Items: []Property{
+		{Label: "Installed build", Value: "25.12.4", Mono: true, Emphasis: true, Variant: "warning"},
+		{Label: "Available build", Value: "25.12.5", Mono: true, Emphasis: true, Variant: "success"},
+	}})
+	for _, want := range []string{
+		`class="font-mono text-base font-medium text-marigold-deep">25.12.4</span>`,
+		`class="font-mono text-base font-medium text-green-deep">25.12.5</span>`,
+	} {
+		if !strings.Contains(toned, want) {
+			t.Errorf("toned system properties missing %q:\n%s", want, toned)
+		}
+	}
+	// The whole vocabulary resolves, in the default row shape too.
+	// A tone carries words in the step of its hue that can carry them — the
+	// full-chroma value stays a mark.
+	for variant, want := range map[string]string{
+		"success": "text-green-deep",
+		"warning": "text-marigold-deep",
+		"danger":  "text-crimson-deep",
+		"info":    "text-denim-deep",
+	} {
+		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
+		if !strings.Contains(got, want) {
+			t.Errorf("the %q tone should render %q:\n%s", variant, want, got)
+		}
+	}
+	// No variant, and an unknown one, both keep the ordinary ink.
+	for _, variant := range []string{"", "chartreuse"} {
+		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
+		for _, unwanted := range []string{"text-green-deep", "text-marigold-deep", "text-crimson-deep", "text-denim-deep"} {
+			if strings.Contains(got, unwanted) {
+				t.Errorf("variant %q should tint nothing, found %q:\n%s", variant, unwanted, got)
+			}
 		}
 	}
 }
@@ -606,13 +671,14 @@ func TestRenderConfirm(t *testing.T) {
 	for _, want := range []string{
 		"verso-confirm", "verso-confirm-toggle", "verso-confirm-panel", "verso-confirm-trigger",
 		"Remove device", "Remove this device?", "Remove", "Keep it", `type="checkbox"`,
-		"text-base text-red-800", "text-red-400", "<svg", // dark warning copy and a quieter icon follow the red alert palette
-		"mt-6 ml-6 flex items-center justify-start", "text-red-600", "hover:text-red-800 hover:underline", // actions align with the message; cancel is the lighter contextual link
+		// Both states stand on crimson's own soft ground inside its hairline,
+		// worded in the step of the hue that can carry words; the full-chroma
+		// value stays a mark, on the icon.
+		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "text-crimson", "<svg",
+		"mt-6 ml-6 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
 		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
-		"dark:border-red-500/20 dark:bg-red-500/10", "dark:text-red-300",
-		"dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950",
+		"border-crimson bg-crimson text-white",
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
-		"dark:text-red-400 dark:hover:text-red-300",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)
@@ -622,7 +688,7 @@ func TestRenderConfirm(t *testing.T) {
 	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
 		t.Errorf("confirm must be pure CSS: %s", got)
 	}
-	if strings.Contains(got, `for="verso-confirm-1" class="cursor-pointer rounded-md border`) {
+	if strings.Contains(got, `for="verso-confirm-1" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs border`) {
 		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
 	}
 	// Labels default when unset.
@@ -634,42 +700,64 @@ func TestRenderConfirm(t *testing.T) {
 	if strings.Count(got+def, `id="verso-confirm-`) == 2 && strings.Contains(def, `id="verso-confirm-1"`) && strings.Contains(got, `id="verso-confirm-1"`) {
 		t.Errorf("two confirms shared an id")
 	}
+	// A Title renders as a bold heading above the message; without one the
+	// message stands alone (no stray heading element).
+	titled := render(t, r, &Confirm{Trigger: "Download and install", Title: "Install now?", Message: "It will be unavailable for several minutes."})
+	if !strings.Contains(titled, `<p class="text-base font-semibold">Install now?</p>`) {
+		t.Errorf("a titled confirm should render its heading bold: %s", titled)
+	}
+	if !strings.Contains(titled, "It will be unavailable for several minutes.") {
+		t.Errorf("a titled confirm should still render its message: %s", titled)
+	}
+	// The trigger and the confirm button are semibold like every other control;
+	// what an untitled confirm must not draw is the heading paragraph.
+	if strings.Contains(def, `<p class="text-base font-semibold">`) {
+		t.Errorf("an untitled confirm should draw no heading: %s", def)
+	}
 }
 
 func TestRenderCallout(t *testing.T) {
 	r := newRenderer(t)
+	// A tone at full chroma is a mark and never sets type: the band is the tone's
+	// soft ground with its deep step carrying the words, and the standing form is
+	// framed by the tone's own hairline rather than marked.
 	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
 	for _, want := range []string{
-		"border-emerald-200 bg-emerald-50 text-emerald-800", // light palette remains unchanged
-		"dark:border-emerald-500/15 dark:bg-emerald-500/10 dark:text-emerald-300",
-		"dark:text-emerald-400", "Reachable", "Verified from the internet.", "<svg",
+		"border-green-line bg-green-soft text-green-deep",
+		"Reachable", "Verified from the internet.",
 	} {
 		if !strings.Contains(ok, want) {
 			t.Errorf("success callout missing %q in: %s", want, ok)
 		}
 	}
-	// Unknown/default variant falls back to info (sky), never leaks the variant name.
+	// No glyph anywhere: the colour and the mark already say what kind of thing
+	// this is, and a triangle beside three words of prose only crowds them.
+	if strings.Contains(ok, "<svg") {
+		t.Errorf("a callout carries no icon: %s", ok)
+	}
+	// Unknown/default variant falls back to info (denim), never leaks the variant name.
 	def := render(t, r, &Callout{Body: "heads up"})
-	if !strings.Contains(def, "border-sky-200 bg-sky-50 text-sky-800") ||
-		!strings.Contains(def, "dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300") {
+	if !strings.Contains(def, "border-denim-line bg-denim-soft text-denim-deep") {
 		t.Errorf("default callout should use the info palette: %s", def)
 	}
 	warn := render(t, r, &Callout{Variant: "warning", Body: "x"})
-	if !strings.Contains(warn, "amber") {
-		t.Errorf("warning callout should use amber: %s", warn)
+	if !strings.Contains(warn, "bg-marigold-soft text-marigold-deep") {
+		t.Errorf("warning callout should use marigold: %s", warn)
 	}
 	neutral := render(t, r, &Callout{Variant: "neutral", Compact: true, Body: "Quiet context."})
-	if !strings.Contains(neutral, "border-slate-200 bg-slate-50 text-slate-700") || !strings.Contains(neutral, "text-slate-400") {
-		t.Errorf("neutral callout should use the quiet slate palette: %s", neutral)
+	if !strings.Contains(neutral, "bg-quiet text-body") || !strings.Contains(neutral, "bg-glyph") {
+		t.Errorf("neutral callout should be the quiet band: %s", neutral)
 	}
+	// Compact is the note under a control: the mark on the first line's optical
+	// centre, and no frame.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "mt-0.5", "gap-2", "px-3", "py-2", "size-4", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "py-2", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
 	}
-	if strings.Contains(compact, "p-4") || strings.Contains(compact, "size-5") {
-		t.Errorf("compact callout should not retain full callout padding: %s", compact)
+	if strings.Contains(compact, "px-5 py-4") || strings.Contains(compact, "border ") {
+		t.Errorf("compact callout should carry neither the standing padding nor a frame: %s", compact)
 	}
 }
 
@@ -681,8 +769,8 @@ func TestRenderLink(t *testing.T) {
 			t.Errorf("link missing %q in: %s", want, dl)
 		}
 	}
-	if !strings.Contains(dl, "dark:border-gray-700 dark:bg-transparent dark:text-gray-300") || !strings.Contains(dl, "dark:active:bg-gray-900") {
-		t.Errorf("ghost link missing dark secondary-button treatment: %s", dl)
+	if !strings.Contains(dl, "border border-rule-strong bg-transparent text-ink") || !strings.Contains(dl, "hover:border-faint hover:bg-quiet") {
+		t.Errorf("ghost link missing the secondary-button treatment: %s", dl)
 	}
 	if !strings.Contains(dl, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
 		t.Errorf("button-styled link missing tactile pressed state: %s", dl)
@@ -693,12 +781,35 @@ func TestRenderLink(t *testing.T) {
 	}
 	secondary := render(t, r, &Link{Label: "Restart router", Href: "/restart", Style: "secondary"})
 	for _, want := range []string{
-		"hover:border-sky-600 hover:text-sky-600",
-		"dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200",
+		"hover:border-faint hover:bg-quiet",
+		"border-rule-strong bg-transparent text-ink",
 		"active:translate-y-px",
 	} {
 		if !strings.Contains(secondary, want) {
 			t.Errorf("secondary link missing %q: %s", want, secondary)
+		}
+	}
+	// One place on this page in the list of them: a block, so a run of them is a
+	// column; its own left hairline, so the run draws one continuous line; and the
+	// hook the shell marks when this is the section being read.
+	rail := render(t, r, &Link{Label: "Speed", Href: "#speed", Style: "rail"})
+	for _, want := range []string{
+		`href="#speed"`, "data-verso-rail-link", "verso-rail-link",
+		"flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm",
+	} {
+		if !strings.Contains(rail, want) {
+			t.Errorf("rail link missing %q: %s", want, rail)
+		}
+	}
+	if strings.Contains(rail, "underline") || strings.Contains(rail, "text-denim") {
+		t.Errorf("a rail link is not an ordinary link: %s", rail)
+	}
+	// Its three colour states are the named rule's. A utility for any one of them
+	// would beat the rule that draws the other two — this is the cascade bug that
+	// left the current section marked everywhere except in its colour.
+	for _, never := range []string{"text-body", "hover:text-ink", "font-semibold"} {
+		if strings.Contains(rail, never) {
+			t.Errorf("rail link must not carry %q as a utility: %s", never, rail)
 		}
 	}
 	// A plain link carries no download attribute.
@@ -715,7 +826,7 @@ func TestRenderLink(t *testing.T) {
 func TestRenderButton(t *testing.T) {
 	r := newRenderer(t)
 	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
-	for _, want := range []string{`type="button"`, "bg-sky-600", "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0", "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900", "size-4", "Choose firmware…"} {
+	for _, want := range []string{`type="button"`, "border-denim bg-denim text-white", "hover:border-denim-deep hover:bg-denim-deep", "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0", "size-4", "Choose firmware…"} {
 		if !strings.Contains(inert, want) {
 			t.Errorf("inert button missing %q: %s", want, inert)
 		}
@@ -724,19 +835,46 @@ func TestRenderButton(t *testing.T) {
 		t.Errorf("inert button must not submit anything: %s", inert)
 	}
 	submit := render(t, r, &Button{Label: "Apply", Style: "secondary", Name: "_action", Value: "apply"})
-	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-slate-300", "dark:bg-gray-800 dark:text-gray-200"} {
+	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-rule-strong bg-ground text-ink"} {
 		if !strings.Contains(submit, want) {
 			t.Errorf("submitting button missing %q: %s", want, submit)
 		}
 	}
 	loading := render(t, r, &Button{Label: "Fetching sources", Icon: "refresh-cw", Style: "secondary", Loading: true})
-	for _, want := range []string{`disabled`, `aria-busy="true"`, "cursor-wait opacity-70", "size-4 animate-spin", "Fetching sources", lucideIcons["loader-circle"]} {
+	for _, want := range []string{`disabled`, `aria-busy="true"`, "cursor-wait opacity-70", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
 		if !strings.Contains(loading, want) {
 			t.Errorf("loading button missing %q: %s", want, loading)
 		}
 	}
-	if strings.Contains(loading, lucideIcons["refresh-cw"]) || strings.Contains(loading, "hover:border-slate-400") {
+	if strings.Contains(loading, lucideIcons["refresh-cw"]) || strings.Contains(loading, "hover:border-denim") {
 		t.Errorf("loading button must replace its action icon and have no hover response: %s", loading)
+	}
+}
+
+// TestRenderLiveButton: the live state is the spinner without the surrender —
+// something the button governs is running and saying so, and the button is
+// still the way to stop it. Loading is the in-flight submit and keeps disabling;
+// Live must not disable, must keep its hover and pointer, and puts its label in
+// a hook the shell's stream client can rewrite (Pause ⇄ Resume · N new).
+func TestRenderLiveButton(t *testing.T) {
+	r := newRenderer(t)
+	live := render(t, r, &Button{Label: "Pause", Style: "secondary", Live: true})
+	for _, want := range []string{
+		"data-verso-live",
+		`data-verso-wait`, "size-1.5 rounded-[1px] bg-sand-5",
+		"<span data-verso-live-label>Pause</span>",
+		"hover:border-faint",    // hover intact
+		"cursor-pointer",        // the pointer says "press me"
+		"active:translate-y-px", // and it presses
+	} {
+		if !strings.Contains(live, want) {
+			t.Errorf("live button missing %q: %s", want, live)
+		}
+	}
+	for _, unwanted := range []string{"disabled", "cursor-wait", "opacity-70"} {
+		if strings.Contains(live, unwanted) {
+			t.Errorf("live button must not take anything away (%q): %s", unwanted, live)
+		}
 	}
 }
 
@@ -752,10 +890,19 @@ func TestRenderDisclosure(t *testing.T) {
 		t.Errorf("disclosure must be pure HTML/CSS: %s", got)
 	}
 	condition := render(t, r, &Disclosure{Style: "condition", Summary: "Advanced"})
-	for _, want := range []string{"bg-slate-50/70", "dark:bg-gray-800/50", "text-sm font-semibold text-slate-900"} {
+	// The condition style sits a step in from the page's ground — on the quiet
+	// band, because what it folds is part of the form around it.
+	for _, want := range []string{"border-rule bg-quiet", "text-sm font-semibold text-ink"} {
 		if !strings.Contains(condition, want) {
 			t.Errorf("condition disclosure missing %q: %s", want, condition)
 		}
+	}
+	if strings.Contains(got, "<details open") {
+		t.Errorf("a disclosure not asked to open must start folded: %s", got)
+	}
+	open := render(t, r, &Disclosure{Open: true, Summary: "What changes"})
+	if !strings.Contains(open, "<details open") {
+		t.Errorf("an open disclosure must render expanded: %s", open)
 	}
 }
 
@@ -777,7 +924,7 @@ func TestRenderSection(t *testing.T) {
 func TestRenderCode(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Code{Label: "Server public key", Value: "HIgo9xNzJM==", Copy: true})
-	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "<code", "font-mono", `x-data="copy"`, "Copy", "Copied!", "text-emerald-600"} {
+	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "font-mono", `x-data="copy"`, "Copy", "Copied", "text-green", "whitespace-pre"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("code missing %q in: %s", want, got)
 		}
@@ -786,6 +933,97 @@ func TestRenderCode(t *testing.T) {
 	nocopy := render(t, r, &Code{Value: "abc"})
 	if strings.Contains(nocopy, "x-data") {
 		t.Errorf("code without copy should have no copy button: %s", nocopy)
+	}
+	// A block that is not a live preview carries no marker, so the form watcher
+	// leaves it alone: a public key is not a reading of the form beside it.
+	if strings.Contains(got, "data-verso-preview") {
+		t.Errorf("a plain code block must not read as a live preview: %s", got)
+	}
+}
+
+// TestRenderLivePreview: a code block declared live is the same block plus the
+// marker the form watcher finds — and the renderer can answer with that one
+// block alone, which is what a preview request gets back.
+func TestRenderLivePreview(t *testing.T) {
+	r := newRenderer(t)
+	block := &Code{Label: "/etc/config/firewall", Value: "config zone 'lan'\n", Copy: true, Live: true}
+	got := render(t, r, block)
+	for _, want := range []string{"data-verso-preview", "/etc/config/firewall", "config zone"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("live preview missing %q in: %s", want, got)
+		}
+	}
+
+	// The page around it is already on screen, so a preview request is answered
+	// with the block and nothing else — not the form it describes.
+	page := &Card{Title: "Zone", Children: []Widget{
+		&Field{Name: "input", Label: "Traffic to the router", Kind: "text", Value: "ACCEPT"},
+		block,
+	}}
+	var b strings.Builder
+	found, err := r.RenderLivePreviewWithToken(&b, page, "tok", "", nil)
+	if err != nil {
+		t.Fatalf("RenderLivePreviewWithToken: %v", err)
+	}
+	if !found {
+		t.Fatal("the page declares a live preview and none was found")
+	}
+	out := b.String()
+	if !strings.Contains(out, "config zone") {
+		t.Errorf("the answer is not the preview: %s", out)
+	}
+	if strings.Contains(out, `name="input"`) || strings.Contains(out, "Zone") {
+		t.Errorf("the answer carries the page as well as the preview: %s", out)
+	}
+
+	// A page with no live preview has nothing to answer with, which the caller
+	// needs to tell apart from an empty one.
+	plain := &Card{Children: []Widget{&Code{Value: "abc"}}}
+	var none strings.Builder
+	switch found, err = r.RenderLivePreviewWithToken(&none, plain, "tok", "", nil); {
+	case err != nil:
+		t.Fatalf("RenderLivePreviewWithToken: %v", err)
+	case found:
+		t.Errorf("a page with no live preview reported one: %s", none.String())
+	}
+
+	// Only the first of several can be kept current, so the gauge counts them.
+	two := &Card{Children: []Widget{block, &Code{Value: "x", Live: true}}}
+	if n := LivePreviewCount(two); n != 2 {
+		t.Errorf("LivePreviewCount = %d, want 2", n)
+	}
+	if n := LivePreviewCount(plain); n != 0 {
+		t.Errorf("LivePreviewCount = %d, want 0", n)
+	}
+
+	// The body is marked apart from the block, because the eager patch writes
+	// into it: a value typed into a control lands on its line before the
+	// plugin's answer arrives, and it has to find the text to do that.
+	if !strings.Contains(got, "data-verso-preview-body") {
+		t.Errorf("a live preview offers nothing for the eager patch to write into: %s", got)
+	}
+	still := render(t, r, &Code{Value: "abc", Copy: true})
+	if strings.Contains(still, "data-verso-preview-body") {
+		t.Errorf("a block nothing keeps current must not be written into: %s", still)
+	}
+}
+
+// TestFieldDeclaresTheOptionItWrites: the uci option a control writes travels to
+// the browser as data, not only as the chip a reader sees. The live preview's
+// eager patch is what needs it — it puts a typed value on that option's line
+// without waiting for the round-trip — and it can only do that for a control
+// that says which line is its own.
+func TestFieldDeclaresTheOptionItWrites(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "dest_port", Label: "To port", Kind: "text", Key: "dest_port"})
+	if !strings.Contains(got, `data-verso-writes="dest_port"`) {
+		t.Errorf("field does not declare the option it writes: %s", got)
+	}
+	// A control that writes no single option claims none: the patch must not
+	// guess a line for it.
+	bare := render(t, r, &Field{Name: "filter", Label: "Find", Kind: "text"})
+	if strings.Contains(bare, "data-verso-writes") {
+		t.Errorf("a field with no option declared one anyway: %s", bare)
 	}
 }
 
@@ -804,7 +1042,7 @@ func TestRenderModal(t *testing.T) {
 		`role="dialog"`,
 		"Add a device",       // trigger + title
 		`name="device_name"`, // the child widget is rendered inside
-		"dark:bg-black/60",   // dark overlay does not resolve through inverted slate ink
+		"bg-ink/18",          // the canvas scrim, shared with every other overlay
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("modal missing %q in: %s", want, got)
@@ -835,28 +1073,11 @@ func TestRenderModalAddTrigger(t *testing.T) {
 	}
 }
 
-func TestRenderModalPreview(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Canvas{Children: []Widget{&Modal{
-		Preview: true, Title: "Add a device", Children: []Widget{&Text{Markdown: "Always visible."}},
-	}}})
-	for _, want := range []string{"rounded-2xl", "bg-slate-50", "flex items-start justify-center", "max-w-md", "Add a device", "Always visible."} {
-		if !strings.Contains(got, want) {
-			t.Errorf("modal preview missing %q: %s", want, got)
-		}
-	}
-	for _, unwanted := range []string{`x-data="modal"`, `x-teleport="body"`, "backdrop-blur-xs"} {
-		if strings.Contains(got, unwanted) {
-			t.Errorf("modal preview should not render interactive overlay chrome %q: %s", unwanted, got)
-		}
-	}
-}
-
 func TestRenderProgress(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Progress{Title: "Verifying firmware", Body: "Checking the image signature."})
 	for _, want := range []string{
-		`role="status"`, `aria-live="polite"`, "size-10 animate-spin",
+		`role="status"`, `aria-live="polite"`, `data-verso-wait`,
 		"Verifying firmware", "Checking the image signature.",
 	} {
 		if !strings.Contains(got, want) {
@@ -890,7 +1111,7 @@ func TestRenderFileField(t *testing.T) {
 		Prompt: "Drop a firmware image here, or",
 	})
 	for _, want := range []string{
-		`type="file"`, `accept=".bin,.img"`, "border-dotted", "rounded-xl", "px-8", "py-12",
+		`type="file"`, `accept=".bin,.img"`, "border-dotted", "rounded-xs", "px-8", "py-12",
 		"size-10", "Drop a firmware image here", "mt-1 block", "whitespace-nowrap", "choose one from your computer",
 	} {
 		if !strings.Contains(got, want) {
@@ -909,16 +1130,13 @@ func TestRenderFieldError(t *testing.T) {
 	if !strings.Contains(got, "must be a valid hostname") {
 		t.Errorf("inline error not shown: %s", got)
 	}
-	if !strings.Contains(got, "border-red-600") {
-		t.Errorf("errored field should carry the danger token: %s", got)
-	}
 	for _, want := range []string{
-		"focus:border-red-600 focus:ring-2 focus:ring-red-600/20",
-		"dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50",
-		"dark:text-red-400",
+		"border-crimson hover:border-crimson-deep focus:border-crimson-deep", // the field names itself as the refused one
+		"bg-crimson-soft", "text-crimson-deep", // and the message sits on crimson's own ground
+		"bg-crimson", // with the mark beside it
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("errored field missing dark danger colour %q: %s", want, got)
+			t.Errorf("errored field missing %q: %s", want, got)
 		}
 	}
 }
@@ -927,8 +1145,7 @@ func TestRenderFieldFocus(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Field{Name: "hostname", Label: "Hostname"})
 	for _, want := range []string{
-		"focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20",
-		"dark:focus:border-sky-400 dark:focus:ring-sky-400/50",
+		"border-rule-strong hover:border-denim focus:border-denim-deep", // resting, pointed at, and focused
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("valid field missing focus treatment %q: %s", want, got)
@@ -959,8 +1176,7 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 	for _, want := range []string{
 		`data-verso-change-name="server"`, `data-verso-change-kind="list"`,
 		"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add",
-		"focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20",
-		"dark:focus:border-sky-400 dark:focus:ring-sky-400/50",
+		"border-rule-strong hover:border-denim focus:border-denim-deep",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("list missing %q", want)
@@ -973,10 +1189,25 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		Name: "dest_port", Label: "Ports", Style: "tokens", Prompt: "Port or range",
 		Items: []string{"53", "67", "547"},
 	})
-	if n := strings.Count(got, `type="hidden" name="dest_port"`); n != 3 {
+	// Three values and the empty chip the shell clones for a fourth, which is
+	// inert template content and posts nothing until it is filled and placed.
+	if n := strings.Count(got, `type="hidden" name="dest_port"`); n != 4 {
 		t.Errorf("token values must share the field name: got %d\n%s", n, got)
 	}
-	for _, want := range []string{`data-verso-token-list`, `data-verso-token-input`, `placeholder="Port or range"`, `value="547"`} {
+	if n := strings.Count(got, `type="hidden" name="dest_port" value=""`); n != 1 {
+		t.Errorf("want exactly one empty chip to clone, got %d\n%s", n, got)
+	}
+	for _, want := range []string{
+		`data-verso-token-list`, `data-verso-token-input`, `placeholder="Port or range"`, `value="547"`,
+		// The chip the script clones is the chip the server draws, to the class:
+		// one source for a token's shape, not one here and one in the script.
+		`<template data-verso-token-chip>`, `data-verso-token-label`,
+		// 30px inside a 36px box, with 2px of the box showing all round — and a
+		// 20px remove glyph wearing the hover every icon act wears.
+		`class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-ground p-0.5`,
+		`inline-flex h-7.5 items-center gap-1.5 rounded-xs border border-rule bg-quiet px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
+		`grid size-5 -mr-1 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink`,
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("token list missing %q:\n%s", want, got)
 		}
@@ -994,9 +1225,8 @@ func TestRenderListPerItemError(t *testing.T) {
 		t.Errorf("per-item error missing: %s", got)
 	}
 	for _, want := range []string{
-		"focus:border-red-600 focus:ring-2 focus:ring-red-600/20",
-		"dark:border-red-400 dark:focus:border-red-400 dark:focus:ring-red-400/50",
-		"dark:text-red-400",
+		"border-crimson hover:border-crimson-deep focus:border-crimson-deep",
+		"text-crimson-deep", // the message reads in the step of the hue that carries words
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("errored list item missing focus treatment %q: %s", want, got)
@@ -1029,10 +1259,10 @@ func TestRenderFormSuccess(t *testing.T) {
 	if !strings.Contains(got, ">Apply<") {
 		t.Errorf("custom submit label missing: %s", got)
 	}
-	if !strings.Contains(got, "dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900") {
-		t.Errorf("form submit missing dark primary-button treatment: %s", got)
+	if !strings.Contains(got, "border border-denim bg-denim text-white") {
+		t.Errorf("form submit missing the primary-button treatment: %s", got)
 	}
-	if !strings.Contains(got, "active:bg-sky-800") ||
+	if !strings.Contains(got, "hover:border-denim-deep hover:bg-denim-deep") ||
 		!strings.Contains(got, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
 		t.Errorf("form submit missing tactile pressed state: %s", got)
 	}

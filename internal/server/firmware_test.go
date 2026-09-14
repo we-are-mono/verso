@@ -22,7 +22,7 @@ func TestMaintenanceFirmwarePickerMatchesSysupgradeImages(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Mono Gateway DK"}})
 	rr := get(t, srv, "/system/maintenance")
 	for _, want := range []string{
-		"Choose firmware…", "Install firmware", "Drop a sysupgrade image here",
+		"Upload a custom image…", "Install firmware", "Drop a sysupgrade image here",
 		`accept=".bin,application/octet-stream"`, `action="/system/maintenance/firmware"`,
 		`data-verso-autosubmit`,
 	} {

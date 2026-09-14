@@ -23,6 +23,47 @@ func TestFormDecodesActions(t *testing.T) {
 	}
 }
 
+// TestFormPostsIntoItsFrame: a form inside a panel posts back into the frame
+// that holds it rather than navigating — the shell's entity panel body at the
+// tab's own route, or a plugin's open panel at the page's own address, which is
+// the one the address bar already names. An ordinary form carries none of it,
+// and posts its page as it always did.
+func TestFormPostsIntoItsFrame(t *testing.T) {
+	r := newRenderer(t)
+	field := func() Widget { return &Field{Name: "k", Label: "Key"} }
+
+	entity := render(t, r, &Form{Frame: FrameEntity, Panel: "/entity/device/aa?tab=shape", Fields: []Widget{field()}})
+	if !strings.Contains(entity, `hx-post="/entity/device/aa?tab=shape" hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"`) {
+		t.Errorf("an entity tab's form should post into the entity body at its route:\n%s", entity)
+	}
+
+	panel := render(t, r, &Form{Frame: FramePanel, Fields: []Widget{field()}})
+	if !strings.Contains(panel, `hx-post="" hx-target="closest [data-verso-panel]" hx-swap="innerHTML"`) {
+		t.Errorf("a panel's form should post into the panel at the page's own address:\n%s", panel)
+	}
+
+	plain := render(t, r, &Form{Fields: []Widget{field()}})
+	if strings.Contains(plain, "hx-post") || strings.Contains(plain, "hx-target") {
+		t.Errorf("an ordinary form posts its page and carries no frame:\n%s", plain)
+	}
+}
+
+// TestPostIntoFrameReachesEveryUnframedForm: framing a tree frames every form in
+// it, however deep, and leaves one that already knows its frame alone — the
+// call closest to a form is the one that knows where it is.
+func TestPostIntoFrameReachesEveryUnframedForm(t *testing.T) {
+	inner := &Form{Fields: []Widget{&Field{Name: "a"}}}
+	framed := &Form{Frame: FrameEntity, Panel: "/entity/x", Fields: []Widget{&Field{Name: "b"}}}
+	tree := &Stack{Children: []Widget{&Section{Children: []Widget{inner}}, framed}}
+	PostIntoFrame(tree, FramePanel, "")
+	if inner.Frame != FramePanel || inner.Panel != "" {
+		t.Errorf("the nested form should post into the panel, got frame %q at %q", inner.Frame, inner.Panel)
+	}
+	if framed.Frame != FrameEntity || framed.Panel != "/entity/x" {
+		t.Errorf("a form already framed must keep its frame, got %q at %q", framed.Frame, framed.Panel)
+	}
+}
+
 // TestFormRendersSecondaryActions: a secondary action renders as a submit button
 // carrying its _action marker, so clicking it submits the whole form for the plugin
 // to compute on (ADR-005 §7).
@@ -37,7 +78,7 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 		">Save</button>",
 		`name="_action" value="generate-keypair"`, ">Generate keypair</button>",
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
-		"dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200",
+		"hover:border-faint hover:bg-quiet",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("form render missing %q", want)
@@ -45,14 +86,27 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 	}
 }
 
-func TestPageFormUsesCapsuleInsteadOfOwnSubmit(t *testing.T) {
+// A page form with no submit label renders no button of its own: the label is
+// the gateway's to supply, so the widget never invents one that would compete
+// with it.
+func TestPageFormWithoutLabelRendersNoButtonOfItsOwn(t *testing.T) {
 	f := &Form{Style: "page", Fields: []Widget{&Field{Name: "hostname", Label: "Hostname"}}}
 	got := render(t, newRenderer(t), f)
 	if !strings.Contains(got, "data-verso-page-form") {
-		t.Fatalf("page form missing capsule hook: %s", got)
+		t.Fatalf("page form missing hook: %s", got)
 	}
 	if strings.Contains(got, "<button") {
-		t.Fatalf("page form must not render a competing submit button: %s", got)
+		t.Fatalf("a label-less page form must not render a competing submit button: %s", got)
+	}
+}
+
+// A record editor opts into its own submit by giving the page form a label; it
+// then carries its own button (it stages and returns to the listing).
+func TestPageFormWithLabelCarriesOwnSubmit(t *testing.T) {
+	f := &Form{Style: "page", Submit: "Add rule", Fields: []Widget{&Field{Name: "x"}}}
+	got := render(t, newRenderer(t), f)
+	if !strings.Contains(got, `type="submit"`) || !strings.Contains(got, "Add rule") {
+		t.Fatalf("a labelled page form must render its own submit button: %s", got)
 	}
 }
 
@@ -66,7 +120,7 @@ func TestSearchFormRendersSubmitInsideInputOutline(t *testing.T) {
 		"relative w-full max-w-sm",
 		"[&_input[type=text]]:pr-28",
 		"absolute inset-y-1 right-1",
-		"bg-sky-600",
+		"bg-denim",
 		`placeholder="Package name"`,
 		">Search</button>",
 	} {

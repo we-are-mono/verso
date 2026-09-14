@@ -1,0 +1,6 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<div data-package-files class="space-y-3">
+  <h3 class="text-sm font-semibold text-ink">{{t "Files it installed"}}</h3>
+  {{if .Files}}<ul class="max-h-80 overflow-auto rounded-xs border border-rule bg-quiet p-3 font-mono text-base text-body">{{range .Files}}<li class="break-all">{{.}}</li>{{end}}</ul>{{else}}<p class="text-sm text-meta">{{t "No files recorded for this package."}}</p>{{end}}
+</div>

@@ -23,6 +23,14 @@ you can write a Verso plugin — in any language, without touching the shell.
 - **Reached over a unix socket.** The shell is an HTTP client to your socket and
   a renderer to the browser. You never see the browser.
 
+The bundled **Interfaces** plugin owns network, device, VLAN, bridge, and tunnel
+configuration. Its manifest contributes one main navigation destination, with no
+subpages. **System General** remains a bundled System plugin. On **Access**, the
+shell owns password changes and login sessions; the System plugin contributes
+SSH and uhttpd configuration through its `system_access: "/access"` route.
+Only that contributor receives its own submitted form. Password submissions are
+never forwarded to plugins.
+
 ## The manifest
 
 Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
@@ -75,6 +83,8 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 | `acl` | the rpcd access scopes you need ([below](#declaring-your-acl-scopes)): `read` to render config, `write` to change it |
 | `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
+| `entity_tabs` | optional: what this plugin has to say about a subject some other page lists ([below](#entity-panels)) |
+| `entity_acts` | optional: this plugin's direct acts on such a subject, which open nothing |
 
 To place several pages in the menu, add more entries — each is grouped under its
 own `section`:
@@ -120,6 +130,54 @@ as a compatibility warning under Software. A missing plugin leaves no placeholde
 running plugin that fails produces a contained unavailable fragment without breaking
 the surrounding page.
 
+## Entity panels
+
+A device is dnsdhcp's reservation, the firewall's verdict on its traffic, and a
+QoS plugin's shaping — three plugins, three separate processes, none of which can
+call another. So the panel that shows one subject is the **shell's**: it asks each
+live contributor for its tab and frames the answers together. A plugin declares
+which kind of subject it has something to say about and under which *slot*; the
+shell owns everything else — the frame, the pinned facts, the order tabs appear
+in, the icon each slot wears in a listing's row, and which shortcut opens which
+tab. A slot no live plugin claims draws nothing, which is how a board with no QoS
+plugin simply has no limits tab, with no shell change anywhere.
+
+```json
+"entity_tabs": [
+  { "entity": "device", "slot": "shape", "label": "Limits & schedule" }
+],
+"entity_acts": [
+  { "entity": "device", "slot": "unreserve", "path": "/config/reservations/{id}/delete" }
+]
+```
+
+A tab is answered on the reserved path `entity/<kind>/<id>` under your own mount,
+GET to render and POST to save — the same request shape as a page, brokered reads
+included. `{id}` in an act's path is the subject's own identity (a MAC, a uci
+section name), substituted by the shell.
+
+The envelope an entity request answers with is an ordinary one, read a little
+differently:
+
+- `title` names the tab.
+- `widget` is its body. Give the form `style: "page"` and no `submit`: the panel
+  draws the commit row, and the form posts back into the panel rather than
+  navigating, so the drawer stays open over the listing that opened it.
+- `cta` and `consequence` are that commit row's words — the verb, and what
+  applying it costs. Only you know; a tab that stages nothing sets neither and no
+  row is drawn.
+- `state` is where the subject stands in a word or two — `"blocked"`, `"no
+  limit"`, an address. The shell wears it as a chip beside the tab's label, so a
+  panel with several tabs answers what it was opened to ask before a tab is
+  chosen.
+- `commit` stages as it does anywhere else; a submission you refuse answers 422
+  with the offending controls marked and asks for no writes.
+
+The subject of a panel is settled — the panel is headed with it — so do not draw
+a control that could point your object at a different one. Carry it hidden
+instead: the MAC of a device whose reservation is being edited is the panel's
+subject, not a field.
+
 ## The socket contract
 
 Serve HTTP/1.1 on your `socket`. For a standalone page the shell forwards the
@@ -142,7 +200,18 @@ envelope** back — `Content-Type: application/json`:
 - `title` — the standalone page heading; omit it for a contribution.
 - `kicker` — optional eyebrow above a standalone page heading.
 - `kicker_status` — optional short emerald state beside the kicker, such as
-  `"Complete"` on a finished styleguide reference.
+  `"Complete"` beside a finished reference page's kicker.
+- `tone` — optional; declares the title a message about now rather than a
+  place-label: the shell tints the heading by the closed tone vocabulary
+  (`info` | `success` | `warning` | `danger` | `neutral` — never a colour) and
+  drops the " — <tab>" navigation suffix, both from the one word. `neutral`
+  drops the suffix without a tint. The masthead states the page's current
+  state — tint only what is true right now, on the render that makes it true.
+  Anything outside the vocabulary is ignored.
+- `ruled` — optional; ends the masthead in a hairline, so the title and lede
+  are ruled off from the page's first section the way ruled sections are from
+  each other. For a page built of ruled sections (a settings page); a listing,
+  whose toolbar follows the heading with no rule, leaves it unset.
 - `action` — optional `{label, href, icon?}`: the page's one primary doorway
   ("New rule", "Add forward"), rendered as a button hard right on the heading
   row. A page has at most one — it is *the* thing to do here, not a menu, so a
@@ -161,12 +230,22 @@ envelope** back — `Content-Type: application/json`:
   widgets. Standing state belongs in `banner`; context beside content in a
   `callout`.
 - `immediate` — optional boolean for a page made only of direct commands rather
-  than staged configuration. It omits the capsule when the shared UCI stage is
-  clean; pending changes from elsewhere remain visible. It does not make a
-  returned `commit` immediate—commit intents always stage.
+  than staged configuration: nothing on it stages, though the staged-changes
+  chip still shows pending changes from elsewhere. It does not make a returned
+  `commit` immediate—commit intents always stage.
 - `commit` — optional; on a successful write, the uci changes for the shell to
   apply on your behalf (see [Writing config](#writing-config-the-commit-intent)).
   You never write config yourself.
+- `width` — use `form` for a 640px settings page, `narrow` for 896px,
+  `normal` for 1024px, or `wide` for 1152px. Layout uses the available width
+  on smaller screens.
+- `commands` — optional array containing one immediate, structured action.
+  Supported names are `interface-restart`, `set-system-time`, `ssh-key-add`,
+  `ssh-key-remove`, `certificate-generate`, and `certificate-install`. Commands
+  require their exact declared write scope, a valid CSRF-protected POST, and a
+  valid widget schema. They cannot be combined with `commit` or `apply`.
+  Invalid credentials return a form error; private keys never appear in reads
+  or previews. Configuration changes continue to use staged `commit` intents.
 - `apply` — optional; a tightly typed non-UCI operation the shell performs after
   the staged UCI transaction applies. Only shell-known operations are accepted,
   and the manifest must declare the exact matching rpcd write scope.
@@ -279,6 +358,9 @@ and you own its meaning. The shell brokers only functions in its own closed set:
 
 | Function | Returns |
 |---|---|
+| `dhcpState` | `{"networks": {"lan": {"enabled": true, "state": "running", "pool": "192.168.1.100–192.168.1.249", "lease_time": "12h", "leases": 12}}}` — DHCPv4 service observations from procd, generated dnsmasq ranges, netifd and unexpired leases. `enabled` comes from applied configuration, not the operator’s staged changes. States are `running`, `warning`, `stopped` and `disabled`; optional `reason` distinguishes failures, unavailable readings and full pools. Missing lease counts stay unknown. |
+| `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}}` — netifd logical-interface dump, kernel-device state, and installed protocol handlers (when available). The shell adds physical-port and parent relationships from its existing topology reader. |
+| `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
 | `firewallCounters` | `{"counters": [{"chain", "name", "packets", "bytes"}]}` — fw4's live nftables hit counters, one entry per (chain, rule name), summed across the several nft rules a single UCI section can render into. |
 | `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. |
 
@@ -312,7 +394,10 @@ apply/rollback/confirm cycle (ADR-010):
 An entry may also **create** a section: with `section` empty and a `type`
 (`{ "config": "firewall", "section": "", "type": "rule", "values": { … } }`),
 the shell adds a new anonymous section of that type and sets `values` on it —
-one staged operation, so an "Add" drawer creates the row it promised.
+one staged operation, so an "Add" drawer creates the row it promised. Supplying
+both `type` and a nonempty `section` creates a **named** section instead, for
+example `{"config":"network","type":"interface","section":"guest","values":{"proto":"dhcp","device":"eth1"}}`.
+The name must be unused; the broker preflights named creates before staging the batch.
 
 An entry may **delete** a section: `delete: true` with a `section` and nothing
 else (`{ "config": "firewall", "section": "block_telnet", "delete": true }`).
@@ -350,6 +435,51 @@ If any changed owner fails validation, authorization, or transport, no intent is
 staged. If staging itself fails partway through, the shell restores the stage that
 existed before the submission and does not apply. A `commit` on a GET is ignored.
 
+### Describing your changes (the `describe` hook)
+
+The shell's staged-changes chip opens a review drawer that lists what is waiting
+to be applied, by the page it belongs to. By default each pending change reads as its raw uci
+line — `firewall: cfg0abc.enabled = 0` — which is honest but not plain. You can do
+better for your own config: give `serve` a fourth argument, a **describe** hook,
+and the shell will ask you to put your pending changes in words.
+
+```rust
+fn main() {
+    verso_plugin::serve_described("firewall", get, post, describe);
+}
+
+fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
+    // one sentence per changed object; cover the changes it accounts for
+    // e.g. Description::new("Turned off the rule “Block Telnet”.", vec![0])
+}
+```
+
+When a Review drawer is about to render, the shell sends each owning plugin the
+coalesced changes for the configs it declared — the same `X-Verso-UCI` snapshot a
+render gets rides along, so you can resolve a section handle to the name a person
+set. You answer with `Description`s: a `plain` sentence and the `covers` indices
+(into the `changes` slice) it accounts for. One sentence may fold several changes
+(a rename writes two options); a change you do not cover keeps its raw line, and a
+plugin with no describe hook leaves every change raw. Describe is **always
+optional** — the raw line is the always-present fallback, so describe what reads
+well and leave the rest.
+
+Each `Change` is one net change with a normalized `op`, so you never reason about a
+raw tuple's length:
+
+| `op` | meaning |
+| --- | --- |
+| `set` | `option` set to `value` on `section` |
+| `add-section` | new `section`; `option` is its uci type |
+| `remove-option` | `option` cleared from `section` |
+| `remove-section` | `section` removed whole |
+| `list-add` / `list-del` | `value` added to / removed from the list `option` |
+
+A removed section is already gone from the injected snapshot (which reflects the
+staged config), so a `remove-section` can be named only as far as its handle
+allows — leave it to the raw line otherwise. The describe hook never writes and
+never renders a page; it only turns changes into words.
+
 ### Privileged post-apply actions
 
 Rare settings have a non-UCI tail. For example, disabling NTP is a UCI change,
@@ -372,7 +502,7 @@ one, `{ "scope":"ubus", "object":"verso",
 "function":"setSystemTime" }`), and passes only structured arguments to
 `verso-rpcd`. The helper validates them again at the root boundary and invokes no
 shell. A validation failure prepares neither UCI writes nor an action; Discard
-drops both; Save & Apply runs the action only after UCI apply.
+drops both; the apply runs the action only after UCI apply.
 
 ### What the shell does when you misbehave
 
@@ -461,7 +591,9 @@ standard compact reading width.
 
 Use `disclosure` for advanced content that should remain available without
 crowding the common path. `style:"condition"` gives it the same surface and
-heading treatment as an active item in the conditions editor.
+heading treatment as an active item in the conditions editor. `open:true`
+renders it already expanded — for content that is the page's focus right now
+(an update's package manifest) yet still folds away once read.
 
 ### properties — read-only facts
 
@@ -487,6 +619,11 @@ in monospace, `chip` renders an entity identity, and `verbatim` marks data that
 keeps sans type — a size, a rate, an uptime. Declare one of them on every value
 that is data, not words; an undeclared value is treated as prose and translated
 when a catalog covers it.
+
+`variant` tones a value whose reading is also a verdict — `success`,
+`warning`, `danger`, `info`, the same vocabulary a badge speaks. It names a
+meaning, never a colour: the shell picks the ink, in both themes, and a word
+outside the vocabulary tones nothing.
 
 ### table — config sections as identical rows
 
@@ -519,6 +656,20 @@ name is an optional trailing comment.
   ] }
 ```
 
+Every row is inset from the table's edges. That inset is what a row's hover tint
+and a group band's fill — which run the table's full width — are held off by, so
+a value never sits on the tint's own boundary. How far in follows how much
+horizontal room the columns leave: **`dense: true`** pulls it from 16px to 8px,
+for a listing carrying many columns. Rows keep their height either way — density
+here is horizontal, and a shorter row is a rhythm no design asks for.
+
+Every row is inset from the table's edges. That inset is what a row's hover tint
+and a group band's fill — which run the table's full width — are held off by, so
+a value never sits on the tint's own boundary. How far in follows how much
+horizontal room the columns leave: **`dense: true`** pulls it from 16px to 8px,
+for a listing carrying many columns. Rows keep their height either way — density
+here is horizontal, and a shorter row is a rhythm no design asks for.
+
 Column kinds, one treatment each (never mix them per row):
 
 - `"text"` (default) — plain ink text.
@@ -528,7 +679,7 @@ Column kinds, one treatment each (never mix them per row):
 - `"keyword"` — closed-vocabulary words (`tcp`, `udp`, `icmpv6`): sans, muted.
 - `"comment"` — optional free text such as a UCI `name`; muted, blank when absent.
 - `"num"` — right-aligned tabular figures (counters); muted.
-- `"toggle"` — an on/off switch; the cell carries `on` and an optional form `name`.
+- `"toggle"` — an on/off checkbox; the cell carries `on` and an optional form `name`.
 - `"pill"` — an enum value as a status pill; the cell carries `text` plus a
   `variant` from the badge vocabulary (`success`/`warning`/`danger`/`info`/
   neutral) — e.g. `accept`→success, `reject`→warning, `drop`→danger. An empty
@@ -540,24 +691,25 @@ Column kinds, one treatment each (never mix them per row):
 
 A row's `id` is its stable handle — use the UCI section name.
 
+A column may declare `"fit": true` to squeeze to its content's width instead of
+sharing the table's slack, which collects in the growing columns — how a group
+of related fact columns (a version pair and the arrow between them) huddles at
+one edge instead of drifting apart. Pair it with kinds that do not wrap.
+
 **Reorderable rows.** A listing whose *sequence* is meaning — evaluation order —
 adds a leading `{ "kind": "reorder" }` column and names the uci config its rows
 are sections of in `reorder_config`. The shell owns the interaction end to end:
-it draws the handles, drags the row, holds the new sequence as a pending change,
-and — when the operator saves — stages a `uci order` on that config, like every
-other write, so the capsule's Save & Apply is what makes it live. Your plugin
-ships no drag logic and never sees the reorder POST; it renders the page again
-from the fresh snapshot.
+it draws the handles, drags the row, and — the moment the row lands — stages a
+`uci order` on that config, like every other write, so the review drawer's
+apply is what makes it live. Your plugin ships no drag logic and never sees the
+reorder POST; it renders the page again from the fresh snapshot.
 
-A drop writes nothing on its own. The reorderable table renders **the page's
-form** beside itself, carrying the config and the row sequence as hidden fields,
-so a dragged row counts in the staged-changes bar exactly like a dirty field,
-appears in its review list, and un-drags itself on Discard. That form is the
-page's only one: a page whose listing drags must not also compose a `"style":
-"page"` form of its own — the gateway logs a page that breaks this, because
-the capsule binds to exactly one form and everything past the first is lost.
-`reorder_label` names the order in the operator's words for the capsule's
-review ("Rule order"); left empty it reads as the shell's generic "Order".
+A drop is a save. The reorderable table renders **the page's form** beside
+itself, carrying the config and the row sequence as hidden fields, and the shell
+posts it where it stands when a row lands, so the new order counts in the
+staged-changes chip like any other change and shows in the review drawer.
+`reorder_label` names the order in the operator's words there ("Rule order");
+left empty it reads as the shell's generic "Order".
 
 ```json
 { "type": "table", "reorder_config": "firewall", "reorder_label": "Rule order",
@@ -578,7 +730,8 @@ in the file, and a drag that ends where it began stages nothing.
 of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
 its standard alert dialog and posts `_action=<action>` back to the page only after
 the operator confirms. Use this for a command with no edit surface, such as ending
-a login session. Actions that need configuration still belong in a drawer.
+a login session. An act worth showing first — the object's facts, then the button —
+belongs in the row's drawer.
 
 ```json
 { "button": "End session", "action": "end-session:iphone",
@@ -586,25 +739,32 @@ a login session. Actions that need configuration still belong in a drawer.
   "confirm": "Anyone using this session will be signed out of Verso immediately." }
 ```
 
-**Row drawer.** A row with a `drawer` is an object you can open: clicking the row
-slides in a right panel — typically a form prefilled with the section's values, a
-warning callout naming the blast radius, and a `confirm` for deletion (delete
-lives in the drawer, never on the row). The row gets a trailing chevron and the
-pointer; controls inside the row (toggles) keep their own meaning. Set
-`hide_title:true` when the selected row and first section already establish the
-editor's identity; the title remains available to assistive technology and the
-close control remains visible. That first section may set `flush:true` so the
-drawer supplies the outer top inset instead of stacking two layers of padding.
+**Row drawer.** A row with a `drawer` opens a right slide-in panel on the object
+behind the row, beside the listing it belongs to: its facts as `properties`, a
+callout naming what depends on it, the form that edits it, and action buttons —
+one or several, each a complete act (delete this rule, reserve this address),
+guarded by `confirm` where the act deserves a pause. **An object lives in its
+drawer.** The listing's add opens the same panel blank (`add_panel`, or a link
+such as `?open=new`), so making one and editing one are one surface drawn from
+one set of fields, and a Save inside the panel stages like any other write (see
+[Writing config](#writing-config-the-commit-intent)). Keep which panel is open, and which of its
+tabs, in the address (`?open=<section>&tab=<name>`): the panel then survives a
+reload, a back button and a shared link without client state. The row gets a
+trailing chevron and the pointer; controls inside the row (toggles) keep their
+own meaning. Set `hide_title:true` when the selected row
+and first section already establish the panel's identity; the title remains
+available to assistive technology and the close control remains visible. That
+first section may set `flush:true` so the drawer supplies the outer top inset
+instead of stacking two layers of padding.
 
-Set `open:true` to render the panel already open. That is how a submission you
-refused comes back: re-render the listing with the offending drawer open, its
-fields carrying their errors, and the operator is looking at what to fix instead
-of at a closed row.
+Set `open:true` to render the panel already open — how a link from elsewhere in
+the shell arrives with the row's panel already in front of the operator
+(`/plugins/dnsdhcp/?reserve=<mac>` opens that device's panel).
 
 ```json
-{ "id": "force_dns_guest", "cells": [ /* … */ ],
-  "drawer": { "title": "Edit redirect — Force-DNS-to-AdGuard-guest",
-              "children": [ /* form, callout, confirm */ ] } }
+{ "id": "lease-iphone", "cells": [ /* … */ ],
+  "drawer": { "title": "iPhone — 10.0.0.23",
+              "children": [ /* properties, callout, confirm */ ] } }
 ```
 
 **Seam.** A table may fold extra rows behind a collapsed block *inside the same
@@ -636,6 +796,56 @@ illustrated empty state would shout. A listing that **is** the page (nothing
 else on it but the heading) gets the `empty` widget instead: icon, headline,
 reassurance, and a doorway to the thing that would fill it. Choose by what
 surrounds the listing, not by how empty it is.
+
+**A live listing (`stream`).** Some listings are not a state of the config but a
+run of events — firewall verdicts, DHCP handshakes, the system log. Such a table
+declares `stream` and renders with no rows: the rows arrive afterwards, newest
+on top, over a connection the shell holds open.
+
+```json
+{ "type": "table", "dense": true,
+  "stream": { "source": "firewall-log", "ring": 200 },
+  "columns": [ /* the columns the events arrive under */ ],
+  "rows": [],
+  "empty_text": "Waiting for the first logged event…" }
+```
+
+`source` is a name from a **closed set**, never a URL — a plugin cannot point
+the shell at an endpoint of its choosing, the same bound the brokered helper
+reads keep. The set today is:
+
+| source | what arrives |
+| --- | --- |
+| `firewall-log` | one row per logged firewall verdict: when, verdict, ingress zone, source, destination, protocol, port, and the rule that decided it |
+
+A source the shell does not serve is not an error: the table renders as an
+ordinary still listing, so a page written against a newer shell still works on
+an older one. (A dev shell logs the unwired source, since silence is the bug
+there.)
+
+`ring` is how many rows the browser keeps before the oldest fall off the bottom
+— 200 by default, clamped to 20…500. Everything else is the shell's:
+
+- **The transport.** One Server-Sent Events connection per listing, behind the
+  same session gate as every page, carrying structured rows — never markup.
+- **The waiting state.** A live listing keeps its column heads while empty (they
+  name what is about to arrive) and states `empty_text` in one quiet row that
+  the first event replaces.
+- **Repeats.** Consecutive identical events collapse into the row already there:
+  its counter climbs (`× 38`) and its clock moves up. A repeat that is *not*
+  consecutive starts a fresh row, so the order never lies.
+- **Pause.** A `button` with `"live": true` in the section's `control` slot is
+  the stream's own indicator and its pause: the spinner turns while events flow
+  and stops when they are held, the label becomes `Resume · N new`, and nothing
+  on the page moves — not even the relative times — until it is pressed again.
+- **Narrowing.** Every value in a streamed row is a control: click a verdict, a
+  zone, or an address and the listing narrows to it, with what was clicked
+  travelling to a shelf above the table wearing the treatment it had in the row.
+  The page-wide `filter` composes with it (the lens dims, a plucked value
+  hides), so a live listing should declare one.
+
+A plugin writes none of that, and none of it is configurable: it declares the
+source, the ring, the columns, and the words.
 
 ### Subpages (`pages`) — the domain's top bar
 
@@ -733,8 +943,8 @@ the rule that decides is one rule for every plugin.
 
 The "config defaults" pattern: each row a plainly-named option with a one-line
 description, the underlying option name as a mono code chip, and its state on
-the right — a `toggle` (switch) for an on/off option, or `pills` (badge
-vocabulary) for a row that reads rather than toggles.
+the right — a `toggle` (an on/off checkbox) for an on/off option, or `pills`
+(badge vocabulary) for a row that reads rather than toggles.
 
 ```json
 { "type": "settings",
@@ -769,39 +979,39 @@ starts folding on its own.
 
 On a standalone plugin page, renders its `fields` inside a `POST` form that submits
 **back to the same page** (you don't set an action — the shell owns the URL). A
-configurable page has one form and one Save & Apply action:
+configurable page has one form and one Save action, which stages what the form
+holds; the operator applies from the staged-changes chip (ADR-010):
 
 ```json
-{ "type": "form", "submit": "Save & Apply", "success": "",
+{ "type": "form", "submit": "Save", "success": "",
   "fields": [ /* field and list widgets */ ] }
 ```
 
 A contribution fragment must not emit `form`; emit its field-bearing `section`,
 `stack`, or other root directly. The shell places those fields inside the shell
-page's outer form and coordinates its Save & Apply with every other changed owner.
+page's outer form and coordinates its Save with every other changed owner.
 
-`submit` currently defaults to `"Save"` for manifest-v1 pages. Manifest-v2 pages
-should state `"Save & Apply"` until the renderer changes its default. Two forms
-get no generated button: one with `"style": "page"`, whose submission the shell's
-staged-changes bar owns, and one whose `fields` carry a `confirm`, which renders
-the submit itself — state a `submit` label explicitly if you want both.
+`submit` defaults to `"Save"`; a `"style": "page"` form that states none gets
+the shell's "Save changes". A form whose `fields` carry a `confirm` renders the
+submit itself — state a `submit` label explicitly if you want both.
 
-**Secondary actions.** Besides Save & Apply, a standalone form may declare `actions` — extra buttons
+**Secondary actions.** Besides Save, a standalone form may declare `actions` — extra buttons
 that submit the form (all its fields) with an `_action` marker you read in your
 handler, so you can *compute* on the submitted values and re-render, without a save.
 This is the plugin-computed round-trip (ADR-005 §7): the shell renders the button and
 forwards the submission; you do the work and return fresh schema. The WireGuard
 plugin uses it to generate a keypair — the shell can't compute a WireGuard key, so
-the plugin does, fills the field, and re-renders; the operator then uses Save & Apply.
+the plugin does, fills the field, and re-renders; the operator then saves, and
+applies from the staged changes.
 
 ```json
-{ "type": "form", "submit": "Save & Apply",
+{ "type": "form", "submit": "Save",
   "actions": [ { "label": "Generate keypair", "action": "generate-keypair" } ],
   "fields": [ /* … */ ] }
 ```
 
 On a POST, read `_action`: when it names one of your actions, compute and re-render
-(return no `commit`); otherwise treat it as Save & Apply's prepare request.
+(return no `commit`); otherwise treat it as the save's prepare request.
 
 ### field — one labelled control
 
@@ -812,7 +1022,8 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 ```
 
 - `kind`: `"text"` (default), `"select"`, `"checks"`, `"password"`,
-  `"textarea"`, or `"datetime-local"`.
+  `"textarea"`, `"time"` (a clock time on its own — a curfew's edge), or
+  `"datetime-local"`.
 - `value`: the current value; echo the submitted value back on a failed POST.
 - `datatype`: a datatype name the shell enforces (see [Datatypes](#datatypes)). Optional.
 - `autocomplete`: optional browser autofill purpose. Password fields default to
@@ -820,6 +1031,35 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 - `advanced`: keeps the field out of the basic reading — set it only while the
   field is at its default ([the reader mode](#basic-and-advanced-the-reader-mode)).
 - `error`: an inline error to show under the field (you set this on a 422).
+- `key`: the option this field writes, verbatim — `"ipaddr"`, `"leasetime"`. It
+  rides beside the label as a mono chip, so someone who knows the config sees
+  which line they are editing and someone who does not can ignore it.
+- `unit`: what the number in the box is counted in — `"Mbit/s"`, `"seconds"`. It
+  sits inside the field's trailing edge, so the value and what it means read as
+  one thing and the label is left to say what the setting is.
+- `style: "segmented"`: draws a `checks` field as one strip of togglable chips
+  rather than a grid of boxes — for a set short enough to show whole (the days of
+  the week), where which members are on is a shape rather than a list to read. A
+  set long enough to wrap belongs in the grid. On a `select` it draws the pick as
+  one strip of radios — only for a policy triplet (accept | reject | drop), where
+  every answer is one short word and showing all three costs less than hiding
+  two. Anything else — a protocol, a family, ECN, a list that can grow — stays a
+  box. The segment in force fills in the body ink, as every selected segment in
+  the shell does; the action colour is never a "selected" colour.
+- `tip` and `source`: what the field *is*, raised from the label on hover or
+  focus, closed by a mono line pairing `key` with what reads it. Use it where
+  the label is a term of art the operator did not choose — a DUID, an interface
+  identifier — and leave it off where the label is already the plain word for
+  the thing. `help` still says what to put in the control and stays on screen;
+  `tip` answers "what even is this", which would shout beside every row:
+
+```json
+{ "type": "field", "name": "duid", "label": "DUID", "key": "duid",
+  "help": "Match a DHCPv6 client by DUID instead of MAC.",
+  "tip": "Asking for an address over IPv6, a device names itself by a DUID …",
+  "source": "dhcp host" }
+```
+
 - For `kind:"select"`, supply `options` and set `value` to the selected one:
 
 ```json
@@ -846,8 +1086,11 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 ### switch — one persistent on/off setting
 
 Use a switch for binary object state, such as whether a firewall rule is enabled.
-It is the same compact control used in table toggle columns; checked switches post
-their `name` with the browser's standard `on` value, while unchecked switches omit it.
+The shell draws it as an 18px checkbox, never as a toggle: every state in Verso is
+staged for the commit, nothing flips live, and a toggle's knob would promise that
+it had. It is the same compact control used in table toggle columns; checked
+switches post their `name` with the browser's standard `on` value, while unchecked
+switches omit it.
 
 ```json
 { "type": "switch", "name": "enabled", "label": "Enabled", "on": true,
@@ -992,6 +1235,9 @@ read it to decide which branch to interpret (ADR-005 §7).
 - `label` — the toggle's caption.
 - `checked` — whether the field-set starts visible; derive it from state (e.g. "the
   pre-shared key is set").
+- `key` — the option the toggle writes, worn as the mono chip a field's label
+  wears. The gate is a form row like the ones it gates, at the same measure.
+- `help` — the line under the toggle: what turning it on means.
 - `fields` — the field-set revealed when the toggle is on.
 - `otherwise` — an optional field-set revealed when the toggle is off.
 
@@ -1148,3 +1394,88 @@ A correct plugin:
 6. Runs as a single procd instance with output/crashes visible in `logread`.
 
 Hold all six and your plugin renders natively and cannot take the shell down.
+
+### Conditional fields and interface editors
+
+`when` groups fields belonging to a select value:
+`{"type":"when","name":"proto","value":"static","active":true,"children":[...]}`.
+The shell hides and disables inactive branches and skips them during datatype
+validation; the plugin must still validate the selected protocol and its values.
+
+A list with `style:"rows"` renders ordered values with individual remove controls
+and an always-visible Add input. Enter adds a value, invalid tokens are refused,
+and duplicates clear the input without adding a second row.
+
+A table row can supply `depth` and `expanded` widgets. Only the identity control
+expands those details. Expanded content participates in localization, filtering,
+and schema traversal. Row actions keep their own links or submitted verbs.
+
+`grid` style `editor` lays out a 640px interface form beside an anchor rail and
+configuration preview, collapsing to one column when space is limited. Reuse
+`link` style `rail` and a live `code` preview in that column. A chooser drawer uses
+`link` style `choice`, with optional `desc` prose and a `code` label. Stored keys
+and certificates use `card` style `artifact`; form sections remain unboxed.
+
+The Interfaces inventory uses `table` style `interfaces`: its six columns are
+identity, device type, IPv4 address, MAC, operational state, and actions. Identity
+cells use `lead_icon:"physical"` or `"software"` for the topology mark and `chips`
+for logical network references. State remains plain text with a square mark.
+`depth` describes a transport dependency (VLAN or PPP), not bridge membership.
+The matching `actionbar` style supplies the physical/software legend and a single
+optional Problems filter. A chooser uses drawer `size:"choices"`, kicker
+sections, and icon-bearing choice links. Expanded details use `grid` styles
+`facts` and `configurations`; an editor rail may use `card` style `preview` with
+an unlabeled live code block.
+
+`verso.networkState` brokers normalized netifd booleans and kernel device facts.
+`interface-up`, `interface-down`, and `interface-restart` commands each require
+the matching `network.interface` write grant and are checked against the
+operator's concrete netifd object permissions. They affect runtime only; UCI
+`auto` stays in the staged editor. The shell refreshes the inventory without
+resetting its filter, expanded row, or the session's inactivity deadline.
+
+### DNS settings and custom option files
+
+The DNS/DHCP plugin serves one settings page at `/plugins/dnsdhcp/`. Interface
+DHCP pools are edited by the Interfaces plugin; reservations remain device
+contributions. `dhcp` sections of type `verso_defaults` hold the reservation-only
+default for new networks and the ordinary upstreams retained while encryption is
+selected. Existing pools are never rewritten by that default.
+
+The shell brokers `verso.dnsState` for installed DNS capabilities and custom file
+contents. The `config-file-stage` command takes `path`, `expected` (the version
+returned by the read), and `content`; its manifest must declare both
+`verso.stageConfigFile` and write access to `dhcp`. The helper accepts only
+`/etc/dnsmasq.conf` and safe `.conf` basenames under `/etc/dnsmasq.d/`, rejects
+symlinks and stale edits, and checks dnsmasq syntax before staging. Include files
+also stage dnsmasq's `confdir`, which its jail must mount.
+
+File changes join the existing review/apply/discard flow as `file` review records,
+not UCI options. The root helper keeps the shared stage and rollback journal in
+`/var/run/verso-config-files`; saving never rewrites an active file. Apply preserves
+original contents and permissions, validates the complete include set, and arms
+an independent rollback timer. Confirm keeps the files, discard removes their
+stage, and an unsuccessful UCI apply restores them. A helper restart recovers
+expired rollback journals. Files are limited to 32 KiB each and 128 KiB of staged
+text in total.
+
+The shell's reusable `settings` grid and form styles provide a section index,
+256px controls, and a Save button enabled by edits. `checkbox` switches, `code`
+fields, `path`/`count` table columns, and `form` drawers keep their rendering in
+Tailwind templates owned by the shell.
+
+
+DHCP service visibility is shared by the Interfaces and DNS & DHCP plugins via
+`verso_plugin::dhcp`. The SDK merges applied observations with each plugin's
+staged snapshot, labels pending enable/disable changes explicitly, and provides
+links to `/plugins/interfaces/edit?network=…#dhcp-server`. The interface identity
+carries one DHCP chip per configured network: success, warning or danger, with a
+neutral disabled state. The DHCP broker obtains protected include directives through a bounded helper read; handwritten exclusions are included in its service assessment. Chip `title` is localized independently of its verbatim
+identity label. Expanded network facts show the observed pool, lease duration and
+active lease count. Physical bridge members do not inherit their bridge's chip.
+
+Table style `live` uses the shell's existing ten-second inventory refresh to
+replace only its rows. It preserves the surrounding settings form, skips hidden
+pages and open dialogs, and shows a stale-data notice when a read fails. The DNS
+network summary uses this style; configuration still belongs to the interface
+editor and follows the normal Save/Apply flow.

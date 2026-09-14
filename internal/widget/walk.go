@@ -18,6 +18,22 @@ func Walk(w Widget, visit func(Widget)) {
 	}
 }
 
+// WalkActive visits controls that participate in this submission. Conditional
+// fieldsets remain in the schema for rendering and translation, but an inactive
+// branch is disabled in the browser and must not reject a save on the server.
+func WalkActive(w Widget, visit func(Widget)) {
+	if w == nil {
+		return
+	}
+	if branch, ok := w.(*When); ok && !branch.Active {
+		return
+	}
+	visit(w)
+	for _, child := range w.children() {
+		WalkActive(child, visit)
+	}
+}
+
 // pruner is the removing half of the children() seam: a widget holding arbitrary
 // child widgets rewrites its own slices, keeping only what keep accepts and
 // recursing into the survivors. Walk visits a tree but cannot change it, and a
@@ -44,27 +60,6 @@ func pruneList(ws []Widget, keep func(Widget) bool) []Widget {
 	return kept
 }
 
-// PageFormCount counts the page-form surfaces a tree renders: a form declared
-// style "page" and a reorderable table's hidden order form. The capsule binds
-// to exactly one page form; a page composing more mis-wires silently, so the
-// gateway holds the renderer to one and logs the composition that breaks it.
-func PageFormCount(w Widget) int {
-	count := 0
-	Walk(w, func(n Widget) {
-		switch n := n.(type) {
-		case *Form:
-			if n.Style == "page" {
-				count++
-			}
-		case *Table:
-			if n.reorderable() {
-				count++
-			}
-		}
-	})
-	return count
-}
-
 // FilterThreshold is how much a page has to list before the page-wide lens earns
 // its place. At or below it the whole page is one glance, and a search field over
 // it is a control answering a question nobody asked — so the shell removes it.
@@ -85,6 +80,9 @@ func FilterableCount(w Widget) int {
 			if n.Seam != nil {
 				count += len(n.Seam.Rows)
 			}
+			// A live listing renders empty and fills after: what the lens will
+			// have to sift is the ring it keeps, not the nothing it starts as.
+			count += n.streamRing()
 		case *Settings:
 			count += len(n.Items)
 			if n.Seam != nil {

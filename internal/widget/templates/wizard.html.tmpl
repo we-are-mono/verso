@@ -17,7 +17,7 @@
       <div class="space-y-4">{{.Body}}</div>
       <div class="flex items-center justify-between gap-3 pt-1">
         {{if .HasBack}}
-        <label for="{{.PrevID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400">{{ t "Back" }}</label>
+        <label for="{{.PrevID}}" class="inline-flex cursor-pointer items-center justify-center rounded-xs border border-rule-strong bg-ground px-4 py-2 text-sm font-semibold text-body transition-colors hover:border-denim hover:text-denim">{{ t "Back" }}</label>
         {{else}}<span></span>{{end}}
         {{if .HasNext}}
         <label for="{{.NextID}}" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium {{template "verso-btn-primary"}}">{{ t "Continue" }}</label>

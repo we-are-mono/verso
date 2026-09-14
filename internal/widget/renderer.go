@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"strings"
 	"sync/atomic"
 
@@ -16,6 +17,13 @@ import (
 
 //go:embed templates/*.tmpl
 var templateFS embed.FS
+
+// Partials exposes the widget templates so the shell's own pages can reuse the
+// few partials that are shared vocabulary rather than widget internals — the
+// copy control, the chip, the tooltip. A page that renders a fact the same way a
+// table cell does should render it with the same markup, not a second copy of
+// it that drifts.
+func Partials() fs.FS { return templateFS }
 
 // Renderer renders widgets to HTML. Values flow through html/template, so
 // plugin-supplied text is contextually escaped and cannot inject markup into

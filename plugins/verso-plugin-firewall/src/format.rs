@@ -281,7 +281,11 @@ fn ipv4_network(ipaddr: &str, netmask: &str) -> Option<String> {
     let Some(prefix) = prefix.filter(|prefix| *prefix <= 32) else {
         return Some(address.to_string());
     };
-    let mask = if prefix == 0 { 0 } else { u32::MAX << (32 - prefix) };
+    let mask = if prefix == 0 {
+        0
+    } else {
+        u32::MAX << (32 - prefix)
+    };
     let network = (u32::from_be_bytes(octets) & mask).to_be_bytes();
     Some(format!(
         "{}.{}.{}.{}/{}",
@@ -294,7 +298,13 @@ fn ipv4_network(ipaddr: &str, netmask: &str) -> Option<String> {
 fn prefix_of(netmask: &str) -> Option<u32> {
     let bits = u32::from_be_bytes(ipv4_octets(netmask.trim())?);
     let ones = bits.leading_ones();
-    (bits == if ones == 0 { 0 } else { u32::MAX << (32 - ones) }).then_some(ones)
+    (bits
+        == if ones == 0 {
+            0
+        } else {
+            u32::MAX << (32 - ones)
+        })
+    .then_some(ones)
 }
 
 fn ipv4_octets(address: &str) -> Option<[u8; 4]> {
@@ -336,10 +346,7 @@ mod tests {
         assert_eq!(group_label("input_wan", None), "WAN → Router");
         assert_eq!(group_label("input_iot_cloud", None), "IoT Cloud → Router");
         assert_eq!(group_label("input", None), "Any → Router");
-        assert_eq!(
-            group_label("forward_wan", None),
-            "WAN → Forwarded traffic"
-        );
+        assert_eq!(group_label("forward_wan", None), "WAN → Forwarded traffic");
         assert_eq!(
             group_label("forward_family", Some("iot_local")),
             "Family → IoT Local"

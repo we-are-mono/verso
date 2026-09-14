@@ -1,0 +1,51 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<!doctype html>
+<html lang="{{ .Lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>{{ t "Installing firmware" }} · OpenWrt</title>
+<link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style id="verso-css">{{.CSS}}</style>
+{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready
+     and re-applies the saved theme, so neither flashes (CSP-safe, first-party). */}}
+<script src="/assets/verso-boot.js"></script>
+</head>
+{{/* The takeover: chrome-less by construction — no sidebar, no top bar, no nav —
+     because it is rendered straight through the page-template set, not renderPage.
+     The person is held on the one outcome that matters until the upgrade finishes
+     or a failure is released. */}}
+<body class="m-0 min-h-screen bg-canvas font-sans text-sm leading-normal text-ink">
+  <main class="flex min-h-screen items-center justify-center px-6 py-12 sm:px-8">
+    {{/* data-verso-upgrading marks the surface the shell's client drives; the
+         initial state is the job's current phase, already painted server-side, so
+         the first frame is right before any JS runs. The client swaps [hidden]
+         between the working states as its poll moves, and reaches a failure by a
+         reload so the server renders the tool's own words. */}}
+    <div class="w-full max-w-xl" data-verso-upgrading data-verso-upgrading-state="{{.Initial}}">
+      <div data-verso-upgrading-surface="preparing"{{if ne .Initial "preparing"}} hidden{{end}}>{{.Preparing}}</div>
+      <div data-verso-upgrading-surface="installing"{{if ne .Initial "installing"}} hidden{{end}}>{{.Installing}}</div>
+      <div data-verso-upgrading-surface="restarting" hidden>{{.Restarting}}</div>
+      <div data-verso-upgrading-surface="stalled" hidden>{{.Stalled}}</div>
+      <div data-verso-upgrading-surface="done" hidden>{{.Done}}</div>
+      <div data-verso-upgrading-surface="failed"{{if ne .Initial "failed"}} hidden{{end}}>{{.Failed}}</div>
+      {{/* The wait's bound, made visible: a quiet countdown to the moment the client
+           stops waiting and opens a door. The client shows it only once the flash is
+           under way (installing) and keeps it ticking locally while the router is
+           gone; the number is driven client-side, the words localized here. */}}
+      <p data-verso-upgrading-countdown hidden class="mt-8 text-center text-sm text-meta">{{ t "You can check on it in" }} <span data-verso-upgrading-countdown-time class="font-mono tabular-nums text-ink">8:00</span></p>
+    </div>
+  </main>
+{{/* Strings the shell's client script writes into the page (verso.js T),
+     localized at render — client JS has no translator (ADR-012). */}}
+<script type="application/json" id="verso-i18n">{{.JSStrings}}</script>
+{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP. The
+     takeover's polling loop and the copy button both live here. */}}
+<script src="/assets/verso.js" defer></script>
+<script src="/assets/htmx.min.js" defer></script>
+<script src="/assets/alpine.csp.min.js" defer></script>
+</body>
+</html>

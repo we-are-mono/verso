@@ -3,37 +3,74 @@
 {{/* conditions: optional typed form blocks. Every catalogue entry is rendered
      once into an inert template; the shell's shared JS adds/removes those blocks.
      Plugin code declares data and ordinary child widgets, never DOM behaviour. */}}
+{{/* A condition someone has added is a field of this form like any other, so it
+     is drawn like any other: the label and its uci key on the left, the control
+     on the right, and at the row's trailing edge the one thing that is different
+     about it — it can be taken away again. The boxed card it used to wear said
+     "this is a different kind of thing", which it is not. */}}
 {{define "conditions.item"}}
-<section data-verso-condition="{{.Key}}" class="rounded-lg border border-slate-200 bg-slate-50/70 dark:border-gray-700 dark:bg-gray-800/50">
-  <header class="flex items-start justify-between gap-4 px-4 pt-3.5 pb-3">
-    <div class="min-w-0">
-      <h5 class="text-sm font-semibold text-slate-900 dark:text-gray-100">{{.Label}}</h5>
-      {{if .Help}}<p class="mt-0.5 text-sm text-slate-500 dark:text-gray-400">{{.Help}}</p>{{end}}
-    </div>
-    <button type="button" data-verso-condition-remove class="shrink-0 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-200">{{ t "Remove" }}</button>
-  </header>
-  <div class="space-y-5 border-t border-slate-200 px-4 py-4 dark:border-gray-700">{{range .Children}}{{.}}{{end}}</div>
+{{/* The glyph sits inside the row's measure, not beyond it: a condition is one
+     row of this form, and the form is 40rem wide whatever a row ends in. The
+     control column therefore starts 60px later here than on a row that ends in
+     nothing, which is how the canvas draws it. */}}
+<section data-verso-condition="{{.Key}}" class="flex max-w-[40rem] items-start gap-8">
+  <div class="min-w-0 flex-1 [&>div]:border-0 [&>div]:py-3">{{range .Children}}{{.}}{{end}}</div>
+  <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="mt-4 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>
 </section>
 {{end}}
-<fieldset data-verso-conditions class="space-y-4">
+<fieldset data-verso-conditions class="space-y-2">
   <div>
-    <legend class="text-base font-semibold text-slate-900 dark:text-gray-100">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
-    {{if .Help}}<p class="mt-1 text-sm text-slate-500 dark:text-gray-400">{{.Help}}</p>{{end}}
+    <legend class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
+    {{if .Help}}<p class="verso-prose mt-2 max-w-[36rem] text-sm leading-snug text-body">{{.Help}}</p>{{end}}
   </div>
-  <div data-verso-condition-list class="space-y-3">{{range .Active}}{{.}}{{end}}</div>
-  <p data-verso-condition-empty class="rounded-md bg-slate-50 px-3 py-2.5 text-sm text-slate-500 dark:bg-gray-800 dark:text-gray-400{{if .Active}} hidden{{end}}">{{ t "No additional conditions. All traffic matching the path and protocol above is included." }}</p>
-  <div class="flex items-end gap-3">
-    <label class="min-w-0 flex-1 space-y-1.5">
-      <span class="block text-sm font-medium text-slate-900 dark:text-gray-100">{{ t "Add condition" }}</span>
-      <span class="relative block">
-        <select data-verso-condition-select class="w-full appearance-none rounded-md border {{template "verso-input-border" ""}} bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:outline-none dark:bg-gray-900 dark:text-gray-100">
-          <option value="">{{ t "Choose a condition…" }}</option>
-          {{range .Options}}<option value="{{.Key}}"{{if .Active}} disabled hidden{{end}}>{{.Label}}</option>{{end}}
-        </select>
-        <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">{{icon "chevron-down" "size-4"}}</span>
-      </span>
-    </label>
-    <button type="button" data-verso-condition-add class="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{template "verso-btn-secondary"}}">{{ t "Add" }}</button>
+  <div data-verso-condition-list>{{range .Active}}{{.}}{{end}}</div>
+  <p data-verso-condition-empty class="max-w-[36rem] rounded-xs bg-quiet px-3 py-2 text-sm leading-snug text-body{{if .Active}} hidden{{end}}">{{ t "No additional conditions. All traffic matching the path and protocol above is included." }}</p>
+  {{/* The way in sits under a rule of its own: what is above it is this rule as
+       it stands, what is below is the offer to add to it.
+
+       One act, not two. It was a closed list beside an Add button, which made
+       adding a condition a matter of finding it in a drop-down of everything and
+       then pressing something else — and a drop-down cannot be searched, cannot
+       show what a condition writes, and cannot say what sort of value it takes.
+       The picker is a list someone reads or filters, and pressing a line adds it. */}}
+  <div data-verso-condition-picker class="relative border-t border-rule pt-4">
+    <button type="button" data-verso-condition-open aria-expanded="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
+    <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-[0_8px_24px_rgba(27,25,23,.14)]">
+      {{/* The filter is the first thing focus lands on, because on a catalogue
+           this size typing the name is faster than reading to find it. It is not
+           a form control of this form: it filters a list and posts nothing. */}}
+      <div class="flex items-center gap-2 border-b border-rule-strong px-3 py-2.5">
+        <span class="flex flex-none text-faint">{{icon "search" "size-4"}}</span>
+        <input data-verso-condition-filter type="text" autocomplete="off"
+          placeholder="{{ t "Filter conditions" }}" aria-label="{{ t "Filter conditions" }}"
+          class="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:text-faint">
+      </div>
+      <div class="verso-drawer-scrollbar max-h-90 overflow-y-auto">
+        {{/* Each hairline is the top of the thing below it, never the bottom of the
+             thing above: a heading rules itself off from the group before it, and
+             every entry but the first under a heading rules itself off from its
+             neighbour. Drawn the other way round, the last entry's line lands
+             against the panel's own border and the list ends in a seam. */}}
+        {{range $i, $group := .Groups}}
+        <div data-verso-condition-group{{if $group.Name}} data-verso-condition-group-name="{{$group.Name}}"{{end}}>
+          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2.5{{if $i}} border-t{{end}}"><span class="text-xs font-semibold text-meta uppercase">{{$group.Name}}</span></div>{{end}}
+          <div>
+            {{range $group.Items}}
+            {{/* A condition the rule already carries stays in the list and stays
+                 legible — it is part of the catalogue whether or not it is in use —
+                 but it is not an offer any more, so it is quiet and inert. */}}
+            <button type="button" data-verso-condition-choose="{{.Key}}"{{if .Active}} disabled{{end}} class="flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45">
+              <span class="flex-none text-sm font-semibold text-ink">{{.Label}}</span>
+              <span class="{{template "verso-chip-class"}}">{{.Key}}</span>
+              {{if .Hint}}<span class="ml-auto flex-none text-sm text-meta">{{.Hint}}</span>{{end}}
+            </button>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+        <p data-verso-condition-none hidden class="px-4 py-5 text-sm leading-snug text-body">{{ t "Nothing matches. Try the option's name as the config spells it." }}</p>
+      </div>
+    </div>
   </div>
   {{range $i, $item := .Templates}}<template data-verso-condition-template="{{(index $.Options $i).Key}}">{{$item}}</template>{{end}}
 </fieldset>

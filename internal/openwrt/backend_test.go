@@ -7,8 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/we-are-mono/verso/internal/ubus"
 )
 
 func fakeSystemInfo(m map[string]any, err error) systemInfoFn {
@@ -63,11 +66,40 @@ func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
 	if got.Firmware != "OpenWrt 25.12.4 r32933-4ccb782af7" {
 		t.Errorf("firmware = %q", got.Firmware)
 	}
-	if got.KernelBuild != "Linux version 6.12.101 (builder@host) #1 SMP" {
+	// The row states the release and the build stamp; the builder address and
+	// the compiler pedigree between them stay in /proc/version.
+	if got.KernelBuild != "6.12.101 #1 SMP" {
 		t.Errorf("kernel build = %q", got.KernelBuild)
 	}
 	if got.Target != "qualcommax/ipq807x" {
 		t.Errorf("target = %q", got.Target)
+	}
+}
+
+// TestCondenseKernelBuild: the real shapes — a distro kernel's full pedigree
+// line, an OpenWrt build, and lines that are not the shape at all, which fall
+// back to the short release rather than to the snake.
+func TestCondenseKernelBuild(t *testing.T) {
+	for _, tc := range []struct{ full, release, want string }{
+		{
+			"Linux version 6.12.101+deb13-amd64 (debian-kernel@lists.debian.org) (x86_64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 SMP PREEMPT_DYNAMIC Debian 6.12.101-1 (2026-08-05)",
+			"6.12.101+deb13-amd64",
+			"6.12.101+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.101-1 (2026-08-05)",
+		},
+		{
+			"Linux version 6.12.41 (builder@buildhost) (aarch64-openwrt-linux-musl-gcc (OpenWrt GCC 13.3.0) 13.3.0) #0 SMP Mon Aug 18 10:00:00 2026",
+			"6.12.41",
+			"6.12.41 #0 SMP Mon Aug 18 10:00:00 2026",
+		},
+		// No build stamp: the release from the line stands alone.
+		{"Linux version 6.12.41 (builder@host) (gcc)", "6.12.41", "6.12.41"},
+		// Not the shape at all: the short release ubus stated, never the line.
+		{"something unexpected entirely", "6.12.41", "6.12.41"},
+		{"", "6.12.41", "6.12.41"},
+	} {
+		if got := condenseKernelBuild(tc.full, tc.release); got != tc.want {
+			t.Errorf("condenseKernelBuild(%q) = %q, want %q", tc.full, got, tc.want)
+		}
 	}
 }
 
@@ -78,21 +110,17 @@ func TestSystemInfoError(t *testing.T) {
 	}
 }
 
-// TestHostnamePassesSession checks the seam is called and the sid is threaded
-// through to it — the real read goes through rpcd's uci object (verified live).
-func TestHostnamePassesSession(t *testing.T) {
-	var gotSID string
-	b := &NativeBackend{hostname: func(_ context.Context, sid string) (string, error) {
-		gotSID = sid
-		return "verso-lab", nil
-	}}
-
-	hn, err := b.Hostname(context.Background(), "s1")
-	if err != nil || hn != "verso-lab" {
-		t.Fatalf("Hostname = %q, %v; want verso-lab", hn, err)
+// Identity must agree with the sign-in page without requiring rpcd or UCI.
+func TestHostnameReadsRunningName(t *testing.T) {
+	want, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if gotSID != "s1" {
-		t.Errorf("sid not threaded to the backend: got %q", gotSID)
+	for _, sid := range []string{"", "operator-session"} {
+		got, err := NewNativeBackend().Hostname(context.Background(), sid)
+		if err != nil || got != want {
+			t.Fatalf("Hostname(%q) = %q, %v; want running hostname %q", sid, got, err, want)
+		}
 	}
 }
 
@@ -248,6 +276,51 @@ func TestUCIDeleteThreadsArgs(t *testing.T) {
 	}
 	if gotSection != "allow_ping" || gotOption != "dest_port" {
 		t.Errorf("option not threaded: section=%q option=%q", gotSection, gotOption)
+	}
+}
+
+// TestUCIDeleteAbsentOptionIsNamed: rpcd answers `uci delete` for an option a
+// section does not carry with UBUS_STATUS_NOT_FOUND. Clearing an option that was
+// never set is the state the caller asked for, so the backend names it —
+// ErrOptionNotFound — and the ubus status stops at this seam.
+func TestUCIDeleteAbsentOptionIsNamed(t *testing.T) {
+	notFound := &ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseInvoke, Call: "delete"}
+	b := &NativeBackend{uciDelete: func(_ context.Context, _, _, _, _ string) error {
+		return fmt.Errorf("openwrt: %w", notFound)
+	}}
+
+	err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", "masq")
+	if !errors.Is(err, ErrOptionNotFound) {
+		t.Fatalf("UCIDelete = %v, want ErrOptionNotFound", err)
+	}
+	// The section-level shape asks a different question: a section rpcd cannot
+	// find is a genuine failure, and stays one.
+	if err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", ""); errors.Is(err, ErrOptionNotFound) {
+		t.Errorf("a section delete must not read as a cleared option: %v", err)
+	}
+}
+
+// TestUCIDeleteOtherFailuresPassThrough: only NOT_FOUND from the invoke means
+// "already clear". Any other ubus status, and any transport failure, reaches the
+// caller as it came.
+//
+// The lookup case is the one that matters most: rpcd off the bus answers the
+// `uci` object lookup with the same UBUS_STATUS_NOT_FOUND, and reading that as
+// "the option was already absent" would let a whole save report success without
+// a single write reaching the device.
+func TestUCIDeleteOtherFailuresPassThrough(t *testing.T) {
+	for name, cause := range map[string]error{
+		"another ubus status":   &ubus.StatusError{Code: ubus.StatusNotFound + 1, Phase: ubus.PhaseInvoke, Call: "delete"},
+		"a transport failure":   errors.New("dial: connection refused"),
+		"the uci object is off": &ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseLookup, Call: "uci"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			b := &NativeBackend{uciDelete: func(_ context.Context, _, _, _, _ string) error { return cause }}
+			err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", "masq")
+			if errors.Is(err, ErrOptionNotFound) || !errors.Is(err, cause) {
+				t.Errorf("UCIDelete = %v, want the cause unchanged", err)
+			}
+		})
 	}
 }
 
@@ -469,7 +542,7 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 
 // TestParseChangesKeepsNumericFields: an order change carries the section's new
 // position as a number; the tuple must survive with the number rendered as its
-// decimal string, or a staged reorder becomes invisible to the capsule.
+// decimal string, or a staged reorder becomes invisible to the stage's count.
 func TestParseChangesKeepsNumericFields(t *testing.T) {
 	got := parseChanges(map[string]any{
 		"firewall": []any{
@@ -492,6 +565,84 @@ func TestParseChangesKeepsNumericFields(t *testing.T) {
 			if got["firewall"][i][j] != field {
 				t.Errorf("tuple %d field %d = %q, want %q", i, j, got["firewall"][i][j], field)
 			}
+		}
+	}
+}
+
+// TestLogReadFoldsLogdRecords: logd's reply is a flat list of records; the fold
+// keeps the id (a reader's cursor), the source (kernel or syslog), the stamp,
+// and the message, and drops an element carrying no message at all rather than
+// letting one malformed entry cost the read.
+func TestLogReadFoldsLogdRecords(t *testing.T) {
+	var gotSID string
+	var gotLines int
+	b := &NativeBackend{logRead: func(_ context.Context, sid string, lines int) (map[string]any, error) {
+		gotSID, gotLines = sid, lines
+		return map[string]any{"log": []any{
+			map[string]any{"msg": "Log-WAN-probes: IN=wan0 OUT= SRC=203.0.113.9", "id": int64(4211), "priority": int64(4), "source": int64(0), "time": int64(1788294054648)},
+			map[string]any{"id": int64(4212)}, // no message: nothing to read
+			map[string]any{"msg": "verso: listening", "id": int64(4213), "priority": int64(27), "source": int64(1)},
+			"not a record",
+		}}, nil
+	}}
+	entries, err := b.LogRead(context.Background(), "sid-1", 64)
+	if err != nil {
+		t.Fatalf("LogRead: %v", err)
+	}
+	if gotSID != "sid-1" || gotLines != 64 {
+		t.Errorf("session/tail not threaded: sid=%q lines=%d", gotSID, gotLines)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("got %d entries, want 2: %+v", len(entries), entries)
+	}
+	first := entries[0]
+	if first.ID != 4211 || first.Source != 0 || first.Priority != 4 || first.Time != 1788294054648 {
+		t.Errorf("kernel record not folded: %+v", first)
+	}
+	if first.Msg != "Log-WAN-probes: IN=wan0 OUT= SRC=203.0.113.9" {
+		t.Errorf("message not carried verbatim: %q", first.Msg)
+	}
+	if entries[1].ID != 4213 || entries[1].Source != 1 {
+		t.Errorf("syslog record not folded: %+v", entries[1])
+	}
+}
+
+func TestLogReadPropagatesError(t *testing.T) {
+	b := &NativeBackend{logRead: func(context.Context, string, int) (map[string]any, error) {
+		return nil, ErrAccessDenied
+	}}
+	if _, err := b.LogRead(context.Background(), "sid", 10); !errors.Is(err, ErrAccessDenied) {
+		t.Errorf("LogRead error = %v, want ErrAccessDenied", err)
+	}
+}
+
+// TestNetworkInterfacesPairsLogicalNamesWithDevices: the L3 device is what the
+// kernel writes into a log line, so it wins over the configured device; an
+// entry without a logical name is not a join anyone can use.
+func TestNetworkInterfacesPairsLogicalNamesWithDevices(t *testing.T) {
+	b := &NativeBackend{netIfaces: func(context.Context, string) (map[string]any, error) {
+		return map[string]any{"interface": []any{
+			map[string]any{"interface": "lan", "device": "br-lan", "l3_device": "br-lan", "up": true},
+			map[string]any{"interface": "wan", "device": "wan0", "l3_device": "pppoe-wan", "up": true},
+			map[string]any{"interface": "mgmt", "device": "eth0", "up": int64(0)},
+			map[string]any{"device": "eth9"},
+		}}, nil
+	}}
+	got, err := b.NetworkInterfaces(context.Background(), "sid")
+	if err != nil {
+		t.Fatalf("NetworkInterfaces: %v", err)
+	}
+	want := []NetIface{
+		{Name: "lan", Device: "br-lan", Up: true},
+		{Name: "wan", Device: "pppoe-wan", Up: true},
+		{Name: "mgmt", Device: "eth0"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d interfaces, want %d: %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("interface %d = %+v, want %+v", i, got[i], want[i])
 		}
 	}
 }

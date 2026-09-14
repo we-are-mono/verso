@@ -15,13 +15,20 @@ import (
 // Manifest is a plugin's static self-description, discovered by the shell. It is
 // the shell's only build-free knowledge of a plugin (ADR-006).
 type Manifest struct {
+	// SystemAccess contributes service settings to the shell-owned Access page.
+	SystemAccess    string     `json:"system_access,omitempty"`
 	ManifestVersion int        `json:"manifest_version"`
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
 	Socket          string     `json:"socket"`
 	SchemaVersion   int        `json:"schema_version"`
 	Nav             []NavEntry `json:"nav"`
-	ACL             ACL        `json:"acl"`
+	// EntityTabs and EntityActs are what this plugin has to say about a subject
+	// some other page lists — see EntityTab. Both are optional: most plugins own
+	// pages and contribute to nobody's panel.
+	EntityTabs []EntityTab `json:"entity_tabs,omitempty"`
+	EntityActs []EntityAct `json:"entity_acts,omitempty"`
+	ACL        ACL         `json:"acl"`
 }
 
 // ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's
@@ -69,6 +76,42 @@ type NavEntry struct {
 	Mode    string `json:"mode,omitempty"`
 }
 
+// EntityTab is a plugin's contribution to one kind of subject's panel: the
+// firewall's say about a device, dnsdhcp's say about an interface. A subject
+// several plugins each hold a piece of gets one panel, owned by the shell,
+// carrying one tab per live contributor — plugins are separate processes and
+// cannot compose each other, so only the shell can assemble that panel.
+//
+// The plugin declares which kind of subject it has something to say about and
+// under which Slot. The shell owns everything else: the panel frame, the pinned
+// facts, the order tabs appear in, the icon each slot wears in a listing's row,
+// and which shortcut opens which tab. So a plugin cannot spend the design's
+// vocabulary, and the row keeps one shape whatever is installed.
+//
+// Label is what the tab is called; the shell falls back to it when the plugin's
+// answer names nothing. A slot no live plugin claims renders nothing at all —
+// which is how a board with no QoS plugin simply has no limits tab and no limits
+// icon, with no shell change and nothing for the reader to wonder about.
+type EntityTab struct {
+	Entity string `json:"entity"` // the kind of subject: "device", "interface", "zone"
+	Slot   string `json:"slot"`   // which of that kind's slots this fills
+	Label  string `json:"label"`
+}
+
+// EntityAct is a plugin's act on a subject that opens nothing — removing a
+// reservation, say. It wears a slot's icon in the listing's row exactly as a tab
+// does; the difference is only that following it does the thing rather than
+// opening the panel.
+//
+// Path is a route into the plugin, with {id} standing for the subject's own
+// identity (a MAC, a UCI section name). The shell substitutes it and applies the
+// same URL policy every plugin link passes.
+type EntityAct struct {
+	Entity string `json:"entity"`
+	Slot   string `json:"slot"`
+	Path   string `json:"path"`
+}
+
 // validate enforces the required fields and a URL-safe id. A manifest that fails
 // this is skipped at discovery and never mounted — the id in particular guards
 // both the /plugins/<id>/ route and the socket namespace, so path characters in
@@ -89,6 +132,9 @@ func (m Manifest) validate() error {
 		return fmt.Errorf("plugin %q socket must be a clean absolute path", m.ID)
 	case len(m.Nav) == 0:
 		return fmt.Errorf("plugin %q has no nav entries", m.ID)
+	}
+	if m.SystemAccess != "" && (!strings.HasPrefix(m.SystemAccess, "/") || strings.HasPrefix(m.SystemAccess, "//") || strings.ContainsAny(m.SystemAccess, "?#\\") || m.SystemAccess != filepath.Clean(m.SystemAccess)) {
+		return fmt.Errorf("plugin %q access path must be a clean local path", m.ID)
 	}
 	for i, n := range m.Nav {
 		if n.Section == "" {

@@ -10,13 +10,29 @@
 use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
-    ConditionItem, Property, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam,
-    SettingsToggle, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow, Tone, Widget,
+    ActionTab, ConditionItem, Property, RowDrawer, SelectOption, SettingsItem, SettingsPill,
+    SettingsSeam, SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup,
+    TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
 fn write_widget_fixtures() {
     let samples: Vec<(&str, Widget)> = vec![
+        (
+            "when",
+            Widget::When {
+                name: "proto".into(),
+                value: "static".into(),
+                active: true,
+                children: vec![Widget::field(
+                    "ipaddr",
+                    "Address",
+                    "192.168.1.1",
+                    "ipaddr",
+                    "",
+                )],
+            },
+        ),
         (
             "card",
             Widget::card("Tunnel", vec![Widget::text("One tunnel, two peers.")]),
@@ -25,12 +41,15 @@ fn write_widget_fixtures() {
             "section",
             Widget::Section {
                 title: "Rule".into(),
+                anchor: "rule".into(),
+                kicker: false,
                 sub: "Devices that may connect.".into(),
                 meta: "3 peers".into(),
                 meta_icon: "shield".into(),
                 meta_position: "inline".into(),
                 mode: "advanced".into(),
                 flush: true,
+                hairline: false,
                 control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
                 children: vec![Widget::text("body")],
             },
@@ -42,6 +61,7 @@ fn write_widget_fixtures() {
                 compact: true,
                 inline: true,
                 divided: true,
+                flush: true,
                 children: vec![Widget::text("a"), Widget::text("b")],
             },
         ),
@@ -50,6 +70,8 @@ fn write_widget_fixtures() {
             Widget::Conditional {
                 name: "ntp_enabled".into(),
                 label: "Set the time automatically".into(),
+                key: "ntp.enabled".into(),
+                help: "Off means the clock is set by hand.".into(),
                 checked: true,
                 fields: vec![Widget::text("on")],
                 otherwise: vec![Widget::text("off")],
@@ -61,7 +83,10 @@ fn write_widget_fixtures() {
                 "zonename",
                 "Timezone",
                 "UTC",
-                vec![verso_plugin::SelectOption { value: "UTC".into(), label: "UTC".into() }],
+                vec![verso_plugin::SelectOption {
+                    value: "UTC".into(),
+                    label: "UTC".into(),
+                }],
                 "",
             ),
         ),
@@ -98,6 +123,9 @@ fn write_widget_fixtures() {
                 icon: "shield".into(),
                 meta: "Applies at the next save".into(),
                 on: true,
+                key: String::new(),
+                tip: String::new(),
+                source: String::new(),
             },
         ),
         (
@@ -110,6 +138,8 @@ fn write_widget_fixtures() {
                         key: "dest_port".into(),
                         label: "Destination ports".into(),
                         help: "TCP/UDP ports or ranges from 0 to 65535.".into(),
+                        group: "Endpoints".into(),
+                        hint: "space-separated, or a range".into(),
                         active: true,
                         children: vec![Widget::tokens(
                             "dest_port",
@@ -123,8 +153,16 @@ fn write_widget_fixtures() {
                         key: "src_mac".into(),
                         label: "Source MAC addresses".into(),
                         help: "Match link-layer senders visible on ingress.".into(),
+                        group: "Endpoints".into(),
+                        hint: "survives a changed lease".into(),
                         active: false,
-                        children: vec![Widget::tokens("src_mac", "Include", "MAC address", &[], "")],
+                        children: vec![Widget::tokens(
+                            "src_mac",
+                            "Include",
+                            "MAC address",
+                            &[],
+                            "",
+                        )],
                     },
                 ],
             },
@@ -140,6 +178,8 @@ fn write_widget_fixtures() {
         (
             "link",
             Widget::Link {
+                desc: String::new(),
+                code: String::new(),
                 label: "Add rule".into(),
                 icon: "plus".into(),
                 href: "/plugins/firewall/rules/new".into(),
@@ -159,6 +199,7 @@ fn write_widget_fixtures() {
                     "fqdn",
                     "The device's name.",
                 )],
+                note: String::new(),
             },
         ),
         (
@@ -175,6 +216,13 @@ fn write_widget_fixtures() {
                 options: Vec::new(),
                 error: "must be a fully-qualified domain name".into(),
                 help: "The device's name.".into(),
+                key: "hostname".into(),
+                tip: "The name this router answers to on the local network.".into(),
+                source: "system system".into(),
+                unit: String::new(),
+                style: "segmented".into(),
+                remove: String::new(),
+                pair: None,
             },
         ),
         (
@@ -189,16 +237,38 @@ fn write_widget_fixtures() {
                 items: vec!["0.openwrt.pool.ntp.org".into(), "not a host".into()],
                 errors: BTreeMap::from([("1".to_string(), "must be a hostname".to_string())]),
                 help: "One per row.".into(),
+                key: "system.ntp.server".into(),
+                tip: "The clocks this router asks for the time.".into(),
+                options: vec![SelectOption::new("0.openwrt.pool.ntp.org", "OpenWrt pool")],
+                remove: "yes".into(),
             },
         ),
         (
             "callout",
-            Widget::callout(Tone::Warning, "Not reachable", "The tunnel has no endpoint yet."),
+            Widget::callout(
+                Tone::Warning,
+                "Not reachable",
+                "The tunnel has no endpoint yet.",
+            ),
         ),
         ("code", Widget::code("Public key", "hLIgo9xNzJM=")),
+        // The same block declared as its form's preview: the shell keeps it
+        // current as the form is edited, so the flag has to survive the decoder.
+        (
+            "code-live",
+            Widget::preview(
+                "/etc/config/firewall",
+                "config zone 'lan'\n\toption input 'ACCEPT'\n",
+            ),
+        ),
         (
             "empty",
-            Widget::empty("shield", "No tunnels yet", "Create one to reach home from anywhere.", vec![]),
+            Widget::empty(
+                "shield",
+                "No tunnels yet",
+                "Create one to reach home from anywhere.",
+                vec![],
+            ),
         ),
         (
             "properties",
@@ -209,28 +279,41 @@ fn write_widget_fixtures() {
                     mono: true,
                     verbatim: false,
                     copy: true,
-                }],
+                    ..Property::default()
+                }
+                .toned(Tone::Success)],
             },
         ),
         (
             "badge",
-            Widget::Badge { variant: Tone::Success, text: "up".into(), dot: true },
+            Widget::Badge {
+                variant: Tone::Success,
+                text: "up".into(),
+                dot: true,
+            },
         ),
         ("text", Widget::text("A short explanatory line.")),
         (
             "confirm",
             Widget::Confirm {
                 trigger: "Remove peer".into(),
+                title: String::new(),
                 message: "The device loses access immediately.".into(),
                 confirm: String::new(),
                 cancel: String::new(),
             },
         ),
-        ("raw", Widget::raw("WireGuard keeps a silent tunnel silent — an idle peer can be perfectly healthy.")),
+        (
+            "raw",
+            Widget::raw(
+                "WireGuard keeps a silent tunnel silent — an idle peer can be perfectly healthy.",
+            ),
+        ),
         ("table", listing()),
         (
             "settings",
             Widget::Settings {
+                condensed: false,
                 style: "card".into(),
                 title: "Global defaults".into(),
                 meta: "firewall.@defaults[0]".into(),
@@ -240,9 +323,18 @@ fn write_widget_fixtures() {
                         desc: "What happens to traffic that matches no rule.".into(),
                         code: "input · output · forward".into(),
                         pills: vec![
-                            SettingsPill { variant: Tone::Warning, text: "in reject".into() },
-                            SettingsPill { variant: Tone::Success, text: "out accept".into() },
-                            SettingsPill { variant: Tone::Warning, text: "fwd reject".into() },
+                            SettingsPill {
+                                variant: Tone::Warning,
+                                text: "in reject".into(),
+                            },
+                            SettingsPill {
+                                variant: Tone::Success,
+                                text: "out accept".into(),
+                            },
+                            SettingsPill {
+                                variant: Tone::Warning,
+                                text: "fwd reject".into(),
+                            },
                         ],
                         ..SettingsItem::default()
                     },
@@ -250,7 +342,10 @@ fn write_widget_fixtures() {
                         title: "Drop invalid packets".into(),
                         desc: "Discard packets that belong to no known connection.".into(),
                         code: "drop_invalid".into(),
-                        toggle: Some(SettingsToggle { name: "drop_invalid".into(), on: true }),
+                        toggle: Some(SettingsToggle {
+                            name: "drop_invalid".into(),
+                            on: true,
+                        }),
                         ..SettingsItem::default()
                     },
                     SettingsItem {
@@ -287,7 +382,52 @@ fn write_widget_fixtures() {
         ),
         (
             "filter",
-            Widget::Filter { placeholder: "Filter rules, zones, and ports…".into() },
+            Widget::Filter {
+                placeholder: "Filter rules, zones, and ports…".into(),
+            },
+        ),
+        (
+            "actionbar",
+            Widget::ActionBar {
+                style: String::new(),
+                tabs: vec![
+                    ActionTab {
+                        label: "All".into(),
+                        count: 22,
+                        active: true,
+                        ..ActionTab::default()
+                    },
+                    ActionTab {
+                        label: "IPv6".into(),
+                        count: 19,
+                        matches: "ipv6".into(),
+                        active: false,
+                    },
+                ],
+                filter: "Find a rule".into(),
+                live: "Pause".into(),
+                action: Some(TableAction {
+                    label: "Add rule".into(),
+                    href: "/plugins/firewall/rules/new".into(),
+                    ..TableAction::default()
+                }),
+                opens_panel: false,
+                drawer: None,
+            },
+        ),
+        ("stream-table", live_listing()),
+        (
+            "button",
+            Widget::Button {
+                label: "Pause".into(),
+                icon: "pause".into(),
+                style: "secondary".into(),
+                name: "_action".into(),
+                value: "pause".into(),
+                disabled: false,
+                loading: false,
+                live: true,
+            },
         ),
     ];
 
@@ -310,30 +450,77 @@ fn listing() -> Widget {
         style: "flat".into(),
         title: "Zones".into(),
         detail: "4 zones · 2 forwardings".into(),
-        condensed: true,
+        dense: true,
         align: "top".into(),
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
         columns: vec![
-            TableColumn { kind: "reorder".into(), ..TableColumn::default() },
-            TableColumn { label: "Zone".into(), kind: "name".into() },
-            TableColumn { label: "Address".into(), kind: "addr".into() },
-            TableColumn { label: "From".into(), kind: "endpoint".into() },
-            TableColumn { label: "Protocol".into(), kind: "keyword".into() },
-            TableColumn { label: "Input".into(), kind: "pill".into() },
-            TableColumn { label: "Hits".into(), kind: "num".into() },
-            TableColumn { kind: "toggle".into(), ..TableColumn::default() },
-            TableColumn { kind: "link".into(), ..TableColumn::default() },
-            TableColumn { kind: "pill".into(), ..TableColumn::default() },
+            TableColumn {
+                kind: "reorder".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Zone".into(),
+                kind: "name".into(),
+                width: "12rem".into(),
+            },
+            TableColumn {
+                label: "Address".into(),
+                kind: "addr".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "From".into(),
+                kind: "endpoint".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Protocol".into(),
+                kind: "keyword".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Input".into(),
+                kind: "pill".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Hits".into(),
+                kind: "num".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                kind: "toggle".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                kind: "link".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                kind: "pill".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                kind: "actions".into(),
+                ..TableColumn::default()
+            },
         ],
         rows: vec![
             TableRow {
+                depth: 0,
+                expanded: Vec::new(),
                 id: "cfg02zone".into(),
                 key: "zone:lan".into(),
                 group: Some(TableGroup {
-                    label: "LAN → Router".into(),
-                    chain: "input_lan".into(),
-                    count: 2,
+                    key: "input_lan".into(),
+                    label: "LAN".into(),
+                    to: "Router".into(),
+                    chain: String::new(),
+                    tally: "2 rules".into(),
+                    add_label: String::new(),
+                    add_href: String::new(),
+                    add_panel: false,
                 }),
                 cells: vec![
                     TableCell::default(),
@@ -355,7 +542,10 @@ fn listing() -> Widget {
                         ..TableCell::default()
                     },
                     TableCell::zone("lan"),
-                    TableCell { text: "tcp/udp".into(), ..TableCell::default() },
+                    TableCell {
+                        text: "tcp/udp".into(),
+                        ..TableCell::default()
+                    },
                     TableCell {
                         text: "accept".into(),
                         variant: "success".into(),
@@ -363,11 +553,49 @@ fn listing() -> Widget {
                         icon: "check".into(),
                         ..TableCell::default()
                     },
-                    TableCell { text: "1284".into(), key: "hits:lan".into(), ..TableCell::default() },
-                    TableCell { on: true, name: "cfg02zone".into(), ..TableCell::default() },
-                    TableCell { text: "Details".into(), href: "/zones/lan".into(), ..TableCell::default() },
-                    TableCell { button: "Edit".into(), disabled: true, ..TableCell::default() },
+                    TableCell {
+                        text: "1284".into(),
+                        key: "hits:lan".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        on: true,
+                        name: "cfg02zone".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        text: "Details".into(),
+                        href: "/zones/lan".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        button: "Edit".into(),
+                        disabled: true,
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        actions: vec![
+                            TableRowAct {
+                                icon: "square-pen".into(),
+                                title: "Edit".into(),
+                                href: "/zones/lan/edit".into(),
+                                ..TableRowAct::default()
+                            },
+                            // An act that posts rather than leads: the row's own
+                            // state, flipped where it stands.
+                            TableRowAct {
+                                icon: "power-off".into(),
+                                title: "Disable lan".into(),
+                                name: "cfg02zone".into(),
+                                value: "off".into(),
+                                ..TableRowAct::default()
+                            },
+                        ],
+                        ..TableCell::default()
+                    },
                 ],
+                muted: false,
+                tags: vec!["ipv4".into(), "ipv6".into()],
                 drawer: Some(RowDrawer {
                     title: "Edit zone — lan".into(),
                     size: "wide".into(),
@@ -377,33 +605,113 @@ fn listing() -> Widget {
                         "Save",
                         vec![Widget::field("name", "Name", "lan", "", "")],
                     )],
+                    ..RowDrawer::default()
                 }),
+                panel: String::new(),
             },
             TableRow {
+                depth: 0,
+                expanded: Vec::new(),
                 id: "cfg03zone".into(),
                 cells: vec![
                     TableCell::default(),
-                    TableCell { text: "wan".into(), ..TableCell::default() },
-                    TableCell { text: "203.0.113.7".into(), muted: true, ..TableCell::default() },
+                    TableCell {
+                        text: "wan".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        text: "203.0.113.7".into(),
+                        muted: true,
+                        ..TableCell::default()
+                    },
                     TableCell {
                         endpoints: vec![
-                            TableEndpoint { kind: "device".into(), label: "10.0.0.30".into() },
-                            TableEndpoint { kind: "any".into(), label: "any".into() },
+                            TableEndpoint {
+                                kind: "device".into(),
+                                label: "10.0.0.30".into(),
+                            },
+                            TableEndpoint {
+                                kind: "any".into(),
+                                label: "any".into(),
+                            },
                         ],
                         ..TableCell::default()
                     },
-                    TableCell { text: "icmp".into(), ..TableCell::default() },
-                    TableCell { text: "reject".into(), variant: "warning".into(), ..TableCell::default() },
-                    TableCell { text: "0".into(), ..TableCell::default() },
+                    TableCell {
+                        text: "icmp".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        text: "reject".into(),
+                        variant: "warning".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        text: "0".into(),
+                        ..TableCell::default()
+                    },
                     TableCell::default(),
                     TableCell::default(),
-                    TableCell { button: "Edit".into(), disabled: true, ..TableCell::default() },
+                    TableCell {
+                        button: "Edit".into(),
+                        disabled: true,
+                        ..TableCell::default()
+                    },
+                    TableCell::default(),
                 ],
+                muted: true,
                 ..TableRow::default()
             },
         ],
         drawer_label: "Edit".into(),
         drawer_icon: "pencil".into(),
         empty_text: "No zones yet.".into(),
+        add_label: String::new(),
+        add_href: String::new(),
+        note: "Source rewrites are not listed here.".into(),
+        stream: None,
+    }
+}
+
+// live_listing is the streaming table fixture: the same vocabulary declared as
+// a run of events rather than a state of the config, so the stream's own wire
+// shape is pinned to the shell's decoder like every other field.
+fn live_listing() -> Widget {
+    Widget::Table {
+        style: "lined".into(),
+        title: String::new(),
+        detail: String::new(),
+        dense: true,
+        align: String::new(),
+        reorder_config: String::new(),
+        reorder_label: String::new(),
+        columns: vec![
+            TableColumn {
+                label: "When".into(),
+                kind: "runtime".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Verdict".into(),
+                kind: "pill".into(),
+                ..TableColumn::default()
+            },
+            TableColumn {
+                label: "Source".into(),
+                kind: "mono".into(),
+                ..TableColumn::default()
+            },
+        ],
+        rows: vec![],
+        drawer_label: String::new(),
+        drawer_icon: String::new(),
+        empty_text: "Waiting for the first logged event…".into(),
+        add_label: String::new(),
+        add_href: String::new(),
+        note: String::new(),
+        stream: Some(TableStream {
+            source: STREAM_FIREWALL_LOG.into(),
+            ring: 200,
+        }),
     }
 }

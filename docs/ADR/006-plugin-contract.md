@@ -109,8 +109,8 @@ over a local socket**, exchanging *data*, not markup.
    the plugin only requests: `kicker` (an eyebrow above the heading) with
    `kicker_status` and `live` (a state label and a pulsing dot beside it),
    `subheading` (a lede under the heading), `width` (`narrow` | `normal` | `wide`),
-   and `immediate` (the page's actions apply at once, so the staging capsule is
-   omitted — ADR-010). `pages` is the **third navigation tier**: a domain's subpages
+   and `immediate` (the page's actions apply at once; nothing on it stages —
+   ADR-010). `pages` is the **third navigation tier**: a domain's subpages
    rendered as the shell's top bar (sidebar → domain, top bar → kind of visit). Each
    entry is `{label, path}` relative to the plugin's mount, plus an optional `mode`
    filtered exactly like a manifest `nav` entry (ADR-015); the shell builds the href

@@ -17,6 +17,11 @@ type Badge struct {
 	Dot     bool   `json:"dot"`            // show a leading status dot (e.g. online/offline)
 	Icon    string `json:"icon,omitempty"` // optional leading icon, by Lucide name (instead of, or beside, the dot)
 	Size    string `json:"size,omitempty"` // "" (pill, the in-grid scale) | "lg" — a standalone banner chip
+	// Plain drops the pill entirely — no fill, no ring, no chip padding — leaving a
+	// leading tone dot (or icon) and plain-ink text. It is the resting status line,
+	// where the dot carries the state and the words stay words (the stage's own
+	// "unsaved changes" note), not a chip to be read as a chip.
+	Plain bool `json:"plain,omitempty"`
 }
 
 func (*Badge) isWidget() {}

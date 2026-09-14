@@ -1,14 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* Header and body are shared by the interactive overlay and the in-flow
-     styleguide preview, so visual iteration cannot drift from the real modal. */}}
+{{/* Header and body: the title, the close button, and the dialog's contents. */}}
 {{define "modal.standard.contents"}}
 <header class="flex items-center justify-between px-5 pt-4 pb-2">
-  <h3 class="text-base font-medium text-slate-900">{{.Title}}</h3>
-  <button type="button"{{if not .Preview}} @click="hide"{{end}} aria-label="{{ t "Close" }}"
-    class="rounded p-1 text-slate-400 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600">
-    {{icon "x" "size-5"}}
-  </button>
+  <h3 class="text-base font-semibold text-ink">{{.Title}}</h3>
+  {{template "verso-close-btn"}}
 </header>
 <div class="space-y-4 px-5 pt-2.5 pb-5">
   {{if .BusyTitle}}<div x-show="idle" class="space-y-4">{{range .Children}}{{.}}{{end}}</div>
@@ -18,43 +14,45 @@
 {{end}}
 {{define "modal.busy"}}
 <div class="text-center">
-  <span class="mx-auto grid size-12 place-items-center text-sky-600">{{icon "loader-circle" "size-9 animate-spin"}}</span>
-  <h4 class="mt-4 text-base font-medium text-slate-900">{{.BusyTitle}}</h4>
-  {{if .BusyBody}}<p class="mx-auto mt-2 max-w-sm text-sm text-slate-500">{{.BusyBody}}</p>{{end}}
+  <span class="mx-auto grid size-12 place-items-center text-denim">{{template "verso-waiting" ""}}</span>
+  <h4 class="mt-4 text-base font-semibold text-ink">{{.BusyTitle}}</h4>
+  {{if .BusyBody}}<p class="mx-auto mt-2 max-w-sm text-sm leading-[1.45] text-body">{{.BusyBody}}</p>{{end}}
 </div>
 {{end}}
 {{define "modal.contents"}}{{template "modal.standard.contents" .}}{{end}}
 {{/* modal: shell-owned Alpine dialog (CSP build). The plugin declares the intent;
-     verso.js owns open/close/focus. Preview renders the same window in normal flow. */}}
-{{if .Preview}}
-<div class="flex items-start justify-center">
-  <div class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white shadow-xl">
-    {{template "modal.contents" .}}
-  </div>
-</div>
-{{else}}
+     verso.js owns open/close/focus. */}}
+{{/* The window is a card like every other card — one hairline on the page's own
+     ground — lifted off the scrim by a shadow rather than by a second colour. */}}
+{{define "modal.frame"}}rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)]{{end}}
 <div x-data="modal" data-open="{{if .Open}}true{{else}}false{{end}}">
   {{if eq .TriggerStyle "add"}}
   {{/* "add" affordance: a full-width dashed button that invites creating a new item. */}}
   <button type="button" @click="show"
-    class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-4 py-4 text-sm font-semibold text-sky-600 transition-colors hover:border-sky-400 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">
+    class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xs border-2 border-dashed border-rule-strong px-4 py-4 text-sm font-semibold text-denim transition-colors hover:border-denim hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
     {{icon "plus" "size-5"}}
     {{.Trigger}}
   </button>
+  {{else if eq .TriggerStyle "link"}}
+  {{/* "link" trigger: a quiet ghost link, for a door that sits under a primary
+       act — the recessive alternative, not a second competing button. */}}
+  <button type="button" @click="show"
+    class="inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-meta transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+    {{if .TriggerIcon}}{{icon .TriggerIcon "size-4"}}{{end}}{{.Trigger}}
+  </button>
   {{else}}
   <button type="button" @click="show"
-    class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{if eq .TriggerStyle "secondary"}}border {{template "verso-btn-secondary"}}{{else}}{{template "verso-btn-primary"}}{{end}}">
+    class="{{template "verso-btn-box"}} {{if eq .TriggerStyle "secondary"}}border {{template "verso-btn-secondary"}} focus-visible:outline-denim{{else}}{{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{end}}">
     {{if .TriggerIcon}}{{icon .TriggerIcon "size-4"}}{{end}}{{.Trigger}}
   </button>
   {{end}}
   <template x-teleport="body">
     <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       {{template "verso-overlay-backdrop"}}
-      <div x-show="open" x-transition @input="markDirty" @change="markDirty"{{if .BusyTitle}} @submit="startBusy"{{end}} x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-        class="relative w-full max-w-md rounded-lg border border-slate-200 bg-white shadow-xl focus:outline-none">
+      <div x-show="open" x-transition{{if .BusyTitle}} @submit="startBusy"{{end}} x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
+        class="relative w-full max-w-md {{template "modal.frame"}} focus:outline-none">
         {{template "modal.contents" .}}
       </div>
     </div>
   </template>
 </div>
-{{end}}

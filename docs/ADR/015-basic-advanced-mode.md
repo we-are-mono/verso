@@ -47,11 +47,11 @@ never state, and it is never a privilege boundary.**
    setting: ADR-013 stores operator intent about the **device**, and mode is
    a preference of the **reader** — two people administering the same router
    from two browsers hold two modes. Storing it in uci would also drag a view
-   toggle through the staging capsule (ADR-010), turning "show me more" into
+   toggle through the stage (ADR-010), turning "show me more" into
    a reviewable device change, which it is not. The switch flips the cookie
    and re-renders; nothing is staged, nothing is written to the device. The
-   shell chrome renders the one switch; its exact placement is the
-   styleguide's decision, not this ADR's. A browser without the cookie is in
+   shell chrome renders the one switch; its exact placement is a design
+   decision, not this ADR's. A browser without the cookie is in
    basic mode — the product meets the least-technical reader first.
 
 2. **A three-state visibility vocabulary for pages and sections.** A
@@ -164,8 +164,8 @@ never state, and it is never a privilege boundary.**
 
 ### Neutral
 
-- Where the switch sits in the chrome, its labels, and its look are
-  styleguide decisions; this ADR fixes only that the shell owns exactly one.
+- Where the switch sits in the chrome, its labels, and its look are design
+  decisions; this ADR fixes only that the shell owns exactly one.
 - The mode names are user-facing vocabulary ("Basic", "Advanced") and ride
   the normal i18n path (ADR-012).
 - A page may legitimately have no basic content beyond its heading (a purely
@@ -194,7 +194,7 @@ never state, and it is never a privilege boundary.**
 - **Mode in `/etc/config/verso` (ADR-013).** One store for all Verso
   settings is attractive. Rejected: mode is reader preference, not device
   intent — it must differ per browser, and it must not pass through the
-  staging capsule (1).
+  stage (1).
 - **Client-side filtering (render everything, hide via CSS/JS by mode).**
   Rejected: it ships the advanced DOM to every reader on every page,
   contradicts the server-rendered model (ADR-004), and still needs the

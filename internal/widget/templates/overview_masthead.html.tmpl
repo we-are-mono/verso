@@ -1,56 +1,50 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* overview.masthead: the home page's top block — the verdict sentence under its
-     live-dot kicker, the divided status-tile strip, and the IPv4/IPv6 connection
-     facts. One define, two callers: the real page (overview.html.tmpl) and the
-     overview-preview styleguide workbench, so the block cannot drift between them.
-
-     The reading is chosen once, app-wide, by the shell's own switch (ADR-015 §1);
-     this page states its verdict and shows what that reading contains. */}}
 {{define "overview.masthead"}}
-  {{/* Verdict: kicker above, then the headline. */}}
-  <div>
-    <div class="flex items-center gap-2.5">
-      <span class="size-2.5 shrink-0 rounded-full bg-emerald-500 verso-live-dot"></span>
-      <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">{{.Kicker}}</span>
+  <div class="group" data-overview-tone="{{.Tone}}">
+    <div class="flex items-center gap-2 text-xs font-semibold tracking-[.06em] text-meta uppercase group-data-[overview-tone=success]:text-green-deep group-data-[overview-tone=warning]:text-marigold-deep group-data-[overview-tone=danger]:text-crimson-deep">
+      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[overview-tone=success]:border-transparent group-data-[overview-tone=success]:bg-green group-data-[overview-tone=warning]:border-transparent group-data-[overview-tone=warning]:bg-marigold group-data-[overview-tone=danger]:border-transparent group-data-[overview-tone=danger]:bg-crimson"></span>
+      <span data-overview-kicker>{{.Kicker}}</span>
     </div>
-    <div class="mt-3.5 flex items-center justify-between gap-4">
-      <h1 class="font-serif text-4xl font-semibold leading-tight tracking-tight text-slate-900">{{.Lead}}<span class="text-emerald-600">{{.Accent}}</span></h1>
+    <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-3">
+      <h1 class="text-3xl leading-[1.1] font-semibold tracking-tight text-ink"><span data-overview-lead>{{.Lead}}</span><span data-overview-accent class="text-green">{{.Accent}}</span><span data-overview-tail>{{.Tail}}</span></h1>
+      {{if .Clock}}
+      <div class="ml-auto flex flex-wrap items-center gap-2 text-sm text-meta" data-overview-clock data-unix="{{.Unix}}" data-offset="{{.Offset}}">
+        <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 rounded-[1px] bg-green"></span>
+        <time class="font-mono text-base font-medium text-ink" data-overview-time>{{.Clock}}</time>
+        <span>{{.Zone}}</span>
+        {{if .Uptime}}<span aria-hidden="true" class="text-faint">·</span><span>{{ t "Uptime" }}</span><span data-overview-uptime class="text-ink">{{.Uptime}}</span>{{end}}
+      </div>
+      {{end}}
     </div>
   </div>
 
-  {{/* Status tiles: each fact the box can honestly state earns a column — Wi-Fi
-       hardware one, a countable device roster another — and the strip divides
-       the same full width evenly however many that is. A tile with an Href is
-       the doorway to the page that fact belongs to. */}}
-  <div class="mt-8 grid {{if eq (len .Tiles) 5}}grid-cols-5{{else if eq (len .Tiles) 4}}grid-cols-4{{else}}grid-cols-3{{end}} divide-x divide-slate-100 border-y border-slate-100">
+  <div class="mt-8 grid grid-cols-1 border-y border-rule sm:grid-cols-2 {{if eq (len .Tiles) 5}}xl:grid-cols-5{{else if eq (len .Tiles) 3}}xl:grid-cols-3{{else}}xl:grid-cols-4{{end}}">
     {{range .Tiles}}
-    {{if .Href}}<a href="{{.Href}}" class="block px-6 py-5 transition-colors first:pl-0 last:pr-0 hover:bg-slate-50 dark:hover:bg-gray-800">{{else}}<div class="px-6 py-5 first:pl-0 last:pr-0">{{end}}
+    {{if .Href}}<a href="{{.Href}}"{{else}}<div{{end}} data-overview-tile="{{.ID}}" data-tone="{{.Variant}}" class="group relative flex min-w-0 flex-col gap-2.5 border-t border-rule px-4 py-[22px] first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-0 xl:last:border-r-0 xl:last:pr-0{{if .Href}} transition-colors hover:bg-quiet/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{.Label}}</span>
-        <span class="shrink-0 {{if eq .Variant "warning"}}text-amber-600{{else}}text-emerald-500{{end}}">{{icon .Icon "size-4"}}</span>
+        <span class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span>
+        <span class="shrink-0 text-faint" aria-hidden="true">{{icon .Icon "size-4"}}</span>
       </div>
-      <div class="mt-3 flex items-center gap-2">
-        <span class="size-2 shrink-0 rounded-full {{if eq .Variant "warning"}}bg-amber-500{{else}}bg-emerald-500{{end}}"></span>
-        <span class="text-base font-semibold {{if eq .Variant "warning"}}text-amber-700{{else}}text-slate-900{{end}}">{{.Status}}</span>
+      <div class="flex min-w-0 items-center gap-2.5 text-lg font-semibold text-body group-data-[tone=success]:text-green group-data-[tone=warning]:text-marigold-deep group-data-[tone=danger]:text-crimson-deep">
+        <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]:border-transparent group-data-[tone=success]:bg-green group-data-[tone=warning]:border-transparent group-data-[tone=warning]:bg-marigold group-data-[tone=danger]:border-transparent group-data-[tone=danger]:bg-crimson"></span>
+        <span data-overview-tile-status>{{.Status}}</span>
       </div>
-      <div class="mt-1.5 text-sm text-slate-400"{{if .Key}} data-verso-tile-caption="{{.Key}}"{{end}}>{{.Caption}}</div>
+      <div class="min-w-0 truncate text-sm text-meta" title="{{.Caption}} {{.Identity}}"><span data-overview-tile-caption{{if .Key}} data-verso-tile-caption="{{.Key}}"{{end}}>{{.Caption}}</span><span data-overview-tile-separator>{{if and .Caption .Identity}} · {{end}}</span><span data-overview-tile-identity class="font-mono font-medium text-ink">{{.Identity}}</span></div>
     {{if .Href}}</a>{{else}}</div>{{end}}
     {{end}}
   </div>
 
-  {{/* Connection facts: IPv4 and IPv6 side by side, label → mono value with copy.
-       The advanced reading only — a basic reader has the internet tile above. */}}
   {{if .Facts}}
-  <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+  <div class="grid grid-cols-1 divide-y divide-rule border-b border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
     {{range .Facts}}
-    <div class="py-6 {{if eq .Side "left"}}pr-8{{else}}pl-8{{end}}">
-      <div class="flex items-baseline gap-2.5">
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{.Kind}}</span>
-        <span class="text-xs text-slate-400">{{.Proto}}</span>
+    <section aria-label="{{.Kind}}" class="min-w-0 py-6 {{if eq .Side "left"}}xl:pr-11{{else}}xl:pl-11{{end}}">
+      <div class="flex min-h-7 items-center gap-3 pb-3">
+        <h2 class="text-sm font-semibold text-ink">{{.Kind}}</h2>
+        {{if .Proto}}<span class="rounded-xs border border-rule bg-quiet px-1.5 py-0.5 font-mono text-sm text-meta">{{.Proto}}</span>{{end}}
       </div>
-      <div class="mt-2">{{.Rows}}</div>
-    </div>
+      {{if .Empty}}<p class="flex items-start gap-2.5 border-t border-mid pt-3 text-sm font-medium text-body"><span aria-hidden="true" class="mt-[7px] size-1.5 shrink-0 rounded-[1px] border border-faint"></span><span>{{.Empty}}</span></p>{{else}}{{.Rows}}{{end}}
+    </section>
     {{end}}
   </div>
   {{end}}

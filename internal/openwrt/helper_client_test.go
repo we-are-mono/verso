@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -54,6 +55,65 @@ func TestCallHelperProtocol(t *testing.T) {
 	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPackageDetailAndBrowseVerbsCarrySessionAndExactArguments(t *testing.T) {
+	for _, method := range []string{"pkgBrowse", "pkgFiles", "pkgUpgradeOne"} {
+		t.Run(method, func(t *testing.T) {
+			socket := filepath.Join(t.TempDir(), "helper.sock")
+			listener, err := net.Listen("unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			done := make(chan error, 1)
+			go func() {
+				conn, err := listener.Accept()
+				if err != nil {
+					done <- err
+					return
+				}
+				defer conn.Close()
+				var request helperRequest
+				if err := json.NewDecoder(conn).Decode(&request); err != nil {
+					done <- err
+					return
+				}
+				valid := request.Method == method && request.SID == "operator-sid"
+				if method == "pkgBrowse" {
+					valid = valid && request.Args["query"] == "" && request.Args["offset"] == "30"
+				} else {
+					valid = valid && request.Args["package"] == "htop"
+				}
+				if !valid {
+					done <- errors.New("unexpected helper arguments or session")
+					return
+				}
+				done <- json.NewEncoder(conn).Encode(map[string]any{"status": 0, "result": map[string]any{
+					"packages": []Package{{Name: "htop"}}, "total": 64, "count": 99, "installed": 20, "files": []string{"/usr/bin/htop"},
+				}})
+			}()
+			switch method {
+			case "pkgBrowse":
+				page, err := dialPkgBrowse(socket)(context.Background(), "operator-sid", "", 30)
+				if err != nil || page.Total != 64 || page.Count != 99 || page.Installed != 20 || len(page.Packages) != 1 {
+					t.Fatalf("page %+v, error %v", page, err)
+				}
+			case "pkgFiles":
+				files, err := dialPkgFiles(socket)(context.Background(), "operator-sid", "htop")
+				if err != nil || len(files) != 1 || files[0] != "/usr/bin/htop" {
+					t.Fatalf("files %v, error %v", files, err)
+				}
+			case "pkgUpgradeOne":
+				if err := dialPkgAct(socket, method)(context.Background(), "operator-sid", "htop"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
@@ -158,6 +218,29 @@ func TestFirmwareCheckDecodesTheRung(t *testing.T) {
 	}
 	if update.State != FirmwareUnsupported || update.Message != "File system type '(null)'" {
 		t.Fatalf("update = %+v", update)
+	}
+}
+
+// TestFirmwareUpgradeCarriesNothingButTheSession: the upgrade verb is
+// argument-free by design. owut decides the version, the package set and the
+// image on the device, so the request holds nothing a caller could steer
+// (ADR-007) — the helper's own argv has no room for one either.
+func TestFirmwareUpgradeCarriesNothingButTheSession(t *testing.T) {
+	socket := helperReplying(t, "firmwareUpgrade", `{"status":0,"result":{"result":true}}`)
+	if err := dialFirmwareUpgrade(socket)(context.Background(), "good-sid"); err != nil {
+		t.Fatalf("firmware upgrade: %v", err)
+	}
+}
+
+// TestFirmwareUpgradeReportsTheToolsOwnWords: an upgrade the update server
+// refused comes back with owut's complaint intact, so the page can quote the
+// tool rather than paraphrase it.
+func TestFirmwareUpgradeReportsTheToolsOwnWords(t *testing.T) {
+	socket := helperReplying(t, "firmwareUpgrade",
+		`{"status":9,"error":"Update checks reveal errors, can't proceed"}`)
+	err := dialFirmwareUpgrade(socket)(context.Background(), "good-sid")
+	if err == nil || !strings.Contains(err.Error(), "Update checks reveal errors, can't proceed") {
+		t.Fatalf("error = %v, want owut's own complaint", err)
 	}
 }
 

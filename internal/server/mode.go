@@ -14,7 +14,7 @@ import (
 // The reader mode (ADR-015) is a preference of the person reading, not intent
 // about the device, so it lives in a cookie rather than in uci (ADR-013): two
 // people administering one router from two browsers hold two modes, and flipping
-// the switch never passes through the staging capsule. A browser without the
+// the switch never passes through the stage. A browser without the
 // cookie reads Verso in basic mode — the product meets the least technical reader
 // first.
 const (

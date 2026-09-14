@@ -1,17 +1,33 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* code: a long machine value in a full-width monospace box, with an optional
-     inline copy (icon + label that turn green on success — shell-owned "copy"
-     behaviour, verso.js). Icons from the shared Lucide set (icons.go). */}}
-<div class="space-y-1.5">
-  {{if .Label}}<div class="text-sm font-medium text-slate-900">{{.Label}}</div>{{end}}
-  <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-    <code class="min-w-0 flex-1 break-all font-mono text-xs text-slate-700">{{.Value}}</code>
+{{/* code: a form's own footnote — the lines it will write, exactly as it will
+     write them, under the file they go into. It is not documentation: someone
+     who knows the config reads this to check the form said what they meant, and
+     someone who does not can ignore it entirely, which is why it sits at the
+     foot behind a hairline rather than beside the fields.
+
+     The label is set in mono because it names a path, and the box keeps the
+     copy control inside it, at the top right, where a terminal would put it —
+     the value never reflows around it because the box scrolls rather than
+     wraps. Lines stay whole: a wrapped uci line is a misread one. */}}
+{{/* A live block is the form's answer to "what will this write", so it is the
+     shell's to keep current: the marker below is what the form watcher finds,
+     and what it replaces when the plugin has re-rendered from the values on
+     screen. Everything inside it is ordinary code markup — a preview that
+     styled itself differently would read as a different kind of thing. */}}
+<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if .Live}} data-verso-preview{{end}}>
+  {{if .Label}}<span class="font-mono text-sm font-medium text-meta">{{.Label}}</span>{{end}}
+  <div class="relative min-w-0">
+    <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink">{{.Value}}</div>
     {{if .Copy}}
-    <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="shrink-0 text-sm font-medium">
+    <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy absolute top-2 right-2 grid size-6 cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
       <span x-ref="src" class="hidden">{{.Value}}</span>
-      <span x-show="idle" class="inline-flex items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-700">{{icon "copy" "size-4"}}{{ t "Copy" }}</span>
-      <span x-show="done" x-cloak class="inline-flex items-center gap-1.5 text-emerald-600">{{icon "check" "size-4"}}{{ t "Copied!" }}</span>
+      <span x-show="idle">{{icon "copy" "size-4"}}</span>
+      <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
+      <span class="{{template "verso-tip-class"}} group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
+        <span x-show="idle">{{ t "Copy" }}</span>
+        <span x-show="done" x-cloak>{{ t "Copied" }}</span>
+      </span>
     </button>
     {{end}}
   </div>

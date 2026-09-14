@@ -40,16 +40,6 @@ func translateFields(w Widget, t func(string) string) {
 	case *Card:
 		n.Title = t(n.Title)
 		n.Subtitle = t(n.Subtitle)
-	case *Changes:
-		for i := range n.Items {
-			n.Items[i].Label = t(n.Items[i].Label)
-		}
-		for i := range n.Groups {
-			n.Groups[i].Label = t(n.Groups[i].Label)
-			for j := range n.Groups[i].Values {
-				n.Groups[i].Values[j].Label = t(n.Groups[i].Values[j].Label)
-			}
-		}
 	case *Chart:
 		n.Label = t(n.Label)
 		n.Title = t(n.Title)
@@ -78,6 +68,7 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Confirm:
 		n.Trigger = t(n.Trigger)
+		n.Title = t(n.Title)
 		n.Message = t(n.Message)
 		n.Confirm = t(n.Confirm)
 		n.Cancel = t(n.Cancel)
@@ -95,6 +86,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.Prompt = t(n.Prompt)
 		n.Placeholder = t(n.Placeholder)
 		n.Help = t(n.Help)
+		// Key and Source are the config as it is written — machine strings, not
+		// words — so they travel verbatim and only the sentence is looked up.
+		n.Tip = t(n.Tip)
 		// A shell- or plugin-authored inline error is prose; a datatype-validation
 		// message (set by validateSchema, from the datatype package) simply misses
 		// the catalog and stays English.
@@ -108,14 +102,17 @@ func translateFields(w Widget, t func(string) string) {
 		n.Submit = t(n.Submit)
 		n.Success = t(n.Success)
 		n.Error = t(n.Error)
-		n.Note = t(n.Note)
+		if !n.NoteVerbatim {
+			n.Note = t(n.Note)
+		}
 		for i := range n.Actions {
 			n.Actions[i].Label = t(n.Actions[i].Label)
 		}
-	case *Hero:
-		n.Title = t(n.Title)
-		n.Body = t(n.Body)
 	case *Link:
+		n.Desc = t(n.Desc)
+		if n.Code == "Tunnels page" {
+			n.Code = t(n.Code)
+		}
 		n.Label = t(n.Label)
 	case *List:
 		n.Label = t(n.Label)
@@ -136,24 +133,6 @@ func translateFields(w Widget, t func(string) string) {
 		for i := range n.Leaves {
 			translateNetNode(&n.Leaves[i], t)
 		}
-	case *OverviewPreview:
-		n.Kicker = t(n.Kicker)
-		n.Lead = t(n.Lead)
-		n.Accent = t(n.Accent)
-		for i := range n.Tiles {
-			n.Tiles[i].Label = t(n.Tiles[i].Label)
-			n.Tiles[i].Status = t(n.Tiles[i].Status)
-			n.Tiles[i].Caption = t(n.Tiles[i].Caption)
-		}
-		// A column's kind ("IPV4") is an identity that misses the catalog; the
-		// protocol and any prose value are translated, addresses pass through.
-		for i := range n.Facts {
-			n.Facts[i].Proto = t(n.Facts[i].Proto)
-			for j := range n.Facts[i].Facts {
-				n.Facts[i].Facts[j].Label = t(n.Facts[i].Facts[j].Label)
-				n.Facts[i].Facts[j].Value = t(n.Facts[i].Facts[j].Value)
-			}
-		}
 	case *Ports:
 		// The port's role name ("Internet", "Network 1") is prose; its interface,
 		// address, speed and hover Note are machine facts left verbatim, and a
@@ -173,7 +152,9 @@ func translateFields(w Widget, t func(string) string) {
 		// collides with a catalog key must not come back as words.
 		for i := range n.Items {
 			n.Items[i].Label = t(n.Items[i].Label)
-			n.Items[i].Help = t(n.Items[i].Help)
+			if !n.Items[i].HelpVerbatim {
+				n.Items[i].Help = t(n.Items[i].Help)
+			}
 			if !n.Items[i].Mono && !n.Items[i].Chip && !n.Items[i].Verbatim {
 				n.Items[i].Value = t(n.Items[i].Value)
 			}
@@ -220,6 +201,20 @@ func translateFields(w Widget, t func(string) string) {
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
 		n.Meta = t(n.Meta)
+	case *ActionBar:
+		translateDrawer(n.Drawer, t)
+		n.Filter = t(n.Filter)
+		for i := range n.Tabs {
+			n.Tabs[i].Label = t(n.Tabs[i].Label)
+		}
+		if n.Select != nil {
+			for i := range n.Select.Options {
+				n.Select.Options[i].Label = t(n.Select.Options[i].Label)
+			}
+		}
+		if n.Action != nil {
+			n.Action.Label = t(n.Action.Label)
+		}
 	case *Table:
 		translateTable(n, t)
 	case *Tabs:
@@ -256,6 +251,7 @@ func translateSettingsItems(items []SettingsItem, t func(string) string) {
 // in mono or muted type precisely because they are not words, and a machine
 // string that collides with a catalog key must not come back as prose.
 var machineCellKinds = map[string]bool{
+	"path": true,
 	"name": true, "reference": true, "mono": true, "keyword": true,
 	"comment": true, "num": true, "rate": true, "runtime": true,
 }
@@ -273,6 +269,11 @@ func translateTable(n *Table, t func(string) string) {
 	n.Title = t(n.Title)
 	n.DrawerLabel = t(n.DrawerLabel)
 	n.EmptyText = t(n.EmptyText)
+	n.AddLabel = t(n.AddLabel)
+	n.Note = t(n.Note)
+	for i := range n.Legend {
+		n.Legend[i].Label = t(n.Legend[i].Label)
+	}
 	for i := range n.Columns {
 		n.Columns[i].Label = t(n.Columns[i].Label)
 	}
@@ -290,6 +291,7 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 	for i := range rows {
 		if rows[i].Group != nil {
 			rows[i].Group.Label = t(rows[i].Group.Label)
+			rows[i].Group.AddLabel = t(rows[i].Group.AddLabel)
 		}
 		for j := range rows[i].Cells {
 			c := &rows[i].Cells[j]
@@ -304,9 +306,28 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			c.Button = t(c.Button)
 			c.Confirm = t(c.Confirm)
 			c.ConfirmTitle = t(c.ConfirmTitle)
+			for k := range c.Chips {
+				c.Chips[k].Title = t(c.Chips[k].Title)
+			}
+			for k := range c.Actions {
+				c.Actions[k].Title = t(c.Actions[k].Title)
+			}
 		}
-		if rows[i].Drawer != nil && !rows[i].Drawer.Verbatim {
-			rows[i].Drawer.Title = t(rows[i].Drawer.Title)
-		}
+		translateDrawer(rows[i].Drawer, t)
+	}
+}
+
+// A row and an Add action carry the same drawer schema. Its heading and tabs
+// translate together; declared identities and tab addresses remain verbatim.
+func translateDrawer(d *RowDrawer, t func(string) string) {
+	if d == nil {
+		return
+	}
+	if !d.Verbatim {
+		d.Title = t(d.Title)
+	}
+	for i := range d.Tabs {
+		d.Tabs[i].Label = t(d.Tabs[i].Label)
+		d.Tabs[i].State = t(d.Tabs[i].State)
 	}
 }

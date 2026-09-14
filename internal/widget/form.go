@@ -15,7 +15,19 @@ import (
 // recursively through Decode, so a form composes the closed set — typically
 // fields and lists, but any widget nests.
 type Form struct {
-	Action     string       `json:"-"`               // shell-owned route; plugin forms always post to their own page
+	NoteVerbatim bool   `json:"-"` // shell-composed annotation already localized with its live values
+	CancelHref   string `json:"-"`
+	Action       string `json:"-"` // shell-owned route; plugin forms always post to their own page
+	// Frame is the panel this form posts back into rather than navigating, set
+	// by the shell when it draws the form inside one: the drawer stays open over
+	// the listing that opened it, and the answer — saved, or refused with the
+	// offending controls marked — swaps in where the form was. FrameEntity is
+	// the shell's entity panel, whose route Panel carries; FramePanel is a
+	// plugin's own open panel, which posts to the page's own address — the one
+	// the address bar already names, because an open panel is a place. Empty
+	// everywhere else, which is an ordinary form that posts its page.
+	Frame      string       `json:"-"`
+	Panel      string       `json:"-"`
 	Multipart  bool         `json:"-"`               // shell-owned file-transfer encoding
 	NoSubmit   bool         `json:"-"`               // shell-owned forms may be driven by a child control
 	AutoSubmit bool         `json:"-"`               // submit when a file is selected
@@ -40,6 +52,26 @@ type FormAction struct {
 	Icon   string `json:"icon,omitempty"` // optional leading icon, by Lucide name
 }
 
+// The frames a form can post back into. Which one holds a form is the shell's
+// to know — the plugin declared a form, and where its answer lands is the
+// shell's realization of that (ADR-005 §7).
+const (
+	FrameEntity = "entity" // the shell's entity panel body, at the tab's own route
+	FramePanel  = "panel"  // a plugin's own open panel, at the page's own address
+)
+
+// PostIntoFrame makes every form in the tree post back into the frame that holds
+// it, at route — empty for a frame whose address is the page's own. A form
+// already framed keeps its frame: a tree may be framed at more than one
+// altitude, and the first call to reach a form is the one closest to it.
+func PostIntoFrame(w Widget, frame, route string) {
+	Walk(w, func(n Widget) {
+		if form, ok := n.(*Form); ok && form.Frame == "" {
+			form.Frame, form.Panel = frame, route
+		}
+	})
+}
+
 func (*Form) isWidget() {}
 
 func (f *Form) children() []Widget { return f.Fields }
@@ -50,7 +82,7 @@ func (f *Form) prune(keep func(Widget) bool) { f.Fields = pruneList(f.Fields, ke
 // A confirm renders a submit button of its own, so a generated Save beside it
 // would offer the same action twice — once guarded, once not. A form that wants
 // both states its Save label explicitly.
-func (f *Form) confirmDriven() bool {
+func (f *Form) ConfirmDriven() bool {
 	found := false
 	for _, field := range f.Fields {
 		Walk(field, func(n Widget) {
@@ -96,13 +128,17 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 // formView is the form template's model: its fields pre-rendered to trusted HTML,
 // plus the resolved submit label and the CSRF token threaded in by the renderer.
 type formView struct {
+	CancelHref string
 	Action     string
+	Frame      string
+	Panel      string
 	Multipart  bool
 	AutoSubmit bool
 	Inline     bool
 	Compact    bool
 	Search     bool
 	Page       bool
+	Dirty      bool
 	Icon       string
 	Note       template.HTML
 	Submit     string
@@ -121,7 +157,11 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	submit := f.Submit
-	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit && !f.confirmDriven() {
+	// A page form's submit is what stages what it holds. A plugin names it in
+	// the object's own verb ("Add rule"); a page form with no label is left
+	// buttonless here, because the label is the gateway's to supply — one
+	// default, stated once. A non-page form defaults to "Save".
+	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit && !f.ConfirmDriven() {
 		submit = r.tr("Save")
 	}
 	var note template.HTML
@@ -133,8 +173,8 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		note = template.HTML(buf.String())
 	}
 	return r.execute(out, "form.html.tmpl", formView{
-		Action: f.Action, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: f.Style == "page", Icon: f.Icon, Note: note,
+		CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: f.Style == "page" || f.Style == "settings", Dirty: f.Style == "settings", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

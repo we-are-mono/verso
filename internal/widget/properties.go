@@ -29,10 +29,11 @@ type Properties struct {
 // addresses, keys, and other machine text), and whether to offer an inline copy
 // button beside the value (for values a person needs to paste elsewhere).
 type Property struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
-	Help  string `json:"help,omitempty"` // optional explanation immediately beneath this fact
-	Mono  bool   `json:"mono"`
+	HelpVerbatim bool   `json:"-"` // shell-composed sensor status already localized for the live stream
+	Label        string `json:"label"`
+	Value        string `json:"value"`
+	Help         string `json:"help,omitempty"` // optional explanation immediately beneath this fact
+	Mono         bool   `json:"mono"`
 	// Verbatim declares the value a machine string without the mono type
 	// treatment — a size, a rate, an identity set in sans. The localization
 	// walk leaves it exactly as authored (as it does Mono and Chip values);
@@ -44,6 +45,13 @@ type Property struct {
 	// Chip renders the value as the small category chip — the same treatment
 	// a zone gets everywhere else, so one fact never wears two dresses.
 	Chip bool `json:"chip,omitempty"`
+	// Variant tones the value with the badge vocabulary — "success",
+	// "warning", "danger", "info" — for a fact whose reading is also a
+	// verdict: the build a router runs beside the build it could run. It
+	// names a meaning, never a colour (ADR-005); the shell maps it to the
+	// same text treatment a badge of that tone wears, in both themes. Empty
+	// — and any word the vocabulary does not hold — keeps the ordinary ink.
+	Variant string `json:"variant,omitempty"`
 	// Status hangs a trailing state pill after the value — the same badge
 	// vocabulary rows and pill cells speak.
 	Status *Badge `json:"status,omitempty"`

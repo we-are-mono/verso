@@ -1,114 +1,109 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <!doctype html>
-<html lang="{{ .Lang }}">
+<html lang="{{ .Lang }}" class="bg-ground!">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Verso {{ .Version }}">
 <title>{{ t "Sign in" }} · Verso</title>
-<link rel="preload" href="/assets/fonts/hanken.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
-<style>{{.CSS}}</style>
-<style>
-  /* The hero's living network: one node quietly pulses, the way a live device
-     breathes. Calm, not busy — and still when the viewer prefers less motion. */
-  @keyframes verso-login-pulse {
-    0%   { transform: scale(1);   opacity: 0.45; }
-    70%  { transform: scale(2.6); opacity: 0; }
-    100% { transform: scale(2.6); opacity: 0; }
-  }
-  .verso-login-pulse {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: verso-login-pulse 3s ease-out infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-login-pulse { animation: none; opacity: 0.25; }
-  }
-</style>
-{{/* Applies the saved theme (or the OS preference) before paint — so the login
-     honours the choice made in the app, with no toggle of its own and no flash. */}}
+<style>{{ .CSS }}</style>
 <script src="/assets/verso-boot.js"></script>
+<script src="/assets/verso-login.js" defer></script>
 </head>
-<body class="m-0 bg-canvas text-slate-900 antialiased text-sm leading-normal">
-  {{/* Left-aligned and width-capped to the app's total footprint — the 70rem
-       content area plus the 16rem sidebar the login doesn't have (86rem) — never
-       centred, so it never drifts to the far edge of an ultrawide, and the hero
-       has room to breathe. */}}
-  <div class="max-w-[86rem] px-6 md:px-8">
-    <div class="grid min-h-screen gap-x-12 md:grid-cols-2">
+<body class="m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink">
+  <header class="flex h-14 shrink-0 items-center gap-4 border-b border-rule bg-white px-6">
+    <span class="truncate font-mono text-xl leading-none font-bold">{{if .Hostname}}{{ .Hostname }}{{else}}{{ t "This device" }}{{end}}</span>
+    {{if or .Maker .Model}}
+    <span class="h-5 w-px shrink-0 bg-rule-strong" aria-hidden="true"></span>
+    <span class="min-w-0 truncate font-light text-body"><span class="font-semibold text-ink">{{ .Maker }}</span>{{if and .Maker .Model}} · {{end}}{{ .Model }}</span>
+    {{end}}
+  </header>
 
-    {{/* Hero — brand + the product itself: a small network breathing. Hidden on
-         narrow screens, where the form leads with a compact wordmark. */}}
-    <section class="relative hidden flex-col justify-between py-12 md:flex">
-      <div>
-        <h1 class="font-serif text-6xl font-medium tracking-tight text-slate-900">Verso</h1>
-        <p class="mt-4 text-lg text-slate-500">{{ t "Your network, at a glance." }}</p>
-      </div>
-
-      {{/* The constellation as a true 3D scene: each device node sits at its own
-           depth around the router, which is fixed at the rotation centre (so it
-           never leaves the middle). login.js rotates the nodes toward the cursor
-           and projects them — edges always reconnect. Purely decorative. */}}
-      <div class="flex flex-1 items-center justify-center py-8" aria-hidden="true">
-        <svg id="verso-constellation" viewBox="0 0 440 320" class="block h-auto w-full max-w-lg overflow-visible" fill="none">
-          <g id="verso-mesh"></g>
-          <circle class="verso-login-pulse" cx="220" cy="160" r="11" fill="#0ea5e9"/>
-          <circle cx="220" cy="160" r="9"  fill="#0ea5e9"/>
-          <circle cx="220" cy="160" r="3.5" fill="#ffffff"/>
-        </svg>
-      </div>
-
-      <p class="text-sm text-slate-400">
-        {{if .Firmware}}{{.Firmware}}{{else}}OpenWrt{{end}} · <span class="font-mono text-slate-500">Verso {{.Version}}</span>
-      </p>
-    </section>
-
-    {{/* Form — borderless on white, hairline (ring) inputs, the single sky accent
-         on the primary action. */}}
-    <section class="flex items-center py-12">
-      <div class="w-full max-w-sm">
-        <h1 class="mb-10 font-serif text-4xl font-medium tracking-tight text-slate-900 md:hidden">Verso</h1>
-
-        <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
-          {{ t "Sign in" }}
-        </h2>
-        <p class="mt-1.5 text-slate-500">{{ t "Enter your router password to continue." }}</p>
-
-        {{/* The notice slot: why this page is on screen, when the visitor did not
-             ask for it. Same tone vocabulary as the app's flash — info here, since
-             a session running out is ordinary, not a failure. */}}
-        {{if .Notice}}
-        <div class="mt-6 flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700 dark:border-sky-500/15 dark:bg-sky-500/10 dark:text-sky-300">
-          {{icon "info" "size-4 shrink-0"}}<span>{{.Notice}}</span>
-        </div>
-        {{end}}
-
-        {{if .Error}}
-        <div class="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">{{.Error}}</div>
-        {{end}}
-
-        <form method="post" action="/login" class="mt-8 space-y-5">
-          <div class="space-y-1.5">
-            <label for="username" class="block font-medium text-slate-700">{{ t "Username" }}</label>
-            <input id="username" name="username" type="text" value="root" autocomplete="username"
-              class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
+  <main class="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+    <div class="flex w-full max-w-full flex-col lg:w-auto">
+      <div class="flex flex-col overflow-hidden rounded-xs border border-rule bg-white lg:flex-row">
+        {{/* Only public facts cross this boundary. The browser refreshes this
+             small status model; it never receives the authenticated overview. */}}
+        <section aria-label="{{ t "Router status" }}" data-login-status
+          data-internet="{{if .Status.Internet}}{{if .Status.InternetUp}}up{{else}}down{{end}}{{else}}unknown{{end}}"
+          data-up-label="{{ t "Internet is working" }}" data-down-label="{{ t "No internet connection" }}" data-unknown-label="{{ t "Internet status unavailable" }}"
+          class="group flex min-w-0 flex-col border-b border-rule bg-quiet p-6 sm:p-8 lg:min-w-[400px] lg:max-w-[calc(100vw-448px)] lg:shrink-0 lg:border-r lg:border-b-0">
+          <div class="flex flex-col gap-2.5">
+            <span class="flex items-center gap-2 text-xs font-medium tracking-[.08em] text-meta uppercase">
+              <span data-login-live-mark aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[internet=up]:border-transparent group-data-[internet=up]:bg-green group-data-[internet=down]:border-transparent group-data-[internet=down]:bg-crimson"></span>
+              <span data-login-live-label data-live-label="{{ t "Live" }}" data-stale-label="{{ t "Status unavailable" }}">{{if .Status.Internet}}{{ t "Live" }}{{else}}{{ t "Status unavailable" }}{{end}}</span>
+            </span>
+            <p data-login-verdict class="text-2xl leading-[1.1] font-semibold tracking-tight text-body group-data-[internet=up]:text-green group-data-[internet=down]:text-crimson">{{if .Status.Internet}}{{if .Status.InternetUp}}{{ t "Internet is working" }}{{else}}{{ t "No internet connection" }}{{end}}{{else}}{{ t "Internet status unavailable" }}{{end}}</p>
+            <p class="text-meta">{{ t "Uptime" }} <span data-login-uptime>{{ .Status.Uptime }}</span></p>
           </div>
-          <div class="space-y-1.5">
-            <label for="password" class="block font-medium text-slate-700">{{ t "Password" }}</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" autofocus
-              class="w-full rounded-md bg-white px-3 py-2.5 text-slate-900 ring-1 ring-inset ring-slate-300 transition focus:ring-2 focus:ring-sky-600 focus:outline-none">
+
+          <dl class="mt-7 border-t border-rule">
+            <div class="flex items-center gap-6 border-b border-mid py-2.5">
+              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "Local time" }}">{{ t "Local time" }}</dt>
+              <dd class="min-w-0 font-mono text-base font-medium">
+                <time data-login-clock data-unix="{{ .Status.Unix }}" data-offset="{{ .Status.Offset }}">{{ .Status.Clock }}</time>
+                <span data-login-zone class="font-sans text-sm font-normal text-meta">{{ .Status.Zone }}</span>
+              </dd>
+            </div>
+            <div class="flex items-center gap-6 border-b border-mid py-2.5">
+              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "Firmware" }}">{{ t "Firmware" }}</dt>
+              <dd class="min-w-0 font-mono text-base font-medium wrap-anywhere">{{if .Firmware}}{{ .Firmware }}{{else}}OpenWrt{{end}}</dd>
+            </div>
+            <div class="flex items-center gap-6 border-b border-mid py-2.5">
+              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "You are" }}">{{ t "You are" }}</dt>
+              <dd class="min-w-0 font-mono text-base font-medium wrap-anywhere">{{ .VisitorIP }}{{if .VisitorNetwork}} <span class="font-sans text-sm font-normal text-meta">{{ t "on" }}</span> {{ .VisitorNetwork }}{{end}}</dd>
+            </div>
+          </dl>
+          <p class="mt-auto pt-6 leading-relaxed text-meta">{{ t "Everything else — networks, devices, rules — waits behind your password." }}</p>
+        </section>
+
+        <section aria-labelledby="login-heading" class="flex w-full min-w-0 flex-col gap-5 p-6 sm:p-8 lg:w-[400px] lg:shrink-0">
+          {{if .Notice}}
+          <div role="status" class="flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep">
+            <span class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-marigold" aria-hidden="true"></span>
+            <span>{{ .Notice }}</span>
           </div>
-          <button type="submit"
-            class="w-full cursor-pointer rounded-md bg-sky-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-sky-700 active:translate-y-px active:bg-sky-800 active:shadow-none motion-reduce:active:translate-y-0 focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-sky-700 dark:text-gray-100 dark:hover:bg-sky-800 dark:active:bg-sky-900">
-            {{ t "Sign in" }}
-          </button>
-        </form>
+          {{end}}
+          <h1 id="login-heading" class="mb-1 text-2xl leading-[1.1] font-semibold tracking-tight">{{ t "Sign in" }}</h1>
+          <form method="post" action="/login" data-login-form class="flex flex-col gap-5">
+            <div class="flex flex-col gap-2">
+              <label for="username" class="text-sm font-semibold">{{ t "Username" }}</label>
+              <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
+                class="h-9 w-full rounded-xs border border-rule-strong bg-white px-3 font-mono text-base font-normal shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors duration-150 hover:border-faint focus:border-denim focus:outline-none">
+            </div>
+            <div class="flex flex-col gap-2">
+              <label for="password" class="text-sm font-semibold">{{ t "Password" }}</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" autofocus
+                {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
+                class="h-9 w-full rounded-xs border {{if .Error}}border-crimson hover:border-crimson-deep{{else}}border-rule-strong hover:border-faint{{end}} bg-white px-3 font-sans text-sm font-normal shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors duration-150 focus:border-denim focus:outline-none">
+              {{if .Error}}
+              <p id="login-error" role="alert" class="flex items-start gap-2 text-sm text-crimson-deep">
+                <span class="mt-1.5 size-1.5 shrink-0 rounded-[1px] bg-crimson" aria-hidden="true"></span>
+                <span>{{ .Error }}</span>
+              </p>
+              {{end}}
+            </div>
+            <button type="submit" data-login-submit aria-disabled="false"
+              class="group mt-2 flex h-9 w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-white transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
+              <span class="group-disabled:hidden">{{ t "Sign in to router" }}</span>
+              <span role="status" class="hidden items-center gap-2.5 group-disabled:flex">
+                <span data-login-wait aria-hidden="true" class="relative block size-3.5 shrink-0">
+                  <span class="absolute top-0 left-0 size-1.5 rounded-[1px] bg-sand-5"></span>
+                  <span class="absolute top-0 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>
+                  <span class="absolute top-2 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>
+                  <span class="absolute top-2 left-0 size-1.5 rounded-[1px] bg-sand-5"></span>
+                </span>
+                {{ t "Signing in…" }}
+              </span>
+            </button>
+          </form>
+          {{if .Attempts}}<p class="mt-auto leading-relaxed text-meta"><span class="text-crimson-deep">{{ .Attempts }}</span> {{ .AttemptPolicy }}</p>{{end}}
+        </section>
       </div>
-    </section>
     </div>
-  </div>
-  <script src="/assets/login.js"></script>
+  </main>
 </body>
 </html>

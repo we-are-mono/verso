@@ -156,8 +156,6 @@ func TestFilterModeReachesEveryContainer(t *testing.T) {
 		{"canvas", &Canvas{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"disclosure", &Disclosure{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"empty", &Empty{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
-		{"capsule preview", &CapsulePreview{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
-		{"hero", &Hero{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"modal", &Modal{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"drawer", &Drawer{Trigger: []Widget{hidden(), &Text{Markdown: "keep"}}, Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"conditional", &Conditional{Fields: []Widget{hidden(), &Text{Markdown: "keep"}}, Otherwise: []Widget{hidden(), &Text{Markdown: "keep"}}}},

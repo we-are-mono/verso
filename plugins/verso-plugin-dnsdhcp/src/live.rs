@@ -125,7 +125,9 @@ mod tests {
             .collect();
         assert_eq!(names, vec!["toms-iphone", "", "nas", "guest-tablet"]);
 
-        let nas = leases.holder("30:9C:23:5E:88:01").expect("nas holds a lease");
+        let nas = leases
+            .holder("30:9C:23:5E:88:01")
+            .expect("nas holds a lease");
         assert_eq!(nas.ipv4, "10.0.0.30");
         assert_eq!(nas.ipv6s, vec!["2a00:ee2:2d00:2e00::30".to_string()]);
         assert!(leases.holder("b0:02:47:aa:c3:19").is_none());

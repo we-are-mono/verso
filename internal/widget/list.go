@@ -25,6 +25,37 @@ type List struct {
 	Items    []string          `json:"items"`
 	Errors   map[string]string `json:"errors"` // index (string) -> error
 	Help     string            `json:"help"`
+	// Key is the option this list writes, verbatim, for the mono chip beside the
+	// label — a list of values is as much a line of the config as a single one.
+	Key string `json:"key,omitempty"`
+	// Tip is the longer explanation, raised onto the label as a field's is.
+	Tip string `json:"tip,omitempty"`
+	// Options are the values worth offering: the control suggests them as you
+	// type and lets several be chosen, while still accepting anything the config
+	// accepts. A closed choice would be wrong here — fw4 reads protocol names
+	// and numbers alike — but a list with no suggestions makes the operator
+	// remember what the daemon happens to call things.
+	Options []Option `json:"options,omitempty"`
+	// Remove is the row's trailing remove affordance, as a field's is: "yes"
+	// draws the glyph that clears the row, "lane" reserves its width.
+	Remove string `json:"remove,omitempty"`
+}
+
+// Removable and Lane mirror a field's, so a list sits in a set of rows the same
+// way every other row does.
+func (l *List) Removable() bool { return l.Remove == "yes" }
+func (l *List) Lane() bool      { return l.Remove != "" }
+
+// Explained reports whether the label carries an explanation to raise.
+func (l *List) Explained() bool { return l.Tip != "" || l.Help != "" }
+
+// LabelView is this list's left column — the same shape every other row's is.
+func (l *List) LabelView() fieldLabel {
+	tip := (&Field{Name: l.Name, Key: l.Key, Tip: l.Tip, Help: l.Help}).TipView()
+	return fieldLabel{
+		For: l.Name, Label: l.Label, Key: l.Key,
+		Explained: l.Explained(), Tip: tip,
+	}
 }
 
 func (*List) isWidget() {}

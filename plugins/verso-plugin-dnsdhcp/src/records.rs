@@ -104,6 +104,8 @@ fn drawer(record: &Record, errors: &Errors, open: bool) -> Option<verso_plugin::
         open,
         vec![
             Widget::Form {
+                note: Default::default(),
+
                 style: String::new(),
                 submit: "Save".into(),
                 error: String::new(),
@@ -184,7 +186,10 @@ pub fn save(model: &mut Dnsdhcp, form: &Form) -> Saved {
     };
     if form::deletes(form) {
         let removed = model.records.remove(index);
-        return Saved::Ops(vec![commit_delete(CONFIG, &removed.section)], "Record deleted.");
+        return Saved::Ops(
+            vec![commit_delete(CONFIG, &removed.section)],
+            "Record deleted.",
+        );
     }
 
     let Some(kind) = RecordKind::of(&form.get("kind")) else {
@@ -318,7 +323,10 @@ mod tests {
     fn rows(model: &Dnsdhcp, refusal: Option<&Refusal>) -> Vec<Json> {
         let json =
             serde_json::to_value(section(model, refusal, Widget::text(""))).expect("serialize");
-        json["children"][0]["rows"].as_array().expect("rows").clone()
+        json["children"][0]["rows"]
+            .as_array()
+            .expect("rows")
+            .clone()
     }
 
     fn submit(body: &str) -> (Dnsdhcp, Saved) {
@@ -382,8 +390,8 @@ mod tests {
     fn no_extra_names_states_what_still_resolves() {
         let mut model = fixture::dnsdhcp();
         model.records.clear();
-        let json = serde_json::to_value(section(&model, None, Widget::text("")))
-            .expect("serialize");
+        let json =
+            serde_json::to_value(section(&model, None, Widget::text(""))).expect("serialize");
         let table = &json["children"][0];
         assert_eq!(table["empty_text"], EMPTY);
         assert!(table["rows"].as_array().expect("rows").is_empty());
@@ -412,7 +420,8 @@ mod tests {
 
     #[test]
     fn changing_a_records_type_moves_it_between_section_types() {
-        let (_, saved) = submit("_form=record&_section=cname_photos&kind=A&name=photos.lan&target=10.0.0.30");
+        let (_, saved) =
+            submit("_form=record&_section=cname_photos&kind=A&name=photos.lan&target=10.0.0.30");
         assert_eq!(
             ops(&saved),
             serde_json::json!([
@@ -423,7 +432,9 @@ mod tests {
         );
 
         // A and AAAA are one section type, so switching between them is a set.
-        let (_, saved) = submit("_form=record&_section=domain_backup_v4&kind=AAAA&name=backup.lan&target=2a00:ee2::31");
+        let (_, saved) = submit(
+            "_form=record&_section=domain_backup_v4&kind=AAAA&name=backup.lan&target=2a00:ee2::31",
+        );
         assert_eq!(
             ops(&saved),
             serde_json::json!([{
@@ -465,7 +476,9 @@ mod tests {
         let mut model = fixture::dnsdhcp();
         let Saved::Refused(refusal) = save(
             &mut model,
-            &Form::parse("_form=record&_section=domain_backup_v4&kind=A&name=backup.lan&target=nowhere"),
+            &Form::parse(
+                "_form=record&_section=domain_backup_v4&kind=A&name=backup.lan&target=nowhere",
+            ),
         ) else {
             panic!("the submission should have been refused");
         };

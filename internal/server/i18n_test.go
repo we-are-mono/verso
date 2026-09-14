@@ -22,8 +22,8 @@ import (
 // fallback.
 var fakeSL = fstest.MapFS{
 	"sl/base.json": {Data: []byte(`{
-		"Home": "Domov",
-		"Advanced": "Napredno",
+		"Overview": "Pregled",
+		"Log out": "Odjava",
 		"Sign in": "Prijava"
 	}`)},
 }
@@ -69,8 +69,8 @@ func TestAcceptLanguageRendersSlovenian(t *testing.T) {
 	body := getLang(t, srv, "/system/access", "sl-SI,sl;q=0.9,en;q=0.5")
 	for _, want := range []string{
 		`<html lang="sl">`, // negotiated language on the root element
-		">Domov<",          // a nav label localized in Go (tr)
-		">Napredno<",       // page chrome localized in the template ({{ t }})
+		">Pregled<",        // a nav label localized in Go (tr)
+		">Odjava<",         // page chrome localized in the template ({{ t }})
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sl render missing %q", want)
@@ -85,12 +85,12 @@ func TestNoAcceptLanguageRendersEnglish(t *testing.T) {
 	withFakeSL(t, srv)
 
 	body := getLang(t, srv, "/system/access", "")
-	for _, want := range []string{`<html lang="en">`, ">Home<", ">Advanced<"} {
+	for _, want := range []string{`<html lang="en">`, ">Overview<", ">Log out<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("English render missing %q", want)
 		}
 	}
-	if strings.Contains(body, "Domov") || strings.Contains(body, "Napredno") {
+	if strings.Contains(body, "Pregled") || strings.Contains(body, "Odjava") {
 		t.Errorf("English render must not contain Slovenian: %s", body)
 	}
 }
@@ -103,8 +103,8 @@ func TestSlovenianFallsBackPerKey(t *testing.T) {
 	withFakeSL(t, srv)
 
 	body := getLang(t, srv, "/system/access", "sl")
-	if !strings.Contains(body, ">Domov<") {
-		t.Errorf("translated key missing: expected Domov")
+	if !strings.Contains(body, ">Pregled<") {
+		t.Errorf("translated key missing: expected Pregled")
 	}
 	if !strings.Contains(body, ">Devices<") {
 		t.Errorf("untranslated key must fall back to English source (Devices): %s", body)
@@ -122,7 +122,7 @@ func TestLoginNegotiatesLanguage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	if !strings.Contains(body, `<html lang="sl">`) || !strings.Contains(body, "Prijava") {
+	if !strings.Contains(body, `<html lang="sl"`) || !strings.Contains(body, "Prijava") {
 		t.Errorf("login did not localize from Accept-Language: %s", body)
 	}
 }
@@ -145,7 +145,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 	srv.probe = func(string) bool { return true }
 
 	bundle, problems := i18n.Load(fstest.MapFS{
-		"sl/base.json": {Data: []byte(`{"Save":"Shrani","Network":"Omrežje","Hostname":"BASE-WRONG"}`)},
+		"sl/base.json": {Data: []byte(`{"Save":"Shrani","Overview":"Pregled","Hostname":"BASE-WRONG"}`)},
 		"sl/demo.json": {Data: []byte(`{"Hostname":"Ime gostitelja","Demo":"Predstavitev","A demo page":"Predstavitvena stran","Widgets":"Gradniki"}`)},
 	}, "*/*.json")
 	if len(problems) != 0 {
@@ -160,7 +160,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 		"Predstavitvena stran", // the plugin subheading, from the plugin catalog
 		"Gradniki",             // the plugin's nav label, from the plugin catalog
 		">Shrani<",             // shell-owned widget default, from base via base⊕plugin fallthrough
-		"Omrežje",              // the section title, shell taxonomy, from base
+		">Pregled<",            // a shell-owned rail row, from base, beside the plugin's own
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("plugin render missing %q:\n%s", want, body)

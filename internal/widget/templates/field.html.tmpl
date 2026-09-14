@@ -5,54 +5,134 @@
      Kind "hidden" is the bare carrier — no label, no chrome — for a value a
      form must post but a person never edits (e.g. which object a button acts
      on). */}}
-{{if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
-<div class="space-y-1.5" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{if .Kind}}{{.Kind}}{{else}}text{{end}}">
-  {{if .Label}}<label for="{{.Name}}" class="block text-sm font-medium text-slate-900">{{.Label}}</label>{{end}}
-  {{if eq .Kind "select"}}
+{{if eq .Style "code"}}
+<div class="space-y-2 py-3" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="textarea"><label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Label}}</label><textarea id="{{.Name}}" name="{{.Name}}" rows="14" spellcheck="false" data-verso-code-editor class="w-full resize-y rounded-xs border border-rule-strong bg-ground p-3 font-mono text-sm leading-relaxed text-ink outline-none focus:border-denim-deep">{{.Value}}</textarea><p class="text-right font-mono text-sm text-meta">{{t "Lines"}}: <span data-verso-code-lines>{{.LineCount}}</span></p>{{if .Error}}<p class="text-sm text-crimson-deep">{{.Error}}</p>{{end}}</div>
+{{else if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
+{{/* One field is one row of the form, at the form's own measure: what the thing
+     is on the left, growing, and the control on the right at a fixed width. The
+     control column is fixed rather than the label's, because a column of
+     controls that all begin and end in the same place is what makes a form
+     scannable — the labels are words and may be any length.
+
+     Nothing rules between them: fields inside a section already belong together,
+     and a hairline every 40px turns a form into a table. Rules separate
+     sections; space separates fields. */}}
+{{/* The option this row writes travels as data as well as as the chip beside the
+     label: the live preview patches that one line the moment the value changes,
+     rather than waiting out the round-trip to learn what a person just typed. */}}
+<div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{if .Kind}}{{.Kind}}{{else}}text{{end}}"{{if .Key}} data-verso-writes="{{.Key}}"{{end}}>
+  {{if or .Label .Key}}{{template "verso-field-label" .LabelView}}{{end}}
+  <div data-verso-control class="{{template "verso-field-control-class"}}">
+  {{if and (eq .Kind "select") .Segmented}}
+  {{/* A pick between three words reads better as all of them than as a box
+       that hides two: the choice is priced before it is made. The one in force
+       is filled in the body ink, as every selected segment in the app is — the
+       toolbar's family cut wears the same tray — and never the action colour,
+       which is for what leads somewhere. Radios underneath, so it posts exactly
+       as the box does and needs no JavaScript. */}}
+  <div class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
+    {{range .Options}}
+    <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white">
+      <input type="radio" name="{{$.Name}}" value="{{.Value}}"{{if eq .Value $.Value}} checked{{end}} class="sr-only">
+      {{.Label}}
+    </label>
+    {{end}}
+  </div>
+  {{else if eq .Kind "select"}}
   {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
        the native arrow hugs the border and can't follow the theme. */}}
   <div class="relative">
-    <select id="{{.Name}}" name="{{.Name}}" class="w-full appearance-none rounded-md border {{template "verso-input-border" .Error}} bg-white py-2 pr-9 pl-3 text-sm text-slate-900 focus:outline-none">
+    <select id="{{.Name}}" name="{{.Name}}" class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">{{icon "chevron-down" "size-4"}}</span>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{else if eq .Kind "checks"}}
   {{/* checks: membership in a known set — all boxes share the field's name and
        post as a multi-value field (name=a&name=b), the list-widget contract.
        Free text is how dead references happen; a closed set makes them
        untypeable. */}}
-  <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5 sm:grid-cols-3">
+  {{if .Segmented}}
+  {{/* segmented: a set short enough to show whole reads better as one strip of
+       chips than as a grid of boxes — seven days fit on a line, and which are on
+       is then a shape rather than a list to scan. Still checkboxes underneath,
+       so it posts exactly as the grid does and needs no JavaScript. */}}
+  <div class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Options}}
-    <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-900">
-      <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}}
-        class="size-4 cursor-pointer rounded border-slate-300 accent-sky-600">
+    <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white">
+      <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}} class="sr-only">
       {{.Label}}
     </label>
     {{end}}
   </div>
+  {{else}}
+  <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5 sm:grid-cols-3">
+    {{range .Options}}
+    <label class="flex cursor-pointer items-center gap-2 text-sm text-ink">
+      <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}}
+        class="size-4 cursor-pointer rounded-xs border-rule-strong accent-body">
+      {{.Label}}
+    </label>
+    {{end}}
+  </div>
+  {{end}}
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
   {{else if eq .Kind "file"}}
   {{/* The native input covers the drop surface invisibly: dropping works without
        plugin JavaScript, and clicking the emphasized phrase opens the OS picker. */}}
-  <label for="{{.Name}}" class="relative flex min-h-40 cursor-pointer items-center justify-center rounded-xl border-2 border-dotted {{if .Error}}border-red-400 bg-red-50/40{{else}}border-slate-300 bg-slate-50/60 hover:border-sky-400 hover:bg-sky-50/50{{end}} px-8 py-12 text-center transition-colors">
+  <label for="{{.Name}}" class="relative flex min-h-40 cursor-pointer items-center justify-center rounded-xs border-2 border-dotted {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:border-denim hover:bg-denim-soft{{end}} px-8 py-12 text-center transition-colors">
     <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
-    <span class="pointer-events-none text-sm text-slate-500">
-      <span class="mx-auto mb-4 block w-fit text-slate-400">{{icon "upload" "size-10"}}</span>
+    <span class="pointer-events-none text-sm text-body">
+      <span class="mx-auto mb-4 block w-fit text-faint">{{icon "upload" "size-10"}}</span>
       <span class="block">{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Drop a file here" }}{{end}}</span>
-      <span class="mt-1 block">{{ t "or" }} <span class="whitespace-nowrap font-semibold text-sky-600 underline underline-offset-2">{{ t "choose one from your computer" }}</span>.</span>
+      <span class="mt-1 block">{{ t "or" }} <span class="whitespace-nowrap font-semibold text-denim underline underline-offset-2">{{ t "choose one from your computer" }}</span>.</span>
     </span>
   </label>
   {{else if eq .Kind "textarea"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm font-mono text-sm text-slate-900 focus:outline-none">{{.Value}}</textarea>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="5" class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1" class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1" class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
+  {{else if eq .Kind "time"}}
+  {{/* A clock time on its own — a curfew's edge. The native control keeps the
+       platform's own 12/24-hour habit and its picker; the box is sized to what
+       it holds rather than to the column, because a time is four characters and
+       a full-width field would say it might not be. */}}
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="time" class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-32">
+  {{else if .Pair}}
+  {{/* Two values that are one setting: the range's ends side by side with the
+       word that joins them, so it reads as the sentence it is rather than as two
+       unrelated boxes that happen to sit near each other. */}}
+  <span class="flex items-center gap-4">
+    <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-26">
+    <span class="shrink-0 text-sm text-body">{{.Pair.Join}}</span>
+    <input id="{{.Pair.Name}}" name="{{.Pair.Name}}" value="{{.Pair.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-26">
+  </span>
   {{else}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="w-full rounded-md border {{template "verso-input-border" .Error}} bg-white px-3 py-2 inset-shadow-sm text-sm text-slate-900 focus:outline-none">
+  {{/* A unit rides inside the trailing edge: the value and what it counts read
+       as one thing, and the box keeps clear of it. */}}
+  {{if .Unit}}<span class="relative flex w-fit items-center">{{end}}
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{if eq .Measure "address"}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}{{if .Unit}} w-44 pr-20{{end}}">
+  {{if .Unit}}<span class="pointer-events-none absolute right-3 font-mono text-base font-medium text-meta">{{.Unit}}</span></span>{{end}}
   {{end}}
-  {{/* On error, the helper line becomes the error — one line under the field, not two. */}}
-  {{if .Error}}<p class="text-sm text-red-600 dark:text-red-400">{{.Error}}</p>{{else if .Help}}<p class="text-sm text-slate-500">{{.Help}}</p>{{end}}
+  {{/* On error, the helper line becomes the error — one line under the field, not
+       two. An error is a band on crimson's own soft ground with the mark beside
+       it, because a refusal should be findable without reading. */}}
+  {{if .Error}}
+  <span class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2">
+    <span class="mt-1.5 size-1.5 flex-none bg-crimson"></span>
+    <span class="text-sm leading-snug text-crimson-deep">{{.Error}}</span>
+  </span>
+  {{/* Help is not a line under the control: it is what the label explains, and
+       it is raised from there. Only a refusal takes space in the row. */}}
+  {{end}}
+  </div>
+  {{/* The remove lane. A row that can be taken out of the set ends in the glyph
+       that takes it out; a row that cannot still reserves the width, so every
+       control in the group begins and ends in the same place. */}}
+  {{if .Lane}}
+  {{if .Removable}}{{template "verso-row-remove" .}}{{else}}<span class="size-7 flex-none" aria-hidden="true"></span>{{end}}
+  {{end}}
 </div>
 {{end}}

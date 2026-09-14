@@ -7,41 +7,62 @@
      button (shell-owned "copy", verso.js); icons from icons.go. */}}
 {{/* verso-copy-inline: the icon-sized copy control beside a value — context is the
      text to copy. Shared by properties rows and mono table cells. */}}
-{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1.5 inline-flex align-middle text-slate-400 transition-colors hover:text-slate-600">
+{{/* The control is a 24px square that only fills on hover, so a column of them
+     beside a column of addresses stays a column of addresses. Its glyph rests at
+     the mark step, darkens to ink under the pointer, and turns green the moment
+     the value is on the clipboard — the one place a hue at full chroma answers
+     an act rather than states a condition. */}}
+{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1 inline-grid size-6 shrink-0 place-items-center rounded-xs align-middle text-glyph transition-colors hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
   <span x-ref="src" class="hidden">{{.}}</span>
   <span x-show="idle">{{icon "copy" "size-4"}}</span>
-  <span x-show="done" x-cloak>{{icon "check" "size-4 text-emerald-600"}}</span>
-  {{/* Hover bubble beneath the icon: "Click to copy", flipping to "Copied!" on click
-       (same idle/done state as the icon). Pure-CSS reveal on hover/keyboard focus —
-       the group is NAMED so an ancestor `group` (a table row wears one for its
-       border styling) can never reveal the bubble from afar. */}}
-  <span class="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
-    <span x-show="idle">{{ t "Click to copy" }}</span>
-    <span x-show="done" x-cloak>{{ t "Copied!" }}</span>
+  <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
+  {{/* The bubble sits above the control and flush to its right edge, which is
+       what keeps it inside the table on the last column. Pure-CSS reveal on
+       hover/keyboard focus — the group is NAMED so an ancestor `group` (a table
+       row wears one for its border styling) can never reveal it from afar. */}}
+  <span class="{{template "verso-tip-class"}} group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
+    <span x-show="idle">{{ t "Copy" }}</span>
+    <span x-show="done" x-cloak>{{ t "Copied" }}</span>
   </span>
 </button>{{end}}
-<dl class="{{if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-slate-200{{end}}">
+<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-mid{{end}}">
   {{range .Items}}
-  {{if eq $.Style "identity"}}
+  {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
+  {{/* 44px, never stated: a 24px line — the mono value's own, the sans label
+       and value raised to it — with 10px above and below. */}}
+  <div class="flex items-center min-h-11 box-border gap-6 py-2{{if eq $.Style "overview-connection"}} first:border-t first:border-mid{{end}}">
+    <dt class="shrink-0 text-sm leading-6 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
+    <dd class="flex min-w-0 items-center text-ink{{if eq $.Style "overview-system"}} ml-auto text-right{{end}}">
+      {{if .Dot}}<span class="mr-2.5 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
+      <span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere font-medium {{if .Mono}}font-mono text-base{{else}}text-sm leading-6{{end}}">{{.Value}}</span>{{if eq .Key "temperature"}}<span data-overview-temp-note class="ml-1 font-sans text-sm font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+    </dd>
+  </div>
+  {{else if eq $.Style "identity"}}
   <div>
     <div class="flex items-baseline gap-2 text-base">
-      <dt class="text-slate-500">{{.Label}}:</dt>
-      <dd class="{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} text-slate-900{{if .Mono}} font-mono{{end}}">{{.Value}}</dd>
+      <dt class="text-meta">{{.Label}}:</dt>
+      <dd class="{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} {{if .Variant}}{{template "verso-tone-text" .Variant}}{{else}}text-ink{{end}}{{if .Mono}} font-mono{{end}}">{{.Value}}</dd>
     </div>
-    {{if .Help}}<p class="mt-1 text-sm text-slate-500">{{.Help}}</p>{{end}}
+    {{if .Help}}<p class="mt-1 text-sm leading-snug text-body">{{.Help}}</p>{{end}}
   </div>
   {{else if eq $.Style "system"}}
-  <div class="flex items-baseline justify-between gap-4 border-t border-slate-100 py-3">
-    <dt class="text-sm text-slate-500">{{.Label}}</dt>
-    <dd class="text-base font-medium text-slate-900">
-      {{if .Dot}}<span class="mr-2 inline-block size-1.5 rounded-full align-middle {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono font-semibold{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+  {{/* the same 44px row as the overview's: the value's 24px line, inset 10px,
+       everything in it a flex item so no glyph's box can lift the line. */}}
+  <div class="flex items-center justify-between min-h-11 box-border gap-6 border-t border-mid py-2">
+    <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
+    <dd class="flex items-center text-sm font-medium text-ink">
+      {{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
     </dd>
   </div>
   {{else}}
-  <div class="flex items-baseline {{if eq $.Align "left"}}gap-5{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 first:pt-0 last:pb-0{{end}}">
-    <dt class="shrink-0 text-slate-500{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
-    <dd class="{{if eq $.Align "left"}}flex min-w-0 flex-1 items-baseline text-left{{else}}text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-slate-700">
-      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="{{if .Mono}}font-mono{{if .Emphasis}} font-semibold{{end}}{{end}}">{{.Value}}</span>{{end}}
+  {{/* A ruled row is the 44px one — a 24px line inset 10px — and its value
+       is a flex line too, so a copy control or a badge sits on the line rather
+       than lifting it. The plain list has no rows to keep to and keeps the
+       type's own line. */}}
+  <div class="flex items-center {{if eq $.Align "left"}}gap-6{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} min-h-11 box-border py-2 leading-6{{end}}">
+    <dt class="shrink-0 text-meta{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
+    <dd class="flex min-w-0 items-center {{if eq $.Align "left"}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
+      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="min-w-0 wrap-anywhere {{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex shrink-0 align-middle">{{template "badge.html.tmpl" .Status}}</span>{{end}}
     </dd>

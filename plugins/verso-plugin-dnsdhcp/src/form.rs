@@ -82,6 +82,14 @@ pub const UNKNOWN: &str = "Verso couldn’t tell what that change was, so nothin
 /// wrong about it.
 pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
     Widget::Field {
+        key: Default::default(),
+        tip: Default::default(),
+        source: Default::default(),
+        unit: Default::default(),
+        pair: Default::default(),
+        remove: Default::default(),
+        style: Default::default(),
+
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
@@ -121,6 +129,14 @@ pub fn choices(pairs: &[(&str, &str)]) -> Vec<SelectOption> {
 /// submission back in front of the operator rather than closing on it.
 pub fn drawer(title: &str, open: bool, children: Vec<Widget>) -> Option<RowDrawer> {
     Some(RowDrawer {
+        sub: Default::default(),
+        chain: Default::default(),
+        tag: Default::default(),
+        verdict: Default::default(),
+        lede: Default::default(),
+        closed: Default::default(),
+        tabs: Default::default(),
+
         title: title.into(),
         size: String::new(),
         hide_title: false,
@@ -134,6 +150,8 @@ pub fn drawer(title: &str, open: bool, children: Vec<Widget>) -> Option<RowDrawe
 /// button of its own.
 pub fn delete_form(kind: &str, subject: (&str, &str), trigger: &str, message: &str) -> Widget {
     Widget::Form {
+        note: Default::default(),
+
         style: String::new(),
         submit: String::new(),
         error: String::new(),
@@ -142,6 +160,8 @@ pub fn delete_form(kind: &str, subject: (&str, &str), trigger: &str, message: &s
             Widget::hidden(subject.0, subject.1),
             Widget::hidden(DELETE, "1"),
             Widget::Confirm {
+                title: Default::default(),
+
                 trigger: trigger.into(),
                 message: message.into(),
                 confirm: trigger.into(),
@@ -263,7 +283,11 @@ mod tests {
 
     #[test]
     fn the_daemons_own_acceptance_is_what_a_value_is_checked_against() {
-        for value in ["00:11:22:33:44:55", "AA-BB-CC-DD-EE-FF", "00:11:22:33:44:55 aa:bb:cc:dd:ee:ff"] {
+        for value in [
+            "00:11:22:33:44:55",
+            "AA-BB-CC-DD-EE-FF",
+            "00:11:22:33:44:55 aa:bb:cc:dd:ee:ff",
+        ] {
             assert!(valid_macs(value), "{value}");
         }
         for value in ["", "00:11:22:33:44", "gg:11:22:33:44:55", "001122334455"] {
@@ -277,7 +301,12 @@ mod tests {
             assert!(!valid_ipv4(value), "{value}");
         }
 
-        for value in ["::1", "2a00:ee2:2d00:2e00::30", "fe80::1%0", "::ffff:10.0.0.1"] {
+        for value in [
+            "::1",
+            "2a00:ee2:2d00:2e00::30",
+            "fe80::1%0",
+            "::ffff:10.0.0.1",
+        ] {
             assert_eq!(valid_ipv6(value), !value.contains('%'), "{value}");
         }
         for value in ["", "10.0.0.1", "2a00::ee2::1", "zzzz::1"] {

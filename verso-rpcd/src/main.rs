@@ -8,6 +8,9 @@
 //! request still carries the operator's rpcd session and is independently
 //! checked through native ubus `session.access` before any action runs.
 
+mod access;
+mod config_files;
+mod dhcp;
 mod firewall;
 mod firmware;
 mod packages;
@@ -30,7 +33,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 const DEFAULT_SOCKET: &str = "/var/run/verso/verso-rpcd.sock";
-const MAX_REQUEST: u64 = 128 * 1024;
+const MAX_REQUEST: u64 = 256 * 1024;
 const VERSO_UID: u32 = 6000;
 
 /// rpcd's local-root convention: automation running as root on the device itself
@@ -69,6 +72,7 @@ unsafe extern "C" {
     ) -> i32;
 }
 
+#[derive(Debug)]
 struct Failure {
     status: i32,
     message: String,
@@ -132,8 +136,9 @@ fn serve(socket: &Path) -> Result<(), String> {
         .map_err(|error| format!("bind {}: {error}", socket.display()))?;
     fs::set_permissions(socket, fs::Permissions::from_mode(0o660))
         .map_err(|error| format!("chmod {}: {error}", socket.display()))?;
-    eprintln!("verso-rpcd: listening on {}", socket.display());
+    println!("verso-rpcd: listening on {}", socket.display());
 
+    config_files::watchdog();
     let state = Arc::new(State {
         packages: Mutex::new(()),
         maintenance: Mutex::new(()),
@@ -276,6 +281,34 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
     }
 
     match method {
+        "dhcpState" => dhcp::state(),
+        "dnsState" => config_files::dns_state(),
+        "configFiles" => config_files::state(),
+        "stageConfigFile" => config_files::stage(
+            argument(request, "path")?,
+            argument(request, "expected")?,
+            argument(request, "content")?,
+        ),
+        "applyConfigFiles" => config_files::lifecycle(
+            argument(request, "action")?,
+            argument(request, "uci")? == "1",
+            argument(request, "timeout")?.parse().unwrap_or(30),
+        ),
+        "accessCredentials" => access::state(),
+        "setAuthorizedKeys" => {
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
+            access::keys(argument(request, "expected")?, argument(request, "keys")?)
+        }
+        "setWebCertificate" => {
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
+            access::certificate(argument(request, "certificate")?, argument(request, "key")?)
+        }
         "setPassword" => {
             let username = argument(request, "username")?;
             let password = argument(request, "password")?;
@@ -310,6 +343,24 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             Ok(json!({"result": true, "output": output}))
         }
         "firmwareCheck" => Ok(firmware_check()),
+        // The one act that takes both guards, and the only place two are held at
+        // once — so this order is the whole lock order and no inversion exists to
+        // deadlock against. It earns both: owut builds its request from the
+        // installed package set and then flashes, so an apk transaction running
+        // underneath it would be reading and writing the very thing being
+        // replaced, and a manual image install landing beside it would be a
+        // second sysupgrade. What the guards do not cover is the moment after
+        // the detached install starts — by then sysupgrade owns the device and
+        // is taking every other process down with it.
+        "firmwareUpgrade" => {
+            let _packages = package_guard(state)?;
+            let _maintenance = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("maintenance-operation lock poisoned"))?;
+            firmware_upgrade()?;
+            Ok(json!({"result": true}))
+        }
         "pkgSearch" => {
             let query = argument(request, "query")?;
             if !packages::valid_query(query) {
@@ -319,7 +370,32 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             let (found, total) = packages::search(query).map_err(Failure::unknown)?;
             Ok(json!({"packages": found, "total": total}))
         }
-        "pkgInstall" | "pkgRemove" => {
+        "pkgBrowse" => {
+            let query = request
+                .get("args")
+                .and_then(|args| args.get("query"))
+                .and_then(Value::as_str)
+                .ok_or_else(|| Failure::invalid("query is required"))?;
+            if query.len() > 128 || query.chars().any(char::is_control) {
+                return Err(Failure::invalid("invalid package query"));
+            }
+            let offset = argument(request, "offset")?
+                .parse::<usize>()
+                .ok()
+                .filter(|offset| *offset <= 100_000)
+                .ok_or_else(|| Failure::invalid("invalid package offset"))?;
+            let _guard = package_guard(state)?;
+            packages::browse(query, offset).map_err(Failure::unknown)
+        }
+        "pkgFiles" => {
+            let name = argument(request, "package")?;
+            if !packages::valid_name(name) {
+                return Err(Failure::invalid("invalid package name"));
+            }
+            let _guard = package_guard(state)?;
+            Ok(json!({"files": packages::files(name).map_err(Failure::unknown)?}))
+        }
+        "pkgInstall" | "pkgRemove" | "pkgUpgradeOne" => {
             let name = argument(request, "package")?;
             if !packages::valid_name(name) {
                 return Err(Failure::invalid(
@@ -343,6 +419,8 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             }
             let output = if method == "pkgInstall" {
                 packages::install(name)
+            } else if method == "pkgUpgradeOne" {
+                packages::upgrade_one(name)
             } else {
                 packages::remove(name)
             }
@@ -430,6 +508,81 @@ fn firmware_check() -> Value {
         Ok(output) => firmware::summarize(&output.stdout, &output.stderr, output.status.success()),
         Err(failure) => firmware::unavailable(firmware::STATE_UNSUPPORTED, &failure.message),
     }
+}
+
+// firmware_upgrade is the act the check leads to: owut asks the device's
+// attended-sysupgrade server to build this exact device an image, downloads it,
+// verifies it, and then hands the device to sysupgrade.
+//
+// The argv is fixed — `owut download`, then `owut install` — and nothing from the
+// request reaches it. owut reads the board, the installed package set and uci
+// itself, so there is no version, package name or path for a caller to steer
+// (ADR-007); no shell is involved; and owut reads no stdin, so the run is
+// non-interactive by construction rather than by a confirmation flag.
+//
+// The two phases are what make a failure reportable. The download is where an
+// upgrade actually fails — no server, a build the server refused, a package set
+// it cannot resolve — and it is bounded and waited on, so owut's own words come
+// back. The install is detached: it ends in sysupgrade, which tears this daemon
+// down with everything else, so there is no completion left to wait for.
+const OWUT_IMAGE: &str = "/tmp/firmware.bin";
+const OWUT_SUMS: &str = "/tmp/firmware.sha256sums";
+const OWUT_MAX_IMAGE: u64 = 128 * 1024 * 1024;
+const OWUT_MAX_SUMS: u64 = 64 * 1024;
+// An attended-sysupgrade build is a queue plus a compile on someone else's
+// machine, then a download of the image it produced.
+const OWUT_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(20 * 60);
+
+fn firmware_upgrade() -> Result<(), Failure> {
+    if !Path::new(OWUT).exists() {
+        return Err(Failure::invalid("owut is not installed on this device"));
+    }
+    let mut download = Command::new(OWUT);
+    download.arg("download");
+    let output = run_bounded_within(
+        download,
+        "download the new firmware",
+        1 << 20,
+        OWUT_DOWNLOAD_TIMEOUT,
+    )?;
+    if !output.status.success() {
+        let complaint = firmware::complaint_of(&output.stdout, &output.stderr);
+        return Err(Failure::unknown(if complaint.is_empty() {
+            "the upgrade tool failed without saying why".to_string()
+        } else {
+            complaint
+        }));
+    }
+    // owut writes both artifacts as root. A file planted at either path before
+    // the run would be written through — root ignores the mode — and left owned
+    // by whoever planted it, so ownership is what proves these are owut's own
+    // and not a compromised shell's substitution (ADR-007). It is the same bound
+    // firmware_path applies to an uploaded image.
+    owut_artifact(OWUT_IMAGE, OWUT_MAX_IMAGE)?;
+    owut_artifact(OWUT_SUMS, OWUT_MAX_SUMS)?;
+    spawn_system_action(OWUT, &["install"])
+}
+
+fn owut_artifact(path: &str, max: u64) -> Result<(), Failure> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| Failure::unknown(format!("inspect {path}: {error}")))?;
+    if !plausible_artifact(
+        metadata.file_type().is_file(),
+        metadata.uid(),
+        metadata.len(),
+        max,
+    ) {
+        return Err(Failure::unknown(format!(
+            "{path} is not the file the upgrade tool wrote"
+        )));
+    }
+    Ok(())
+}
+
+// plausible_artifact is the whole test: a regular file (never a symlink or a
+// device), owned by root, and of a size the thing it claims to be could have.
+fn plausible_artifact(is_file: bool, uid: u32, len: u64, max: u64) -> bool {
+    is_file && uid == 0 && len > 0 && len <= max
 }
 
 // Backups stay in OpenWrt's native sysupgrade format. The unprivileged shell
@@ -558,12 +711,26 @@ fn remove_quietly(path: &Path) {
 // worker thread — and any mutex that thread holds — indefinitely, and caps captured
 // stdout so a hostile archive listing or a vast ruleset cannot exhaust memory. On
 // the deadline a kill ends the child and the call reports a timeout.
+//
+// Two minutes is the cap for a tool working on this device. A run that waits on
+// someone else's machine says its own cap through run_bounded_within: an
+// attended-sysupgrade build is minutes of a remote compile, and a two-minute
+// deadline would report that as a failure of this router.
 const CHILD_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn run_bounded(
+    command: Command,
+    name: &str,
+    max_stdout: usize,
+) -> Result<std::process::Output, Failure> {
+    run_bounded_within(command, name, max_stdout, CHILD_TIMEOUT)
+}
+
+fn run_bounded_within(
     mut command: Command,
     name: &str,
     max_stdout: usize,
+    timeout: Duration,
 ) -> Result<std::process::Output, Failure> {
     command
         .env_clear()
@@ -581,7 +748,9 @@ fn run_bounded(
         std::thread::spawn(move || {
             let mut buffer = Vec::new();
             if let Some(stream) = child_stdout.as_mut() {
-                let _ = stream.take((max_stdout as u64) + 1).read_to_end(&mut buffer);
+                let _ = stream
+                    .take((max_stdout as u64) + 1)
+                    .read_to_end(&mut buffer);
                 if buffer.len() > max_stdout {
                     over.store(true, Ordering::Release);
                 }
@@ -596,7 +765,7 @@ fn run_bounded(
         }
         buffer
     });
-    let deadline = std::time::Instant::now() + CHILD_TIMEOUT;
+    let deadline = std::time::Instant::now() + timeout;
     let mut timed_out = false;
     let status = loop {
         if over.load(Ordering::Acquire) {
@@ -1009,6 +1178,9 @@ mod tests {
     /// Every verb dispatch answers, so the grant below is checked against the
     /// whole surface rather than a remembered subset of it.
     const EVERY_METHOD: &[&str] = &[
+        "accessCredentials",
+        "setAuthorizedKeys",
+        "setWebCertificate",
         "setPassword",
         "setSystemTime",
         "pkgStatus",
@@ -1017,7 +1189,11 @@ mod tests {
         "pkgUpgradable",
         "pkgUpgrade",
         "firmwareCheck",
+        "firmwareUpgrade",
         "pkgSearch",
+        "pkgBrowse",
+        "pkgFiles",
+        "pkgUpgradeOne",
         "pkgInstall",
         "pkgRemove",
         "rootHasPassword",
@@ -1074,6 +1250,24 @@ mod tests {
         let request = json!({"method": "pkgUpgradable", "sid": ZERO_SID});
         let failure = dispatch(&request, &state, VERSO_UID).expect_err("denied");
         assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+    }
+
+    // The upgrade tool's own files are the only ones this helper will flash from:
+    // a regular file, owned by root, of a size the artifact could plausibly be.
+    // Anything a compromised shell could have planted at those paths fails on
+    // ownership (ADR-007).
+    #[test]
+    fn only_a_root_owned_regular_file_passes_as_the_upgrade_tools_output() {
+        let image = |is_file, uid, len| plausible_artifact(is_file, uid, len, OWUT_MAX_IMAGE);
+        assert!(image(true, 0, 42 * 1024 * 1024));
+        // The shell's own account planted a file at that path: not owut's.
+        assert!(!image(true, VERSO_UID, 42 * 1024 * 1024));
+        // A symlink or a device node is not a file to flash from.
+        assert!(!image(false, 0, 1024));
+        // A truncated download and an image larger than the device could take
+        // are both refused before sysupgrade ever sees them.
+        assert!(!image(true, 0, 0));
+        assert!(!image(true, 0, OWUT_MAX_IMAGE + 1));
     }
 
     #[test]

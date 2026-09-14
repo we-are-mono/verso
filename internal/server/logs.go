@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"net"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/widget"
+)
+
+const (
+	systemLogSource = "system-log"
+	systemLogLimit  = 1000
+)
+
+type systemLogEvent struct {
+	ID       int64  `json:"id"`
+	At       int64  `json:"at"`
+	Source   string `json:"source"`
+	Severity string `json:"severity"`
+	Message  string `json:"message"`
+}
+
+// procd bounds its process tag, so a long executable name and PID can lose the
+// closing bracket. The source is still intact and should remain filterable.
+var syslogTag = regexp.MustCompile(`^([^\s:\[\]]+)(?:\[\d+\]?)?:\s*(.*)$`)
+var syslogSeverities = [...]string{"emerg", "alert", "crit", "err", "warn", "notice", "info", "debug"}
+
+func systemLogRow(entry openwrt.LogEntry) systemLogEvent {
+	row := systemLogEvent{ID: entry.ID, At: entry.Time / 1000, Source: "syslog", Severity: syslogSeverities[entry.Priority&7], Message: entry.Msg}
+	if entry.Source == 0 {
+		row.Source = "kernel"
+	} else if match := syslogTag.FindStringSubmatch(entry.Msg); match != nil {
+		row.Source, row.Message = match[1], match[2]
+	}
+	return row
+}
+
+func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	lang, _ := s.localize(r)
+	var body strings.Builder
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", nil); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Logs", Tone: "neutral"}, "full", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+}
+
+// Reuse the authenticated listing stream route and sampling clock. IDs are
+// logd's cursor, including zero; a restarted ring explicitly replaces history.
+func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush http.Flusher) {
+	cursor := int64(-1)
+	if last, err := strconv.ParseInt(r.Header.Get("Last-Event-ID"), 10, 64); err == nil && last >= 0 {
+		cursor = last
+	}
+	ticker := time.NewTicker(s.eventInterval)
+	defer ticker.Stop()
+	send := func() bool {
+		entries, err := s.backend.LogRead(r.Context(), s.sessionSID(r), systemLogLimit)
+		if err != nil {
+			_, err = fmt.Fprint(w, "event: unavailable\ndata: {}\n\n")
+			return err == nil
+		}
+		reset := len(entries) > 0 && highestID(entries) < cursor
+		if reset {
+			cursor = -1
+		}
+		rows := make([]systemLogEvent, 0, len(entries))
+		for _, entry := range entries {
+			if entry.ID > cursor {
+				rows = append(rows, systemLogRow(entry))
+			}
+		}
+		if len(entries) > 0 {
+			cursor = highestID(entries)
+		}
+		frame, err := json.Marshal(struct {
+			Rows  []systemLogEvent `json:"rows"`
+			Reset bool             `json:"reset"`
+		}{rows, reset})
+		if err != nil {
+			return false
+		}
+		_, err = fmt.Fprintf(w, "id: %d\nevent: stream\ndata: %s\n\n", cursor, frame)
+		return err == nil
+	}
+	if !send() {
+		return
+	}
+	flush.Flush()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			if !s.sessionAlive(r) || !send() {
+				return
+			}
+			flush.Flush()
+		}
+	}
+}
+
+func systemLogSection(config map[string]any) (string, map[string]any) {
+	for _, id := range sectionOrder(config) {
+		if section, ok := config[id].(map[string]any); ok && uciString(section[".type"]) == "system" {
+			return id, section
+		}
+	}
+	return "", nil
+}
+
+func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	config, err := s.backend.UCIConfig(r.Context(), s.sessionSID(r), "system")
+	section, values := systemLogSection(config)
+	status, message := http.StatusOK, ""
+	if err != nil || section == "" {
+		status, message = http.StatusBadGateway, "Log settings could not be read."
+	}
+	if r.Method == http.MethodPost && status == http.StatusOK {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		input := map[string]any{}
+		for _, key := range []string{"log_ip", "log_port", "log_proto", "log_buffer_size", "log_file"} {
+			input[key] = strings.TrimSpace(r.PostForm.Get(key))
+		}
+		input["log_remote"] = "0"
+		if r.PostForm.Get("log_remote") == "1" {
+			input["log_remote"] = "1"
+		}
+		if err := validateLogSettings(input); err != nil {
+			status, message, values = http.StatusUnprocessableEntity, err.Error(), input
+		} else if err := s.backend.UCISet(r.Context(), s.sessionSID(r), "system", section, input); err != nil {
+			status, message, values = http.StatusBadGateway, "Log settings could not be saved.", input
+		} else {
+			s.flash(r, "info", tr("Saved. Nothing is live until you apply."))
+			if panelRequest(r) {
+				w.Header().Set("HX-Redirect", "/system/logs")
+				return
+			}
+			http.Redirect(w, r, "/system/logs", http.StatusSeeOther)
+			return
+		}
+	}
+	children := []widget.Widget{}
+	if message != "" {
+		children = append(children, &widget.Callout{Variant: "danger", Compact: true, Body: message})
+	}
+	if values != nil {
+		value := func(key, fallback string) string {
+			if v := uciString(values[key]); v != "" {
+				return v
+			}
+			return fallback
+		}
+		buffer := value("log_buffer_size", value("log_size", "64"))
+		if buffer == "0" {
+			buffer = "64"
+		}
+		children = append(children, &widget.Form{Action: "/system/logs/settings", Submit: "Save", Fields: []widget.Widget{
+			&widget.Switch{Name: "log_remote", Label: "Send logs to a remote server", On: value("log_remote", "1") == "1"},
+			&widget.Field{Name: "log_ip", Label: "Remote log server", Value: value("log_ip", ""), Placeholder: "Optional", Help: "Leave empty to keep logs on this router."},
+			&widget.Field{Name: "log_port", Label: "Port", Value: value("log_port", "514"), Datatype: "port", Required: true},
+			&widget.Field{Name: "log_proto", Label: "Transport", Kind: "select", Value: value("log_proto", "udp"), Options: []widget.Option{{Label: "UDP", Value: "udp"}, {Label: "TCP", Value: "tcp"}}},
+			&widget.Field{Name: "log_buffer_size", Label: "Log buffer (KiB)", Value: buffer, Datatype: "uinteger", Required: true, Help: "Old entries are replaced when the buffer is full."},
+			&widget.Field{Name: "log_file", Label: "Log file", Value: value("log_file", ""), Placeholder: "Optional", Help: "An absolute path. Writing logs to persistent storage uses flash write cycles."},
+		}})
+	}
+	var content, panel strings.Builder
+	if err := s.widgets.RenderWithToken(&content, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	data := struct {
+		Title string
+		Body  template.HTML
+	}{tr("Log settings"), template.HTML(content.String())}
+	if err := s.pageSet(lang).ExecuteTemplate(&panel, "system-panel.html.tmpl", data); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	if panelRequest(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(panel.String()))
+		return
+	}
+	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(content.String()))
+}
+
+func validateLogSettings(values map[string]any) error {
+	port, err := strconv.Atoi(uciString(values["log_port"]))
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("Enter a port from 1 to 65535.")
+	}
+	size, err := strconv.Atoi(uciString(values["log_buffer_size"]))
+	if err != nil || size < 1 || size > 65536 {
+		return fmt.Errorf("Enter a log buffer size from 1 to 65536 KiB.")
+	}
+	if proto := uciString(values["log_proto"]); proto != "tcp" && proto != "udp" {
+		return fmt.Errorf("Choose TCP or UDP.")
+	}
+	host := uciString(values["log_ip"])
+	if host != "" && net.ParseIP(host) == nil && !logHostname.MatchString(host) {
+		return fmt.Errorf("Enter an IP address or hostname for the log server.")
+	}
+	file := uciString(values["log_file"])
+	if file != "" && (!strings.HasPrefix(file, "/") || strings.ContainsAny(file, "\x00\r\n")) {
+		return fmt.Errorf("Enter an absolute path for the log file.")
+	}
+	return nil
+}
+
+var logHostname = regexp.MustCompile(`^(?i:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?i:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*\.?$`)

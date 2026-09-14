@@ -7,6 +7,8 @@
       "key": "dest_port",
       "label": "Destination ports",
       "help": "TCP/UDP ports or ranges from 0 to 65535.",
+      "group": "Endpoints",
+      "hint": "space-separated, or a range",
       "active": true,
       "children": [
         {
@@ -29,6 +31,8 @@
       "key": "src_mac",
       "label": "Source MAC addresses",
       "help": "Match link-layer senders visible on ingress.",
+      "group": "Endpoints",
+      "hint": "survives a changed lease",
       "children": [
         {
           "type": "list",

@@ -3,45 +3,49 @@
 
 /*
  * Tailwind source. `make css` compiles this to verso.css, which is embedded and
- * served by the shell. Verso adopts Tailwind's default palette directly — `sky` for
- * accent, `slate` for neutrals, `red`/`green`/`amber` for states — as utility classes
- * in the templates. Only genuinely-custom rules live here: the raw-bridge prose, the
- * details chevron, and the conditional widget's pure-CSS show/hide.
+ * served by the shell. Only genuinely-custom rules live here: the raw-bridge prose,
+ * the details chevron, and the conditional widget's pure-CSS show/hide.
+ *
+ * Colour lives in palette.css, never here — that file is the single transcription
+ * of the design canvas, and every hue Verso paints is named in it. Pages still on
+ * Tailwind's own scales (`slate`, `sky`, `emerald`, `amber`, `red`) are pages not
+ * yet carried over; those scales stay reachable only until the last one is.
  *
  * Plugins never touch any of this — they emit a semantic widget schema (ADR-005).
  */
-@import "tailwindcss";
+/* source(none) turns off Tailwind's own hunt for files to scan: the @source list
+   below is the whole of it. Without this it walks the repository, so a Go test that
+   names a class compiles that class into the stylesheet — which is how assertions
+   came to pass by naming a colour the app no longer used (the page inlines the
+   stylesheet, so the string was there, in the CSS, put there by the assertion
+   looking for it). What is scanned is now exactly what renders. */
+@import "tailwindcss" source(none);
+@import "./palette.css";
 
-/* Theme selection is explicit and persisted by the shell. Bind Tailwind's dark
-   utilities to that same root class instead of the browser media query. */
+/* Verso has one theme. Nothing sets .dark, so the dark: utilities still carried by
+   widget templates compile to rules that never match — and binding the variant to
+   that class rather than to the media query is what keeps a visitor's OS preference
+   from painting the UI in a dark face no design defines. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
+/* The shell's client builds rows of its own (a live listing's), in exactly the
+   treatments the templates use. Scanning those too means a utility that lives only
+   in a streamed row is compiled like any other — and cannot quietly go missing
+   when a template that happened to share it changes. The glob covers every
+   behaviour file, so splitting one out or adding one needs nothing here: a named
+   file left off this list would take its classes out of the stylesheet silently,
+   which is a failure nobody sees until the page is wrong. */
+@source "./verso*.js";
 
 /*
  * Self-hosted webfonts — no CDN (ADR-001), served first-party under /assets/fonts
- * (CSP default-src 'self' covers them). Fraunces (serif) sets the display/verdict
- * headlines; Hanken Grotesk (sans) carries UI text; Inconsolata (mono) carries
- * addresses, identifiers, and machine values. All are variable subsets covering
- * the weights Verso uses and are SIL OFL 1.1 — see their files in assets/fonts.
+ * (CSP default-src 'self' covers them). Two faces only: Hanken Grotesk (sans)
+ * carries every word, headings included; Inconsolata (mono) carries addresses,
+ * identifiers, and machine values. Both are variable subsets covering the
+ * weights Verso uses and are SIL OFL 1.1 — see their files in assets/fonts.
  */
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("/assets/fonts/fraunces-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("/assets/fonts/fraunces-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
@@ -77,12 +81,13 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Point Tailwind's font utilities at the embedded faces: font-sans (the body default)
-   → Hanken Grotesk; font-serif (the hero verdict + page headings) → Fraunces;
-   font-mono (addresses and machine values) → Inconsolata. */
+/* Point Tailwind's font utilities at the embedded faces: font-sans (the body
+   default, headings included) → Hanken Grotesk; font-mono (addresses and
+   machine values) → Inconsolata. There is no third face: the serif utility is
+   switched off so nothing can reach for one. */
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-serif: initial;
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --color-canvas: oklch(100% 0 0);
   --color-surface-subtle: oklch(98.4% 0.003 247.858);
@@ -90,7 +95,7 @@
 }
 
 /* verso-boot.js removes this pre-paint gate as soon as the three UI faces are
-   ready. Keep the canvas visible in the selected theme while the content waits. */
+   ready. Keep the canvas visible while the content waits. */
 html {
   background-color: var(--color-canvas);
 }
@@ -98,63 +103,15 @@ html.verso-fonts-loading body {
   visibility: hidden;
 }
 
-/* Dark mode: the global canvas uses a semantic token whose dark value is Tailwind's
-   original slate-900 expressed in OKLCH. It remains independent because the slate
-   scale below is deliberately inverted for existing text and surface utilities. The palette
-   variables below keep existing surfaces and ink legible without duplicating dark
-   utilities throughout every component. Tailwind v4 compiles every colour to
-   var(--color-*), so bg-white / text-slate-* / border-slate-*
-   all flip with zero template edits. Activated by `.dark` on <html> — set pre-paint by
-   verso-boot.js from localStorage/system, toggled by the header button. Neutrals invert
-   the slate scale + the surface; the light accent tints become dark tints; the accent
-   mid-tones (sky/green/amber-600…) read fine on dark and are left alone. */
-:root.dark {
-  --color-canvas: oklch(20.8% 0.042 265.755);
-  --color-surface-subtle: oklch(27.9% 0.041 260.031);
-  --color-menu-interaction: oklch(27.9% 0.041 260.031); /* slate-800: one step above the canvas */
-  --color-white: #0f172a;      /* surfaces: cards, sidebar, panels */
-  --color-slate-50: #020617;   /* app canvas */
-  --color-slate-100: #1e293b;  /* hover / subtle fill */
-  --color-slate-200: #273140;  /* hairlines / borders */
-  --color-slate-300: #3a4657;  /* stronger borders, resting dots */
-  --color-slate-400: #8b97ab;  /* muted icons */
-  --color-slate-500: #9ba7bc;  /* muted text */
-  --color-slate-600: #b7c1d1;  /* secondary text */
-  --color-slate-700: #cdd5e1;  /* body text */
-  --color-slate-800: #e4e9f0;  /* strong text */
-  --color-slate-900: #f1f5f9;  /* headings / ink */
-  --color-slate-950: #f8fafc;
-  --color-sky-50: #0b2236;
-  --color-sky-100: #0e3050;
-  --color-sky-200: #16466c;
-  --color-emerald-50: #06281a;
-  --color-emerald-100: #0a3a26;
-  --color-emerald-200: #0f5334;
-  --color-amber-50: #2a1d06;
-  --color-amber-200: #4a3410;
-  --color-red-50: #2a1010;
-  --color-red-200: #4c1d1d;
-}
-
-/* Header theme toggle shows the icon for the mode you'd switch TO: moon in light, sun in
-   dark. Swapped by CSS off the same .dark class — no Alpine expression needed. */
-.verso-theme-sun { display: none; }
-:root.dark .verso-theme-moon { display: none; }
-:root.dark .verso-theme-sun { display: block; }
-
-/* During a theme flip verso.js adds .verso-theming for one frame; kill every
-   transition so the palette swaps instantly with no colour-fade blink. */
-.verso-theming *,
-.verso-theming *::before,
-.verso-theming *::after {
-  transition: none !important;
-}
-
 @layer base {
   /* Browsers default <button> to the arrow cursor; enabled buttons and anything
      acting as a button should show the pointer, app-wide, so no widget has to
      remember a per-element class. */
   button:not(:disabled), summary, [role="button"] { cursor: pointer; }
+
+  /* The hidden attribute must win over a display utility on the same element
+     (e.g. an inline-flex row toggled hidden), regardless of utility source order. */
+  [hidden] { display: none !important; }
 }
 
 @layer components {
@@ -162,63 +119,55 @@ html.verso-fonts-loading body {
      initialized, so nothing flashes on load before x-show applies (ADR-004). */
   [x-cloak] { display: none !important; }
 
+  /* A label's wide tip hangs below it, which is where it belongs on a page: the
+     label stays readable and the explanation follows the eye down. Low in a
+     drawer that scrolls there is no room below, so verso.js measures and marks
+     the label to flip it.
+
+     Both states live here rather than the first in utilities and the second as
+     an override: a utility outranks anything this layer says, so a half-stated
+     position would leave the flipped tip anchored top and bottom at once. */
+  [data-verso-tip] > [role="tooltip"] {
+    top: 100%;
+    margin-top: 0.5rem;
+  }
+  [data-verso-tip-above] > [role="tooltip"] {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
   /* Drawers are persistent, narrow scroll surfaces, so give only their inner
      scroller a quiet thumb that follows the shell palette in both themes. The
      document scrollbar deliberately remains native. */
   .verso-drawer-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-slate-300) transparent;
+    scrollbar-color: var(--color-inert) transparent;
   }
-  .verso-drawer-scrollbar::-webkit-scrollbar { width: 0.625rem; }
+  .verso-drawer-scrollbar::-webkit-scrollbar { width: 0.625rem; height: 0.625rem; }
   .verso-drawer-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .verso-drawer-scrollbar::-webkit-scrollbar-thumb {
     border: 0.125rem solid transparent;
-    border-radius: 9999px;
-    background-color: var(--color-slate-300);
+    border-radius: 2px;
+    background-color: var(--color-inert);
     background-clip: padding-box;
   }
   .verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-slate-400);
+    background-color: var(--color-glyph);
   }
-
-  /* The staged-change review is the capsule extending upward, not a floating
-     overlay. Clip it from its bottom edge and lift it into place so the action
-     row never moves while the review covers the content above. */
-  .verso-capsule-review {
-    /* The positioning context sits just inside the capsule border. Reach one
-       pixel through it on every edge so both surfaces read as one object. */
-    left: -1px;
-    right: -1px;
-    bottom: calc(100% - 1px);
-    clip-path: inset(100% 0 0 0);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(0.5rem);
-    transform-origin: bottom;
-    visibility: hidden;
-    transition: clip-path 0.22s ease-out, opacity 0.16s ease-out, transform 0.22s ease-out, visibility 0s linear 0.22s;
+  /* On a surface that is itself quiet — the console — the same scrollbar needs
+     a track to sit in, or the thumb floats on the stream's own ground. */
+  [data-scroll="sand"] {
+    scrollbar-color: var(--color-inert) var(--color-mid);
   }
-  .verso-capsule-review.is-open {
-    clip-path: inset(0);
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-    visibility: visible;
-    transition-delay: 0s;
+  [data-scroll="sand"]::-webkit-scrollbar-track {
+    background: var(--color-mid);
+    border-radius: 2px;
   }
-  .verso-capsule.verso-review-open {
-    border-top-color: transparent;
+  [data-scroll="sand"]::-webkit-scrollbar-thumb {
+    border-color: var(--color-mid);
   }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-capsule-review { transition: none; transform: none; }
-  }
-
-  /* Every page's content settles in with a small fade + rise on load — a quiet "loaded"
-     cue. It runs on each full navigation; the sidebar stays put, only the content moves.
-     Honours reduced-motion. */
-  @keyframes verso-page-enter { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: none; } }
-  .verso-page-enter { animation: verso-page-enter 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-  @media (prefers-reduced-motion: reduce) { .verso-page-enter { animation: none; } }
 
   /* Sidebar as a mobile off-canvas drawer: slid off-screen by default, in when open
      (verso.js "sidebar" adds .verso-drawer-open). On desktop (md+) it's a static rail
@@ -229,6 +178,21 @@ html.verso-fonts-loading body {
   @media (min-width: 768px) { .verso-drawer { transform: none; transition: none; } }
   @media (prefers-reduced-motion: reduce) { .verso-drawer { transition: none; } }
 
+  /* A page that fills the window (Width "full") hands its height down to the one
+     thing that wants it — a console, a canvas, anything that scrolls inside
+     itself rather than lengthening the page. The chain has to pass through the
+     shell's own body wrapper and the plugin's own layout widget, neither of
+     which knows it is in such a page, so it is stated here once rather than as
+     a flag every widget between them would have to carry. */
+  .verso-page-full,
+  .verso-page-full > .verso-page-body,
+  .verso-page-full > .verso-page-body > * {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
   /* Stateful selector + custom timing — no direct utility equivalent. */
   .verso-chevron { transition: transform 150ms ease; }
   details[open] > summary .verso-chevron { transform: rotate(90deg); }
@@ -237,35 +201,50 @@ html.verso-fonts-loading body {
   .verso-table-seam-row { visibility: collapse; }
   tbody:has(.verso-table-seam-control details[open]) > .verso-table-seam-row { visibility: visible; }
 
-  /* Reorderable tables use a real placeholder in the source table and a fixed
-     visual copy while dragging. This keeps the column grid still and lets the
-     surrounding rows animate into the proposed destination. */
-  body.verso-reordering,
-  body.verso-reordering * { cursor: grabbing !important; user-select: none !important; }
-  .verso-reorder-placeholder > td {
-    padding: 0 !important;
-    border-bottom: 1px solid var(--color-slate-200);
-    background: var(--color-slate-100);
+  /* Autofilled inputs: the browser's trust tint, repainted in the action colour.
+     Chrome's own pale blue sits off the palette and washes the field's outline
+     soft. The UA background yields only to an inset shadow — and the fields'
+     outline is a Tailwind ring, itself a box-shadow from the utilities layer — so
+     one !important shadow composes both: the ring over the fill. The tint stays —
+     it is the browser telling the person software filled this field — only the
+     paint is ours. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover {
+    -webkit-box-shadow:
+      inset 0 0 0 1px var(--color-denim),
+      inset 0 0 0 62.5rem var(--color-denim-soft) !important;
+    -webkit-text-fill-color: var(--color-ink);
+    caret-color: var(--color-ink);
   }
-  .verso-reorder-placeholder > td > div { width: 100%; }
-  .verso-reorder-float {
-    position: fixed;
-    z-index: 70;
-    overflow: hidden;
-    pointer-events: none;
-    border: 1px solid var(--color-slate-300);
-    border-radius: 0.5rem;
-    background: var(--color-white);
-    box-shadow: 0 1.25rem 2.5rem -0.75rem rgb(15 23 42 / 0.28), 0 0.5rem 1rem -0.5rem rgb(15 23 42 / 0.22);
-    transform: scaleY(1.01);
-    transform-origin: center;
-    opacity: 0.98;
-    will-change: top, transform;
+  /* Focus keeps its own ring: the same 2px denim the un-filled field wears. */
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow:
+      inset 0 0 0 2px var(--color-denim-deep),
+      inset 0 0 0 62.5rem var(--color-denim-soft) !important;
+    -webkit-text-fill-color: var(--color-ink);
+    caret-color: var(--color-ink);
   }
-  .verso-reorder-float table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-  .verso-reorder-float td { border-bottom-color: transparent; background: var(--color-white); }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-reorder-float { transform: none; }
+  input:autofill {
+    box-shadow:
+      inset 0 0 0 1px var(--color-denim),
+      inset 0 0 0 62.5rem var(--color-denim-soft) !important;
+  }
+  /* 1Password does not ride the native autofill state: its content script sets
+     the value directly and marks the field with this data attribute, tinting
+     it from an injected stylesheet. Same repaint, keyed on the marker — the
+     attribute is doubled so this outranks the extension's own rule, and the
+     selector stays separate from the -webkit pseudos above (an unrecognized
+     pseudo would drop the whole list in other engines). */
+  input[data-com-onepassword-filled][data-com-onepassword-filled] {
+    background-color: var(--color-denim-soft) !important;
+    box-shadow:
+      inset 0 0 0 1px var(--color-denim),
+      inset 0 0 0 62.5rem var(--color-denim-soft) !important;
+  }
+  input[data-com-onepassword-filled][data-com-onepassword-filled]:focus {
+    box-shadow:
+      inset 0 0 0 2px var(--color-denim-deep),
+      inset 0 0 0 62.5rem var(--color-denim-soft) !important;
   }
 
   /* The dock's pin offset lives here (not as a utility, which would win the
@@ -285,10 +264,10 @@ html.verso-fonts-loading body {
     left: 0;
     right: 0;
     height: 3rem;
-    /* The capsule's recipe, inverted: the upper 70% is solid ground, the bottom
-       30% the actual gradient. Solid ground would blank real content while the
+    /* The upper 70% is solid ground, the bottom 30% the actual gradient.
+       Solid ground would blank real content while the
        dock rests in the flow, so the fade exists only while pinned. */
-    background: linear-gradient(var(--color-white) 70%, transparent);
+    background: linear-gradient(var(--color-ground) 70%, transparent);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -301,27 +280,87 @@ html.verso-fonts-loading body {
     tbody tr, section.verso-filter-ghost, .verso-filter-dock::after { transition: none; }
   }
 
-  /* Staged-changes bar (verso.js "capsule"): in-flow at the bottom of the
-     content, always visible; only its busy/done states are stateful. */
-  .verso-capsule.verso-busy button { opacity: 0.45; pointer-events: none; }
-  .verso-capsule.verso-done #verso-capsule-dot { background: var(--color-emerald-500); }
+  /* The outcome layer (verso-page.js): an act made in place says how it went at
+     the right, where the panel it came from has just gone. It arrives from that
+     edge with the panel's own timing and leaves the same way. */
+  .verso-outcome { opacity: 0; transform: translateX(calc(100% + 1.5rem)); transition: transform 0.3s ease-out, opacity 0.3s ease-out; }
+  .verso-outcome.is-shown { opacity: 1; transform: none; }
+  /* The row a panel just saved: a wash of the action colour that holds a moment
+     and fades, so the eye finds the row the outcome was about. */
+  @keyframes verso-landed { from, 50% { background-color: var(--color-denim-soft); } to { background-color: transparent; } }
+  tr.verso-landed { animation: verso-landed 1.4s ease-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-outcome { transform: none; transition: opacity 0.2s ease-out; }
+  }
+
+  /* The live preview while its answer is in flight (verso-forms.js). It fades
+     rather than blanks or spins: the lines on screen are still the last true
+     answer, a moment out of date, and a box that emptied itself between
+     keystrokes would keep saying "this writes nothing". The fade is slow enough
+     in and instant out that a fast answer never flickers. */
+  [data-verso-preview] { transition: opacity 0.4s ease 0.15s; }
+  [data-verso-preview].verso-preview-busy { opacity: 0.55; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-verso-preview] { transition: none; }
+  }
 
   /* Prose for the raw bridge: goldmark output, styled minimally and display-only
      (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */
   .verso-prose p { margin: 0 0 0.75rem; }
   .verso-prose > :last-child { margin-bottom: 0; }
-  .verso-prose a { color: var(--color-sky-600); text-decoration: underline; }
+  .verso-prose a { color: var(--color-denim); text-decoration: underline; }
   .verso-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
   .verso-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
 
+  /* A container of form contents: blocks stand off from each other, form rows do
+     not. A row already carries its own air — 12px above and below — so two of
+     them sitting flush is what gives a form its rhythm. The 32px that rightly
+     separates a table from a callout would separate every control from the next
+     and turn eight settings into eight islands.
+
+     It is a named rule rather than a utility pair because the two declarations
+     have to resolve in a fixed order, and the attribute selector's specificity
+     is what guarantees the second beats the first whatever Tailwind emits.
+
+     Every container of rows wears it — a section, a folded block, a condition —
+     so a row's spacing is the row's, not its surroundings'. --verso-rhythm is
+     how much air the blocks between them take; the rows themselves take none
+     wherever they are. */
+  .verso-rhythm > * + * { margin-top: var(--verso-rhythm, 2rem); }
+  .verso-rhythm > [data-verso-change-field] + [data-verso-change-field] { margin-top: 0; }
+
+  /* The rail beside a long page marks the section you are reading: the words go
+     to ink and take on weight, and the hairline the link already carries becomes
+     a 2px bar in ink over its own length. The bar is an inset shadow rather than
+     a thicker border so nothing in the column shifts by a pixel as the mark moves
+     from one link to the next.
+
+     All three states are here rather than as utilities on the element, because a
+     utility for any one of them would beat the rule that draws the other two:
+     this layer loses to utilities whatever its specificity. */
+  .verso-rail-link { color: var(--color-body); }
+  .verso-rail-link:hover { color: var(--color-ink); }
+  .verso-rail-link[aria-current="true"] {
+    color: var(--color-ink);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--color-ink);
+  }
+
+  /* A token box holding values no longer needs telling what goes in it. The
+     prompt is for an empty box; beside two chips there is no room left for a
+     sentence, and what showed was half of one. It gives way to the values and
+     comes back when the last one is taken out — in CSS, because which state the
+     box is in is not something a script should have to keep track of. */
+  [data-verso-token-list]:has([data-verso-token]) [data-verso-token-input]::placeholder { color: transparent; }
+
   /* conditional widget: switch between its primary and optional alternate
      field-sets from the controlling toggle (ADR-005 §7). Pure CSS state — no JS. */
   .verso-conditional-body { display: none; }
   .verso-conditional-otherwise { display: block; }
-  .verso-conditional:has(> label input[data-verso-switch]:checked) > .verso-conditional-body { display: block; }
-  .verso-conditional:has(> label input[data-verso-switch]:checked) > .verso-conditional-otherwise { display: none; }
+  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body { display: block; }
+  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise { display: none; }
 
   /* An inline object-state switch reads as its current state, not as a static
      field label. The unchecked state remains full-contrast: disabled is an
@@ -343,8 +382,8 @@ html.verso-fonts-loading body {
      state drives everything — no JavaScript. State-varying properties live here,
      never as utilities, so the utility layer can't win the cascade. */
   .verso-beacon {
-    background-color: var(--color-emerald-100);
-    color: var(--color-emerald-600);
+    background-color: var(--color-green-soft);
+    color: var(--color-green-deep);
     position: relative;
   }
   .verso-beacon::after {
@@ -352,11 +391,11 @@ html.verso-fonts-loading body {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-emerald-500) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 55%, transparent);
     animation: verso-pulse 2.6s ease-out infinite;
   }
   @keyframes verso-pulse {
-    0%      { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-emerald-500) 45%, transparent); }
+    0%      { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 45%, transparent); }
     70%,100%{ box-shadow: 0 0 0 0.875rem transparent; }
   }
   /* Off state: grey, calm, no pulse; headline swaps to the off copy. */
@@ -365,8 +404,8 @@ html.verso-fonts-loading body {
   .verso-toggle:not(:has(input:checked)) .verso-toggle-off { display: block; }
   .verso-toggle:not(:has(input:checked)) .verso-toggle-meta { opacity: 0.55; }
   .verso-toggle:not(:has(input:checked)) .verso-beacon {
-    background-color: var(--color-slate-100);
-    color: var(--color-slate-400);
+    background-color: var(--color-quiet);
+    color: var(--color-glyph);
   }
   .verso-toggle:not(:has(input:checked)) .verso-beacon::after { animation: none; box-shadow: none; }
   @media (prefers-reduced-motion: reduce) {
@@ -382,15 +421,16 @@ html.verso-fonts-loading body {
      "slide" over the page-level entrance on load (used by tabs and wizard steps). */
   @keyframes verso-fade { from { opacity: 0; } to { opacity: 1; } }
   .verso-tab-radio:focus-visible ~ .verso-tab-list {
-    outline: 2px solid var(--color-sky-600); outline-offset: 2px; border-radius: 9999px;
+    outline: 2px solid var(--color-denim); outline-offset: 2px; border-radius: 2px;
   }
-  /* The sliding indicator: one equal column wide, translated one column per step. */
+  /* The sliding indicator: one equal column wide, translated one column per step.
+     The segment in force is filled with the action colour — the palette's own job
+     for denim — so which cut is showing reads without being read. */
   .verso-tab-indicator {
-    position: absolute; top: 0.25rem; bottom: 0.25rem; left: 0.25rem;
-    width: calc((100% - 0.5rem) / var(--verso-tabs-n, 1));
-    border-radius: 9999px;
-    background-color: var(--color-white);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    position: absolute; top: 0.125rem; bottom: 0.125rem; left: 0.125rem;
+    width: calc((100% - 0.25rem) / var(--verso-tabs-n, 1));
+    border-radius: 2px;
+    background-color: var(--color-denim);
     transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(2):checked) .verso-tab-indicator { transform: translateX(100%); }
@@ -412,7 +452,7 @@ html.verso-fonts-loading body {
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(4):checked) .verso-tab-list > .verso-tab-label:nth-of-type(4),
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(5):checked) .verso-tab-list > .verso-tab-label:nth-of-type(5),
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(6):checked) .verso-tab-list > .verso-tab-label:nth-of-type(6) {
-    color: var(--color-slate-900);
+    color: #ffffff;
   }
   @media (prefers-reduced-motion: reduce) {
     .verso-tab-indicator { transition: none; }
@@ -422,31 +462,31 @@ html.verso-fonts-loading body {
      selected card — pure CSS, no JavaScript. Border/background/tick are state-varying,
      so they live here rather than as utilities, keeping the cascade predictable. */
   .verso-choice-card {
-    border: 1px solid var(--color-slate-300);
-    background-color: var(--color-white);
+    border: 1px solid var(--color-rule-strong);
+    background-color: var(--color-ground);
     cursor: pointer;
     transition: border-color 0.15s, background-color 0.15s;
   }
-  .verso-choice-card:hover { border-color: var(--color-slate-400); }
+  .verso-choice-card:hover { border-color: var(--color-denim); }
   .verso-choice-tick {
-    border: 2px solid var(--color-slate-400);
+    border: 2px solid var(--color-inert);
     transition: border-color 0.15s;
   }
   .verso-choice-tick::after {
     content: "";
     width: 0.625rem; height: 0.625rem;
     border-radius: 9999px;
-    background-color: var(--color-sky-600);
+    background-color: var(--color-denim);
     transform: scale(0);
     transition: transform 0.15s;
   }
   .verso-choice-card:has(input:checked) {
-    border-color: var(--color-sky-600);
-    background-color: var(--color-sky-50);
+    border-color: var(--color-denim);
+    background-color: var(--color-denim-soft);
   }
-  .verso-choice-card:has(input:checked) .verso-choice-tick { border-color: var(--color-sky-600); }
+  .verso-choice-card:has(input:checked) .verso-choice-tick { border-color: var(--color-denim); }
   .verso-choice-card:has(input:checked) .verso-choice-tick::after { transform: scale(1); }
-  .verso-choice-card:has(input:focus-visible) { outline: 2px solid var(--color-sky-600); outline-offset: 2px; }
+  .verso-choice-card:has(input:focus-visible) { outline: 2px solid var(--color-denim-deep); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     .verso-choice-tick::after { transition: none; }
   }
@@ -464,33 +504,44 @@ html.verso-fonts-loading body {
     display: block;
     animation: verso-fade 0.3s ease both;
   }
-  .verso-wizard-dot { background-color: var(--color-slate-200); transition: background-color 0.25s; }
+  .verso-wizard-dot { background-color: var(--color-inert); transition: background-color 0.25s; }
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(1):checked) .verso-wizard-dots > :nth-child(-n+1),
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(2):checked) .verso-wizard-dots > :nth-child(-n+2),
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(3):checked) .verso-wizard-dots > :nth-child(-n+3),
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(4):checked) .verso-wizard-dots > :nth-child(-n+4),
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(5):checked) .verso-wizard-dots > :nth-child(-n+5),
   .verso-wizard:has(> .verso-wizard-radio:nth-of-type(6):checked) .verso-wizard-dots > :nth-child(-n+6) {
-    background-color: var(--color-sky-600);
+    background-color: var(--color-denim);
   }
 
   /* empty widget: a first-run state (ADR-005 §7). The accent icon breathes a soft
      ring so the eye lands on the one thing to do. Keyframes have no utility equivalent. */
   .verso-empty-icon {
-    background-color: var(--color-sky-100);
-    color: var(--color-sky-600);
+    --verso-empty-accent-100: var(--color-denim-soft);
+    --verso-empty-accent-500: var(--color-denim);
+    --verso-empty-accent-600: var(--color-denim-deep);
+    background-color: var(--verso-empty-accent-100);
+    color: var(--verso-empty-accent-600);
     position: relative;
+  }
+  /* A state that has arrived rather than one waiting to begin: the icon carries
+     the success tone, ring and all, by swapping the accent the whole treatment
+     reads from. */
+  .verso-empty-icon--success {
+    --verso-empty-accent-100: var(--color-green-soft);
+    --verso-empty-accent-500: var(--color-green);
+    --verso-empty-accent-600: var(--color-green-deep);
   }
   .verso-empty-icon::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-sky-500) 40%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--verso-empty-accent-500) 40%, transparent);
     animation: verso-pulse-lg 3s ease-out infinite;
   }
   @keyframes verso-pulse-lg {
-    0%       { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-sky-500) 35%, transparent); }
+    0%       { box-shadow: 0 0 0 0 color-mix(in srgb, var(--verso-empty-accent-500) 35%, transparent); }
     70%,100% { box-shadow: 0 0 0 1.25rem transparent; }
   }
 
@@ -502,7 +553,7 @@ html.verso-fonts-loading body {
     position: absolute;
     inset: -0.1875rem;
     border-radius: 9999px;
-    border: 2px solid color-mix(in srgb, var(--color-emerald-500) 60%, transparent);
+    border: 2px solid color-mix(in srgb, var(--color-green) 60%, transparent);
     animation: verso-ring 2s ease-out infinite;
   }
   @keyframes verso-ring {
@@ -512,9 +563,9 @@ html.verso-fonts-loading body {
 
   /* page masthead: the artifact-style header a page opts into (kicker + serif headline +
      lede), rendered by the shell chrome. Sizes live here so they hot-reload. */
-  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-sky-600); }
-  .verso-page-heading { font-family: var(--font-serif); font-size: clamp(1.875rem, 4.5vw, 2.625rem); font-weight: 500; letter-spacing: -0.02em; color: var(--color-slate-900); }
-  .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-slate-500); }
+  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-denim-deep); }
+  .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
+  .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-body); }
 
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
      chassis is a physical object — deliberately dark in both themes. Display-only;
@@ -523,7 +574,7 @@ html.verso-fonts-loading body {
   /* Bottom room so the legend never sits flush against whatever follows the panel
      (the vitals grid) — the page's own space-y between blocks is a snug 1rem. */
   .verso-ports { padding-bottom: 1.5rem; }
-  .verso-ports-name { text-align: center; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-slate-500); }
+  .verso-ports-name { text-align: center; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-meta); }
   .verso-ports-chassis-wrap { text-align: center; }
   .verso-ports-chassis {
     position: relative; display: inline-flex; gap: 1.375rem; align-items: flex-start; max-width: 100%;
@@ -564,11 +615,14 @@ html.verso-fonts-loading body {
   .verso-port.is-linked .verso-port-speed { color: #6ee7b7; }
   .verso-port.is-empty .verso-port-speed { color: #6a7385; }
 
-  /* per-device accent: tints the device name and the WAN port's label. */
-  .verso-ports--sky .verso-ports-name,     .verso-ports--sky .is-wan .verso-port-label     { color: var(--color-sky-400); }
-  .verso-ports--emerald .verso-ports-name, .verso-ports--emerald .is-wan .verso-port-label { color: var(--color-emerald-400); }
-  .verso-ports--violet .verso-ports-name,  .verso-ports--violet .is-wan .verso-port-label  { color: var(--color-violet-400); }
-  .verso-ports--amber .verso-ports-name,   .verso-ports--amber .is-wan .verso-port-label   { color: var(--color-amber-400); }
+  /* per-device accent: tints the device name and the WAN port's label. One of these
+     sits on the page and the other on the dark chassis, so the accent is the
+     palette's lightest step of each hue — the one that carries on both grounds.
+     The role names are the wire's, from when they were the names of ramps. */
+  .verso-ports--sky .verso-ports-name,     .verso-ports--sky .is-wan .verso-port-label     { color: var(--color-denim-line); }
+  .verso-ports--emerald .verso-ports-name, .verso-ports--emerald .is-wan .verso-port-label { color: var(--color-green-line); }
+  .verso-ports--violet .verso-ports-name,  .verso-ports--violet .is-wan .verso-port-label  { color: var(--color-amethyst-line); }
+  .verso-ports--amber .verso-ports-name,   .verso-ports--amber .is-wan .verso-port-label   { color: var(--color-marigold-line); }
 
   .verso-port-tip {
     position: absolute; bottom: calc(100% + 0.75rem); left: 50%; transform: translateX(-50%) translateY(0.25rem);
@@ -585,11 +639,11 @@ html.verso-fonts-loading body {
   .verso-port:hover .verso-port-tip, .verso-port:focus-within .verso-port-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
   .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #0b0f16; }
 
-  .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-slate-500); }
+  .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-meta); }
   .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
-  .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-300); }
-  .verso-ports-dot.on { background: var(--color-emerald-500); }
-  .verso-ports-dot.act { background: var(--color-amber-400); }
+  .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-inert); }
+  .verso-ports-dot.on { background: var(--color-green); }
+  .verso-ports-dot.act { background: var(--color-marigold); }
 
   @media (max-width: 560px) {
     .verso-port-jack, .verso-port-cage { height: 2.5rem; }
@@ -604,11 +658,10 @@ html.verso-fonts-loading body {
      property beats the SVG's inline presentation attribute, so the art ships its
      LEDs drawn dark and the shell paints the lit ones. The traffic LED lights
      steadily here; its blink is a follow-up on the live stream. */
-  .verso-panel-art { max-width: 44rem; margin-inline: auto; }
   .verso-panel-art svg { display: block; width: 100%; height: auto; }
   .verso-panel-art [data-verso-port].is-linked .led-link { fill: #22c55e; filter: drop-shadow(0 0 3px rgb(34 197 94 / 0.85)); }
-  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-amber-500); filter: drop-shadow(0 0 3px rgb(245 158 11 / 0.8)); }
-  .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-sky-400); stroke-width: 1.8; }
+  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-marigold); filter: drop-shadow(0 0 3px rgb(240 164 25 / 0.8)); }
+  .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-denim-line); stroke-width: 1.8; }
 
   /* The running-fan glyph (customGlyphs["fan-spin"]) turns while a fan runs — a
      calm, unhurried rotation, stilled for reduced-motion. A stalled or absent
@@ -625,23 +678,23 @@ html.verso-fonts-loading body {
      geometry (d, viewBox, cx/cy) stays on the element. Line + area + endpoint dot share
      one per-role palette; "idle" is the calm grey of a quiet or empty source. This SVG
      is the first paint — the live layer hydrates the same data for smooth streaming. */
-  .verso-chart-grid line { stroke: var(--color-slate-200); stroke-width: 1; }
-  .verso-chart-baseline { stroke: var(--color-slate-300); stroke-width: 1.5; }
+  .verso-chart-grid line { stroke: var(--color-rule); stroke-width: 1; }
+  .verso-chart-baseline { stroke: var(--color-inert); stroke-width: 1.5; }
   /* endpoint dot as a round HTML overlay (a stretched SVG circle turns oval); it rides
      the plot's right edge at the series' last value, coloured to its series. */
   .verso-chart-dot-html { position: absolute; right: 0; width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; transform: translate(50%, -50%); }
-  .verso-chart-dot-html.verso-chart--sky { background: var(--color-sky-600); }
-  .verso-chart-dot-html.verso-chart--violet { background: var(--color-violet-600); }
-  .verso-chart-dot-html.verso-chart--emerald { background: var(--color-emerald-600); }
-  .verso-chart-dot-html.verso-chart--amber { background: var(--color-amber-600); }
-  .verso-chart-dot-html.verso-chart--idle { background: var(--color-slate-400); }
+  .verso-chart-dot-html.verso-chart--sky { background: var(--color-denim); }
+  .verso-chart-dot-html.verso-chart--violet { background: var(--color-amethyst); }
+  .verso-chart-dot-html.verso-chart--emerald { background: var(--color-green); }
+  .verso-chart-dot-html.verso-chart--amber { background: var(--color-marigold); }
+  .verso-chart-dot-html.verso-chart--idle { background: var(--color-glyph); }
   .verso-chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
   .verso-chart--spark .verso-chart-line { stroke-width: 1.75; }
   /* The panel plot: fixed height (the viewBox matches, so strokes stay true),
      half-weight lines, and quarter gridlines faint enough to read as texture. */
   .verso-chart--panel { height: 12.5rem; }
   .verso-chart--panel .verso-chart-line { stroke-width: 1.25; }
-  .verso-chart--panel .verso-chart-grid line { stroke: var(--color-slate-100); }
+  .verso-chart--panel .verso-chart-grid line { stroke: var(--color-quiet); }
   .verso-chart-yl--mid { transform: translateY(-50%); }
   /* The panel's readout: current values over the plot, each label riding
      below its number, the sampling note tucked against the baseline of the
@@ -650,38 +703,42 @@ html.verso-fonts-loading body {
   .verso-chart-panel-head .verso-chart-rates { margin-top: 0; }
   /* The panel's current values lead the whole block. */
   .verso-chart-panel-head .verso-chart-rate-v { font-size: 3rem; }
-  .verso-chart-panel-note { font-size: 0.8125rem; color: var(--color-slate-400); }
+  .verso-chart-panel-note { font-size: 0.8125rem; color: var(--color-meta); }
   /* The panel's time captions: their own quiet row hugging the baseline (the
      plot's own bottom padding already keeps them clear of it). */
   /* padding matches the y-value inset (.verso-chart-yl left) so "60 seconds ago"
      sits under the values above it, and "now" pulls in by the same amount. */
-  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; padding: 0 0.3125rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; }
+  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; padding: 0 0.3125rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; }
   .verso-chart-area { stroke: none; }
 
-  .verso-chart--sky .verso-chart-line { stroke: var(--color-sky-600); }
-  .verso-chart--sky .verso-chart-dot { fill: var(--color-sky-600); }
-  .verso-chart--sky .verso-chart-fill-0 { stop-color: var(--color-sky-600); stop-opacity: 0.24; }
-  .verso-chart--sky .verso-chart-fill-1 { stop-color: var(--color-sky-600); stop-opacity: 0; }
+  /* The series hues. The palette keeps two for exactly this — denim for what comes
+     down, amethyst for what goes up — and the other two roles take the state hues
+     that are not already spoken for. The role names are what a plugin sends, from
+     when they were the names of stock ramps; what they paint is the palette. */
+  .verso-chart--sky .verso-chart-line { stroke: var(--color-denim); }
+  .verso-chart--sky .verso-chart-dot { fill: var(--color-denim); }
+  .verso-chart--sky .verso-chart-fill-0 { stop-color: var(--color-denim); stop-opacity: 0.24; }
+  .verso-chart--sky .verso-chart-fill-1 { stop-color: var(--color-denim); stop-opacity: 0; }
 
-  .verso-chart--violet .verso-chart-line { stroke: var(--color-violet-600); }
-  .verso-chart--violet .verso-chart-dot { fill: var(--color-violet-600); }
-  .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-violet-600); stop-opacity: 0.24; }
-  .verso-chart--violet .verso-chart-fill-1 { stop-color: var(--color-violet-600); stop-opacity: 0; }
+  .verso-chart--violet .verso-chart-line { stroke: var(--color-amethyst); }
+  .verso-chart--violet .verso-chart-dot { fill: var(--color-amethyst); }
+  .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-amethyst); stop-opacity: 0.24; }
+  .verso-chart--violet .verso-chart-fill-1 { stop-color: var(--color-amethyst); stop-opacity: 0; }
 
-  .verso-chart--emerald .verso-chart-line { stroke: var(--color-emerald-600); }
-  .verso-chart--emerald .verso-chart-dot { fill: var(--color-emerald-600); }
-  .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-emerald-600); stop-opacity: 0.24; }
-  .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-emerald-600); stop-opacity: 0; }
+  .verso-chart--emerald .verso-chart-line { stroke: var(--color-green); }
+  .verso-chart--emerald .verso-chart-dot { fill: var(--color-green); }
+  .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-green); stop-opacity: 0.24; }
+  .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-green); stop-opacity: 0; }
 
-  .verso-chart--amber .verso-chart-line { stroke: var(--color-amber-600); }
-  .verso-chart--amber .verso-chart-dot { fill: var(--color-amber-600); }
-  .verso-chart--amber .verso-chart-fill-0 { stop-color: var(--color-amber-600); stop-opacity: 0.24; }
-  .verso-chart--amber .verso-chart-fill-1 { stop-color: var(--color-amber-600); stop-opacity: 0; }
+  .verso-chart--amber .verso-chart-line { stroke: var(--color-marigold); }
+  .verso-chart--amber .verso-chart-dot { fill: var(--color-marigold); }
+  .verso-chart--amber .verso-chart-fill-0 { stop-color: var(--color-marigold); stop-opacity: 0.24; }
+  .verso-chart--amber .verso-chart-fill-1 { stop-color: var(--color-marigold); stop-opacity: 0; }
 
-  .verso-chart--idle .verso-chart-line { stroke: var(--color-slate-400); }
-  .verso-chart--idle .verso-chart-dot { fill: var(--color-slate-400); }
-  .verso-chart--idle .verso-chart-fill-0 { stop-color: var(--color-slate-400); stop-opacity: 0.12; }
-  .verso-chart--idle .verso-chart-fill-1 { stop-color: var(--color-slate-400); stop-opacity: 0; }
+  .verso-chart--idle .verso-chart-line { stroke: var(--color-glyph); }
+  .verso-chart--idle .verso-chart-dot { fill: var(--color-glyph); }
+  .verso-chart--idle .verso-chart-fill-0 { stop-color: var(--color-glyph); stop-opacity: 0.12; }
+  .verso-chart--idle .verso-chart-fill-1 { stop-color: var(--color-glyph); stop-opacity: 0; }
 
   /* chart readout: the status + current-rates panel beside a full "hero" chart. The
      graph owns these pixels, so a rate number takes its series colour here (a chart
@@ -693,12 +750,12 @@ html.verso-fonts-loading body {
   /* axis labels: HTML overlaid on the plot at a true, fixed size (SVG <text> would scale
      with the graph). Y values at the top and middle of the range; window captions at the
      bottom corners. */
-  .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-slate-400); font-variant-numeric: tabular-nums; pointer-events: none; }
-  /* a soft halo in the surface colour (theme-aware via --color-white) so the
-     values stay legible where they overlay the line and area fill. Stacked to
-     build enough opacity for a solid-but-soft ring. Inert in the gutter case,
-     where the label sits on the bare surface. */
-  .verso-chart-yl { left: 0.3125rem; text-shadow: 0 0 0.1875rem var(--color-white), 0 0 0.1875rem var(--color-white), 0 0 0.1875rem var(--color-white); }
+  .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; pointer-events: none; }
+  /* a soft halo in the ground the chart sits on, so the values stay legible where
+     they overlay the line and area fill. Stacked to build enough opacity for a
+     solid-but-soft ring. Inert in the gutter case, where the label sits on the bare
+     surface. */
+  .verso-chart-yl { left: 0.3125rem; text-shadow: 0 0 0.1875rem var(--color-ground), 0 0 0.1875rem var(--color-ground), 0 0 0.1875rem var(--color-ground); }
   /* When a plot carries y-axis labels, indent the graph so the values fall into an
      exposed left gutter, hugging the border, instead of overlapping the line. */
   .verso-chart-plot--gutter { padding-left: 2.5rem; }
@@ -706,22 +763,25 @@ html.verso-fonts-loading body {
   /* the window captions overlaid in a hero plot's bottom corners. */
   .verso-chart-xl-start { left: 0.3125rem; bottom: 0; }
   .verso-chart-xl-end { right: 0.3125rem; bottom: 0; }
-  .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-slate-900); }
+  .verso-chart-status { display: flex; align-items: center; gap: 0.5rem; font-size: 1.75rem; font-weight: 500; letter-spacing: -0.01em; color: var(--color-ink); }
   .verso-chart-status .verso-live-dot { width: 0.625rem; height: 0.625rem; }
-  .verso-chart-meta { margin-top: 0.1875rem; font-size: 0.8125rem; color: var(--color-slate-500); }
+  .verso-chart-meta { margin-top: 0.1875rem; font-size: 0.8125rem; color: var(--color-meta); }
   .verso-chart-rates { display: flex; gap: 2rem; margin-top: 1.75rem; }
   .verso-chart-rate-v { display: flex; align-items: baseline; gap: 0.25rem; font-size: 1.875rem; font-weight: 700; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-  .verso-chart-rate-v small { font-size: 1rem; font-weight: 600; color: var(--color-slate-500); }
-  .verso-chart-rate-k { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5625rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-slate-500); }
+  .verso-chart-rate-v small { font-size: 1rem; font-weight: 600; color: var(--color-meta); }
+  .verso-chart-rate-k { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5625rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-meta); }
   .verso-chart-rate-sw { width: 0.5rem; height: 0.5rem; border-radius: 0.1875rem; flex: none; }
-  .verso-chart-rate.verso-chart--sky .verso-chart-rate-v { color: var(--color-sky-600); }
-  .verso-chart-rate.verso-chart--sky .verso-chart-rate-sw { background: var(--color-sky-600); }
-  .verso-chart-rate.verso-chart--violet .verso-chart-rate-v { color: var(--color-violet-600); }
-  .verso-chart-rate.verso-chart--violet .verso-chart-rate-sw { background: var(--color-violet-600); }
-  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-v { color: var(--color-emerald-600); }
-  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-sw { background: var(--color-emerald-600); }
-  .verso-chart-rate.verso-chart--amber .verso-chart-rate-v { color: var(--color-amber-600); }
-  .verso-chart-rate.verso-chart--amber .verso-chart-rate-sw { background: var(--color-amber-600); }
+  /* A rate is a word as well as a swatch, so the number takes each hue's deep step —
+     the one the palette sizes for text — while the swatch beside it takes the hue
+     itself. */
+  .verso-chart-rate.verso-chart--sky .verso-chart-rate-v { color: var(--color-denim-deep); }
+  .verso-chart-rate.verso-chart--sky .verso-chart-rate-sw { background: var(--color-denim); }
+  .verso-chart-rate.verso-chart--violet .verso-chart-rate-v { color: var(--color-amethyst-deep); }
+  .verso-chart-rate.verso-chart--violet .verso-chart-rate-sw { background: var(--color-amethyst); }
+  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-v { color: var(--color-green-deep); }
+  .verso-chart-rate.verso-chart--emerald .verso-chart-rate-sw { background: var(--color-green); }
+  .verso-chart-rate.verso-chart--amber .verso-chart-rate-v { color: var(--color-marigold-deep); }
+  .verso-chart-rate.verso-chart--amber .verso-chart-rate-sw { background: var(--color-marigold); }
 
   @media (prefers-reduced-motion: reduce) {
     .verso-empty-icon::after, .verso-live-dot::after { animation: none; }
@@ -736,7 +796,7 @@ html.verso-fonts-loading body {
    at the end: the stack's space-y utility writes margin-block-start on every
    non-last child, and only a later utilities-layer rule outranks it. */
 @layer utilities {
-  :first-child + .verso-filter-dock { margin-top: -2rem; }
+  :first-child + .verso-filter-dock { margin-top: -2.75rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
   /* With a flash above the body, the pull-up would slide the dock's white
@@ -771,4 +831,69 @@ html.verso-fonts-loading body {
   @media (prefers-reduced-motion: reduce) {
     .verso-netants-live { animation: none; }
   }
+}
+
+/* The live listing (verso.js opens the stream, builds the rows). A row arrives
+   at a fixed point — the top — so the only motion is its own settling in;
+   nothing below it moves, and nothing at all moves while the stream is paused.
+   Reduced motion gets the row without the arrival. */
+@layer components {
+  .verso-stream-row {
+    animation: verso-stream-settle 0.22s ease-out;
+  }
+  @keyframes verso-stream-settle {
+    from { opacity: 0; transform: translateY(-0.25rem); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-stream-row { animation: none; }
+  }
+
+  /* A value in the stream is its own control: point at a verdict, a zone, an
+     address, and the stream narrows to it. The affordance is the pointer and a
+     quiet lift on hover — the value keeps exactly the treatment it had, because
+     what travels to the shelf is the thing that was clicked. */
+  .verso-pluck {
+    appearance: none;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: opacity 0.15s ease;
+  }
+  .verso-pluck:hover { opacity: 0.65; }
+  .verso-pluck:focus-visible {
+    outline: 0.125rem solid var(--color-denim-deep);
+    outline-offset: 0.125rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-pluck { transition: none; }
+  }
+
+  /* The shelf: what was plucked, wearing the colour it wore in the stream, with
+     a × to let it go. No filters, no shelf — the row of chrome exists only for
+     as long as something is being held. */
+  .verso-stream-shelf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .verso-stream-release {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .verso-stream-release-x {
+    font-size: 0.875rem;
+    line-height: 1;
+    color: var(--color-glyph);
+  }
+  .verso-stream-release:hover .verso-stream-release-x { color: var(--color-ink); }
 }

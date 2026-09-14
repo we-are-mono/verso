@@ -112,6 +112,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode conditional: %w", err)
 		}
 		return &c, nil
+	case "when":
+		var w When
+		if err := json.Unmarshal(data, &w); err != nil {
+			return nil, fmt.Errorf("widget: decode when: %w", err)
+		}
+		return &w, nil
 	case "conditions":
 		var c Conditions
 		if err := json.Unmarshal(data, &c); err != nil {
@@ -130,18 +136,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode modal: %w", err)
 		}
 		return &m, nil
-	case "capsule-preview":
-		var c CapsulePreview
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode capsule preview: %w", err)
-		}
-		return &c, nil
-	case "overview-preview":
-		var o OverviewPreview
-		if err := json.Unmarshal(data, &o); err != nil {
-			return nil, fmt.Errorf("widget: decode overview preview: %w", err)
-		}
-		return &o, nil
 	case "badge":
 		var b Badge
 		if err := json.Unmarshal(data, &b); err != nil {
@@ -220,12 +214,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode properties: %w", err)
 		}
 		return &p, nil
-	case "changes":
-		var c Changes
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode changes: %w", err)
-		}
-		return &c, nil
 	case "confirm":
 		var c Confirm
 		if err := json.Unmarshal(data, &c); err != nil {
@@ -280,12 +268,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode grid: %w", err)
 		}
 		return &g, nil
-	case "hero":
-		var h Hero
-		if err := json.Unmarshal(data, &h); err != nil {
-			return nil, fmt.Errorf("widget: decode hero: %w", err)
-		}
-		return &h, nil
 	case "meter":
 		var m Meter
 		if err := json.Unmarshal(data, &m); err != nil {
@@ -322,6 +304,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode settings: %w", err)
 		}
 		return &s, nil
+	case "actionbar":
+		var a ActionBar
+		if err := json.Unmarshal(data, &a); err != nil {
+			return nil, fmt.Errorf("widget: decode actionbar: %w", err)
+		}
+		return &a, nil
 	case "filter":
 		var f Filter
 		if err := json.Unmarshal(data, &f); err != nil {

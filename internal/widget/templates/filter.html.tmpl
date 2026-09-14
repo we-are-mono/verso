@@ -2,22 +2,25 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* filter: the page-wide lens on a sticky ground-coloured dock. The sentinel div
      lets verso.js detect the pinned state (the dock gains .verso-filter-stuck and
-     the bar breathes in). The dock bleeds past the content column (-mx-8/px-8, the
+     the bar breathes in). The dock bleeds past the content column (-mx-11/px-11, the
      page's own padding) so pinned rows slide fully beneath it, dissolving through
      the ::after gradient fade. Behaviour is shell-owned: see verso.js. */}}
 <div class="h-px"></div>
-{{/* pt-8 = the content column's own 2rem (px-8) gutter, so the pinned bar sits as
-     far from the top as the content does from the sidebar. Constant padding — a
+{{/* pt-11 = the content column's own 44px gutter, so the pinned bar sits as far
+     from the top as the content does from the sidebar. Constant padding — a
      pin-time change would shift the page, and the lens never moves anything. */}}
 {{/* top offset is owned by the stylesheet (components layer), not a utility —
      it must yield to the subpage top bar when one is present. */}}
-<div class="verso-filter-dock sticky z-20 -mx-8 bg-white px-8 pt-8 pb-3">
-  {{/* the lens wears the interactive sky as a thick frame at rest — the one
-       always-on doorway on the page; flat like everything else (no shadow). */}}
-  <div class="verso-filter-bar flex items-center gap-3 rounded-2xl border-4 border-sky-600 bg-white px-4.5 py-3 inset-shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-sky-600">
-    {{icon "search" "size-5 shrink-0 text-slate-400"}}
+<div class="verso-filter-dock sticky z-20 -mx-11 bg-ground px-11 pt-11 pb-3">
+  {{/* the lens is a field like any other field — the page's own hairline, the
+       page's own ground — because what makes it findable is that it is always
+       the first thing on the page, not that it is painted louder than the
+       listing it sifts. It warms to the action colour under the pointer and
+       when it has the caret, the way every control here does. */}}
+  <div class="verso-filter-bar flex h-9 items-center gap-2.5 rounded-xs border border-rule-strong bg-ground px-3 transition-colors hover:border-denim focus-within:border-denim-deep">
+    {{icon "search" "size-4 shrink-0 text-faint"}}
     <input type="search" data-verso-filter placeholder="{{.}}" aria-label="{{ t "Filter everything on this page" }}"
-      class="w-full border-0 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400">
-    <kbd class="shrink-0 rounded-md border border-slate-400 px-1.5 py-0.5 font-mono text-xs text-slate-500" aria-hidden="true">/</kbd>
+      class="w-full border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint">
+    <kbd class="shrink-0 rounded-xs border border-rule-strong px-1.5 font-mono text-xs leading-4 text-meta" aria-hidden="true">/</kbd>
   </div>
 </div>

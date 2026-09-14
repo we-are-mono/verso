@@ -1,0 +1,103 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* The stage's one surface in the chrome (ADR-010): a chip in the top bar,
+     left of Log out, on screen only while a change is staged. It says how many
+     wait and that nothing is live yet, in the caveat colour — a fact about the
+     device, not an alarm — and it opens the review drawer, the one place the
+     stage is applied or let go from. It stays on every page for as long as the
+     stage holds something, which is what makes leaving a page safe without a
+     word of warning.
+
+     The element is always rendered, hidden while the stage is clean, so the
+     client can turn it on in place the moment an act on the page stages
+     something and never has to build one (verso-commit.js). */}}
+{{define "verso-staged-chip"}}<span x-data="modal" class="contents">
+  <a id="verso-staged" href="/uci/review" @click.prevent="showPanel" data-count="{{.Count}}" title="{{ t "Nothing is live yet — review, then apply" }}"{{if not .Count}} hidden{{end}}
+    class="pointer-events-auto flex h-8 items-center gap-2 rounded-xs border border-transparent bg-marigold-soft px-3 text-sm font-semibold whitespace-nowrap text-marigold-deep transition-colors hover:border-marigold hover:bg-marigold-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold-deep">
+    <span id="verso-staged-mark" aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
+    <span id="verso-staged-label">{{.Label}}</span><span id="verso-staged-word" class="font-normal">· {{ t "review" }}</span>
+  </a>
+  {{template "verso-drawer-review"}}
+</span>{{end}}
+
+{{/* The review drawer's frame: the drawer language every panel speaks, at the
+     standard drawer measure. The link on the chip names what it fetches. It is
+     chrome, not a place on the page under it (verso.js): the browser's address
+     stays the page's while it is open, and every open fetches the stage afresh,
+     so a drawer closed and reopened after another save reads the new count. */}}
+{{define "verso-drawer-review"}}<template x-teleport="body">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" @verso-panel-done="finish" class="fixed inset-0 z-50">
+    {{template "verso-overlay-backdrop"}}
+    <aside x-show="open"
+      x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+      x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+      x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true" aria-label="{{ t "Staged changes" }}"
+      class="absolute inset-y-0 right-0 flex w-full max-w-[40rem] flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      <div data-verso-panel data-verso-panel-chrome class="contents"></div>
+    </aside>
+  </div>
+</template>{{end}}
+
+{{/* The drawer's contents: the stage read back in plain words, by the page each
+     change belongs to, and the two acts that end it. Rendered from UCI's own
+     stage on every open, so it is never a moment old. A change's row is the
+     owning plugin's sentence for it, led by what happened in a word and the
+     mark for it — added green, changed marigold, removed red, reordered
+     amethyst — and opens on the uci lines it stands for; a change no plugin
+     described keeps its raw line as the row. */}}
+{{define "verso-staged-review"}}<div id="verso-staged-review" data-count="{{.Count}}" class="contents">
+  {{/* The header is the band every drawer opens with: a 28px line inset 12px,
+       the title in the band's voice, and the way out. */}}
+  <header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">
+    <h2 class="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-body">{{.Label}}</h2>
+    <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+  </header>
+  <div class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto px-8 pb-8">
+    {{range .Groups}}
+    {{/* the page's band, running edge to edge inside the inset: a 28px line
+         inset 12px, the page it names in the band's voice, its tally beside. */}}
+    <div class="-mx-8 flex min-h-13 items-center gap-3 border-b border-rule bg-quiet px-8">
+      <span class="text-base leading-7 font-semibold tracking-tight text-body">{{.Page}}</span>
+      <span class="text-sm leading-7 text-meta">{{.Tally}}</span>
+    </div>
+    {{range .Items}}
+    {{/* the row: 44px by its inset, the whole of it the handle that opens the
+         lines beneath. Its tallest thing is the 28px chevron, so the row insets
+         it by 8px, as a table cell insets an act. */}}
+    <details class="group/change -mx-8 border-b border-mid">
+      <summary class="flex cursor-pointer list-none items-center gap-3 px-8 py-2 leading-6 transition-colors select-none hover:bg-quiet/60 [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Verb "added"}}bg-green{{else if eq .Verb "removed"}}bg-crimson{{else if eq .Verb "reordered"}}bg-amethyst{{else}}bg-marigold{{end}}"></span>
+        <span class="w-18 shrink-0 text-sm text-meta">{{.Word}}</span>
+        <span class="min-w-0 flex-1 truncate {{if .Mono}}font-mono text-base font-medium{{else}}text-sm font-semibold{{end}} text-ink">{{.Label}}</span>
+        <span class="grid size-7 shrink-0 place-items-center text-glyph transition-transform group-open/change:rotate-180">{{icon "chevron-down" "size-4"}}</span>
+      </summary>
+      {{/* the lines, indented to the row's words: what the file will hold, each
+           led by the glyph of what happens to it. */}}
+      <div class="pr-8 pb-3 pl-[3.875rem]">
+        <div class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet px-3 py-2.5 font-mono text-sm leading-relaxed font-medium">
+          {{range .Lines}}<div class="flex gap-2.5 whitespace-pre {{if eq .Op "+"}}text-green-deep{{else if eq .Op "-"}}text-crimson-deep{{else}}text-marigold-deep{{end}}"><span class="w-2.5 shrink-0">{{.Op}}</span><span>{{.Text}}</span></div>{{end}}
+        </div>
+      </div>
+    </details>
+    {{end}}
+    {{end}}
+    {{if not .Count}}<p class="py-8 text-sm text-body">{{ t "Nothing staged. Every save lands here until you apply." }}</p>{{end}}
+    {{if .Count}}
+    {{/* The promise that makes applying safe to press, stating the window the
+         apply actually arms rather than a number typed into the markup. The
+         same line carries how the apply went, once it has. */}}
+    <div class="mt-5 flex items-start gap-2 rounded-xs bg-denim-soft px-3 py-2 text-sm leading-[1.45] text-denim-deep">
+      <span id="verso-staged-note-mark" aria-hidden="true" class="mt-[7px] size-1.5 shrink-0 rounded-[1px] bg-denim"></span>
+      <span id="verso-staged-note">{{ printf (t "Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within %d seconds, the changes are rolled back.") .Rollback }}</span>
+    </div>
+    {{end}}
+    <div class="mt-5 flex items-center gap-2">
+      {{if .Count}}
+      <button type="button" id="verso-staged-apply" data-applying="{{ t "Applying…" }}" class="flex h-9 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{ printf (t "Apply %d") .Count }}</button>
+      <button type="button" id="verso-staged-discard" class="flex h-9 cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:opacity-50">{{ t "Discard all" }}</button>
+      {{else}}
+      <button type="button" @click="hide" class="flex h-9 cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Close" }}</button>
+      {{end}}
+    </div>
+  </div>
+</div>{{end}}

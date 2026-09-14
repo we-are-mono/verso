@@ -23,11 +23,12 @@ type telemetrySource interface {
 }
 
 type interfaceReading struct {
-	Name    string `json:"name"`
-	State   string `json:"state"`
-	Variant string `json:"variant"`
-	RxRate  string `json:"rx_rate"`
-	TxRate  string `json:"tx_rate"`
+	Name      string `json:"name"`
+	Operstate string `json:"operstate"`
+	State     string `json:"state"`
+	Variant   string `json:"variant"`
+	RxRate    string `json:"rx_rate"`
+	TxRate    string `json:"tx_rate"`
 }
 
 // telemetrySnapshot shares one immutable in-process snapshot across the page
@@ -78,7 +79,7 @@ func telemetryInterfaceReadings(snapshot telemetry.Snapshot) []interfaceReading 
 			rx, tx = formatBitRate(point.RxBPS), formatBitRate(point.TxBPS)
 		}
 		out = append(out, interfaceReading{
-			Name: iface.Name, State: strings.ToUpper(state[:1]) + state[1:],
+			Name: iface.Name, Operstate: state, State: strings.ToUpper(state[:1]) + state[1:],
 			Variant: variant, RxRate: rx, TxRate: tx,
 		})
 	}

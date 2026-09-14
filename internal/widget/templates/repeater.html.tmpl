@@ -12,7 +12,7 @@
       <input type="hidden" name="{{$.OpField}}" value="{{$.OpRemove}}">
       <input type="hidden" name="{{$.ConfigField}}" value="{{$.Config}}">
       <input type="hidden" name="{{$.SectionField}}" value="{{.Section}}">
-      <button type="submit" class="cursor-pointer rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2">{{ t "Remove" }}</button>
+      <button type="submit" class="inline-flex h-7 cursor-pointer items-center rounded-xs border border-crimson-line px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep">{{ t "Remove" }}</button>
     </form>
   </div>
   {{end}}
@@ -21,6 +21,6 @@
     <input type="hidden" name="{{.OpField}}" value="{{.OpAdd}}">
     <input type="hidden" name="{{.ConfigField}}" value="{{.Config}}">
     <input type="hidden" name="{{.TypeField}}" value="{{.SectionType}}">
-    <button type="submit" class="cursor-pointer rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 {{template "verso-btn-secondary"}}">{{.AddLabel}}</button>
+    <button type="submit" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{.AddLabel}}</button>
   </form>
 </div>

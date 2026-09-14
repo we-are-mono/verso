@@ -37,8 +37,17 @@ import (
 // never two.
 type Section struct {
 	Title string `json:"title"`
-	Sub   string `json:"sub,omitempty"`
-	Meta  string `json:"meta,omitempty"`
+	// Anchor is the name this section is addressed by — what a link elsewhere on
+	// the page points at to bring it into view. A page long enough to need a list
+	// of its own parts needs them addressable; without this the list is a row of
+	// links to nowhere.
+	Anchor string `json:"anchor,omitempty"`
+	// Kicker makes Title a small label over a group rather than a heading over a
+	// subject — a rail's "On this page", where the words name the list beneath
+	// them and must not compete with the headings the list points at.
+	Kicker bool   `json:"kicker,omitempty"`
+	Sub    string `json:"sub,omitempty"`
+	Meta   string `json:"meta,omitempty"`
 	// MetaVerbatim declares Meta a machine value or an already-composed string
 	// — data the localization walk leaves exactly as authored. Prose meta
 	// stays undeclared and translates.
@@ -76,6 +85,8 @@ func (s *Section) prune(keep func(Widget) bool) {
 func (s *Section) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Title        string            `json:"title"`
+		Anchor       string            `json:"anchor"`
+		Kicker       bool              `json:"kicker"`
 		Sub          string            `json:"sub"`
 		Meta         string            `json:"meta"`
 		MetaLabel    string            `json:"meta_label"`
@@ -91,6 +102,8 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	s.Title = raw.Title
+	s.Anchor = raw.Anchor
+	s.Kicker = raw.Kicker
 	s.Sub = raw.Sub
 	s.Meta = raw.Meta
 	s.MetaLabel = raw.MetaLabel
@@ -117,6 +130,8 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 
 type sectionView struct {
 	Title      string
+	Anchor     string
+	Kicker     bool
 	Sub        template.HTML
 	Meta       string
 	MetaLabel  string
@@ -135,6 +150,8 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	v := sectionView{
 		Title:      s.Title,
+		Anchor:     s.Anchor,
+		Kicker:     s.Kicker,
 		Meta:       s.Meta,
 		MetaLabel:  s.MetaLabel,
 		MetaIcon:   s.MetaIcon,

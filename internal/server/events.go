@@ -9,13 +9,15 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // The overview stream: one long-lived GET (Server-Sent Events) the browser's
 // EventSource holds open, into which the shell pushes fresh truth — the
-// server owns the sampling clock, the client just renders what arrives. Four
-// event types ride it: system meters, kernel interfaces, WAN traffic, and
-// sensors. Further types join the same stream without creating a sampler per
+// server owns the sampling clock, the client just renders what arrives. System
+// meters, interfaces, WAN traffic, sensors, clock and the overview verdict share
+// this connection without creating a sampler per
 // browser tab.
 
 // handleOverviewEvents serves the stream. The session is re-checked every
@@ -35,18 +37,41 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
 	sid := s.sessionSID(r)
+	_, catalog := s.localize(r)
+	tr := translatorOrIdentity(catalog)
+	liveOverview := &widget.Overview{}
 	meters := time.NewTicker(s.eventInterval)
 	defer meters.Stop()
 
 	sendMeters := func() bool {
-		return writeMetersEvent(w, s.systemMeters(r.Context(), sid)) == nil
+		now := time.Now()
+		payload, err := json.Marshal(map[string]string{"clock": now.Format("15:04:05"), "uptime": loginDuration(tr, loginUptime())})
+		if err != nil {
+			return false
+		}
+		if _, err := fmt.Fprintf(w, "event: clock\ndata: %s\n\n", payload); err != nil {
+			return false
+		}
+		readings := s.systemMeters(r.Context(), sid, tr)
+		liveOverview.SysMetrics = sysMetricsToWidget(readings)
+		return writeMetersEvent(w, readings) == nil
 	}
 	sendInterfaces := func() bool {
 		snapshot, ok := s.telemetrySnapshot(r.Context())
+		liveOverview.InterfacesKnown = ok
+		liveOverview.Interfaces = nil
 		if !ok {
 			return true
 		}
-		payload, err := json.Marshal(map[string]any{"interfaces": telemetryInterfaceReadings(snapshot)})
+		for _, iface := range snapshot.Interfaces {
+			liveOverview.Interfaces = append(liveOverview.Interfaces, widget.OverviewInterface{Name: iface.Name, Kind: iface.Kind, State: normalOperstate(iface.Operstate), Physical: iface.Physical})
+		}
+		liveOverview.DevicesOnline, liveOverview.DevicesKnown = s.onlineDevices()
+		readings := telemetryInterfaceReadings(snapshot)
+		for i := range readings {
+			readings[i].State = tr(readings[i].State)
+		}
+		payload, err := json.Marshal(map[string]any{"interfaces": readings})
 		if err != nil {
 			return true
 		}
@@ -58,12 +83,25 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// and stream the newest down/up so the live graph scrolls in real values.
 	sendWan := func() bool {
 		ws, err := s.backend.WANStatus(r.Context(), sid)
+		liveOverview.WANKnown, liveOverview.WANUp = err == nil, err == nil && ws.Up()
+		liveOverview.WANDevice, liveOverview.WANUptime = "", ""
 		if err != nil {
 			return true // no uplink is a page-render concern, not a stream killer
 		}
 		primary, found := ws.Primary()
+		if found {
+			liveOverview.WANDevice, liveOverview.WANUptime = primary.Device, loginDuration(tr, primary.Uptime)
+		}
 		write := func(down, up float64) bool {
-			_, err = fmt.Fprintf(w, "event: wan\ndata: {\"down\":%.2f,\"up\":%.2f,\"uptime\":%d}\n\n", down, up, primary.Uptime)
+			caption := ""
+			if found {
+				caption = fmt.Sprintf(tr("for %s"), loginDuration(tr, primary.Uptime))
+			}
+			payload, marshalErr := json.Marshal(map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "uptime_label": caption})
+			if marshalErr != nil {
+				return false
+			}
+			_, err = fmt.Fprintf(w, "event: wan\ndata: %s\n\n", payload)
 			return err == nil
 		}
 		if !found || primary.Device == "" {
@@ -88,8 +126,6 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	if b, err := s.backend.Board(r.Context(), sid); err == nil {
 		boardName = b.BoardName
 	}
-	_, t := s.localize(r)
-	tr := translatorOrIdentity(t)
 	sendSensors := func() bool {
 		payload, err := json.Marshal(resolveSensors(tr, boardName))
 		if err != nil {
@@ -98,7 +134,15 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprintf(w, "event: sensors\ndata: %s\n\n", payload)
 		return err == nil
 	}
-	if !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
+	sendOverview := func() bool {
+		payload, err := json.Marshal(liveOverview.LiveStatus(tr))
+		if err != nil {
+			return false
+		}
+		_, err = fmt.Fprintf(w, "event: overview\ndata: %s\n\n", payload)
+		return err == nil
+	}
+	if !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() || !sendOverview() {
 		return
 	}
 	flusher.Flush()
@@ -107,7 +151,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done(): // the browser went away
 			return
 		case <-meters.C:
-			if !s.sessionAlive(r) || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() {
+			if !s.sessionAlive(r) || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() || !sendOverview() {
 				return
 			}
 			flusher.Flush()

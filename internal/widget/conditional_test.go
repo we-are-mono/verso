@@ -28,7 +28,7 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 	for _, want := range []string{
 		"verso-conditional",                              // the shell-owned wrapper the CSS targets
 		`type="checkbox"`, `value="1"`, `name="use_psk"`, // the controlling switch
-		"data-verso-switch", "peer-checked:bg-emerald-500", // same control as table toggle cells
+		"data-verso-switch", "peer-checked:bg-body", // same control as table toggle cells
 		"checked", "Use a pre-shared key",
 		"verso-conditional-body", // the gated field-set the CSS shows/hides
 		`name="psk"`,             // the gated field rendered
@@ -38,8 +38,11 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 			t.Errorf("conditional render missing %q", want)
 		}
 	}
-	if control, label := strings.Index(got, "data-verso-switch"), strings.Index(got, ">Use a pre-shared key</span>"); control < 0 || label < 0 || control > label {
-		t.Errorf("conditional switch must precede its static label: %s", got)
+	// The gate is a form row like the fields it gates: what it is at the form's
+	// own measure on the left, the control on the right, and the label bound to
+	// the switch by id rather than by wrapping it.
+	if !strings.Contains(got, `<label for="use_psk" class="text-sm font-semibold text-ink">Use a pre-shared key</label>`) {
+		t.Errorf("conditional gate must label its switch at the form measure: %s", got)
 	}
 }
 

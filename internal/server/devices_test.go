@@ -5,12 +5,16 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -74,7 +78,7 @@ func rosterServer(t *testing.T) *Server {
 func roster(t *testing.T, s *Server) map[string]widget.Device {
 	t.Helper()
 	byName := map[string]widget.Device{}
-	for _, device := range s.connectedDevices(context.Background(), "test-sid") {
+	for _, device := range s.connectedDevices(context.Background(), "test-sid", "") {
 		byName[device.Name] = device
 	}
 	return byName
@@ -99,50 +103,109 @@ func TestDevicesPageRendersTheRoster(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		">Devices<",                      // the page heading
-		"Connected devices", "3 devices", // the listing and its count
+		">Devices<",                        // the page heading
 		"toms-iphone", "42:e6:ad:ff:b7:af", // a leaseholder, by name and MAC
+		"holding a lease now",                 // the legend under the listing
 		"192.168.77.102", "Online", "Offline", // its address and the presence words
-		"Details", "fd42:7ea:aa00:0:1::66", // the drawer and the addresses only it shows
+		`data-verso-entity-url="/entity/device/42:e6:ad:ff:b7:af"`, // the row points at its panel
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /devices: body missing %q", want)
 		}
 	}
+	// The panel is fetched when it opens, so a listing of three devices ships no
+	// panel bodies at all — that is what keeps a page of thirty from asking every
+	// contributing plugin thirty times before anyone has clicked anything.
+	if strings.Contains(body, "fd42:7ea:aa00:0:1::66") {
+		t.Error("a device's panel facts must not ride along with the listing")
+	}
 }
 
-// TestDevicesDrawerOffersReservationOnlyWhereItMeans: the door to the DHCP page
-// opens for a device holding an address it does not own; a reserved device
-// states the fact instead, and a device with no lease has nothing to keep.
-func TestDevicesDrawerOffersReservationOnlyWhereItMeans(t *testing.T) {
-	byName := roster(t, rosterServer(t))
-	iphone := byName["toms-iphone"]
-	if !iphone.Leased || iphone.Reserved {
-		t.Fatalf("toms-iphone = %+v, want a lease and no reservation", iphone)
+// The drawer's body belongs to the active plugin form; no duplicate device recap.
+func TestEntityPanelOmitsDeviceDetails(t *testing.T) {
+	rec := get(t, rosterServer(t), "/entity/device/42:e6:ad:ff:b7:af")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("panel status = %d", rec.Code)
 	}
-	if want := "/plugins/dnsdhcp/?reserve=42%3Ae6%3Aad%3Aff%3Ab7%3Aaf"; iphone.ReserveHref != want {
-		t.Errorf("reserve door = %q, want %q", iphone.ReserveHref, want)
+	body := rec.Body.String()
+	if !strings.Contains(body, "toms-iphone") {
+		t.Error("device title missing")
+	}
+	for _, absent := range []string{"Device details", ">IPv4<", ">Lease<", ">Network<", ">DUID<"} {
+		if strings.Contains(body, absent) {
+			t.Errorf("removed device details still render: %s", absent)
+		}
+	}
+}
+
+func TestEntityPanelLocalizesFormWithoutDeviceDetails(t *testing.T) {
+	srv := shapingServer(t, twoTabs())
+	bundle, problems := i18n.Load(os.DirFS("../../i18n"), "*/*.json")
+	if len(problems) != 0 {
+		t.Fatal(problems)
+	}
+	srv.SetBundle(bundle)
+	body := getLang(t, srv, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", "sl")
+	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "192.168.77.102", "bg-quiet px-8"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("localized device drawer missing %q", want)
+		}
+	}
+	if !strings.Contains(body, "<form") || strings.Contains(body, "Podrobnosti naprave") {
+		t.Error("the plugin form must remain, without the removed device details section")
+	}
+	header := strings.Split(body, "</header>")[0]
+	if strings.Contains(header, "<dl") || strings.Contains(header, "verso-chip") {
+		t.Error("the device heading must contain only its title and close button")
+	}
+}
+
+// TestEntityPanelRefusesAnUnknownSubject: a MAC in a URL is a claim, so the panel
+// reads the roster rather than trusting it.
+func TestEntityPanelRefusesAnUnknownSubject(t *testing.T) {
+	if rec := get(t, rosterServer(t), "/entity/device/00:00:00:00:00:00"); rec.Code != http.StatusNotFound {
+		t.Errorf("a device the box cannot see = %d, want 404", rec.Code)
+	}
+	if rec := get(t, rosterServer(t), "/entity/nonsense/x"); rec.Code != http.StatusNotFound {
+		t.Errorf("an entity kind the shell has no vocabulary for = %d, want 404", rec.Code)
+	}
+}
+
+// TestDevicesMarksAReservedDevice: whether a device's address is pinned is a
+// fact about the row; what the reservation says is dnsdhcp's tab in the panel.
+func TestDevicesMarksAReservedDevice(t *testing.T) {
+	byName := roster(t, rosterServer(t))
+	if iphone := byName["toms-iphone"]; !iphone.Leased || iphone.Reserved {
+		t.Fatalf("toms-iphone = %+v, want a lease and no reservation", iphone)
 	}
 	if printer := byName["old-printer"]; !printer.Reserved {
 		t.Errorf("a MAC named by a dhcp host section should read as reserved: %+v", printer)
 	}
 
 	body := get(t, rosterServer(t), "/devices").Body.String()
-	if strings.Count(body, "Reserve its address") != 2 {
-		t.Errorf("only the two unreserved leaseholders should be offered a reservation")
-	}
-	if !strings.Contains(body, "Address reserved for this device") {
-		t.Errorf("the reserved device should state its reservation")
+	if n := strings.Count(body, ">reserved</span>"); n != 1 {
+		t.Errorf("exactly the reserved device should wear the chip, got %d", n)
 	}
 }
 
-// TestDevicesReserveDoorClosesWithoutThePlugin: with nothing serving the DHCP
-// page, the drawer offers no door rather than one that lands on "unavailable".
-func TestDevicesReserveDoorClosesWithoutThePlugin(t *testing.T) {
+// TestDeviceActsFollowTheSlotVocabulary: a row draws one icon per slot the
+// design gives a device, in that order, whatever is installed — and a slot no
+// live plugin claims is inert rather than absent, so the column never changes
+// width between boards.
+func TestDeviceActsFollowTheSlotVocabulary(t *testing.T) {
 	s := rosterServer(t)
-	s.probe = func(string) bool { return false }
-	if got := roster(t, s)["toms-iphone"].ReserveHref; got != "" {
-		t.Errorf("reserve door = %q, want none while no plugin answers", got)
+	acts := s.EntityRowActs("device", "42:e6:ad:ff:b7:af", "toms-iphone", widget.DeviceActTitles())
+	if len(acts) != 4 {
+		t.Fatalf("a device row draws %d acts, want the four the design gives it", len(acts))
+	}
+	// No plugin answers in this fixture, so nothing is claimed.
+	for _, act := range acts {
+		if act.Href != "" || act.Opens {
+			t.Errorf("act %+v should be inert while no plugin claims its slot", act)
+		}
+	}
+	if s.EntityListingAct("device") != "" {
+		t.Error("with no plugin claiming the listing slot there is nothing to add")
 	}
 }
 
@@ -173,5 +236,152 @@ func TestLeaseIn(t *testing.T) {
 		if got := leaseIn(expiry, now); got != want {
 			t.Errorf("leaseIn(%d) = %q, want %q", expiry, got, want)
 		}
+	}
+}
+
+// shapingManifest registers a plugin that claims a device's shape slot, which is
+// what lights both the ban and the sliders on a device's row and puts a second
+// tab in its panel.
+func shapingManifest() plugin.Manifest {
+	return plugin.Manifest{
+		ManifestVersion: 1, ID: "qos", Name: "Device limits",
+		Socket: "/run/verso/qos.sock", SchemaVersion: 1,
+		Nav:        []plugin.NavEntry{{Section: "Security", Label: "Device limits", Path: "/"}},
+		EntityTabs: []plugin.EntityTab{{Entity: "device", Slot: "shape", Label: "Limits & schedule"}},
+		ACL:        plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "firewall", Function: "write"}}},
+	}
+}
+
+// reservingManifest is dnsdhcp as it really ships: claiming a device's reserve
+// slot, so a panel beside the limits plugin has the two tabs the design gives it.
+func reservingManifest() plugin.Manifest {
+	m := dnsdhcpManifest()
+	m.EntityTabs = []plugin.EntityTab{{Entity: "device", Slot: "reserve", Label: "Reserved address"}}
+	return m
+}
+
+func shapingServer(t *testing.T, tr plugin.Transport) *Server {
+	t.Helper()
+	backend := rosterBackend()
+	backend.access = true // the operator holds the plugin's declared write scope
+	s := newServerWith(t, backend, tr, []plugin.Manifest{reservingManifest(), shapingManifest()})
+	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	s.neighbors = testNeighbors
+	return s
+}
+
+// tabTransport answers each plugin with its own envelope, so a panel assembled
+// from two contributors can be read the way the browser gets it.
+type tabTransport struct {
+	fakeTransport
+	bySocket map[string]*plugin.Envelope
+	// A panel render asks every contributor, so the save has to be told apart
+	// from the reads that follow it.
+	lastPost plugin.Request
+}
+
+func (t *tabTransport) Fetch(_ context.Context, socket string, req plugin.Request) (*plugin.Envelope, error) {
+	t.lastSocket, t.lastReq = socket, req
+	if req.Method == http.MethodPost {
+		t.lastPost = req
+	}
+	if env, ok := t.bySocket[socket]; ok {
+		return env, nil
+	}
+	return t.env, t.err
+}
+
+// twoTabs is a device both plugins have something to say about: dnsdhcp's
+// reservation and the limits plugin's policy.
+func twoTabs() *tabTransport {
+	body := json.RawMessage(`{"type":"form","style":"page","fields":[]}`)
+	return &tabTransport{bySocket: map[string]*plugin.Envelope{
+		"/run/verso/dnsdhcp.sock": {
+			SchemaVersion: 1, Title: "Reserved address", State: "192.168.77.102",
+			Status: http.StatusOK, CTA: "Save reservation", Widget: body,
+		},
+		"/run/verso/qos.sock": {
+			SchemaVersion: 1, Title: "Limits & schedule", State: "blocked", Status: http.StatusOK,
+			CTA: "Save", Consequence: "Applies on the next firewall reload.", Widget: body,
+		},
+	}}
+}
+
+// TestEntityPanelWearsEachTabsState: a panel with more than one tab answers the
+// question it was opened to ask before a tab is chosen — the state chip beside
+// each label. The words are the plugin's; the chip is the shell's.
+func TestEntityPanelWearsEachTabsState(t *testing.T) {
+	rec := get(t, shapingServer(t, twoTabs()), "/entity/device/42:e6:ad:ff:b7:af?tab=shape")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET the panel: status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"Reserved address", ">192.168.77.102<", // the other tab, and where it stands
+		"Limits &amp; schedule", ">blocked<", // the tab in force, and where it stands
+		"Save", "Applies on the next firewall reload.", // its commit row, its words
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("entity panel missing %q:\n%s", want, body)
+		}
+	}
+	// The tab's form posts back into the panel, so the drawer stays open over
+	// the listing rather than navigating to a fragment.
+	if !strings.Contains(body, `hx-post="/entity/device/42:e6:ad:ff:b7:af?tab=shape"`) {
+		t.Errorf("the tab's form should post back into the panel:\n%s", body)
+	}
+}
+
+// TestEntityRowShortcutsOpenTheirTab: the design gives a device a ban and a
+// sliders icon, and both lead to the one tab that decides both. The map is the
+// shell's, so the plugin claiming `shape` lights `block` without knowing it
+// exists — and a board with no such plugin has neither lit.
+func TestEntityRowShortcutsOpenTheirTab(t *testing.T) {
+	body := get(t, shapingServer(t, twoTabs()), "/devices").Body.String()
+	if n := strings.Count(body, `data-verso-entity-tab="shape"`); n != 6 {
+		t.Errorf("both shortcuts on all three rows should open the shape tab, got %d", n)
+	}
+	// With nothing claiming the slot the icons stay drawn and inert, so the
+	// column's width is the listing's and not the install's.
+	plain := get(t, rosterServer(t), "/devices").Body.String()
+	if strings.Contains(plain, `data-verso-entity-tab="shape"`) {
+		t.Error("an unclaimed slot should open nothing")
+	}
+}
+
+// TestEntityPanelSavesThroughTheWriteGate: a tab's submission is its plugin's
+// write and passes the same gate any other does (ADR-007) — and a refusal
+// answers 422 with what the operator typed still in the controls.
+func TestEntityPanelSavesThroughTheWriteGate(t *testing.T) {
+	tr := twoTabs()
+	s := shapingServer(t, tr)
+	rec := postPlugin(t, s, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", url.Values{"allowed": {"1"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("saving a tab: status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if tr.lastPost.Path != "/entity/device/42:e6:ad:ff:b7:af" {
+		t.Errorf("the plugin should be asked to save on its own entity path, got %q", tr.lastPost.Path)
+	}
+	if got := tr.lastPost.Form["allowed"]; len(got) != 1 || got[0] != "1" {
+		t.Errorf("the submitted form should reach the plugin, got %v", tr.lastPost.Form)
+	}
+	if _, carried := tr.lastPost.Form["_csrf"]; carried {
+		t.Error("the shell's CSRF token is not the plugin's business")
+	}
+
+	// A plugin that refused its own submission answers 422, so nothing is
+	// written and the browser reads the save as failed.
+	tr.bySocket["/run/verso/qos.sock"].Status = http.StatusUnprocessableEntity
+	if rec := postPlugin(t, s, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", nil); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("a refused submission = %d, want 422", rec.Code)
+	}
+
+	// An operator whose session lacks the plugin's declared write scope never
+	// reaches the plugin at all.
+	denied := newServerWith(t, fakeBackend{access: false, uci: rosterBackend().uci}, tr, []plugin.Manifest{reservingManifest(), shapingManifest()})
+	denied.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	denied.neighbors = testNeighbors
+	if rec := postPlugin(t, denied, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", nil); rec.Code != http.StatusForbidden {
+		t.Errorf("a save without the grant = %d, want 403", rec.Code)
 	}
 }

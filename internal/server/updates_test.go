@@ -23,11 +23,12 @@ import (
 func idleUpdates(t *testing.T) {
 	t.Helper()
 	reset := func() {
-		for _, job := range []*backgroundJob{&updateChecks, &packageUpgrade, &feedRefresh} {
+		for _, job := range []*backgroundJob{&updateChecks, &packageUpgrade, &firmwareUpgrade, &feedRefresh} {
 			job.mu.Lock()
-			job.active, job.failure = false, nil
+			job.active, job.failure, job.done = false, nil, false
 			job.mu.Unlock()
 		}
+		firmwareTakeoverReleased.Store(false)
 	}
 	reset()
 	t.Cleanup(reset)
@@ -48,7 +49,7 @@ func knownUpdates(t *testing.T, s *Server, truth updatecheck.Truth) {
 func waitForCheck(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
-	for updateChecks.running() || packageUpgrade.running() {
+	for updateChecks.running() || packageUpgrade.running() || firmwareUpgrade.running() {
 		if time.Now().After(deadline) {
 			t.Fatal("the background update check never finished")
 		}
@@ -164,9 +165,9 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
-		"Updates", "has not looked for updates yet",
-		"Check for updates", `action="/system/maintenance/updates/check"`,
-		"is not known until this router checks",
+		"Firmware", "Not checked yet",
+		"Check again", `action="/system/maintenance/updates/check"`,
+		"is not known until it checks",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the never-checked Updates section is missing %q:\n%s", want, body)
@@ -196,13 +197,30 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	for _, want := range []string{
 		"Verso 0.0.23 is available", "this router runs 0.0.22",
 		"Updating also brings 4 other packages", "Checked", "just now",
-		"2.91-r3 → 2.93-r1",         // the manifest states each transition verbatim
-		"What changes — 5 packages", // the full manifest folds behind a disclosure
+		// The manifest states each transition as three aligned columns: the
+		// installed version, a header-less arrow, and the available one.
+		">2.91-r3<", ">→<", ">2.93-r1<", ">Installed<", ">Available<",
+		"What changes — 5 packages", // the manifest folds until asked
 		"Update now", `action="/system/maintenance/updates/install"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the software lane is missing %q:\n%s", want, body)
 		}
+	}
+	// Verso rides the manifest as a row like any other — no card leads it.
+	if strings.Contains(body, "This router runs 0.0.22") {
+		t.Errorf("the verso version card should be gone:\n%s", body)
+	}
+	// The masthead is the announcement: a waiting update retitles the page in the
+	// action colour, and the navigation suffix steps aside — a message, not a
+	// place-label.
+	for _, want := range []string{"Maintenance", "text-denim-deep"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the news masthead is missing %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, " — Maintenance</span>") {
+		t.Errorf("a toned masthead should drop the navigation suffix:\n%s", body)
 	}
 }
 
@@ -237,13 +255,17 @@ func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 	if !strings.Contains(body, "1 package is newer in your feeds") {
 		t.Errorf("a single upgradable package should read as one:\n%s", body)
 	}
-	if !strings.Contains(body, "2.91-r3 → 2.93-r1") {
-		t.Errorf("the manifest should state the one transition:\n%s", body)
+	for _, want := range []string{">2.91-r3<", ">→<", ">2.93-r1<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the manifest should state the one transition, missing %q:\n%s", want, body)
+		}
 	}
 }
 
-// TestMaintenanceUpdatesEverythingCurrent: nothing to install is its own quiet
-// statement with the age of the answer, not an empty space.
+// TestMaintenanceUpdatesEverythingCurrent: both halves current opens the section
+// with one confirmation box, and the package lane does not render at all — its
+// only content would repeat what the box just said. The firmware lane stays for
+// its facts, which are not repetition.
 func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true})
@@ -253,7 +275,8 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
-		"Every installed package is the newest version",
+		"Up to date",
+		"Check again",
 		"Checked", "1 h ago",
 		"This router runs the newest build its update server offers.",
 		"25.12.4 r32933-4ccb782af7",
@@ -263,8 +286,25 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 			t.Errorf("the up-to-date Updates section is missing %q:\n%s", want, body)
 		}
 	}
+	if strings.Contains(body, "Every installed package is the newest version") {
+		t.Error("the resting package lane should not render beside the verdict box")
+	}
 	if strings.Contains(body, "Update now") {
 		t.Error("nothing upgradable means no install offer")
+	}
+	// The resting rung states one build, so the version pair's comparison tone
+	// has nothing to compare: a lone tinted version would warn about nothing.
+	for _, unwanted := range []string{"font-semibold text-marigold-deep", "font-semibold text-green-deep", "Download and install"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("the resting firmware rung should not carry %q:\n%s", unwanted, body)
+		}
+	}
+	// At rest the masthead is the ordinary place-label, suffix and all.
+	if strings.Contains(body, "An update is ready") {
+		t.Error("a current router announces nothing")
+	}
+	if !strings.Contains(body, ">Maintenance</h2>") {
+		t.Errorf("the resting masthead should name Maintenance:\n%s", body)
 	}
 }
 
@@ -280,10 +320,24 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 		{
 			name:     "an available build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051", Server: "https://sysupgrade.openwrt.org", Packages: 78},
-			want:     []string{"OpenWrt 25.12.5 r33051 is available for this router", "Available build", "78"},
-			// The truth is stated; installing it is not offered from the answer —
-			// the only route to a new image stays the manual upload below.
-			absent: "Download and install",
+			want: []string{
+				// The news is a notice with no version in it…
+				"The update server is reporting a newer build for this router.",
+				// …and the pair below names both, toned the way the tool's own
+				// output tones them: what runs now in amber, what could run in
+				// emerald.
+				"Installed build", `class="font-mono text-base font-medium text-marigold-deep">25.12.4 r32933</span>`,
+				"Available build", `class="font-mono text-base font-medium text-green-deep">25.12.5 r33051</span>`,
+				"78",
+				// The act is offered here, behind the same confirm the manual
+				// image install wears.
+				"Download and install", `action="/system/maintenance/updates/firmware"`,
+				"restart on its own", "Do not disconnect its power.",
+			},
+			// The heading carries no sentence naming a version: the notice and the
+			// facts already say it, and one fact stated twice can disagree with
+			// itself.
+			absent: "is available for this router. It runs",
 		},
 		{
 			name:     "no upgrade tool",
@@ -293,12 +347,14 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 		{
 			name:     "no server",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer, Server: "https://sysupgrade.mono.si", Message: "uclient error code=-1"},
-			want:     []string{"No update server answered", "uclient error code=-1"},
+			// The plain sentence leads; the tool's verbatim words sit right
+			// below in a labelled, copyable code box — no fold for one line.
+			want: []string{"No update server answered", "Error, given by the update server", "uclient error code=-1"},
 		},
 		{
 			name:     "a device the server cannot build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported, Message: "File system type '(null)'"},
-			want:     []string{"cannot build an image for this router", "File system type &#39;(null)&#39;"},
+			want:     []string{"cannot build an image for this router", "Error, given by the update server", "File system type &#39;(null)&#39;"},
 		},
 		{
 			name:     "a check that could not run at all",
@@ -319,7 +375,9 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			if tc.absent != "" && strings.Contains(body, tc.absent) {
 				t.Errorf("the %s rung should not offer %q", tc.name, tc.absent)
 			}
-			// The manual image upload is the permanent floor under every rung.
+			// The manual image upload is the permanent floor under every rung —
+			// including the one that now offers the act, because a server that
+			// can build for this device is not the only way in.
 			if !strings.Contains(body, "Drop a sysupgrade image here") {
 				t.Errorf("the manual upload should remain available on every rung:\n%s", body)
 			}
@@ -364,51 +422,146 @@ func TestUpdateInstallStatesItsFailureOnce(t *testing.T) {
 	waitForCheck(t)
 
 	body := get(t, s, "/system/maintenance").Body.String()
-	if !strings.Contains(body, "Update did not complete") || !strings.Contains(body, "apk refused") {
+	if !strings.Contains(body, "Package update failed") || !strings.Contains(body, "apk refused") {
 		t.Errorf("a failed install should be stated once:\n%s", body)
 	}
-	if strings.Contains(get(t, s, "/system/maintenance").Body.String(), "Update did not complete") {
+	if strings.Contains(get(t, s, "/system/maintenance").Body.String(), "Package update failed") {
 		t.Error("a failure already seen should not be repeated")
 	}
 }
 
-// TestDeviceRowNamesTheRouter: the sidebar's foot is the device's own row — its
-// hostname, the release it runs, and the way to everything that maintains it.
-func TestDeviceRowNamesTheRouter(t *testing.T) {
+// TestFirmwareUpgradeRunsOnceInTheBackground: the POST answers at once — the act
+// is a build on someone else's server followed by a flash, so there is nothing to
+// hold a browser for — and while it runs the maintenance area is the full-screen
+// takeover, chrome-less and server-authoritative, so a reload lands back on it.
+// A second start while one runs changes nothing: the helper's guard keeps the two
+// apart and the browser lands on the same takeover.
+func TestFirmwareUpgradeRunsOnceInTheBackground(t *testing.T) {
 	idleUpdates(t)
-	s := newServer(t, fakeBackend{access: true, hn: "gateway"})
+	upgrades := 0
+	blocked := make(chan struct{})
+	backend := blockingFirmwareBackend{
+		fakeBackend: fakeBackend{access: true, firmwareUpgrades: &upgrades},
+		blocked:     blocked,
+	}
+	s := newServer(t, backend)
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Firmware: openwrt.FirmwareUpdate{
+		State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051",
+	}})
+
+	if rec := postPlugin(t, s, "/system/maintenance/updates/firmware", url.Values{}); rec.Code != 303 {
+		t.Fatalf("firmware install POST = %d, want an immediate redirect", rec.Code)
+	}
 	body := get(t, s, "/system/maintenance").Body.String()
-	for _, want := range []string{`href="/system/maintenance"`, ">gateway<", ">dev<"} {
+	// The running job paints the takeover's "preparing" state, chrome-less.
+	for _, want := range []string{
+		`data-verso-upgrading`, `data-verso-upgrading-state="preparing"`,
+		"Preparing your new firmware", "Keep the router powered",
+		"returns to its current version on its own",
+	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("the device row is missing %q:\n%s", want, body)
+			t.Errorf("a running firmware install should paint the takeover, missing %q:\n%s", want, body)
 		}
 	}
-	if strings.Contains(body, "/plugins/hostname/") {
-		t.Error("the device row should no longer link to a plugin that does not exist")
+	if strings.Contains(body, `x-data="sidebar"`) || strings.Contains(body, "<aside") {
+		t.Errorf("the takeover is chrome-less — no sidebar/nav:\n%s", body)
 	}
-	if strings.Contains(body, "Update ready") {
-		t.Error("a router with no cached update truth should wear no amber mark")
+	postPlugin(t, s, "/system/maintenance/updates/firmware", url.Values{})
+	close(blocked)
+	waitForCheck(t)
+	if upgrades != 1 {
+		t.Errorf("FirmwareUpgrade ran %d times, want exactly one", upgrades)
 	}
 }
 
-// TestDeviceRowMarksAPendingUpdate: the amber dot and its word appear on the truth
-// and nowhere else.
-func TestDeviceRowMarksAPendingUpdate(t *testing.T) {
+// TestFirmwareUpgradeFailureHoldsTheTakeover: an upgrade owut refused stops the
+// motion and shows the truth — the plain meaning in the callout, the tool's own
+// words in the labelled box, and the two doors out. Unlike every other detached
+// job's outcome it is NOT forgotten on the next visit: the takeover is
+// server-authoritative until the person releases it, so a reload keeps landing on
+// the failure. "Back to Maintenance" is the release, and only then does the
+// ordinary page return.
+func TestFirmwareUpgradeFailureHoldsTheTakeover(t *testing.T) {
+	idleUpdates(t)
+	s := newServer(t, fakeBackend{access: true, firmwareUpgradeErr: errors.New("Update checks reveal errors, can't proceed")})
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Firmware: openwrt.FirmwareUpdate{
+		State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051",
+	}}) // an available update is the precondition to install one
+	postPlugin(t, s, "/system/maintenance/updates/firmware", url.Values{})
+	waitForCheck(t)
+
+	body := get(t, s, "/system/maintenance").Body.String()
+	for _, want := range []string{
+		`data-verso-upgrading-state="failed"`,
+		"The upgrade couldn&#39;t start", "still on the firmware it started with",
+		"Error, given by the update server", "Update checks reveal errors, can&#39;t proceed",
+		"Back to Maintenance", "Try again",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("a failed firmware install should hold the takeover, missing %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, `x-data="sidebar"`) || strings.Contains(body, "<aside") {
+		t.Errorf("the failed takeover is chrome-less — no sidebar/nav:\n%s", body)
+	}
+	// Server-authoritative: a second visit still lands on the failure.
+	if !strings.Contains(get(t, s, "/system/maintenance").Body.String(), `data-verso-upgrading-state="failed"`) {
+		t.Error("an unacknowledged failure must persist, not be forgotten")
+	}
+	// The release returns the ordinary page.
+	if rec := postPlugin(t, s, "/system/maintenance/updates/firmware/dismiss", url.Values{}); rec.Code != 303 {
+		t.Fatalf("dismiss POST = %d, want a redirect back to the page", rec.Code)
+	}
+	after := get(t, s, "/system/maintenance").Body.String()
+	if strings.Contains(after, "data-verso-upgrading") {
+		t.Errorf("after the release the ordinary page returns, not the takeover:\n%s", after)
+	}
+	if !strings.Contains(after, `x-data="sidebar"`) {
+		t.Errorf("the ordinary maintenance page carries the shell chrome:\n%s", after)
+	}
+}
+
+// TestSidebarFootCarriesNoDeviceRow: the nav's foot marks no update and links
+// no device page — the update state lives on the pages that own it, and the
+// device's name is the corner nameplate, not a row.
+func TestSidebarFootCarriesNoDeviceRow(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true, hn: "gateway"})
 	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, To: "25.12.5"}})
-	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, "Update ready") || !strings.Contains(body, "bg-amber-500 ring-2") {
-		t.Errorf("a pending update should mark the device row:\n%s", body)
+	body := get(t, s, "/system/services").Body.String()
+	if strings.Contains(body, "Update ready") {
+		t.Error("the nav chrome should not carry the update mark")
+	}
+	if strings.Contains(body, `class="group relative flex items-center gap-3 rounded-xl`) {
+		t.Errorf("the sidebar foot should carry no device row:\n%s", body)
 	}
 }
 
-// TestOverviewSoftwareTileReadsTheRecordedTruth: the home page's tile is the same
-// truth as the footer's mark, and the same doorway.
-func TestOverviewSoftwareTileReadsTheRecordedTruth(t *testing.T) {
+// TestNameplateWearsTheHostname: the top bar is the device's, not the
+// software's — the hostname links home, on one line whatever its length, with
+// the whole name a hover away where the bar has to cut it; and a box with no
+// readable name says what it is instead of pretending a brand.
+func TestNameplateWearsTheHostname(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true, hn: "jedis-are-not-as-great-as-sith"})
+	body := get(t, s, "/system/services").Body.String()
+	if !strings.Contains(body, ">jedis-are-not-as-great-as-sith</a>") {
+		t.Errorf("the bar should wear the hostname:\n%s", body)
+	}
+	if !strings.Contains(body, `title="jedis-are-not-as-great-as-sith" class="min-w-0 truncate font-mono`) {
+		t.Error("a long name stays on one line, and the whole of it is a hover away")
+	}
+
+	nameless := newServer(t, fakeBackend{access: true})
+	if body := get(t, nameless, "/system/services").Body.String(); !strings.Contains(body, ">This device</a>") {
+		t.Errorf("a box with no readable hostname should say what it is:\n%s", body)
+	}
+}
+
+// The landing-page header reports only recorded updates and links to maintenance.
+func TestOverviewHeaderReadsTheRecordedTruth(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true})
-	if body := get(t, s, "/").Body.String(); !strings.Contains(body, "Installed software") {
+	if body := get(t, s, "/").Body.String(); strings.Contains(body, "package update available") {
 		t.Errorf("an unchecked router should claim nothing on the tile:\n%s", body)
 	}
 	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{
@@ -416,7 +569,7 @@ func TestOverviewSoftwareTileReadsTheRecordedTruth(t *testing.T) {
 		{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
 	}})
 	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, "2 packages ready") || !strings.Contains(body, `href="/system/maintenance"`) {
+	if !strings.Contains(body, "2 package updates available") || !strings.Contains(body, `href="/system/maintenance"`) {
 		t.Errorf("the tile should state the count and lead to the maintenance page:\n%s", body)
 	}
 }
@@ -448,18 +601,22 @@ func TestAutocheckRowReadsTheSetting(t *testing.T) {
 			for _, want := range []string{
 				"Check for updates automatically",
 				"It installs nothing on its own.",
-				">updates.autocheck<",
 				`name="autocheck"`,
-				`action="/system/maintenance/updates/autocheck"`,
 			} {
 				if !strings.Contains(body, want) {
 					t.Errorf("the automatic-check row is missing %q:\n%s", want, body)
 				}
 			}
 			// The switch's checkbox carries `checked` only when the option reads 1.
-			checked := strings.Contains(body, `value="1" checked name="autocheck"`)
+			tag := body[strings.Index(body, `id="autocheck"`):]
+			checked := strings.Contains(tag[:strings.Index(tag, ">")], " checked")
 			if checked != tc.on {
 				t.Errorf("with %s the switch is on=%v, want %v", tc.name, checked, tc.on)
+			}
+			// The switch stands outside any form and posts itself; a Save
+			// button for one bit would be furniture.
+			if strings.Contains(body, ">Save</button>") {
+				t.Errorf("the automatic-check row should offer no Save button:\n%s", body)
 			}
 		})
 	}
@@ -481,8 +638,8 @@ func TestAutocheckRowUnreadableShowsNoSwitch(t *testing.T) {
 	if strings.Contains(body, `name="autocheck"`) {
 		t.Error("no switch should be drawn when the setting cannot be read")
 	}
-	if strings.Contains(body, `action="/system/maintenance/updates/autocheck"`) {
-		t.Error("no Save form should be offered when the setting cannot be read")
+	if strings.Contains(body, ">Save</button>") {
+		t.Error("no Save should be offered when the setting cannot be read")
 	}
 }
 
@@ -495,7 +652,7 @@ func TestAutocheckSaveCreatesTheSection(t *testing.T) {
 	var writes []uciWrite
 	s := newServer(t, fakeBackend{access: true, adds: &adds, writes: &writes})
 
-	rec := postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}})
+	rec := postPlugin(t, s, "/system/maintenance", url.Values{"autocheck": {"on"}})
 	if rec.Code != 303 {
 		t.Fatalf("autocheck POST = %d, want a redirect back to the page", rec.Code)
 	}
@@ -518,7 +675,7 @@ func TestAutocheckSaveReusesTheSection(t *testing.T) {
 		uci: map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "1"}}},
 	})
 
-	postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}})
+	postPlugin(t, s, "/system/maintenance", url.Values{"autocheck": {"on"}})
 	if len(adds) != 0 {
 		t.Errorf("an existing section should not be created again: %v", adds)
 	}
@@ -527,9 +684,10 @@ func TestAutocheckSaveReusesTheSection(t *testing.T) {
 	}
 }
 
-// TestAutocheckSaveWritesAnExplicitOff: an unchecked switch posts nothing, and
-// that silence is written as 0 rather than by clearing the option — an absent
-// option is what the next package install seeds back to on (ADR-014 §2).
+// TestAutocheckSaveWritesAnExplicitOff: the self-posting switch states its new
+// position outright, and "off" is written as 0 rather than by clearing the
+// option — an absent option is what the next package install seeds back to on
+// (ADR-014 §2).
 func TestAutocheckSaveWritesAnExplicitOff(t *testing.T) {
 	idleUpdates(t)
 	var writes []uciWrite
@@ -539,7 +697,7 @@ func TestAutocheckSaveWritesAnExplicitOff(t *testing.T) {
 		uci: map[string]map[string]any{"verso": {"updates": map[string]any{".type": "updates", "autocheck": "1"}}},
 	})
 
-	postPlugin(t, s, "/system/maintenance/updates/autocheck", url.Values{})
+	postPlugin(t, s, "/system/maintenance", url.Values{"autocheck": {"off"}})
 	if len(writes) != 1 || writes[0].values["autocheck"] != "0" {
 		t.Fatalf("staged writes = %+v, want verso.updates.autocheck = 0", writes)
 	}
@@ -560,7 +718,7 @@ func TestAutocheckSaveSpeaksOnce(t *testing.T) {
 		{
 			name:    "a staged setting",
 			backend: fakeBackend{access: true},
-			want:    "Use Save &amp; Apply to put the change into effect",
+			want:    "Saved. Nothing is live until you apply.",
 		},
 		{
 			name:    "a write rpcd refused",
@@ -573,7 +731,7 @@ func TestAutocheckSaveSpeaksOnce(t *testing.T) {
 			s := newServer(t, tc.backend)
 			do := sameSession(t, s)
 
-			if rec := do(http.MethodPost, "/system/maintenance/updates/autocheck", url.Values{"autocheck": {"1"}}); rec.Code != http.StatusSeeOther {
+			if rec := do(http.MethodPost, "/system/maintenance", url.Values{"autocheck": {"on"}}); rec.Code != http.StatusSeeOther {
 				t.Fatalf("autocheck POST = %d, want a redirect", rec.Code)
 			}
 			if body := do(http.MethodGet, maintenancePath, nil).Body.String(); !strings.Contains(body, tc.want) {
@@ -611,10 +769,10 @@ func sameSession(t *testing.T, s *Server) func(method, path string, form url.Val
 	}
 }
 
-// TestStagedVersoSettingReachesTheCapsule: Verso's own config is declared by the
+// TestStagedVersoSettingReachesTheChip: Verso's own config is declared by the
 // shell, so a staged setting counts, reads, and discards like a firewall rule
 // (ADR-013 §3).
-func TestStagedVersoSettingReachesTheCapsule(t *testing.T) {
+func TestStagedVersoSettingReachesTheChip(t *testing.T) {
 	idleUpdates(t)
 	var reverts []string
 	s := newServer(t, fakeBackend{
@@ -623,10 +781,15 @@ func TestStagedVersoSettingReachesTheCapsule(t *testing.T) {
 		changes: map[string][][]string{"verso": {{"set", "updates", "autocheck", "0"}}},
 	})
 
-	body := get(t, s, "/system/maintenance").Body.String()
-	for _, want := range []string{"1 pending change", "verso: updates.autocheck = 0"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the capsule is missing %q:\n%s", want, body)
+	// The chip counts it on the page; the humanized line waits in the drawer,
+	// under System, since the config is the shell's own.
+	if body := get(t, s, "/system/maintenance").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
+		t.Errorf("the chip is missing the staged setting:\n%s", body)
+	}
+	drawer := getPanel(t, s, "/uci/review").Body.String()
+	for _, want := range []string{`text-body">System</span>`, "verso: updates.autocheck = 0"} {
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the drawer is missing %q:\n%s", want, drawer)
 		}
 	}
 	if rec := postPlugin(t, s, "/uci/discard", url.Values{}); rec.Code != 200 {
@@ -647,4 +810,16 @@ type blockingUpgradeBackend struct {
 func (b blockingUpgradeBackend) PkgUpgrade(ctx context.Context, sid string) error {
 	<-b.blocked
 	return b.fakeBackend.PkgUpgrade(ctx, sid)
+}
+
+// blockingFirmwareBackend does the same for the firmware act, which on a real
+// device is minutes long: the page has to be readable while it runs.
+type blockingFirmwareBackend struct {
+	fakeBackend
+	blocked chan struct{}
+}
+
+func (b blockingFirmwareBackend) FirmwareUpgrade(ctx context.Context, sid string) error {
+	<-b.blocked
+	return b.fakeBackend.FirmwareUpgrade(ctx, sid)
 }

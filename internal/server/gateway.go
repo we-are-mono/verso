@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/datatype"
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -41,18 +44,119 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	width := ""
 	var pages []pageTab
 	body, status := s.pluginBodyAt(r, m, r.PathValue("path"), &hdr, &width, &pages)
+	// The panel is closing on its own outcome: the frame is told to swap
+	// nothing, and what it is handed instead is the outcome, to say where the
+	// panel was.
+	if hdr.PanelDone {
+		w.Header().Set("HX-Reswap", "none")
+	}
+	// One panel's contents, asked for by a frame that is already on screen.
+	// Nothing around it has changed, so nothing around it is sent. A live
+	// preview answers the same way and for the same reason.
+	if hdr.PanelOnly || hdr.PreviewOnly || hdr.PanelDone {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = io.WriteString(w, string(body))
+		return
+	}
+	// A panel's own submission that the panel did not survive — a delete, or a
+	// rule made, which change which rows the listing has — is answered with the
+	// page, and the frame has nothing to hold: a page swapped into a panel would
+	// be the listing nested inside its own drawer. The answer is where the page
+	// went, so the frame is told to go there, and the outcome waits on that page
+	// as its flash — exactly what a native submit would have landed on. A
+	// contained failure (a stage refused or failed) keeps its status and its
+	// notice instead: the frame shows that where the person is, rather than
+	// sending them away from what they typed.
+	if panelRequest(r) && !safeMethod(r.Method) && (status < http.StatusBadRequest || status == http.StatusUnprocessableEntity) {
+		if hdr.Notice != nil && hdr.Notice.Text != "" {
+			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
+		}
+		destination := r.URL.Path
+		if hdr.Back != nil && hdr.Back.Href != "" && status < http.StatusBadRequest {
+			destination = hdr.Back.Href
+		}
+		w.Header().Set("HX-Redirect", destination)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	// A record editor's submit that staged its one change goes back to the listing
+	// it came from: the person sees the new row land there, in the pending set,
+	// and applies from the review drawer. Back is the editor signal and the
+	// return address; a listing's
+	// inline toggle stages too, but sets no Back, so it is synced in place instead.
+	// The outcome is already composed and localized (stagedOutcome); the
+	// destination render's own translator leaves a sentence that is not a base
+	// key alone.
+	if !safeMethod(r.Method) && (hdr.StagedCommit || hdr.CommandDone) && hdr.Back != nil && hdr.Back.Href != "" {
+		s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
+		http.Redirect(w, r, hdr.Back.Href, http.StatusSeeOther)
+		return
+	}
 	// A plugin filing a page into System joins the shell's mixed-ownership
 	// System frame. The manifest registration, not a shell route, supplies the
 	// page and its label; stopped plugins disappear through the ordinary live
 	// registration filter used by every other plugin page.
 	if pluginNavSectionAt(m, r.PathValue("path")) == "System" {
-		hdr.Heading = "System"
+		if hdr.Tone != "neutral" {
+			hdr.Heading = "System"
+		}
 		pages = s.systemPages(r.URL.Path, readerMode(r))
 	}
-	// Configuration pages keep the staging capsule at rest. A page made only of
-	// immediate commands may omit the clean capsule; an existing stage still
-	// follows the operator here as shared state.
-	s.renderPage(w, r, status, hdr, width, pages, !hdr.Immediate, body)
+	s.renderPage(w, r, status, hdr, width, pages, body)
+}
+
+// panelRequest reports whether this visit is a frame asking for its contents
+// rather than a browser asking for a page — a reading swapped into an open
+// panel, or the panel's own form submitted from inside it. htmx marks its own
+// requests; a plain visit or a native submit to the same address is a page and
+// is answered as one, which is what keeps the panel linkable and what a browser
+// with no script still gets.
+func panelRequest(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
+}
+
+// panelFlash is a plugin's outcome as a panel carries it — the notice the page
+// would have shown in its flash slot. A render with no notice carries nothing.
+func panelFlash(n *plugin.Notice) widget.Flash {
+	if n == nil {
+		return widget.Flash{}
+	}
+	return widget.Flash{Variant: n.Level, Message: n.Text}
+}
+
+// restructures reports whether a stage changed which sections a config holds —
+// one made, one removed — rather than the values of sections it already had. A
+// listing drawn from that config gains or loses a row, which the page has to be
+// drawn again to show.
+func restructures(ops []plugin.CommitOp) bool {
+	for _, op := range ops {
+		if op.Delete || op.Type != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// stagedOutcome is what a submission that changed the stage says about itself:
+// the plugin's half, what happened to what, and the shell's half, what that
+// means in the staged model. The model is the shell's, so no plugin has to know
+// about applying; a plugin that said nothing gets the plain word.
+func stagedOutcome(n *plugin.Notice, tr func(string) string) *plugin.Notice {
+	level, text := "success", tr("Saved.")
+	if n != nil && n.Text != "" {
+		level, text = n.Level, n.Text
+	}
+	return &plugin.Notice{Level: level, Text: text + " " + tr("Nothing is live until you apply.")}
+}
+
+// previewRequest reports whether a submission is asking what the form on screen
+// would write, rather than asking to write it. The shell marks it — the watcher
+// in verso-forms.js sends the header — so a plugin cannot decide for itself that
+// a write is "only a preview"; nothing on this path is staged, applied, or
+// remembered, whatever the plugin returns.
+func previewRequest(r *http.Request) bool {
+	return !safeMethod(r.Method) && r.Header.Get("X-Verso-Interaction") == "preview"
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -144,18 +248,55 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return s.unavailable(m, tr), http.StatusOK
 	}
 
+	// A composed access form returns through its shell host. The plugin still
+	// owns the schema, validation, ACL and commit intents.
+	if r.URL.Path == "/system/access" && m.SystemAccess == pluginPath {
+		widget.Walk(wdg, func(n widget.Widget) {
+			if form, ok := n.(*widget.Form); ok {
+				form.Action = "/system/access?plugin=" + m.ID
+			}
+		})
+	}
+
+	if env.Back != nil {
+		widget.Walk(wdg, func(n widget.Widget) {
+			if form, ok := n.(*widget.Form); ok && (form.Style == "page" || form.Style == "settings") {
+				form.CancelHref = widget.SafeHref(env.Back.Href)
+			}
+		})
+	}
+
 	// The raw gauge (ADR-005 §5): raw is instrumented because its usage is the
 	// demand signal for the next widget. Dev sessions log it; production pays
 	// nothing (s.devCSS is set only under scripts/dev.sh).
 	if s.devCSS != "" {
 		rawCount := 0
+		var unwired []string
 		widget.Walk(wdg, func(n widget.Widget) {
-			if _, ok := n.(*widget.Raw); ok {
+			switch n := n.(type) {
+			case *widget.Raw:
 				rawCount++
+			case *widget.Table:
+				// A live source the shell does not serve renders a still
+				// listing — silently, in production, because a table that
+				// works minus its stream beats a page that fails. In dev the
+				// silence is the bug, so it is named.
+				if n.Stream != nil && !widget.StreamSourceKnown(n.Stream.Source) {
+					unwired = append(unwired, n.Stream.Source)
+				}
 			}
 		})
 		if rawCount > 0 {
 			log.Printf("verso: dev: plugin %q page %q carries %d raw widget(s) — check whether an existing widget or the envelope notice fits (ADR-005 §5)", m.ID, pluginPath, rawCount)
+		}
+		for _, source := range unwired {
+			log.Printf("verso: dev: plugin %q page %q declares stream source %q, which the shell does not serve — the listing renders still", m.ID, pluginPath, source)
+		}
+		// Only the first live preview can be kept current: the watcher sends one
+		// form and the answer is one block, so a second would either go stale or
+		// be overwritten by its neighbour's.
+		if n := widget.LivePreviewCount(wdg); n > 1 {
+			log.Printf("verso: dev: plugin %q page %q declares %d live previews; only the first is kept current", m.ID, pluginPath, n)
 		}
 	}
 
@@ -169,10 +310,32 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// 422, and blocks the write — merged with whatever the plugin already flagged.
 	// Only a clean submission reaches brokerStage, which stages the plugin's
 	// commit intent through rpcd (ADR-007, ADR-010) — nothing is live until the
-	// capsule applies. A repeater op was downgraded to a render above, so it skips
+	// drawer applies. A repeater op was downgraded to a render above, so it skips
 	// this — its write already went through rpcd.
+	// A preview is a question, not a submission: the plugin was handed the values
+	// on screen and asked what it would write from them, and the answer goes back
+	// as the one block that says so. Nothing here stages, applies, or is
+	// remembered — the operator is still typing, and half a port number is not a
+	// change anybody asked to make.
+	if previewRequest(r) {
+		hdr.PreviewOnly = true
+		var preview strings.Builder
+		found, err := s.widgets.RenderLivePreviewWithToken(&preview, wdg, s.sessionCSRF(r), lang, t)
+		if err != nil {
+			log.Printf("verso: plugin %q preview render failed: %v", m.ID, err)
+		}
+		// A tree with no live preview has nothing to answer with. It leaves as
+		// an empty body rather than as the page, because the answer to "what
+		// would this write" is the only thing that was asked for — and because
+		// falling through would stage a submission the operator never made.
+		if !found || err != nil {
+			return "", http.StatusNoContent
+		}
+		return template.HTML(preview.String()), http.StatusOK //nolint:gosec // rendered by the shell's own templates
+	}
+
 	if !safeMethod(method) {
-		if validateSchema(wdg) {
+		if validateSchema(wdg) || status == http.StatusUnprocessableEntity {
 			status = http.StatusUnprocessableEntity
 		} else {
 			if err := validateApplyActions(m, env.Apply); err != nil {
@@ -180,10 +343,39 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 				return s.notice(tr("Not permitted"), fmt.Sprintf(
 					tr("%s tried to perform an operation it did not declare."), m.Name)), http.StatusForbidden
 			}
+			if len(env.Commands) > 0 {
+				if len(env.Commit) > 0 || len(env.Apply) > 0 {
+					return s.notice(tr("Not permitted"), tr("Commands cannot be combined with staged changes.")), http.StatusForbidden
+				}
+				if err := s.runPluginCommands(r.Context(), m, s.sessionSID(r), env.Commands); err != nil {
+					log.Printf("verso: plugin %q command failed: %v", m.ID, err)
+					message := "The router could not complete the action. Try again."
+					var validation commandValidationError
+					if errors.As(err, &validation) {
+						message = validation.Error()
+					}
+					status = http.StatusUnprocessableEntity
+					env.Notice = &plugin.Notice{Level: "danger", Text: message}
+					widget.Walk(wdg, func(w widget.Widget) {
+						if form, ok := w.(*widget.Form); ok {
+							form.Error = message
+						}
+					})
+				} else {
+					hdr.CommandDone = true
+					if env.Commands[0].Name == "config-file-stage" {
+						hdr.StagedCommit = true
+						hdr.StagedStructure = true
+					}
+				}
+			}
+
 			if len(env.Commit) > 0 {
 				if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit, tr); !ok {
 					return body, st
 				}
+				hdr.StagedCommit = true
+				hdr.StagedStructure = restructures(env.Commit)
 			}
 			s.setPendingApply(s.sessionSID(r), env.Apply)
 		}
@@ -205,12 +397,55 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		wdg = widget.StripFilters(wdg)
 	}
 
-	// The capsule binds to exactly one page form. A page composing more than
-	// one — a page-style form beside a reorderable listing, two reorderable
-	// listings — mis-wires silently in the browser, so the breach is at least
-	// named where an author will look.
-	if n := widget.PageFormCount(wdg); n > 1 {
-		log.Printf("verso: plugin %q page %q composes %d page forms; the capsule binds to one — drags or saves beyond the first are lost", m.ID, pluginPath, n)
+	// A page form carries its own submit: pressing it stages what the form
+	// holds, and the stage is applied from the review drawer (ADR-010). The
+	// shell guarantees the button — a page form the plugin left label-less has
+	// nothing else to submit it — so a missing label is defaulted here.
+	ensureEditorSubmit(wdg, tr("Save changes"))
+
+	// What a submission that changed the stage says about itself is composed
+	// here, once, for every way it can be answered: the page's flash slot, the
+	// listing an editor returns to, and the outcome a closing panel hands back.
+	hdr.Notice = localizeNotice(env.Notice, tr)
+	if hdr.StagedCommit {
+		hdr.Notice = stagedOutcome(hdr.Notice, tr)
+	}
+
+	// A request for one panel is not a request for a page: the frame is already
+	// on screen and only what it holds is being replaced. The plugin was asked
+	// nothing different — it answers an address naming an open panel with that
+	// panel open, exactly as it does for a full visit, and it answers the panel's
+	// own submission the same way, staged above like any other — so this only
+	// takes the panel out of the answer and leaves the rest unsent.
+	//
+	// A submission that changed a row's values is done with the panel: the panel
+	// closes, and the answer is the outcome alone, said where the panel was. One
+	// the plugin refused keeps its 422 and comes back as the panel with the
+	// offending controls marked, so the frame swaps the refusal in rather than
+	// showing nothing; one the plugin answered with the panel and no write — a
+	// computed round trip — comes back as that panel. A submission that changed
+	// which rows there are, a section made or removed, is not answered here at
+	// all: the listing behind the panel has to be drawn again to show it, and a
+	// request that names no open panel is a page in any case — a stale address,
+	// a direct visit, a delete.
+	if panelRequest(r) && !hdr.StagedStructure {
+		if hdr.StagedCommit {
+			var outcome strings.Builder
+			if err := s.pageSet(lang).ExecuteTemplate(&outcome, "verso-flash", panelFlash(hdr.Notice)); err != nil {
+				log.Printf("verso: plugin %q outcome render failed: %v", m.ID, err)
+			} else {
+				hdr.PanelDone = true
+				return template.HTML(outcome.String()), http.StatusOK //nolint:gosec // rendered by the shell's own templates
+			}
+		}
+		var panel strings.Builder
+		switch found, err := s.widgets.RenderOpenPanelWithToken(&panel, wdg, s.sessionCSRF(r), lang, t, panelFlash(hdr.Notice)); {
+		case err != nil:
+			log.Printf("verso: plugin %q panel render failed: %v", m.ID, err)
+		case found:
+			hdr.PanelOnly = true
+			return template.HTML(panel.String()), status //nolint:gosec // rendered by the shell's own templates
+		}
 	}
 
 	var b strings.Builder
@@ -230,10 +465,12 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.KickerStatus = tr(env.KickerStatus)
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
+	hdr.Tone = env.Tone
+	hdr.Ruled = env.Ruled
 	hdr.Subheading = tr(env.Subheading)
 	hdr.Action = localizeAction(env.Action, tr)
+	hdr.Back = localizeBack(env.Back, tr)
 	hdr.Banner = localizeBanner(env.Banner, tr)
-	hdr.Notice = localizeNotice(env.Notice, tr)
 	*width = env.Width
 	// The subpage tabs carry the plugin id, so renderPage localizes their labels
 	// from the plugin's catalog (ADR-012 §5) — no need to pre-translate here.
@@ -276,7 +513,7 @@ func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageT
 // drawer is enforced the same as one directly in a form.
 func validateSchema(w widget.Widget) bool {
 	found := false
-	widget.Walk(w, func(n widget.Widget) {
+	widget.WalkActive(w, func(n widget.Widget) {
 		switch n := n.(type) {
 		case *widget.Form:
 			if n.Error != "" {
@@ -348,7 +585,7 @@ func validateApplyActions(m plugin.Manifest, actions []plugin.ApplyAction) error
 
 // setPendingApply records the non-UCI apply tail a plugin POST prepared, keyed by
 // the operator's session so one operator's tail can never fire under another's
-// Save & Apply. Actions merge by name within the session (a re-save replaces its
+// the apply. Actions merge by name within the session (a re-save replaces its
 // own), and an empty set is a no-op — an unrelated save on another page must not
 // wipe a tail already armed for this session.
 func (s *Server) setPendingApply(sid string, actions []plugin.ApplyAction) {
@@ -459,7 +696,7 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 
 // brokerStage performs, through rpcd and on the operator's behalf, the uci writes
 // a plugin requested (ADR-007) — into UCI's stage, never committed here
-// (ADR-010): the staged-changes capsule owns apply and discard. It refuses any
+// (ADR-010): the review drawer owns apply and discard. It refuses any
 // op whose config the plugin did not declare in its manifest acl — a plugin
 // cannot broker a write outside its declared surface — and rpcd re-checks the
 // operator's sid on every call. On refusal or failure it returns a contained
@@ -467,12 +704,29 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 // renders the plugin's returned widget.
 func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp, tr func(string) string) (template.HTML, int, bool) {
 	declared := declaredUCIConfigs(m)
+	// Preflight the entire batch before staging its first operation. In
+	// particular, a named create must never overwrite an existing interface.
+	created := map[string]bool{}
 	for _, op := range ops {
 		if op.Config == "" || !declared[op.Config] {
-			log.Printf("verso: plugin %q tried to write undeclared uci config %q; refused", m.ID, op.Config)
-			return s.notice(tr("Not permitted"), fmt.Sprintf(
-				tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+			return s.notice(tr("Not permitted"), fmt.Sprintf(tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
 		}
+		if (op.Section == "" && op.Type == "") || (op.Delete && (op.Section == "" || op.Type != "" || len(op.Values) > 0)) {
+			return s.malformedOperation(m, tr)
+		}
+		if op.Type != "" && op.Section != "" {
+			key := op.Config + "." + op.Section
+			sections, err := s.backend.UCIConfig(ctx, sid, op.Config)
+			if err != nil {
+				return s.stageFailed(tr)
+			}
+			if _, exists := sections[op.Section]; exists || created[key] {
+				return s.stageFailed(tr)
+			}
+			created[key] = true
+		}
+	}
+	for _, op := range ops {
 		// A delete is the whole section and nothing else: naming a type or values
 		// beside it describes two operations at once, which the shell will not
 		// guess at.
@@ -490,14 +744,16 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 		// An op with no section and a type creates the section first (through
 		// rpcd, staged like the set): the "drawer first, row on save" flow —
 		// a plugin never adds bare sections it then has to chase.
-		section := op.Section
-		if section == "" && op.Type != "" {
-			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type, "")
+		section, added := op.Section, false
+		if op.Type != "" {
+			// A typed operation creates a section. Named sections are required for
+			// objects referenced by other configs (netifd interfaces, for example).
+			created, err := s.backend.UCIAdd(ctx, sid, op.Config, op.Type, section)
 			if err != nil {
 				log.Printf("verso: plugin %q section create in uci %q failed: %v", m.ID, op.Config, err)
 				return s.stageFailed(tr)
 			}
-			section = created
+			section, added = created, true
 		}
 		// A null value clears its option. uci.set has no way to say "unset", so
 		// the nulls leave as option-level deletes and only the remaining values
@@ -505,13 +761,34 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 		// option empty would leave a value behind, and an empty value is rarely
 		// what "no longer set" means to the service reading it.
 		values, cleared := splitClears(op.Values)
+		absent := 0
 		for _, option := range cleared {
+			// An option that was never set is already in the state the clear asks
+			// for. rpcd says so with NOT_FOUND, which the backend names
+			// ErrOptionNotFound; an editor that owns a set of options states all
+			// of them on every save, so a stock-shaped section hits this on the
+			// ones nobody ever wrote. Any other failure still stops the stage.
 			if err := s.backend.UCIDelete(ctx, sid, op.Config, section, option); err != nil {
+				if errors.Is(err, openwrt.ErrOptionNotFound) {
+					absent++
+					continue
+				}
 				log.Printf("verso: plugin %q clear of uci %q option %q failed: %v", m.ID, op.Config, option, err)
 				return s.stageFailed(tr)
 			}
 		}
 		if len(values) == 0 && len(cleared) > 0 {
+			// Every option this op named was already absent and it set none: not
+			// one call carried a change, so nothing in the op has proved the
+			// section it addressed still exists. A stale id — a section deleted
+			// in another tab, a plugin working from an old snapshot — would
+			// otherwise stage nothing and be reported as saved. One read of that
+			// config settles it, and only on this path: a save that set a value,
+			// or genuinely cleared one, has proved it already and pays nothing.
+			if absent == len(cleared) && !added && !s.sectionPresent(ctx, sid, op.Config, section) {
+				log.Printf("verso: plugin %q addressed uci %q section %q, which is not there; nothing was staged", m.ID, op.Config, section)
+				return s.stageFailed(tr)
+			}
 			continue
 		}
 		if err := s.backend.UCISet(ctx, sid, op.Config, section, values); err != nil {
@@ -520,6 +797,19 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 		}
 	}
 	return "", 0, true
+}
+
+// sectionPresent reports whether a config still holds the named section. A read
+// that fails answers no: the caller reaches here only where nothing was written,
+// and a section nobody could confirm is not one to report as saved.
+func (s *Server) sectionPresent(ctx context.Context, sid, config, section string) bool {
+	sections, err := s.backend.UCIConfig(ctx, sid, config)
+	if err != nil {
+		log.Printf("verso: uci %q could not be read to confirm section %q: %v", config, section, err)
+		return false
+	}
+	_, ok := sections[section]
+	return ok
 }
 
 // splitClears separates the options a commit sets from the options it clears —
@@ -603,7 +893,7 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 
 // realizeReorder performs a dragged listing's structural change on the operator's
 // behalf: rpcd's `uci order` on the declared config, staged like every other write
-// (ADR-010), so the capsule owns the apply. It is bounded exactly as
+// (ADR-010), so the review drawer owns the apply. It is bounded exactly as
 // realizeRepeater is — the config must be one the plugin declared in acl.write,
 // and rpcd re-checks the operator's sid — and every posted id must name a section
 // the config really holds, so a stale page cannot order a listing into a shape the
@@ -632,7 +922,7 @@ func (s *Server) realizeReorder(ctx context.Context, m plugin.Manifest, sid stri
 	}
 	// A drag the operator abandoned announces the sequence it started from, so an
 	// order that moves nothing stages nothing: the re-render below is the whole
-	// answer, and the capsule stays as clean as it was.
+	// answer, and the stage stays as clean as it was.
 	if slices.Equal(current, order) {
 		return "", 0, true
 	}
@@ -714,6 +1004,18 @@ func reorderSections(current, moved []string) ([]string, error) {
 
 // declaredUCIConfigs is the set of uci configs a plugin declared it may write in
 // its manifest acl (scope "uci"). It bounds what the shell will broker for it.
+// ensureEditorSubmit gives every label-less page form in the tree a default submit
+// label, so a page form always has its own button — nothing else submits one. A
+// plugin that set a label — the object's own verb, "Add rule" — keeps it; only an
+// empty one is defaulted.
+func ensureEditorSubmit(w widget.Widget, label string) {
+	widget.Walk(w, func(n widget.Widget) {
+		if f, ok := n.(*widget.Form); ok && f.Style == "page" && f.Submit == "" && !f.NoSubmit && !f.AutoSubmit && !f.ConfirmDriven() {
+			f.Submit = label
+		}
+	})
+}
+
 func declaredUCIConfigs(m plugin.Manifest) map[string]bool {
 	out := make(map[string]bool)
 	for _, a := range m.ACL.Write {
@@ -793,12 +1095,42 @@ func (s *Server) readUbus(ctx context.Context, m plugin.Manifest, sid string) pl
 // It reports whether the function is one the shell brokers at all.
 func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (json.RawMessage, bool, error) {
 	switch function {
+	case "dhcpState":
+		if backend, ok := s.backend.(interface {
+			DHCPState(context.Context, string) (json.RawMessage, error)
+		}); ok {
+			result, err := backend.DHCPState(ctx, sid)
+			return result, true, err
+		}
+		return nil, true, fmt.Errorf("DHCP state unavailable")
+	case "dnsState":
+		if backend, ok := s.backend.(interface {
+			DNSState(context.Context, string) (json.RawMessage, error)
+		}); ok {
+			result, err := backend.DNSState(ctx, sid)
+			return result, true, err
+		}
+		return nil, true, fmt.Errorf("DNS state unavailable")
+	case "accessCredentials":
+		result, err := s.readAccessCredentials(ctx, sid)
+		return result, true, err
 	case "firewallCounters":
 		result, err := s.backend.FirewallCounters(ctx, sid)
 		return result, true, err
 	case "dhcpLeases":
 		result, err := s.dhcpLeases(ctx, sid)
 		return result, true, err
+	case "networkState":
+		if backend, ok := s.backend.(interface {
+			NetworkState(context.Context, string) (json.RawMessage, error)
+		}); ok {
+			result, err := backend.NetworkState(ctx, sid)
+			if err == nil {
+				result = s.networkTopology(ctx, result)
+			}
+			return result, true, err
+		}
+		return nil, true, fmt.Errorf("network state unavailable")
 	}
 	return nil, false, nil
 }

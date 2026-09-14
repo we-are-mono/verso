@@ -1,0 +1,25 @@
+{
+  "type": "table",
+  "style": "lined",
+  "dense": true,
+  "columns": [
+    {
+      "label": "When",
+      "kind": "runtime"
+    },
+    {
+      "label": "Verdict",
+      "kind": "pill"
+    },
+    {
+      "label": "Source",
+      "kind": "mono"
+    }
+  ],
+  "rows": [],
+  "empty_text": "Waiting for the first logged event…",
+  "stream": {
+    "source": "firewall-log",
+    "ring": 200
+  }
+}

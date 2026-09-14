@@ -13,76 +13,108 @@ import (
 func roster() []Device {
 	return []Device{
 		{
-			Name: "Gaming PC", Icon: "gamepad", MAC: "a4:83:e7:2b:19:0c",
+			Name: "Gaming PC", Maker: "Intel", Icon: "gamepad", MAC: "a4:83:e7:2b:19:0c",
 			DUID: "00:03:00:01:a4:83:e7:2b:19:0c",
 			V4:   "192.168.1.104", V6: "2001:db8::4f",
 			Interface: "br-lan", Zone: "lan", Presence: "online",
+			Network: "lan", NetworkCIDR: "192.168.1.0/24", Port: "lan1", ThisBrowser: true,
 			Addresses: []DeviceAddr{
 				{Addr: "192.168.1.104", Family: "IPv4", State: "reachable"},
 				{Addr: "2001:db8::4f", Family: "IPv6", State: "reachable"},
 			},
 			Connection: "lan1", Lease: "in 11h 12m",
-			Leased: true, ReserveHref: "/plugins/dnsdhcp/?reserve=a4%3A83%3Ae7%3A2b%3A19%3A0c",
+			Leased: true, // ReserveHref: "/plugins/dnsdhcp/?reserve=a4%3A83%3Ae7%3A2b%3A19%3A0c",
 		},
 		{
 			Name: "nas", MAC: "de:ad:be:ef:00:11", V4: "192.168.1.10",
 			Interface: "br-lan", Zone: "lan", Presence: "idle",
+			Network: "lan", NetworkCIDR: "192.168.1.0/24", Port: "lan3",
 			Addresses: []DeviceAddr{{Addr: "192.168.1.10", Family: "IPv4", State: "stale"}},
 			Lease:     "in 9h 02m", Leased: true, Reserved: true,
-			ReserveHref: "/plugins/dnsdhcp/?reserve=de%3Aad%3Abe%3Aef%3A00%3A11",
 		},
 		{
 			Name: "Unknown device", MAC: "9e:2f:11:c4:08:5b", V4: "192.168.20.44",
 			Interface: "br-lan.20", Zone: "guest", Presence: "offline",
+			Network: "guest", NetworkCIDR: "192.168.20.0/24",
 			Addresses: []DeviceAddr{{Addr: "192.168.20.44", Family: "IPv4", State: "stale"}},
 			Lease:     "No DHCP lease",
 		},
 	}
 }
 
-// TestRenderDevicesTable: the roster is one flat listing — name, interface with
-// its zone chip, MAC, address, presence — and every row opens the full story.
+// testActs stands in for the shell's slot vocabulary: the four device slots in
+// their designed order, with the first opening the panel and the rest inert —
+// the shape a board with only dnsdhcp installed would draw.
+func testActs(d Device) []TableRowAct {
+	titles := DeviceActTitles()
+	return []TableRowAct{
+		{Icon: "bookmark-plus", Title: titles["reserve"], Opens: true},
+		{Icon: "trash-2", Title: titles["unreserve"]},
+		{Icon: "ban", Title: titles["block"]},
+		{Icon: "sliders-horizontal", Title: titles["shape"]},
+	}
+}
+
+// TestRenderDevicesTable: the roster is one listing banded by network — name
+// and maker, the port it attaches through, address, MAC, whether it is here —
+// with its acts at the trailing edge and the full story behind each row.
 func TestRenderDevicesTable(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(roster()))
+	got := render(t, newRenderer(t), DevicesTable(roster(), testActs))
 	for _, want := range []string{
-		"Connected devices", "3 devices", // the header band and its count
-		"a4:83:e7:2b:19:0c", "192.168.1.104", "2001:db8::4f",
-		"br-lan", "br-lan.20", // the kernel segment
-		"M20 13c0 5-3.5 7.5", // zone icon → the shared firewall-zone chip
-		"Online", "Idle", "Offline",
-		"Details", "max-w-2xl", // the drawer opener and its wide panel
-		"in 11h 12m", "No DHCP lease", // drawer lease facts
-		"DUID", "00:03:00:01:a4:83:e7:2b:19:0c",
+		"Local network", "192.168.1.0/24", "1 online · 1 offline", // the lan band, and what it amounts to
+		"guest", "192.168.20.0/24", "0 online · 1 offline", // the guest band
+		"a4:83:e7:2b:19:0c", "192.168.1.104",
+		"lan1", "lan3", // the port a device attaches through
+		"Intel",                    // the maker, beside the name it qualifies
+		"reserved", "this browser", // the chips that qualify a name
+		"Online", "Offline",
+		"Reserve an address",                        // the act that leads somewhere
+		"Block internet",                            // one that is drawn and inert
+		"holding a lease now", "known, not present", // the legend for the marks
+		"Offline devices stay listed until their lease expires.",
+		`data-verso-entity-url="/entity/device/a4:83:e7:2b:19:0c"`, // the row points at the shell's panel
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("devices table missing %q", want)
 		}
 	}
+	// A device that is not here reads at the secondary step, all of it.
+	if !strings.Contains(got, "text-meta") {
+		t.Error("an absent device's row should read muted")
+	}
+	// Idle is not a third state in this listing: the kernel confirms a device
+	// now, or it does not.
+	if strings.Contains(got, ">Idle<") {
+		t.Error("the roster states two presences, not three")
+	}
 }
 
-// TestRenderDevicesDrawerReserveDoor: only a device holding an address it does
-// not already own is offered the reservation — a reserved one states the fact
-// instead, and a device with no lease has nothing to keep.
-func TestRenderDevicesDrawerReserveDoor(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(roster()))
-	if strings.Count(got, "Reserve its address") != 1 {
-		t.Errorf("exactly the leased, unreserved device should be offered a reservation:\n%s", got)
+// TestRenderDevicesRowsCarryNoPanel: a device's detail is the shell's panel,
+// assembled from every plugin with a say about a device — so the listing ships
+// each row's address and none of its contents. A page of thirty devices that
+// carried them would ask every contributing plugin thirty times before anyone
+// clicked anything.
+func TestRenderDevicesRowsCarryNoPanel(t *testing.T) {
+	got := render(t, newRenderer(t), DevicesTable(roster(), testActs))
+	for _, unwanted := range []string{
+		"2001:db8::4f",                // an address only the panel shows
+		"in 11h 12m", "No DHCP lease", // lease facts
+		"00:03:00:01:a4:83:e7:2b:19:0c", // the DUID
+		"Reserve its address",           // the old inline drawer's offer
+	} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("the listing ships %q, which belongs to the panel", unwanted)
+		}
 	}
-	if !strings.Contains(got, `href="/plugins/dnsdhcp/?reserve=a4%3A83%3Ae7%3A2b%3A19%3A0c"`) {
-		t.Errorf("the reserve door should lead to the DHCP page with the device's MAC:\n%s", got)
-	}
-	if !strings.Contains(got, "Address reserved for this device") {
-		t.Errorf("a reserved device should state its reservation")
-	}
-	if strings.Count(got, "Address reserved for this device") != 1 {
-		t.Errorf("only the reserved device should state a reservation")
+	if n := strings.Count(got, `data-verso-entity-url="/entity/device/`); n != 3 {
+		t.Errorf("every row should address its own panel, got %d:\n%s", n, got)
 	}
 }
 
 // TestRenderDevicesTableEmpty: a roster with nobody on it says so in its own
 // words rather than drawing column headings over nothing.
 func TestRenderDevicesTableEmpty(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(nil))
+	got := render(t, newRenderer(t), DevicesTable(nil, testActs))
 	if !strings.Contains(got, "Nothing has joined this network yet.") {
 		t.Errorf("empty roster missing its own empty text:\n%s", got)
 	}

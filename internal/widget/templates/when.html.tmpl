@@ -1,0 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<fieldset data-verso-when="{{.Name}}" data-verso-when-value="{{.Value}}"{{if not .Active}} hidden disabled{{end}} class="!mt-0 min-w-0 border-0 p-0">
+  {{range .Body}}{{.}}{{end}}
+</fieldset>

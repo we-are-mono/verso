@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -24,6 +25,13 @@ const HeaderUCI = "X-Verso-UCI"
 // HeaderUbus carries the brokered helper reads that ride beside the uci snapshot
 // (ADR-007), base64-encoded JSON keyed by the function that produced each result.
 const HeaderUbus = "X-Verso-Ubus"
+
+// HeaderDescribe marks a request as a describe call rather than a page render: the
+// plugin answers the shell's pending-change list with plain-language descriptions
+// of its own changes for the review drawer, not a widget envelope. A plugin
+// that implements no describe hook returns nothing, and the shell falls back to the
+// raw uci line — describe is always optional, the raw line always present.
+const HeaderDescribe = "X-Verso-Describe"
 
 // maxEnvelopeBytes bounds how much a plugin can return, so a misbehaving plugin
 // cannot exhaust shell memory. Widget schema for an admin page is tiny; a
@@ -67,22 +75,48 @@ type Ubus map[string]json.RawMessage
 // set by the transport so the gateway can propagate a validation failure to the
 // browser; it is not part of the plugin's JSON.
 type Envelope struct {
-	SchemaVersion int             `json:"schema_version"`
-	Title         string          `json:"title"`
-	Kicker        string          `json:"kicker"`        // optional eyebrow above the heading, e.g. "Styleguide"
-	KickerStatus  string          `json:"kicker_status"` // optional emerald completion/state label beside the kicker
-	Immediate     bool            `json:"immediate"`     // page actions are immediate; omit the clean staging capsule
-	Live          bool            `json:"live"`          // optional pulsing dot on the kicker
-	Subheading    string          `json:"subheading"`    // optional lede under the heading
-	Width         string          `json:"width"`         // page width preset: "narrow" | "normal" (default) | "wide"
-	Pages         []PageTab       `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
-	Action        *PageAction     `json:"action"`        // optional primary doorway for the whole page, rendered beside the heading
-	Banner        *Banner         `json:"banner"`        // optional full-width semantic notice beneath the subpage bar
-	Notice        *Notice         `json:"notice"`        // optional outcome flash for this render, shown in the shell's flash slot
-	Widget        json.RawMessage `json:"widget"`
-	Commit        []CommitOp      `json:"commit"`
-	Apply         []ApplyAction   `json:"apply"`
-	Status        int             `json:"-"`
+	Commands []ApplyAction `json:"commands,omitempty"`
+
+	SchemaVersion int         `json:"schema_version"`
+	Title         string      `json:"title"`
+	Kicker        string      `json:"kicker"`        // optional eyebrow above the heading, e.g. "System"
+	KickerStatus  string      `json:"kicker_status"` // optional emerald completion/state label beside the kicker
+	Immediate     bool        `json:"immediate"`     // page actions are immediate: nothing on the page stages
+	Live          bool        `json:"live"`          // optional pulsing dot on the kicker
+	Tone          string      `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
+	Ruled         bool        `json:"ruled"`         // the masthead ends in a hairline: the title and lede are ruled off from the page's first section
+	Subheading    string      `json:"subheading"`    // optional lede under the heading
+	Width         string      `json:"width"`         // page width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
+	Pages         []PageTab   `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
+	Action        *PageAction `json:"action"`        // optional primary doorway for the whole page, rendered beside the heading
+	// Back is an edit page's quiet way home: the shell renders it as a "← Cancel"
+	// back-link in the masthead, above the heading, so a page reached to edit one
+	// record can return to the listing it came from. It reuses the PageAction shape,
+	// but the plugin sets only Href and, if it wants other words, Label — the shell
+	// fixes the glyph to arrow-left and defaults the label to "Cancel", so any
+	// Back.Icon a plugin sends is ignored. Href is a route through the shell, like
+	// the action's.
+	Back   *PageAction     `json:"back"`
+	Banner *Banner         `json:"banner"` // optional full-width semantic notice beneath the subpage bar
+	Notice *Notice         `json:"notice"` // optional outcome flash for this render, shown in the shell's flash slot
+	Widget json.RawMessage `json:"widget"`
+	// CTA and Consequence are the commit row's words when this envelope is one
+	// tab of a shell-owned entity panel: the verb for applying it ("Reserve
+	// address"), and what applying it costs ("Applies immediately — dnsmasq
+	// reloads, no rollback needed"). They belong to the plugin because only the
+	// plugin knows; a tab that stages nothing sets neither and no commit row is
+	// drawn. Ignored on an ordinary page render, where the form carries its own.
+	CTA         string `json:"cta,omitempty"`
+	Consequence string `json:"consequence,omitempty"`
+	// State is where this tab's subject stands in one or two words — "blocked",
+	// "no limit", an address. It rides as a small chip beside the tab's label so
+	// the strip answers the question the panel was opened to ask before anything
+	// is clicked. Only the plugin knows it; a tab that has no state to state
+	// sets none and wears no chip.
+	State  string        `json:"state,omitempty"`
+	Commit []CommitOp    `json:"commit"`
+	Apply  []ApplyAction `json:"apply"`
+	Status int           `json:"-"`
 }
 
 // Banner is a page-level notice rendered by the shell at the navigation seam.
@@ -135,7 +169,7 @@ type PageTab struct {
 type CommitOp struct {
 	Config  string         `json:"config"`
 	Section string         `json:"section"`
-	Type    string         `json:"type,omitempty"`   // with an empty Section: create a new section of this type, then set Values on it
+	Type    string         `json:"type,omitempty"`   // create this type; Section optionally supplies a unique name
 	Delete  bool           `json:"delete,omitempty"` // remove Section outright; carries no Type and no Values
 	Values  map[string]any `json:"values"`           // option → value: a string, a list of strings (uci list option), or null to clear the option
 }
@@ -150,12 +184,59 @@ type ApplyAction struct {
 	Args map[string]string `json:"args"`
 }
 
+// DescribeChange is one coalesced uci change the shell asks a plugin to describe
+// in plain words for the review drawer. It is the net effect of a target,
+// flattened to named fields with a normalized Op so a plugin never reasons about a
+// raw tuple's length. Op is a small closed vocabulary:
+//
+//	set            Option set to Value on Section
+//	add-section    new Section, Option is its uci type
+//	remove-option  Option cleared from Section
+//	remove-section Section removed whole
+//	list-add       Value added to the list Option on Section
+//	list-del       Value removed from the list Option on Section
+type DescribeChange struct {
+	Config  string `json:"config"`
+	Op      string `json:"op"`
+	Section string `json:"section"`
+	Option  string `json:"option,omitempty"`
+	Value   string `json:"value,omitempty"`
+}
+
+// Description is one plain-language sentence a plugin returns for a run of its
+// pending changes ("Turned off the rule “Block Telnet”"). Covers names the
+// indices, into the change slice the shell sent, that this one sentence accounts
+// for — one sentence may fold several raw changes (a renamed object writes two
+// options). A change no description covers keeps its raw uci line; a plugin that
+// describes nothing leaves every change raw.
+type Description struct {
+	Plain  string `json:"plain"`
+	Covers []int  `json:"covers"`
+}
+
+// describeRequest is the JSON body the shell POSTs to a plugin's describe hook.
+type describeRequest struct {
+	Changes []DescribeChange `json:"changes"`
+}
+
+// describeResponse is the JSON a plugin's describe hook returns.
+type describeResponse struct {
+	Descriptions []Description `json:"descriptions"`
+}
+
 // Transport exchanges a request with a plugin and returns its schema envelope.
 // It is the injected seam (ADR-003): the shell depends on this interface, tests
 // supply a fake, production dials the unix socket. Implementations MUST bound
 // the call in time so a hung plugin cannot wedge the shell.
 type Transport interface {
 	Fetch(ctx context.Context, socket string, req Request) (*Envelope, error)
+	// Describe asks the plugin to render its pending changes in plain words. The
+	// snapshot is the plugin's own configs (as Fetch injects them), so it can
+	// resolve a section handle to the name a person would recognize. A plugin
+	// with no describe hook, or one that describes only some changes, is not an
+	// error: the shell falls back to the raw uci line for whatever comes back
+	// undescribed. Only a transport failure is an error.
+	Describe(ctx context.Context, socket string, changes []DescribeChange, snapshot UCI) ([]Description, error)
 }
 
 // SocketTransport speaks HTTP/1.1 to a plugin over its unix domain socket. It
@@ -177,16 +258,7 @@ func newSocketTransport(timeout time.Duration) *SocketTransport {
 // other status, a dial failure, a timeout, or a non-JSON body is an error — the
 // gateway turns that into a contained "plugin unavailable" state, never a 500.
 func (t *SocketTransport) Fetch(ctx context.Context, socket string, req Request) (*Envelope, error) {
-	client := &http.Client{
-		Timeout: t.timeout,
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, "unix", socket)
-			},
-			DisableKeepAlives: true,
-		},
-	}
+	client := t.dial(socket)
 
 	httpReq, err := t.buildRequest(ctx, req)
 	if err != nil {
@@ -216,6 +288,67 @@ func (t *SocketTransport) Fetch(ctx context.Context, socket string, req Request)
 	}
 	env.Status = resp.StatusCode
 	return &env, nil
+}
+
+// Describe POSTs the pending-change list to the plugin's describe hook and decodes
+// its plain-language answer. It carries the same uci snapshot header Fetch sends,
+// so the plugin can resolve a section handle to a recognizable name. A non-200, a
+// dial failure, a timeout, or a non-JSON body is a transport error; the caller then
+// falls back to the raw uci line for every change.
+func (t *SocketTransport) Describe(ctx context.Context, socket string, changes []DescribeChange, snapshot UCI) ([]Description, error) {
+	client := t.dial(socket)
+
+	body, err := json.Marshal(describeRequest{Changes: changes})
+	if err != nil {
+		return nil, fmt.Errorf("plugin: encode describe request: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://plugin/", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("plugin: build describe request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set(HeaderDescribe, "1")
+	if len(snapshot) > 0 {
+		snap, err := json.Marshal(snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("plugin: encode describe snapshot: %w", err)
+		}
+		httpReq.Header.Set(HeaderUCI, base64.StdEncoding.EncodeToString(snap))
+	}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("plugin: describe %s: %w", socket, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("plugin: describe %s returned status %d", socket, resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxEnvelopeBytes))
+	if err != nil {
+		return nil, fmt.Errorf("plugin: read describe %s: %w", socket, err)
+	}
+	var out describeResponse
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, fmt.Errorf("plugin: decode describe from %s: %w", socket, err)
+	}
+	return out.Descriptions, nil
+}
+
+// dial builds the per-call HTTP client that speaks to a plugin over its unix
+// socket — one dial per call, no pooling (see SocketTransport).
+func (t *SocketTransport) dial(socket string) *http.Client {
+	return &http.Client{
+		Timeout: t.timeout,
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socket)
+			},
+			DisableKeepAlives: true,
+		},
+	}
 }
 
 // buildRequest turns a plugin Request into an HTTP request. The host is a fixed

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// redirectsTable is the styleguide's Redirects listing in miniature: one
+// redirectsTable is the firewall's Redirects listing in miniature: one
 // zone-sourced DNAT to the router and one internet-facing port forward to a
 // device — every column kind exercised once.
 func redirectsTable() *Table {
@@ -54,7 +54,7 @@ func TestRenderTableKinds(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		">Protocol<", ">Hits<", // headers render
-		"font-semibold",              // header treatment is weight, not a fill
+		"text-xs font-medium tracking-[.08em] text-meta uppercase", // header treatment is the kicker, not a fill
 		"font-mono",                  // the port column is a machine string
 		"8443 → 443",                 // port rewrite verbatim
 		"tabular-nums",               // counters align
@@ -74,16 +74,47 @@ func TestRenderTableKinds(t *testing.T) {
 	}
 }
 
+// TestRenderTableFitColumns: fit columns squeeze to content through a colgroup
+// width, so a huddle of related fact columns (a version pair and its arrow)
+// sits together at the table's edge; a table with no fit columns draws no
+// colgroup at all.
+func TestRenderTableFitColumns(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{
+			{Label: "Package", Kind: "name"},
+			{Label: "Installed", Kind: "mono", Fit: true},
+			{Kind: "keyword", Fit: true},
+			{Label: "Available", Kind: "mono", Fit: true},
+		},
+		Rows: []TableRow{{Cells: []TableCell{{Text: "verso"}, {Text: "0.0.11"}, {Text: "→"}, {Text: "0.0.14"}}}},
+	})
+	if !strings.Contains(got, "<colgroup>") {
+		t.Errorf("fit columns must draw a colgroup:\n%s", got)
+	}
+	if strings.Count(got, `<col class="w-px">`) != 3 {
+		t.Errorf("each fit column carries the squeeze width:\n%s", got)
+	}
+	plain := render(t, r, redirectsTable())
+	if strings.Contains(plain, "<colgroup") {
+		t.Errorf("a table with no fit columns draws no colgroup:\n%s", plain)
+	}
+}
+
 func TestRenderEmphasisedMonoCell(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
 		Columns: []TableColumn{{Label: "Address", Kind: "mono"}},
 		Rows:    []TableRow{{Cells: []TableCell{{Text: "10.0.0.232", Emphasis: true}}}},
 	})
-	for _, want := range []string{"font-mono", "text-lg", "font-semibold", "10.0.0.232"} {
+	// Emphasis is size alone: a mono value is 500 at every size.
+	for _, want := range []string{"font-mono", "text-base", "font-medium", "10.0.0.232"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("emphasised mono cell missing %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "font-semibold") {
+		t.Errorf("emphasis must not thicken a mono value:\n%s", got)
 	}
 }
 
@@ -95,15 +126,20 @@ func TestRenderTableEndpoints(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		"guest", "10.0.0.30", "router",
-		"text-sky-700 dark:text-sky-400",    // router stays bright enough on dark surfaces
-		"font-mono text-base font-semibold", // device addresses use the standard mono table type
+		// Only the router fills its chip: it is the one end of a path that is
+		// this device rather than something out on the network, and the action
+		// colour is what says so.
+		"border-denim-line bg-denim-soft text-xs font-medium text-denim-deep",
+		// Every other end reads verbatim, in the mono reading size, inside the
+		// same box drawn transparent so the column lines up.
+		"border-transparent font-mono text-base font-medium tabular-nums text-ink",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("endpoints missing %q:\n%s", want, got)
 		}
 	}
 	if strings.Contains(got, "rounded-full border") {
-		t.Errorf("endpoints must not render as pill chips inside a table:\n%s", got)
+		t.Errorf("endpoints must not render as round pills inside a table:\n%s", got)
 	}
 	// The zone glyph (plain shield) and the device glyph (monitor) both appear.
 	if !strings.Contains(got, lucideIcons["zone"]) {
@@ -114,16 +150,27 @@ func TestRenderTableEndpoints(t *testing.T) {
 	}
 }
 
-func TestRenderPrimaryEndpointOneStepLarger(t *testing.T) {
+// TestRenderEndpointTypeIsFixedByKind: an endpoint reads the same wherever its
+// column happens to sit. What it is — a zone, an address, the router — decides
+// its type and its ground; where it is in the row decides nothing. Two listings
+// that put From in different places therefore still line up.
+func TestRenderEndpointTypeIsFixedByKind(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Table{
+	leading := render(t, r, &Table{
 		Columns: []TableColumn{{Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{{Cells: []TableCell{{Endpoints: []TableEndpoint{
 			{Kind: "zone", Label: "guest"},
 		}}}}},
 	})
-	if !strings.Contains(got, "whitespace-nowrap text-base font-semibold text-slate-900") {
-		t.Errorf("primary endpoint must use the larger identity treatment:\n%s", got)
+	trailing := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "From", Kind: "endpoint"}},
+		Rows: []TableRow{{Cells: []TableCell{{Text: "rule"}, {Endpoints: []TableEndpoint{
+			{Kind: "zone", Label: "guest"},
+		}}}}},
+	})
+	const want = "border-transparent font-mono text-base font-medium tabular-nums text-ink"
+	if !strings.Contains(leading, want) || !strings.Contains(trailing, want) {
+		t.Errorf("an endpoint's treatment must not depend on its column:\n%s\n%s", leading, trailing)
 	}
 }
 
@@ -140,7 +187,9 @@ func TestRenderReorderHandle(t *testing.T) {
 		"data-verso-reorder-table", `data-verso-reorder-config="firewall"`,
 		"data-verso-reorder-row", "data-verso-reorder-handle",
 		`aria-label="Reorder allow-dns"`, "cursor-grab", "active:cursor-grabbing",
-		lucideIcons["grip-vertical"], "text-base font-semibold text-slate-900",
+		// The grip rests at the step the eye passes over and darkens with the
+		// whole row, not only under its own pointer.
+		lucideIcons["list-chevrons-up-down"], "text-inert", "group-hover:text-glyph",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reorderable table missing %q:\n%s", want, got)
@@ -244,7 +293,7 @@ func TestRenderReorderColumnWithoutConfigDrawsNoHandle(t *testing.T) {
 			t.Errorf("table with no reorder_config still carries %q:\n%s", unwanted, got)
 		}
 	}
-	if !strings.Contains(got, `class="w-8 border-b border-slate-200`) {
+	if !strings.Contains(got, `class="w-6 border-b border-rule`) {
 		t.Errorf("the reorder column should keep its slot:\n%s", got)
 	}
 }
@@ -271,19 +320,35 @@ func TestDecodeTableReorderConfig(t *testing.T) {
 func TestRenderTableGroupHeader(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
-		Columns: []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{{ID: "allow-dns", Group: &TableGroup{
-			Label: "Guest → Router", Chain: "input_guest", Count: 3,
+			Key: "input_guest", Label: "Guest", To: "Router", Tally: "3 rules",
+			AddLabel: "Add rule to Guest → Router", AddHref: "/x?open=new&src=guest",
 		}, Cells: []TableCell{{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}}}}},
 	})
 	for _, want := range []string{
-		`colspan="2"`, "Guest → Router", "input_guest", "· 3 rules",
-		"verso-table-group bg-slate-50", "px-3 py-3",
-		"font-mono text-base font-semibold text-slate-500",
+		`colspan="2"`,
+		// The lane by its two ends, the arrow between them a glyph, then what
+		// it amounts to after a faint dot.
+		`text-base font-semibold text-body">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
+		`<span class="text-faint">·</span><span class="text-meta">3 rules</span>`,
+		// The band spans the row, so it is both first and last child and takes
+		// the wrapper's edge inset like every other cell. It stands 52px tall
+		// by its inset alone: a 28px line — the add glyph's box — 12px above
+		// and below, so a band with no add is the same height as one with.
+		"verso-table-group h-13 bg-quiet", `py-2 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
+		// The lane's add is a glyph at the band's right, its words on hover.
+		`aria-label="Add rule to Guest → Router"`, lucideIcons["plus"], ">Add rule to Guest → Router</span>",
+		// The handle is the drag's, not the band's.
+		`data-verso-reorder-group="input_guest"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("grouped table missing %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "font-mono text-base leading-5 font-medium text-meta") {
+		t.Errorf("a band with no verbatim string draws none:\n%s", got)
 	}
 }
 
@@ -304,11 +369,11 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"font-semibold text-slate-900",          // the identity column is emphasised ink, no icon
-		"bg-emerald-50 text-emerald-700",        // accept pill through the badge palette
-		"bg-amber-50 text-amber-700",            // reject pill
-		"bg-sky-50 text-sky-700",                // NAT carries the info accent
-		`<span class="text-slate-300">—</span>`, // empty pill cell is a faint dash
+		"font-semibold text-ink",              // the identity column is emphasised ink, no icon
+		"bg-green-soft text-green-deep",       // accept pill through the badge palette
+		"bg-marigold-soft text-marigold-deep", // reject pill
+		"bg-denim-soft text-denim-deep",       // NAT carries the info accent
+		`<span class="text-inert">—</span>`,   // empty pill cell is a faint dash
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
@@ -325,14 +390,17 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 			{Text: "br-lan.10", Chips: []TableChip{{Icon: "zone", Label: "family"}}},
 		}}},
 	})
-	if !strings.Contains(got, `<span class="font-mono text-base font-semibold text-slate-900">br-lan.10</span>`) {
+	if !strings.Contains(got, `font-mono text-base font-medium text-ink">br-lan.10</span>`) {
 		t.Errorf("referenced interface should render mono at the MAC column's size and weight:\n%s", got)
 	}
 	if !strings.Contains(got, ">family</span>") || !strings.Contains(got, lucideIcons["zone"]) {
 		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
 	}
-	if !strings.Contains(got, "dark:bg-slate-400/10 dark:text-slate-700 dark:ring-slate-400/20") {
-		t.Errorf("reference chips should carry the shared dark treatment:\n%s", got)
+	// One chip box everywhere — 14px in a 16px line, 2px padding, 1px hairline —
+	// so a reader never meets two heights of the same kind of thing.
+	if !strings.Contains(got, "px-1.5 py-0.5 leading-4") ||
+		!strings.Contains(got, "text-sm font-normal border-rule bg-quiet font-mono text-meta") {
+		t.Errorf("reference chips should carry the one chip treatment:\n%s", got)
 	}
 }
 
@@ -356,15 +424,19 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",     // the shared rotate-on-open affordance
 		lucideIcons["lock"], // the stock-rules padlock
-		`colspan="7"`, "border-t border-slate-200", "verso-table-seam-row",
+		`colspan="7"`, "border-t border-rule", "verso-table-seam-row",
 		"justify-start", "text-left", "group-hover:underline",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("seam missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "hover:bg-slate-50") {
-		t.Errorf("the table seam must not gain a hover background:\n%s", got)
+	// The fold's own control warms its ink, never its ground: a wash there would
+	// read as one more row of the listing rather than as the seam between two.
+	if seam := strings.Index(got, "verso-table-seam-control"); seam >= 0 {
+		if control := got[seam:]; strings.Contains(control[:min(len(control), 600)], "hover:bg-") {
+			t.Errorf("the table seam must not gain a hover background:\n%s", got)
+		}
 	}
 	if strings.Count(got, "<table") != 1 || strings.Count(got, "<thead>") != 1 {
 		t.Errorf("the seam rows must share the original table and column head:\n%s", got)
@@ -385,8 +457,8 @@ func TestRenderTableEmpty(t *testing.T) {
 	}
 	got := render(t, r, bare)
 	for _, want := range []string{
-		`colspan="2"`, "bg-slate-50", "text-center", "text-slate-500",
-		"border-b border-slate-200", // one hairline keeps the section's footprint
+		`colspan="2"`, "bg-quiet", "text-center", "text-meta",
+		"border-b border-rule", // one hairline keeps the section's footprint
 		">Nothing here yet<",
 	} {
 		if !strings.Contains(got, want) {
@@ -415,8 +487,8 @@ func TestRenderTableEmpty(t *testing.T) {
 }
 
 // TestRenderEmptyTableDoesNotDrag: there is no order to state over no rows, so an
-// empty listing draws neither handles nor the hidden order form the capsule would
-// otherwise count.
+// empty listing draws neither handles nor the hidden order form a drop would
+// otherwise post.
 func TestRenderEmptyTableDoesNotDrag(t *testing.T) {
 	r := newRenderer(t)
 	table := &Table{
@@ -428,9 +500,6 @@ func TestRenderEmptyTableDoesNotDrag(t *testing.T) {
 		if strings.Contains(got, absent) {
 			t.Errorf("empty listing still carries %q:\n%s", absent, got)
 		}
-	}
-	if n := PageFormCount(table); n != 0 {
-		t.Errorf("PageFormCount = %d over an empty listing, want 0", n)
 	}
 }
 
@@ -468,13 +537,17 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		`x-data="modal"`, `@click="show"`, ">Details<", // opens from the trailing link
-		"dark:text-sky-400 dark:hover:text-sky-300", // stays legible on dark surfaces
+		"text-denim transition-colors hover:text-denim-deep", // the action colour, like every other link
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
-		"dark:bg-black/60",
-		`verso-drawer-scrollbar absolute inset-y-0`,
-		`<header class="flex shrink-0 items-center justify-between px-6 py-4">`, // the shared drawer panel's header
-		"space-y-6 overflow-x-hidden px-6 pt-2 pb-6",
+		"bg-ink/18",
+		// The panel is a column that does not itself scroll: the nameplate and
+		// the tab strip stay put and only the body moves under them, so what
+		// the panel is about is still on screen at the bottom of a long form.
+		`absolute inset-y-0 right-0 flex w-full`,
+		"flex-col overflow-hidden border-l border-rule-strong",
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`, // the shared drawer panel's header
+		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -494,18 +567,18 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	}
 }
 
-func TestRenderTableRowDrawerCanHideVisibleTitle(t *testing.T) {
+func TestRenderTableRowDrawerKeepsLegacyHiddenTitleVisible(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h3 class="sr-only">Edit redirect</h3>`, "absolute top-5 right-5", "pt-6", `aria-label="Close"`} {
+	for _, want := range []string{`<h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h3>`, "bg-quiet px-8", "pt-7", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
-			t.Errorf("titleless drawer missing %q:\n%s", want, got)
+			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, `<h3 class="text-base font-medium text-slate-900">Edit redirect</h3>`) {
-		t.Errorf("hidden drawer title must not remain visible:\n%s", got)
+	if strings.Contains(got, `<h3 class="sr-only">Edit redirect</h3>`) {
+		t.Errorf("legacy hide_title must not remove the title band:\n%s", got)
 	}
 }
 
@@ -549,7 +622,7 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 	w, err := Decode([]byte(`{
 		"type": "table",
 		"columns": [{"label":"A"}],
-		"rows": [{"id":"r1","group":{"label":"WAN → Router","chain":"input_wan","count":2},"cells":[{"text":"1"}],
+		"rows": [{"id":"r1","group":{"label":"WAN","to":"Router","chain":"input_wan","tally":"2 rules"},"cells":[{"text":"1"}],
 			"drawer": {"title":"Edit","hide_title":true,"open":true,"children":[{"type":"text","markdown":"body"}]}}]
 	}`))
 	if err != nil {
@@ -559,7 +632,7 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.HideTitle || !tb.Rows[0].Drawer.Open || len(tb.Rows[0].Drawer.Children) != 1 {
 		t.Errorf("row drawer not decoded: %+v", tb.Rows[0].Drawer)
 	}
-	if tb.Rows[0].Group == nil || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Count != 2 {
+	if tb.Rows[0].Group == nil || tb.Rows[0].Group.To != "Router" || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Tally != "2 rules" {
 		t.Errorf("row group not decoded: %+v", tb.Rows[0].Group)
 	}
 	if _, err := Decode([]byte(`{"type":"table","columns":[],"rows":[{"cells":[],"drawer":{"title":"x","children":[{"type":"nope"}]}}]}`)); err == nil {
@@ -607,22 +680,29 @@ func TestRenderTableFlat(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, flatDevicesTable())
 	for _, want := range []string{
-		">Connected devices<",       // header band title
-		"12 online · 3 busy",        // header band detail
-		">View all<",                // header band action
-		`href="/devices"`,           // action link target
-		">Details<",                 // the trailing "more" affordance
-		`@click="show"`,             // the Details link opens the drawer
-		"border-b border-slate-200", // hairline rows
+		">Connected devices<",  // header band title
+		"12 online · 3 busy",   // header band detail
+		">View all<",           // header band action
+		`href="/devices"`,      // action link target
+		">Details<",            // the trailing "more" affordance
+		`@click="show"`,        // the Details link opens the drawer
+		"border-b border-rule", // hairline rows
+		// A cell is a 24px line inset 10px above and below — which is the
+		// 44px row, arrived at rather than stated.
+		"px-3.5 py-2 leading-6",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
 		}
 	}
+	// The row itself is inert — no pointer, no click — so its values stay
+	// selectable; the trailing "Details" button is the one thing that opens.
+	if strings.Contains(got, `<tr class="group transition-colors hover:bg-quiet/50 cursor-pointer`) {
+		t.Errorf("flat rows must not take the pointer:\n%s", got)
+	}
 	for _, absent := range []string{
-		"odd:bg-slate-50",      // stripes are retired in the flat style
+		"odd:bg-quiet",         // stripes are retired in the flat style
 		`@click="showFromRow"`, // the row itself is not clickable
-		"cursor-pointer",       // no pointer on inert rows
 		"<thead",               // no column labels → no header row
 	} {
 		if strings.Contains(got, absent) {
@@ -650,16 +730,39 @@ func TestRenderTableFlatLabels(t *testing.T) {
 	}
 }
 
-// TestRenderTableFlatCondensed: Condensed lowers the flat row padding.
-func TestRenderTableFlatCondensed(t *testing.T) {
+// TestRenderTableDense: every row is inset from the table's edges so a hover
+// tint and a band's fill, which run the full width, never touch a value. Dense
+// drops the cells' own inset for a listing carrying many columns — the columns'
+// widths space them — and keeps the edge inset; the rows keep their height
+// either way, because density here is horizontal.
+func TestRenderTableDense(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Table{
-		Style: "flat", Condensed: true,
-		Columns: []TableColumn{{Label: "Name", Kind: "name"}},
-		Rows:    []TableRow{{Cells: []TableCell{{Text: "SSH"}}}},
-	})
-	if !strings.Contains(got, "[&_td]:py-1.5") {
-		t.Errorf("condensed flat table should tighten row padding:\n%s", got)
+	columns := []TableColumn{{Label: "Name", Kind: "name"}}
+	rows := []TableRow{{Cells: []TableCell{{Text: "SSH"}}}}
+
+	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 py-2 leading-6"} {
+		if !strings.Contains(roomy, want) {
+			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
+		}
+	}
+	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2 leading-6 pr-4 align-middle`} {
+		if !strings.Contains(dense, want) {
+			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
+		}
+	}
+	if strings.Contains(dense, "px-3.5") {
+		t.Errorf("a dense listing's cells carry no inset of their own:\n%s", dense)
+	}
+	// Of-type, not child: a row carrying an entity panel's teleport template
+	// after its last cell would otherwise miss the inset on that cell.
+	if strings.Contains(roomy, ":last-child]") || strings.Contains(dense, ":last-child]") {
+		t.Error("the edge inset must not depend on the last cell being the row's last child")
+	}
+	// Density is horizontal: a dense listing keeps the row height of a roomy one.
+	if strings.Contains(dense, "[&_td]:py-1.5") {
+		t.Errorf("dense should not tighten the row's vertical rhythm:\n%s", dense)
 	}
 }
 
@@ -708,8 +811,8 @@ func TestRenderTableDisabledRowButton(t *testing.T) {
 	})
 	for _, want := range []string{
 		`<button type="button" disabled`, ">Edit</button>",
-		"inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium", // the shared row-button anatomy
-		"cursor-not-allowed", "text-slate-400", "opacity-70",
+		"inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold", // the shared small-button anatomy
+		"cursor-not-allowed", "text-faint", "opacity-70",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("disabled row button missing %q:\n%s", want, got)
@@ -717,7 +820,7 @@ func TestRenderTableDisabledRowButton(t *testing.T) {
 	}
 	for _, absent := range []string{
 		"<form", `@click="show"`, `name="_action"`, `x-data="modal"`,
-		"hover:border-slate-400", "active:translate-y-px", // an action nobody can take offers no feedback
+		"hover:border-denim", "active:translate-y-px", // an action nobody can take offers no feedback
 	} {
 		if strings.Contains(got, absent) {
 			t.Errorf("disabled row button must not contain %q:\n%s", absent, got)
@@ -740,12 +843,10 @@ func TestRenderTableDirectAction(t *testing.T) {
 	for _, want := range []string{
 		`method="post"`, `name="_action"`, `value="end-session:iphone"`,
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
-		"bg-red-100 text-red-600", `>End session<`, `>Cancel<`,
-		"text-slate-600 transition-colors hover:bg-slate-100", // link-style Cancel
-		"dark:border-gray-700 dark:bg-transparent dark:text-gray-300",
-		"dark:bg-red-800 dark:text-gray-100 dark:hover:bg-red-900 dark:active:bg-red-950",
+		"bg-crimson-soft text-crimson", `>End session<`, `>Cancel<`, // the alarm's mark, at full chroma on its own soft ground
+		"border-crimson bg-crimson text-white",       // the destructive act
+		"border-rule-strong bg-transparent text-ink", // Cancel is the ordinary quiet button
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
-		"dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:active:bg-gray-900",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("direct table action missing %q:\n%s", want, got)
@@ -790,5 +891,330 @@ func TestDecodeTable(t *testing.T) {
 	}
 	if edit := tb.Rows[0].Cells[3]; edit.Button != "Edit" || !edit.Disabled {
 		t.Errorf("disabled row button not decoded: %+v", edit)
+	}
+}
+
+// streamTable is the firewall's live activity listing in miniature: the
+// columns the verdict stream arrives under, declared live and empty, because a
+// stream table's rows come after the render.
+func streamTable() *Table {
+	return &Table{
+		Dense:  true,
+		Stream: &TableStream{Source: StreamSourceFirewallLog},
+		Columns: []TableColumn{
+			{Label: "When", Kind: "runtime"},
+			{Label: "Count", Kind: "num"},
+			{Label: "Verdict", Kind: "pill"},
+			{Label: "From", Kind: "endpoint"},
+			{Label: "Source", Kind: "mono"},
+			{Label: "To", Kind: "endpoint"},
+			{Label: "Protocol", Kind: "keyword"},
+			{Label: "Port", Kind: "mono"},
+			{Label: "Rule", Kind: "link"},
+		},
+		EmptyText: "Waiting for the first logged event…",
+	}
+}
+
+// TestRenderStreamTableWiresItsSource: a live listing states the source and the
+// ring on the table itself — that pair is the whole contract the client reads.
+func TestRenderStreamTableWiresItsSource(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, streamTable())
+	for _, want := range []string{
+		`data-verso-stream="firewall-log"`,
+		`data-verso-stream-ring="200"`, // the default ring, since none was declared
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("stream table missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestRenderStreamTableKeepsItsHeadWhileWaiting: an ordinary empty table drops
+// its column heads (chrome over no data); a live one keeps them, because they
+// name what is about to arrive and the first event must not shift the layout.
+// The quiet sentence row is marked so that first event can replace it.
+func TestRenderStreamTableKeepsItsHeadWhileWaiting(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, streamTable())
+	for _, want := range []string{
+		"<thead>", ">Verdict<", ">Rule<",
+		"data-verso-stream-empty",
+		"Waiting for the first logged event…",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("waiting stream table missing %q:\n%s", want, got)
+		}
+	}
+	// The same table without the stream is the ordinary empty listing.
+	still := streamTable()
+	still.Stream = nil
+	if got := render(t, r, still); strings.Contains(got, "<thead>") {
+		t.Errorf("a still empty table must drop its heads:\n%s", got)
+	}
+}
+
+// TestStreamTableDefaultsItsWaitingSentence: a live listing that declares no
+// empty text says it is waiting, not that there is nothing — the difference is
+// the whole honesty of a stream that has not seen its first event.
+func TestStreamTableDefaultsItsWaitingSentence(t *testing.T) {
+	r := newRenderer(t)
+	tb := streamTable()
+	tb.EmptyText = ""
+	got := render(t, r, tb)
+	if !strings.Contains(got, "Waiting for the first event…") {
+		t.Errorf("stream table missing its waiting sentence:\n%s", got)
+	}
+	if strings.Contains(got, "Nothing here yet") {
+		t.Errorf("a live listing must not claim there is nothing:\n%s", got)
+	}
+}
+
+// TestStreamRingIsClamped: the ring is a browser budget, so a plugin's number
+// is held to sane bounds rather than trusted.
+func TestStreamRingIsClamped(t *testing.T) {
+	for _, tc := range []struct{ declared, want int }{
+		{0, StreamRingDefault},
+		{-5, StreamRingDefault},
+		{1, StreamRingMin},
+		{50, 50},
+		{100000, StreamRingMax},
+	} {
+		s := &TableStream{Source: StreamSourceFirewallLog, Ring: tc.declared}
+		if got := s.ring(); got != tc.want {
+			t.Errorf("ring(%d) = %d, want %d", tc.declared, got, tc.want)
+		}
+	}
+}
+
+// TestUnknownStreamSourceRendersStill: the source set is closed. A table naming
+// a feed nobody wrote renders as an ordinary listing — no wiring, no dead
+// EventSource, and no head over an empty body either.
+func TestUnknownStreamSourceRendersStill(t *testing.T) {
+	r := newRenderer(t)
+	tb := streamTable()
+	tb.Stream = &TableStream{Source: "syslog"}
+	got := render(t, r, tb)
+	if strings.Contains(got, "data-verso-stream") {
+		t.Errorf("an unknown source must not be wired:\n%s", got)
+	}
+	if strings.Contains(got, "<thead>") {
+		t.Errorf("an unwired table is a still empty table:\n%s", got)
+	}
+	if !StreamSourceKnown(StreamSourceFirewallLog) {
+		t.Error("the firewall log is a source the shell serves")
+	}
+	if StreamSourceKnown("syslog") {
+		t.Error("syslog is not in the closed set")
+	}
+}
+
+// TestDecodeTableStream: the wire shape of a live listing round-trips.
+func TestDecodeTableStream(t *testing.T) {
+	w, err := Decode([]byte(`{
+		"type": "table",
+		"stream": {"source":"firewall-log","ring":120},
+		"columns": [{"label":"When","kind":"runtime"}],
+		"rows": []
+	}`))
+	if err != nil {
+		t.Fatalf("decode stream table: %v", err)
+	}
+	tb, ok := w.(*Table)
+	if !ok {
+		t.Fatalf("decoded %T, want *Table", w)
+	}
+	if tb.Stream == nil || tb.Stream.Source != StreamSourceFirewallLog || tb.Stream.Ring != 120 {
+		t.Fatalf("stream not decoded: %+v", tb.Stream)
+	}
+	if !tb.streaming() || tb.streamRing() != 120 {
+		t.Errorf("decoded stream table is not live: streaming=%v ring=%d", tb.streaming(), tb.streamRing())
+	}
+}
+
+// TestDecodeTableRowCarriesEveryField: a row's own fields survive the wire. The
+// decoder names each one explicitly, so a field it forgets is dropped in
+// silence — the row still renders, just without the thing the plugin asked for.
+// This is the pin that makes that failure loud.
+func TestDecodeTableRowCarriesEveryField(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
+		"id":"allow_ping","key":"rule:allow_ping","muted":true,
+		"tags":["ipv4","ipv6"],"facet":{"network":"guest"},
+		"entity":{"kind":"device","id":"aa:bb:cc:dd:ee:ff"},
+		"cells":[{"text":"Allow-Ping"}]}]}`))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	row := w.(*Table).Rows[0]
+	if row.ID != "allow_ping" || row.Key != "rule:allow_ping" || !row.Muted {
+		t.Errorf("identity or mute lost in decode: %#v", row)
+	}
+	if strings.Join(row.Tags, " ") != "ipv4 ipv6" {
+		t.Errorf("tags lost in decode: %#v", row.Tags)
+	}
+	if row.Facet["network"] != "guest" {
+		t.Errorf("facet lost in decode: %#v", row.Facet)
+	}
+	if row.Entity == nil || row.Entity.ID != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("entity lost in decode: %#v", row.Entity)
+	}
+	// And they reach the markup the bar narrows by.
+	got := render(t, newRenderer(t), w)
+	for _, want := range []string{`data-verso-tags="ipv4 ipv6"`, `data-verso-facet-network="guest"`, "text-meta"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("decoded row missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+// TestDecodeRowDrawerCarriesEveryField: the row drawer's own fields survive the
+// wire too, and they are decoded by a shape of their own nested inside the
+// row's — so it is a second list that has to stay complete, with the same
+// silent failure when it does not.
+func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
+		"id":"allow_ping","cells":[{"text":"Allow-Ping"}],
+		"drawer":{"title":"Allow-Ping","verbatim":true,"sub":"from the installer",
+			"chain":"input_wan","tag":"guest","size":"wide","open":true,
+			"verdict":{"type":"badge","text":"accept","variant":"success"},
+			"lede":["Rule 1 of 22","0 matches since boot"],
+			"tabs":[{"label":"Match","state":"5 conditions","href":"/x?tab=match","active":true},
+				{"label":"Action","state":"accept","href":"/x?tab=action"}],
+			"children":[{"type":"form","submit":"Save","fields":[{"type":"field","name":"n","label":"Name"}]}]}}]}`))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	d := w.(*Table).Rows[0].Drawer
+	if d == nil {
+		t.Fatal("drawer lost in decode")
+	}
+	if !d.Verbatim || d.Sub != "from the installer" || d.Chain != "input_wan" || d.Tag != "guest" {
+		t.Errorf("nameplate lost in decode: %#v", d)
+	}
+	if d.Verdict == nil || d.Verdict.Text != "accept" || d.Verdict.Variant != "success" {
+		t.Errorf("verdict lost in decode: %#v", d.Verdict)
+	}
+	if strings.Join(d.Lede, "|") != "Rule 1 of 22|0 matches since boot" {
+		t.Errorf("lede lost in decode: %#v", d.Lede)
+	}
+	if len(d.Tabs) != 2 || d.Tabs[0].State != "5 conditions" || !d.Tabs[0].Active || d.Tabs[1].Href != "/x?tab=action" {
+		t.Errorf("tabs lost in decode: %#v", d.Tabs)
+	}
+}
+
+// Legacy decoration fields must not reintroduce subtitles or badges into the
+// title band. Tabs and the form remain available below it.
+func TestRenderRowDrawerTitleBand(t *testing.T) {
+	r := newRenderer(t)
+	tbl := redirectsTable()
+	tbl.Rows[0].Drawer = &RowDrawer{
+		Title: "Allow-DHCP-Renew", Chain: "input_wan", Size: "wide",
+		Verdict: &Badge{Text: "accept", Variant: "success"},
+		Lede:    []string{"Rule 1 of 22", "0 matches since boot"},
+		Tabs: []DrawerTab{
+			{Label: "Match", State: "5 conditions", Href: "/plugins/firewall/?open=r1&tab=match", Active: true},
+			{Label: "Action", State: "accept", Href: "/plugins/firewall/?open=r1&tab=action"},
+		},
+		Children: []Widget{&Form{Submit: "Save", Fields: []Widget{&Field{Name: "name", Label: "Name"}}}},
+	}
+	got := render(t, r, tbl)
+	for _, want := range []string{
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`,
+		`<h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h3>`,
+		// The strip: the tab in force carries the action colour under it and in
+		// its chip; the rest stay quiet.
+		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8"`,
+		`aria-current="page"`,
+		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
+		"border-denim-line bg-denim-soft text-denim-deep\">5 conditions",
+		"border-rule bg-quiet text-meta\">accept",
+		// A tabbed panel's body starts at the canvas's 28px under the strip.
+		"overflow-y-auto px-8 pt-7 pb-8",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
+		}
+	}
+	for _, stale := range []string{"input_wan", "Rule 1 of 22", "0 matches since boot", "border-green-line bg-green-soft text-green-deep"} {
+		if strings.Contains(got, stale) {
+			t.Errorf("drawer retained legacy header decoration %q", stale)
+		}
+	}
+}
+
+// TestRenderRowDrawerWithoutTabs: a panel with one thing to say draws no strip —
+// a row of headings that decides nothing is chrome. The body starts at the
+// same inset below the title band as it would below a tab strip.
+func TestRenderRowDrawerWithoutTabs(t *testing.T) {
+	tbl := redirectsTable()
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Allow-DHCP-Renew", Children: []Widget{&Callout{Body: "Nothing to choose between."}}}
+	got := render(t, newRenderer(t), tbl)
+	if strings.Contains(got, `aria-label="Sections"`) {
+		t.Errorf("a panel with no tabs must draw no strip:\n%s", got)
+	}
+	if !strings.Contains(got, "overflow-y-auto px-8 pt-7 pb-8") {
+		t.Errorf("untabbed panel lost its own top:\n%s", got)
+	}
+}
+
+// TestRowWithItsOwnDoorDrawsNoDetailsLink: a listing whose rows already say how
+// they are entered — a linked name, the acts at the trailing edge — gets no
+// "Details" link and no extra column for one. The shell's affordance is for a
+// row that carries nothing; beside a row that carries its own it is a second
+// door next to a door, and the column it needs shifts every other cell along.
+// TestRowActPostsItselfAndTheRowNamesItsSection: an act that posts is a form
+// of its own, marked so the shell's script can post it where it stands, and the
+// row names the section it is so the answer's row can be matched back to it. A
+// row with no id names nothing, and an act that leads somewhere is a link.
+func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{
+			{ID: "allow_ping", Cells: []TableCell{{Text: "Allow-Ping"}, {Actions: []TableRowAct{
+				{Icon: "power-off", Title: "Disable", Name: "allow_ping", Value: "off"},
+				{Icon: "square-pen", Title: "Edit", Href: "/x?open=allow_ping"},
+			}}}},
+			{Cells: []TableCell{{Text: "Nameless"}, {}}},
+		},
+	})
+	for _, want := range []string{
+		`<tr class="group h-11 transition-colors hover:bg-quiet/50" data-verso-row-id="allow_ping">`,
+		`<form method="post" data-verso-act class="contents">`,
+		`<input type="hidden" name="allow_ping" value="off">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("row act missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "data-verso-act") != 1 {
+		t.Errorf("only the act that posts is marked:\n%s", got)
+	}
+	if strings.Count(got, "data-verso-row-id") != 1 {
+		t.Errorf("a row with no id names no section:\n%s", got)
+	}
+}
+
+func TestRowWithItsOwnDoorDrawsNoDetailsLink(t *testing.T) {
+	open := func(cells []TableCell) string {
+		return render(t, newRenderer(t), &Table{
+			Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Kind: "actions"}},
+			Rows: []TableRow{{ID: "r1", Cells: cells, Drawer: &RowDrawer{
+				Title: "Allow-Ping", Children: []Widget{&Callout{Body: "."}},
+			}}},
+		})
+	}
+	// The rule listing's shape: the name is the door and the row ends in acts.
+	withDoor := open([]TableCell{
+		{Text: "Allow-Ping", Href: "/plugins/firewall?open=r1"},
+		{Actions: []TableRowAct{{Icon: "square-pen", Title: "Edit", Href: "/plugins/firewall?open=r1"}}},
+	})
+	if strings.Contains(withDoor, ">Details<") {
+		t.Errorf("a row with its own door must not grow a Details link:\n%s", withDoor)
+	}
+	// A row carrying nothing but text still needs the shell to offer a way in.
+	bare := open([]TableCell{{Text: "htop"}, {Text: "3.5.1"}})
+	if !strings.Contains(bare, ">Details<") {
+		t.Errorf("a row with no door of its own still needs one:\n%s", bare)
 	}
 }

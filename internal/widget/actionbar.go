@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package widget
+
+import "io"
+
+// ActionBar is the row between a page's heading and its listing: which slice of
+// the listing you are looking at, how to narrow it, and the one thing to do
+// here. It is the listing's controls, not the page's — every part of it acts on
+// the rows below and nothing else, which is why it sits with them rather than in
+// the chrome.
+//
+// The parts read left to right in the order a person reaches for them. Tabs are
+// the coarse cut, each carrying its own count so the cut is priced before it is
+// made. Then, hard right, the fine cuts: a free-text Filter, a Select for the
+// one dimension a listing is always sliced along, and Action — the single
+// forward act, and the only denim on the bar.
+//
+// Everything here narrows what is already on screen, so the whole bar is
+// client-side: nothing it does is a request, and nothing it does can fail.
+type ActionBar struct {
+	Style  string       `json:"style,omitempty"` // "interfaces": topology legend and one optional problem filter
+	Tabs   []ActionTab  `json:"tabs,omitempty"`
+	Filter string       `json:"filter,omitempty"` // the search field's placeholder; empty draws no field
+	Select *ActionPick  `json:"select,omitempty"`
+	Action *TableAction `json:"action,omitempty"`
+	// Live is the label of the control that holds a running listing still — the
+	// one thing on this bar that is not a narrowing. It belongs here rather than
+	// beside the heading because what it governs is the rows: a spinner turns in
+	// it while events arrive, and pressing it is how they stop. The shell owns
+	// the rest of that behaviour (verso.js "stream").
+	Live string `json:"live,omitempty"`
+	// Entity makes the act open a panel rather than leave the page: making a new
+	// subject of the kind this listing holds is the same job as editing one, so
+	// it happens in the same place. The address is the panel's, and the Action's
+	// own Href is then only the fallback for a browser with no script.
+	Entity string `json:"entity,omitempty"`
+	// OpensPanel declares the act's own address a panel rather than a page, for a
+	// listing whose plugin renders that panel itself: making one is editing one
+	// that does not exist yet, so it opens in the same surface and the listing
+	// stays where it is. The Href remains what a browser with no script follows.
+	OpensPanel bool `json:"opens_panel,omitempty"`
+	// Drawer is that same panel where the plugin draws it itself rather than the
+	// shell assembling one: the act opens a blank object in the panel that edits
+	// an existing one, which is the whole point — making one and changing one are
+	// the same job and should not be two different screens. It carries its own
+	// Open, so an address that asks for a new object arrives with the panel
+	// already in front of the operator; the Action's Href stays the fallback.
+	Drawer *RowDrawer `json:"drawer,omitempty"`
+}
+
+// ActionTab is one coarse cut of the listing, and what taking it would leave.
+// Match is the value a row must carry under Key to survive the cut; an empty
+// Match is the tab that cuts nothing.
+type ActionTab struct {
+	Label  string `json:"label"`
+	Count  int    `json:"count"`
+	Match  string `json:"match,omitempty"`
+	Active bool   `json:"active,omitempty"`
+}
+
+// ActionPick is the bar's one select: the dimension a listing is always sliced
+// along (a devices listing by network, a log by severity). Key names the row
+// attribute its options match against.
+type ActionPick struct {
+	Key     string         `json:"key"`
+	Options []ActionOption `json:"options"`
+}
+
+// ActionOption is one value of that dimension. An empty Value is "all of them".
+type ActionOption struct {
+	Label string `json:"label"`
+	Value string `json:"value,omitempty"`
+}
+
+func (*ActionBar) isWidget() {}
+
+func (a *ActionBar) children() []Widget {
+	if a.Drawer == nil {
+		return nil
+	}
+	return a.Drawer.Children
+}
+
+func (a *ActionBar) prune(keep func(Widget) bool) {
+	if a.Drawer != nil {
+		a.Drawer.Children = pruneList(a.Drawer.Children, keep)
+	}
+}
+
+// actionBarView is the bar plus, where the act opens one, the rendered panel it
+// opens — the same panel model a row's drawer builds, so the two cannot drift.
+type actionBarView struct {
+	ActionBar
+	HasPanel bool
+	Open     bool
+	Panel    drawerPanelView
+}
+
+func (a *ActionBar) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	v := actionBarView{ActionBar: *a}
+	if v.Filter == "" {
+		v.Filter = r.tr("Filter · name, address, MAC")
+	}
+	if v.Action != nil {
+		act := *v.Action
+		act.Href = SafeHref(act.Href)
+		v.Action = &act
+	}
+	if a.Drawer != nil {
+		panel, err := r.renderPanel(a.Drawer, csrf, Flash{})
+		if err != nil {
+			return err
+		}
+		v.HasPanel, v.Open, v.Panel = true, a.Drawer.Open, panel
+	}
+	return r.execute(out, "actionbar.html.tmpl", v)
+}

@@ -26,6 +26,50 @@ func firewallDefaults() *Settings {
 	}}
 }
 
+// TestInlineValueField: a Value+Name row marked Inline renders the manage-page
+// control — a plain input (no read-mode, no edit/confirm icons) that stages on
+// blur. Verticality: label + option chip on one line, the field below at a
+// compact width, help under that; the datatype rides for client validation and an
+// error slot sits beneath the field.
+func TestInlineValueField(t *testing.T) {
+	s := &Settings{Items: []SettingsItem{
+		{Title: "Hostname", Desc: "Used on the network.", Code: "hostname", Value: "mono-gateway",
+			Name: "hostname", Inline: true, Datatype: "hostname"},
+	}}
+	got := render(t, newRenderer(t), s)
+	for _, want := range []string{
+		"data-verso-inline-field",
+		`for="hostname" class="block text-sm font-semibold text-ink"`, // matches ordinary field labels
+		`id="hostname" type="text" name="hostname" value="mono-gateway"`,
+		"data-verso-inline-input",
+		`data-verso-datatype="hostname"`, // the client validates by this on blur
+		"data-verso-inline-error",        // the error slot lives beneath the field
+		"aria-invalid:border-crimson",    // the error treatment is ready on the input
+		"mt-2 max-w-md",                  // compact width, on its own line below the label
+		"font-mono text-base",            // same size as an ordinary field input
+		`<p class="mt-1.5 text-sm leading-snug text-body">Used on the network.</p>`, // help follows the field
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("inline field missing %q\n%s", want, got)
+		}
+	}
+	// The read-mode + edit/confirm-icon markup is retired: a plain field stages on
+	// blur, so none of it should render.
+	for _, gone := range []string{"data-verso-inline-input readonly", "data-verso-inline-edit",
+		"data-verso-inline-save", "read-only:border-transparent"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("inline field must not carry retired read-mode markup %q", gone)
+		}
+	}
+	// A plain Value+Name (no Inline) stays the always-open form field, unchanged.
+	plain := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
+		{Title: "Lease", Value: "12h", Name: "leasetime"},
+	}})
+	if strings.Contains(plain, "data-verso-inline-field") {
+		t.Error("a non-inline Value+Name must not become an inline-commit field")
+	}
+}
+
 // TestRenderSettings: each row shows its plain name, muted description, mono
 // code chip, and exactly one kind of trailing state — pills or the shared
 // switch, in the state given.
@@ -35,11 +79,11 @@ func TestRenderSettings(t *testing.T) {
 	for _, want := range []string{
 		"Default policies", "What happens to traffic no zone claims.",
 		"in: reject", "out: accept", // policy pills render through the badge
-		"bg-amber-50",               // reject carries the warning palette
-		"synflood_protect",          // the underlying option is on the row
-		"font-mono",                 // …as a mono code chip
-		`type="checkbox"`,           // toggle rows carry the shared switch
-		"border-b border-slate-200", // bare rows divide with hairlines (stripes retired)
+		"bg-marigold-soft",     // reject carries the warning palette
+		"synflood_protect",     // the underlying option is on the row
+		"font-mono",            // …as a mono code chip
+		`type="checkbox"`,      // toggle rows carry the shared switch
+		"border-b border-rule", // bare rows divide with hairlines (stripes retired)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
@@ -81,15 +125,15 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 			t.Errorf("settings missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Count(got, "rounded-2xl") != 1 {
-		t.Errorf("the seam must not add a second card:\n%s", got)
+	if strings.Count(got, "rounded-xs border border-rule bg-ground") != 0 {
+		t.Errorf("settings must not be wrapped in artifact cards:\n%s", got)
 	}
 }
 
 // TestRenderSettingsTracksItsControls: a row that carries a control declares the
-// change-tracking hooks, so a settings block inside a page form is counted,
-// reviewed, and submitted by the staged-changes capsule like any other field. A
-// row that only reads declares none.
+// change-tracking hooks, so a settings block inside a page form is submitted
+// with the form and staged like any other field. A row that only reads
+// declares none.
 func TestRenderSettingsTracksItsControls(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Settings{Items: []SettingsItem{
@@ -119,7 +163,7 @@ func TestRenderSettingsBare(t *testing.T) {
 		Items: []SettingsItem{{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"}},
 		Seam:  &SettingsSeam{Summary: "1 more option", Items: []SettingsItem{{Title: "Minimum TTL", Code: "min_cache_ttl"}}},
 	})
-	for _, bad := range []string{"rounded-2xl", " shadow-sm", "-mx-5", "px-5"} {
+	for _, bad := range []string{"rounded-xs border border-rule bg-ground", " shadow-sm", "-mx-5", "px-5"} {
 		if strings.Contains(got, bad) {
 			t.Errorf("bare settings must not carry card chrome %q:\n%s", bad, got)
 		}
@@ -143,7 +187,7 @@ func TestRenderSettingsSeamMinimum(t *testing.T) {
 	)
 	for _, want := range []string{
 		"Skip /etc/hosts", "Minimum TTL", // the rows are on the card, not behind it
-		`data-verso-change-name="nohosts"`,       // …and still post through the capsule
+		`data-verso-change-name="nohosts"`,       // …and still post with the page form
 		`data-verso-change-name="min_cache_ttl"`, // …in-place fields included
 	} {
 		if !strings.Contains(short, want) {

@@ -355,7 +355,7 @@ apk-i18n-publish: apk-i18n
 # their own misses (i18n.Bundle.Recorded), so the report is exact for
 # everything the crawl renders; i18n-pot below stays the quick partial grep.
 i18n-audit:
-	@VERSO_I18N_AUDIT=1 go test ./internal/server -run TestI18nAudit -count=1 -v | grep -vE '^(=== RUN|--- PASS|PASS|ok )'
+	@VERSO_I18N_AUDIT=1 go test ./internal/server -run TestI18nAudit -count=1 -v
 
 i18n-pot:
 	@{ grep -rhoE '\{\{[ ]*t "([^"]+)"' internal --include='*.tmpl' | sed -E 's/^\{\{[ ]*t "//; s/"$$//'; \

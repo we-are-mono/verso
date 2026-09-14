@@ -3,6 +3,8 @@
   "name": "ntp_enabled",
   "label": "Set the time automatically",
   "checked": true,
+  "key": "ntp.enabled",
+  "help": "Off means the clock is set by hand.",
   "fields": [
     {
       "type": "text",

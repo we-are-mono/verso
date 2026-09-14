@@ -7,11 +7,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +27,7 @@ type Authenticator interface {
 }
 
 func isPublicPath(p string) bool {
-	return p == "/login" || p == "/healthz" || strings.HasPrefix(p, "/assets/")
+	return p == "/login" || p == "/login/status" || p == "/healthz" || strings.HasPrefix(p, "/assets/")
 }
 
 // requireAuth redirects unauthenticated requests to the login page; public paths
@@ -50,7 +52,9 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			http.Error(w, "invalid CSRF token", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(w, r)
+		// A page can read the uplink's live state in several sections; a
+		// per-request memo shares one backend read so they cannot disagree.
+		next.ServeHTTP(w, withWANMemo(r))
 	})
 }
 
@@ -72,6 +76,9 @@ func (s *Server) currentSession(r *http.Request) (session, bool) {
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil {
 		return session{}, false
+	}
+	if r.Method == http.MethodGet && r.Header.Get("X-Verso-Refresh") == "1" {
+		return s.sessions.peek(cookie.Value)
 	}
 	return s.sessions.get(cookie.Value)
 }
@@ -133,6 +140,9 @@ func (s *Server) flash(r *http.Request, variant, message string) {
 
 // takeFlash returns and clears the request session's flash.
 func (s *Server) takeFlash(r *http.Request) (variant, message string) {
+	if r.Method == http.MethodGet && r.Header.Get("X-Verso-Refresh") == "1" {
+		return "", ""
+	}
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil {
 		return "", ""
@@ -189,29 +199,106 @@ func validCSRF(r *http.Request, want string) bool {
 	return subtle.ConstantTimeCompare([]byte(r.PostForm.Get("_csrf")), []byte(want)) == 1
 }
 
+// loginData is everything the router is willing to say before it knows who is
+// asking. The rule that picks what belongs here: a fact the box can state about
+// itself or about the connection in front of it — its name, its release, how
+// long it has been up, and the visitor's own address and subnet. No network
+// inventory or configuration crosses this boundary, and no rpcd session is used.
 type loginData struct {
-	Lang     string // negotiated language for <html lang>, "en" when English
-	CSS      template.CSS
-	Error    string
-	Notice   string // a calm statement about how the visitor got here, in the info tone
-	Version  string // the deployed Verso build ("dev" when un-stamped), shown in the hero so the running version is verifiable without signing in
-	Firmware string // the OpenWrt release + revision, shown quietly in the hero
+	Lang           string // negotiated language for <html lang>, "en" when English
+	CSS            template.CSS
+	Error          string
+	Notice         string // a statement about how the visitor got here, shown in a marigold notice
+	Version        string // the deployed Verso build ("dev" when un-stamped), so the running version is verifiable without signing in
+	Firmware       string // the distribution name and release
+	Hostname       string // this board's name — the nameplate the whole rail hangs from
+	Maker          string // who built the board
+	Model          string // what they call it
+	Status         loginStatus
+	Username       string
+	VisitorIP      string
+	VisitorNetwork string // only the directly connected subnet containing this visitor
+	Attempts       string // failed sign-ins standing against this visitor's address
+	AttemptPolicy  string // the actual limiter policy, translated independently of the count
 }
 
-// loginFirmware reads the OpenWrt release + revision from /etc/openwrt_release
-// (DISTRIB_DESCRIPTION, e.g. "OpenWrt 25.12.4 r32933-4ccb782af7") for the hero
-// footer. Empty on any trouble, so the page falls back to a plain "OpenWrt".
+// loginFirmware is the release this board runs, named and versioned: "OpenWrt
+// 25.12.4". Empty on any trouble, so the page falls back to a plain "OpenWrt".
 func loginFirmware() string {
 	data, err := os.ReadFile("/etc/openwrt_release")
 	if err != nil {
 		return ""
 	}
+	return releaseName(data)
+}
+
+// releaseName composes the distribution's name and version out of the two keys
+// that carry them apart, so leaving the build revision off is a matter of not
+// reading it rather than of cutting a formatted string back down. The revision
+// identifies a build for a bug report; it tells a visitor nothing here. A build
+// that names no release keeps whatever its description says, revision and all,
+// rather than going silent about what it is running.
+func releaseName(data []byte) string {
+	release := map[string]string{}
 	for _, line := range strings.Split(string(data), "\n") {
-		if v, ok := strings.CutPrefix(line, "DISTRIB_DESCRIPTION="); ok {
-			return strings.Trim(strings.TrimSpace(v), "'\"")
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
 		}
+		release[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), "'\"")
 	}
-	return ""
+	version := release["DISTRIB_RELEASE"]
+	if version == "" {
+		return release["DISTRIB_DESCRIPTION"]
+	}
+	name := release["DISTRIB_ID"]
+	if name == "" {
+		name = "OpenWrt"
+	}
+	return name + " " + version
+}
+
+// loginUptime is how long this board has been running, in seconds. Zero on any
+// trouble, which the page words as a fresh boot rather than hiding the row.
+func loginUptime() int64 {
+	data, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0
+	}
+	return procUptimeSeconds(data)
+}
+
+// procUptimeSeconds takes the first field of /proc/uptime — seconds since boot,
+// with a fractional part — and truncates it.
+func procUptimeSeconds(data []byte) int64 {
+	first, _, _ := strings.Cut(strings.TrimSpace(string(data)), " ")
+	secs, err := strconv.ParseFloat(first, 64)
+	if err != nil || secs < 0 {
+		return 0
+	}
+	return int64(secs)
+}
+
+// attemptsNote states the failures standing against the visitor's address, so a
+// run of guesses against this router is visible before anyone signs in. Empty
+// at zero: a clean address says nothing rather than reassuring at every visit.
+func attemptsNote(tr func(string) string, failures int) string {
+	if failures <= 0 {
+		return ""
+	}
+	// Catalogs use source-string keys. Spell out the small counts so a
+	// translation can express dual and paucal forms as well as singular/plural.
+	switch failures {
+	case 1:
+		return tr("1 failed sign-in from your address.")
+	case 2:
+		return tr("2 failed sign-ins from your address.")
+	case 3:
+		return tr("3 failed sign-ins from your address.")
+	case 4:
+		return tr("4 failed sign-ins from your address.")
+	}
+	return fmt.Sprintf(tr("%d failed sign-ins from your address."), failures)
 }
 
 // expiryNotice is the login page's statement for a visitor the middleware sent
@@ -298,10 +385,21 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	// like any other request; the error copy is localized here at its one exit.
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	hostname, _ := os.Hostname()
+	hw := board()
+	username := "root"
+	if r.PostForm != nil {
+		username = r.PostForm.Get("username")
+	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), CSS: s.css, Error: tr(errMsg), Notice: tr(expiryNotice(r)),
+		Lang: langAttr(lang), CSS: s.currentCSS(), Error: tr(errMsg), Notice: tr(expiryNotice(r)),
 		Version: version.Version, Firmware: loginFirmware(),
+		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
+		Status: s.readLoginStatus(tr), Username: username,
+		VisitorIP: clientIP(r), VisitorNetwork: visitorNetwork(clientIP(r)),
+		Attempts:      attemptsNote(tr, s.loginLimiter.failures(clientIP(r))),
+		AttemptPolicy: fmt.Sprintf(tr("After %d, this address waits a minute."), loginMaxFailures),
 	}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return

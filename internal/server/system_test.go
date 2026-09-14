@@ -43,8 +43,10 @@ func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	for _, want := range []string{
 		"System", "— General", `href="/system/access"`, `href="/system/packages"`,
 		`href="/system/services"`, `href="/system/maintenance"`,
-		`data-verso-page-form`, `name="hostname"`, `id="verso-capsule-close"`,
-		`aria-label="Close change review"`, `verso-capsule-review`, `aria-hidden="true"`, `bottom-full`, `px-8`,
+		`data-verso-page-form`, `name="hostname"`,
+		// The form carries its own submit: the shell's, since General declares
+		// none — pressing it stages, and the drawer applies.
+		">Save changes</button>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("System General missing %q", want)
@@ -52,12 +54,6 @@ func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	}
 	if tr.lastSocket != "/var/run/verso/system.sock" || tr.lastReq.Path != "" {
 		t.Errorf("plugin request = socket %q path %q", tr.lastSocket, tr.lastReq.Path)
-	}
-	if !strings.Contains(body, `id="verso-capsule-apply" disabled`) {
-		t.Error("General's Save & Apply must remain disabled until the form differs from its rendered state")
-	}
-	if strings.Contains(body, `-bottom-2 left-1/2`) {
-		t.Error("General must use the attached review tray, not a tooltip pointer")
 	}
 }
 
@@ -83,13 +79,19 @@ func TestStoppedSystemPluginWithdrawsGeneralRegistration(t *testing.T) {
 	}
 }
 
-func TestWholePageContentCarriesEntranceAnimation(t *testing.T) {
+// The page appears without an entrance animation. Its content measure still
+// sits inside the frame's padding.
+func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	s := newServer(t, fakeBackend{})
-	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, `class="verso-page-enter max-w-`) {
-		t.Error("title, content, and capsule must share the page entrance wrapper")
+	whole := get(t, s, "/").Body.String()
+	if strings.Contains(whole, "verso-page-enter") {
+		t.Fatal("page loads must not carry an entrance animation")
 	}
-	if strings.Contains(body, `<div class="verso-page-enter">`) {
-		t.Error("the body alone must not carry the entrance animation")
+	body := whole[strings.LastIndex(whole, "</style>"):]
+	if !strings.Contains(body, `<div class="px-4 pt-9 pb-16 sm:px-6 md:px-11">`) {
+		t.Error("the page's air is the frame's, outside the content measure")
+	}
+	if !strings.Contains(body, `<div class="max-w-`) {
+		t.Error("the content measure must sit inside that air")
 	}
 }

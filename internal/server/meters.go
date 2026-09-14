@@ -25,7 +25,7 @@ import (
 // statSource is the local-machine seam the meters read — CPU busy share and
 // root-filesystem fullness; sysstat.Sampler is the real one, tests fake it.
 type statSource interface {
-	CPUPercent() (int, error)
+	CPUPercent() (float64, error)
 	Root() (sysstat.Storage, error)
 }
 
@@ -45,11 +45,11 @@ type meterReading struct {
 }
 
 // systemMeters assembles the System panel's four bar gauges — load, CPU,
-// memory, storage — as live readings with a fixed decorative accent each (not a
-// health band). Memory and storage read as a percentage full; load carries its
+// memory, storage — as live readings with resource-specific health bands.
+// Memory and storage read as a percentage full; load carries its
 // raw figure with the bar showing its share of the cores. A failed source is
 // omitted (and logged) rather than zeroed.
-func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
+func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) string) []meterReading {
 	out := make([]meterReading, 0, 4)
 	cores := runtime.NumCPU()
 
@@ -62,8 +62,8 @@ func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
 			fill = int(math.Round(float64(si.Load[0]) / 65536.0 / float64(cores) * 100))
 		}
 		out = append(out, meterReading{
-			Name: "sys-load", Label: "LOAD", Value: formatLoad(si.Load[0]),
-			Fill: clampPct(fill), Detail: "1-minute average", Role: "sky",
+			Name: "sys-load", Label: tr("Load"), Value: formatLoad(si.Load[0]),
+			Fill: clampPct(fill), Detail: fmt.Sprintf(tr("1-minute average · %d threads"), cores), Band: systemMeterBand(fill, 60, 85),
 		})
 	}
 
@@ -71,8 +71,8 @@ func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
 		log.Printf("verso: system meters: cpu unavailable: %v", err)
 	} else {
 		out = append(out, meterReading{
-			Name: "sys-cpu", Label: "CPU", Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: fmt.Sprintf("%d cores", cores), Role: "violet",
+			Name: "sys-cpu", Label: tr("CPU"), Value: strings.TrimSuffix(strconv.FormatFloat(pct, 'f', 1, 64), ".0"), Unit: "%",
+			Fill: clampPct(int(math.Round(pct))), Detail: fmt.Sprintf(tr("%d threads"), cores), Band: systemMeterBand(int(pct), 70, 90),
 		})
 	}
 
@@ -80,8 +80,8 @@ func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
 		used := si.Memory.Total - si.Memory.Available
 		pct := int(used * 100 / si.Memory.Total)
 		out = append(out, meterReading{
-			Name: "sys-memory", Label: "MEMORY", Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: "of " + gb(si.Memory.Total) + " GB", Role: "emerald",
+			Name: "sys-memory", Label: tr("Memory"), Value: strconv.Itoa(pct), Unit: "%",
+			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s GiB"), gb(used), gb(si.Memory.Total)), Band: systemMeterBand(pct, 75, 90),
 		})
 	}
 
@@ -90,11 +90,22 @@ func (s *Server) systemMeters(ctx context.Context, sid string) []meterReading {
 	} else if total := st.Used + st.Free; total > 0 {
 		pct := int(st.Used * 100 / total)
 		out = append(out, meterReading{
-			Name: "sys-storage", Label: "STORAGE", Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: "of " + gb(total) + " GB", Role: "amber",
+			Name: "sys-storage", Label: tr("Storage"), Value: strconv.Itoa(pct), Unit: "%",
+			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s GiB"), gb(st.Used), gb(total)), Band: systemMeterBand(pct, 80, 90),
 		})
 	}
 	return out
+}
+
+// Each gauge grades its own resource, using the design's warning/critical limits.
+func systemMeterBand(fill, warning, critical int) string {
+	if fill >= critical {
+		return "danger"
+	}
+	if fill >= warning {
+		return "warning"
+	}
+	return "success"
 }
 
 func clampPct(p int) int {

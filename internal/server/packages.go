@@ -5,23 +5,28 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // The package surface (ADR-011): shell-owned, because installing a package
-// mutates the set of things the shell trusts. Two faces behind one local mode
-// switch: Installed — the inventory of what is on disk — and Available — the
-// configured feeds, searched server-side. A package is a group of files; what
+// mutates the set of things the shell trusts. Installed and Upgradable filter
+// the inventory; All pages through the cached index. Install searches in a
+// drawer. A package is a group of files; what
 // those files RUN lives on the Services page, which answers the other
 // question. Package operations ride the helper's apk verbs; nothing here is a
 // uci write, so none of it stages (ADR-010 boundary).
@@ -31,42 +36,28 @@ func (s *Server) handlePackagesPage(w http.ResponseWriter, r *http.Request) {
 	s.renderPackages(w, r, "")
 }
 
-// handlePackagesAction is the inventory's one act: removing a package (its
-// drawer's Remove). Success flashes and redirects (PRG); the manifest set is
-// rescanned in case a plugin package left (ADR-011 §7).
+// handlePackagesAction shares the exact-name install, remove and upgrade path.
 func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
-	_, t := s.localize(r)
-	tr := translatorOrIdentity(t)
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
-		return
-	}
-	name := r.PostForm.Get("package")
-	if name == "" {
-		http.Error(w, "no package in form", http.StatusBadRequest)
-		return
-	}
-	if !pkgNameOK(name) {
-		http.Error(w, "bad package name", http.StatusBadRequest)
-		return
-	}
-	if feedRefresh.running() {
-		s.flash(r, "info", tr("The feeds are being refreshed — try again in a moment."))
-		http.Redirect(w, r, "/system/packages", http.StatusSeeOther)
-		return
-	}
-	if err := s.backend.PkgRemove(r.Context(), s.sessionSID(r), name); err != nil {
-		s.renderPackages(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
-		return
-	}
-	s.rescanManifests()
-	s.flash(r, "success", fmt.Sprintf(tr("%s removed."), name))
-	http.Redirect(w, r, "/system/packages", http.StatusSeeOther)
+	s.handleDiscoverAction(w, r)
 }
 
 // renderPackages composes the inventory: the full installed set, the lens
 // keeping 100+ rows one page. errMsg, when set, leads as a danger callout.
 func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg string) {
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	installed, total, count := 0, 0, 0
+	all := r.URL.Query().Get("tab") == "all"
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(q) > 128 {
+		http.Error(w, "bad query", http.StatusBadRequest)
+		return
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if offset < 0 || offset > 100000 {
+		http.Error(w, "bad offset", http.StatusBadRequest)
+		return
+	}
 	children := []widget.Widget{}
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
@@ -75,55 +66,114 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, refreshingInstead(
 			"The list returns as soon as the refresh finishes — reload the page in a moment."))
 	} else {
-		pkgs, pkgErr := s.backend.PkgInstalled(r.Context(), s.sessionSID(r))
+		var pkgs []openwrt.Package
+		var pkgErr error
+		if all {
+			var page openwrt.PackagePage
+			page, pkgErr = s.backend.PkgBrowse(r.Context(), s.sessionSID(r), q, offset)
+			pkgs, installed, total, count = page.Packages, page.Installed, page.Total, page.Count
+		} else {
+			pkgs, pkgErr = s.backend.PkgInstalled(r.Context(), s.sessionSID(r))
+			installed = len(pkgs)
+		}
 		if pkgErr != nil {
 			children = append(children, &widget.Callout{Variant: "warning", Title: "Package list unavailable",
-				Body: fmt.Sprintf("The package database could not be read (%v).", pkgErr)})
+				Body: fmt.Sprintf(tr("The package database could not be read (%v)."), pkgErr)})
 		}
-		children = append(children,
-			&widget.Filter{Placeholder: "Filter — package, feed, version…"},
-			packagesTable(pkgs),
-		)
+		var table *widget.Table
+		if all {
+			table = packageListingTable(pkgs)
+		} else {
+			table = packagesTable(pkgs).(*widget.Table)
+		}
+		truth, _ := s.updateTruth()
+		upgrades := map[string]string{}
+		for _, p := range truth.Packages {
+			upgrades[p.Name] = p.Available
+		}
+		for i := range table.Rows {
+			row := &table.Rows[i]
+			if version := upgrades[row.ID]; version != "" && (!all || pkgs[i].Installed) {
+				row.Tags = []string{"upgradable"}
+				row.Cells[1].Dot, row.Cells[1].Variant = true, "warning"
+				row.Cells[4].Actions = append([]widget.TableRowAct{{Icon: "upload", Title: "Upgrade", Opens: true}}, row.Cells[4].Actions...)
+				packageUpgradeDrawer(row.Drawer, row.ID, version)
+			}
+		}
+		children = append(children, table)
 	}
 
 	var body strings.Builder
-	lang, t := s.localize(r)
 	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	// Everything here is immediate (ADR-011 §8), so the staged-changes bar
-	// appears only when other pages' edits are pending.
-	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "System",
-		Subheading: "The software installed on this router — every package, from every feed.",
-		Modes:      packageModes(r.URL.Path),
-	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
-}
-
-func packageModes(active string) []pageTab {
-	modes := []pageTab{
-		{Label: "Installed", Href: "/system/packages"},
-		{Label: "Available", Href: "/system/packages/discover"},
+	truth, _ := s.updateTruth()
+	checked, checkErr := int64(0), error(nil)
+	if !feedRefresh.running() {
+		checked, checkErr = s.backend.PkgStatus(r.Context(), s.sessionSID(r))
 	}
-	markActiveTab(modes, active)
-	return modes
+	note := packageIndexNote(checked, checkErr, tr)
+	var page strings.Builder
+	data := struct {
+		Body                  template.HTML
+		CSRFToken, Note       string
+		Busy                  bool
+		Upgradable, Installed int
+		All                   bool
+		Query                 string
+		Count, Total          int
+		Previous, Next        string
+	}{Body: template.HTML(body.String()), CSRFToken: s.sessionCSRF(r), Note: note,
+		Busy: feedRefresh.running(), Upgradable: len(truth.Packages), Installed: installed,
+		All: all, Query: q, Count: count, Total: total}
+	if all {
+		pageURL := func(at int) string {
+			return "/system/packages?tab=all&q=" + url.QueryEscape(q) + "&offset=" + strconv.Itoa(at)
+		}
+		if offset > 0 {
+			data.Previous = pageURL(max(0, offset-30))
+		}
+		if offset+30 < total {
+			data.Next = pageURL(offset + 30)
+		}
+	}
+	if err := s.pageSet(lang).ExecuteTemplate(&page, "packages.html.tmpl", data); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	if r.Header.Get("X-Verso-Interaction") == "packages" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(page.String()))
+		return
+	}
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Packages", Tone: "neutral"}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(page.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
 // no live state (that is the Services page's question). The drawer tells each
 // package's story and offers the Remove.
 func packagesTable(pkgs []openwrt.Package) widget.Widget {
+	pkgs = append([]openwrt.Package(nil), pkgs...)
+	for i := range pkgs {
+		pkgs[i].Installed = true
+	}
+	return packageListingTable(pkgs)
+}
+
+func packageListingTable(pkgs []openwrt.Package) *widget.Table {
 	cols := []widget.TableColumn{
-		{Label: "Package", Kind: "name"},
-		{Label: "Version", Kind: "mono"},
-		{Label: "Feed", Kind: "keyword"},
+		{Label: "Package", Kind: "name", Width: "17rem"},
+		{Label: "Version", Kind: "mono", Width: "9rem"},
+		{Label: "What it is", Kind: "comment"},
+		{Label: "Size", Kind: "runtime", Width: "6rem"},
+		{Kind: "actions", Width: "5rem"},
 	}
 	rows := make([]widget.TableRow, 0, len(pkgs))
 	for _, p := range pkgs {
 		rows = append(rows, packageRow(p))
 	}
-	return &widget.Table{Columns: cols, Rows: rows}
+	return &widget.Table{Style: "flat", Columns: cols, Rows: rows}
 }
 
 // packageRow keeps the row terse; the drawer is where the package tells its
@@ -145,25 +195,40 @@ func packageRow(p openwrt.Package) widget.TableRow {
 	}
 	if len(p.RequiredBy) > 0 {
 		props = append(props, widget.Property{Label: "Required by", Value: strings.Join(p.RequiredBy, ", "), Mono: true})
-	} else if !p.Removable {
+	} else if p.Installed && !p.Removable {
 		props = append(props, widget.Property{Label: "Removal", Value: "Protected system package"})
 	}
 	drawer := []widget.Widget{
-		&widget.Callout{Variant: "neutral", Compact: true, Body: desc,
-			Link: packageWebsite(p.Webpage)},
+		&widget.Text{Markdown: desc},
+	}
+	if website := packageWebsite(p.Webpage); website != nil {
+		drawer = append(drawer, website)
 	}
 	drawer = append(drawer,
 		&widget.Properties{Style: "system", Items: props},
 	)
-	if p.Removable {
-		drawer = append(drawer, &widget.Form{Submit: "Remove", Fields: []widget.Widget{
-			&widget.Field{Kind: "hidden", Name: "package", Value: p.Name},
-			&widget.Field{Kind: "hidden", Name: "_primary", Value: "remove"},
-		}})
+	if p.Installed {
+		drawer = append(drawer, &widget.Link{Label: "Files it installed", Href: "/system/packages/files?package=" + url.QueryEscape(p.Name)})
+	}
+	if !p.Installed {
+		drawer = append(drawer, packageActionForm(p.Name, "install", "Install"))
+	} else if p.Removable {
+		drawer = append(drawer, packageActionForm(p.Name, "remove", "Remove"))
+	}
+
+	size := "—"
+	if p.Size > 0 {
+		size = humanSize(p.Size)
+	}
+	acts := []widget.TableRowAct{{Icon: "lock", Title: "Required package"}}
+	if !p.Installed {
+		acts = []widget.TableRowAct{{Icon: "download", Title: "Install", Opens: true}}
+	} else if p.Removable {
+		acts = []widget.TableRowAct{{Icon: "trash-2", Title: "Remove", Opens: true}}
 	}
 	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
-		{Text: p.Name}, {Text: p.Version, Emphasis: true}, {Text: p.Feed},
-	}, Drawer: &widget.RowDrawer{Title: p.Name, Children: drawer}}
+		{Text: p.Name, Opens: true}, {Text: p.Version}, {Text: desc}, {Text: size}, {Actions: acts},
+	}, Drawer: &widget.RowDrawer{Title: p.Name, Verbatim: true, Children: drawer}}
 }
 
 func packageWebsite(href string) *widget.Link {
@@ -205,8 +270,14 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	q := strings.TrimSpace(r.PostForm.Get("q"))
 	back := "/system/packages/discover"
+	if r.URL.Path == "/system/packages" {
+		back = "/system/packages"
+	}
 	if q != "" {
 		back += "?q=" + url.QueryEscape(q)
+	}
+	if r.PostForm.Get("return_to") == "/system/packages" {
+		back = "/system/packages"
 	}
 	// A secondary button's _action (Refresh) outranks the form's primary.
 	verb := r.PostForm.Get("_action")
@@ -215,6 +286,10 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	}
 	switch verb {
 	case "search":
+		if panelRequest(r) {
+			s.renderDiscover(w, r, "")
+			return
+		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "refresh":
 		// The run outlives this response, so it carries a context of its own;
@@ -225,19 +300,27 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 			}
 			// A rebuilt index is exactly when what this router can install changes,
 			// so the update truths are re-read here — never on a page render.
-			s.startUpdateCheck(sid)
-			return nil
+			return s.refreshPackageTruth(context.Background(), sid)
 		}) {
 			s.flash(r, "info", tr("The feeds are already being refreshed."))
 		}
+		if panelRequest(r) || r.Header.Get("X-Verso-Interaction") == "packages" {
+			w.Header().Set("X-Verso-Packages", "refreshing")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
-	case "install", "remove":
+	case "install", "remove", "upgrade":
 		name := r.PostForm.Get("package")
 		if !pkgNameOK(name) {
 			http.Error(w, "bad package name", http.StatusBadRequest)
 			return
 		}
 		if feedRefresh.running() {
+			if panelRequest(r) {
+				s.entityNotice(w, http.StatusConflict, tr("The feeds are being refreshed — try again in a moment."))
+				return
+			}
 			s.flash(r, "info", tr("The feeds are being refreshed — try again in a moment."))
 			http.Redirect(w, r, back, http.StatusSeeOther)
 			return
@@ -245,17 +328,55 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		var err error
 		if verb == "install" {
 			err = s.backend.PkgInstall(r.Context(), sid, name)
+		} else if verb == "upgrade" {
+			err = s.backend.PkgUpgradeOne(r.Context(), sid, name)
 		} else {
 			err = s.backend.PkgRemove(r.Context(), sid, name)
 		}
 		if err != nil {
-			s.renderDiscover(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
+			if panelRequest(r) {
+				s.entityNotice(w, http.StatusBadGateway, fmt.Sprintf(tr("The device refused: %v."), err))
+				return
+			}
+			if r.URL.Path == packagesPath {
+				s.renderPackages(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
+			} else {
+				s.renderDiscover(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
+			}
 			return
 		}
 		// A plugin package just landed (or left): re-read the manifests so
 		// its pages and nav rows exist without a shell restart.
 		s.rescanManifests()
-		if verb == "install" {
+		if err := s.refreshPackageTruth(r.Context(), sid); err != nil {
+			log.Printf("verso: package action completed; update status: %v", err)
+		}
+		if panelRequest(r) {
+			message := tr("%s removed.")
+			if verb == "install" {
+				message = tr("%s installed.")
+			}
+			if verb == "upgrade" {
+				message = tr("%s upgraded.")
+			}
+			w.Header().Set("HX-Reswap", "none")
+			w.Header().Set("X-Verso-Packages", "changed")
+			lang, _ := s.localize(r)
+			_ = s.pageSet(lang).ExecuteTemplate(w, "verso-flash", widget.Flash{Variant: "success", Message: fmt.Sprintf(message, name)})
+			// Installing/removing a plugin or catalog can change navigation. Send
+			// those rows with the outcome, without rebuilding the surrounding page.
+			pluginTr := s.pluginTranslators(r)
+			pages := s.systemPages(packagesPath, readerMode(r))
+			for i := range pages {
+				pages[i].Label = localizeLabel(pages[i].PluginID, pages[i].Label, tr, pluginTr)
+			}
+			nav := s.buildSidebar(packagesPath, readerMode(r), tr, pluginTr, pages)
+			_ = s.pageSet(lang).ExecuteTemplate(w, "package-navigation.html.tmpl", nav)
+			return
+		}
+		if verb == "upgrade" {
+			s.flash(r, "success", fmt.Sprintf(tr("%s upgraded."), name))
+		} else if verb == "install" {
 			s.flash(r, "success", fmt.Sprintf(tr("%s installed."), name))
 		} else {
 			s.flash(r, "success", fmt.Sprintf(tr("%s removed."), name))
@@ -275,8 +396,23 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 type backgroundJob struct {
 	mu      sync.Mutex
 	active  bool
+	done    bool // the last run finished without error and has not been acknowledged
 	failure error
 }
+
+// jobPhase is one job's lifecycle as a whole, for a surface that must stand on
+// the outcome rather than glance at it and forget: never-started or acknowledged
+// (idle), under way (running), finished clean (done), or failed. The firmware
+// takeover reads this — where the other update surfaces only ask running() and
+// takeFailure() — because it holds a person on the outcome until it is released.
+type jobPhase int
+
+const (
+	jobIdle jobPhase = iota
+	jobRunning
+	jobDone
+	jobFailed
+)
 
 // start runs work in the background unless a run is already under way, reporting
 // whether this call owns the new one.
@@ -286,12 +422,11 @@ func (j *backgroundJob) start(refresh func() error) bool {
 	if j.active {
 		return false
 	}
-	j.active = true
-	j.failure = nil
+	j.active, j.failure, j.done = true, nil, false
 	go func() {
 		err := refresh()
 		j.mu.Lock()
-		j.active, j.failure = false, err
+		j.active, j.failure, j.done = false, err, err == nil
 		j.mu.Unlock()
 	}()
 	return true
@@ -318,6 +453,44 @@ func (j *backgroundJob) takeFailure() error {
 	return failure
 }
 
+// phase reports the run's lifecycle as one value, read under the same lock that
+// finishes it — so "running" and "failed" (or "done") can never be seen apart:
+// the goroutine flips active off and records its outcome in one critical section.
+func (j *backgroundJob) phase() jobPhase {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	switch {
+	case j.active:
+		return jobRunning
+	case j.failure != nil:
+		return jobFailed
+	case j.done:
+		return jobDone
+	default:
+		return jobIdle
+	}
+}
+
+// peekFailure reports how the last finished run failed without forgetting it —
+// the non-consuming read a server-authoritative surface needs, so a reload keeps
+// landing on the failure until the person is the one who releases it.
+func (j *backgroundJob) peekFailure() error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.failure
+}
+
+// acknowledge releases a finished run's outcome — a failure or a clean done — so
+// the surface that watched it steps aside and the ordinary page returns. A run
+// still under way is left untouched: there is nothing yet to acknowledge.
+func (j *backgroundJob) acknowledge() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if !j.active {
+		j.failure, j.done = nil, false
+	}
+}
+
 // feedRefresh is the feed refresh: reaching every configured repository is slow,
 // and the package index it rebuilds is one file set the whole device shares, so
 // the refresh is one act device-wide, not one per operator.
@@ -326,6 +499,23 @@ var feedRefresh backgroundJob
 // refreshingInstead stands where a listing would be while the refresh owns apk.
 func refreshingInstead(body string) widget.Widget {
 	return &widget.Empty{Icon: "refresh-cw", Title: "Refreshing the package feeds", Body: body}
+}
+
+// markdownLiteral quotes a value for a widget field that renders Markdown prose.
+// A string a person typed is data, not prose: it reads back as itself, with no
+// emphasis, no link and no punctuation Markdown would have claimed. The escape
+// is Markdown's own — a backslash before each character that could start
+// something — and the renderer's sanitiser still stands behind it.
+func markdownLiteral(value string) string {
+	var out strings.Builder
+	out.Grow(len(value))
+	for _, r := range value {
+		if strings.ContainsRune(`\`+"`"+`*_{}[]()#+-.!<>&|~:"'`, r) {
+			out.WriteByte('\\')
+		}
+		out.WriteRune(r)
+	}
+	return out.String()
 }
 
 // pkgNameRe mirrors the helper's package-name alphabet — refused here first
@@ -360,18 +550,23 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	// the row's right end as a quiet fact. A refresh under way takes the button's
 	// place with what it is doing — the act cannot be started twice, so offering
 	// it again would be an offer the device would decline.
-	toolbar := &widget.Form{Style: "search", Icon: "search", Submit: "Search",
-		Actions: []widget.FormAction{{Label: "Refresh feeds", Action: "refresh", Icon: "refresh-cw"}},
+	toolbar := &widget.Form{Action: "/system/packages/discover", Style: "search", Submit: "Search",
+		Actions: []widget.FormAction{{Label: "Refresh index", Action: "refresh"}},
 		Fields: []widget.Widget{
 			&widget.Field{Name: "q", Value: q, Placeholder: "Package name", Autofocus: true},
 			&widget.Field{Kind: "hidden", Name: "_primary", Value: "search"},
 		}}
+	if panelRequest(r) {
+		toolbar.Frame, toolbar.Panel = widget.FramePanel, "/system/packages/discover"
+		toolbar.Actions = nil
+	}
 	if refreshing {
 		toolbar.Actions = nil
 		toolbar.Note = "Refreshing the feeds… **reload to see the result**."
 	} else {
 		checkedAt, statusErr := s.backend.PkgStatus(r.Context(), sid)
-		toolbar.Note = freshnessLine(checkedAt, statusErr)
+		toolbar.Note = packageIndexNote(checkedAt, statusErr, tr)
+		toolbar.NoteVerbatim = true
 	}
 	children = append(children, toolbar, &widget.Divider{Tight: true})
 
@@ -386,19 +581,32 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		})
 	} else if pkgs, total, err := s.backend.PkgSearch(r.Context(), sid, q); err != nil {
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Search unavailable",
-			Body: fmt.Sprintf("The package index could not be read (%v). Refresh the feeds and try again.", err)})
+			Body: fmt.Sprintf(tr("The package index could not be read (%v). Refresh the feeds and try again."), err)})
 	} else if len(pkgs) == 0 {
 		children = append(children, &widget.Empty{
 			Icon:  "search",
 			Title: "No packages found",
-			Body:  fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), q),
+			Body:  fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), markdownLiteral(q)),
 		})
 	} else {
 		if total > len(pkgs) {
 			children = append(children, &widget.Badge{Variant: "info", Icon: "info", Size: "lg", Text: fmt.Sprintf(
-				"Showing the first %d of %d matches — narrow the search to see the rest", len(pkgs), total)})
+				tr("Showing the first %d of %d matches — narrow the search to see the rest"), len(pkgs), total)})
 		}
-		children = append(children, discoverTable(pkgs, q))
+		table := discoverTable(pkgs, q).(*widget.Table)
+		truth, _ := s.updateTruth()
+		for i := range table.Rows {
+			if !pkgs[i].Installed {
+				continue
+			}
+			for _, upgrade := range truth.Packages {
+				if upgrade.Name == table.Rows[i].ID {
+					packageUpgradeDrawer(table.Rows[i].Drawer, upgrade.Name, upgrade.Available)
+					break
+				}
+			}
+		}
+		children = append(children, table)
 	}
 
 	var body strings.Builder
@@ -406,36 +614,27 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "System",
-		Subheading: "Search the packages available from your configured feeds.",
-		Modes:      packageModes(r.URL.Path),
-	}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), false, template.HTML(body.String()))
+	if panelRequest(r) {
+		data := struct {
+			Title string
+			Body  template.HTML
+		}{tr("Install packages"), template.HTML(body.String())}
+		if err := s.pageSet(lang).ExecuteTemplate(w, "system-panel.html.tmpl", data); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+		}
+		return
+	}
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral", Back: &plugin.PageAction{Label: "Packages", Href: "/system/packages"}}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
 }
 
-// freshnessLine is the honest age of the package index, beside the Refresh
-// button — the time carries the emphasis.
-func freshnessLine(checkedAt int64, err error) string {
+func packageIndexNote(checkedAt int64, err error, tr func(string) string) string {
 	switch {
 	case err != nil:
-		return "Feed freshness unknown."
+		return tr("Index freshness unknown")
 	case checkedAt == 0:
-		return "Feeds have **never** been checked on this device."
+		return tr("Index has not been refreshed")
 	default:
-		return "Feeds checked **" + humanAgo(time.Since(time.Unix(checkedAt, 0))) + "**."
-	}
-}
-
-func humanAgo(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		return fmt.Sprintf("%d min ago", int(d.Minutes()))
-	case d < 48*time.Hour:
-		return fmt.Sprintf("%d h ago", int(d.Hours()))
-	default:
-		return fmt.Sprintf("%d days ago", int(d.Hours()/24))
+		return fmt.Sprintf(tr("Index refreshed %s"), localizedAgo(time.Since(time.Unix(checkedAt, 0)), tr))
 	}
 }
 
@@ -456,7 +655,7 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 			state = widget.TableCell{Text: "installed", Variant: "success"}
 		}
 		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
-			{Text: p.Name},
+			{Text: p.Name, Opens: true},
 			{Text: p.Description},
 			{Text: p.Version, Emphasis: true},
 			{Text: p.Feed},
@@ -470,37 +669,86 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 // Remove for what is already here. The active query rides along so acting on
 // a result lands back on the same search — a shopping flow installs several.
 func discoverDrawer(p openwrt.Package, q string) *widget.RowDrawer {
-	verb, label := "install", "Install"
-	if p.Installed {
-		verb, label = "remove", "Remove"
-		if !p.Removable {
-			label = "Installed"
-		}
+	return packageRow(p).Drawer
+}
+
+func packageActionForm(name, verb, label string) *widget.Form {
+	return &widget.Form{Action: "/system/packages", Frame: widget.FramePanel, Panel: "/system/packages", Submit: label, Fields: []widget.Widget{
+		&widget.Field{Kind: "hidden", Name: "package", Value: name},
+		&widget.Field{Kind: "hidden", Name: "_primary", Value: verb},
+	}}
+}
+
+func packageUpgradeDrawer(drawer *widget.RowDrawer, name, version string) {
+	drawer.Children = append(drawer.Children,
+		&widget.Properties{Items: []widget.Property{{Label: "Available version", Value: version, Mono: true}}},
+		packageActionForm(name, "upgrade", "Upgrade"))
+}
+
+func (s *Server) handlePackageFiles(w http.ResponseWriter, r *http.Request) {
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	name := r.URL.Query().Get("package")
+	if !pkgNameOK(name) {
+		http.Error(w, "bad package name", http.StatusBadRequest)
+		return
 	}
-	desc := p.Description
-	if desc == "" {
-		desc = "No description in the feed."
+	if feedRefresh.running() {
+		s.entityNotice(w, http.StatusConflict, tr("The feeds are being refreshed — try again in a moment."))
+		return
 	}
-	props := []widget.Property{
-		{Label: "Package", Value: p.Name, Mono: true},
-		{Label: "Version", Value: p.Version, Mono: true},
-		{Label: "Feed", Value: p.Feed, Mono: true},
+	files, err := s.backend.PkgFiles(r.Context(), s.sessionSID(r), name)
+	if err != nil {
+		s.entityNotice(w, http.StatusBadGateway, fmt.Sprintf(tr("The device refused: %v."), err))
+		return
 	}
-	if len(p.RequiredBy) > 0 {
-		props = append(props, widget.Property{Label: "Required by", Value: strings.Join(p.RequiredBy, ", "), Mono: true})
-	} else if p.Installed && !p.Removable {
-		props = append(props, widget.Property{Label: "Removal", Value: "Protected system package"})
+	lang, _ := s.localize(r)
+	data := struct {
+		Name  string
+		Files []string
+	}{name, files}
+	_ = s.pageSet(lang).ExecuteTemplate(w, "package-files.html.tmpl", data)
+}
+
+func localizedAgo(d time.Duration, tr func(string) string) string {
+	if d < time.Minute {
+		return tr("just now")
 	}
-	children := []widget.Widget{
-		&widget.Text{Markdown: desc},
-		&widget.Properties{Items: props},
+	if d < time.Hour {
+		return fmt.Sprintf(tr("%d min ago"), int(d.Minutes()))
 	}
-	if !p.Installed || p.Removable {
-		children = append(children, &widget.Form{Submit: label, Fields: []widget.Widget{
-			&widget.Field{Kind: "hidden", Name: "package", Value: p.Name},
-			&widget.Field{Kind: "hidden", Name: "_primary", Value: verb},
-			&widget.Field{Kind: "hidden", Name: "q", Value: q},
-		}})
+	if d < 48*time.Hour {
+		return fmt.Sprintf(tr("%d h ago"), int(d.Hours()))
 	}
-	return &widget.RowDrawer{Title: label + " — " + p.Name, Children: children}
+	return fmt.Sprintf(tr("%d days ago"), int(d.Hours()/24))
+}
+
+func (s *Server) handlePackageStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	feedRefresh.mu.Lock()
+	busy, failure := feedRefresh.active, feedRefresh.failure
+	feedRefresh.mu.Unlock()
+	message := ""
+	if failure != nil {
+		message = fmt.Sprintf(tr("The package feeds could not be refreshed (%v)."), failure)
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"refreshing": busy, "checking": updateChecks.running(), "error": message})
+}
+
+// Package operations only change the local package lane. Keep the last firmware
+// answer and its timestamp; there is no reason to contact the firmware server.
+func (s *Server) refreshPackageTruth(ctx context.Context, sid string) error {
+	packages, err := s.backend.PkgUpgradable(ctx, sid)
+	if err != nil {
+		return err
+	}
+	truth, _ := s.updateTruth()
+	truth.Packages = packages
+	if truth.CheckedAt.IsZero() {
+		truth.CheckedAt = time.Now()
+	}
+	return updatecheck.Write(s.stateDir, truth)
 }

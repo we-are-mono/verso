@@ -32,20 +32,32 @@ const devicesPath = "/devices"
 // failure is a real 500 rather than a contained notice; every reading behind it
 // degrades on its own (an unreadable source drops its facts, never the page).
 func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
-	roster := s.connectedDevices(r.Context(), s.sessionSID(r))
+	roster := s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r))
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, widget.DevicesTable(roster)), s.sessionCSRF(r), lang, t); err != nil {
+	// The bar belongs to the listing, so the two render together: the cuts it
+	// offers are priced from the same roster the rows come from.
+	page := &widget.Stack{Children: []widget.Widget{
+		widget.DevicesBar(roster, s.EntityListingAct("device"), func(mac string) string {
+			if mac == "" {
+				return widget.EntityPath("device", "new")
+			}
+			return widget.EntityPath("device", mac)
+		}),
+		widget.DevicesTable(roster, func(d widget.Device) []widget.TableRowAct {
+			return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles())
+		}),
+	}}
+	if err := s.widgets.RenderWithToken(&body, s.reading(r, page), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	// Nothing on this page stages a change; the capsule appears only when edits
-	// made elsewhere are waiting (ADR-010).
+	// Nothing on this page stages a change; the staged-changes chip shows only
+	// when edits made elsewhere are waiting (ADR-010).
 	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading:    "Devices",
-		Subheading: "Everything that has joined this network — what it is, where it sits, and whether it is here right now.",
-	}, "wide", nil, false, template.HTML(body.String()))
+		Heading: "Devices",
+	}, "wide", nil, template.HTML(body.String()))
 }
 
 // presence is the roster's honest tri-state: the kernel confirmed the device

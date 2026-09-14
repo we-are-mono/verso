@@ -74,6 +74,8 @@ pub fn filter(placeholder: &str) -> Widget {
 /// a 422, which is how the capsule knows to keep the operator here.
 pub fn page_form(refusal: &str, fields: Vec<Widget>) -> Widget {
     Widget::Form {
+        note: Default::default(),
+
         style: "page".into(),
         submit: String::new(),
         error: refusal.into(),
@@ -95,6 +97,8 @@ pub fn form_grid(columns: u32, children: Vec<Widget>) -> Widget {
 pub fn columns(spec: &[(&str, &str)]) -> Vec<TableColumn> {
     spec.iter()
         .map(|(label, kind)| TableColumn {
+            width: Default::default(),
+
             label: (*label).into(),
             kind: (*kind).into(),
         })
@@ -107,10 +111,15 @@ pub fn columns(spec: &[(&str, &str)]) -> Vec<TableColumn> {
 /// the page and says what the absence means; the shell draws that as one row.
 pub fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>, empty: &str) -> Widget {
     Widget::Table {
+        add_label: Default::default(),
+        add_href: Default::default(),
+        note: Default::default(),
+        stream: Default::default(),
+
         style: String::new(),
         title: String::new(),
         detail: String::new(),
-        condensed: false,
+        dense: false,
         align: String::new(),
         reorder_config: String::new(),
         reorder_label: String::new(),

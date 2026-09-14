@@ -34,7 +34,7 @@ func TestRenderStat(t *testing.T) {
 		"rounded-xl",     // the radius-scale step for a tile
 		"tabular-nums",   // figures align
 		"verso-live-dot", // the pulsing dot when success
-		"bg-emerald-500", // dot tinted by the success variant
+		"bg-green",       // dot tinted by the success variant
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stat missing %q:\n%s", want, got)
@@ -56,10 +56,10 @@ func TestRenderStatUnit(t *testing.T) {
 func TestRenderStatVariantTintsIconNotValue(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Stat{Label: "Protection", Value: "12", Icon: "shield", Variant: "success"})
-	if !strings.Contains(got, "text-emerald-600") {
+	if !strings.Contains(got, "text-green") {
 		t.Errorf("success variant did not tint the icon: %s", got)
 	}
-	if !strings.Contains(got, "text-slate-900") {
+	if !strings.Contains(got, "text-ink") {
 		t.Errorf("value should stay ink regardless of variant: %s", got)
 	}
 }

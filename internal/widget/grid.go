@@ -48,12 +48,13 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// gridView is the template model: the responsive column classes the shell chose for
-// the declared count, plus the pre-rendered children.
+// gridView is the template model: the style and the declared count, which the
+// template turns into column classes, plus the pre-rendered children. The classes
+// are the template's to state, not this file's — the stylesheet is built from the
+// templates alone, so a class named in Go is a class the page never gets.
 type gridView struct {
-	Strip    bool
-	Cols     string
-	Gap      string
+	Style    string
+	Columns  int
 	Children []template.HTML
 }
 
@@ -62,53 +63,5 @@ func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	gap := "gap-8"
-	if g.Style == "form" {
-		gap = "gap-6"
-	}
-	return r.execute(out, "grid.html.tmpl", gridView{Strip: g.Style == "strip", Cols: gridCols(g.Columns, g.Style), Gap: gap, Children: children})
-}
-
-// gridCols maps a declared column count to responsive Tailwind classes — the shell's
-// job of turning semantic intent into pixels (ADR-005). Small tile/card grids go
-// two-up on phones (never a lonely full-width column) and widen on larger screens.
-// The strings are static literals so Tailwind's compiler retains the classes.
-func gridCols(n int, style string) string {
-	if style == "form" {
-		switch {
-		case n <= 1:
-			return "grid-cols-1"
-		case n == 2:
-			return "grid-cols-1 md:grid-cols-2"
-		default:
-			return "grid-cols-1 md:grid-cols-3"
-		}
-	}
-	// A strip divides evenly across its full width however many slots it has (the
-	// home page's status tiles, the hardware vitals) — fixed columns, no collapse,
-	// so the hairline dividers read as one instrument panel at any width.
-	if style == "strip" {
-		switch {
-		case n <= 1:
-			return "grid-cols-1"
-		case n == 2:
-			return "grid-cols-2"
-		case n == 3:
-			return "grid-cols-3"
-		case n == 4:
-			return "grid-cols-4"
-		default:
-			return "grid-cols-5"
-		}
-	}
-	switch {
-	case n <= 1:
-		return "grid-cols-1"
-	case n == 2:
-		return "grid-cols-2"
-	case n == 3:
-		return "grid-cols-2 md:grid-cols-3"
-	default: // 4 or more
-		return "grid-cols-2 md:grid-cols-4"
-	}
+	return r.execute(out, "grid.html.tmpl", gridView{Style: g.Style, Columns: g.Columns, Children: children})
 }

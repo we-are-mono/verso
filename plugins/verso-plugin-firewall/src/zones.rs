@@ -81,6 +81,8 @@ fn columns() -> Vec<TableColumn> {
     ]
     .into_iter()
     .map(|(label, kind)| TableColumn {
+        width: Default::default(),
+
         label: label.into(),
         kind: kind.into(),
     })
@@ -89,10 +91,15 @@ fn columns() -> Vec<TableColumn> {
 
 fn table(model: &Firewall) -> Widget {
     Widget::Table {
+        add_label: Default::default(),
+        add_href: Default::default(),
+        note: Default::default(),
+        stream: Default::default(),
+
         style: String::new(),
         title: String::new(),
         detail: String::new(),
-        condensed: false,
+        dense: false,
         align: String::new(),
         reorder_config: String::new(),
         reorder_label: String::new(),
@@ -111,6 +118,12 @@ fn row(model: &Firewall, zone: &Zone) -> TableRow {
         TableCell::default()
     };
     TableRow {
+        expanded: Default::default(),
+        depth: Default::default(),
+        muted: Default::default(),
+        tags: Default::default(),
+        panel: Default::default(),
+
         id: zone.section.clone(),
         key: String::new(),
         group: None,
@@ -149,11 +162,7 @@ fn subnets(model: &Firewall, zone: &Zone) -> String {
         .iter()
         .filter_map(|network| model.interface(network))
         .filter_map(|interface| {
-            format::subnet_label(
-                &interface.ipaddr,
-                &interface.netmask,
-                &interface.ip6assign,
-            )
+            format::subnet_label(&interface.ipaddr, &interface.netmask, &interface.ip6assign)
         })
         .collect::<Vec<String>>()
         .join(", ")
@@ -177,17 +186,23 @@ fn defaults(model: &Firewall) -> Widget {
         .collect(),
         ..SettingsItem::default()
     }];
-    items.extend(TOGGLE_ROWS.iter().map(|(option, title, desc)| SettingsItem {
-        title: (*title).into(),
-        desc: (*desc).into(),
-        code: (*option).into(),
-        toggle: Some(SettingsToggle {
-            name: (*option).into(),
-            on: defaults.state(option),
-        }),
-        ..SettingsItem::default()
-    }));
+    items.extend(
+        TOGGLE_ROWS
+            .iter()
+            .map(|(option, title, desc)| SettingsItem {
+                title: (*title).into(),
+                desc: (*desc).into(),
+                code: (*option).into(),
+                toggle: Some(SettingsToggle {
+                    name: (*option).into(),
+                    on: defaults.state(option),
+                }),
+                ..SettingsItem::default()
+            }),
+    );
     Widget::Settings {
+        condensed: Default::default(),
+
         style: String::new(),
         title: String::new(),
         meta: String::new(),
@@ -274,7 +289,10 @@ mod tests {
             wan["cells"][3],
             serde_json::json!({"text": "reject", "variant": "warning"})
         );
-        assert_eq!(wan["cells"][6], serde_json::json!({"text": "NAT", "variant": "info"}));
+        assert_eq!(
+            wan["cells"][6],
+            serde_json::json!({"text": "NAT", "variant": "info"})
+        );
         assert_eq!(
             wan["cells"][5],
             serde_json::json!({"text": "—", "muted": true})

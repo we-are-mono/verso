@@ -2,12 +2,23 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* disclosure: a native <details> expand/collapse. The chevron rotates via the
      shared .verso-chevron rule (details[open] > summary .verso-chevron). No JS. */}}
-<details class="verso-disclosure rounded-lg border border-slate-200 {{if eq .Style "condition"}}bg-slate-50/70 dark:border-gray-700 dark:bg-gray-800/50{{else}}bg-white{{end}}">
-  <summary class="flex cursor-pointer select-none items-center justify-between gap-2 px-4 {{if eq .Style "condition"}}pt-3.5 pb-3 text-sm font-semibold text-slate-900 dark:text-gray-100{{else}}py-3 text-sm font-medium text-slate-700{{end}} [&::-webkit-details-marker]:hidden">
+{{/* The folded block is a surface, so it is the one surface this app draws: a
+     single hairline on the page's own ground. The condition style sits a step in
+     from that — on the quiet band, because what it folds is part of the form
+     around it rather than a thing of its own. */}}
+<details{{if .Open}} open{{end}} class="verso-disclosure rounded-xs border border-rule {{if eq .Style "condition"}}bg-quiet{{else}}bg-ground{{end}}">
+  <summary class="flex cursor-pointer items-center justify-between gap-2 px-4 select-none {{if eq .Style "condition"}}pt-3.5 pb-3 text-sm font-semibold text-ink{{else}}py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
     {{.Summary}}
-    {{icon "chevron-right" "verso-chevron size-4 text-slate-400"}}
+    {{icon "chevron-right" "verso-chevron size-4 text-faint"}}
   </summary>
-  <div class="{{if eq .Style "condition"}}space-y-5 dark:border-gray-700{{else}}space-y-4{{end}} border-t border-slate-200 px-4 py-4">
+  {{/* A table brings its own vertical padding at both edges — the header's
+       pt-4 and the last row's cell padding — meant for open page flow; inside
+       this padded box they would double the inset, so the box neutralizes both
+       and its own padding is the one uniform frame. */}}
+  {{/* The rhythm is the form's, not the box's: what it folds away is part of the
+       form around it, so two rows inside sit as close together as two rows
+       outside and only the blocks between them take air. */}}
+  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem]{{else}}[--verso-rhythm:1rem]{{end}} border-t border-rule px-4 py-4 [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
     {{range .Children}}{{.}}{{end}}
   </div>
 </details>

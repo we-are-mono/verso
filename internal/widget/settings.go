@@ -16,11 +16,14 @@ import (
 // triplet). Generic by design: any options block (firewall defaults, Wi-Fi
 // advanced, DHCP options) is this shape.
 type Settings struct {
-	Style string         `json:"style,omitempty"` // "" (bare rows on the page, default; "plain" is its legacy alias) | "card" — boxed, for the select places that earn a card
-	Title string         `json:"title,omitempty"` // optional group label above the rows
-	Meta  string         `json:"meta,omitempty"`  // optional quiet detail on the title row's right, e.g. a subnet · live count
-	Items []SettingsItem `json:"items"`
-	Seam  *SettingsSeam  `json:"seam,omitempty"`
+	Style string `json:"style,omitempty"` // "" (bare rows on the page, default; "plain" is its legacy alias) | "card" — boxed, for the select places that earn a card
+	Title string `json:"title,omitempty"` // optional group label above the rows
+	Meta  string `json:"meta,omitempty"`  // optional quiet detail on the title row's right, e.g. a subnet · live count
+	// Condensed lowers the row padding only — same anatomy, tighter, for a list
+	// of many short facts.
+	Condensed bool           `json:"condensed,omitempty"`
+	Items     []SettingsItem `json:"items"`
+	Seam      *SettingsSeam  `json:"seam,omitempty"`
 }
 
 // SettingsSeam folds a card's long tail of options behind a collapsed block
@@ -44,13 +47,25 @@ const seamMinimum = 3
 // Name is edited in place: the read-out renders as a borderless input posting
 // under that name — the value on screen is the control.
 type SettingsItem struct {
-	Title  string          `json:"title"`
-	Desc   string          `json:"desc,omitempty"`
-	Code   string          `json:"code,omitempty"`  // the underlying option name, e.g. "synflood_protect"
-	Value  string          `json:"value,omitempty"` // a read-out value (mono), e.g. "lan", "1000"
-	Name   string          `json:"name,omitempty"`  // form name; makes Value an in-place input
-	Toggle *SettingsToggle `json:"toggle,omitempty"`
-	Pills  []Badge         `json:"pills,omitempty"`
+	Title string `json:"title"`
+	Desc  string `json:"desc,omitempty"`
+	Code  string `json:"code,omitempty"`  // the underlying option name, e.g. "synflood_protect"
+	Value string `json:"value,omitempty"` // a read-out value (mono), e.g. "lan", "1000"
+	Name  string `json:"name,omitempty"`  // form name; makes Value an in-place input
+	// Inline makes the in-place value a manage-page control that stages its own
+	// change ([[inline-settings-commit-model]]): the
+	// value shows read-only (as text, a square-pen to edit) and, on commit —
+	// ✓/Enter/blur — posts just this one option, the counterpart of a row switch
+	// for a value. A free-text field has no natural "done", so the ✓ is it: the
+	// commit both stages and validates. Without Inline, Value+Name is an
+	// always-open input a surrounding form submits. Only meaningful with Name.
+	Inline bool `json:"inline,omitempty"`
+	// Datatype is the shape an inline value must have ("hostname", …); the shell
+	// validates it on blur before staging (inline-settings-commit-model). Only
+	// meaningful with Inline.
+	Datatype string          `json:"datatype,omitempty"`
+	Toggle   *SettingsToggle `json:"toggle,omitempty"`
+	Pills    []Badge         `json:"pills,omitempty"`
 }
 
 // SettingsToggle is the row's switch: its current state and the form name it
@@ -94,12 +109,13 @@ type settingsView struct {
 type settingsItemView struct {
 	SettingsItem
 	PillsHTML []template.HTML
+	Condensed bool
 }
 
 func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
 	out := make([]settingsItemView, 0, len(items))
 	for _, it := range items {
-		iv := settingsItemView{SettingsItem: it}
+		iv := settingsItemView{SettingsItem: it, Condensed: s.Condensed}
 		for p := range it.Pills {
 			var b strings.Builder
 			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[p]); err != nil {

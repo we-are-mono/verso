@@ -371,9 +371,11 @@ impl Dnsdhcp {
     /// reserved reports whether a MAC already has a reservation — the config, not
     /// the lease table, is what makes an address permanent.
     pub fn reserved(&self, mac: &str) -> bool {
-        self.hosts
-            .iter()
-            .any(|host| host.list("mac").iter().any(|written| same_mac(written, mac)))
+        self.hosts.iter().any(|host| {
+            host.list("mac")
+                .iter()
+                .any(|written| same_mac(written, mac))
+        })
     }
 }
 
@@ -475,7 +477,10 @@ mod tests {
             .iter()
             .find(|record| record.kind == RecordKind::Mx)
             .expect("mx");
-        assert_eq!((mx.name.as_str(), mx.target.as_str(), mx.priority.as_str()), ("lan", "nas.lan", "10"));
+        assert_eq!(
+            (mx.name.as_str(), mx.target.as_str(), mx.priority.as_str()),
+            ("lan", "nas.lan", "10")
+        );
     }
 
     #[test]
@@ -501,7 +506,10 @@ mod tests {
         );
         // dnsmasq's "answer this domain from nowhere" entry keeps its shape.
         let blocked = Upstream::read(0, "/ads.example.com/");
-        assert_eq!((blocked.domain.as_str(), blocked.server.as_str()), ("ads.example.com", ""));
+        assert_eq!(
+            (blocked.domain.as_str(), blocked.server.as_str()),
+            ("ads.example.com", "")
+        );
     }
 
     #[test]
@@ -522,7 +530,10 @@ mod tests {
         assert_eq!(model.host_index("no_such_host"), None);
 
         let lan = model.interface("lan").expect("lan");
-        assert_eq!((lan.ipaddr.as_str(), lan.netmask.as_str()), ("10.0.0.1", "255.255.255.0"));
+        assert_eq!(
+            (lan.ipaddr.as_str(), lan.netmask.as_str()),
+            ("10.0.0.1", "255.255.255.0")
+        );
         // An uplink learns its address at runtime, so it states none.
         assert_eq!(model.interface("wan").expect("wan").ipaddr, "");
     }

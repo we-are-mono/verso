@@ -70,6 +70,16 @@ func (l *loginLimiter) fail(key string) {
 	}
 }
 
+// failures reports the consecutive failures standing against key. It is what
+// the sign-in page states back to a visitor — someone has been guessing at this
+// router, and that is worth knowing before you type anything. Zero once the key
+// is locked out, since reaching the limit both locks and clears the count.
+func (l *loginLimiter) failures(key string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.attempts[key].fails
+}
+
 // success clears any failure record for the key.
 func (l *loginLimiter) success(key string) {
 	l.mu.Lock()

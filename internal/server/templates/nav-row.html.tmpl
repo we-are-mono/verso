@@ -1,15 +1,33 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* verso-nav-row: one sidebar destination — icon tile, label, and the optional
-     trailing detail a live row carries. Every row in the rail is this one shape,
-     the everyday rows and the section rows of the advanced reading alike
-     (ADR-015 §5): one kind of entry, so depth changes what the sidebar lists and
-     never how a listing reads. */}}
+{{/* verso-nav-row: one destination in the rail, and the subpages it opens while
+     it is the one you are in. A leading icon identifies each destination;
+     the subpages share that identity and carry only their labels.
+
+     Where the marker sits depends on whether the row opened anything. A row with
+     no subpages wears it itself — a 2px ink rule at the rail's edge and the quiet
+     surface. A row that did open subpages hands the marker down to whichever of
+     them you are on, and keeps only the weight and the ink, so the rail never
+     marks two places at once. Inactive rows slide 4px inward on hover. */}}
 {{define "verso-nav-row"}}
-<li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors {{if .Active}}bg-slate-50 dark:bg-menu-interaction{{else}}hover:bg-slate-50 dark:hover:bg-menu-interaction dark:active:bg-menu-interaction{{end}}">
-  <span class="grid size-8 shrink-0 place-items-center rounded-lg transition {{if .Active}}text-sky-600{{else}}text-slate-400 group-hover:translate-x-1 group-hover:text-slate-600{{end}}">{{icon .Icon "size-5"}}</span>
-  <span class="text-sm transition {{if .Active}}font-semibold text-sky-600{{else}}font-medium text-slate-700 group-hover:translate-x-1 group-hover:text-slate-900{{end}}">{{.Label}}</span>
-  {{if .Detail}}<span class="ml-auto flex items-center gap-1.5 text-xs font-medium {{if eq .Variant "success"}}text-emerald-700{{else}}text-slate-400{{end}}">
-    {{if .Dot}}<span class="size-1.5 shrink-0 rounded-full {{if eq .Variant "success"}}verso-live-dot bg-emerald-500{{else}}bg-slate-400{{end}}"></span>{{end}}{{.Detail}}</span>{{end}}
-</a></li>
+<li>
+  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-3 border-l-2 py-2 pr-6 pl-6 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink {{if .Children}}border-transparent hover:bg-quiet/50{{else}}border-ink bg-quiet{{end}}{{else}}border-transparent text-body hover:bg-mid/50 hover:pl-7 hover:text-ink{{end}}">
+    {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
+    <span class="min-w-0 truncate">{{.Label}}</span>
+    {{if .Dot}}<span class="size-[5px] shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
+    {{if .Detail}}<span class="ml-auto shrink-0 font-mono text-sm font-medium text-meta">{{.Detail}}</span>{{end}}
+    {{if and .Active .Children}}<span class="ml-auto flex shrink-0 text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
+  </a>
+  {{if and .Active .Children}}
+  {{/* The branch hangs beneath the parent's icon; its labels align with the
+       parent's label, leaving the icon column to the first tier. */}}
+  <ul class="mt-1 mb-2 ml-8 flex flex-col border-l border-rule">
+    {{range .Children}}
+    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-2.5 py-2 pr-6 pl-5 transition-[padding,color] duration-150 {{if .Active}}bg-quiet font-semibold text-ink shadow-[inset_0.125rem_0_0_var(--color-ink)]{{else}}text-body hover:pl-6 hover:text-ink{{end}}">
+      <span class="min-w-0 truncate">{{.Label}}</span>
+    </a></li>
+    {{end}}
+  </ul>
+  {{end}}
+</li>
 {{end}}

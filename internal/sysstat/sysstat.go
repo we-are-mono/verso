@@ -27,35 +27,46 @@ type Storage struct {
 }
 
 // Sampler reads the local kernel. CPU busy share is a delta between two
-// /proc/stat snapshots, so the Sampler is stateful: each reading spans the
-// interval since the previous one. Safe for concurrent use.
+// /proc/stat snapshots, so the Sampler is stateful. Nearby callers share the
+// latest reading instead of shortening one another's sampling interval.
+// Safe for concurrent use.
 type Sampler struct {
 	readStat func() ([]byte, error)             // /proc/stat, behind a seam for tests
 	statfs   func(path string) (Storage, error) // statfs(2), likewise
 	wait     func()                             // the beat between the cold-start double sample
+	now      func() time.Time
 
-	mu        sync.Mutex
-	lastBusy  int64
-	lastTotal int64
-	sampled   bool
+	mu          sync.Mutex
+	lastBusy    int64
+	lastTotal   int64
+	sampled     bool
+	lastPercent float64
+	lastAt      time.Time
 }
+
+const cpuSampleInterval = 150 * time.Millisecond
 
 // New returns a Sampler on the real kernel interfaces.
 func New() *Sampler {
 	return &Sampler{
 		readStat: func() ([]byte, error) { return os.ReadFile("/proc/stat") },
 		statfs:   statfsPath,
-		wait:     func() { time.Sleep(150 * time.Millisecond) },
+		wait:     func() { time.Sleep(cpuSampleInterval) },
+		now:      time.Now,
 	}
 }
 
 // CPUPercent is the whole-box busy share (0–100) over the interval since the
-// previous call. The first call has no previous sample, so it takes two a beat
-// apart — one short block, once per process; every later reading spans the
-// real gap between polls.
-func (s *Sampler) CPUPercent() (int, error) {
+// previous sample, including fractional percentages on a lightly loaded box.
+// The first call takes two samples a beat apart. Calls within that same short
+// interval reuse the reading, so a page render or another tab cannot consume
+// the counters just before the live stream samples them.
+func (s *Sampler) CPUPercent() (float64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.lastAt.IsZero() && s.now().Sub(s.lastAt) < cpuSampleInterval {
+		return s.lastPercent, nil
+	}
 	if !s.sampled {
 		if err := s.sample(); err != nil {
 			return 0, err
@@ -68,14 +79,15 @@ func (s *Sampler) CPUPercent() (int, error) {
 	}
 	dTotal := s.lastTotal - prevTotal
 	if dTotal <= 0 {
-		return 0, nil
+		return s.lastPercent, nil
 	}
-	pct := int((s.lastBusy - prevBusy) * 100 / dTotal)
+	pct := float64(s.lastBusy-prevBusy) * 100 / float64(dTotal)
 	if pct < 0 {
 		pct = 0
 	} else if pct > 100 {
 		pct = 100
 	}
+	s.lastPercent, s.lastAt = pct, s.now()
 	return pct, nil
 }
 
@@ -93,6 +105,9 @@ func (s *Sampler) sample() error {
 	}
 	var total, idle int64
 	for i, f := range fields[1:] {
+		if i >= 8 {
+			break // guest and guest_nice are already included in user and nice
+		}
 		v, err := strconv.ParseInt(f, 10, 64)
 		if err != nil {
 			return fmt.Errorf("sysstat: /proc/stat field %q: %w", f, err)
