@@ -216,6 +216,20 @@ pub struct Record {
 }
 
 impl Record {
+    /// blank is the record a new-record page starts from: an A record — the
+    /// everyday kind — with nothing filled in.
+    pub fn blank() -> Record {
+        Record {
+            section: String::new(),
+            kind: RecordKind::A,
+            name: String::new(),
+            target: String::new(),
+            port: String::new(),
+            priority: String::new(),
+            weight: String::new(),
+        }
+    }
+
     fn read(kind: RecordKind, options: &Options) -> Record {
         let kind = match kind {
             // A and AAAA are the same section type; the address says which.

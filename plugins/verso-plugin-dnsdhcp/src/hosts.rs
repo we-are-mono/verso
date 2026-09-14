@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! Devices pinned to an address — `config host`.
+//! Devices pinned to an address — `config host` — as one listing, and a page
+//! apiece for editing one.
 //!
-//! A reservation is the one thing on these pages that is created rather than
-//! edited, and it is created from a lease: the operator sees a device that has
-//! an address and says "keep this one". So the same form serves both faces — the
-//! Reserve panel on the Leases listing and the edit panel on the Reservations
-//! listing — and the only difference is whether it names a section that already
-//! exists.
+//! A reservation is a name, a MAC, an address and a handful of overrides, so it
+//! is edited on a page of its own — the same screen for a new one and an existing
+//! one. It is also the one thing here that is created rather than edited, and it
+//! is created from a lease: the operator sees a device that has an address on the
+//! Leases page and says "keep this one", which opens this page prefilled from the
+//! device as it is.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Form, Map, RowDrawer, TableRow, Value,
-    Widget,
+    commit, commit_delete, commit_new, json, Envelope, Form, Map, TableRow, Tone, Value, Widget,
 };
 
+use crate::config;
 use crate::form::{self, Errors};
+use crate::leases;
 use crate::live::{Lease, Leases};
-use crate::model::{Dnsdhcp, Options, CONFIG};
+use crate::model::{same_mac, Dnsdhcp, Options, CONFIG};
 use crate::page;
 
 /// TYPE is the uci section type a reservation is written as.
@@ -28,12 +30,17 @@ holds its lease right now.";
 
 const EMPTY: &str = "No reserved addresses yet — reserve one from a device on the Leases page.";
 
-/// OWNED is every option this form writes. A save states all of them, so an
+const NEW_SUB: &str = "Keep an address with a device, so it always answers at the same place.";
+
+const MISSING: &str =
+    "That reservation isn’t here any more, so Verso showed you the configuration instead.";
+
+/// OWNED is every option this page writes. A save states all of them, so an
 /// option the operator cleared is cleared on disk rather than left behind, and
-/// an option this form does not draw is never touched.
+/// an option this page does not draw is never touched.
 const OWNED: [&str; 7] = ["name", "mac", "ip", "hostid", "duid", "leasetime", "tag"];
 
-/// Host is one reservation as the form holds it.
+/// Host is one reservation as the page holds it.
 #[derive(Default, Clone)]
 pub struct Host {
     pub section: String,
@@ -52,7 +59,7 @@ impl Host {
         Host {
             section: options.section.clone(),
             // uci writes several MACs onto one option to follow a device between
-            // docks, and dnsmasq reads them all; the form edits them as written.
+            // docks, and dnsmasq reads them all; the page edits them as written.
             mac: options.list("mac").join(" "),
             name: options.scalar("name").into(),
             ip: options.scalar("ip").into(),
@@ -64,20 +71,25 @@ impl Host {
     }
 
     /// of_lease is the reservation a lease would become — the device as it is
-    /// right now, ready to be kept.
+    /// right now, ready to be kept. A hostname the daemon would not read as a
+    /// name is dropped rather than carried into a field that would then refuse
+    /// the save; the edit page is where a name is added.
     pub fn of_lease(lease: &Lease) -> Host {
         Host {
-            name: lease.hostname.clone(),
+            name: match form::valid_hostname(&lease.hostname) {
+                true => lease.hostname.clone(),
+                false => String::new(),
+            },
             mac: lease.mac.clone(),
             ip: lease.ipv4.clone(),
             ..Host::default()
         }
     }
 
-    fn submitted(form: &Form) -> Host {
+    fn submitted(section: &str, form: &Form) -> Host {
         let field = |name: &str| form.get(name).trim().to_string();
         Host {
-            section: field(form::SECTION),
+            section: section.to_string(),
             name: field("name"),
             mac: field("mac"),
             ip: field("ip"),
@@ -97,53 +109,39 @@ impl Host {
     }
 }
 
-/// Refusal is a reservation the operator stated and the daemon would not read.
-pub struct Refusal {
-    pub host: Host,
-    pub errors: Errors,
-}
-
-/// Saved is what a reservation submission amounts to.
-pub enum Saved {
-    Ops(Vec<CommitOp>, &'static str),
-    Refused(Refusal),
-    Unknown,
-}
-
-/// section renders the reservations listing.
-pub fn section(model: &Dnsdhcp, leases: &Leases, refusal: Option<&Refusal>) -> Widget {
+/// section renders the reservations listing on the DHCP configuration page. Each
+/// row opens the reservation's own page; the tail adds a new one.
+pub fn section(model: &Dnsdhcp, leases: &Leases) -> Widget {
     let rows = model
         .hosts
         .iter()
         .map(|options| {
             let host = Host::read(options);
             let online = leases.holder(&host.mac).is_some();
-            match refusal {
-                Some(refused) if refused.host.section == host.section => {
-                    row(&refused.host, online, &refused.errors, true)
-                }
-                _ => row(&host, online, &Errors::default(), false),
-            }
+            row(&host, online)
         })
         .collect();
     Widget::section(
         "Reservations",
         SUB,
-        vec![page::table(
+        vec![page::listing(
             page::columns(&[
                 ("Name", "name"),
                 ("MAC", "mono"),
                 ("IPv4", "mono"),
                 ("IPv6 suffix", "mono"),
                 ("Online", "pill"),
+                ("", "link"),
             ]),
             rows,
             EMPTY,
+            "New reservation",
+            &page::new_reservation_href(),
         )],
     )
 }
 
-fn row(host: &Host, online: bool, errors: &Errors, open: bool) -> TableRow {
+fn row(host: &Host, online: bool) -> TableRow {
     let state = match online {
         true => page::pill_cell("online", "success"),
         false => page::pill_cell("", ""),
@@ -156,140 +154,248 @@ fn row(host: &Host, online: bool, errors: &Errors, open: bool) -> TableRow {
             page::address_cell(&host.ip),
             page::address_cell(&host.hostid),
             state,
+            page::edit_link_cell(page::reservation_href(&host.section)),
         ],
-        drawer: edit_drawer(host, errors, open),
         ..TableRow::default()
     }
 }
 
-/// edit_drawer is a reservation's own panel: the host form, and the confirm that
-/// gives the device back to the pool.
-fn edit_drawer(host: &Host, errors: &Errors, open: bool) -> Option<RowDrawer> {
-    let title = match host.name.is_empty() {
-        true => "Edit reservation".to_string(),
-        false => format!("Edit reservation — {}", host.name),
-    };
-    form::drawer(
-        &title,
-        open,
-        vec![
-            host_form("Save", host, errors),
-            form::delete_form(
-                form::HOST,
-                (form::SECTION, &host.section),
-                "Delete reservation",
-                &format!(
-                    "Delete the reservation for {}? It falls back to a dynamic address.",
-                    host.subject()
-                ),
-            ),
-        ],
-    )
+/// blank answers a visit to the new-reservation page. A `?reserve=<mac>` names a
+/// device on the Leases page (the "Reserve this address" link), so the page opens
+/// prefilled from that lease; without one it opens empty. A MAC no lease answers
+/// to prefills nothing rather than erroring.
+pub fn blank(leases: &Leases, query: &Form) -> Envelope {
+    let mac = query.get(leases::RESERVE);
+    let host = leases
+        .all()
+        .iter()
+        .find(|lease| same_mac(&lease.mac, &mac))
+        .map(Host::of_lease)
+        .unwrap_or_default();
+    editor(None, &host, &Errors::default())
 }
 
-/// reserve_drawer is the panel a live lease opens: the same form, prefilled from
-/// the device as it is, naming no section — which is what makes the save create
-/// one.
-pub fn reserve_drawer(host: &Host, errors: &Errors, open: bool) -> Option<RowDrawer> {
-    let title = match host.name.is_empty() {
-        true => "Reserve address".to_string(),
-        false => format!("Reserve address — {}", host.name),
-    };
-    form::drawer(&title, open, vec![host_form("Reserve", host, errors)])
+/// edit answers a visit to one reservation's page, or nothing when the sub-path
+/// names no reservation this config holds.
+pub fn edit(model: &Dnsdhcp, section: &str) -> Option<Envelope> {
+    let index = model.host_index(section)?;
+    Some(editor(
+        Some(section),
+        &Host::read(&model.hosts[index]),
+        &Errors::default(),
+    ))
 }
 
-/// host_form is the reservation form both panels carry.
-fn host_form(submit: &str, host: &Host, errors: &Errors) -> Widget {
-    Widget::Form {
-        note: Default::default(),
+/// missing states that the sub-path names no reservation and answers with the
+/// configuration page.
+pub fn missing(model: &Dnsdhcp, leases: &Leases) -> Envelope {
+    config::page(model, leases).with_notice(Tone::Danger, MISSING)
+}
 
-        style: String::new(),
-        submit: submit.into(),
-        error: String::new(),
-        fields: vec![
-            Widget::hidden(form::KIND, form::HOST),
-            Widget::hidden(form::SECTION, &host.section),
-            form::text_field("name", "Name", &host.name, "", errors),
-            form::text_field("mac", "MAC", &host.mac, "", errors),
-            form::text_field("ip", "IPv4 address", &host.ip, "", errors),
-            form::text_field(
-                "hostid",
-                "IPv6 suffix",
-                &host.hostid,
-                "Pins the interface part of the IPv6 address, e.g. ::30. Blank leaves IPv6 to SLAAC.",
-                errors,
-            ),
-            Widget::disclosure(
-                "Advanced — 3 more options",
-                vec![
-                    form::text_field(
-                        "duid",
-                        "DUID",
-                        &host.duid,
-                        "Match a DHCPv6 client by DUID instead of MAC.",
-                        errors,
-                    ),
-                    form::text_field(
-                        "leasetime",
-                        "Lease time override",
-                        &host.leasetime,
-                        "Blank uses the network's lease length.",
-                        errors,
-                    ),
-                    form::text_field(
-                        "tag",
-                        "Tag",
-                        &host.tag,
-                        "Hand this device the options set for a tag.",
-                        errors,
-                    ),
-                ],
-            ),
-        ],
+/// create answers the new-reservation page's submission: the section is added and
+/// the configuration page answers with it staged.
+pub fn create(model: &mut Dnsdhcp, leases: &Leases, form: &Form) -> Envelope {
+    let stated = Host::submitted("", form);
+    let errors = validate(&stated);
+    if !errors.is_empty() {
+        return editor(None, &stated, &errors).with_notice(Tone::Danger, form::REFUSED);
     }
+    let op = commit_new(CONFIG, TYPE, values(&stated, false));
+    // The new section's uci name is the shell's to assign, so the answer carries
+    // the reservation without one; the next read brings it back named.
+    let mut options = Options::default();
+    apply(&mut options, &stated);
+    model.hosts.push(options);
+    config::page(model, leases)
+        .with_notice(Tone::Success, "Address reserved.")
+        .with_commit(vec![op])
 }
 
-/// save answers a reservation submission, from either panel.
-pub fn save(model: &mut Dnsdhcp, form: &Form) -> Saved {
-    let stated = Host::submitted(form);
-    let existing = model.host_index(&stated.section);
-    if !stated.section.is_empty() && existing.is_none() {
-        return Saved::Unknown;
-    }
+/// save answers one reservation's page. A delete gives the device back to the
+/// pool and answers with the configuration page; anything else is the page's own
+/// submission — refused onto the page, or saved and answered with the listing.
+pub fn save(model: &mut Dnsdhcp, leases: &Leases, section: &str, form: &Form) -> Option<Envelope> {
+    let index = model.host_index(section)?;
     if form::deletes(form) {
-        let Some(index) = existing else {
-            return Saved::Unknown;
-        };
         let removed = model.hosts.remove(index);
-        return Saved::Ops(
-            vec![commit_delete(CONFIG, &removed.section)],
-            "Reservation deleted.",
+        return Some(
+            config::page(model, leases)
+                .with_notice(Tone::Success, "Reservation deleted.")
+                .with_commit(vec![commit_delete(CONFIG, &removed.section)]),
         );
     }
 
+    let stated = Host::submitted(section, form);
     let errors = validate(&stated);
     if !errors.is_empty() {
-        return Saved::Refused(Refusal {
-            host: stated,
-            errors,
-        });
+        return Some(
+            editor(Some(section), &stated, &errors).with_notice(Tone::Danger, form::REFUSED),
+        );
     }
-    match existing {
-        Some(index) => {
-            let op = commit(CONFIG, &stated.section, values(&stated, true));
-            apply(&mut model.hosts[index], &stated);
-            Saved::Ops(vec![op], "Reservation saved.")
+    let op = commit(CONFIG, section, values(&stated, true));
+    apply(&mut model.hosts[index], &stated);
+    Some(
+        config::page(model, leases)
+            .with_notice(Tone::Success, "Reservation saved.")
+            .with_commit(vec![op]),
+    )
+}
+
+/// editor composes the reservation page — the new page and the edit page, one
+/// screen. It keeps the DHCP top bar so the tabs stay put underneath the
+/// operator.
+fn editor(section: Option<&str>, host: &Host, errors: &Errors) -> Envelope {
+    let (title, subheading, submit) = match section {
+        Some(_) => ("Edit reservation", heading(&host.name), "Save changes"),
+        None => ("New reservation", NEW_SUB.to_string(), "Add reservation"),
+    };
+    let mut children = vec![Widget::Form {
+        style: "page".into(),
+        submit: submit.into(),
+        error: String::new(),
+        fields: controls(host, errors, Subject::Reservation),
+        note: String::new(),
+    }];
+    children.push(footnote(section, host));
+    if section.is_some() {
+        children.push(form::delete_form(
+            "Delete reservation",
+            &format!(
+                "Delete the reservation for {}? It falls back to a dynamic address.",
+                host.subject()
+            ),
+        ));
+    }
+    page::dhcp_editor(title, &subheading, Widget::stack(children))
+}
+
+/// Subject is whose screen a reservation is being edited on, which decides one
+/// thing: whether the device is still open to choice.
+///
+/// On a page of its own the reservation is the subject and every value it states
+/// is a control, the MAC included — that is how a reservation is pointed at a
+/// device in the first place. In a device's panel the device is the subject, and
+/// the panel is already headed with it: retyping the MAC there would quietly
+/// move the reservation to another device while the heading still named this
+/// one, so the MAC rides as a hidden carrier and the panel edits what is
+/// genuinely open.
+#[derive(Clone, Copy, PartialEq)]
+enum Subject {
+    Reservation,
+    Device,
+}
+
+/// controls is the reservation's editing surface, the same wherever it is shown.
+/// The tips are on the three labels that are terms of art rather than plain
+/// words — an operator who already knows them never opens one, and an operator
+/// who does not is not made to leave the form to find out.
+fn controls(host: &Host, errors: &Errors, subject: Subject) -> Vec<Widget> {
+    let mac = match subject {
+        Subject::Reservation => form::text_field("mac", "MAC", &host.mac, "", errors),
+        Subject::Device => Widget::hidden("mac", &host.mac),
+    };
+    vec![
+        form::text_field(
+            "name",
+            "Name",
+            &host.name,
+            "Also answers to this name on the local network.",
+            errors,
+        ),
+        mac,
+        form::text_field("ip", "IPv4 address", &host.ip, "", errors).explained(
+            "The address this device is handed every time it asks, instead of whichever one \
+             happens to be free. It has to sit inside the device’s own network and outside the \
+             range unreserved devices draw from, or it will be handed out twice.",
+            &format!("{CONFIG} {TYPE}"),
+        ),
+        form::text_field(
+            "hostid",
+            "IPv6 suffix",
+            &host.hostid,
+            "Pins the interface part of the IPv6 address, e.g. ::30. Blank leaves IPv6 to SLAAC.",
+            errors,
+        )
+        .explained(
+            "An IPv6 address is the network’s prefix followed by a suffix that picks out one \
+             device on it. Pinning the suffix keeps this device at the same place even when the \
+             provider hands the network a new prefix: the front of the address moves, the part \
+             set here stays.",
+            &format!("{CONFIG} {TYPE}"),
+        ),
+        // The one rule in this form: the fields above carry none, so the
+        // boundary is what says the rest is optional.
+        Widget::section(
+            "Advanced",
+            "Leave these unless something specific asks for them.",
+            vec![
+                form::text_field(
+                    "duid",
+                    "DUID",
+                    &host.duid,
+                    "Match a DHCPv6 client by DUID instead of MAC.",
+                    errors,
+                )
+                .explained(
+                    "Asking for an address over IPv6, a device names itself by a DUID — an \
+                     identifier it makes up once and then keeps — rather than by its MAC. Fill \
+                     this in only for a device whose IPv6 address the MAC above is not pinning; \
+                     the DUID is readable off the device itself, or off the lease it holds.",
+                    &format!("{CONFIG} {TYPE}"),
+                ),
+                form::text_field(
+                    "leasetime",
+                    "Lease time override",
+                    &host.leasetime,
+                    "Blank uses the network's lease length.",
+                    errors,
+                ),
+                form::text_field(
+                    "tag",
+                    "Tag",
+                    &host.tag,
+                    "Hand this device the options set for a tag.",
+                    errors,
+                ),
+            ],
+        )
+        .ruled(),
+    ]
+}
+
+/// footnote is what the save will put in the file, as it will put it. Someone
+/// who knows uci checks the form said what they meant; everyone else reads the
+/// fields and ignores this.
+fn footnote(section: Option<&str>, host: &Host) -> Widget {
+    // Not a live preview: this page's block is built where it is rendered, and
+    // making it follow the form is a decision for this plugin's own pass.
+    Widget::code(
+        &format!("Written to /etc/config/{CONFIG}"),
+        &uci_preview(section, host),
+    )
+}
+
+/// uci_preview is the reservation as uci would hold it: the section this save
+/// lands in, then every option it states. An option the operator left blank is
+/// left out, because a blank is a removal and the file simply will not carry
+/// that line.
+fn uci_preview(section: Option<&str>, host: &Host) -> String {
+    let name = section.unwrap_or("@host[-1]");
+    let mut out = format!("config {TYPE} '{name}'");
+    for (option, value) in fields(host) {
+        if !value.is_empty() {
+            out.push_str(&format!("\n\toption {option} '{value}'"));
         }
-        None => {
-            let op = commit_new(CONFIG, TYPE, values(&stated, false));
-            // The new section's uci name is the shell's to assign, so the answer
-            // carries the reservation without one; the next read brings it back
-            // named.
-            let mut options = Options::default();
-            apply(&mut options, &stated);
-            model.hosts.push(options);
-            Saved::Ops(vec![op], "Address reserved.")
-        }
+    }
+    out
+}
+
+/// heading names the reservation the page is about, or its own words when the
+/// device carries no name yet.
+fn heading(name: &str) -> String {
+    match name.is_empty() {
+        true => "An unnamed device.".to_string(),
+        false => name.to_string(),
     }
 }
 
@@ -300,7 +406,7 @@ fn apply(options: &mut Options, host: &Host) {
     }
 }
 
-/// fields pairs every option this form owns with the value it carries.
+/// fields pairs every option this page owns with the value it carries.
 fn fields(host: &Host) -> [(&'static str, &str); 7] {
     [
         ("name", &host.name),
@@ -375,50 +481,149 @@ fn validate(host: &Host) -> Errors {
     errors
 }
 
+/// The words the reservation tab's commit row carries in a device's panel. A
+/// reservation is reloaded rather than applied through the rollback window, so
+/// the tab says exactly that instead of leaving the shell's general promise
+/// standing. It names the role and not the daemon: `/etc/config/dhcp` is read by
+/// dnsmasq and odhcpd together on a stock OpenWrt, and by neither on a board
+/// resolving through something else — so the one thing this plugin can honestly
+/// promise is that whatever serves DHCP here picks the change up at once.
+const TAB_LABEL: &str = "Reserved address";
+const TAB_CTA_NEW: &str = "Reserve address";
+const TAB_CTA_EDIT: &str = "Save reservation";
+const TAB_NOTE: &str = "Applies immediately — the DHCP server reloads, no rollback needed.";
+
+/// entity_section is the reservation a device already holds, if any — the handle
+/// a submitted tab saves into, so the same form creates or edits without the
+/// caller having to know which.
+pub fn entity_section(model: &Dnsdhcp, mac: &str) -> Option<String> {
+    model
+        .hosts
+        .iter()
+        .map(Host::read)
+        .find(|host| same_mac(&host.mac, mac))
+        .map(|host| host.section)
+}
+
+/// entity_tab answers the shell's request for this plugin's say about one
+/// device: the reservation it already has, or the one it could be given,
+/// prefilled from the lease it is holding right now.
+///
+/// The shell frames this as one tab of the device's panel beside whatever other
+/// plugins had to say. It knows nothing of them, and they know nothing of it.
+pub fn entity_tab(model: &Dnsdhcp, leases: &Leases, mac: &str) -> Envelope {
+    // A device that does not exist yet: the same controls, empty, so making a
+    // reservation and editing one are the same form. There is no device to be
+    // the subject either, so the MAC is a control here as it is on the page.
+    if mac == "new" {
+        return tab(None, &Host::default(), Subject::Reservation, TAB_CTA_NEW);
+    }
+    let existing = model
+        .hosts
+        .iter()
+        .map(Host::read)
+        .find(|host| same_mac(&host.mac, mac));
+
+    let (section, host, cta) = match existing {
+        Some(host) => (Some(host.section.clone()), host, TAB_CTA_EDIT),
+        None => {
+            // No reservation yet: open on the lease this device is holding, so
+            // the address it already has is the one being offered to keep.
+            let host = leases
+                .all()
+                .iter()
+                .find(|lease| same_mac(&lease.mac, mac))
+                .map(Host::of_lease)
+                .unwrap_or_else(|| Host {
+                    mac: mac.to_string(),
+                    ..Host::default()
+                });
+            (None, host, TAB_CTA_NEW)
+        }
+    };
+    tab(section.as_deref(), &host, Subject::Device, cta)
+}
+
+/// tab is the reservation as one tab of a panel: the controls and the footnote,
+/// and nothing else. The panel's own frame carries the heading, the commit row
+/// and the close, and the listing row beside it already carries the removal —
+/// so a delete inside here would be the same act offered twice.
+fn tab(section: Option<&str>, host: &Host, subject: Subject, cta: &str) -> Envelope {
+    let body = Widget::stack(vec![
+        Widget::Form {
+            style: "page".into(),
+            submit: String::new(),
+            error: String::new(),
+            fields: controls(host, &Errors::default(), subject),
+            note: String::new(),
+        },
+        footnote(section, host),
+    ]);
+    Envelope::page(TAB_LABEL, body)
+        .with_commit_row(cta, TAB_NOTE)
+        .with_tab_state(&tab_state(section, host))
+}
+
+/// tab_state is where this device stands on the question the tab answers, for
+/// the chip the shell hangs beside the label: the address it is pinned to, or
+/// that it is pinned to none. A reservation is *for* an address, so the address
+/// is the state — anything shorter would say less than the word it replaced.
+fn tab_state(section: Option<&str>, host: &Host) -> String {
+    match (section.is_some(), host.ip.is_empty()) {
+        (false, _) => "none".to_string(),
+        (true, true) => "reserved".to_string(),
+        (true, false) => host.ip.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::fixture;
     use serde_json::Value as Json;
 
-    fn rows(model: &Dnsdhcp, refusal: Option<&Refusal>) -> Vec<Json> {
-        let json =
-            serde_json::to_value(section(model, &fixture::leases(), refusal)).expect("serialize");
+    fn body(env: Envelope) -> Json {
+        serde_json::to_value(&env).expect("serialize")
+    }
+
+    fn listing_rows(model: &Dnsdhcp) -> Vec<Json> {
+        let json = serde_json::to_value(section(model, &fixture::leases())).expect("serialize");
         json["children"][0]["rows"]
             .as_array()
             .expect("rows")
             .clone()
     }
 
-    fn submit(body: &str) -> (Dnsdhcp, Saved) {
+    fn control(env: &Json, name: &str) -> Json {
+        env["widget"]["children"][0]["fields"]
+            .as_array()
+            .expect("fields")
+            .iter()
+            // The advanced options are a section of the form, not a fold, so a
+            // control may sit one level down inside it.
+            .flat_map(|f| match f["type"] == "section" {
+                true => f["children"].as_array().cloned().unwrap_or_default(),
+                false => vec![f.clone()],
+            })
+            .find(|f| f["name"] == name)
+            .unwrap_or_else(|| panic!("no control {name}"))
+    }
+
+    fn saved(section: &str, body_str: &str) -> (Dnsdhcp, Json) {
         let mut model = fixture::dnsdhcp();
-        let saved = save(&mut model, &Form::parse(body));
-        (model, saved)
-    }
-
-    fn ops(saved: &Saved) -> Json {
-        match saved {
-            Saved::Ops(ops, _) => serde_json::to_value(ops).expect("serialize"),
-            _ => panic!("the submission was not written"),
-        }
-    }
-
-    // A router with nothing pinned is the ordinary case, and the listing points
-    // at where a reservation comes from rather than drawing an empty grid.
-    #[test]
-    fn no_reservations_points_at_where_one_comes_from() {
-        let mut model = fixture::dnsdhcp();
-        model.hosts.clear();
-        let json =
-            serde_json::to_value(section(&model, &fixture::leases(), None)).expect("serialize");
-        let table = &json["children"][0];
-        assert_eq!(table["empty_text"], EMPTY);
-        assert!(table["rows"].as_array().expect("rows").is_empty());
+        let env = save(
+            &mut model,
+            &fixture::leases(),
+            section,
+            &Form::parse(body_str),
+        )
+        .expect("the fixture holds this reservation");
+        (model, body(env))
     }
 
     #[test]
-    fn a_reservation_reads_as_its_pinned_facts_and_whether_it_is_here() {
-        let rows = rows(&fixture::dnsdhcp(), None);
+    fn every_row_leads_to_its_own_page_and_states_whether_it_is_here() {
+        let rows = listing_rows(&fixture::dnsdhcp());
         assert_eq!(rows[0]["id"], "host_nas");
         assert_eq!(rows[0]["cells"][0]["text"], "nas");
         assert_eq!(rows[0]["cells"][1]["text"], "30:9C:23:5E:88:01");
@@ -427,45 +632,146 @@ mod tests {
             rows[0]["cells"][4],
             serde_json::json!({"text": "online", "variant": "success"})
         );
+        assert_eq!(
+            rows[0]["cells"][5],
+            serde_json::json!({"text": "Edit", "href": page::reservation_href("host_nas")})
+        );
         // A reservation whose device is not here says nothing rather than "offline".
         assert_eq!(rows[1]["cells"][4], serde_json::json!({}));
-        assert_eq!(
-            rows[1]["cells"][3],
-            serde_json::json!({"text": "—", "muted": true})
-        );
-
-        let drawer = &rows[0]["drawer"];
-        assert_eq!(drawer["title"], "Edit reservation — nas");
-        let fields = &drawer["children"][0]["fields"];
-        assert_eq!(
-            fields[1],
-            serde_json::json!({"type": "field", "name": "_section", "kind": "hidden", "value": "host_nas"})
-        );
-        assert_eq!(drawer["children"][0]["submit"], "Save");
-        assert_eq!(drawer["children"][1]["fields"][3]["type"], "confirm");
+        for row in &rows {
+            assert!(row.get("drawer").is_none(), "{row}");
+        }
     }
 
     #[test]
-    fn reserving_a_lease_creates_the_section_it_needs() {
-        let (model, saved) =
-            submit("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
+    fn the_edit_page_carries_the_reservation_and_keeps_the_dhcp_tabs() {
+        let model = fixture::dnsdhcp();
+        let nas = body(edit(&model, "host_nas").expect("reservation"));
+        assert_eq!(nas["title"], "Edit reservation");
+        assert_eq!(nas["subheading"], "nas");
+        assert_eq!(nas["pages"][1]["path"], "config", "the DHCP tabs stay put");
+        assert_eq!(control(&nas, "mac")["value"], "30:9C:23:5E:88:01");
+        assert_eq!(control(&nas, "hostid")["value"], "::30");
+        assert_eq!(nas["widget"]["children"][0]["style"], "page");
+        // children[1] is the form's own footnote — the lines this save writes.
+        assert_eq!(nas["widget"]["children"][1]["type"], "code");
         assert_eq!(
-            ops(&saved),
+            nas["widget"]["children"][1]["label"],
+            "Written to /etc/config/dhcp"
+        );
+        assert_eq!(nas["widget"]["children"][2]["fields"][1]["type"], "confirm");
+
+        let blank = body(blank(&fixture::leases(), &Form::default()));
+        assert_eq!(blank["title"], "New reservation");
+        assert_eq!(control(&blank, "name")["value"], "");
+        // A reservation that does not exist yet has a form and its footnote, and
+        // nothing to delete.
+        assert_eq!(
+            blank["widget"]["children"]
+                .as_array()
+                .expect("children")
+                .len(),
+            2
+        );
+        assert_eq!(blank["widget"]["children"][1]["type"], "code");
+    }
+
+    #[test]
+    fn the_new_page_opens_prefilled_from_the_lease_a_reserve_link_named() {
+        let query = Form::parse("reserve=42:e6:ad:ff:b7:af");
+        let prefilled = body(blank(&fixture::leases(), &query));
+        assert_eq!(control(&prefilled, "name")["value"], "toms-iphone");
+        assert_eq!(control(&prefilled, "mac")["value"], "42:e6:ad:ff:b7:af");
+        assert_eq!(control(&prefilled, "ip")["value"], "10.0.0.142");
+
+        // A MAC no lease answers to prefills nothing rather than erroring.
+        for reserve in ["", "aa:bb:cc:dd:ee:ff", "nonsense"] {
+            let body = body(blank(
+                &fixture::leases(),
+                &Form::parse(&format!("reserve={reserve}")),
+            ));
+            assert_eq!(control(&body, "mac")["value"], "", "{reserve}");
+        }
+    }
+
+    #[test]
+    fn a_devices_panel_edits_only_what_is_still_open_to_choice() {
+        let model = fixture::dnsdhcp();
+        let leases = fixture::leases();
+
+        // The panel is headed with the device, so its MAC is settled: it rides
+        // as a hidden carrier the save still posts, never as a control that
+        // could point the reservation at some other device.
+        let held = body(entity_tab(&model, &leases, "30:9C:23:5E:88:01"));
+        assert_eq!(held["title"], "Reserved address");
+        assert_eq!(held["cta"], "Save reservation");
+        assert_eq!(control(&held, "mac")["kind"], "hidden");
+        assert_eq!(control(&held, "mac")["value"], "30:9C:23:5E:88:01");
+
+        // Removing the reservation is the listing row's own act, so the panel
+        // carries no delete: the controls and the footnote are the whole tab.
+        let children = held["widget"]["children"].as_array().expect("children");
+        assert_eq!(children.len(), 2);
+        assert_eq!(children[1]["type"], "code");
+
+        // A device holding a lease and no reservation opens on that lease.
+        let fresh = body(entity_tab(&model, &leases, "42:e6:ad:ff:b7:af"));
+        assert_eq!(fresh["cta"], "Reserve address");
+        assert_eq!(control(&fresh, "ip")["value"], "10.0.0.142");
+        assert_eq!(control(&fresh, "mac")["kind"], "hidden");
+
+        // No device at all: nothing is settled, so the MAC is a control again.
+        let blank = body(entity_tab(&model, &leases, "new"));
+        assert_eq!(control(&blank, "mac")["kind"], "text");
+    }
+
+    #[test]
+    fn the_labels_that_are_terms_of_art_explain_themselves() {
+        let model = fixture::dnsdhcp();
+        let nas = body(edit(&model, "host_nas").expect("reservation"));
+        for name in ["ip", "hostid", "duid"] {
+            let field = control(&nas, name);
+            assert!(
+                field["tip"].as_str().is_some_and(|tip| !tip.is_empty()),
+                "{name}"
+            );
+            assert_eq!(field["source"], "dhcp host", "{name}");
+        }
+        // A label that is already the plain word for the thing raises nothing,
+        // and an explanation is the field's wherever it is edited.
+        for name in ["name", "leasetime", "tag"] {
+            assert!(control(&nas, name).get("tip").is_none(), "{name}");
+        }
+        let panel = body(entity_tab(&model, &fixture::leases(), "30:9C:23:5E:88:01"));
+        assert_eq!(control(&panel, "ip")["tip"], control(&nas, "ip")["tip"]);
+    }
+
+    #[test]
+    fn creating_a_reservation_states_the_section_and_lands_on_the_configuration() {
+        let mut model = fixture::dnsdhcp();
+        let body = body(create(
+            &mut model,
+            &fixture::leases(),
+            &Form::parse("name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142"),
+        ));
+        assert_eq!(body["title"], "DHCP");
+        assert_eq!(body["notice"]["text"], "Address reserved.");
+        assert_eq!(
+            body["commit"],
             serde_json::json!([{
                 "config": "dhcp", "section": "", "type": "host",
                 "values": {"name": "toms-iphone", "mac": "42:e6:ad:ff:b7:af", "ip": "10.0.0.142"}
             }])
         );
-        // The answer already reads the device as reserved.
         assert!(model.reserved("42:e6:ad:ff:b7:af"));
     }
 
     #[test]
     fn saving_a_reservation_clears_every_option_it_no_longer_states() {
-        let (model, saved) =
-            submit("_form=host&_section=host_nas&name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.30");
+        let (model, body) = saved("host_nas", "name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.30");
+        assert_eq!(body["title"], "DHCP");
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([{
                 "config": "dhcp", "section": "host_nas",
                 "values": {
@@ -479,75 +785,77 @@ mod tests {
     }
 
     #[test]
-    fn deleting_a_reservation_removes_its_section() {
-        let (model, saved) = submit("_form=host&_section=host_thermo&_delete=1");
+    fn deleting_a_reservation_removes_its_section_and_lands_on_the_configuration() {
+        let (model, body) = saved("host_thermo", "_delete=1");
+        assert_eq!(body["title"], "DHCP");
+        assert_eq!(body["notice"]["text"], "Reservation deleted.");
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([{"config": "dhcp", "section": "host_thermo", "delete": true}])
         );
         assert!(model.host_index("host_thermo").is_none());
     }
 
     #[test]
-    fn a_reservation_the_daemons_would_skip_is_marked_and_nothing_is_written() {
-        for (body, field) in [
-            ("_form=host&_section=&mac=not-a-mac&ip=10.0.0.9", "mac"),
+    fn a_reservation_the_daemons_would_skip_is_marked_on_the_page_and_nothing_is_written() {
+        for (body_str, field) in [
+            ("mac=not-a-mac&ip=10.0.0.9", "mac"),
+            ("mac=30:9c:23:5e:88:01&ip=10.0.0.256", "ip"),
+            ("mac=30:9c:23:5e:88:01&ip=10.0.0.9&name=not+a+name", "name"),
+            ("mac=30:9c:23:5e:88:01&ip=10.0.0.9&hostid=::zz", "hostid"),
             (
-                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.256",
-                "ip",
-            ),
-            (
-                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&name=not+a+name",
-                "name",
-            ),
-            (
-                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&hostid=::zz",
-                "hostid",
-            ),
-            (
-                "_form=host&_section=&mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever",
+                "mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever",
                 "leasetime",
             ),
             // A reservation that matches a device and then hands it nothing.
-            ("_form=host&_section=&mac=30:9c:23:5e:88:01", "ip"),
+            ("mac=30:9c:23:5e:88:01", "ip"),
         ] {
-            let (_, saved) = submit(body);
-            let Saved::Refused(refusal) = saved else {
-                panic!("{body}: the submission should have been refused");
-            };
+            let mut model = fixture::dnsdhcp();
+            let body = body(create(
+                &mut model,
+                &fixture::leases(),
+                &Form::parse(body_str),
+            ));
+            assert_eq!(body["title"], "New reservation", "{body_str}");
+            assert!(body.get("commit").is_none(), "{body_str}");
             assert!(
-                !refusal.errors.get(field).is_empty(),
-                "{body}: {field} carries no error"
+                !control(&body, field)["error"]
+                    .as_str()
+                    .unwrap_or("")
+                    .is_empty(),
+                "{body_str}: {field} carries no error"
             );
         }
     }
 
     #[test]
-    fn a_refused_reservation_comes_back_open_carrying_what_was_typed() {
-        let mut model = fixture::dnsdhcp();
-        let Saved::Refused(refusal) = save(
-            &mut model,
-            &Form::parse("_form=host&_section=host_nas&name=nas&mac=nope&ip=10.0.0.30"),
-        ) else {
-            panic!("the submission should have been refused");
-        };
-        let rows = rows(&model, Some(&refusal));
-        assert_eq!(rows[0]["drawer"]["open"], true);
-        assert_eq!(
-            rows[0]["drawer"]["children"][0]["fields"][3]["value"],
-            "nope"
-        );
-        assert!(rows[1]["drawer"].get("open").is_none());
+    fn a_refused_edit_comes_back_on_the_page_carrying_what_was_typed() {
+        let (_, body) = saved("host_nas", "name=nas&mac=nope&ip=10.0.0.30");
+        assert_eq!(body["title"], "Edit reservation");
+        assert!(body.get("commit").is_none());
+        assert_eq!(control(&body, "mac")["value"], "nope");
+        assert!(!control(&body, "mac")["error"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty());
     }
 
     #[test]
-    fn a_submission_naming_no_reservation_writes_nothing() {
-        for body in [
-            "_form=host&_section=no_such_host&mac=30:9c:23:5e:88:01&ip=10.0.0.9",
-            "_form=host&_section=&_delete=1",
-        ] {
-            let (_, saved) = submit(body);
-            assert!(matches!(saved, Saved::Unknown), "{body}");
-        }
+    fn a_sub_path_naming_no_reservation_answers_with_the_configuration() {
+        let model = fixture::dnsdhcp();
+        assert!(edit(&model, "no_such_host").is_none());
+
+        let mut model = fixture::dnsdhcp();
+        assert!(save(
+            &mut model,
+            &fixture::leases(),
+            "no_such_host",
+            &Form::parse("mac=30:9c:23:5e:88:01&ip=10.0.0.9")
+        )
+        .is_none());
+
+        let body = body(missing(&fixture::dnsdhcp(), &fixture::leases()));
+        assert_eq!(body["title"], "DHCP");
+        assert_eq!(body["notice"]["level"], "danger");
     }
 }

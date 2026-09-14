@@ -1,27 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The Verso DNS and DHCP plugin: three pages over `/etc/config/dhcp`.
-//!
-//! One file, two daemons, two domains. dnsmasq answers names and hands out IPv4
-//! addresses; odhcpd announces the network and hands out IPv6. They read the
-//! same config, so one plugin owns it — but an operator does not visit "the
-//! dhcp config", they visit DNS or they visit DHCP, so the nav offers both and
-//! each is a heading of its own. DHCP splits again into the leases you watch and
-//! the configuration you edit; DNS has no live state to watch, so it stays one
-//! face rather than growing a tab that is not about anything.
-//!
-//! Every request is answered from the reads the shell brokers with it — the uci
-//! snapshot and the live lease table — so the plugin holds no state between
-//! requests and reaches nothing itself (ADR-007). A submission is answered the
-//! same way: the model is built from the snapshot, the accepted change is
-//! applied to the model, and the page renders from the model, so what the
-//! operator did is what they see beside the commit intent the shell stages.
+//! DNS settings, with device reservation contributions and legacy editor URLs.
+//! Reads and mutations are brokered by the shell; the plugin has no privileges.
 
-use verso_plugin::{serve, Envelope, Form, Request};
+use verso_plugin::{serve_described, Envelope, Form, Request};
 
 mod config;
+mod describe;
 mod dns;
+mod files;
 mod form;
 mod format;
 mod hosts;
@@ -31,6 +19,8 @@ mod model;
 mod options;
 mod page;
 mod records;
+mod servers;
+mod settings;
 mod upstreams;
 
 #[cfg(test)]
@@ -40,51 +30,164 @@ use live::Leases;
 use model::Dnsdhcp;
 
 fn main() {
-    serve("dnsdhcp", get, post);
+    serve_described("dnsdhcp", get, post, describe::describe);
 }
 
 fn get(request: &Request) -> Envelope {
+    if request.path.trim_matches('/').starts_with("files/") {
+        return files::get(request);
+    }
+    if matches!(
+        request.path.trim_matches('/'),
+        "" | "config" | "dns" | "leases"
+    ) {
+        return settings::page(request);
+    }
     let model = Dnsdhcp::read(&request.snapshot);
     let leases = Leases::read(&request.ubus);
-    match Route::of(&request.path) {
+    let answer = match Route::of(&request.path) {
         Route::Dns => dns::page(&model),
         Route::Config => config::page(&model, &leases),
-        Route::Leases => leases::page(&model, &leases, &reserve(request)),
-    }
+        Route::Leases => leases::page(&model, &leases),
+        Route::NewRecord => records::blank(),
+        Route::EditRecord(section) => {
+            records::edit(&model, &section).unwrap_or_else(|| records::missing(&model))
+        }
+        Route::NewServer => upstreams::blank(),
+        Route::EditServer(index) => {
+            upstreams::edit(&model, &index).unwrap_or_else(|| upstreams::missing(&model))
+        }
+        Route::NewReservation => hosts::blank(&leases, &request.query),
+        Route::EntityDevice(mac) => hosts::entity_tab(&model, &leases, &mac),
+        Route::EditReservation(section) => {
+            hosts::edit(&model, &section).unwrap_or_else(|| hosts::missing(&model, &leases))
+        }
+    };
+    current_page(request, answer)
 }
 
 fn post(request: &Request, form: &Form) -> Envelope {
+    if request.path.trim_matches('/').starts_with("files/") {
+        return files::post(request, form);
+    }
+    if matches!(
+        request.path.trim_matches('/'),
+        "" | "config" | "dns" | "leases"
+    ) {
+        return settings::post(request, form);
+    }
     let mut model = Dnsdhcp::read(&request.snapshot);
     let leases = Leases::read(&request.ubus);
-    match Route::of(&request.path) {
-        Route::Dns => dns::post(&mut model, form),
-        Route::Config => config::post(&mut model, &leases, form),
-        Route::Leases => leases::post(&mut model, &leases, form, &reserve(request)),
+    let answer =
+        match Route::of(&request.path) {
+            Route::Dns => dns::post(&mut model, form),
+            Route::Config => config::post(&mut model, &leases, form),
+            Route::Leases => leases::post(&model, &leases),
+            Route::NewRecord => records::create(&mut model, form),
+            Route::EditRecord(section) => records::save(&mut model, &section, form)
+                .unwrap_or_else(|| records::missing(&model)),
+            Route::NewServer => upstreams::create(&mut model, form),
+            Route::EditServer(index) => upstreams::save(&mut model, &index, form)
+                .unwrap_or_else(|| upstreams::missing(&model)),
+            Route::NewReservation => hosts::create(&mut model, &leases, form),
+            Route::EditReservation(section) => hosts::save(&mut model, &leases, &section, form)
+                .unwrap_or_else(|| hosts::missing(&model, &leases)),
+            // A submitted tab saves into the reservation the device already has, or
+            // creates the one it does not — the same form either way, so the panel
+            // never asks which it is.
+            Route::EntityDevice(mac) => match hosts::entity_section(&model, &mac) {
+                Some(section) => hosts::save(&mut model, &leases, &section, form)
+                    .unwrap_or_else(|| hosts::missing(&model, &leases)),
+                None => hosts::create(&mut model, &leases, form),
+            },
+        };
+    current_page(request, answer)
+}
+
+// Existing deep links remain usable; every completed edit returns to the new
+// settings page, while reservations return to the Devices page that owns them.
+fn current_page(request: &Request, mut answer: Envelope) -> Envelope {
+    answer.pages.clear();
+    if matches!(answer.title.as_str(), "DNS" | "DHCP") {
+        let mut current = settings::page(request);
+        current.commit = answer.commit;
+        current.notice = answer.notice;
+        if request.path.contains("reservations/") {
+            current = current.with_back("Devices", "/devices");
+        }
+        return current;
     }
+    if request.path.contains("reservations/") {
+        answer = answer.with_back("Devices", "/devices");
+    }
+    answer
 }
 
-/// reserve is the device a visitor arrived to reserve — the Devices page sends
-/// a MAC in the query so the panel opens on arrival rather than after a hunt.
-fn reserve(request: &Request) -> String {
-    request.query.get(leases::RESERVE)
-}
-
-/// Route is what a request's sub-path asks for. A sub-path this plugin does not
-/// publish answers with the page it leads with, so a stale link lands somewhere
-/// real.
+/// Route is what a request's sub-path asks for: one of the three pages, or one of
+/// the three editors below two of them. A sub-path this plugin does not publish
+/// answers with the page it leads with, so a stale link lands somewhere real; an
+/// editor's own root (`dns/records` with no section) is the listing it belongs
+/// to, and a sub-path naming no object there is that editor's to answer.
 enum Route {
     Leases,
     Config,
     Dns,
+    NewRecord,
+    EditRecord(String),
+    NewServer,
+    EditServer(String),
+    NewReservation,
+    EditReservation(String),
+    /// This plugin's say about one device, for the shell's device panel. It
+    /// answers with a tab, not a page: the panel around it is the shell's, and
+    /// the other tabs in it belong to plugins this one knows nothing about.
+    EntityDevice(String),
 }
 
 impl Route {
     fn of(path: &str) -> Route {
-        match path.trim_matches('/') {
+        let path = path.trim_matches('/');
+        if let Some(rest) = sub_path(path, page::RECORDS) {
+            return match rest {
+                "" => Route::Dns,
+                page::NEW => Route::NewRecord,
+                section => Route::EditRecord(section.to_string()),
+            };
+        }
+        if let Some(rest) = sub_path(path, page::SERVERS) {
+            return match rest {
+                "" => Route::Dns,
+                page::NEW => Route::NewServer,
+                index => Route::EditServer(index.to_string()),
+            };
+        }
+        if let Some(rest) = sub_path(path, page::RESERVATIONS) {
+            return match rest {
+                "" => Route::Config,
+                page::NEW => Route::NewReservation,
+                section => Route::EditReservation(section.to_string()),
+            };
+        }
+        if let Some(mac) = path.strip_prefix("entity/device/") {
+            return Route::EntityDevice(mac.to_string());
+        }
+        match path {
             page::DNS => Route::Dns,
             page::CONFIG => Route::Config,
             _ => Route::Leases,
         }
+    }
+}
+
+/// sub_path returns the tail below an editor's prefix, or None when the path is
+/// not under it. The prefix ends at a slash or at the end of the path, so `dns`
+/// never matches the `dns/records` prefix and a section is never glued onto it.
+fn sub_path<'a>(path: &'a str, prefix: &str) -> Option<&'a str> {
+    let rest = path.strip_prefix(prefix)?;
+    match rest.strip_prefix('/') {
+        Some(section) => Some(section),
+        None if rest.is_empty() => Some(""),
+        None => None,
     }
 }
 
@@ -112,32 +215,45 @@ mod tests {
     }
 
     #[test]
-    fn each_sub_path_answers_with_its_own_page() {
-        for (path, title, section) in [
-            ("/", "DHCP", "Active leases"),
-            ("/config", "DHCP", "Networks"),
-            ("/dns", "DNS", "Names on your network"),
-        ] {
+    fn every_former_listing_lands_on_the_single_settings_page() {
+        for path in ["/", "/dns", "/config", "/leases", "/nowhere", "/config/lan"] {
             let body = read(path);
-            assert_eq!(body["title"], title, "{path}");
-            let content = &body["widget"]["children"][1];
-            let first = match content["type"] == "form" {
-                true => content["fields"][0]["title"].clone(),
-                false => content["title"].clone(),
-            };
-            assert_eq!(first, section, "{path}");
+            assert_eq!(body["title"], "DNS & DHCP");
+            assert!(body.get("pages").is_none());
+            assert_eq!(body["widget"]["children"][0]["submit"], "Save");
         }
     }
 
     #[test]
-    fn an_unpublished_sub_path_answers_with_the_leases_page() {
-        for path in ["/nowhere", "/dns/records", "", "/config/lan"] {
+    fn each_editor_sub_path_opens_its_own_page() {
+        for (path, title) in [
+            ("/dns/records/new", "New record"),
+            ("/dns/records/domain_backup_v4", "Edit record"),
+            ("/dns/servers/new", "New server"),
+            ("/dns/servers/0", "Edit server"),
+            ("/config/reservations/new", "New reservation"),
+            ("/config/reservations/host_nas", "Edit reservation"),
+        ] {
+            assert_eq!(read(path)["title"], title, "{path}");
+        }
+
+        // An editor's own root is the listing it belongs to.
+        assert_eq!(read("/dns/records")["title"], "DNS & DHCP");
+        assert_eq!(read("/dns/servers")["title"], "DNS & DHCP");
+        assert_eq!(read("/config/reservations")["title"], "DNS & DHCP");
+    }
+
+    #[test]
+    fn a_stale_editor_sub_path_lands_on_the_listing_it_belongs_to() {
+        for (path, title) in [
+            ("/dns/records/no_such_record", "DNS & DHCP"),
+            ("/dns/servers/9", "DNS & DHCP"),
+            ("/config/reservations/no_such_host", "DNS & DHCP"),
+        ] {
             let body = read(path);
-            assert_eq!(body["title"], "DHCP", "{path}");
-            assert_eq!(
-                body["widget"]["children"][1]["title"], "Active leases",
-                "{path}"
-            );
+            assert_eq!(body["title"], title, "{path}");
+            assert_eq!(body["notice"]["level"], "danger", "{path}");
+            assert!(body.get("commit").is_none(), "{path}");
         }
     }
 
@@ -153,55 +269,28 @@ mod tests {
             let body = serde_json::to_value(get(&request)).expect("serialize");
             assert_eq!(body["schema_version"], 1, "{path}");
         }
-        // Without the lease table a network card states its span but nobody on it.
-        let request = Request {
-            path: page::CONFIG.into(),
-            query: Form::default(),
-            snapshot: fixture::snapshot(),
-            ubus: Ubus::from_value(Value::Null),
-        };
-        let body = serde_json::to_value(get(&request)).expect("serialize");
-        let card = &body["widget"]["children"][1]["fields"][0]["children"][0]["children"][0];
-        assert_eq!(card["meta"], "10.0.0.0/24 · nobody right now");
-    }
-
-    // The Devices page links here with a MAC in the query; that device's panel is
-    // open when the page arrives, so the visitor lands on the form they came for.
-    #[test]
-    fn a_reserve_query_opens_that_devices_panel() {
-        let request = Request {
-            path: "/".into(),
-            query: Form::parse("reserve=42:e6:ad:ff:b7:af"),
-            snapshot: fixture::snapshot(),
-            ubus: fixture::ubus(),
-        };
-        let body = serde_json::to_value(get(&request)).expect("serialize");
-        let rows = &body["widget"]["children"][1]["children"][0]["rows"];
-        assert_eq!(rows[0]["drawer"]["open"], true);
-        assert!(rows[1]["drawer"].get("open").is_none());
     }
 
     #[test]
-    fn a_page_answers_only_the_submissions_it_drew() {
-        // The record drawer belongs to the DNS page.
-        let record = "_form=record&_section=cname_photos&kind=CNAME&name=photos.lan&target=nas.lan";
-        assert_eq!(answer(page::DNS, record)["notice"]["level"], "success");
-        for path in ["/", "/config"] {
-            let elsewhere = answer(path, record);
-            assert!(elsewhere.get("commit").is_none(), "{path}");
-            assert_eq!(elsewhere["notice"]["level"], "danger", "{path}");
-        }
+    fn an_editor_submission_is_answered_by_its_own_route() {
+        // A record posts to its own page, which answers with the DNS listing.
+        let record = answer(
+            "/dns/records/cname_photos",
+            "kind=CNAME&name=photos.lan&target=nas.lan",
+        );
+        assert_eq!(record["title"], "DNS & DHCP");
+        assert_eq!(record["notice"]["level"], "success");
+        assert_eq!(record["commit"][0]["section"], "cname_photos");
 
-        // The reservation drawer belongs to both DHCP faces, and to neither on DNS.
-        let reserve = "_form=host&_section=&name=iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142";
-        for path in ["/", "/config"] {
-            assert_eq!(
-                answer(path, reserve)["notice"]["level"],
-                "success",
-                "{path}"
-            );
-        }
-        assert_eq!(answer(page::DNS, reserve)["notice"]["level"], "danger");
+        // A reservation posts to its own page, which answers with the DHCP
+        // configuration.
+        let reservation = answer(
+            "/config/reservations/new",
+            "name=iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142",
+        );
+        assert_eq!(reservation["title"], "DNS & DHCP");
+        assert_eq!(reservation["notice"]["text"], "Address reserved.");
+        assert_eq!(reservation["commit"][0]["type"], "host");
     }
 
     #[test]
@@ -213,18 +302,8 @@ mod tests {
             ubus: fixture::ubus(),
         };
         let body = serde_json::to_value(get(&request)).expect("serialize");
-        assert_eq!(body["title"], "DHCP");
-
-        // A config with no daemon section runs on dnsmasq's own defaults, so
-        // writing one of its options is what creates the section.
-        let body =
-            serde_json::to_value(post(&request, &Form::parse("logdhcp=1"))).expect("serialize");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "dhcp", "section": "", "type": "dnsmasq",
-                "values": {"logdhcp": "1"}
-            }])
-        );
+        assert_eq!(body["title"], "DNS & DHCP");
+        let body = serde_json::to_value(post(&request, &Form::parse("logdhcp=1"))).unwrap();
+        assert!(body.get("commit").is_none());
     }
 }

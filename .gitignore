@@ -2,9 +2,8 @@
 /sources/
 
 # Most first-party plugin sources are independent reference repos. The plugin
-# SDK and the bundled core DNS/DHCP, Firewall and System plugins are exceptions:
-# the Verso packages build and ship them, so a clean shell checkout must contain
-# all four.
+# SDK and bundled DNS/DHCP, Firewall, System, Interfaces and QoS plugins are
+# exceptions: the build and tests require their sources in a clean checkout.
 /plugins/*
 !/plugins/verso-plugin-sdk/
 !/plugins/verso-plugin-sdk/**
@@ -14,6 +13,8 @@
 !/plugins/verso-plugin-firewall/**
 !/plugins/verso-plugin-system/
 !/plugins/verso-plugin-system/**
+!/plugins/verso-plugin-interfaces/
+!/plugins/verso-plugin-interfaces/**
 /plugins/**/target/
 
 # Scratch research notes — not part of the project

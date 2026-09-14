@@ -17,7 +17,6 @@
 
 use verso_plugin::{Envelope, Tone, Widget};
 
-use crate::form;
 use crate::model::{Dnsdhcp, CONFIG, DAEMON_TYPE};
 use crate::options::{self, on, on_by_default, paired, read, value, Changes, Check, Row};
 use crate::page;
@@ -213,38 +212,23 @@ const LISTENING_FOLDED: [Row; 3] = [
 const ADVANCED_SUB: &str = "The daemon itself — `config dnsmasq`, grouped by what each option \
 governs. The everyday ones are visible; the long tail folds below each card.";
 
-/// Open is what a refused submission puts back in front of the operator: the
-/// drawer it came from, carrying the values that were typed and the errors they
-/// earned, or — for the page form, whose rows have nowhere to carry a message —
-/// the refusal on the form itself.
-#[derive(Default)]
-pub struct Open {
-    record: Option<records::Refusal>,
-    upstream: Option<upstreams::Refusal>,
-    refused: String,
-}
-
 /// page renders the DNS page.
 pub fn page(model: &Dnsdhcp) -> Envelope {
-    render(model, &Open::default())
+    render(model, "")
 }
 
-fn render(model: &Dnsdhcp, open: &Open) -> Envelope {
+/// render draws the page. A refused page-form value belongs to the form itself,
+/// since a settings row is a name, a description and a control with nowhere to
+/// put a message; the records and upstreams are edited on pages of their own, so
+/// their refusals never reach here.
+fn render(model: &Dnsdhcp, refused: &str) -> Envelope {
     page::dns(Widget::stack(vec![
         page::filter("Filter everything — name, server, option…"),
         page::page_form(
-            &open.refused,
+            refused,
             vec![
-                records::section(
-                    model,
-                    open.record.as_ref(),
-                    block(model, "", &NAMES, &NAMES_FOLDED, ""),
-                ),
-                upstreams::section(
-                    model,
-                    open.upstream.as_ref(),
-                    block(model, "", &LOOKUPS, &LOOKUPS_FOLDED, ""),
-                ),
+                records::section(model, block(model, "", &NAMES, &NAMES_FOLDED, "")),
+                upstreams::section(model, block(model, "", &LOOKUPS, &LOOKUPS_FOLDED, "")),
                 Widget::section(
                     "Protection",
                     "What never leaves the house, and what never gets in.",
@@ -267,8 +251,7 @@ fn render(model: &Dnsdhcp, open: &Open) -> Envelope {
 /// block renders one catalogue against the daemon section.
 fn block(model: &Dnsdhcp, title: &str, rows: &[Row], folded: &[Row], lead: &str) -> Widget {
     Widget::Settings {
-        condensed: Default::default(),
-
+        condensed: false,
         style: String::new(),
         title: title.into(),
         meta: String::new(),
@@ -277,52 +260,11 @@ fn block(model: &Dnsdhcp, title: &str, rows: &[Row], folded: &[Row], lead: &str)
     }
 }
 
-/// post answers a submission to this page: a drawer's, or the page form's.
+/// post answers the DNS page's submission. The only thing this page draws that
+/// posts is its settings form; a record and an upstream each post to their own
+/// page, so this page never sees them.
 pub fn post(model: &mut Dnsdhcp, form: &verso_plugin::Form) -> Envelope {
-    match form::kind(form).as_deref() {
-        Some(form::RECORD) => record(model, form),
-        Some(form::SERVER) => upstream(model, form),
-        Some(_) => render(model, &Open::default()).with_notice(Tone::Danger, form::UNKNOWN),
-        None => save(model, form),
-    }
-}
-
-fn record(model: &mut Dnsdhcp, form: &verso_plugin::Form) -> Envelope {
-    match records::save(model, form) {
-        records::Saved::Ops(ops, said) => render(model, &Open::default())
-            .with_notice(Tone::Success, said)
-            .with_commit(ops),
-        records::Saved::Refused(refusal) => render(
-            model,
-            &Open {
-                record: Some(refusal),
-                ..Open::default()
-            },
-        )
-        .with_notice(Tone::Danger, form::REFUSED),
-        records::Saved::Unknown => {
-            render(model, &Open::default()).with_notice(Tone::Danger, form::UNKNOWN)
-        }
-    }
-}
-
-fn upstream(model: &mut Dnsdhcp, form: &verso_plugin::Form) -> Envelope {
-    match upstreams::save(model, form) {
-        upstreams::Saved::Ops(ops, said) => render(model, &Open::default())
-            .with_notice(Tone::Success, said)
-            .with_commit(ops),
-        upstreams::Saved::Refused(refusal) => render(
-            model,
-            &Open {
-                upstream: Some(refusal),
-                ..Open::default()
-            },
-        )
-        .with_notice(Tone::Danger, form::REFUSED),
-        upstreams::Saved::Unknown => {
-            render(model, &Open::default()).with_notice(Tone::Danger, form::UNKNOWN)
-        }
-    }
+    save(model, form)
 }
 
 /// save answers the page form: every catalogue this page drew, read back against
@@ -349,16 +291,9 @@ fn save(model: &mut Dnsdhcp, form: &verso_plugin::Form) -> Envelope {
 
     if let Some(refusal) = changes.refusal() {
         let refused = format!("{refusal}, so nothing was saved.");
-        return render(
-            model,
-            &Open {
-                refused: refused.clone(),
-                ..Open::default()
-            },
-        )
-        .with_notice(Tone::Danger, &refused);
+        return render(model, &refused).with_notice(Tone::Danger, &refused);
     }
-    let answer = render(model, &Open::default());
+    let answer = render(model, "");
     if changes.is_empty() {
         return answer;
     }
@@ -418,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn the_page_is_one_face_with_one_form_the_capsule_saves() {
+    fn the_page_is_one_face_with_one_form_the_shell_saves() {
         let body = body();
         assert_eq!(body["title"], "DNS");
         assert_eq!(body["width"], "wide");
@@ -559,31 +494,10 @@ mod tests {
             serde_json::json!({"level": "danger", "text": said})
         );
         // The refusal rides the form as well as the notice: that is what makes
-        // the answer a 422, which keeps the capsule on the page.
+        // the answer a 422, which keeps the operator on the page.
         assert_eq!(refused["widget"]["children"][1]["error"], said);
         // What was typed comes back on the row it was typed on.
         let advanced = &sections(&refused)[3]["children"][0];
         assert_eq!(advanced["items"][0]["value"], "lots");
-    }
-
-    #[test]
-    fn a_drawer_submission_is_answered_by_the_drawer_and_not_the_page_form() {
-        let saved =
-            answer("_form=record&_section=cname_photos&kind=CNAME&name=photos.lan&target=nas.lan");
-        assert_eq!(saved["notice"]["level"], "success");
-        assert_eq!(saved["commit"][0]["section"], "cname_photos");
-
-        let refused = answer("_form=server&_index=0&server=nowhere");
-        assert!(refused.get("commit").is_none());
-        assert_eq!(refused["notice"]["level"], "danger");
-        let upstreams = &sections(&refused)[1]["children"][0]["rows"];
-        assert_eq!(upstreams[0]["drawer"]["open"], true);
-    }
-
-    #[test]
-    fn a_body_this_page_did_not_draw_changes_nothing() {
-        let unknown = answer("_form=peer&_section=wg0");
-        assert!(unknown.get("commit").is_none());
-        assert_eq!(unknown["notice"]["text"], form::UNKNOWN);
     }
 }

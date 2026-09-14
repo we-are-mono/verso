@@ -1,37 +1,28 @@
 {
   "manifest_version": 1,
-  "id": "dnsdhcp",
-  "name": "DNS and DHCP",
-  "socket": "/var/run/verso/dnsdhcp.sock",
+  "id": "interfaces",
+  "name": "Interfaces",
+  "socket": "/var/run/verso/interfaces.sock",
   "schema_version": 1,
   "nav": [
     {
       "section": "Network",
-      "label": "DNS & DHCP",
+      "label": "Interfaces",
       "path": "/"
-    }
-  ],
-  "entity_tabs": [
-    {
-      "entity": "device",
-      "slot": "reserve",
-      "label": "Reserved address"
-    }
-  ],
-  "entity_acts": [
-    {
-      "entity": "device",
-      "slot": "unreserve",
-      "path": "/config/reservations/{id}/delete"
-    },
-    {
-      "entity": "device",
-      "slot": "add",
-      "path": "/config/reservations/new"
     }
   ],
   "acl": {
     "read": [
+      {
+        "scope": "uci",
+        "object": "network",
+        "function": "read"
+      },
+      {
+        "scope": "uci",
+        "object": "firewall",
+        "function": "read"
+      },
       {
         "scope": "uci",
         "object": "dhcp",
@@ -39,28 +30,13 @@
       },
       {
         "scope": "uci",
-        "object": "network",
+        "object": "wireless",
         "function": "read"
       },
       {
         "scope": "ubus",
         "object": "verso",
-        "function": "dhcpLeases"
-      },
-      {
-        "scope": "uci",
-        "object": "https-dns-proxy",
-        "function": "read"
-      },
-      {
-        "scope": "uci",
-        "object": "adblock",
-        "function": "read"
-      },
-      {
-        "scope": "ubus",
-        "object": "verso",
-        "function": "dnsState"
+        "function": "networkState"
       },
       {
         "scope": "ubus",
@@ -71,28 +47,38 @@
     "write": [
       {
         "scope": "uci",
-        "object": "dhcp",
-        "function": "write"
-      },
-      {
-        "scope": "uci",
         "object": "network",
         "function": "write"
       },
       {
         "scope": "uci",
-        "object": "https-dns-proxy",
+        "object": "firewall",
         "function": "write"
       },
       {
         "scope": "uci",
-        "object": "adblock",
+        "object": "dhcp",
+        "function": "write"
+      },
+      {
+        "scope": "uci",
+        "object": "wireless",
         "function": "write"
       },
       {
         "scope": "ubus",
-        "object": "verso",
-        "function": "stageConfigFile"
+        "object": "network.interface",
+        "function": "restart"
+      },
+      {
+        "scope": "ubus",
+        "object": "network.interface",
+        "function": "up"
+      },
+      {
+        "scope": "ubus",
+        "object": "network.interface",
+        "function": "down"
       }
     ]
   }

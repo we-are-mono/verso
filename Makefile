@@ -16,6 +16,7 @@ BUILDDIR := build
 CARGO    ?= $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RPCD_MANIFEST := verso-rpcd/Cargo.toml
 SDK_MANIFEST := plugins/verso-plugin-sdk/Cargo.toml
+INTERFACES_PLUGIN_MANIFEST := plugins/verso-plugin-interfaces/Cargo.toml
 SYSTEM_PLUGIN_MANIFEST := plugins/verso-plugin-system/Cargo.toml
 FIREWALL_PLUGIN_MANIFEST := plugins/verso-plugin-firewall/Cargo.toml
 DNSDHCP_PLUGIN_MANIFEST := plugins/verso-plugin-dnsdhcp/Cargo.toml
@@ -119,6 +120,8 @@ build-%: css
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$* go build -trimpath -ldflags "$(LDFLAGS)" -o $(BUILDDIR)/$(BINARY)-$* $(CMD)
 	$(CARGO) build --locked --release --manifest-path $(RPCD_MANIFEST) --target $(rust_target_$*)
 	cp verso-rpcd/target/$(rust_target_$*)/release/verso-rpcd $(BUILDDIR)/verso-rpcd-$*
+	$(CARGO) build --locked --release --manifest-path $(INTERFACES_PLUGIN_MANIFEST) --target $(rust_target_$*)
+	cp plugins/verso-plugin-interfaces/target/$(rust_target_$*)/release/verso-plugin-interfaces $(BUILDDIR)/verso-plugin-interfaces-$*
 	$(CARGO) build --locked --release --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --target $(rust_target_$*)
 	cp plugins/verso-plugin-system/target/$(rust_target_$*)/release/verso-plugin-system $(BUILDDIR)/verso-plugin-system-$*
 	$(CARGO) build --locked --release --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --target $(rust_target_$*)
@@ -138,6 +141,7 @@ test:
 	go test ./...
 	$(CARGO) test --locked --manifest-path $(RPCD_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(SDK_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(INTERFACES_PLUGIN_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST)
@@ -172,6 +176,7 @@ lint: deadcode $(GOLANGCI)
 	$(GOLANGCI) run ./...
 	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(SDK_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(INTERFACES_PLUGIN_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --all-targets -- -D warnings
@@ -214,8 +219,6 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
 	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
 	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
-	install -Dm644 plugins/verso-plugin-system/rootfs/usr/share/rpcd/acl.d/verso-plugin-system.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-system.json
-	install -Dm644 plugins/verso-plugin-system/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/system/i18n/sl.json
 	install -Dm644 plugins/verso-plugin-firewall/manifest.json           $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/manifest.json
 	install -Dm644 plugins/verso-plugin-firewall/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/i18n/sl.json
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
@@ -223,6 +226,13 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-helper.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-helper.json
+	install -Dm755 $(BUILDDIR)/verso-plugin-interfaces-$(APK_GOARCH) $(APK_PAYLOAD)/usr/bin/verso-plugin-interfaces
+	install -Dm755 plugins/verso-plugin-interfaces/rootfs/etc/init.d/verso-plugin-interfaces $(APK_PAYLOAD)/etc/init.d/verso-plugin-interfaces
+	install -Dm644 plugins/verso-plugin-interfaces/manifest.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/manifest.json
+	install -Dm644 plugins/verso-plugin-interfaces/rootfs/usr/share/rpcd/acl.d/verso-plugin-interfaces.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-interfaces.json
+	install -Dm644 plugins/verso-plugin-system/rootfs/usr/share/rpcd/acl.d/verso-plugin-system.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-system.json
+	install -Dm644 plugins/verso-plugin-interfaces/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/i18n/sl.json
+	install -Dm644 plugins/verso-plugin-system/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/system/i18n/sl.json
 	fakeroot -- sh -c 'chown -R 0:0 "$(APK_PAYLOAD)" && "$(APK)" mkpkg \
 	  --info name:verso --info version:$(VER) --info arch:$(APK_ARCH) \
 	  --info "description:Verso — a modern web UI for OpenWrt" \
@@ -263,6 +273,8 @@ apk-dnsdhcp: apk-preflight build-$(APK_GOARCH)
 	rm -rf $(DNSDHCP_PAYLOAD)
 	install -Dm755 $(BUILDDIR)/verso-plugin-dnsdhcp-$(APK_GOARCH)                       $(DNSDHCP_PAYLOAD)/usr/bin/verso-plugin-dnsdhcp
 	install -Dm755 plugins/verso-plugin-dnsdhcp/rootfs/etc/init.d/verso-plugin-dnsdhcp  $(DNSDHCP_PAYLOAD)/etc/init.d/verso-plugin-dnsdhcp
+	install -Dm644 plugins/verso-plugin-dnsdhcp/rootfs/usr/share/rpcd/acl.d/verso-plugin-dnsdhcp.json $(DNSDHCP_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-dnsdhcp.json
+	install -Dm644 plugins/verso-plugin-dnsdhcp/i18n/sl.json $(DNSDHCP_PAYLOAD)/usr/share/verso/plugins/dnsdhcp/i18n/sl.json
 	install -Dm644 plugins/verso-plugin-dnsdhcp/manifest.json                           $(DNSDHCP_PAYLOAD)/usr/share/verso/plugins/dnsdhcp/manifest.json
 	fakeroot -- sh -c 'chown -R 0:0 "$(DNSDHCP_PAYLOAD)" && "$(APK)" mkpkg \
 	  --info name:$(DNSDHCP_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \

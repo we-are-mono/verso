@@ -1,0 +1,38 @@
+{
+  "verso-plugin-dnsdhcp": {
+    "description": "Verso DNS and DHCP settings",
+    "read": {
+      "uci": [
+        "dhcp",
+        "network",
+        "https-dns-proxy",
+        "adblock"
+      ],
+      "ubus": {
+        "verso": [
+          "dnsState",
+          "dhcpState"
+        ],
+        "service": [
+          "list"
+        ],
+        "network.interface": [
+          "dump"
+        ]
+      }
+    },
+    "write": {
+      "uci": [
+        "dhcp",
+        "network",
+        "https-dns-proxy",
+        "adblock"
+      ],
+      "ubus": {
+        "verso": [
+          "stageConfigFile"
+        ]
+      }
+    }
+  }
+}

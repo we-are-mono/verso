@@ -3,69 +3,53 @@
 
 //! The Leases face: who holds an address right now.
 //!
-//! This is the page you visit to look, not to edit, so it carries no page form
-//! and offers exactly one action — keeping an address a device already has. That
-//! action is where a reservation comes from: the config is not the place an
-//! operator discovers a device, the lease table is.
+//! This is the page you visit to look, not to edit, so it carries no form. Its
+//! one offering is keeping an address a device already has — and a reservation is
+//! a page's worth of settings, so this page does not try to be that page. It
+//! offers the door directly: a device that is not reserved carries a trailing
+//! "Reserve IP" link straight onto the reservation page, prefilled from the
+//! device. No panel in between — a reservation is edited on a page of its own
+//! (ADR-005 §8), and the lease's own row already shows what that page prefills.
 //!
-//! The trailing column carries the state and the action in one place: a device
-//! that is already reserved reads as reserved, and one that is not offers to
-//! become so. Only the second opens a panel, because only it has anything to
-//! ask.
+//! The state column reads reserved for a device already pinned; the action column
+//! offers the door for one that is not. Only one of the two is ever filled.
 
-use verso_plugin::{Envelope, Form, TableRow, Tone, Widget};
+use verso_plugin::{Envelope, TableRow, Tone, Widget};
 
-use crate::form::{self, Errors};
+use crate::form;
 use crate::format::{self, Subnet};
-use crate::hosts::{self, Host};
 use crate::live::{Lease, Leases};
-use crate::model::{same_mac, Dnsdhcp};
+use crate::model::Dnsdhcp;
 use crate::page;
 
-const SUB: &str = "The addresses handed out right now — `/tmp/dhcp.leases`. Open a device to \
-reserve its address permanently.";
+const SUB: &str = "The addresses handed out right now — `/tmp/dhcp.leases`. Reserve a device's \
+address to keep it permanently.";
 
 /// RESERVE is the query parameter that names the device a visitor arrived to
-/// reserve: the Devices page links here with a MAC, and the panel that would
-/// have taken a click opens on arrival instead.
+/// reserve: the Leases "Reserve IP" link and the Devices page both carry a MAC in
+/// it, and the reservation page reads it to open prefilled from that device.
 pub const RESERVE: &str = "reserve";
 
-/// page renders the leases listing. `reserve` is the MAC the visitor came for,
-/// or "" — a MAC no lease answers to changes nothing.
-pub fn page(model: &Dnsdhcp, leases: &Leases, reserve: &str) -> Envelope {
-    render(model, leases, None, reserve)
-}
-
-fn render(
-    model: &Dnsdhcp,
-    leases: &Leases,
-    refusal: Option<&hosts::Refusal>,
-    reserve: &str,
-) -> Envelope {
+/// page renders the leases listing — a look, not an edit.
+pub fn page(model: &Dnsdhcp, leases: &Leases) -> Envelope {
     page::dhcp(Widget::stack(vec![
         page::filter("Filter — device, MAC, IP…"),
-        Widget::section(
-            "Active leases",
-            SUB,
-            vec![listing(model, leases, refusal, reserve)],
-        ),
+        Widget::section("Active leases", SUB, vec![listing(model, leases)]),
     ]))
 }
 
-fn listing(
-    model: &Dnsdhcp,
-    leases: &Leases,
-    refusal: Option<&hosts::Refusal>,
-    reserve: &str,
-) -> Widget {
+/// post answers a submission to this page. The page draws nothing that posts —
+/// reserving is a link onto the reservation page — so any submission here is one
+/// this page did not draw.
+pub fn post(model: &Dnsdhcp, leases: &Leases) -> Envelope {
+    page(model, leases).with_notice(Tone::Danger, form::UNKNOWN)
+}
+
+fn listing(model: &Dnsdhcp, leases: &Leases) -> Widget {
     if leases.all().is_empty() {
         return nothing_here(leases);
     }
-    let rows = leases
-        .all()
-        .iter()
-        .map(|lease| row(model, lease, refusal, reserve))
-        .collect();
+    let rows = leases.all().iter().map(|lease| row(model, lease)).collect();
     page::table(
         page::columns(&[
             ("Device", "name"),
@@ -74,6 +58,7 @@ fn listing(
             ("MAC", "mono"),
             ("Expires", "keyword"),
             ("Static lease", "pill"),
+            ("", "link"),
         ]),
         rows,
         // This listing is the whole page, and its two silences are told apart
@@ -82,8 +67,8 @@ fn listing(
     )
 }
 
-/// nothing_here tells the two silences apart: a router handing out nothing, and
-/// a router this plugin could not ask.
+/// nothing_here tells the two silences apart: a router handing out nothing, and a
+/// router this plugin could not ask.
 fn nothing_here(leases: &Leases) -> Widget {
     match leases.known() {
         true => Widget::empty(
@@ -102,12 +87,7 @@ fn nothing_here(leases: &Leases) -> Widget {
     }
 }
 
-fn row(
-    model: &Dnsdhcp,
-    lease: &Lease,
-    refusal: Option<&hosts::Refusal>,
-    reserve: &str,
-) -> TableRow {
+fn row(model: &Dnsdhcp, lease: &Lease) -> TableRow {
     let mut row = TableRow {
         id: lease.mac.clone(),
         cells: vec![
@@ -123,19 +103,18 @@ fn row(
         ..TableRow::default()
     };
     if model.reserved(&lease.mac) {
+        // Already pinned: the state reads reserved, and there is nothing to do
+        // here — its settings live on its own page under Configuration.
         row.cells.push(page::pill_cell("reserved", "info"));
         return row;
     }
-    row.cells.push(page::button_cell("Reserve IP"));
-    let refused = refusal.filter(|refused| same_mac(&refused.host.mac, &lease.mac));
-    row.drawer = match refused {
-        Some(refused) => hosts::reserve_drawer(&refused.host, &refused.errors, true),
-        None => hosts::reserve_drawer(
-            &Host::of_lease(lease),
-            &Errors::default(),
-            same_mac(reserve, &lease.mac),
-        ),
-    };
+    // Not reserved: no state to show, and the door straight onto the reservation
+    // page prefilled from this lease — one click, no panel between.
+    row.cells.push(page::empty_cell());
+    row.cells.push(page::link_cell(
+        "Reserve IP",
+        format!("{}?{}={}", page::new_reservation_href(), RESERVE, lease.mac),
+    ));
     row
 }
 
@@ -153,26 +132,6 @@ fn network_of<'a>(model: &'a Dnsdhcp, ipv4: &str) -> &'a str {
         .unwrap_or("")
 }
 
-/// post answers a submission to this page. The only thing it draws is the
-/// reserve panel, so that is the only submission it accepts. A refusal reopens
-/// the panel it came from, which outranks the panel the visitor arrived on.
-pub fn post(model: &mut Dnsdhcp, leases: &Leases, form: &Form, reserve: &str) -> Envelope {
-    if form::kind(form).as_deref() != Some(form::HOST) || form::deletes(form) {
-        return render(model, leases, None, reserve).with_notice(Tone::Danger, form::UNKNOWN);
-    }
-    match hosts::save(model, form) {
-        hosts::Saved::Ops(ops, said) => render(model, leases, None, reserve)
-            .with_notice(Tone::Success, said)
-            .with_commit(ops),
-        hosts::Saved::Refused(refusal) => {
-            render(model, leases, Some(&refusal), reserve).with_notice(Tone::Danger, form::REFUSED)
-        }
-        hosts::Saved::Unknown => {
-            render(model, leases, None, reserve).with_notice(Tone::Danger, form::UNKNOWN)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,13 +141,7 @@ mod tests {
     use verso_plugin::{Ubus, Value};
 
     fn body(leases: &Leases) -> Json {
-        opened(leases, "")
-    }
-
-    /// opened renders the page as a visitor who arrived to reserve one device
-    /// sees it.
-    fn opened(leases: &Leases, reserve: &str) -> Json {
-        serde_json::to_value(page(&fixture::dnsdhcp(), leases, reserve)).expect("serialize")
+        serde_json::to_value(page(&fixture::dnsdhcp(), leases)).expect("serialize")
     }
 
     fn rows(body: &Json) -> Vec<Json> {
@@ -196,12 +149,6 @@ mod tests {
             .as_array()
             .expect("rows")
             .clone()
-    }
-
-    fn answer(body: &str) -> Json {
-        let mut model = fixture::dnsdhcp();
-        serde_json::to_value(post(&mut model, &fixture::leases(), &Form::parse(body), ""))
-            .expect("serialize")
     }
 
     #[test]
@@ -212,12 +159,13 @@ mod tests {
             body["pages"],
             serde_json::json!([
                 {"label": "Leases", "path": ""},
-                {"label": "Configuration", "path": "config"}
+                {"label": "Configuration", "path": "config"},
+                {"label": "DNS", "path": "dns"}
             ])
         );
         assert_eq!(body["widget"]["children"][0]["type"], "filter");
         assert_eq!(body["widget"]["children"][1]["title"], "Active leases");
-        // No page form: there is nothing on this page to stage.
+        // No form anywhere: there is nothing on this page to stage.
         assert!(!body["widget"]["children"]
             .as_array()
             .expect("children")
@@ -235,121 +183,46 @@ mod tests {
         assert_eq!(rows[0]["cells"][1]["text"], "10.0.0.142");
         assert_eq!(rows[0]["cells"][2]["text"], "2a00:ee2:2d00:2e00::142");
         assert_eq!(rows[0]["cells"][3]["text"], "42:e6:ad:ff:b7:af");
-
-        // A device that offered no name is still called something.
         assert_eq!(rows[1]["cells"][0]["text"], "Device 0e:57");
-        // A device with no IPv6 says so rather than showing an empty cell.
-        assert_eq!(
-            rows[1]["cells"][2],
-            serde_json::json!({"text": "—", "muted": true})
-        );
-        // A lease on another network carries that network's chip.
         assert_eq!(rows[3]["cells"][0]["chip"], "guest");
     }
 
     #[test]
-    fn a_reserved_device_reads_as_reserved_and_offers_nothing_to_open() {
+    fn a_dynamic_device_links_straight_to_the_reservation_page_no_panel() {
+        let rows = rows(&body(&fixture::leases()));
+        let iphone = &rows[0];
+        // No state pill, and the trailing action is a plain link — one click onto
+        // the reservation page prefilled from this lease. No drawer between.
+        assert_eq!(iphone["cells"][5], serde_json::json!({}));
+        assert_eq!(
+            iphone["cells"][6],
+            serde_json::json!({
+                "text": "Reserve IP",
+                "href": "/plugins/dnsdhcp/config/reservations/new?reserve=42:e6:ad:ff:b7:af"
+            })
+        );
+        assert!(iphone.get("drawer").is_none(), "no panel in the way");
+    }
+
+    #[test]
+    fn a_reserved_device_reads_as_reserved_and_offers_no_door() {
         let rows = rows(&body(&fixture::leases()));
         let nas = &rows[2];
         assert_eq!(
             nas["cells"][5],
             serde_json::json!({"text": "reserved", "variant": "info"})
         );
+        // The action column is empty for a device already pinned, and nothing opens.
+        assert!(nas["cells"].as_array().expect("cells").get(6).is_none());
         assert!(nas.get("drawer").is_none());
-
-        // A dynamic lease offers to become one, prefilled from the device.
-        let iphone = &rows[0];
-        assert_eq!(
-            iphone["cells"][5],
-            serde_json::json!({"button": "Reserve IP"})
-        );
-        let fields = &iphone["drawer"]["children"][0]["fields"];
-        assert_eq!(iphone["drawer"]["title"], "Reserve address — toms-iphone");
-        assert_eq!(iphone["drawer"]["children"][0]["submit"], "Reserve");
-        assert_eq!(
-            fields[1],
-            serde_json::json!({"type": "field", "name": "_section", "kind": "hidden", "value": ""}),
-            "reserving names no section, which is what makes the save create one"
-        );
-        assert_eq!(fields[2]["value"], "toms-iphone");
-        assert_eq!(fields[3]["value"], "42:e6:ad:ff:b7:af");
-        assert_eq!(fields[4]["value"], "10.0.0.142");
-        // Reserving is not deleting: the panel carries no confirm.
-        assert_eq!(
-            iphone["drawer"]["children"]
-                .as_array()
-                .expect("children")
-                .len(),
-            1
-        );
     }
 
     #[test]
-    fn reserving_writes_the_section_and_the_answer_already_reads_it_as_reserved() {
-        let saved =
-            answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
-        assert_eq!(
-            saved["notice"],
-            serde_json::json!({"level": "success", "text": "Address reserved."})
-        );
-        assert_eq!(saved["commit"][0]["type"], "host");
-        assert_eq!(
-            rows(&saved)[0]["cells"][5],
-            serde_json::json!({"text": "reserved", "variant": "info"})
-        );
-    }
-
-    // Arriving with a device named opens that device's panel and no other; a MAC
-    // no lease answers to is simply not about anything here.
-    #[test]
-    fn the_device_the_visitor_came_for_is_already_open() {
-        let named = rows(&opened(&fixture::leases(), "42:e6:ad:ff:b7:af"));
-        assert_eq!(named[0]["drawer"]["open"], true);
-        assert!(named[1]["drawer"].get("open").is_none());
-
-        for reserve in ["", "aa:bb:cc:dd:ee:ff", "nonsense"] {
-            for row in rows(&opened(&fixture::leases(), reserve)) {
-                assert!(row["drawer"].get("open").is_none(), "{reserve}: {row}");
-            }
-        }
-    }
-
-    // A device whose address is already reserved has no panel to open, so naming
-    // it changes nothing.
-    #[test]
-    fn a_reserved_device_named_in_the_query_still_opens_nothing() {
-        for row in rows(&opened(&fixture::leases(), "30:9c:23:5e:88:01")) {
-            assert!(row["drawer"]["open"] != true, "{row}");
-        }
-    }
-
-    #[test]
-    fn a_refused_reservation_comes_back_open_on_the_device_it_was_about() {
-        let refused =
-            answer("_form=host&_section=&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.999");
-        assert!(refused.get("commit").is_none());
-        assert_eq!(refused["notice"]["level"], "danger");
-        let rows = rows(&refused);
-        assert_eq!(rows[0]["drawer"]["open"], true);
-        assert_eq!(
-            rows[0]["drawer"]["children"][0]["fields"][4]["value"],
-            "10.0.0.999"
-        );
-        assert!(rows[1]["drawer"].get("open").is_none());
-    }
-
-    #[test]
-    fn a_body_this_page_did_not_draw_changes_nothing() {
-        for body in [
-            "_form=record&_section=cname_photos&kind=CNAME&name=a.lan&target=b.lan",
-            "_form=host&_section=host_nas&_delete=1",
-            "expandhosts=1",
-            "",
-        ] {
-            let answer = answer(body);
-            assert!(answer.get("commit").is_none(), "{body}");
-            assert_eq!(answer["notice"]["text"], form::UNKNOWN, "{body}");
-        }
+    fn a_submission_to_this_page_changes_nothing() {
+        let body =
+            serde_json::to_value(post(&fixture::dnsdhcp(), &fixture::leases())).expect("serialize");
+        assert!(body.get("commit").is_none());
+        assert_eq!(body["notice"]["text"], form::UNKNOWN);
     }
 
     #[test]

@@ -16,7 +16,6 @@
 
 use verso_plugin::{Envelope, Form, SettingsItem, Tone, Widget};
 
-use crate::form;
 use crate::format::{self, Subnet};
 use crate::hosts;
 use crate::live::Leases;
@@ -120,19 +119,14 @@ const UPLINK_META: &str = "upstream — this router is the client here";
 
 /// page renders the configuration face.
 pub fn page(model: &Dnsdhcp, leases: &Leases) -> Envelope {
-    render(model, leases, None, "")
+    render(model, leases, "")
 }
 
-/// render draws the page. A refused reservation reopens its own drawer with the
-/// values that were typed; a refused page-form value belongs to the form itself,
+/// render draws the page. A refused page-form value belongs to the form itself,
 /// since a settings row is a name, a description and a control with nowhere to
-/// put a message.
-fn render(
-    model: &Dnsdhcp,
-    leases: &Leases,
-    refusal: Option<&hosts::Refusal>,
-    refused: &str,
-) -> Envelope {
+/// put a message; the reservations are edited on pages of their own, so their
+/// refusals never reach here.
+fn render(model: &Dnsdhcp, leases: &Leases, refused: &str) -> Envelope {
     page::dhcp(Widget::stack(vec![
         page::filter("Filter everything — network, device, IP, option…"),
         page::page_form(
@@ -150,7 +144,7 @@ fn render(
                             .collect(),
                     )],
                 ),
-                hosts::section(model, leases, refusal),
+                hosts::section(model, leases),
                 Widget::section("Rarely needed", EXTRAS_SUB, vec![extras(model)]),
             ],
         ),
@@ -166,8 +160,7 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
     let mut items = options::items(&HANDOUT, pool, &prefix);
     let Some(subnet) = subnet else {
         return Widget::Settings {
-            condensed: Default::default(),
-
+            condensed: false,
             style: "card".into(),
             title: name.into(),
             meta: UPLINK_META.into(),
@@ -184,8 +177,7 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
     });
     items.extend(options::items(&LEASE, pool, &prefix));
     Widget::Settings {
-        condensed: Default::default(),
-
+        condensed: false,
         style: "card".into(),
         title: name.into(),
         meta: format!(
@@ -219,8 +211,7 @@ fn extras(model: &Dnsdhcp) -> Widget {
         model.boots,
     ));
     Widget::Settings {
-        condensed: Default::default(),
-
+        condensed: false,
         style: String::new(),
         title: String::new(),
         meta: String::new(),
@@ -267,28 +258,11 @@ fn subnet_of(model: &Dnsdhcp, pool: &Options) -> Option<Subnet> {
     Subnet::read(&interface.ipaddr, &interface.netmask)
 }
 
-/// post answers a submission to this page: the reservations' drawers, or the
-/// page form that carries every card.
+/// post answers the configuration page's submission. The only thing this page
+/// draws that posts is its own form of cards and daemon switches; a reservation
+/// posts to its own page, so this page never sees one.
 pub fn post(model: &mut Dnsdhcp, leases: &Leases, form: &Form) -> Envelope {
-    match form::kind(form).as_deref() {
-        Some(form::HOST) => host(model, leases, form),
-        Some(_) => render(model, leases, None, "").with_notice(Tone::Danger, form::UNKNOWN),
-        None => save(model, leases, form),
-    }
-}
-
-fn host(model: &mut Dnsdhcp, leases: &Leases, form: &Form) -> Envelope {
-    match hosts::save(model, form) {
-        hosts::Saved::Ops(ops, said) => render(model, leases, None, "")
-            .with_notice(Tone::Success, said)
-            .with_commit(ops),
-        hosts::Saved::Refused(refusal) => {
-            render(model, leases, Some(&refusal), "").with_notice(Tone::Danger, form::REFUSED)
-        }
-        hosts::Saved::Unknown => {
-            render(model, leases, None, "").with_notice(Tone::Danger, form::UNKNOWN)
-        }
-    }
+    save(model, leases, form)
 }
 
 /// save reads the page form back. A card only reads back the rows it drew: a
@@ -322,9 +296,9 @@ fn save(model: &mut Dnsdhcp, leases: &Leases, form: &Form) -> Envelope {
 
     if let Some(refusal) = changes.refusal() {
         let refused = format!("{refusal}, so nothing was saved.");
-        return render(model, leases, None, &refused).with_notice(Tone::Danger, &refused);
+        return render(model, leases, &refused).with_notice(Tone::Danger, &refused);
     }
-    let answer = render(model, leases, None, "");
+    let answer = render(model, leases, "");
     if changes.is_empty() {
         return answer;
     }
@@ -514,41 +488,36 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
             "“Lease length” has to be a length such as 12h, 30m, or infinite, so nothing was saved.";
         assert_eq!(refused["notice"]["text"], said);
         // The refusal rides the form as well as the notice: that is what makes
-        // the answer a 422, which keeps the capsule on the page.
+        // the answer a 422, which keeps the operator on the page.
         assert_eq!(refused["widget"]["children"][1]["error"], said);
         assert_eq!(cards(&refused)[0]["items"][2]["value"], "forever");
     }
 
+    /// The reservations listing sits on this page, but each row leads to a page
+    /// of its own — the listing draws no drawer and carries a tail that adds one.
     #[test]
-    fn the_reservations_drawers_are_answered_on_their_own() {
-        let saved = answer("_form=host&_section=host_thermo&_delete=1");
+    fn the_reservations_listing_leads_to_pages_of_its_own() {
+        let body = body();
+        let table = &sections(&body)[1]["children"][0];
+        assert_eq!(table["add_label"], "New reservation");
         assert_eq!(
-            saved["notice"],
-            serde_json::json!({"level": "success", "text": "Reservation deleted."})
+            table["add_href"],
+            "/plugins/dnsdhcp/config/reservations/new"
         );
-        assert_eq!(
-            saved["commit"],
-            serde_json::json!([{"config": "dhcp", "section": "host_thermo", "delete": true}])
-        );
-        let rows = sections(&saved)[1]["children"][0]["rows"]
-            .as_array()
-            .expect("rows")
-            .clone();
-        assert_eq!(rows.len(), 1);
-
-        let refused = answer("_form=host&_section=host_nas&mac=nope&ip=10.0.0.30");
-        assert!(refused.get("commit").is_none());
-        assert_eq!(
-            sections(&refused)[1]["children"][0]["rows"][0]["drawer"]["open"],
-            true
-        );
-    }
-
-    #[test]
-    fn a_body_this_page_did_not_draw_changes_nothing() {
-        let unknown =
-            answer("_form=record&_section=cname_photos&kind=CNAME&name=a.lan&target=b.lan");
-        assert!(unknown.get("commit").is_none());
-        assert_eq!(unknown["notice"]["text"], form::UNKNOWN);
+        for row in table["rows"].as_array().expect("rows") {
+            assert!(row.get("drawer").is_none(), "{row}");
+            let section = row["id"].as_str().expect("id");
+            assert_eq!(
+                row["cells"]
+                    .as_array()
+                    .expect("cells")
+                    .last()
+                    .expect("cell"),
+                &serde_json::json!({
+                    "text": "Edit",
+                    "href": format!("/plugins/dnsdhcp/config/reservations/{section}")
+                })
+            );
+        }
     }
 }

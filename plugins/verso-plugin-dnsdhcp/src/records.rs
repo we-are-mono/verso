@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The extra names this router answers, as one flat table.
+//! The extra names this router answers, as one flat table — and a page apiece for
+//! editing one.
 //!
-//! dnsmasq spells four kinds of extra name in four section types, and an A
-//! record and an AAAA record are the same type told apart by the address in it.
-//! An operator does not think in section types — they think "the name backup.lan
+//! dnsmasq spells four kinds of extra name in four section types, and an A record
+//! and an AAAA record are the same type told apart by the address in it. An
+//! operator does not think in section types — they think "the name backup.lan
 //! should resolve to that box" — so the table is one listing of typed rows and
-//! the drawer's first control is the type itself. Changing it moves the record
-//! between section types, which is a section removed and a section created; both
-//! are staged together, so the record is never briefly gone.
+//! each row opens the record's own page. A record is a type, a name, an answer
+//! and a couple of qualifiers, all seen at once — a page, not a panel beside the
+//! listing.
+//!
+//! The type is the page's first control. Changing it moves the record between
+//! section types, which is a section removed and a section created; both are
+//! staged together, so the record is never briefly gone.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Form, Map, TableRow, Value, Widget,
+    commit, commit_delete, commit_new, json, Envelope, Form, Map, TableRow, Tone, Value, Widget,
 };
 
+use crate::dns;
 use crate::form::{self, Errors};
 use crate::format;
 use crate::model::{Dnsdhcp, Record, RecordKind, CONFIG};
@@ -25,61 +31,45 @@ const SUB: &str = "Extra names answered locally — `config domain`, `config cna
 
 const EMPTY: &str = "No extra names yet — reserved devices already answer by name.";
 
-/// Refusal is a record the operator stated and the daemon would not read: the
-/// section it was about, the values as typed, and what is wrong with them.
-pub struct Refusal {
-    pub section: String,
-    pub record: Record,
-    pub errors: Errors,
-}
+const NEW_SUB: &str = "Add a name this router answers, and what it answers with.";
 
-/// Saved is what a record submission amounts to.
-pub enum Saved {
-    /// Written, with the sentence that states it.
-    Ops(Vec<CommitOp>, &'static str),
-    /// Nothing written, and the drawer to put back in front of the operator.
-    Refused(Refusal),
-    /// A submission naming no record this page drew.
-    Unknown,
-}
+const MISSING: &str = "That record isn’t here any more, so Verso showed you the DNS page instead.";
 
-/// section renders the records listing and the block of options that govern how
-/// local names are answered. A refusal reopens the drawer it came from, carrying
-/// what was typed.
-pub fn section(model: &Dnsdhcp, refusal: Option<&Refusal>, settings: Widget) -> Widget {
-    let rows = model
-        .records
-        .iter()
-        .map(|record| match refusal {
-            Some(refused) if refused.section == record.section => {
-                row(&refused.record, &refused.errors, true)
-            }
-            _ => row(record, &Errors::default(), false),
-        })
-        .collect();
+/// section renders the records listing that leads the DNS page, plus the block of
+/// options that govern how local names are answered. Each row opens the record's
+/// own page; the tail adds a new one.
+pub fn section(model: &Dnsdhcp, settings: Widget) -> Widget {
+    let rows = model.records.iter().map(row).collect();
     Widget::section(
         "Names on your network",
         SUB,
         vec![
-            page::table(
-                page::columns(&[("Type", "keyword"), ("Name", "mono"), ("Points to", "mono")]),
+            page::listing(
+                page::columns(&[
+                    ("Type", "keyword"),
+                    ("Name", "mono"),
+                    ("Points to", "mono"),
+                    ("", "link"),
+                ]),
                 rows,
                 EMPTY,
+                "New record",
+                &page::new_record_href(),
             ),
             settings,
         ],
     )
 }
 
-fn row(record: &Record, errors: &Errors, open: bool) -> TableRow {
+fn row(record: &Record) -> TableRow {
     TableRow {
         id: record.section.clone(),
         cells: vec![
             page::text_cell(record.kind.label()),
             page::mono_cell(&record.name),
             page::mono_cell(&format::points_to(&record.target, &qualifier(record))),
+            page::edit_link_cell(page::record_href(&record.section)),
         ],
-        drawer: drawer(record, errors, open),
         ..TableRow::default()
     }
 }
@@ -94,80 +84,171 @@ fn qualifier(record: &Record) -> String {
     }
 }
 
-fn drawer(record: &Record, errors: &Errors, open: bool) -> Option<verso_plugin::RowDrawer> {
-    let title = match record.name.is_empty() {
-        true => "Edit record".to_string(),
-        false => format!("Edit record — {}", record.name),
-    };
-    form::drawer(
-        &title,
-        open,
-        vec![
-            Widget::Form {
-                note: Default::default(),
+/// blank answers a visit to the new-record page: an A record with nothing filled
+/// in, the everyday kind an operator reaches for first.
+pub fn blank() -> Envelope {
+    editor(None, &Record::blank(), &Errors::default())
+}
 
-                style: String::new(),
-                submit: "Save".into(),
-                error: String::new(),
-                fields: vec![
-                    Widget::hidden(form::KIND, form::RECORD),
-                    Widget::hidden(form::SECTION, &record.section),
-                    form::select_field(
-                        "kind",
-                        "Type",
-                        record.kind.label(),
-                        form::choices(&[
-                            ("A", "A — a name for an IPv4 address"),
-                            ("AAAA", "AAAA — a name for an IPv6 address"),
-                            ("CNAME", "CNAME — another name for a name"),
-                            ("SRV", "SRV — where a service lives"),
-                            ("MX", "MX — where mail for a domain goes"),
-                        ]),
-                        errors,
-                    ),
-                    form::text_field("name", "Name", &record.name, "", errors),
-                    form::text_field(
-                        "target",
-                        "Points to",
-                        &record.target,
-                        "An address for A and AAAA; a name for CNAME, SRV and MX.",
-                        errors,
-                    ),
-                    Widget::disclosure(
-                        "Advanced — 3 more options",
-                        vec![page::form_grid(
-                            3,
-                            vec![
-                                form::text_field("port", "Port", &record.port, "SRV only.", errors),
-                                form::text_field(
-                                    "priority",
-                                    "Priority",
-                                    &record.priority,
-                                    "SRV and MX. Lower wins.",
-                                    errors,
-                                ),
-                                form::text_field(
-                                    "weight",
-                                    "Weight",
-                                    &record.weight,
-                                    "SRV only.",
-                                    errors,
-                                ),
-                            ],
-                        )],
-                    ),
-                ],
-            },
-            form::delete_form(
-                form::RECORD,
-                (form::SECTION, &record.section),
-                "Delete record",
-                &format!(
-                    "Delete the record for {}? The name stops resolving on this network.",
-                    subject(&record.name)
-                ),
+/// edit answers a visit to one record's page, or nothing when the sub-path names
+/// no record this config holds.
+pub fn edit(model: &Dnsdhcp, section: &str) -> Option<Envelope> {
+    let index = model.record_index(section)?;
+    Some(editor(
+        Some(section),
+        &model.records[index],
+        &Errors::default(),
+    ))
+}
+
+/// missing states that the sub-path names no record — a stale link, or a record
+/// someone else removed — and answers with the DNS page, which is somewhere real.
+pub fn missing(model: &Dnsdhcp) -> Envelope {
+    dns::page(model).with_notice(Tone::Danger, MISSING)
+}
+
+/// create answers the new-record page's submission. A record dnsmasq would not
+/// read is refused with the offending controls marked; one it would is stated as
+/// the section to add, and the listing answers with it staged.
+pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
+    let Some(kind) = RecordKind::of(&form.get("kind")) else {
+        // The type is a closed choice, so a value outside it is not something
+        // this page offered — the blank page, so the operator can start again.
+        return blank().with_notice(Tone::Danger, form::UNKNOWN);
+    };
+    let stated = submitted("", kind, form);
+    let errors = validate(&stated);
+    if !errors.is_empty() {
+        return editor(None, &stated, &errors).with_notice(Tone::Danger, form::REFUSED);
+    }
+    let op = commit_new(CONFIG, kind.section_type(), values(&stated, false));
+    model.records.push(stated);
+    dns::page(model)
+        .with_notice(Tone::Success, "Record added.")
+        .with_commit(vec![op])
+}
+
+/// save answers one record's page. A body carrying the delete marker removes the
+/// record and answers with the DNS page; anything else is the page's own
+/// submission — refused onto the page with the offending controls marked, or
+/// saved and answered with the listing.
+pub fn save(model: &mut Dnsdhcp, section: &str, form: &Form) -> Option<Envelope> {
+    let index = model.record_index(section)?;
+    if form::deletes(form) {
+        let removed = model.records.remove(index);
+        return Some(
+            dns::page(model)
+                .with_notice(Tone::Success, "Record deleted.")
+                .with_commit(vec![commit_delete(CONFIG, &removed.section)]),
+        );
+    }
+
+    let Some(kind) = RecordKind::of(&form.get("kind")) else {
+        return Some(missing(model));
+    };
+    let stated = submitted(section, kind, form);
+    let errors = validate(&stated);
+    if !errors.is_empty() {
+        return Some(
+            editor(Some(section), &stated, &errors).with_notice(Tone::Danger, form::REFUSED),
+        );
+    }
+
+    let was = model.records[index].kind.section_type();
+    let ops = match kind.section_type() == was {
+        true => vec![commit(CONFIG, section, values(&stated, true))],
+        // A record that changed type is the same name in a different section
+        // type, which uci can only express as one section gone and one added.
+        false => vec![
+            commit_delete(CONFIG, section),
+            commit_new(CONFIG, kind.section_type(), values(&stated, false)),
+        ],
+    };
+    model.records[index] = stated;
+    Some(
+        dns::page(model)
+            .with_notice(Tone::Success, "Record saved.")
+            .with_commit(ops),
+    )
+}
+
+/// editor composes the record page. `section` is the record being edited, or None
+/// for a new one — which is also what decides whether the delete form is there at
+/// all. The new page and the edit page are one screen.
+fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
+    let (title, subheading) = match section {
+        Some(_) => ("Edit record", heading(&record.name)),
+        None => ("New record", NEW_SUB.to_string()),
+    };
+    let mut children = vec![Widget::Form {
+        style: "page".into(),
+        submit: String::new(),
+        error: String::new(),
+        fields: vec![
+            form::select_field(
+                "kind",
+                "Type",
+                record.kind.label(),
+                form::choices(&[
+                    ("A", "A — a name for an IPv4 address"),
+                    ("AAAA", "AAAA — a name for an IPv6 address"),
+                    ("CNAME", "CNAME — another name for a name"),
+                    ("SRV", "SRV — where a service lives"),
+                    ("MX", "MX — where mail for a domain goes"),
+                ]),
+                errors,
+            ),
+            form::text_field("name", "Name", &record.name, "", errors),
+            form::text_field(
+                "target",
+                "Points to",
+                &record.target,
+                "An address for A and AAAA; a name for CNAME, SRV and MX.",
+                errors,
+            ),
+            Widget::disclosure(
+                "Advanced — 3 more options",
+                vec![page::form_grid(
+                    3,
+                    vec![
+                        form::text_field("port", "Port", &record.port, "SRV only.", errors),
+                        form::text_field(
+                            "priority",
+                            "Priority",
+                            &record.priority,
+                            "SRV and MX. Lower wins.",
+                            errors,
+                        ),
+                        form::text_field("weight", "Weight", &record.weight, "SRV only.", errors),
+                    ],
+                )],
             ),
         ],
+        note: String::new(),
+    }];
+    if section.is_some() {
+        children.push(record_delete_form(record));
+    }
+    page::dns_editor(title, &subheading, Widget::stack(children))
+}
+
+/// heading names the record the page is about, falling back to its own words when
+/// the record carries no name yet.
+fn heading(name: &str) -> String {
+    match name.is_empty() {
+        true => "An unnamed record.".to_string(),
+        false => name.to_string(),
+    }
+}
+
+/// record_delete_form is the record page's one irreversible action.
+fn record_delete_form(record: &Record) -> Widget {
+    form::delete_form(
+        "Delete record",
+        &format!(
+            "Delete the record for {}? The name stops resolving on this network.",
+            subject(&record.name)
+        ),
     )
 }
 
@@ -178,50 +259,7 @@ fn subject(name: &str) -> String {
     }
 }
 
-/// save answers a record drawer's submission.
-pub fn save(model: &mut Dnsdhcp, form: &Form) -> Saved {
-    let section = form.get(form::SECTION);
-    let Some(index) = model.record_index(&section) else {
-        return Saved::Unknown;
-    };
-    if form::deletes(form) {
-        let removed = model.records.remove(index);
-        return Saved::Ops(
-            vec![commit_delete(CONFIG, &removed.section)],
-            "Record deleted.",
-        );
-    }
-
-    let Some(kind) = RecordKind::of(&form.get("kind")) else {
-        // The type is a closed choice, so a value outside it is not something
-        // this drawer offered.
-        return Saved::Unknown;
-    };
-    let stated = submitted(&section, kind, form);
-    let errors = validate(&stated);
-    if !errors.is_empty() {
-        return Saved::Refused(Refusal {
-            section,
-            record: stated,
-            errors,
-        });
-    }
-
-    let was = model.records[index].kind.section_type();
-    let ops = match kind.section_type() == was {
-        true => vec![commit(CONFIG, &section, values(&stated, true))],
-        // A record that changed type is the same name in a different section
-        // type, which uci can only express as one section gone and one added.
-        false => vec![
-            commit_delete(CONFIG, &section),
-            commit_new(CONFIG, kind.section_type(), values(&stated, false)),
-        ],
-    };
-    model.records[index] = stated;
-    Saved::Ops(ops, "Record saved.")
-}
-
-/// submitted reads the drawer's values.
+/// submitted reads the page's values.
 fn submitted(section: &str, kind: RecordKind, form: &Form) -> Record {
     let field = |name: &str| form.get(name).trim().to_string();
     Record {
@@ -320,32 +358,63 @@ mod tests {
     use crate::fixture;
     use serde_json::Value as Json;
 
-    fn rows(model: &Dnsdhcp, refusal: Option<&Refusal>) -> Vec<Json> {
-        let json =
-            serde_json::to_value(section(model, refusal, Widget::text(""))).expect("serialize");
+    fn body(env: Envelope) -> Json {
+        serde_json::to_value(&env).expect("serialize")
+    }
+
+    fn listing_rows() -> Vec<Json> {
+        let model = fixture::dnsdhcp();
+        let json = serde_json::to_value(section(&model, Widget::text(""))).expect("serialize");
         json["children"][0]["rows"]
             .as_array()
             .expect("rows")
             .clone()
     }
 
-    fn submit(body: &str) -> (Dnsdhcp, Saved) {
-        let mut model = fixture::dnsdhcp();
-        let saved = save(&mut model, &Form::parse(body));
-        (model, saved)
+    fn edited(section: &str) -> Json {
+        let model = fixture::dnsdhcp();
+        body(edit(&model, section).expect("the fixture holds this record"))
     }
 
-    fn ops(saved: &Saved) -> Json {
-        match saved {
-            Saved::Ops(ops, _) => serde_json::to_value(ops).expect("serialize"),
-            _ => panic!("the submission was not written"),
-        }
+    fn fields(env: &Json) -> Json {
+        env["widget"]["children"][0]["fields"].clone()
+    }
+
+    fn control(env: &Json, name: &str) -> Json {
+        fields(env)
+            .as_array()
+            .expect("fields")
+            .iter()
+            .flat_map(|f| {
+                // The advanced grid nests its controls one level down.
+                match f["type"] == "disclosure" {
+                    true => f["children"][0]["children"]
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                    false => vec![f.clone()],
+                }
+            })
+            .find(|f| f["name"] == name)
+            .unwrap_or_else(|| panic!("no control {name}"))
+    }
+
+    fn saved(section: &str, body_str: &str) -> (Dnsdhcp, Json) {
+        let mut model = fixture::dnsdhcp();
+        let env = save(&mut model, section, &Form::parse(body_str))
+            .expect("the fixture holds this record");
+        (model, body(env))
+    }
+
+    fn created(body_str: &str) -> (Dnsdhcp, Json) {
+        let mut model = fixture::dnsdhcp();
+        let env = create(&mut model, &Form::parse(body_str));
+        (model, body(env))
     }
 
     #[test]
-    fn every_kind_reads_as_one_row_with_its_own_drawer() {
-        let model = fixture::dnsdhcp();
-        let rows = rows(&model, None);
+    fn every_row_leads_to_its_own_page_and_the_tail_leads_to_a_new_one() {
+        let rows = listing_rows();
         let typed: Vec<(&str, &str, &str)> = rows
             .iter()
             .map(|row| {
@@ -367,41 +436,81 @@ mod tests {
                 ("MX", "lan", "nas.lan · 10"),
             ]
         );
-
-        let drawer = &rows[4]["drawer"];
-        assert_eq!(drawer["title"], "Edit record — _matrix._tcp.lan");
-        assert!(drawer.get("open").is_none(), "a listing opens nothing");
-        let fields = &drawer["children"][0]["fields"];
-        assert_eq!(
-            fields[0],
-            serde_json::json!({"type": "field", "name": "_form", "kind": "hidden", "value": "record"})
-        );
-        assert_eq!(fields[2]["value"], "SRV");
-        assert_eq!(fields[2]["kind"], "select");
-        assert_eq!(fields[4]["value"], "nas.lan");
-        // The delete lives in a form of its own, behind a confirm.
-        assert_eq!(drawer["children"][1]["fields"][2]["name"], "_delete");
-        assert_eq!(drawer["children"][1]["fields"][3]["type"], "confirm");
+        // No row opens a panel; each leads to a page, and none carries a drawer.
+        for row in &rows {
+            assert!(row.get("drawer").is_none(), "{row}");
+            let last = row["cells"]
+                .as_array()
+                .expect("cells")
+                .last()
+                .expect("cell");
+            let section = row["id"].as_str().expect("id");
+            assert_eq!(
+                last,
+                &serde_json::json!({"text": "Edit", "href": page::record_href(section)})
+            );
+        }
     }
 
-    // Nothing added is a normal state here, not a broken one: the devices with a
-    // reservation already answer by name without any of these.
     #[test]
-    fn no_extra_names_states_what_still_resolves() {
-        let mut model = fixture::dnsdhcp();
-        model.records.clear();
-        let json =
-            serde_json::to_value(section(&model, None, Widget::text(""))).expect("serialize");
-        let table = &json["children"][0];
-        assert_eq!(table["empty_text"], EMPTY);
-        assert!(table["rows"].as_array().expect("rows").is_empty());
+    fn the_edit_page_carries_the_record_and_the_new_page_starts_empty() {
+        let srv = edited("srv_matrix");
+        assert_eq!(srv["title"], "Edit record");
+        assert_eq!(srv["subheading"], "_matrix._tcp.lan");
+        assert!(srv.get("pages").is_none(), "DNS declares no top bar");
+        assert_eq!(control(&srv, "kind")["value"], "SRV");
+        assert_eq!(control(&srv, "kind")["kind"], "select");
+        assert_eq!(control(&srv, "target")["value"], "nas.lan");
+        assert_eq!(control(&srv, "port")["value"], "8448");
+        // The page form leaves its Save label to the shell, so it declares none.
+        let form = &srv["widget"]["children"][0];
+        assert_eq!(form["style"], "page");
+        assert!(form.get("submit").is_none());
+        // An existing record can be deleted; a new one cannot.
+        let delete = &srv["widget"]["children"][1];
+        assert_eq!(delete["fields"][0]["name"], "_delete");
+        assert_eq!(delete["fields"][1]["type"], "confirm");
+
+        let blank = body(blank());
+        assert_eq!(blank["title"], "New record");
+        assert_eq!(blank["subheading"], NEW_SUB);
+        assert_eq!(control(&blank, "kind")["value"], "A");
+        assert_eq!(control(&blank, "name")["value"], "");
+        assert_eq!(
+            blank["widget"]["children"]
+                .as_array()
+                .expect("children")
+                .len(),
+            1,
+            "a record that does not exist yet cannot be deleted"
+        );
+    }
+
+    #[test]
+    fn creating_a_record_states_the_section_to_add_and_lands_on_the_listing() {
+        let (model, body) = created("kind=CNAME&name=photos2.lan&target=nas.lan");
+        assert_eq!(body["title"], "DNS");
+        assert_eq!(body["notice"]["level"], "success");
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "dhcp", "section": "", "type": "cname",
+                "values": {"cname": "photos2.lan", "target": "nas.lan"}
+            }])
+        );
+        // The answer already carries the new record.
+        assert!(model.records.iter().any(|r| r.name == "photos2.lan"));
     }
 
     #[test]
     fn saving_a_record_states_every_option_its_type_carries() {
-        let (model, saved) = submit("_form=record&_section=srv_matrix&kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=8449&priority=10&weight=");
+        let (model, body) = saved(
+            "srv_matrix",
+            "kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=8449&priority=10&weight=",
+        );
+        assert_eq!(body["title"], "DNS");
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([{
                 "config": "dhcp",
                 "section": "srv_matrix",
@@ -413,17 +522,15 @@ mod tests {
                 }
             }])
         );
-        // The answer renders from the model, so it carries the accepted change.
         let index = model.record_index("srv_matrix").expect("record");
         assert_eq!(model.records[index].port, "8449");
     }
 
     #[test]
     fn changing_a_records_type_moves_it_between_section_types() {
-        let (_, saved) =
-            submit("_form=record&_section=cname_photos&kind=A&name=photos.lan&target=10.0.0.30");
+        let (_, body) = saved("cname_photos", "kind=A&name=photos.lan&target=10.0.0.30");
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([
                 {"config": "dhcp", "section": "cname_photos", "delete": true},
                 {"config": "dhcp", "section": "", "type": "domain",
@@ -432,11 +539,12 @@ mod tests {
         );
 
         // A and AAAA are one section type, so switching between them is a set.
-        let (_, saved) = submit(
-            "_form=record&_section=domain_backup_v4&kind=AAAA&name=backup.lan&target=2a00:ee2::31",
+        let (_, body) = saved(
+            "domain_backup_v4",
+            "kind=AAAA&name=backup.lan&target=2a00:ee2::31",
         );
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([{
                 "config": "dhcp", "section": "domain_backup_v4",
                 "values": {"name": "backup.lan", "ip": "2a00:ee2::31"}
@@ -445,64 +553,88 @@ mod tests {
     }
 
     #[test]
-    fn deleting_a_record_removes_its_section() {
-        let (model, saved) = submit("_form=record&_section=mx_lan&_delete=1");
+    fn deleting_a_record_removes_its_section_and_lands_on_the_listing() {
+        let (model, body) = saved("mx_lan", "_delete=1");
+        assert_eq!(body["title"], "DNS");
+        assert_eq!(body["notice"]["text"], "Record deleted.");
         assert_eq!(
-            ops(&saved),
+            body["commit"],
             serde_json::json!([{"config": "dhcp", "section": "mx_lan", "delete": true}])
         );
         assert!(model.record_index("mx_lan").is_none());
     }
 
     #[test]
-    fn a_value_dnsmasq_would_not_read_is_marked_and_nothing_is_written() {
-        for (body, field) in [
-            ("_form=record&_section=domain_backup_v4&kind=A&name=backup.lan&target=nas.lan", "target"),
-            ("_form=record&_section=domain_backup_v6&kind=AAAA&name=backup.lan&target=10.0.0.31", "target"),
-            ("_form=record&_section=domain_backup_v4&kind=A&name=&target=10.0.0.31", "name"),
-            ("_form=record&_section=srv_matrix&kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=", "port"),
-            ("_form=record&_section=srv_matrix&kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=8448&priority=high", "priority"),
+    fn a_value_dnsmasq_would_not_read_is_marked_on_the_page_and_nothing_is_written() {
+        for (section, body_str, field) in [
+            (
+                "domain_backup_v4",
+                "kind=A&name=backup.lan&target=nas.lan",
+                "target",
+            ),
+            (
+                "domain_backup_v6",
+                "kind=AAAA&name=backup.lan&target=10.0.0.31",
+                "target",
+            ),
+            ("domain_backup_v4", "kind=A&name=&target=10.0.0.31", "name"),
+            (
+                "srv_matrix",
+                "kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=",
+                "port",
+            ),
+            (
+                "srv_matrix",
+                "kind=SRV&name=_matrix._tcp.lan&target=nas.lan&port=8448&priority=high",
+                "priority",
+            ),
         ] {
-            let (_, saved) = submit(body);
-            let Saved::Refused(refusal) = saved else {
-                panic!("{body}: the submission should have been refused");
-            };
-            assert!(!refusal.errors.get(field).is_empty(), "{body}: {field} carries no error");
+            let (_, body) = saved(section, body_str);
+            assert_eq!(body["title"], "Edit record", "{body_str}");
+            assert!(
+                body.get("commit").is_none(),
+                "{body_str}: nothing may be written"
+            );
+            assert_eq!(body["notice"]["level"], "danger", "{body_str}");
+            assert!(
+                !control(&body, field)["error"]
+                    .as_str()
+                    .unwrap_or("")
+                    .is_empty(),
+                "{body_str}: {field} carries no error"
+            );
+            // The submitted value comes back on its control.
+            assert!(control(&body, field).get("value").is_some(), "{body_str}");
         }
     }
 
     #[test]
-    fn a_refused_record_comes_back_open_carrying_what_was_typed() {
-        let mut model = fixture::dnsdhcp();
-        let Saved::Refused(refusal) = save(
-            &mut model,
-            &Form::parse(
-                "_form=record&_section=domain_backup_v4&kind=A&name=backup.lan&target=nowhere",
-            ),
-        ) else {
-            panic!("the submission should have been refused");
-        };
-        let rows = rows(&model, Some(&refusal));
-        let drawer = &rows[0]["drawer"];
-        assert_eq!(drawer["open"], true);
-        assert_eq!(drawer["children"][0]["fields"][4]["value"], "nowhere");
-        assert!(!drawer["children"][0]["fields"][4]["error"]
+    fn a_refused_new_record_comes_back_on_the_new_page_carrying_what_was_typed() {
+        let (_, body) = created("kind=A&name=backup.lan&target=nowhere");
+        assert_eq!(body["title"], "New record");
+        assert!(body.get("commit").is_none());
+        assert_eq!(control(&body, "target")["value"], "nowhere");
+        assert!(!control(&body, "target")["error"]
             .as_str()
             .unwrap_or("")
             .is_empty());
-        // Every other row is untouched and closed.
-        assert!(rows[1]["drawer"].get("open").is_none());
     }
 
     #[test]
-    fn a_submission_naming_no_record_writes_nothing() {
-        for body in [
-            "_form=record&_section=no_such_record&kind=A&name=a.lan&target=10.0.0.1",
-            "_form=record&_section=&kind=A&name=a.lan&target=10.0.0.1",
-            "_form=record&_section=domain_backup_v4&kind=PTR&name=a.lan&target=10.0.0.1",
-        ] {
-            let (_, saved) = submit(body);
-            assert!(matches!(saved, Saved::Unknown), "{body}");
-        }
+    fn a_sub_path_naming_no_record_answers_with_the_dns_page() {
+        let model = fixture::dnsdhcp();
+        assert!(edit(&model, "no_such_record").is_none());
+
+        let mut model = fixture::dnsdhcp();
+        assert!(save(
+            &mut model,
+            "no_such_record",
+            &Form::parse("kind=A&name=a.lan&target=10.0.0.1")
+        )
+        .is_none());
+
+        let body = body(missing(&fixture::dnsdhcp()));
+        assert_eq!(body["title"], "DNS");
+        assert_eq!(body["notice"]["level"], "danger");
     }
 }

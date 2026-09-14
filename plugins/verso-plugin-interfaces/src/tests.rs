@@ -1,0 +1,361 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+use super::*;
+use verso_plugin::{json, Ubus};
+fn request(path: &str, query: &str) -> Request {
+    Request {
+        path: path.into(),
+        query: Form::parse(query),
+        snapshot: Snapshot::from_value(json!({
+        "network":{
+         "lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static","ipaddr":"192.168.1.1","netmask":"255.255.255.0","auto":"1"},
+         "br":{".name":"br",".type":"device","name":"br-lan","type":"bridge","ports":["eth0"]},
+         "uplink":{".name":"uplink",".type":"interface","device":"eth1","proto":"dhcp"}},
+        "firewall":{"lan":{".name":"lan",".type":"zone","name":"lan","network":["lan"]},"wan":{".name":"wan",".type":"zone","name":"wan","network":["uplink"]}},
+        "dhcp":{"lan":{".name":"lan",".type":"dhcp","interface":"lan","start":"100","limit":"150","leasetime":"12h"}},
+        "wireless":{"radio":{".name":"radio",".type":"wifi-iface","network":"lan"}}
+        })),
+        ubus: Ubus::from_value(
+            json!({"networkState":{"devices":{"eth0":{"up":true},"eth1":{"up":true},"eth2":{"up":false},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]}}),
+        ),
+    }
+}
+fn form(extra: &str) -> Form {
+    Form::parse(&format!("name=guest&device=eth2&proto=static&ipaddr=192.168.20.1&netmask=255.255.255.0&zone=lan&auto=1&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled&{extra}"))
+}
+#[test]
+fn new_network_stages_named_section_and_references() {
+    let r = request("/new", "kind=network");
+    let e = post(&r, &form(""));
+    assert!(!e.commit.is_empty(), "{:?}", e);
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(j["commit"][0]["type"], "interface");
+    assert_eq!(j["commit"][0]["section"], "guest");
+    assert!(e.apply.is_empty());
+    assert!(e.commands.is_empty());
+    assert_eq!(j["back"]["href"], ROOT);
+}
+#[test]
+fn invalid_posts_never_stage() {
+    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.255.255.0&dhcp=1&start=1&limit=200&leasetime=12h","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("Check the highlighted fields."));}
+}
+#[test]
+fn device_kinds_write_device_sections() {
+    for (kind, body, typ) in [
+        ("bridge", "name=br_guest&ports=eth2&stp=1", "bridge"),
+        (
+            "vlan",
+            "name=eth2.20&device=eth2&vid=20&vlan_protocol=8021q",
+            "8021q",
+        ),
+    ] {
+        let e = post(
+            &request("/new", &format!("kind={kind}")),
+            &Form::parse(body),
+        );
+        let j = serde_json::to_value(&e).unwrap();
+        assert_eq!(j["commit"][0]["type"], "device", "{j}");
+        assert_eq!(j["commit"][0]["values"]["type"], typ);
+    }
+}
+#[test]
+fn rejects_bridge_and_vlan_conflicts() {
+    for (kind, body) in [
+        ("bridge", "name=br_guest&ports=eth0"),
+        (
+            "vlan",
+            "name=eth2.9999&device=eth2&vid=9999&vlan_protocol=8021q",
+        ),
+    ] {
+        assert!(post(
+            &request("/new", &format!("kind={kind}")),
+            &Form::parse(body)
+        )
+        .commit
+        .is_empty());
+    }
+}
+#[test]
+fn network_rename_updates_all_owners() {
+    let e=post(&request("/edit","network=lan"),&Form::parse("name=home&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&zone=lan&auto=1&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled"));
+    let j = serde_json::to_value(&e).unwrap();
+    assert!(!e.commit.is_empty(), "{j}");
+    let ops = &j["commit"];
+    assert!(ops
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|o| o["config"] == "wireless" && o["values"]["network"] == json!(["home"])));
+    assert!(ops
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|o| o["config"] == "dhcp" && o["values"]["interface"] == "home"));
+    assert!(ops
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|o| o["delete"] == true && o["section"] == "lan"));
+}
+#[test]
+fn deletion_refuses_devices_still_in_use() {
+    assert!(post(
+        &request("/delete", "device=br-lan"),
+        &Form::parse("delete=1")
+    )
+    .commit
+    .is_empty());
+}
+#[test]
+fn chooser_and_editor_have_no_navigation_subpages() {
+    let e = get(&request("/", "new=1"));
+    assert!(e.pages.is_empty());
+    let j = serde_json::to_string(&e).unwrap();
+    for kind in ["network", "wan", "bridge", "vlan", "tunnel"] {
+        assert!(j.contains(&format!("new?kind={kind}")));
+        assert!(get(&request("/new", &format!("kind={kind}")))
+            .pages
+            .is_empty());
+    }
+}
+#[test]
+fn listing_uses_live_addresses_and_expandable_details() {
+    let j = serde_json::to_string(&get(&request("/", ""))).unwrap();
+    assert!(j.contains("192.168.1.1/24"));
+    assert!(j.contains("expanded"));
+    assert!(j.contains("Restart"));
+}
+#[test]
+fn tunnel_writes_real_protocol_options() {
+    let e = post(
+        &request("/new", "kind=tunnel"),
+        &Form::parse("name=remote&proto=vxlan&peeraddr=203.0.113.8&vid=100&port=4789&auto=1"),
+    );
+    let j = serde_json::to_value(e).unwrap();
+    assert_eq!(j["commit"][0]["values"]["proto"], "vxlan", "{j}");
+    assert_eq!(j["commit"][0]["values"]["peeraddr"], "203.0.113.8");
+}
+
+#[test]
+fn editing_bridge_keeps_its_existing_ports() {
+    let e = post(
+        &request("/edit", "device=br-lan"),
+        &Form::parse("name=br-lan&ports=eth0&stp=1"),
+    );
+    assert!(!e.commit.is_empty(), "{e:?}");
+    assert_eq!(e.commit[0].values["ports"], json!(["eth0"]));
+}
+#[test]
+fn runtime_actions_do_not_change_autostart() {
+    for action in ["restart", "up", "down"] {
+        let e = post(&request("/", ""), &Form::parse(&format!("{action}=lan")));
+        assert!(e.commit.is_empty());
+        assert_eq!(e.commands[0].name, format!("interface-{action}"));
+        assert_eq!(e.commands[0].args["interface"], "lan");
+        assert_eq!(e.back.unwrap().href, ROOT);
+    }
+    assert!(post(&request("/", ""), &Form::parse("down=loopback"))
+        .commands
+        .is_empty());
+}
+
+#[test]
+fn preview_uses_the_values_that_save_stages() {
+    let e = post(&request("/new", "kind=network"), &form(""));
+    let value = serde_json::to_value(&e).unwrap();
+    fn preview(v: &serde_json::Value) -> Option<&str> {
+        if v.get("live") == Some(&json!(true)) && v.get("type") == Some(&json!("code")) {
+            return v["value"].as_str();
+        }
+        match v {
+            serde_json::Value::Object(m) => m.values().find_map(preview),
+            serde_json::Value::Array(a) => a.iter().find_map(preview),
+            _ => None,
+        }
+    }
+    let text = preview(&value).expect("editor must carry a live preview");
+    assert!(text.contains("config interface 'guest'"));
+    for (key, val) in e.commit[0].values.as_object().unwrap() {
+        if let Some(value) = val.as_str() {
+            assert!(
+                text.contains(&format!("option {key} '{value}'")),
+                "missing {key}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_new_network_cannot_have_an_empty_name() {
+    let e = post(
+        &request("/new", "kind=wan"),
+        &Form::parse("name=&device=eth2&proto=dhcp&ra=disabled&dhcpv6=disabled&auto=1"),
+    );
+    assert!(e.commit.is_empty());
+    assert!(serde_json::to_string(&e)
+        .unwrap()
+        .contains("starting with a letter"));
+}
+
+fn inventory_row(m: &Model, id: &str) -> serde_json::Value {
+    fn find(v: &serde_json::Value, id: &str) -> Option<serde_json::Value> {
+        if v.get("id").and_then(serde_json::Value::as_str) == Some(id) && v.get("cells").is_some() {
+            return Some(v.clone());
+        }
+        match v {
+            serde_json::Value::Object(o) => o.values().find_map(|v| find(v, id)),
+            serde_json::Value::Array(a) => a.iter().find_map(|v| find(v, id)),
+            _ => None,
+        }
+    }
+    find(&serde_json::to_value(page::listing(m, false)).unwrap(), id).unwrap()
+}
+#[test]
+fn runtime_flags_win_over_staged_autostart_and_device_state() {
+    let mut m = Model::read(&request("/", ""));
+    m.networks
+        .iter_mut()
+        .find(|n| n.id == "lan")
+        .unwrap()
+        .values
+        .insert("auto".into(), json!("0"));
+    m.live["interfaces"][0]["up"] = json!(1);
+    m.live["devices"]["br-lan"]["up"] = json!(1);
+    m.live["devices"]["br-lan"]["carrier"] = json!(1);
+    let row = inventory_row(&m, "br-lan");
+    assert_eq!(row["cells"][4]["text"], "up");
+    assert_eq!(row["cells"][5]["actions"][1]["name"], "down");
+    m.live["interfaces"][0]["up"] = json!(0);
+    assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "down");
+    m.live["interfaces"][0]["pending"] = json!(1);
+    assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "pending");
+    m.live["interfaces"][0]["pending"] = json!(0);
+    m.live["devices"]["br-lan"]["carrier"] = json!(0);
+    assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "no link");
+}
+#[test]
+fn addresses_are_observed_and_ipv6_assignments_stay_in_details() {
+    let mut m = Model::read(&request("/", ""));
+    m.live["interfaces"][0]["ipv6-prefix-assignment"] =
+        json!([{"local-address":{"address":"fd42:7ea:aa00::1","mask":60}}]);
+    m.live["devices"]["br-lan"]["type"] = json!("bridge");
+    let row = inventory_row(&m, "br-lan");
+    assert_eq!(row["cells"][1]["text"], "bridge");
+    assert_eq!(row["cells"][2]["text"], "192.168.1.1/24");
+    assert!(row["expanded"].to_string().contains("fd42:7ea:aa00::1/60"));
+    m.live["interfaces"][0]["ipv4-address"] = json!([]);
+    assert_eq!(inventory_row(&m, "br-lan")["cells"][2]["text"], "—");
+    m.live = serde_json::Value::Null;
+    assert_eq!(
+        inventory_row(&m, "br-lan")["cells"][4]["text"],
+        "not reported"
+    );
+}
+#[test]
+fn physical_bridge_ports_are_roots_and_vlan_and_ppp_follow_their_transport() {
+    let mut m = Model::read(&request("/", ""));
+    m.live["devices"]["eth0.20"] = json!({"kind":"vlan","parent":"eth0","up":true});
+    m.live["interfaces"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"interface":"uplink","l3_device":"pppoe-wan","up":true}));
+    let parents = m.parents();
+    assert!(!parents.contains_key("eth0"));
+    assert_eq!(parents["eth0.20"], "eth0");
+    assert_eq!(parents["pppoe-wan"], "eth1");
+    assert_eq!(inventory_row(&m, "eth0.20")["depth"], 1);
+    assert_eq!(
+        inventory_row(&m, "pppoe-wan")["cells"][0]["chips"][0]["label"],
+        "uplink"
+    );
+}
+
+#[test]
+fn home_router_tree_matches_the_reference_relationships() {
+    let mut r = request("/", "");
+    r.snapshot = Snapshot::from_value(json!({"network":{
+        "lan_bridge":{".name":"lan_bridge",".type":"device","name":"br-lan","type":"bridge","ports":["eth0","wlan0"]},
+        "iptv_bridge":{".name":"iptv_bridge",".type":"device","name":"br-iptv","type":"bridge","ports":["eth4.3999","br-lan.3999"]},
+        "wan":{".name":"wan",".type":"interface","device":"eth4.3900","proto":"pppoe"}
+    }}));
+    r.ubus = Ubus::from_value(json!({"networkState":{
+        "devices":{
+            "eth0":{"physical":true,"kind":"port","parent":"eth4"},
+            "eth4":{"physical":true,"kind":"port"},
+            "wlan0":{"physical":false,"kind":"wifi"},
+            "br-lan":{"kind":"bridge","parent":"eth0"},
+            "br-iptv":{"kind":"bridge","parent":"eth4.3999"},
+            "eth4.3900":{"kind":"vlan","parent":"eth4"},
+            "eth4.3999":{"kind":"vlan","parent":"eth4"},
+            "br-lan.3999":{"kind":"vlan","parent":"br-lan"},
+            "br-lan.10":{"kind":"vlan","parent":"br-lan"},
+            "br-lan.40":{"kind":"vlan","parent":"br-lan"}
+        },
+        "interfaces":[{"interface":"wan","device":"eth4.3900","l3_device":"pppoe-wan","up":true}]
+    }}));
+    let m = Model::read(&r);
+    assert_eq!(
+        m.parents(),
+        std::collections::BTreeMap::from([
+            ("eth4.3900".into(), "eth4".into()),
+            ("pppoe-wan".into(), "eth4.3900".into()),
+            ("eth4.3999".into(), "br-iptv".into()),
+            ("br-lan.3999".into(), "br-iptv".into()),
+            ("br-lan.10".into(), "br-lan".into()),
+            ("br-lan.40".into(), "br-lan".into()),
+        ])
+    );
+    assert_eq!(inventory_row(&m, "pppoe-wan")["depth"], 2);
+    assert_eq!(inventory_row(&m, "eth4.3999")["depth"], 1);
+    for name in ["eth0", "wlan0", "br-lan", "br-iptv"] {
+        assert!(
+            inventory_row(&m, name).get("depth").is_none(),
+            "{name} must be a root"
+        );
+    }
+}
+
+#[test]
+fn docker_bridge_connects_only_its_observed_virtual_member() {
+    let mut m = Model::read(&request("/", ""));
+    m.live["devices"] = json!({
+        "br-lan":{"kind":"bridge","bridge-members":["lan0"],"up":true},
+        "lan0":{"kind":"virtual","physical":false,"up":true},
+        "wan0":{"kind":"virtual","physical":false,"up":true},
+        "eth0":{"kind":"virtual","physical":false,"up":true}
+    });
+    assert_eq!(
+        m.parents(),
+        std::collections::BTreeMap::from([("lan0".into(), "br-lan".into())])
+    );
+    assert_eq!(inventory_row(&m, "lan0")["depth"], 1);
+    // An observed empty bridge overrides ports still in the UCI snapshot.
+    m.live["devices"]["br-lan"]["bridge-members"] = json!([]);
+    assert!(m.parents().is_empty());
+    // A member reported only by netifd still belongs in the inventory.
+    m.live["devices"]["br-lan"]["bridge-members"] = json!(["tap-only"]);
+    assert!(m.names().contains("tap-only"));
+}
+
+#[test]
+fn dhcp_announcements_preserve_other_options_and_validate_addresses() {
+    let mut r = request("/edit", "network=lan");
+    r.snapshot = Snapshot::from_value(
+        json!({"network":{"lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static","ipaddr":"192.168.1.1","netmask":"255.255.255.0"}},"dhcp":{"lan":{".name":"lan",".type":"dhcp","interface":"lan","dhcp_option":["42,192.168.1.9","3,192.168.1.1","6,192.168.1.1"],"dhcp_option_force":["66,boot.example"]}}}),
+    );
+    let f=Form::parse("name=lan&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled&announced_gateway=192.168.1.2&announced_dns=9.9.9.9&announced_dns=1.1.1.1&reservations_only=1&force=1");
+    let e = post(&r, &f);
+    let dhcp = e.commit.iter().find(|o| o.config == "dhcp").unwrap();
+    assert_eq!(
+        dhcp.values["dhcp_option"],
+        json!(["42,192.168.1.9", "3,192.168.1.2", "6,9.9.9.9,1.1.1.1"])
+    );
+    assert_eq!(dhcp.values["dhcp_option_force"], json!(["66,boot.example"]));
+    assert_eq!(dhcp.values["dynamicdhcp"], "0");
+    assert_eq!(dhcp.values["force"], "1");
+    let r = request("/new", "kind=network");
+    assert!(post(&r, &form("announced_dns=999.1.1.1")).commit.is_empty());
+    assert!(post(&r, &form("announced_gateway=invalid"))
+        .commit
+        .is_empty());
+}

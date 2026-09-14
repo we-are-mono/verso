@@ -1,0 +1,43 @@
+{
+  "verso-plugin-interfaces": {
+    "description": "Verso interfaces configuration",
+    "read": {
+      "uci": [
+        "network",
+        "firewall",
+        "dhcp",
+        "wireless"
+      ],
+      "ubus": {
+        "verso": [
+          "dhcpState"
+        ],
+        "service": [
+          "list"
+        ],
+        "network.interface": [
+          "dump"
+        ]
+      }
+    },
+    "write": {
+      "uci": [
+        "network",
+        "firewall",
+        "dhcp",
+        "wireless"
+      ],
+      "ubus": {
+        "network.interface": [
+          "restart",
+          "up",
+          "down"
+        ],
+        "network.interface.*": [
+          "up",
+          "down"
+        ]
+      }
+    }
+  }
+}
