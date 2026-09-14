@@ -81,7 +81,7 @@ func TestRenewReportsLiveness(t *testing.T) {
 		alive bool
 	}{
 		{"live session", nil, true},
-		{"session gone", &ubus.StatusError{Code: ubus.StatusNotFound, Context: `invoke "access"`}, false},
+		{"session gone", &ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseInvoke, Call: "access"}, false},
 		{"gone, wrapped", fmt.Errorf("openwrt: %w", &ubus.StatusError{Code: ubus.StatusNotFound}), false},
 		{"other ubus status", &ubus.StatusError{Code: ubus.StatusNotFound + 1}, true},
 		{"transport error", errors.New("dial: connection refused"), true},

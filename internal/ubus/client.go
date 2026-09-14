@@ -22,16 +22,31 @@ const (
 // vanished session from a transport failure.
 const StatusNotFound = 4
 
+// Phase names which half of a request a status came back from. It is the
+// difference between "ubusd has no such object" and "the object refused the
+// method", which share one status code and mean entirely different things: a
+// caller that reads meaning into StatusNotFound has to know which it got.
+type Phase string
+
+const (
+	// PhaseLookup is the object lookup: the name is not on the bus at all.
+	PhaseLookup Phase = "lookup"
+	// PhaseInvoke is the method call on an object that was found.
+	PhaseInvoke Phase = "invoke"
+)
+
 // StatusError is a non-zero ubus status reply — a request that reached ubusd and
 // came back refused, as distinct from a transport error (a dropped socket, a
-// timeout). Code mirrors enum ubus_msg_status; Context names the failed call.
+// timeout). Code mirrors enum ubus_msg_status; Phase and Call name where it came
+// from — the object being looked up, or the method being invoked.
 type StatusError struct {
-	Code    int
-	Context string
+	Code  int
+	Phase Phase
+	Call  string
 }
 
 func (e *StatusError) Error() string {
-	return fmt.Sprintf("ubus: %s: status %d", e.Context, e.Code)
+	return fmt.Sprintf("ubus: %s %q: status %d", e.Phase, e.Call, e.Code)
 }
 
 // Client is a synchronous ubus client over the unix socket. It is not safe for
@@ -170,7 +185,7 @@ func (c *Client) Lookup(name string) (uint32, error) {
 			}
 		case msgStatus:
 			if code := statusCode(body); code != 0 {
-				return 0, &StatusError{Code: code, Context: fmt.Sprintf("lookup %q", name)}
+				return 0, &StatusError{Code: code, Phase: PhaseLookup, Call: name}
 			}
 			if !found {
 				return 0, fmt.Errorf("ubus: object %q not found", name)
@@ -240,7 +255,7 @@ func (c *Client) invoke(objID uint32, method string, tableBody []byte) (map[stri
 			}
 		case msgStatus:
 			if code := statusCode(body); code != 0 {
-				return nil, &StatusError{Code: code, Context: fmt.Sprintf("invoke %q", method)}
+				return nil, &StatusError{Code: code, Phase: PhaseInvoke, Call: method}
 			}
 			if result == nil {
 				result = map[string]any{}

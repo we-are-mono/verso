@@ -11,9 +11,10 @@ import (
 
 // TestStatusErrorUnwrap confirms a non-zero ubus status surfaces as a typed
 // *StatusError a caller can inspect — the renewer distinguishes a vanished
-// session (UBUS_STATUS_NOT_FOUND) from a transport failure by this type.
+// session (UBUS_STATUS_NOT_FOUND) from a transport failure by this type, and the
+// uci seam distinguishes an absent option from an absent object by its phase.
 func TestStatusErrorUnwrap(t *testing.T) {
-	err := error(&StatusError{Code: StatusNotFound, Context: `invoke "access"`})
+	err := error(&StatusError{Code: StatusNotFound, Phase: PhaseInvoke, Call: "access"})
 	wrapped := fmt.Errorf("openwrt: renew: %w", err)
 
 	var se *StatusError
@@ -23,7 +24,15 @@ func TestStatusErrorUnwrap(t *testing.T) {
 	if se.Code != StatusNotFound {
 		t.Errorf("Code = %d, want %d", se.Code, StatusNotFound)
 	}
+	if se.Phase != PhaseInvoke || se.Call != "access" {
+		t.Errorf("phase/call = %q/%q, want the invoked method", se.Phase, se.Call)
+	}
 	if got, want := se.Error(), `ubus: invoke "access": status 4`; got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+	// The two phases read differently, which is the whole point of carrying it.
+	lookup := &StatusError{Code: StatusNotFound, Phase: PhaseLookup, Call: "uci"}
+	if got, want := lookup.Error(), `ubus: lookup "uci": status 4`; got != want {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
 }
