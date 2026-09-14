@@ -57,6 +57,17 @@ fn word_label(word: &str) -> String {
     }
 }
 
+/// group_path is the same path as its two ends — where the traffic comes from
+/// and where it goes — for a band that draws the arrow between them itself. A
+/// chain that is not a path (packet marking) is all origin and no destination.
+pub fn group_path(chain: &str, shared_dest: Option<&str>) -> (String, String) {
+    let label = group_label(chain, shared_dest);
+    match label.split_once(" → ") {
+        Some((from, to)) => (from.to_string(), to.to_string()),
+        None => (label, String::new()),
+    }
+}
+
 /// group_label names the traffic path a chain evaluates. A forwarding lane whose
 /// rules all point at one zone says so; one whose rules point at several says
 /// only that the traffic is forwarded, because no single destination is true of
@@ -112,6 +123,23 @@ pub fn family(option: &str) -> Family {
         value if value.contains('4') || value == "inet" => Family::V4,
         value if value.contains('6') => Family::V6,
         _ => Family::Any,
+    }
+}
+
+/// families says which address families a section's traffic can be on, as
+/// (IPv4, IPv6). The family option decides it outright where one is set; with
+/// none set the protocol can still decide, because ICMPv6 exists only on IPv6.
+pub fn families(protos: &[String], family_option: &str) -> (bool, bool) {
+    match family(family_option) {
+        Family::V4 => (true, false),
+        Family::V6 => (false, true),
+        Family::Any => {
+            let names = expand(protos);
+            match names.iter().all(|name| name == "icmpv6") {
+                true => (false, true),
+                false => (true, true),
+            }
+        }
     }
 }
 
@@ -176,8 +204,20 @@ pub fn match_summary(dest_ports: &[String], icmp_types: &[String], limit: &str) 
     }
     match icmp_types.len() {
         0 => {}
-        1..=4 => parts.push(icmp_types.join(" ")),
-        count => parts.push(format!("{count} types")),
+        1 => parts.push(icmp_types.join(" ")),
+        count => {
+            // A few short names read better verbatim, but the cell is nowrap
+            // mono: past what the column comfortably carries, a long list
+            // stretches the table and squeezes every other column (three v6
+            // names outweigh eleven short v4 ones), so the fold is by rendered
+            // length as well as count. The editor holds the full set.
+            let joined = icmp_types.join(" ");
+            if count <= 4 && joined.chars().count() <= 24 {
+                parts.push(joined);
+            } else {
+                parts.push(format!("{count} types"));
+            }
+        }
     }
     if let Some(rate) = limit_label(limit) {
         parts.push(rate);
@@ -225,15 +265,18 @@ pub fn hits(packets: u64) -> String {
     packets.to_string()
 }
 
-/// target_tone is the badge tone a rule's verdict carries: what passes is
-/// success, what is answered is warning, what disappears is danger. Everything
-/// else changes how a packet is handled rather than whether it arrives, and
-/// reads as information.
+/// target_tone is the badge tone a rule's verdict carries. Accept lets the
+/// traffic through, so it is green. Reject answers with an ICMP error — the
+/// client fails fast and knows it was refused — and that refusal is the red
+/// one. Drop says nothing at all: there is no answer to colour, so it wears no
+/// hue and reads as the plain word for what happened. Everything else changes
+/// how a packet is handled rather than whether it arrives, and reads as
+/// information.
 pub fn target_tone(target: &str) -> &'static str {
     match target {
         "accept" => "success",
-        "reject" => "warning",
-        "drop" => "danger",
+        "reject" => "danger",
+        "drop" => "neutral",
         _ => "info",
     }
 }
@@ -359,6 +402,23 @@ mod tests {
     }
 
     #[test]
+    fn a_path_comes_apart_into_its_two_ends() {
+        assert_eq!(
+            group_path("input_wan", None),
+            ("WAN".to_string(), "Router".to_string())
+        );
+        assert_eq!(
+            group_path("forward_family", Some("iot_local")),
+            ("Family".to_string(), "IoT Local".to_string())
+        );
+        // Packet marking is not a path: it has an origin and no destination.
+        assert_eq!(
+            group_path("mangle_prerouting", None),
+            ("Packet marking".to_string(), String::new())
+        );
+    }
+
+    #[test]
     fn an_absent_protocol_is_the_pair_firewall4_matches() {
         assert_eq!(protocol(&[], ""), "tcp/udp");
         assert_eq!(protocol(&strings(&["tcp", "udp"]), ""), "tcp/udp");
@@ -397,6 +457,19 @@ mod tests {
             match_summary(&[], &eleven, "1000/sec"),
             "11 types · ≤1000/s"
         );
+        // Few but long: the stock Allow-ICMPv6-Forward set is three names and
+        // 63 nowrap characters — it folds by length, not count.
+        let long_v6 = strings(&[
+            "router-solicitation",
+            "neighbour-solicitation",
+            "neighbour-advertisement",
+        ]);
+        assert_eq!(match_summary(&[], &long_v6, ""), "3 types");
+        // A single name always reads verbatim, whatever its length.
+        assert_eq!(
+            match_summary(&[], &strings(&["neighbour-advertisement"]), ""),
+            "neighbour-advertisement"
+        );
         assert_eq!(match_summary(&[], &[], ""), "");
     }
 
@@ -433,9 +506,12 @@ mod tests {
 
     #[test]
     fn a_verdict_carries_its_tone() {
+        // Accept lets the traffic through. Reject answers with an error — the
+        // client fails fast and knows it was refused, and that refusal is the
+        // red one. Drop says nothing at all: there is no answer to colour.
         assert_eq!(target_tone("accept"), "success");
-        assert_eq!(target_tone("reject"), "warning");
-        assert_eq!(target_tone("drop"), "danger");
+        assert_eq!(target_tone("reject"), "danger");
+        assert_eq!(target_tone("drop"), "neutral");
         for target in ["notrack", "helper", "mark", "dscp"] {
             assert_eq!(target_tone(target), "info");
         }

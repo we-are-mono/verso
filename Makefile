@@ -215,6 +215,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
 	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
 	install -Dm644 plugins/verso-plugin-firewall/manifest.json           $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/manifest.json
+	install -Dm644 plugins/verso-plugin-firewall/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/i18n/sl.json
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/etc/config/verso                      $(APK_PAYLOAD)/etc/config/verso
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json

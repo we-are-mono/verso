@@ -16,7 +16,10 @@
       ".name": "cfg02dc81",
       ".index": 1,
       "name": "lan",
-      "network": ["lan", "lan2"],
+      "network": [
+        "lan",
+        "lan2"
+      ],
       "input": "ACCEPT",
       "output": "ACCEPT",
       "forward": "ACCEPT"
@@ -27,7 +30,10 @@
       ".name": "cfg03dc81",
       ".index": 2,
       "name": "wan",
-      "network": ["wan", "wan6"],
+      "network": [
+        "wan",
+        "wan6"
+      ],
       "input": "REJECT",
       "output": "ACCEPT",
       "forward": "REJECT",
@@ -40,7 +46,9 @@
       ".name": "guest_zone",
       ".index": 3,
       "name": "guest",
-      "network": ["guest"],
+      "network": [
+        "guest"
+      ],
       "output": "ACCEPT"
     },
     "tailscale_zone": {
@@ -49,7 +57,9 @@
       ".name": "tailscale_zone",
       ".index": 4,
       "name": "tailscale",
-      "device": ["tailscale0"],
+      "device": [
+        "tailscale0"
+      ],
       "input": "ACCEPT",
       "output": "ACCEPT",
       "forward": "REJECT"
@@ -223,7 +233,58 @@
       "proto": "tcp",
       "src_dport": "8443",
       "dest_ip": "10.0.0.30",
-      "dest_port": "443"
+      "dest_port": "443",
+      "reflection_zone": [
+        "lan",
+        "guest"
+      ]
+    },
+    "guest_source_nat": {
+      ".anonymous": false,
+      ".type": "nat",
+      ".name": "guest_source_nat",
+      ".index": 18,
+      "name": "Guest-source-NAT",
+      "src": "guest",
+      "target": "MASQUERADE"
+    },
+    "custom_nft": {
+      ".anonymous": false,
+      ".type": "include",
+      ".name": "custom_nft",
+      ".index": 19,
+      "path": "/etc/nftables.d/10-custom.nft",
+      "type": "nftables",
+      "position": "chain-pre"
+    },
+    "legacy_sh": {
+      ".anonymous": false,
+      ".type": "include",
+      ".name": "legacy_sh",
+      ".index": 20,
+      "path": "/etc/firewall.user",
+      "enabled": "0"
+    },
+    "blocklist_set": {
+      ".anonymous": false,
+      ".type": "ipset",
+      ".name": "blocklist_set",
+      ".index": 21,
+      "name": "blocklist",
+      "family": "ipv4",
+      "match": [
+        "src_ip"
+      ],
+      "storage": "hash"
+    },
+    "guest_to_wan_off": {
+      ".anonymous": false,
+      ".type": "forwarding",
+      ".name": "guest_to_wan_off",
+      ".index": 22,
+      "src": "guest",
+      "dest": "wan",
+      "enabled": "0"
     }
   },
   "network": {
@@ -290,7 +351,10 @@
       ".index": 6,
       "name": "br-lan",
       "type": "bridge",
-      "ports": ["lan0", "lan1"]
+      "ports": [
+        "lan0",
+        "lan1"
+      ]
     }
   }
 }

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 //! The Verso firewall plugin: three listings over `/etc/config/firewall`, and a
-//! page apiece for editing one rule and one port forward.
+//! page apiece for editing one rule, one port forward, and one zone.
 //!
 //! Every request is answered from the reads the shell brokers with it — the uci
 //! snapshot and firewall4's kernel hit counters — so the plugin holds no state
@@ -16,38 +16,65 @@
 //! see, and the commit intent beside it is what the shell stages. The editor
 //! answers its own submissions the same way, from the values it was sent.
 
-use verso_plugin::{commit, commit_new, json, serve, CommitOp, Envelope, Form, Request, Tone};
+use verso_plugin::{
+    commit, commit_new, json, serve_described, CommitOp, Envelope, Form, Request, Snapshot, Tone,
+};
 
+mod activity;
 mod conditions;
 mod counters;
-mod editor;
+mod crossings;
+mod describe;
+mod fields;
 mod format;
 mod model;
 mod page;
 mod redirect_editor;
+mod redirect_form;
 mod redirects;
+mod rule_drawer;
 mod rule_form;
 mod rules;
+mod settings;
+// What firewall4 accepts, read out of its own parser. The guard beside it reads
+// this today; the forms and the config preview will derive from it rather than
+// restating it, which is the point of having it. Until they do, nothing in the
+// shipped binary looks at it.
+#[allow(dead_code)]
+mod vocabulary;
+mod zone_drawer;
+mod zone_form;
 mod zones;
 
 #[cfg(test)]
 mod fixture;
+// The reckoning: every option firewall4 supports is rendered, deliberately left
+// out with a reason, or unsupported upstream. It reads the widget trees the plugin
+// really builds, so it needs the serializer the tests have.
+#[cfg(test)]
+mod reckoning;
 
 use counters::Counters;
 use model::{Firewall, CONFIG};
 
 fn main() {
-    serve("firewall", get, post);
+    serve_described("firewall", get, post, describe::describe);
 }
 
 fn get(request: &Request) -> Envelope {
     let model = Firewall::read(&request.snapshot);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
-        Route::Listing(listing) => render(listing, &model, &counters),
-        Route::NewRule => editor::blank(&model),
-        Route::EditRule(section) => editor::edit(&request.snapshot, &model, &section)
-            .unwrap_or_else(|| editor::missing(&model, &counters)),
+        // Rules and zones read their own query: each carries which of its objects
+        // is open beside it, and on which reading. Every other listing is the same
+        // page whatever the query says.
+        Route::Listing(Listing::Rules) => {
+            rules::page_open(&request.snapshot, &model, &counters, &request.query)
+        }
+        Route::Listing(Listing::Zones) => {
+            zones::page_open(&request.snapshot, &model, &request.query)
+        }
+        Route::Listing(listing) => render(listing, &request.snapshot, &model, &counters),
         Route::NewRedirect => redirect_editor::blank(&model),
         Route::EditRedirect(section) => redirect_editor::edit(&request.snapshot, &model, &section)
             .unwrap_or_else(|| redirect_editor::missing(&model, &counters)),
@@ -58,29 +85,56 @@ fn post(request: &Request, form: &Form) -> Envelope {
     let mut model = Firewall::read(&request.snapshot);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
-        Route::NewRule => editor::create(&model, form),
-        Route::EditRule(section) => editor::save(&mut model, &counters, &section, form)
-            .unwrap_or_else(|| editor::missing(&model, &counters)),
         Route::NewRedirect => redirect_editor::create(&model, form),
         Route::EditRedirect(section) => {
             redirect_editor::save(&mut model, &counters, &section, form)
                 .unwrap_or_else(|| redirect_editor::missing(&model, &counters))
         }
-        Route::Listing(listing) => flip(&mut model, &counters, listing, form),
+        // The settings are one form, submitted whole, so they are saved whole
+        // rather than read as a single flip.
+        Route::Listing(Listing::Settings) => {
+            let (envelope, ops) = settings::save(&mut model, form);
+            envelope.with_commit(ops)
+        }
+        // A rule and a zone are made, changed and removed in the panel beside
+        // their listing, at the listing's own address, and the panel's forms say
+        // so with their marker. The address cannot tell the two apart: an open
+        // panel puts its name in the address, and a row's power act posts to that
+        // address too — read by the address, the act arrived as the panel's form
+        // and wrote a rule stripped of everything but its switch. Anything on a
+        // listing that does not say it is the panel's is a switch someone flipped
+        // where they stand.
+        Route::Listing(Listing::Rules) if fields::from_panel(form) => rules::save(
+            &request.snapshot,
+            &mut model,
+            &counters,
+            &request.query,
+            form,
+        ),
+        Route::Listing(Listing::Zones) if fields::from_panel(form) => {
+            zones::save(&request.snapshot, &mut model, &request.query, form)
+        }
+        Route::Listing(listing) => flip(&request.snapshot, &mut model, &counters, listing, form),
     }
 }
 
 /// flip answers a listing's switch. A body a listing did not draw changes
 /// nothing and says so.
-fn flip(model: &mut Firewall, counters: &Counters, listing: Listing, form: &Form) -> Envelope {
+fn flip(
+    snapshot: &Snapshot,
+    model: &mut Firewall,
+    counters: &Counters,
+    listing: Listing,
+    form: &Form,
+) -> Envelope {
     let Some(switch) = Switch::read(model, listing, form) else {
-        return render(listing, model, counters).with_notice(
+        return render(listing, snapshot, model, counters).with_notice(
             Tone::Danger,
             "Verso couldn’t tell what that change was, so nothing was saved.",
         );
     };
     let operation = switch.apply(model);
-    render(listing, model, counters).with_commit(vec![operation])
+    render(listing, snapshot, model, counters).with_commit(vec![operation])
 }
 
 /// Route is what a request's sub-path asks for. A sub-path the plugin does not
@@ -89,30 +143,24 @@ fn flip(model: &mut Firewall, counters: &Counters, listing: Listing, form: &Form
 /// that editor's to answer, because only it knows what it can edit.
 enum Route {
     Listing(Listing),
-    NewRule,
-    EditRule(String),
     NewRedirect,
     EditRedirect(String),
 }
 
-/// Listing is which of the three listings a request is for.
+/// Listing is which of this plugin's pages a request is for. Three are the
+/// configuration; the fourth is what it decides, live.
 #[derive(Clone, Copy)]
 enum Listing {
     Rules,
     PortForwards,
     Zones,
+    Settings,
+    Activity,
 }
 
 impl Route {
     fn of(path: &str) -> Route {
         let path = path.trim_matches('/');
-        if let Some(rest) = path.strip_prefix(page::RULE_EDITOR) {
-            match rest.trim_start_matches('/') {
-                "" => return Route::Listing(Listing::Rules),
-                page::NEW => return Route::NewRule,
-                section => return Route::EditRule(section.to_string()),
-            }
-        }
         if let Some(rest) = path.strip_prefix(page::PORT_FORWARDS) {
             match rest.trim_start_matches('/') {
                 "" => return Route::Listing(Listing::PortForwards),
@@ -120,18 +168,41 @@ impl Route {
                 section => return Route::EditRedirect(section.to_string()),
             }
         }
-        match path {
-            page::ZONES => Route::Listing(Listing::Zones),
-            _ => Route::Listing(Listing::Rules),
+        // A zone is read and edited in the panel beside the listing, at the
+        // listing's own address, so there is nothing below this prefix: a path that
+        // names a section there is a stale link from when there was a page, and the
+        // listing is where it should land.
+        if path.starts_with(page::ZONES) {
+            return Route::Listing(Listing::Zones);
         }
+        // Activity is read-only and has nothing below it: there is no one
+        // verdict to open, only the rule that decided it, which is a rule
+        // editor's address.
+        // Settings and Activity have nothing below them: the settings are one
+        // form, and a verdict's only useful door is the rule that decided it,
+        // which is a rule editor's address.
+        if path.starts_with(page::SETTINGS) {
+            return Route::Listing(Listing::Settings);
+        }
+        if path.starts_with(page::ACTIVITY) {
+            return Route::Listing(Listing::Activity);
+        }
+        Route::Listing(Listing::Rules)
     }
 }
 
-fn render(listing: Listing, model: &Firewall, counters: &Counters) -> Envelope {
+fn render(
+    listing: Listing,
+    snapshot: &Snapshot,
+    model: &Firewall,
+    counters: &Counters,
+) -> Envelope {
     match listing {
         Listing::Rules => rules::page(model, counters),
         Listing::PortForwards => redirects::page(model, counters),
         Listing::Zones => zones::page(model),
+        Listing::Settings => settings::page(model),
+        Listing::Activity => activity::page(snapshot),
     }
 }
 
@@ -174,22 +245,29 @@ impl Switch {
     }
 
     /// apply reflects the flip in the model and states it as the write the shell
-    /// stages. `enabled` is written explicitly in both directions: an absent
-    /// option means enabled, so turning a section off has to say so.
+    /// stages. A rule or redirect is on by default (an absent `enabled`), so "on"
+    /// CLEARS the option rather than writing enabled=1: a section toggled off then
+    /// back on returns to exactly its committed state and the stage coalesces to
+    /// clean, not a useless enabled=1. Off still has to say so explicitly.
     fn apply(&self, model: &mut Firewall) -> CommitOp {
-        let value = if self.on { "1" } else { "0" };
+        // A section's default-on state is the absence of the option, so its "on"
+        // write is a clear (null); "off" is the explicit 0.
+        let enabled = if self.on { json!(null) } else { json!("0") };
         match &self.subject {
             Subject::Rule(index) => {
                 let rule = &mut model.rules[*index];
                 rule.enabled = self.on;
-                commit(CONFIG, &rule.section, json!({ "enabled": value }))
+                commit(CONFIG, &rule.section, json!({ "enabled": enabled }))
             }
             Subject::Redirect(index) => {
                 let redirect = &mut model.redirects[*index];
                 redirect.enabled = self.on;
-                commit(CONFIG, &redirect.section, json!({ "enabled": value }))
+                commit(CONFIG, &redirect.section, json!({ "enabled": enabled }))
             }
             Subject::Default(option) => {
+                // A firewall default is a real option with a real value, not a
+                // defaults-to-absent flag, so it is written explicitly both ways.
+                let value = if self.on { "1" } else { "0" };
                 model.defaults.set(option, self.on);
                 let values = json!({ option.as_str(): value });
                 // A device with no defaults section runs firewall4's built-in
@@ -223,12 +301,19 @@ fn switches(model: &Firewall, listing: Listing) -> Vec<(String, Subject)> {
         Listing::Zones => zones::options()
             .map(|option| (option.to_string(), Subject::Default(option.to_string())))
             .collect(),
+        // The settings page is one form, submitted whole, so it carries no
+        // free-standing switch of the kind a listing posts one at a time.
+        Listing::Settings => Vec::new(),
+        // Activity changes nothing: it is a view of what the configuration
+        // already decided, and it renders no switch to post.
+        Listing::Activity => Vec::new(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rule_form::RuleForm;
     use serde_json::Value;
     use verso_plugin::{Snapshot, Ubus};
 
@@ -246,50 +331,212 @@ mod tests {
         serde_json::to_value(&envelope).expect("serialize")
     }
 
-    /// listing is the titled region a page answered with, which is how a test
-    /// names the listing it expects without counting a stack's children.
-    fn listing(body: &Value, title: &str) -> Value {
-        fixture::section(body, title)
+    /// asking is a request carrying a query, for the two listings that read one:
+    /// which of their objects is open, and on which reading.
+    fn asking(path: &str, query: &str) -> Request {
+        Request {
+            query: Form::parse(query),
+            ..request(path)
+        }
     }
 
+    /// answer_asking is the same for a submission to an open panel.
+    fn answer_asking(path: &str, query: &str, body: &str) -> Value {
+        let envelope = post(&asking(path, query), &Form::parse(body));
+        serde_json::to_value(&envelope).expect("serialize")
+    }
+
+    /// Each listing page IS its grid, so a test names the listing it expects by
+    /// the heading that page carries rather than by a titled region inside it.
+    /// The rules page carries no lede: its toolbar sits straight under the
+    /// heading.
     #[test]
     fn each_sub_path_answers_with_its_own_listing() {
-        for (path, section) in [
-            ("/", "Traffic rules"),
-            ("/port-forwards", "Port forwards and redirects"),
-            ("/zones", "Zones"),
+        for (path, heading, subheading) in [
+            ("/", crate::rules::HEADING, ""),
+            (
+                "/port-forwards",
+                crate::redirects::HEADING,
+                crate::redirects::SUBHEADING,
+            ),
+            ("/zones", crate::zones::HEADING, crate::zones::SUBHEADING),
         ] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
-            assert_eq!(listing(&body, section)["title"], section, "{path}");
+            assert_eq!(body["title"], heading, "{path}");
+            match subheading {
+                "" => assert!(body.get("subheading").is_none(), "{path}"),
+                lede => assert_eq!(body["subheading"], lede, "{path}"),
+            }
+            assert_eq!(fixture::listing(&body)["type"], "table", "{path}");
         }
     }
 
     #[test]
     fn an_unpublished_sub_path_answers_with_the_rules_listing() {
-        for path in ["/nowhere", "/zones/lan", ""] {
+        for path in ["/nowhere", ""] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
+            assert_eq!(body["title"], crate::rules::HEADING, "{path}");
             assert_eq!(
-                listing(&body, "Traffic rules")["title"],
-                "Traffic rules",
+                fixture::listing(&body)["reorder_config"],
+                "firewall",
                 "{path}"
             );
         }
     }
 
+    /// A zone is opened on the listing's own address, by query. The panel is the
+    /// whole of a zone's editing, so the query is the only way in.
+    #[test]
+    fn a_zone_opens_in_the_panel_beside_the_listing() {
+        let body = serde_json::to_value(get(&asking("/zones", "open=cfg02dc81"))).expect("ok");
+        assert_eq!(body["title"], crate::zones::HEADING);
+        let listing = fixture::listing(&body);
+        let rows = listing["rows"].as_array().expect("rows");
+        let open = rows
+            .iter()
+            .find(|row| row["id"] == "cfg02dc81")
+            .expect("row");
+        assert_eq!(open["drawer"]["title"], "lan");
+
+        // And the blank one on the bar, which is where a zone that does not exist
+        // yet is made.
+        let body = serde_json::to_value(get(&asking("/zones", "open=new"))).expect("ok");
+        assert_eq!(body["widget"]["children"][0]["drawer"]["title"], "New zone");
+    }
+
+    /// Nothing lives below /zones any more: the editor page is gone, so the old
+    /// addresses are dead URL shapes rather than zones that went missing. Each
+    /// lands on the listing, which is somewhere real.
+    #[test]
+    fn a_zone_sub_path_answers_with_the_listing() {
+        for path in [
+            "/zones",
+            "/zones/",
+            "/zones/new",
+            "/zones/cfg02dc81",
+            "/zones/lan",
+            "/zones/no_such_zone",
+            "/zones/a/b",
+        ] {
+            let body = serde_json::to_value(get(&request(path))).expect("serialize");
+            assert_eq!(body["title"], crate::zones::HEADING, "{path}");
+            assert_eq!(body["subheading"], crate::zones::SUBHEADING, "{path}");
+            // No panel opens: a path is not how a zone is addressed.
+            for row in fixture::listing(&body)["rows"].as_array().expect("rows") {
+                assert!(row.get("drawer").is_none(), "{path}");
+            }
+        }
+    }
+
+    /// A submission that says it is the open panel's is that panel's; one that
+    /// does not is a switch someone flipped on the listing where it stands.
+    #[test]
+    fn a_zone_panel_submission_is_the_panels_and_not_a_switchs() {
+        let body = answer_asking("/zones", "open=guest_zone", "_delete=1");
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "guest_zone",
+                "delete": true
+            }])
+        );
+        // A zone the config does not hold has nothing to save, and says so rather
+        // than writing anything.
+        let body = answer_asking("/zones", "open=no_such_zone", "_panel=1&input=ACCEPT");
+        assert_eq!(body["title"], crate::zones::HEADING);
+        assert_eq!(body["notice"]["level"], "danger");
+        assert!(body.get("commit").is_none());
+    }
+
+    /// A row's power act posts to the page it sits on, and while a panel is open
+    /// that page's address names the panel. The act is still a flip: it does not
+    /// say it is the panel's, so it is never read as the panel's form — which
+    /// would write a rule stripped of everything but its switch.
+    #[test]
+    fn a_row_act_at_an_open_panels_address_is_a_flip_and_never_a_save() {
+        let body = answer_asking("/", "open=allow_ping", "allow_ping=off");
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "allow_ping",
+                "values": {"enabled": "0"}
+            }])
+        );
+        // Another rule's act while this one's panel is open: the address names
+        // one rule and the act another, and the act is what arrived.
+        let body = answer_asking("/", "open=allow_ping&tab=action", "block_telnet=on");
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "block_telnet",
+                "values": {"enabled": null}
+            }])
+        );
+        // The zones listing's default switches, flipped with a zone open beside
+        // them.
+        let body = answer_asking("/zones", "open=guest_zone", "flow_offloading=on");
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "cfg01e63d",
+                "values": {"flow_offloading": "1"}
+            }])
+        );
+    }
+
+    /// The panel's own form posts its marker with its fields, and the marker is
+    /// what routes the submission to the panel — so a rule or a zone saved from
+    /// its panel is written whole, by the router and not only by the save.
+    #[test]
+    fn a_panels_own_submission_reaches_the_panel_by_its_marker() {
+        let page = serde_json::to_value(get(&asking("/", "open=allow_ping"))).expect("serialize");
+        let submission = fixture::submission(&page);
+        assert!(
+            submission.split('&').any(|pair| pair == "_panel=1"),
+            "the panel's form posts no marker: {submission}"
+        );
+        let body = answer_asking("/", "open=allow_ping", &submission);
+        assert_eq!(body["notice"]["level"], "success", "{body}");
+        let intact = RuleForm::read(
+            &fixture::snapshot()
+                .section(CONFIG, "allow_ping")
+                .expect("the fixture's rule"),
+        )
+        .values(true);
+        assert_eq!(
+            body["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "allow_ping",
+                "values": intact
+            }])
+        );
+
+        let page =
+            serde_json::to_value(get(&asking("/zones", "open=cfg02dc81"))).expect("serialize");
+        let body = answer_asking("/zones", "open=cfg02dc81", &fixture::submission(&page));
+        assert_eq!(body["notice"]["level"], "success", "{body}");
+        assert_eq!(body["commit"][0]["section"], "cfg02dc81");
+    }
+
     #[test]
     fn a_read_without_brokered_counters_still_renders() {
         let body = serde_json::to_value(get(&request("/"))).expect("serialize");
-        let rows = fixture::table(&body, "Traffic rules")["rows"]
+        let rows = fixture::listing(&body)["rows"]
             .as_array()
             .expect("rows")
             .clone();
         assert!(rows
             .iter()
-            .all(|row| row["cells"][7] == serde_json::json!({"text": "—", "muted": true})));
+            .all(|row| row["cells"][8] == serde_json::json!({"text": "—", "muted": true})));
     }
 
     #[test]
-    fn flipping_a_rule_writes_its_enabled_option_both_ways() {
+    fn flipping_a_rule_writes_0_off_and_clears_the_option_on() {
         let off = answer("/", "allow_ping=off");
         assert_eq!(
             off["commit"],
@@ -300,7 +547,7 @@ mod tests {
             }])
         );
         // The answer is the page with the change already in it.
-        let rows = fixture::table(&off, "Traffic rules")["rows"]
+        let rows = fixture::listing(&off)["rows"]
             .as_array()
             .expect("rows")
             .clone();
@@ -308,15 +555,21 @@ mod tests {
             .iter()
             .find(|row| row["id"] == "allow_ping")
             .expect("row");
-        assert_eq!(ping["cells"][8], serde_json::json!({"name": "allow_ping"}));
+        // The row now offers to turn it back on, which is the whole proof that
+        // the answer carries the change rather than the state it was read in.
+        assert_eq!(ping["cells"][9]["actions"][0]["value"], "on");
+        assert_eq!(ping["muted"], true);
 
+        // "on" is a section's default, so it clears the option rather than writing
+        // enabled=1 — a rule toggled off then back on returns to its committed
+        // state and the stage coalesces to clean instead of leaving a no-op behind.
         let on = answer("/", "block_telnet=on");
         assert_eq!(
             on["commit"],
             serde_json::json!([{
                 "config": "firewall",
                 "section": "block_telnet",
-                "values": {"enabled": "1"}
+                "values": {"enabled": null}
             }])
         );
     }
@@ -407,41 +660,6 @@ mod tests {
     }
 
     #[test]
-    fn a_rule_sub_path_opens_that_rules_editor() {
-        let body = serde_json::to_value(get(&request("/rules/allow_ping"))).expect("serialize");
-        assert_eq!(body["title"], "Edit rule");
-        assert_eq!(body["subheading"], "Allow-Ping");
-
-        let body = serde_json::to_value(get(&request("/rules/new"))).expect("serialize");
-        assert_eq!(body["title"], "New rule");
-
-        // The editor's own sub-path root is still the listing it belongs to.
-        for path in ["/rules", "/rules/"] {
-            let body = serde_json::to_value(get(&request(path))).expect("serialize");
-            assert_eq!(body["title"], "Firewall", "{path}");
-            assert_eq!(
-                listing(&body, "Traffic rules")["title"],
-                "Traffic rules",
-                "{path}"
-            );
-        }
-    }
-
-    #[test]
-    fn a_rule_sub_path_naming_no_rule_answers_with_the_listing() {
-        for path in ["/rules/no_such_rule", "/rules/https_to_nas", "/rules/a/b"] {
-            for body in [
-                serde_json::to_value(get(&request(path))).expect("serialize"),
-                answer(path, "target=ACCEPT"),
-            ] {
-                assert_eq!(body["title"], "Firewall", "{path}");
-                assert_eq!(body["notice"]["level"], "danger", "{path}");
-                assert!(body.get("commit").is_none(), "{path}");
-            }
-        }
-    }
-
-    #[test]
     fn a_port_forward_sub_path_opens_that_forwards_editor() {
         let body =
             serde_json::to_value(get(&request("/port-forwards/https_to_nas"))).expect("serialize");
@@ -454,12 +672,8 @@ mod tests {
         // The editor's own sub-path root is still the listing it belongs to.
         for path in ["/port-forwards", "/port-forwards/"] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
-            assert_eq!(body["title"], "Firewall", "{path}");
-            assert_eq!(
-                listing(&body, "Port forwards and redirects")["title"],
-                "Port forwards and redirects",
-                "{path}"
-            );
+            assert_eq!(body["title"], crate::redirects::HEADING, "{path}");
+            assert_eq!(body["subheading"], crate::redirects::SUBHEADING, "{path}");
         }
     }
 
@@ -474,7 +688,7 @@ mod tests {
                 serde_json::to_value(get(&request(path))).expect("serialize"),
                 answer(path, "src=wan"),
             ] {
-                assert_eq!(body["title"], "Firewall", "{path}");
+                assert_eq!(body["title"], crate::redirects::HEADING, "{path}");
                 assert_eq!(body["notice"]["level"], "danger", "{path}");
                 assert!(body.get("commit").is_none(), "{path}");
             }
@@ -489,19 +703,6 @@ mod tests {
             serde_json::json!([{
                 "config": "firewall",
                 "section": "https_to_nas",
-                "delete": true
-            }])
-        );
-    }
-
-    #[test]
-    fn a_rules_editor_submission_is_the_editors_and_not_a_switchs() {
-        let body = answer("/rules/allow_ping", "_delete=1");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "allow_ping",
                 "delete": true
             }])
         );

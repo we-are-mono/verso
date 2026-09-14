@@ -80,6 +80,55 @@
       ".index": 5,
       "src": "guest",
       "target": "ACCEPT"
+    },
+    "everything_forward": {
+      ".anonymous": false,
+      ".type": "redirect",
+      ".name": "everything_forward",
+      ".index": 6,
+      "name": "Everything forward",
+      "enabled": "0",
+      "src": "guest",
+      "dest": "lan",
+      "family": "ipv4",
+      "proto": [
+        "tcp"
+      ],
+      "src_ip": "10.0.20.0/24",
+      "src_dip": "!198.51.100.7",
+      "src_mac": [
+        "00:11:22:33:44:55",
+        "!66:77:88:99:aa:bb"
+      ],
+      "src_port": "1024-65535",
+      "src_dport": "8443",
+      "dest_ip": "10.0.0.30",
+      "dest_port": "443",
+      "ipset": "!blocked_hosts src dest",
+      "helper": "ftp",
+      "mark": "!0x10/0xff",
+      "limit": "!1000/minute",
+      "limit_burst": "5",
+      "weekdays": [
+        "Mon",
+        "Tue"
+      ],
+      "start_date": "2026-01-01",
+      "stop_date": "2026-12-31",
+      "start_time": "08:00:00",
+      "stop_time": "18:00:00",
+      "utc_time": "1",
+      "reflection": "1",
+      "reflection_src": "external",
+      "reflection_zone": [
+        "lan"
+      ],
+      "counter": "0",
+      "log": "forward-audit: ",
+      "log_limit": "10/minute",
+      "target": "dnat",
+      "extra": "-m comment --comment kept",
+      "monthdays": "1 2 3"
     }
   },
   "network": {

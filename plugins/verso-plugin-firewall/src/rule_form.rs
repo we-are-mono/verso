@@ -19,6 +19,12 @@
 //! Validation is firewall4's, not a looser echo of it: a value this accepts is
 //! one fw4's own parser accepts, because a rule fw4 refuses is silently absent
 //! from the ruleset and the operator is never told.
+//!
+//! The grammars beneath the rule live here too — [`Tokens`], [`Inverted`],
+//! [`SetMatch`], [`MarkMatch`], [`RateLimit`], [`Schedule`], [`Log`] and the
+//! checks each of them answers to. They belong to firewall4 rather than to the
+//! rule: a redirect carries most of the same vocabulary, and reading `!10/minute`
+//! twice in two places is two chances to disagree with the parser that decides.
 
 use std::collections::BTreeMap;
 
@@ -27,8 +33,11 @@ use verso_plugin::{json, Form, Map, Section, Value};
 use crate::model;
 
 /// OWNED is every option this editor writes. A save states all of them: the ones
-/// the submission carries as values, the rest as nulls that clear them.
-pub const OWNED: [&str; 33] = [
+/// the submission carries as values, the rest as nulls that clear them — which is
+/// why an option written only while something else is on (`log_limit`, under the
+/// log switch) belongs here as much as one with a control of its own. Left out,
+/// it could be written once and never taken away again.
+pub const OWNED: [&str; 34] = [
     "name",
     "enabled",
     "src",
@@ -62,6 +71,7 @@ pub const OWNED: [&str; 33] = [
     "set_dscp",
     "counter",
     "log",
+    "log_limit",
 ];
 
 /// TARGETS are the verdicts firewall4 accepts on a rule, in the order the editor
@@ -135,7 +145,7 @@ pub struct Tokens {
 impl Tokens {
     /// read splits a uci list into the values that match and the values that are
     /// excluded.
-    fn read(section: &Section, option: &str) -> Tokens {
+    pub fn read(section: &Section, option: &str) -> Tokens {
         let mut tokens = Tokens::default();
         for value in model::values(section, option) {
             match value.strip_prefix('!') {
@@ -146,7 +156,7 @@ impl Tokens {
         tokens
     }
 
-    fn from_form(form: &Form, option: &str) -> Tokens {
+    pub fn from_form(form: &Form, option: &str) -> Tokens {
         Tokens {
             include: cleaned(form.all(option)),
             exclude: cleaned(form.all(&format!("{option}_not"))),
@@ -162,7 +172,7 @@ impl Tokens {
 
     /// option is the uci list: the matching values, then the excluded ones with
     /// firewall4's inversion mark on each.
-    fn option(&self) -> Vec<String> {
+    pub fn option(&self) -> Vec<String> {
         let mut values = self.include.clone();
         values.extend(self.exclude.iter().map(|value| format!("!{value}")));
         values
@@ -178,7 +188,7 @@ pub struct Inverted {
 }
 
 impl Inverted {
-    fn read(section: &Section, option: &str) -> Inverted {
+    pub fn read(section: &Section, option: &str) -> Inverted {
         Inverted::parse(&section.scalar(option))
     }
 
@@ -195,7 +205,7 @@ impl Inverted {
         }
     }
 
-    fn from_form(form: &Form, value_field: &str, comparison_field: &str) -> Inverted {
+    pub fn from_form(form: &Form, value_field: &str, comparison_field: &str) -> Inverted {
         Inverted {
             negated: form.get(comparison_field) == EXCLUDE,
             value: form.get(value_field).trim().to_string(),
@@ -211,7 +221,7 @@ impl Inverted {
         }
     }
 
-    fn option(&self, body: &str) -> String {
+    pub fn option(&self, body: &str) -> String {
         match self.negated {
             true => format!("!{body}"),
             false => body.to_string(),
@@ -273,7 +283,7 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    fn is_set(&self) -> bool {
+    pub fn is_set(&self) -> bool {
         !self.weekdays.is_empty()
             || ![
                 &self.start_date,
@@ -458,7 +468,11 @@ impl RuleForm {
             src: form.get("src").trim().to_string(),
             dest: form.get("dest").trim().to_string(),
             family: family_value(&form.get("family")),
-            proto: cleaned(form.all("proto")),
+            // A protocol list arrives either as a token apiece or as one choice
+            // naming a pair ("tcp udp") — the panel offers the pairs the canvas
+            // does, and uci holds a list either way. Splitting on whitespace
+            // reads both without the control having to know which it is.
+            proto: cleaned(split_words(form.all("proto"))),
             target: form.get("target").trim().to_uppercase(),
             set_helper: form.get("set_helper").trim().to_string(),
             mark_xor: form.get("mark_operation") == "xor",
@@ -468,7 +482,12 @@ impl RuleForm {
             counter: !form.get("counter").is_empty(),
             log: Log {
                 on: !form.get("log").is_empty(),
-                prefix: form.get("log_prefix").trim().to_string(),
+                // Not trimmed, alone among the form's text: firewall4 writes this
+                // string in front of the packet it logs, so the space somebody
+                // put at the end of "guest-audit: " is the space between the
+                // prefix and the line. Trimming it silently reformatted every
+                // log line a rule wrote.
+                prefix: form.get("log_prefix"),
                 limit: form.get("log_limit").trim().to_string(),
             },
             device: Device {
@@ -653,7 +672,12 @@ impl RuleForm {
         if self.active("schedule") {
             let schedule = &self.schedule;
             if !schedule.weekdays.is_empty() {
-                set("weekdays", json!(schedule.weekdays.clone()));
+                // One value, not a uci list. firewall4 parses this option with
+                // parse_opt and splits the string itself; a list here is
+                // "option 'weekdays' must not be a list" and the whole section
+                // is skipped — a rule that was written, saved, and silently
+                // never in the ruleset.
+                set("weekdays", json!(schedule.weekdays.join(" ")));
             }
             for (option, value) in [
                 ("start_date", &schedule.start_date),
@@ -825,7 +849,7 @@ impl RuleForm {
 impl Tokens {
     /// check validates both sides of the condition against the same rule, and
     /// reports a failure against the list the value was written in.
-    fn check(
+    pub fn check(
         &self,
         option: &str,
         errors: &mut Errors,
@@ -845,15 +869,15 @@ pub const ADDRESS_HELP: &str = "Write an IP address or a network in CIDR form.";
 pub const PORT_HELP: &str = "Write a port from 0 to 65535, or a range such as 1024-65535.";
 pub const PROTOCOL_HELP: &str =
     "Write a protocol name such as tcp, or an IP protocol number from 0 to 255.";
-const MAC_HELP: &str = "Write a MAC address as six hex pairs, such as 00:11:22:33:44:55.";
+pub const MAC_HELP: &str = "Write a MAC address as six hex pairs, such as 00:11:22:33:44:55.";
 const ICMP_HELP: &str = "Write an ICMP type name, or a numeric type or type/code.";
-const MARK_HELP: &str = "Write a mark as a decimal or hexadecimal number.";
+pub const MARK_HELP: &str = "Write a mark as a decimal or hexadecimal number.";
 
 /// Errors is what a submission got wrong, addressed to the controls that carry
 /// the offending values: a message per field, and a message per item of a list.
 /// The shell reads the annotations back off the re-rendered tree, so a form that
 /// reports one is a 422 whether or not the plugin says so as well.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Errors {
     fields: BTreeMap<String, String>,
     lists: BTreeMap<String, BTreeMap<String, String>>,
@@ -869,7 +893,7 @@ impl Errors {
     /// items validates one list and records a message under the index of each
     /// item that failed — which is how a repeating control says which row is
     /// wrong rather than reddening the whole list.
-    fn items<F>(&mut self, name: &str, values: &[String], check: F)
+    pub fn items<F>(&mut self, name: &str, values: &[String], check: F)
     where
         F: Fn(&str) -> Result<(), &'static str>,
     {
@@ -896,6 +920,23 @@ impl Errors {
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty() && self.lists.is_empty()
     }
+
+    /// merge folds another set of refusals in. One submission may be validated
+    /// by more than one owner — a zone panel writes its zone and the crossings
+    /// out of it, which are different section types with different rules — and
+    /// the operator is owed every refusal at once rather than one per attempt.
+    /// The first message on a field wins, as it does within one set.
+    pub fn merge(&mut self, other: Errors) {
+        for (name, message) in other.fields {
+            self.fields.entry(name).or_insert(message);
+        }
+        for (name, items) in other.lists {
+            let list = self.lists.entry(name).or_default();
+            for (index, message) in items {
+                list.entry(index).or_insert(message);
+            }
+        }
+    }
 }
 
 // ---- reading firewall4's written forms ----
@@ -903,7 +944,7 @@ impl Errors {
 /// read_log reads the option that says both whether to log and under what
 /// prefix: a truth value is the plain on/off, anything else is a prefix and
 /// means on.
-fn read_log(section: &Section) -> Log {
+pub fn read_log(section: &Section) -> Log {
     let written = section.scalar("log");
     let (on, prefix) = match model::boolean(&written) {
         Some(on) => (on, String::new()),
@@ -917,7 +958,7 @@ fn read_log(section: &Section) -> Log {
     }
 }
 
-fn read_ipset(section: &Section) -> SetMatch {
+pub fn read_ipset(section: &Section) -> SetMatch {
     let written = Inverted::read(section, "ipset");
     let mut parts = written
         .value
@@ -940,7 +981,7 @@ fn read_ipset(section: &Section) -> SetMatch {
     }
 }
 
-fn read_limit(limit: &str, burst: &str) -> RateLimit {
+pub fn read_limit(limit: &str, burst: &str) -> RateLimit {
     let written = Inverted::parse(limit);
     let (count, unit) = match written.value.split_once('/') {
         Some((count, unit)) => (count.trim().to_string(), unit.trim()),
@@ -955,8 +996,9 @@ fn read_limit(limit: &str, burst: &str) -> RateLimit {
 }
 
 /// family_value normalizes firewall4's family spellings onto the two the editor
-/// offers; anything else leaves both families in play, as fw4 does.
-fn family_value(written: &str) -> String {
+/// offers; anything else leaves both families in play, as fw4 does. A zone
+/// narrows its family through the same option, so both editors read it here.
+pub fn family_value(written: &str) -> String {
     match written {
         value if value.contains('4') || value == "inet" => "ipv4".into(),
         value if value.contains('6') => "ipv6".into(),
@@ -966,7 +1008,7 @@ fn family_value(written: &str) -> String {
 
 /// rate_unit maps a written period onto the closed set the way firewall4 does —
 /// by prefix, case-insensitively — falling back to seconds, fw4's own default.
-fn rate_unit(written: &str) -> String {
+pub fn rate_unit(written: &str) -> String {
     let written = written.trim().to_lowercase();
     if !written.is_empty() {
         for (unit, _) in RATE_UNITS {
@@ -978,28 +1020,40 @@ fn rate_unit(written: &str) -> String {
     "second".to_string()
 }
 
-fn split_mask(written: &str) -> (String, String) {
+pub fn split_mask(written: &str) -> (String, String) {
     match written.trim().split_once('/') {
         Some((value, mask)) => (value.trim().to_string(), mask.trim().to_string()),
         None => (written.trim().to_string(), String::new()),
     }
 }
 
-fn join_mask(value: &str, mask: &str) -> String {
+pub fn join_mask(value: &str, mask: &str) -> String {
     match mask.is_empty() {
         true => value.to_string(),
         false => format!("{value}/{mask}"),
     }
 }
 
-fn bit(on: bool) -> &'static str {
+pub fn bit(on: bool) -> &'static str {
     match on {
         true => "1",
         false => "0",
     }
 }
 
-fn cleaned(values: Vec<String>) -> Vec<String> {
+/// split_words flattens values that carry more than one word into the words
+/// themselves: a choice naming a protocol pair states it as one value, and uci
+/// holds it as two.
+pub fn split_words(values: Vec<String>) -> Vec<String> {
+    values
+        .iter()
+        .flat_map(|value| value.split_whitespace().map(str::to_string))
+        .collect()
+}
+
+/// cleaned drops the blank slots a repeating control posts and trims what is
+/// left — the multi-value contract every list and checks field shares.
+pub fn cleaned(values: Vec<String>) -> Vec<String> {
     values
         .into_iter()
         .map(|value| value.trim().to_string())
@@ -1088,7 +1142,7 @@ fn prefix_within(value: &str, limit: u32) -> bool {
     value.parse::<u32>().is_ok_and(|prefix| prefix <= limit)
 }
 
-fn valid_mac(value: &str) -> bool {
+pub fn valid_mac(value: &str) -> bool {
     let value = value.strip_prefix('!').unwrap_or(value).trim();
     let pairs: Vec<&str> = value.split([':', '-']).collect();
     pairs.len() == 6
@@ -1112,7 +1166,7 @@ fn valid_icmp_type(value: &str) -> bool {
     }
 }
 
-fn valid_mark(value: &str) -> bool {
+pub fn valid_mark(value: &str) -> bool {
     let value = value.trim();
     let (digits, radix) = match value
         .strip_prefix("0x")
@@ -1129,13 +1183,13 @@ fn valid_dscp(value: &str) -> bool {
         || value.parse::<u8>().is_ok_and(|class| class <= 0x3F)
 }
 
-fn valid_count(value: &str) -> bool {
+pub fn valid_count(value: &str) -> bool {
     !value.is_empty() && value.chars().all(|c| c.is_ascii_digit())
 }
 
 /// valid_date accepts firewall4's date shapes: a year, a year and month, or a
 /// full date, within the range its parser bounds.
-fn valid_date(value: &str) -> bool {
+pub fn valid_date(value: &str) -> bool {
     let parts: Vec<&str> = value.split('-').collect();
     if parts.is_empty() || parts.len() > 3 {
         return false;
@@ -1155,7 +1209,7 @@ fn valid_date(value: &str) -> bool {
 
 /// valid_time accepts firewall4's time shapes: an hour, an hour and minute, or
 /// a full time of day.
-fn valid_time(value: &str) -> bool {
+pub fn valid_time(value: &str) -> bool {
     let parts: Vec<&str> = value.split(':').collect();
     if parts.is_empty() || parts.len() > 3 {
         return false;
@@ -1170,7 +1224,10 @@ fn valid_time(value: &str) -> bool {
 
 /// valid_limit reports whether a rate reads as firewall4's limit: a count, and
 /// optionally the period it is counted over.
-fn valid_limit(value: &str) -> bool {
+/// It is public because a zone's log limit is the same option in the same grammar:
+/// firewall4 reads `log_limit` on a zone exactly as it reads `limit` on a rule, and
+/// two validators for one grammar would be two chances to disagree with fw4.
+pub fn valid_limit(value: &str) -> bool {
     let value = value.strip_prefix('!').unwrap_or(value).trim();
     let (count, unit) = match value.split_once('/') {
         Some((count, unit)) => (count, Some(unit.trim().to_lowercase())),
@@ -1233,7 +1290,7 @@ mod tests {
             ("dscp", json!("EF")),
             ("limit", json!("!1000/minute")),
             ("limit_burst", json!("5")),
-            ("weekdays", json!(["Mon", "Tue"])),
+            ("weekdays", json!("Mon Tue")),
             ("start_date", json!("2026-01-01")),
             ("stop_date", json!("2026-12-31")),
             ("start_time", json!("08:00:00")),

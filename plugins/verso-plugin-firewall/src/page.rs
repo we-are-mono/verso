@@ -9,20 +9,25 @@
 //! hit count, and a switch mean the same thing on every page, and a listing that
 //! spelled one of them differently would read as a different kind of thing.
 
-use verso_plugin::{Envelope, PageTab, TableCell, TableEndpoint, Widget};
+use verso_plugin::{Envelope, PageTab, TableCell, TableEndpoint, TableRowAct, Widget};
 
 use crate::format;
 use crate::format::EM_DASH;
 
-/// RULES, PORT_FORWARDS and ZONES are the sub-paths below this plugin's mount.
+/// RULES, PORT_FORWARDS, ZONES and ACTIVITY are the sub-paths below this
+/// plugin's mount.
 pub const RULES: &str = "";
 pub const PORT_FORWARDS: &str = "port-forwards";
 pub const ZONES: &str = "zones";
+pub const SETTINGS: &str = "settings";
+pub const ACTIVITY: &str = "activity";
 
-/// RULE_EDITOR is the sub-path a rule's own page lives under; a redirect's own
-/// page lives directly under the listing it belongs to. NEW is the one name
-/// below either that is not a section: `<listing>/new` opens a blank editor,
-/// `<listing>/<section>` opens that section's.
+/// RULE_EDITOR is the sub-path a rule's own page lives under, which now holds
+/// nothing but its delete confirmation; a redirect's page lives directly under the
+/// listing it belongs to. Zones have no sub-path at all — a zone is read and
+/// edited in the panel beside the listing, addressed by a query on it. NEW is the
+/// one name below a listing that is not a section: `<listing>/new` opens a blank
+/// editor, `<listing>/<section>` opens that section's.
 pub const RULE_EDITOR: &str = "rules";
 pub const NEW: &str = "new";
 
@@ -31,24 +36,34 @@ pub const NEW: &str = "new";
 /// unlike the subpage bar, whose paths the shell resolves against the mount.
 pub const MOUNT: &str = "/plugins/firewall";
 
-/// filter is a listing's search field. Whether it renders is the shell's call —
-/// it counts what the page really lists and drops a lens over a page short
-/// enough to read whole — so a page states the one it would like and says
-/// nothing about when it is worth having.
-pub fn filter(placeholder: &str) -> Widget {
-    Widget::Filter {
-        placeholder: placeholder.into(),
-    }
+/// rules_href is the address of the rules listing itself — the door another page
+/// opens when the thing it is about is a rule that does not exist yet.
+///
+/// The trailing slash is the address the shell actually serves this page at.
+/// Without it the mux answers with a redirect to the slashed form, which for a
+/// panel means the browser navigates twice and the page it was already on is
+/// thrown away and rebuilt — visible as a jump. Naming the canonical address
+/// costs nothing and removes the round trip.
+pub fn rules_href() -> String {
+    format!("{MOUNT}/")
 }
 
-/// rule_href is the address of one rule's editor.
+/// port_forwards_href and zones_href are the addresses of those listings — the
+/// door an editor returns to once its change is staged.
+pub fn port_forwards_href() -> String {
+    format!("{MOUNT}/{PORT_FORWARDS}")
+}
+
+pub fn zones_href() -> String {
+    format!("{MOUNT}/{ZONES}")
+}
+
+/// rule_href is the address of one rule's own page. A rule is read and edited in
+/// the panel beside the listing; the page is where the act that cannot be undone
+/// lives, behind its confirmation, so the trash glyph leads here rather than
+/// deleting from under the pointer.
 pub fn rule_href(section: &str) -> String {
     format!("{MOUNT}/{RULE_EDITOR}/{section}")
-}
-
-/// new_rule_href is the address of the blank rule editor.
-pub fn new_rule_href() -> String {
-    format!("{MOUNT}/{RULE_EDITOR}/{NEW}")
 }
 
 /// redirect_href is the address of one port forward's editor.
@@ -61,6 +76,11 @@ pub fn new_redirect_href() -> String {
     format!("{MOUNT}/{PORT_FORWARDS}/{NEW}")
 }
 
+// A zone has no address of its own: it is read and edited in the panel beside the
+// listing, so its door is a query on the listing's own address (zone_drawer::href)
+// rather than a path below it. The two functions that built those paths are gone
+// with the page they led to.
+
 /// tabs is the subpage bar. Every page declares the same list, so the bar stays
 /// put as the visitor moves between them.
 pub fn tabs() -> Vec<PageTab> {
@@ -68,6 +88,8 @@ pub fn tabs() -> Vec<PageTab> {
         ("Rules", RULES),
         ("Port forwards", PORT_FORWARDS),
         ("Zones", ZONES),
+        ("Settings", SETTINGS),
+        ("Activity", ACTIVITY),
     ]
     .into_iter()
     .map(|(label, path)| PageTab {
@@ -80,11 +102,16 @@ pub fn tabs() -> Vec<PageTab> {
 /// envelope wraps one page's content in the shared firewall frame. The listings
 /// are wide: they carry a full traffic path per row and nothing about them reads
 /// better in a reading column.
-pub fn envelope(subheading: &str, widget: Widget) -> Envelope {
-    Envelope::page("Firewall", widget)
+pub fn envelope(heading: &str, subheading: &str, widget: Widget) -> Envelope {
+    Envelope::page(heading, widget)
         .with_subheading(subheading)
         .with_width("wide")
         .with_pages(tabs())
+        // Each page says what it is about in its own words, so the shell's
+        // "<plugin> — <tab>" suffix would restate the tab strip underneath it.
+        // The heading is a name, not a message about now, so it takes the tone
+        // that drops the suffix and tints nothing.
+        .with_tone("neutral")
 }
 
 /// endpoint_cell names one side of a traffic path. Explicit addresses are what
@@ -112,8 +139,12 @@ pub fn endpoint_cell(addresses: &[String], zone: &str) -> TableCell {
 }
 
 /// hits_cell states a section's kernel hit count, or that none was read for it.
+/// A counter that has counted something is a fact about this rule and reads in
+/// full ink; one that is still at nothing stays out of the way, so a column of
+/// zeroes does not compete with the rules that have actually fired.
 pub fn hits_cell(packets: Option<u64>) -> TableCell {
     match packets {
+        Some(0) => muted("0"),
         Some(packets) => TableCell {
             text: format::hits(packets),
             ..TableCell::default()
@@ -156,33 +187,81 @@ pub fn pill_cell(text: &str, variant: &str) -> TableCell {
     }
 }
 
-/// toggle_cell is a section's enabled state. The name is the uci section, which
-/// is what a flip posts back under.
-pub fn toggle_cell(section: &str, on: bool) -> TableCell {
+/// acts_cell is the row's trailing acts: turn this section off (or back on),
+/// and open the page where it is edited. They are glyphs rather than words
+/// because they repeat on every row, and a column of the same word read forty
+/// times is a column of noise — the row's own name is the thing to read.
+///
+/// The power act carries the state it would move to, so the glyph and its
+/// sentence always describe what pressing it does rather than what is already
+/// true. Off is the resting state made visible: the row reads muted, and the act
+/// offers to turn it back on.
+pub fn acts_cell(section: &str, enabled: bool, href: String, delete_href: String) -> TableCell {
+    let (icon, title, value) = match enabled {
+        true => ("power", "Disable", "off"),
+        false => ("power-off", "Enable", "on"),
+    };
     TableCell {
-        name: section.into(),
-        on,
+        actions: vec![
+            TableRowAct {
+                icon: icon.into(),
+                title: title.into(),
+                name: section.into(),
+                value: value.into(),
+                ..TableRowAct::default()
+            },
+            TableRowAct {
+                icon: "square-pen".into(),
+                title: "Edit".into(),
+                href,
+                ..TableRowAct::default()
+            },
+            // Deleting is the one act on this row that cannot be undone, so the
+            // glyph is a door to the confirmation rather than the act itself:
+            // nothing on a listing should be removable by a single click at the
+            // end of a row someone was only reading.
+            TableRowAct {
+                icon: "trash-2".into(),
+                title: "Delete".into(),
+                href: delete_href,
+                ..TableRowAct::default()
+            },
+        ],
         ..TableCell::default()
     }
 }
 
-/// edit_cell is the row's trailing Edit button on a listing whose rows have no
-/// editor: present, so the column reads the same on every listing, and plainly
-/// unavailable.
-pub fn edit_cell() -> TableCell {
+/// edit_act_cell is the row's trailing act where the row has no state to flip —
+/// a zone is not switched off, it is edited or it is deleted.
+pub fn edit_act_cell(href: String) -> TableCell {
     TableCell {
-        button: "Edit".into(),
-        disabled: true,
+        actions: vec![TableRowAct {
+            icon: "square-pen".into(),
+            title: "Edit".into(),
+            href,
+            ..TableRowAct::default()
+        }],
         ..TableCell::default()
     }
 }
 
-/// edit_link_cell is the row's trailing Edit on a listing whose rows do have an
-/// editor: a link to the page that edits this one section.
-pub fn edit_link_cell(href: String) -> TableCell {
+/// name_cell is the row's subject and its door: what this section is called, in
+/// full ink, leading to the page that edits it.
+pub fn name_cell(name: &str, href: String) -> TableCell {
     TableCell {
-        text: "Edit".into(),
+        text: name.into(),
         href,
+        ..TableCell::default()
+    }
+}
+
+/// index_cell is a row's place in the order the whole listing is evaluated in.
+/// It reads at the secondary step: it is how to refer to the row out loud, not a
+/// fact about the traffic.
+pub fn index_cell(position: u32) -> TableCell {
+    TableCell {
+        text: position.to_string(),
+        muted: true,
         ..TableCell::default()
     }
 }

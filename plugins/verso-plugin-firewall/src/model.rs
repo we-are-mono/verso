@@ -36,6 +36,8 @@ pub struct Firewall {
     pub forwardings: Vec<Forwarding>,
     pub rules: Vec<Rule>,
     pub redirects: Vec<Redirect>,
+    pub nats: Vec<Nat>,
+    pub includes: Vec<Include>,
     pub interfaces: Vec<Interface>,
     pub ipsets: Vec<String>,
     /// The network config's own `config device` sections — bridges and the like,
@@ -53,7 +55,49 @@ pub struct Defaults {
     pub forward: String,
     pub drop_invalid: bool,
     pub synflood_protect: bool,
+    /// What the flood protection allows before it starts limiting: a rate in
+    /// firewall4's own `<n>/<unit>` spelling, and how many may arrive at once.
+    pub synflood_rate: String,
+    pub synflood_burst: String,
     pub flow_offloading: bool,
+    pub flow_offloading_hw: bool,
+    /// The kernel knobs firewall4 sets on the router's own stack. They are not
+    /// about any zone or rule, which is why they sit under the settings rather
+    /// than anywhere a packet is decided.
+    pub syn_cookies: bool,
+    pub tcp_window_scaling: bool,
+    pub tcp_ecn: String,
+    /// Two kernel behaviours firewall4 turns off for you, and whose on is a
+    /// deliberate loosening: obeying ICMP redirects, and honouring a packet that
+    /// says which way it should be routed.
+    pub accept_redirects: bool,
+    pub accept_source_route: bool,
+    /// Whether firewall4 assigns connection helpers by itself, and whether it loads
+    /// the custom nftables files at all. Both are on unless the config says
+    /// otherwise, which is why the page has to state them.
+    pub auto_helper: bool,
+    pub auto_includes: bool,
+    /// What a refusal sends back. firewall4 answers a refused TCP connection with a
+    /// reset and everything else with "port unreachable"; a router that should look
+    /// closed rather than defended says something quieter here.
+    pub tcp_reject_code: String,
+    pub any_reject_code: String,
+}
+
+/// Include is one `config include`: a snippet fw4 loads alongside the ruleset it
+/// generates. Verso does not write these — they are authored over SSH — so what
+/// the page can say about one is where it is, what kind it is, when it loads,
+/// and whether it loads at all.
+pub struct Include {
+    pub section: String,
+    pub path: String,
+    /// "nftables" for a fw4-native `.nft` snippet, "script" for a shell script
+    /// from the iptables era — which runs only while the compatibility package
+    /// is installed, and is worth saying so.
+    pub kind: String,
+    /// Where in fw4's own run the snippet is loaded.
+    pub hook: String,
+    pub enabled: bool,
 }
 
 /// Zone is one `config zone`: the networks (or raw devices) it claims and the
@@ -64,6 +108,11 @@ pub struct Zone {
     pub networks: Vec<String>,
     pub devices: Vec<String>,
     pub input: String,
+    /// What happens to traffic the router itself sends into this zone. It is
+    /// the third of the three policies firewall4 applies per zone, and the one
+    /// a reader most often has to go looking for, because a zone that answers
+    /// nothing and can be reached by nothing is decided here.
+    pub output: String,
     pub forward: String,
     pub masq: bool,
 }
@@ -71,8 +120,14 @@ pub struct Zone {
 /// Forwarding is one `config forwarding`: traffic from `src` may cross into
 /// `dest` without a rule of its own.
 pub struct Forwarding {
+    /// The uci handle, because a crossing is added and removed as a whole
+    /// section rather than as an option on either zone.
+    pub section: String,
     pub src: String,
     pub dest: String,
+    /// firewall4 skips a crossing whose `enabled` is off — the zone then reaches
+    /// nothing through it, whatever the section says. Absence means on.
+    pub enabled: bool,
 }
 
 /// Rule is one `config rule` — a filtering decision in one evaluation chain.
@@ -103,6 +158,10 @@ pub struct Redirect {
     pub name: String,
     pub enabled: bool,
     pub src: String,
+    /// The zone the rewritten traffic leaves through. A port forward states none;
+    /// a source rewrite names one, and either way it is a zone reference that
+    /// follows the zone's name.
+    pub dest: String,
     pub src_ips: Vec<String>,
     pub dest_ip: String,
     pub proto: Vec<String>,
@@ -111,6 +170,32 @@ pub struct Redirect {
     pub dest_port: String,
     pub target: String,
     pub chain: String,
+    /// The zones a port forward's NAT reflection rules are generated for. It is
+    /// a second, list-shaped way a redirect names zones, and a zone named only
+    /// there is still a zone this redirect depends on.
+    pub reflection_zones: Vec<String>,
+}
+
+/// Nat is one `config nat` — firewall4's source rewrite, which decides how
+/// traffic leaving a zone appears to the other side. This plugin does not edit
+/// them, but each one names its zone by name, so they belong to what a zone's
+/// blast radius counts.
+pub struct Nat {
+    pub src: String,
+}
+
+/// References is what points at one zone by name: the sections that would stop
+/// matching if the zone stopped existing. A zone is referenced by name and by
+/// nothing else, so this is the whole blast radius of editing or deleting one —
+/// as far as the firewall config goes. Every section type firewall4 lets name a
+/// zone is counted, the ones this plugin does not edit included: a count that
+/// left them out would say a zone is free to go when it is not.
+#[derive(Default, PartialEq, Eq, Debug)]
+pub struct References {
+    pub rules: usize,
+    pub redirects: usize,
+    pub forwardings: usize,
+    pub nats: usize,
 }
 
 /// Interface is one `config interface` of the network config, reduced to what a
@@ -146,6 +231,16 @@ impl Firewall {
                 .collect(),
             rules: read_sections(snapshot, "rule", Rule::read),
             redirects: read_sections(snapshot, "redirect", Redirect::read),
+            nats: snapshot
+                .sections_of_type(CONFIG, "nat")
+                .iter()
+                .map(Nat::read)
+                .collect(),
+            includes: snapshot
+                .sections_of_type(CONFIG, "include")
+                .iter()
+                .map(Include::read)
+                .collect(),
             interfaces: snapshot
                 .sections_of_type(NETWORK_CONFIG, "interface")
                 .iter()
@@ -194,9 +289,50 @@ impl Firewall {
         names
     }
 
-    /// rule returns the rule section by its uci name.
-    pub fn rule(&self, section: &str) -> Option<&Rule> {
-        self.rules.iter().find(|rule| rule.section == section)
+    /// network_names lists the logical networks a zone may cover, in config
+    /// order. The firewall config names interfaces and never defines them, so
+    /// the network config is the only place this plugin can learn them.
+    pub fn network_names(&self) -> Vec<String> {
+        self.interfaces
+            .iter()
+            .map(|interface| interface.name.clone())
+            .filter(|name| !name.is_empty())
+            .collect()
+    }
+
+    /// references counts what names one zone. Neither of firewall4's two
+    /// wildcards is a zone: a section stating no source is one about the router
+    /// itself, and one stating `*` is one about anywhere at all. Counting either
+    /// against a zone would make it look load-bearing when nothing points at it.
+    pub fn references(&self, name: &str) -> References {
+        if !named_zone(name) {
+            return References::default();
+        }
+        let names = |src: &str, dest: &str| src == name || dest == name;
+        References {
+            rules: self
+                .rules
+                .iter()
+                .filter(|rule| names(&rule.src, &rule.dest))
+                .count(),
+            // A redirect names zones twice over: the path it rewrites, and the
+            // zones whose hosts reach the forward by its public address. A
+            // section is one reference whichever way it names the zone.
+            redirects: self
+                .redirects
+                .iter()
+                .filter(|redirect| {
+                    names(&redirect.src, &redirect.dest)
+                        || redirect.reflection_zones.iter().any(|zone| zone == name)
+                })
+                .count(),
+            forwardings: self
+                .forwardings
+                .iter()
+                .filter(|forwarding| names(&forwarding.src, &forwarding.dest))
+                .count(),
+            nats: self.nats.iter().filter(|nat| nat.src == name).count(),
+        }
     }
 
     /// interface returns the network interface a zone names, if the network
@@ -208,11 +344,54 @@ impl Firewall {
     }
 
     /// forwards_from lists the zones traffic leaving `zone` may cross into.
+    ///
+    /// A crossing firewall4 skips is not one: a section switched off forwards
+    /// nothing, so listing it would tell a reader this zone reaches somewhere it
+    /// does not. Each zone appears once however many sections say so.
     pub fn forwards_from(&self, zone: &str) -> Vec<String> {
+        self.crossings(
+            |forwarding| forwarding.src == zone,
+            |forwarding| &forwarding.dest,
+        )
+    }
+
+    /// forwards_into is the other direction: the zones whose traffic may cross
+    /// into `zone`. Each of those is the other zone's crossing to edit, which is
+    /// why the panel states them rather than offering them.
+    pub fn forwards_into(&self, zone: &str) -> Vec<String> {
+        self.crossings(
+            |forwarding| forwarding.dest == zone,
+            |forwarding| &forwarding.src,
+        )
+    }
+
+    /// crossings is the shared half of the two: the crossings in force that
+    /// match, named by their far end, once each.
+    fn crossings(
+        &self,
+        matching: impl Fn(&Forwarding) -> bool,
+        far_end: impl Fn(&Forwarding) -> &String,
+    ) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for forwarding in &self.forwardings {
+            if !forwarding.enabled || !matching(forwarding) {
+                continue;
+            }
+            let zone = far_end(forwarding);
+            if !out.contains(zone) {
+                out.push(zone.clone());
+            }
+        }
+        out
+    }
+
+    /// forwardings_from is the sections themselves — what a save has to add to,
+    /// switch back on, or remove. The listing reads names; only the editor needs
+    /// the handles behind them.
+    pub fn forwardings_from(&self, zone: &str) -> Vec<&Forwarding> {
         self.forwardings
             .iter()
             .filter(|forwarding| forwarding.src == zone)
-            .map(|forwarding| forwarding.dest.clone())
             .collect()
     }
 }
@@ -237,7 +416,19 @@ impl Default for Defaults {
             forward: "drop".into(),
             drop_invalid: false,
             synflood_protect: false,
+            synflood_rate: "25/s".into(),
+            synflood_burst: "50".into(),
             flow_offloading: false,
+            flow_offloading_hw: false,
+            syn_cookies: true,
+            tcp_window_scaling: true,
+            tcp_ecn: "2".into(),
+            accept_redirects: false,
+            accept_source_route: false,
+            auto_helper: true,
+            auto_includes: true,
+            tcp_reject_code: "tcp-reset".into(),
+            any_reject_code: "port-unreachable".into(),
         }
     }
 }
@@ -251,17 +442,58 @@ impl Defaults {
             forward: policy(section, "forward", "drop"),
             drop_invalid: flag(section, "drop_invalid", false),
             synflood_protect: flag(section, "synflood_protect", false),
+            // firewall4's own defaults, written here rather than left blank so
+            // the page states what the device will actually do.
+            synflood_rate: scalar_or(section, "synflood_rate", "25/s"),
+            synflood_burst: scalar_or(section, "synflood_burst", "50"),
             flow_offloading: flag(section, "flow_offloading", false),
+            flow_offloading_hw: flag(section, "flow_offloading_hw", false),
+            syn_cookies: flag(section, "tcp_syncookies", true),
+            tcp_window_scaling: flag(section, "tcp_window_scaling", true),
+            tcp_ecn: scalar_or(section, "tcp_ecn", "2"),
+            accept_redirects: flag(section, "accept_redirects", false),
+            accept_source_route: flag(section, "accept_source_route", false),
+            auto_helper: flag(section, "auto_helper", true),
+            auto_includes: flag(section, "auto_includes", true),
+            tcp_reject_code: scalar_or(section, "tcp_reject_code", "tcp-reset"),
+            any_reject_code: scalar_or(section, "any_reject_code", "port-unreachable"),
         }
     }
 
     /// state reads one of the switchable options by its uci name.
+    /// It answers for every option the settings page can write, because the page,
+    /// the save and the config preview all ask it rather than each reaching into the
+    /// struct for a field it happens to know the name of. The preview used to do
+    /// that, and wrote `syn_cookies` — the field's name, not the option's — into a
+    /// block claiming to be the file.
     pub fn state(&self, option: &str) -> bool {
         match option {
             "drop_invalid" => self.drop_invalid,
             "synflood_protect" => self.synflood_protect,
             "flow_offloading" => self.flow_offloading,
+            "flow_offloading_hw" => self.flow_offloading_hw,
+            "tcp_syncookies" => self.syn_cookies,
+            "tcp_window_scaling" => self.tcp_window_scaling,
+            "accept_redirects" => self.accept_redirects,
+            "accept_source_route" => self.accept_source_route,
+            "auto_helper" => self.auto_helper,
+            "auto_includes" => self.auto_includes,
             _ => false,
+        }
+    }
+
+    /// value is the same for the options that hold a value rather than a state.
+    pub fn value(&self, option: &str) -> &str {
+        match option {
+            "input" => &self.input,
+            "output" => &self.output,
+            "forward" => &self.forward,
+            "synflood_rate" => &self.synflood_rate,
+            "synflood_burst" => &self.synflood_burst,
+            "tcp_ecn" => &self.tcp_ecn,
+            "tcp_reject_code" => &self.tcp_reject_code,
+            "any_reject_code" => &self.any_reject_code,
+            _ => "",
         }
     }
 
@@ -284,8 +516,28 @@ impl Zone {
             networks: values(section, "network"),
             devices: values(section, "device"),
             input: policy(section, "input", &defaults.input),
+            output: policy(section, "output", &defaults.output),
             forward: policy(section, "forward", &defaults.forward),
             masq: flag(section, "masq", false),
+        }
+    }
+}
+
+impl Include {
+    fn read(section: &Section) -> Include {
+        let path = section.scalar("path");
+        // fw4 reads `type` as nftables or script; an include that states none is
+        // a script, which is the older shape and the one worth naming.
+        let kind = match section.scalar("type").as_str() {
+            "nftables" => "nftables".to_string(),
+            _ => "script".to_string(),
+        };
+        Include {
+            section: section.name(),
+            path,
+            kind,
+            hook: scalar_or(section, "position", "chain-pre"),
+            enabled: flag(section, "enabled", true),
         }
     }
 }
@@ -293,8 +545,10 @@ impl Zone {
 impl Forwarding {
     fn read(section: &Section) -> Forwarding {
         Forwarding {
+            section: section.name(),
             src: section.scalar("src"),
             dest: section.scalar("dest"),
+            enabled: flag(section, "enabled", true),
         }
     }
 }
@@ -341,12 +595,14 @@ impl Redirect {
             enabled: flag(section, "enabled", true),
             chain: redirect_chain(&target, &src),
             src,
+            dest: section.scalar("dest"),
             src_ips: values(section, "src_ip"),
             dest_ip: section.scalar("dest_ip"),
             proto: values(section, "proto"),
             family: section.scalar("family"),
             src_dport: section.scalar("src_dport"),
             dest_port: section.scalar("dest_port"),
+            reflection_zones: values(section, "reflection_zone"),
             target,
         }
     }
@@ -355,6 +611,14 @@ impl Redirect {
     /// listing: the dnat direction, inbound traffic sent somewhere else.
     pub fn is_port_forward(&self) -> bool {
         self.target == "dnat"
+    }
+}
+
+impl Nat {
+    fn read(section: &Section) -> Nat {
+        Nat {
+            src: section.scalar("src"),
+        }
     }
 }
 
@@ -464,6 +728,17 @@ fn first_value(section: &Section, option: &str) -> String {
 }
 
 /// policy lowercases a policy option for display; uci writes them upper case.
+/// scalar_or reads an option, or states firewall4's own default for it where
+/// the config is silent. A page that showed an empty box would be saying the
+/// device does nothing, which is not what an unset option means.
+fn scalar_or(section: &Section, option: &str, fallback: &str) -> String {
+    let value = section.scalar(option);
+    match value.is_empty() {
+        true => fallback.to_string(),
+        false => value,
+    }
+}
+
 fn policy(section: &Section, option: &str, fallback: &str) -> String {
     let value = section.scalar(option);
     if value.is_empty() {
@@ -565,6 +840,96 @@ mod tests {
 
         assert_eq!(model.forwards_from("lan"), vec!["wan".to_string()]);
         assert!(model.forwards_from("wan").is_empty());
+        // A crossing firewall4 skips is not a crossing: the guest zone's section
+        // says it reaches the uplink and is switched off, so it reaches nothing.
+        assert!(model.forwards_from("guest").is_empty());
+        assert_eq!(model.forwards_into("wan"), vec!["lan".to_string()]);
+    }
+
+    #[test]
+    fn a_zones_blast_radius_is_everything_that_names_it() {
+        let model = fixture::firewall();
+        // Two rules point at lan as their destination, the source rewrite leaves
+        // through it, the port forward reflects into it, and the one forwarding
+        // starts there.
+        assert_eq!(
+            model.references("lan"),
+            References {
+                rules: 2,
+                redirects: 2,
+                forwardings: 1,
+                nats: 0
+            }
+        );
+        // The uplink carries the stock rules, both redirects, and both crossings
+        // from the other end — the one out of lan and the switched-off one out of
+        // guest. A blast radius counts sections that name the zone, in force or
+        // not: one fw4 is currently skipping still breaks if the zone it names
+        // stops existing, and is still a section somebody has to go and fix.
+        assert_eq!(
+            model.references("wan"),
+            References {
+                rules: 6,
+                redirects: 2,
+                forwardings: 2,
+                nats: 0
+            }
+        );
+        assert_eq!(
+            model.references("guest"),
+            References {
+                rules: 3,
+                redirects: 2,
+                forwardings: 1,
+                nats: 1
+            }
+        );
+        // A zone nothing points at is free to go.
+        assert_eq!(model.references("tailscale"), References::default());
+        assert_eq!(model.references("no_such_zone"), References::default());
+    }
+
+    /// firewall4 lets a section name a zone in two places this plugin does not
+    /// otherwise read: a `config nat`'s source, and the reflection zones a port
+    /// forward generates its hairpin rules for. A blast radius that skipped them
+    /// would tell an operator a zone is free to delete when it is not.
+    #[test]
+    fn a_nat_source_and_a_reflection_zone_are_references_too() {
+        let model = fixture::firewall();
+        // The guest zone is named by exactly one section of each: the source NAT
+        // it leaves through, and the forward that reflects into it.
+        assert_eq!(model.references("guest").nats, 1);
+        let guest_redirects: Vec<&str> = model
+            .redirects
+            .iter()
+            .filter(|redirect| {
+                redirect.src == "guest"
+                    || redirect.reflection_zones.iter().any(|zone| zone == "guest")
+            })
+            .map(|redirect| redirect.section.as_str())
+            .collect();
+        assert_eq!(guest_redirects, vec!["force_dns_guest", "https_to_nas"]);
+        // A redirect naming the zone both ways is still one section.
+        assert_eq!(model.references("wan").redirects, 2);
+    }
+
+    /// A rule that states no source is a rule about the router itself, and a
+    /// rule that states `*` is one about anywhere — neither names a zone, so
+    /// neither may be counted against one.
+    #[test]
+    fn the_router_and_anywhere_are_not_zones_anything_references() {
+        let model = fixture::firewall();
+        assert_eq!(model.references(""), References::default());
+        assert_eq!(model.references("*"), References::default());
+    }
+
+    #[test]
+    fn the_networks_a_zone_may_cover_come_from_the_network_config() {
+        let model = fixture::firewall();
+        assert_eq!(
+            model.network_names(),
+            vec!["loopback", "lan", "lan2", "wan", "wan6", "guest"]
+        );
     }
 
     #[test]
