@@ -1,0 +1,12 @@
+# Per-device speed caps, one `config device` section each:
+#
+#	config device
+#		option mac      '00:11:22:33:44:55'
+#		option download '50'
+#		option upload   '10'
+#
+# Megabits per second, and an absent option is no cap in that direction. A
+# device's access rule — blocked outright, or off between two times — is a
+# firewall rule in /etc/config/firewall, because that is what enforces it; the
+# caps are here because a rate is a queueing discipline on the bridge and no
+# firewall rule can express one.

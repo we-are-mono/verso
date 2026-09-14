@@ -20,6 +20,7 @@ INTERFACES_PLUGIN_MANIFEST := plugins/verso-plugin-interfaces/Cargo.toml
 SYSTEM_PLUGIN_MANIFEST := plugins/verso-plugin-system/Cargo.toml
 FIREWALL_PLUGIN_MANIFEST := plugins/verso-plugin-firewall/Cargo.toml
 DNSDHCP_PLUGIN_MANIFEST := plugins/verso-plugin-dnsdhcp/Cargo.toml
+QOS_PLUGIN_MANIFEST := plugins/verso-plugin-qos/Cargo.toml
 
 # `make build` cross-compiles every architecture in ARCHES; each maps to a Go
 # GOARCH and the matching Rust musl target triple below. Override to build one:
@@ -93,7 +94,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit
 
 all: lint test build
 
@@ -128,6 +129,8 @@ build-%: css
 	cp plugins/verso-plugin-firewall/target/$(rust_target_$*)/release/verso-plugin-firewall $(BUILDDIR)/verso-plugin-firewall-$*
 	$(CARGO) build --locked --release --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --target $(rust_target_$*)
 	cp plugins/verso-plugin-dnsdhcp/target/$(rust_target_$*)/release/verso-plugin-dnsdhcp $(BUILDDIR)/verso-plugin-dnsdhcp-$*
+	$(CARGO) build --locked --release --manifest-path $(QOS_PLUGIN_MANIFEST) --target $(rust_target_$*)
+	cp plugins/verso-plugin-qos/target/$(rust_target_$*)/release/verso-plugin-qos $(BUILDDIR)/verso-plugin-qos-$*
 
 run:
 	go run $(CMD)
@@ -145,6 +148,7 @@ test:
 	$(CARGO) test --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST)
 	$(CARGO) test --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST)
+	$(CARGO) test --locked --manifest-path $(QOS_PLUGIN_MANIFEST)
 
 # lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
 # defaults: no custom config, golangci-lint's default linter set.
@@ -180,6 +184,7 @@ lint: deadcode $(GOLANGCI)
 	$(CARGO) clippy --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --all-targets -- -D warnings
 	$(CARGO) clippy --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --all-targets -- -D warnings
+	$(CARGO) clippy --locked --manifest-path $(QOS_PLUGIN_MANIFEST) --all-targets -- -D warnings
 
 # hooks points git at the tracked pre-commit hook so commits are gated on lint.
 hooks:
@@ -298,6 +303,45 @@ apk-dnsdhcp-publish: apk-dnsdhcp
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(DNSDHCP_OUT))  (index rebuilt)"
+
+# The device-limits plugin ships as its own package: it is only useful where fw4
+# enforces the rules it writes, and apk is what states that — `depends:firewall4`
+# alongside the shell it plugs into. Besides the usual three files it ships the
+# rpcd acl.d grant that makes its declared uci scopes grantable (ADR-007), and a
+# default /etc/config/qos, because uci will not write into a file that is absent.
+QOS_PKG      := verso-plugin-qos
+QOS_PAYLOAD  := $(APK_DIR)/pkg-qos
+QOS_OUT      := $(APK_DIR)/$(QOS_PKG)-$(VER).apk
+QOS_POSTINST := packaging/apk/post-install-qos.sh
+
+apk-qos: apk-preflight build-$(APK_GOARCH)
+	rm -rf $(QOS_PAYLOAD)
+	install -Dm755 $(BUILDDIR)/verso-plugin-qos-$(APK_GOARCH)                                      $(QOS_PAYLOAD)/usr/bin/verso-plugin-qos
+	install -Dm755 plugins/verso-plugin-qos/rootfs/etc/init.d/verso-plugin-qos                     $(QOS_PAYLOAD)/etc/init.d/verso-plugin-qos
+	install -Dm644 plugins/verso-plugin-qos/rootfs/etc/config/qos                                  $(QOS_PAYLOAD)/etc/config/qos
+	install -Dm644 plugins/verso-plugin-qos/rootfs/usr/share/rpcd/acl.d/verso-plugin-qos.json      $(QOS_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-qos.json
+	install -Dm644 plugins/verso-plugin-qos/manifest.json                                          $(QOS_PAYLOAD)/usr/share/verso/plugins/qos/manifest.json
+	fakeroot -- sh -c 'chown -R 0:0 "$(QOS_PAYLOAD)" && "$(APK)" mkpkg \
+	  --info name:$(QOS_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \
+	  --info "description:Verso device limits — what a device may reach, when, and how fast" \
+	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
+	  --info origin:verso \
+	  --info "depends:verso firewall4" \
+	  --files "$(QOS_PAYLOAD)" \
+	  --script post-install:$(QOS_POSTINST) \
+	  --script post-upgrade:$(QOS_POSTINST) \
+	  --sign-key "$(KEY)" \
+	  --output "$(QOS_OUT)"'
+	@echo "built and signed: $(QOS_OUT)  (arch $(APK_ARCH), version $(VER))"
+
+# apk-qos-publish drops the plugin package beside verso in the per-arch dev repo
+# and re-indexes what is present, like the DNS/DHCP publisher above.
+apk-qos-publish: apk-qos
+	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
+	cp $(QOS_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
+	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
+	chmod -R a+rX $(VERSO_REPO_DIR)
+	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(QOS_OUT))  (index rebuilt)"
 
 # ── i18n catalog packaging ────────────────────────────────────────────────────
 # A catalog is a per-component data package, discovered on disk at runtime

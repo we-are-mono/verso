@@ -1,0 +1,11 @@
+{
+	"verso-plugin-qos": {
+		"description": "Session grants for Verso's device limits: the firewall rule that keeps one device off the internet, and the speed caps this plugin writes to a config of its own. The shell holds the operator's session and performs both on the plugin's behalf (ADR-007), so this file is what makes the manifest's declared acl grantable at rpcd — the plugin itself holds no session and no privilege.",
+		"read": {
+			"uci": [ "firewall", "qos" ]
+		},
+		"write": {
+			"uci": [ "firewall", "qos" ]
+		}
+	}
+}

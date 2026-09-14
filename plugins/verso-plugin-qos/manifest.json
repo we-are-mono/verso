@@ -1,0 +1,24 @@
+{
+  "manifest_version": 1,
+  "id": "qos",
+  "name": "Device limits",
+  "socket": "/var/run/verso/qos.sock",
+  "schema_version": 1,
+  "nav": [
+    { "section": "Security", "label": "Device limits", "path": "/" }
+  ],
+  "entity_tabs": [
+    { "entity": "device", "slot": "shape", "label": "Limits & schedule" }
+  ],
+  "acl": {
+    "read": [
+      { "scope": "uci", "object": "firewall", "function": "read" },
+      { "scope": "uci", "object": "qos", "function": "read" },
+      { "scope": "ubus", "object": "verso", "function": "dhcpLeases" }
+    ],
+    "write": [
+      { "scope": "uci", "object": "firewall", "function": "write" },
+      { "scope": "uci", "object": "qos", "function": "write" }
+    ]
+  }
+}
