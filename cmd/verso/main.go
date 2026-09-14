@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -48,6 +49,9 @@ func updateCheck() error {
 }
 
 func serve() {
+	// procd records stdout as info and stderr as err. Keep normal lifecycle
+	// messages off the error stream; logd already supplies their timestamp.
+	info := log.New(os.Stdout, "", 0)
 	addr := os.Getenv("VERSO_ADDR")
 	if addr == "" {
 		addr = ":8080"
@@ -66,7 +70,7 @@ func serve() {
 	for _, p := range problems {
 		log.Printf("verso: %v", p)
 	}
-	log.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
+	info.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
 
 	// Localization catalogs are data packages discovered on disk (ADR-012), the
 	// same resilient glob as plugin manifests; a malformed catalog is skipped and
@@ -87,7 +91,7 @@ func serve() {
 		for _, p := range bundle.LoadPlugins(os.DirFS(pluginsDir), "*/i18n/*.json") {
 			log.Printf("verso: %v", p)
 		}
-		log.Printf("verso: loaded %d language(s) in %s + %s", len(bundle.Codes()), i18nDir, pluginsDir)
+		info.Printf("verso: loaded %d language(s) in %s + %s", len(bundle.Codes()), i18nDir, pluginsDir)
 		// The live counterpart of `make i18n-audit`: with VERSO_I18N_RECORD set,
 		// every string that falls back to English for an installed language is
 		// logged as it renders — including plugin envelope prose the offline
@@ -124,14 +128,19 @@ func serve() {
 		for _, p := range rescanProblems {
 			log.Printf("verso: %v", p)
 		}
-		log.Printf("verso: rediscovered %d plugin(s) in %s", len(rescanned), pluginsDir)
+		info.Printf("verso: rediscovered %d plugin(s) in %s", len(rescanned), pluginsDir)
 		srv.SetBundle(loadBundle())
 		return rescanned
 	})
 	srv.SetAllowedHosts(allowedHosts())
 
-	log.Printf("verso listening on %s", addr)
-	err = http.ListenAndServe(addr, srv.Handler())
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		srv.Close()
+		log.Fatalf("verso: %v", err)
+	}
+	info.Printf("verso listening on %s", listener.Addr())
+	err = http.Serve(listener, srv.Handler())
 	srv.Close()
 	if err != nil {
 		log.Fatalf("verso: %v", err)
