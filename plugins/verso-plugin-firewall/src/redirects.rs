@@ -25,25 +25,20 @@ pub const SUBHEADING: &str = "Send matching traffic to the router itself or to a
 const NOTE: &str = "Source rewrites are not listed here — they change where outbound traffic \
 appears to come from, not where inbound traffic goes.";
 
-const EMPTY_TITLE: &str = "Nothing is reachable from the internet yet";
-
-const EMPTY_BODY: &str = "A port forward lets someone outside your home reach one device inside \
-it — a game server, a camera, a media box. Until you add one, the internet cannot start a \
-connection to anything on your network.";
+/// EMPTY is the listing with nothing in it: that there is nothing yet, and what
+/// the firewall does without one.
+const EMPTY: &str =
+    "No port forwards yet — the internet cannot start a connection to anything on your network.";
 
 /// page renders the Port forwards listing: the bar that narrows it and the one
-/// act that adds to it, then the grid. With nothing to list the bar goes too —
-/// there is nothing to narrow — and the empty state carries its own invitation.
+/// act that adds to it, then the grid — which, empty, says so in one row.
 pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
     let forwards: Vec<&Redirect> = model
         .redirects
         .iter()
         .filter(|redirect| redirect.is_port_forward())
         .collect();
-    let children = match forwards.is_empty() {
-        true => vec![empty()],
-        false => vec![bar(), table(&forwards, counters)],
-    };
+    let children = vec![bar(), table(&forwards, counters)];
     page::envelope(HEADING, SUBHEADING, Widget::stack(children))
 }
 
@@ -64,22 +59,6 @@ fn bar() -> Widget {
     }
 }
 
-/// empty is the invitation to make the first forward. This listing is the whole
-/// page, so its nothing is a designed state with a doorway in it, not the quiet
-/// row the shell draws for a listing that is one section among several.
-fn empty() -> Widget {
-    Widget::Empty {
-        icon: "arrow-right".into(),
-        title: EMPTY_TITLE.into(),
-        body: EMPTY_BODY.into(),
-        variant: String::new(),
-        children: vec![Widget::link(
-            "Add forward",
-            &page::new_redirect_href(),
-            "button",
-        )],
-    }
-}
 
 fn columns() -> Vec<TableColumn> {
     [
@@ -115,8 +94,7 @@ fn table(forwards: &[&Redirect], counters: &Counters) -> Widget {
             .collect(),
         drawer_label: String::new(),
         drawer_icon: String::new(),
-        // Nothing to forward is answered above, by the page's empty state.
-        empty_text: String::new(),
+        empty_text: EMPTY.into(),
         add_label: String::new(),
         add_href: String::new(),
         note: NOTE.into(),
@@ -230,32 +208,23 @@ mod tests {
         assert!(body.get("action").is_none(), "the bar carries the one act");
     }
 
-    // Nothing forwarded is not an empty table under column headings — it is a
-    // page with nothing on it, saying what putting something there would mean.
+    // Nothing forwarded is one row where the first forward would sit, saying
+    // what the firewall does without one; the bar's Add forward is the way in.
     #[test]
-    fn a_config_with_no_port_forwards_invites_the_first_one() {
+    fn a_config_with_no_port_forwards_says_so_in_one_row() {
         let mut model = fixture::firewall();
         model
             .redirects
             .retain(|redirect| !redirect.is_port_forward());
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
 
-        // With nothing to list the bar goes too: there is nothing to narrow,
-        // and the invitation carries its own way in.
-        assert_eq!(body["widget"]["children"].as_array().map(Vec::len), Some(1));
-        let empty = &body["widget"]["children"][0];
-        assert_eq!(empty["type"], "empty");
-        assert_eq!(empty["icon"], "arrow-right");
-        assert_eq!(empty["title"], EMPTY_TITLE);
-        assert_eq!(
-            empty["children"][0],
-            serde_json::json!({
-                "type": "link",
-                "label": "Add forward",
-                "href": "/plugins/firewall/port-forwards/new",
-                "style": "button"
-            })
-        );
+        let children = &body["widget"]["children"];
+        assert_eq!(children.as_array().map(Vec::len), Some(2));
+        assert_eq!(children[0]["action"]["label"], "Add forward");
+        let table = &children[1];
+        assert_eq!(table["type"], "table");
+        assert_eq!(table["rows"].as_array().map(Vec::len).unwrap_or(0), 0);
+        assert_eq!(table["empty_text"], EMPTY);
     }
 
     #[test]

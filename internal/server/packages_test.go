@@ -262,9 +262,9 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover").Body.String()
+	// Before a search the listing is its one row, saying what goes there.
 	for _, want := range []string{
-		"Search available packages",
-		"Enter a package name, then select Search. Matching packages will appear here.",
+		`text-left text-sm leading-6 text-meta">Enter a package name, then select Search. Matching packages will appear here.</td>`,
 		`placeholder="Package name"`,
 		"autofocus",
 	} {
@@ -279,9 +279,9 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 
 func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
 	body := get(t, pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest()), "/system/packages/discover?q=missing").Body.String()
+	// No match is the listing's one row, telling a filtered nothing apart.
 	for _, want := range []string{
-		"No packages found",
-		"No available packages match “missing”. Check the spelling or refresh the package feeds.",
+		`text-left text-sm leading-6 text-meta">No available packages match “missing”. Check the spelling or refresh the package feeds.</td>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-results state missing %q", want)

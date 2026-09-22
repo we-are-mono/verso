@@ -45,11 +45,18 @@ pub fn post(model: &Dnsdhcp, leases: &Leases) -> Envelope {
     page(model, leases).with_notice(Tone::Danger, form::UNKNOWN)
 }
 
+/// NONE_YET and UNREAD are the listing's two silences, told apart: a router
+/// handing out nothing, and a router this plugin could not ask.
+const NONE_YET: &str = "No device holds an address yet — devices appear here as they join.";
+const UNREAD: &str = "Verso could not read the lease table. The networks and reservations \
+under Configuration are unaffected.";
+
 fn listing(model: &Dnsdhcp, leases: &Leases) -> Widget {
-    if leases.all().is_empty() {
-        return nothing_here(leases);
-    }
     let rows = leases.all().iter().map(|lease| row(model, lease)).collect();
+    let empty = match leases.known() {
+        true => NONE_YET,
+        false => UNREAD,
+    };
     page::table(
         page::columns(&[
             ("Device", "name"),
@@ -61,30 +68,8 @@ fn listing(model: &Dnsdhcp, leases: &Leases) -> Widget {
             ("", "link"),
         ]),
         rows,
-        // This listing is the whole page, and its two silences are told apart
-        // above by an empty state of their own.
-        "",
+        empty,
     )
-}
-
-/// nothing_here tells the two silences apart: a router handing out nothing, and a
-/// router this plugin could not ask.
-fn nothing_here(leases: &Leases) -> Widget {
-    match leases.known() {
-        true => Widget::empty(
-            "wifi",
-            "No device holds an address",
-            "Nothing has asked this router for an address yet. Devices appear here as they join.",
-            Vec::new(),
-        ),
-        false => Widget::empty(
-            "wifi",
-            "Live leases aren’t available",
-            "Verso could not read the lease table, so it can't say who holds an address. \
-             The networks and reservations under Configuration are unaffected.",
-            Vec::new(),
-        ),
-    }
 }
 
 fn row(model: &Dnsdhcp, lease: &Lease) -> TableRow {
@@ -227,17 +212,17 @@ mod tests {
 
     #[test]
     fn the_two_silences_are_told_apart() {
+        // Each silence is the listing's one row, where the first lease would sit.
         let unread = body(&Leases::read(&Ubus::from_value(Value::Null)));
         let empty = &unread["widget"]["children"][1]["children"][0];
-        assert_eq!(empty["type"], "empty");
-        assert_eq!(empty["title"], "Live leases aren’t available");
+        assert_eq!(empty["type"], "table");
+        assert_eq!(empty["empty_text"], UNREAD);
 
         let served = body(&Leases::read(&Ubus::from_value(
             serde_json::json!({"dhcpLeases": {"leases": []}}),
         )));
-        assert_eq!(
-            served["widget"]["children"][1]["children"][0]["title"],
-            "No device holds an address"
-        );
+        let empty = &served["widget"]["children"][1]["children"][0];
+        assert_eq!(empty["type"], "table");
+        assert_eq!(empty["empty_text"], NONE_YET);
     }
 }

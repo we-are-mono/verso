@@ -453,14 +453,15 @@
     <tbody>
       {{if .Empty}}
       {{/* nothing to list: the column heads are gone (they describe data, and
-           over none they are chrome) and one quiet row states the absence on the
-           wash a group head wears, with a single hairline so the section keeps
-           its footprint. A listing that IS the page uses the empty widget
-           instead — this row serves one section among several. */}}
+           over none they are chrome) and one row states the absence where the
+           first row would sit — a row's height, the listing's inset, meta words
+           and the usual hairline. Every listing says its nothing this way,
+           whether it is the whole page or one section of it; the toolbar's
+           primary is the way in, so the row holds words only. */}}
       {{/* a live listing keeps its heads and marks this row: it is the wait,
            not the absence, and the first event that arrives removes it. */}}
       <tr{{if .Stream}} data-verso-stream-empty{{end}}>
-        <td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-3.5 py-6 text-center text-sm text-meta">{{.EmptyText}}</td>
+        <td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta">{{.EmptyText}}</td>
       </tr>
       {{else}}
 {{template "table.rows" .Rows}}
@@ -496,7 +497,7 @@
     {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
   </div>
   {{end}}
-  <p data-verso-listing-empty hidden class="px-4 py-6 text-sm text-meta">{{t "Nothing matches."}}</p>
+  <p data-verso-listing-empty hidden class="border-b border-rule px-4 py-2.5 text-sm leading-6 text-meta">{{t "Nothing matches."}}</p>
   {{if .Stream}}
   {{/* the endpoint glyphs a streamed row needs, rendered here by the shell's own
        Lucide source so the client never has to carry markup of its own: it

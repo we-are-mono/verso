@@ -797,23 +797,23 @@ not carrying the page:
 
 **Nothing to list.** A table with no rows at all — none of its own and none
 folded — renders neither `<thead>` nor rows: column headings describe data, and
-over no data they are chrome. In their place the shell draws one quiet
-full-width row carrying `empty_text`, so the section keeps its footprint and
-says what the absence means. Leave `empty_text` unset and it reads "Nothing here
-yet" in the operator's language; set it and say something true about *this*
-listing ("No extra names yet — reserved devices already answer by name.").
+over no data they are chrome. In their place the shell draws one row carrying
+`empty_text`, where the first row would sit — a row's height, meta words, the
+usual hairline. Leave `empty_text` unset and it reads "Nothing here yet" in the
+operator's language; set it and say something true about *this* listing, in two
+sentences at most: that nothing is here yet, and what the daemon does without it
+("No extra names yet — reserved devices already answer by name."). Tell a
+filtered nothing ("No package matches …") apart from a nothing-yet.
 
 ```json
 { "type": "table", "columns": [ /* … */ ], "rows": [],
   "empty_text": "No reserved addresses yet — reserve one from a device on the Leases page." }
 ```
 
-The two nothings are different altitudes. A listing that is one section among
-several gets this row — the page still has other things on it, and a full
-illustrated empty state would shout. A listing that **is** the page (nothing
-else on it but the heading) gets the `empty` widget instead: icon, headline,
-reassurance, and a doorway to the thing that would fill it. Choose by what
-surrounds the listing, not by how empty it is.
+Every listing says its nothing this way, whether it is one section among several
+or the whole page: no illustration and no button in the row — the toolbar's
+primary action is the way in. The `empty` widget is for a state that is not a
+listing at all (a takeover's phase, a page waiting on a precondition).
 
 **A live listing (`stream`).** Some listings are not a state of the config but a
 run of events — firewall verdicts, DHCP handshakes, the system log. Such a table

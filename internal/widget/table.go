@@ -80,12 +80,12 @@ type Table struct {
 	Legend []TableLegend `json:"legend,omitempty"`
 	Note   string        `json:"note,omitempty"`
 
-	// EmptyText is what a listing with nothing in it says. Column headings
-	// describe data; over no data they are chrome, so an empty table drops them
-	// and renders one quiet full-width row carrying this sentence — the treatment
-	// for a listing that is one section among several. A listing that IS the page
-	// deserves the full empty widget instead. Left blank it reads "Nothing here
-	// yet" in the operator's language.
+	// EmptyText is what a listing with nothing in it says, in two sentences at
+	// most: that nothing is here yet, and what the daemon does without it.
+	// Column headings describe data; over no data they are chrome, so an empty
+	// table drops them and renders one row carrying this sentence where the
+	// first row would sit — for every listing, the whole page's included. Left
+	// blank it reads "Nothing here yet" in the operator's language.
 	EmptyText string `json:"empty_text,omitempty"`
 
 	// Stream turns the listing live: its rows arrive after the render, over a

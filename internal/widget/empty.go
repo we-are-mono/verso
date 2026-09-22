@@ -11,11 +11,12 @@ import (
 	"io"
 )
 
-// Empty is a first-run / nothing-here state: a friendly icon, a headline, a line of
-// plain-language reassurance, and the one action that gets started. It turns a blank
-// list into an invitation instead of a dead end — the humane answer to "there's
-// nothing to show yet." The children are the call(s) to action (typically a modal
-// trigger), so the empty state composes the same widgets as the populated one.
+// Empty is a whole-page state that is not a listing: a takeover's phase, a page
+// waiting on a precondition — an icon, a headline, a line of plain-language
+// reassurance, and the one action that moves it on. A listing with nothing in it
+// never uses it; the table says its nothing in one row (Table.EmptyText). The
+// children are the call(s) to action, so the state composes the same widgets as
+// the page around it.
 type Empty struct {
 	Icon  string `json:"icon"`  // "shield" | "globe" | "device" (default)
 	Title string `json:"title"` // headline, e.g. "Reach your home from anywhere"

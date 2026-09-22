@@ -501,23 +501,6 @@ func refreshingInstead(body string) widget.Widget {
 	return &widget.Empty{Icon: "refresh-cw", Title: "Refreshing the package feeds", Body: body}
 }
 
-// markdownLiteral quotes a value for a widget field that renders Markdown prose.
-// A string a person typed is data, not prose: it reads back as itself, with no
-// emphasis, no link and no punctuation Markdown would have claimed. The escape
-// is Markdown's own — a backslash before each character that could start
-// something — and the renderer's sanitiser still stands behind it.
-func markdownLiteral(value string) string {
-	var out strings.Builder
-	out.Grow(len(value))
-	for _, r := range value {
-		if strings.ContainsRune(`\`+"`"+`*_{}[]()#+-.!<>&|~:"'`, r) {
-			out.WriteByte('\\')
-		}
-		out.WriteRune(r)
-	}
-	return out.String()
-}
-
 // pkgNameRe mirrors the helper's package-name alphabet — refused here first
 // so a bad name never even reaches the bus.
 var pkgNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._+-]{0,63}$`)
@@ -574,20 +557,18 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, refreshingInstead(
 			"Results come from the feed index this refresh is rebuilding — reload the page in a moment to search it."))
 	} else if q == "" {
-		children = append(children, &widget.Empty{
-			Icon:  "search",
-			Title: "Search available packages",
-			Body:  "Enter a package name, then select Search. Matching packages will appear here.",
-		})
+		// Before a search the listing says what goes in it, in its one row.
+		table := discoverTable(nil, q).(*widget.Table)
+		table.EmptyText = "Enter a package name, then select Search. Matching packages will appear here."
+		children = append(children, table)
 	} else if pkgs, total, err := s.backend.PkgSearch(r.Context(), sid, q); err != nil {
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Search unavailable",
 			Body: fmt.Sprintf(tr("The package index could not be read (%v). Refresh the feeds and try again."), err)})
 	} else if len(pkgs) == 0 {
-		children = append(children, &widget.Empty{
-			Icon:  "search",
-			Title: "No packages found",
-			Body:  fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), markdownLiteral(q)),
-		})
+		// The row is plain text, so the query reads back exactly as typed.
+		table := discoverTable(nil, q).(*widget.Table)
+		table.EmptyText = fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), q)
+		children = append(children, table)
 	} else {
 		if total > len(pkgs) {
 			children = append(children, &widget.Badge{Variant: "info", Icon: "info", Size: "lg", Text: fmt.Sprintf(

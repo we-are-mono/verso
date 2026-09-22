@@ -828,8 +828,10 @@ pub enum Widget {
         #[serde(skip_serializing_if = "is_false")]
         live: bool,
     },
-    /// The designed nothing-here state: icon, headline, reassurance, and the
-    /// call(s) to action as children.
+    /// A whole-page state that is not a listing — a page waiting on a
+    /// precondition: icon, headline, reassurance, and the call(s) to action as
+    /// children. A listing with nothing in it says so in the table's
+    /// `empty_text` row instead.
     Empty {
         icon: String,
         title: String,
@@ -1507,7 +1509,7 @@ impl Widget {
         }
     }
 
-    /// empty is the designed nothing-here state.
+    /// empty is a whole-page state that is not a listing (see [`Widget::Empty`]).
     pub fn empty(icon: &str, title: &str, body: &str, children: Vec<Widget>) -> Widget {
         Widget::Empty {
             icon: icon.into(),

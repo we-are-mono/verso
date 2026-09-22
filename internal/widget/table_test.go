@@ -459,13 +459,19 @@ func TestRenderTableEmpty(t *testing.T) {
 		Columns: []TableColumn{{Label: "Type", Kind: "keyword"}, {Label: "Name", Kind: "mono"}},
 	}
 	got := render(t, r, bare)
+	// The canvas's one row, where the first row would sit: the row's own height
+	// from padding, the listing's inset, meta words, left-aligned, a hairline.
 	for _, want := range []string{
-		`colspan="2"`, "bg-quiet", "text-center", "text-meta",
-		"border-b border-rule", // one hairline keeps the section's footprint
+		`colspan="2" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta"`,
 		">Nothing here yet<",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("empty table missing %q:\n%s", want, got)
+		}
+	}
+	for _, never := range []string{"bg-quiet", "text-center", "py-6"} {
+		if strings.Contains(got, never) {
+			t.Errorf("the empty row is a plain row — no %q:\n%s", never, got)
 		}
 	}
 	for _, absent := range []string{"<thead", ">Type<", ">Name<"} {
