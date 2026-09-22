@@ -439,8 +439,16 @@
 
      Of-type, not child: a row whose subject has an entity panel carries that
      panel's teleport template after its last cell, so the last cell is not the
-     row's last child and would otherwise miss its inset. */}}
-<div{{if .Live}} data-verso-live-table{{end}} class="overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4">
+     row's last child and would otherwise miss its inset.
+
+     A listing with its own band is a section of the page: it stands off what
+     sits above it by the gap the homepage leaves before its System band (44px),
+     not the 16px between a listing's own parts — and takes none leading the page.
+
+     Relative, so the scroller is the containing block of every absolutely
+     placed word inside it (a dash's screen-reader "None"): otherwise a word in
+     a column scrolled out of view escapes the clip and widens the page. */}}
+<div{{if .Live}} data-verso-live-table{{end}} class="relative {{if .Title}}mt-11 {{end}}overflow-x-auto overflow-y-hidden {{if .Title}}first:mt-0 {{end}}[&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush
