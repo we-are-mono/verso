@@ -169,20 +169,25 @@ func TestInputsFollowTheTypographyContract(t *testing.T) {
 	}
 }
 
-// TestSelectIsSetLikeItsOptions: a select is set like what it offers. When
-// every option shows its own value, the choices are the config's verbatim
-// strings (zones, interfaces, accept/drop) and it is mono; when any option is
-// a phrase written for people, the select is words and takes the sans.
-func TestSelectIsSetLikeItsOptions(t *testing.T) {
-	verbatim := render(t, newRenderer(t), &Field{Name: "src", Label: "From", Kind: "select",
-		Options: []Option{{Value: "wan", Label: "wan"}, {Value: "lan", Label: "lan"}}})
-	words := render(t, newRenderer(t), &Field{Name: "tool", Label: "Tool", Kind: "select",
-		Options: []Option{{Value: "ping", Label: "Ping"}, {Value: "nslookup", Label: "Look up a name"}}})
-	if !strings.Contains(verbatim, "font-mono text-base font-normal") {
-		t.Errorf("a select of verbatim values is mono:\n%s", verbatim)
+// TestSelectIsAChoiceUnlessItHoldsAMachineString: a select is an enumerated
+// choice, and a choice is words: a timezone, a policy (accept, reject), a
+// protocol all take the sans, whatever their labels look like. Only a select
+// whose field declares a machine-string datatype is mono, because then what is
+// picked is a value someone would retype verbatim.
+func TestSelectIsAChoiceUnlessItHoldsAMachineString(t *testing.T) {
+	policy := render(t, newRenderer(t), &Field{Name: "target", Label: "Action", Kind: "select",
+		Options: []Option{{Value: "accept", Label: "accept"}, {Value: "reject", Label: "reject"}}})
+	zone := render(t, newRenderer(t), &Field{Name: "zonename", Label: "Timezone", Kind: "select",
+		Options: []Option{{Value: "UTC", Label: "UTC"}, {Value: "Europe/Ljubljana", Label: "Europe/Ljubljana"}}})
+	host := render(t, newRenderer(t), &Field{Name: "server", Label: "Server", Kind: "select", Datatype: "hostname",
+		Options: []Option{{Value: "0.pool.ntp.org", Label: "0.pool.ntp.org"}}})
+	for name, got := range map[string]string{"policy": policy, "timezone": zone} {
+		if !strings.Contains(got, "font-sans text-sm font-normal") || strings.Contains(got, "font-mono text-base") {
+			t.Errorf("%s: an enumerated choice is words:\n%s", name, got)
+		}
 	}
-	if !strings.Contains(words, "font-sans text-sm font-normal") || strings.Contains(words, "font-mono text-base") {
-		t.Errorf("a select of phrases is words:\n%s", words)
+	if !strings.Contains(host, "font-mono text-base font-normal") {
+		t.Errorf("a select of machine strings is mono:\n%s", host)
 	}
 }
 
