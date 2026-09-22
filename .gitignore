@@ -42,3 +42,7 @@
 
 # Claude Code local worktrees and session state
 .claude/
+
+# Other coding agents' local skills and hooks
+/.agents/
+/.codex/
