@@ -696,6 +696,24 @@ sharing the table's slack, which collects in the growing columns — how a group
 of related fact columns (a version pair and the arrow between them) huddles at
 one edge instead of drifting apart. Pair it with kinds that do not wrap.
 
+A column may instead fix its `width` at a measure named by what it holds, so a
+column keeps its place when one row's value is shorter and every listing's
+address column is the same width. The set is closed: any other word (a CSS
+length included) fails the decode. A column that states none grows, sharing
+what is left.
+
+| `width` | holds | measure |
+| --- | --- | --- |
+| `mark` | an order number, a grip, an icon | 2rem |
+| `count` | a counter or a flag: hits, packets, yes/no | 4.5rem |
+| `short` | a short token: port, protocol, PID, size, a verdict, row acts | 6rem |
+| `word` | a state or a chip: status, zone, version | 9rem |
+| `address` | an address: IPv4 with its prefix, a MAC, address:port | 12.5rem |
+| `name` | a name, or a short list of them: rule, zone, networks | 14rem |
+| `long` | a long identity: a service, a package | 17rem |
+
+In the Rust SDK it is the `ColumnWidth` enum.
+
 **Reorderable rows.** A listing whose *sequence* is meaning — evaluation order —
 adds a leading `{ "kind": "reorder" }` column and names the uci config its rows
 are sections of in `reorder_config`. The shell owns the interaction end to end:

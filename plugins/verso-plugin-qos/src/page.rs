@@ -66,7 +66,7 @@ fn columns() -> Vec<TableColumn> {
     .map(|(label, kind)| TableColumn {
         label: (*label).into(),
         kind: (*kind).into(),
-        width: String::new(),
+        ..TableColumn::default()
     })
     .collect()
 }

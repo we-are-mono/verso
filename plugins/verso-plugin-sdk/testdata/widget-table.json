@@ -14,7 +14,7 @@
     {
       "label": "Zone",
       "kind": "name",
-      "width": "12rem"
+      "width": "name"
     },
     {
       "label": "Address",

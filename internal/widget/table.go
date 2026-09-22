@@ -232,8 +232,67 @@ type TableColumn struct {
 	// Width fixes the column at a measure the listing decides rather than at
 	// whatever this page's data happens to need — so a column of addresses keeps
 	// its place when one device has a shorter one, and two boards' rosters line
-	// up. A CSS length; the growing columns share what is left.
-	Width string `json:"width,omitempty"`
+	// up. One of the closed ColumnMeasure set; the growing columns share what is
+	// left.
+	Width ColumnMeasure `json:"width,omitempty"`
+}
+
+// ColumnMeasure is a column's fixed width, named by what the column holds —
+// the way a field's measure is — so every listing's address column is the same
+// width and a plugin never invents a length of its own. The set is closed: a
+// width outside it fails the decode.
+type ColumnMeasure string
+
+const (
+	MeasureGrow    ColumnMeasure = ""        // no fixed width: shares the table's slack
+	MeasureMark    ColumnMeasure = "mark"    // an order number, a grip, an icon
+	MeasureCount   ColumnMeasure = "count"   // a counter or a flag: hits, packets, yes/no
+	MeasureShort   ColumnMeasure = "short"   // a short token: port, protocol, PID, size, a verdict, row acts
+	MeasureWord    ColumnMeasure = "word"    // a state or a chip: status, zone, version
+	MeasureAddress ColumnMeasure = "address" // an address: IPv4 with its prefix, a MAC, address:port
+	MeasureName    ColumnMeasure = "name"    // a name, or a short list of them: rule, zone, networks
+	MeasureLong    ColumnMeasure = "long"    // a long identity: a service, a package
+)
+
+// columnMeasures holds each measure's width, in the order the error names them.
+var columnMeasures = []struct {
+	m   ColumnMeasure
+	css string
+}{
+	{MeasureMark, "2rem"},
+	{MeasureCount, "4.5rem"},
+	{MeasureShort, "6rem"},
+	{MeasureWord, "9rem"},
+	{MeasureAddress, "12.5rem"},
+	{MeasureName, "14rem"},
+	{MeasureLong, "17rem"},
+}
+
+// CSS is the measure's width as a CSS length, or "" for a growing column.
+func (m ColumnMeasure) CSS() string {
+	for _, c := range columnMeasures {
+		if c.m == m {
+			return c.css
+		}
+	}
+	return ""
+}
+
+// UnmarshalJSON refuses a width outside the set, naming the ones there are.
+func (m *ColumnMeasure) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("column width: %w", err)
+	}
+	if s != "" && ColumnMeasure(s).CSS() == "" {
+		names := make([]string, len(columnMeasures))
+		for i, c := range columnMeasures {
+			names[i] = string(c.m)
+		}
+		return fmt.Errorf("column width %q is not a measure; want one of %s, or none to grow", s, strings.Join(names, ", "))
+	}
+	*m = ColumnMeasure(s)
+	return nil
 }
 
 // TableRow is one config section. ID is its stable handle (e.g. the UCI section

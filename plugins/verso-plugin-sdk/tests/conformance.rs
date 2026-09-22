@@ -10,9 +10,9 @@
 use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
-    ActionTab, ConditionItem, Property, RowDrawer, SelectOption, SettingsItem, SettingsPill,
-    SettingsSeam, SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup,
-    TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
+    ActionTab, ColumnWidth, ConditionItem, Property, RowDrawer, SelectOption, SettingsItem,
+    SettingsPill, SettingsSeam, SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint,
+    TableGroup, TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
@@ -460,7 +460,7 @@ fn listing() -> Widget {
             TableColumn {
                 label: "Zone".into(),
                 kind: "name".into(),
-                width: "12rem".into(),
+                width: ColumnWidth::Name,
             },
             TableColumn {
                 label: "Address".into(),

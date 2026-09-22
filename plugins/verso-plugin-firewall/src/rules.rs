@@ -15,8 +15,8 @@
 //! between chains would change which packets it sees rather than when.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ActionTab, Envelope, Form, RowDrawer, Snapshot, TableAction,
-    TableCell, TableColumn, TableGroup, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ActionTab, ColumnWidth, Envelope, Form, RowDrawer, Snapshot,
+    TableAction, TableCell, TableColumn, TableGroup, TableRow, Tone, Widget,
 };
 
 use crate::counters::Counters;
@@ -269,22 +269,22 @@ const TAG_IPV6: &str = "ipv6";
 
 fn columns() -> Vec<TableColumn> {
     [
-        ("", "reorder", ""),
-        ("#", "text", "2rem"),
-        ("Name", "name", "13rem"),
-        ("From", "endpoint", "9rem"),
-        ("To", "endpoint", "9rem"),
-        ("Proto", "keyword", "6rem"),
-        ("Match", "mono", ""),
-        ("Action", "pill", "5.5rem"),
-        ("Hits", "num", "4.5rem"),
-        ("", "actions", "6rem"),
+        ("", "reorder", ColumnWidth::Grow),
+        ("#", "text", ColumnWidth::Mark),
+        ("Name", "name", ColumnWidth::Name),
+        ("From", "endpoint", ColumnWidth::Word),
+        ("To", "endpoint", ColumnWidth::Word),
+        ("Proto", "keyword", ColumnWidth::Short),
+        ("Match", "mono", ColumnWidth::Grow),
+        ("Action", "pill", ColumnWidth::Short),
+        ("Hits", "num", ColumnWidth::Count),
+        ("", "actions", ColumnWidth::Short),
     ]
     .into_iter()
     .map(|(label, kind, width)| TableColumn {
         label: label.into(),
         kind: kind.into(),
-        width: width.into(),
+        width,
     })
     .collect()
 }
@@ -942,7 +942,7 @@ mod tests {
         let table = table_of(&body);
         assert_eq!(
             table["columns"][9],
-            serde_json::json!({"kind": "actions", "width": "6rem"})
+            serde_json::json!({"kind": "actions", "width": "short"})
         );
         for row in table["rows"].as_array().expect("rows") {
             let section = row["id"].as_str().expect("id");

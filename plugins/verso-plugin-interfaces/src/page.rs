@@ -717,7 +717,7 @@ pub fn listing(m: &Model, open: bool) -> Envelope {
     .map(|(label, kind)| TableColumn {
         label: label.into(),
         kind: kind.into(),
-        width: String::new(),
+        ..TableColumn::default()
     })
     .collect();
     let table = Widget::Table {

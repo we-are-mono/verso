@@ -17,8 +17,8 @@
 //! an empty table that reads like calm.
 
 use verso_plugin::{
-    ActionTab, Envelope, Section, Snapshot, TableAction, TableColumn, TableStream, Widget,
-    STREAM_FIREWALL_LOG,
+    ActionTab, ColumnWidth, Envelope, Section, Snapshot, TableAction, TableColumn, TableStream,
+    Widget, STREAM_FIREWALL_LOG,
 };
 
 use crate::model;
@@ -156,21 +156,21 @@ fn console() -> Widget {
 /// rule that decided it.
 fn columns() -> Vec<TableColumn> {
     [
-        ("When", "runtime", "5rem"),
-        ("Count", "num", "4rem"),
-        ("Verdict", "pill", "5.5rem"),
-        ("From", "endpoint", "9rem"),
-        ("Source", "mono", "11rem"),
-        ("To", "endpoint", "9rem"),
-        ("Protocol", "keyword", "6rem"),
-        ("Port", "mono", "5rem"),
-        ("Rule", "link", ""),
+        ("When", "runtime", ColumnWidth::Short),
+        ("Count", "num", ColumnWidth::Count),
+        ("Verdict", "pill", ColumnWidth::Short),
+        ("From", "endpoint", ColumnWidth::Word),
+        ("Source", "mono", ColumnWidth::Address),
+        ("To", "endpoint", ColumnWidth::Word),
+        ("Protocol", "keyword", ColumnWidth::Short),
+        ("Port", "mono", ColumnWidth::Short),
+        ("Rule", "link", ColumnWidth::Grow),
     ]
     .into_iter()
     .map(|(label, kind, width)| TableColumn {
         label: label.into(),
         kind: kind.into(),
-        width: width.into(),
+        width,
     })
     .collect()
 }

@@ -119,11 +119,11 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		// one device's address is.
 		Columns: []TableColumn{
 			{Label: "Device", Kind: "name"},
-			{Label: "Port", Kind: "mono", Width: "6rem"},
-			{Label: "Address", Kind: "mono", Width: "11rem"},
-			{Label: "MAC address", Kind: "mono", Width: "12.5rem"},
-			{Label: "Status", Kind: "status", Width: "8rem"},
-			{Kind: "actions", Width: "7rem"},
+			{Label: "Port", Kind: "mono", Width: MeasureShort},
+			{Label: "Address", Kind: "mono", Width: MeasureAddress},
+			{Label: "MAC address", Kind: "mono", Width: MeasureAddress},
+			{Label: "Status", Kind: "status", Width: MeasureWord},
+			{Kind: "actions", Width: MeasureShort},
 		},
 		Rows: rows,
 		Legend: []TableLegend{

@@ -371,13 +371,13 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 // own column. Runtime state is only claimed where procd can establish it.
 func servicesTable(states []pluginState, rc map[string]openwrt.RCState, owners map[string]string) widget.Widget {
 	cols := []widget.TableColumn{
-		{Label: "Order", Kind: "mono", Width: "4.5rem"},
-		{Label: "Service", Kind: "reference", Width: "17rem"},
-		{Label: "Package", Kind: "mono", Width: "14rem"},
-		{Label: "PID", Kind: "mono", Width: "6rem"},
-		{Label: "Memory", Kind: "runtime", Width: "7rem"},
+		{Label: "Order", Kind: "mono", Width: widget.MeasureCount},
+		{Label: "Service", Kind: "reference", Width: widget.MeasureLong},
+		{Label: "Package", Kind: "mono", Width: widget.MeasureName},
+		{Label: "PID", Kind: "mono", Width: widget.MeasureShort},
+		{Label: "Memory", Kind: "runtime", Width: widget.MeasureShort},
 		{Label: "State", Kind: "status"},
-		{Kind: "actions", Width: "6rem"},
+		{Kind: "actions", Width: widget.MeasureShort},
 	}
 	byService := make(map[string]pluginState, len(states))
 	for _, st := range states {

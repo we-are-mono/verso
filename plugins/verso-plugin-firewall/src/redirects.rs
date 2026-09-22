@@ -8,7 +8,7 @@
 //! nowhere on this page — so listing it beside port forwards would suggest the
 //! two are the same kind of thing.
 
-use verso_plugin::{Envelope, TableAction, TableColumn, TableRow, Widget};
+use verso_plugin::{ColumnWidth, Envelope, TableAction, TableColumn, TableRow, Widget};
 
 use crate::counters::Counters;
 use crate::format;
@@ -83,18 +83,18 @@ fn empty() -> Widget {
 
 fn columns() -> Vec<TableColumn> {
     [
-        ("Name", "name", ""),
-        ("Arrives on", "mono", "11rem"),
-        ("Sent to", "mono", "13rem"),
-        ("Proto", "keyword", "6rem"),
-        ("Hits", "num", "4.5rem"),
-        ("", "actions", "6rem"),
+        ("Name", "name", ColumnWidth::Grow),
+        ("Arrives on", "mono", ColumnWidth::Address),
+        ("Sent to", "mono", ColumnWidth::Address),
+        ("Proto", "keyword", ColumnWidth::Short),
+        ("Hits", "num", ColumnWidth::Count),
+        ("", "actions", ColumnWidth::Short),
     ]
     .into_iter()
     .map(|(label, kind, width)| TableColumn {
         label: label.into(),
         kind: kind.into(),
-        width: width.into(),
+        width,
     })
     .collect()
 }
@@ -316,7 +316,7 @@ mod tests {
         let table = fixture::widget(&body, "table");
         assert_eq!(
             table["columns"][5],
-            serde_json::json!({"kind": "actions", "width": "6rem"})
+            serde_json::json!({"kind": "actions", "width": "short"})
         );
         for row in table["rows"].as_array().expect("rows") {
             let section = row["id"].as_str().expect("id");

@@ -163,11 +163,11 @@ func packagesTable(pkgs []openwrt.Package) widget.Widget {
 
 func packageListingTable(pkgs []openwrt.Package) *widget.Table {
 	cols := []widget.TableColumn{
-		{Label: "Package", Kind: "name", Width: "17rem"},
-		{Label: "Version", Kind: "mono", Width: "9rem"},
+		{Label: "Package", Kind: "name", Width: widget.MeasureLong},
+		{Label: "Version", Kind: "mono", Width: widget.MeasureWord},
 		{Label: "What it is", Kind: "comment"},
-		{Label: "Size", Kind: "runtime", Width: "6rem"},
-		{Kind: "actions", Width: "5rem"},
+		{Label: "Size", Kind: "runtime", Width: widget.MeasureShort},
+		{Kind: "actions", Width: widget.MeasureShort},
 	}
 	rows := make([]widget.TableRow, 0, len(pkgs))
 	for _, p := range pkgs {

@@ -448,7 +448,7 @@
     {{/* fit columns squeeze to their content through a colgroup width; the
          table's slack collects in the growing columns, so a huddle of fit
          columns sits together at the edge instead of drifting apart. */}}
-    {{if .HasFit}}<colgroup>{{range .Columns}}<col{{if .Width}} style="width:{{.Width}}"{{else if .Fit}} class="w-px"{{end}}>{{end}}{{if .HasDetail}}<col>{{end}}</colgroup>{{end}}
+    {{if .HasFit}}<colgroup>{{range .Columns}}<col{{if .Width}} style="width:{{.Width.CSS}}"{{else if .Fit}} class="w-px"{{end}}>{{end}}{{if .HasDetail}}<col>{{end}}</colgroup>{{end}}
     {{if .HasLabels}}{{template "table.head" .}}{{end}}
     <tbody>
       {{if .Empty}}

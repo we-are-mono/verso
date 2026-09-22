@@ -1662,10 +1662,41 @@ pub struct TableColumn {
     pub kind: String,
     /// Fix the column at a measure the listing decides rather than at whatever
     /// this page's data happens to need, so a column keeps its place when one
-    /// row's value is shorter and two boards' listings line up. A CSS length;
-    /// the columns that state none share what is left.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub width: String,
+    /// row's value is shorter and two boards' listings line up. The columns
+    /// left at [`ColumnWidth::Grow`] share what is left.
+    #[serde(skip_serializing_if = "ColumnWidth::is_grow")]
+    pub width: ColumnWidth,
+}
+
+/// ColumnWidth is a table column's fixed width, named by what the column holds
+/// — the shell owns the length, so every listing's address column is the same
+/// width. The set is closed: the shell refuses any other word.
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ColumnWidth {
+    /// No fixed width: the column shares the table's slack.
+    #[default]
+    Grow,
+    /// An order number, a grip, an icon.
+    Mark,
+    /// A counter or a flag: hits, packets, yes/no.
+    Count,
+    /// A short token: port, protocol, PID, size, a verdict, row acts.
+    Short,
+    /// A state or a chip: status, zone, version.
+    Word,
+    /// An address: IPv4 with its prefix, a MAC, address:port.
+    Address,
+    /// A name, or a short list of them: rule, zone, networks.
+    Name,
+    /// A long identity: a service, a package.
+    Long,
+}
+
+impl ColumnWidth {
+    fn is_grow(&self) -> bool {
+        *self == ColumnWidth::Grow
+    }
 }
 
 /// TableStream turns a listing live: its rows arrive after the render, newest

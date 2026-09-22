@@ -20,8 +20,9 @@
 //! page posts on their own, one switch at a time.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, Envelope, Form, RowDrawer, SettingsItem, SettingsPill,
-    SettingsToggle, Snapshot, TableAction, TableCell, TableColumn, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, RowDrawer, SettingsItem,
+    SettingsPill, SettingsToggle, Snapshot, TableAction, TableCell, TableColumn, TableRow, Tone,
+    Widget,
 };
 
 use crate::crossings::Crossings;
@@ -279,20 +280,20 @@ fn bar(blank: Option<RowDrawer>) -> Widget {
 
 fn columns() -> Vec<TableColumn> {
     [
-        ("Zone", "name", "12rem"),
-        ("Networks", "mono", "14rem"),
-        ("Reaches", "mono", ""),
-        ("Input", "pill", "5.5rem"),
-        ("Output", "pill", "5.5rem"),
-        ("Forward", "pill", "5.5rem"),
-        ("NAT", "text", "3.5rem"),
-        ("", "actions", ""),
+        ("Zone", "name", ColumnWidth::Name),
+        ("Networks", "mono", ColumnWidth::Name),
+        ("Reaches", "mono", ColumnWidth::Grow),
+        ("Input", "pill", ColumnWidth::Short),
+        ("Output", "pill", ColumnWidth::Short),
+        ("Forward", "pill", ColumnWidth::Short),
+        ("NAT", "text", ColumnWidth::Count),
+        ("", "actions", ColumnWidth::Grow),
     ]
     .into_iter()
     .map(|(label, kind, width)| TableColumn {
         label: label.into(),
         kind: kind.into(),
-        width: width.into(),
+        width,
     })
     .collect()
 }

@@ -23,6 +23,9 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    props (`variant`, `size`, `label`, `datatype`), never *presentational* ones (color,
    spacing, font). Authors express intent; Verso maps intent → Tailwind's palette → pixels.
    Example: `{"type":"badge","variant":"success","text":"up"}` — never a color.
+   A size is intent too: a table column's `width` names what the column holds
+   (`address`, `count`, `name`, …, a closed set) and the shell owns the length, so
+   every listing's address column is the same width; a CSS length fails the decode.
    Reader-mode visibility is part of this vocabulary: a `section` carries an
    optional `mode` (`"basic"` | `"advanced"`), a `field` an optional
    `advanced: true` — the author declares which reading a thing belongs to, and
