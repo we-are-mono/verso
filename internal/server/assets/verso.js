@@ -149,6 +149,18 @@ document.addEventListener("htmx:afterSwap", function (e) {
 });
 
 document.addEventListener("alpine:init", function () {
+  // reveal: a shared secret's field (a Wi-Fi key) shown on request. The CSP
+  // build binds properties, never expressions, so each state is a getter.
+  Alpine.data("reveal", function () {
+    return {
+      shown: false,
+      get masked() { return !this.shown; },
+      get inputType() { return this.shown ? "text" : "password"; },
+      get pressed() { return this.shown ? "true" : "false"; },
+      toggle: function () { this.shown = !this.shown; },
+    };
+  });
+
   // copy: copy the widget's text to the clipboard and briefly show "Copied!".
   // Prefers the async Clipboard API; falls back to a hidden-textarea execCommand
   // for non-secure origins (a router reached over plain http on the LAN).

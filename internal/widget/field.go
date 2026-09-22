@@ -74,6 +74,10 @@ type Field struct {
 	// "checks" field as one strip of togglable chips — days of the week, address
 	// families — instead of a grid of boxes. A set long enough to wrap belongs in
 	// the grid, which is why this is the caller's call and not the widget's.
+	//
+	// "locked" is a value fixed once written — a network's mode, a radio's
+	// band: the row keeps its label and key, Value is shown in a quiet box with
+	// a padlock and Help as the reason, and nothing posts.
 	Style string `json:"style,omitempty"`
 }
 
@@ -210,7 +214,7 @@ func (f *Field) Measure() string {
 		return "number"
 	}
 	switch f.Key {
-	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https":
+	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc":
 		return "number"
 	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime":
 		return "address"

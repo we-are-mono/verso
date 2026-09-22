@@ -9,8 +9,10 @@ import (
 	"io"
 )
 
-// When presents fields belonging to one value of another form control. Inactive
-// branches are disabled as well as hidden, so they neither validate nor submit.
+// When presents fields belonging to one value of another form control — or to
+// any of several, when Value lists them space-separated ("sae sae-mixed psk2").
+// Inactive branches are disabled as well as hidden, so they neither validate nor
+// submit.
 type When struct {
 	Name     string   `json:"name"`
 	Value    string   `json:"value"`

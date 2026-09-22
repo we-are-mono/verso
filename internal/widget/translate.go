@@ -87,6 +87,11 @@ func translateFields(w Widget, t func(string) string) {
 		// message (set by validateSchema, from the datatype package) simply misses
 		// the catalog and stays English.
 		n.Error = t(n.Error)
+		// A locked field's value is the fixed setting said plainly ("Access
+		// point"), not data someone typed, so it reads in the operator's language.
+		if n.Style == "locked" {
+			n.Value = t(n.Value)
+		}
 		for i := range n.Options {
 			n.Options[i].Label = t(n.Options[i].Label)
 		}

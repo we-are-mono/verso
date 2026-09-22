@@ -1080,6 +1080,13 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 - `unit`: what the number in the box is counted in — `"Mbit/s"`, `"seconds"`. It
   sits inside the field's trailing edge, so the value and what it means read as
   one thing and the label is left to say what the setting is.
+- `style: "reveal"` on a `password` field: a shared secret someone reads out — a
+  Wi-Fi key. The `value` is in the field, masked, with an eye beside it that shows
+  it. A password field without this style never reflects its value.
+- `style: "locked"`: a value fixed once written — a network's mode, a radio's
+  band. The row keeps its `label` and `key`; `value` is shown, said plainly
+  (`"Access point"`, translated like a label), in a quiet box with a padlock,
+  and `help` is the reason it cannot change. It posts nothing.
 - `style: "segmented"`: draws a `checks` field as one strip of togglable chips
   rather than a grid of boxes — for a set short enough to show whole (the days of
   the week), where which members are on is a shape rather than a list to read. A
@@ -1430,7 +1437,8 @@ Hold all six and your plugin renders natively and cannot take the shell down.
 
 `when` groups fields belonging to a select value:
 `{"type":"when","name":"proto","value":"static","active":true,"children":[...]}`.
-The shell hides and disables inactive branches and skips them during datatype
+`value` may list several values space-separated (`"sae sae-mixed psk2"`); the
+branch shows while the select holds any one of them. The shell hides and disables inactive branches and skips them during datatype
 validation; the plugin must still validate the selected protocol and its values.
 
 A list with `style:"rows"` renders ordered values with individual remove controls

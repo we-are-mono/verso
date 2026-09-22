@@ -1059,7 +1059,8 @@ window.versoValidate = function (datatype, value) {
     (scope || document).querySelectorAll("[data-verso-when]").forEach(function (branch) {
       var form = branch.closest("form");
       var control = form && form.elements.namedItem(branch.dataset.versoWhen);
-      var active = control && control.value === branch.dataset.versoWhenValue && (control.type !== "checkbox" || control.checked);
+      // The branch's value may name several: it shows while the control holds any one of them.
+      var active = control && branch.dataset.versoWhenValue.split(" ").indexOf(control.value) !== -1 && (control.type !== "checkbox" || control.checked);
       branch.hidden = !active;
       branch.disabled = !active;
     });

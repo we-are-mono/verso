@@ -20,10 +20,15 @@
 {{/* The option this row writes travels as data as well as as the chip beside the
      label: the live preview patches that one line the moment the value changes,
      rather than waiting out the round-trip to learn what a person just typed. */}}
-<div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{if .Kind}}{{.Kind}}{{else}}text{{end}}"{{if .Key}} data-verso-writes="{{.Key}}"{{end}}>
+<div class="{{template "verso-field-row-class"}}"{{if ne .Style "locked"}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{if .Kind}}{{.Kind}}{{else}}text{{end}}"{{if .Key}} data-verso-writes="{{.Key}}"{{end}}{{end}}>
   {{if or .Label .Key}}{{template "verso-field-label" .LabelView}}{{end}}
   <div data-verso-control class="{{template "verso-field-control-class"}}">
-  {{if and (eq .Kind "select") .Segmented}}
+  {{if eq .Style "locked"}}
+  {{/* A value fixed once written: the row keeps its place and its label, the
+       control is a quiet box with a padlock and the reason on it, and nothing
+       posts. An output is labelable, so the row's label still names it. */}}
+  <output id="{{.Name}}"{{if .Help}} title="{{.Help}}"{{end}} class="flex h-9 w-full cursor-help items-center gap-2 rounded-xs border border-rule bg-quiet text-body px-3 text-sm">{{.Value}}<span class="ml-auto flex text-faint">{{icon "lock" "size-3.5"}}</span></output>
+  {{else if and (eq .Kind "select") .Segmented}}
   {{/* A pick between three words reads better as all of them than as a box
        that hides two: the choice is priced before it is made. The one in force
        is filled in the body ink, as every selected segment in the app is — the
@@ -76,6 +81,17 @@
     {{end}}
   </div>
   {{end}}
+  {{else if and (eq .Kind "password") (eq .Style "reveal")}}
+  {{/* A shared secret — a Wi-Fi key someone reads out to a guest — sits in the
+       field masked, and the eye beside it shows it. Only this style reflects a
+       value; a sign-in password never does. */}}
+  <span x-data="reveal" class="flex w-full items-center gap-2">
+    <input id="{{.Name}}" name="{{.Name}}" type="password" :type="inputType" value="{{.Value}}" autocomplete="off" spellcheck="false"{{template "verso-field-aria" .}} class="min-w-0 flex-1 {{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
+    <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid size-9 shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-faint hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+      <span x-show="masked" class="flex">{{icon "eye" "size-4"}}</span>
+      <span x-show="shown" x-cloak class="flex">{{icon "eye-off" "size-4"}}</span>
+    </button>
+  </span>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
   <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
