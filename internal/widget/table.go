@@ -40,6 +40,10 @@ import (
 //	"status"   — a state as a bare dot + word (a link's up/down): the dot takes
 //	             the cell's variant colour, the word reads calm; no pill frame
 //	"link"     — a right-aligned action link to the cell's Href (e.g. "Details")
+//	"meter"    — a share of something: a 6px track filled to the cell's Fill
+//	             (0–100) with the figure (Text) beside it; Variant bands the
+//	             fill (warning marigold, danger crimson, else green), so the
+//	             listing owns its thresholds. No Text is the faint dash
 //	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
 //	             cell's variant uses the badge vocabulary, and an empty cell
 //	             renders a faint dash — pills stay meaningful because most
@@ -521,7 +525,8 @@ func (tr *TableRow) UnmarshalJSON(data []byte) error {
 // for pill, On/Name for toggle, Endpoints for endpoint).
 type TableCell struct {
 	Text         string          `json:"text,omitempty"`
-	Variant      string          `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral")
+	Variant      string          `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral"); meter cells: the fill's band
+	Fill         int             `json:"fill,omitempty"`          // meter cells: the share filled, 0–100; Text is the figure beside it
 	Dot          bool            `json:"dot,omitempty"`           // pill cells: leading status dot — the same cue the badge carries elsewhere
 	Icon         string          `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
 	Copy         bool            `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
@@ -787,6 +792,9 @@ type tableCellView struct {
 	// has none. SuffixSlot is set for every cell of such a column.
 	Figure, Suffix string
 	SuffixSlot     bool
+	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
+	// empty when the cell has no reading to draw.
+	Clip template.CSS
 	TableCell
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -1203,6 +1211,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				}
 				if kind == "pill" && cv.Text != "" {
 					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot, Icon: cv.Icon}
+				}
+				if kind == "meter" && cv.Text != "" && cv.Text != "—" {
+					fill := min(max(cv.Fill, 0), 100)
+					cv.Clip = template.CSS(MeterClip(fill)) //nolint:gosec // built from a clamped integer, never from input text
 				}
 				if suffixed[i] {
 					cv.SuffixSlot = true

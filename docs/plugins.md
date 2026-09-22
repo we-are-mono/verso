@@ -680,6 +680,12 @@ Column kinds, one treatment each (never mix them per row):
 - `"keyword"` — closed-vocabulary words (`tcp`, `udp`, `icmpv6`): sans, muted.
 - `"comment"` — optional free text such as a UCI `name`; muted, blank when absent.
 - `"num"` — right-aligned tabular figures (counters); muted.
+- `"meter"` — a share of something: a 6px bar filled to the cell's `fill`
+  (0–100) with `text` as the figure beside it (`"61 %"`). `variant` bands the
+  fill — `warning` marigold, `danger` crimson, anything else green — so the
+  listing sets its own thresholds. A cell with no `text` is the faint dash.
+- A `text` cell may carry a `chip`: the config value the word stands for
+  (`"WPA3"` beside `sae`).
 - `"toggle"` — an on/off checkbox; the cell carries `on` and an optional form `name`.
 - `"pill"` — an enum value as a status pill; the cell carries `text` plus a
   `variant` from the badge vocabulary (`success`/`warning`/`danger`/`info`/

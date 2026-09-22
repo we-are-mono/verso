@@ -488,6 +488,11 @@ fn listing() -> Widget {
                 ..TableColumn::default()
             },
             TableColumn {
+                label: "Airtime busy".into(),
+                kind: "meter".into(),
+                width: ColumnWidth::Name,
+            },
+            TableColumn {
                 kind: "toggle".into(),
                 ..TableColumn::default()
             },
@@ -554,6 +559,12 @@ fn listing() -> Widget {
                     TableCell {
                         text: "1284".into(),
                         key: "hits:lan".into(),
+                        ..TableCell::default()
+                    },
+                    TableCell {
+                        text: "61 %".into(),
+                        fill: 61,
+                        variant: "warning".into(),
                         ..TableCell::default()
                     },
                     TableCell {
@@ -648,6 +659,7 @@ fn listing() -> Widget {
                         text: "0".into(),
                         ..TableCell::default()
                     },
+                    TableCell::default(),
                     TableCell::default(),
                     TableCell::default(),
                     TableCell {

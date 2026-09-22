@@ -336,12 +336,24 @@
         <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] truncate align-middle text-meta group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "rate"}}
         <td class="w-32 min-w-32 max-w-32 border-b border-rule {{template "table.cellpad" .}} text-left align-middle whitespace-nowrap tabular-nums text-meta group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
+        {{else if eq .Kind "meter"}}
+        {{/* the meter widget at a row's scale: the 6px track filled to the
+             share, the figure hard beside it. A thing with no reading is the
+             faint dash — an empty track would say "idle", which is a fact. */}}
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle group-last:border-b-0">
+          {{if .Clip}}<span class="flex items-center gap-3 pr-6">
+            <span class="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span></span>
+            <span class="w-10 shrink-0 text-right font-mono text-base font-medium tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+          </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
+        </td>
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and
              reads in full ink; one that is nothing yet stays out of the way. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-middle tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
         {{else}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0">{{.Text}}</td>
+        {{/* a word, and when it stands for a config value, that value in the
+             chip beside it — "WPA3" and the `sae` it writes. */}}
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0">{{if .Chip}}<span class="flex items-center gap-2 whitespace-nowrap">{{.Text}}<span class="{{template "verso-chip-class"}}">{{.Chip}}</span></span>{{else}}{{.Text}}{{end}}</td>
         {{end}}
         {{end}}
         {{if .HasDetail}}

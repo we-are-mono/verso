@@ -37,6 +37,11 @@
       "kind": "num"
     },
     {
+      "label": "Airtime busy",
+      "kind": "meter",
+      "width": "name"
+    },
+    {
       "kind": "toggle"
     },
     {
@@ -100,6 +105,11 @@
         {
           "text": "1284",
           "key": "hits:lan"
+        },
+        {
+          "text": "61 %",
+          "variant": "warning",
+          "fill": 61
         },
         {
           "on": true,
@@ -185,6 +195,7 @@
         {
           "text": "0"
         },
+        {},
         {},
         {},
         {

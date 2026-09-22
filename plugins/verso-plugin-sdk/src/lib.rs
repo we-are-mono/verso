@@ -1930,6 +1930,10 @@ pub struct TableCell {
     pub text: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub variant: String,
+    /// A meter cell's share, 0–100; `text` is the figure beside the bar and
+    /// `variant` its band.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub fill: u32,
     #[serde(skip_serializing_if = "is_false")]
     pub dot: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
