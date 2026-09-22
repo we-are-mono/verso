@@ -169,6 +169,46 @@ func TestInputsFollowTheTypographyContract(t *testing.T) {
 	}
 }
 
+// TestSelectIsSetLikeItsOptions: a select is set like what it offers. When
+// every option shows its own value, the choices are the config's verbatim
+// strings (zones, interfaces, accept/drop) and it is mono; when any option is
+// a phrase written for people, the select is words and takes the sans.
+func TestSelectIsSetLikeItsOptions(t *testing.T) {
+	verbatim := render(t, newRenderer(t), &Field{Name: "src", Label: "From", Kind: "select",
+		Options: []Option{{Value: "wan", Label: "wan"}, {Value: "lan", Label: "lan"}}})
+	words := render(t, newRenderer(t), &Field{Name: "tool", Label: "Tool", Kind: "select",
+		Options: []Option{{Value: "ping", Label: "Ping"}, {Value: "nslookup", Label: "Look up a name"}}})
+	if !strings.Contains(verbatim, "font-mono text-base font-normal") {
+		t.Errorf("a select of verbatim values is mono:\n%s", verbatim)
+	}
+	if !strings.Contains(words, "font-sans text-sm font-normal") || strings.Contains(words, "font-mono text-base") {
+		t.Errorf("a select of phrases is words:\n%s", words)
+	}
+}
+
+// TestCountsAreWordsWithEvenFigures: a count is not a machine string, so it is
+// set in the sans like the label it prices; tabular figures keep its digits
+// the same width, so a count that changes does not shift what is beside it.
+// On the selected segment it reads at 90% white, which clears contrast on the
+// body ink.
+func TestCountsAreWordsWithEvenFigures(t *testing.T) {
+	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{
+		{Label: "All", Count: 7, Active: true}, {Label: "IPv4", Count: 4, Match: "ipv4"},
+	}})
+	if strings.Contains(got, "font-mono") {
+		t.Errorf("counts must not be mono:\n%s", got)
+	}
+	for _, want := range []string{"font-medium tabular-nums text-white/90", "font-medium tabular-nums text-meta"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("count missing %q:\n%s", want, got)
+		}
+	}
+	problems := render(t, newRenderer(t), &ActionBar{Style: "interfaces", Tabs: []ActionTab{{Label: "Needs a look", Count: 2, Match: "problem"}}})
+	if !strings.Contains(problems, `data-verso-problem-count class="text-sm tabular-nums"`) {
+		t.Errorf("the problem count must be a sans count:\n%s", problems)
+	}
+}
+
 // TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
 // it is named by the row's label and the word that joins the two.
 func TestPairSecondHalfIsNamed(t *testing.T) {

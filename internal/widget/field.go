@@ -220,15 +220,25 @@ func (f *Field) Measure() string {
 
 // Words reports whether what is typed into this field is words rather than a
 // machine string, and so is set in the sans at 14px rather than in mono: a
-// password, a description, and any free-text box whose value has no grammar
-// (no datatype, no machine measure, no unit) — a rule's name, a comment.
-// Everything with a grammar is an identifier and stays mono.
+// password, a description, any free-text box whose value has no grammar (no
+// datatype, no machine measure, no unit) such as a rule's name, and a select
+// whose options are phrases rather than the config's own values. Everything
+// with a grammar is an identifier and stays mono.
 func (f *Field) Words() bool {
 	switch f.Kind {
 	case "password", "textarea":
 		return true
 	case "", "text":
 		return f.Datatype == "" && f.Unit == "" && f.Pair == nil && f.Measure() == "full"
+	case "select":
+		// A select is set like what it offers: when every option shows its own
+		// value the choices are the config's verbatim strings (a zone, an
+		// interface, accept), and any phrase written for people makes it words.
+		for _, o := range f.Options {
+			if o.Label != o.Value {
+				return true
+			}
+		}
 	}
 	return false
 }

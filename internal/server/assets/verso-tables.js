@@ -596,7 +596,7 @@ document.addEventListener(
         tabs[j].classList.toggle("hover:text-ink", !on);
         var count = tabs[j].querySelector("span");
         if (count) {
-          count.classList.toggle("text-white/70", on);
+          count.classList.toggle("text-white/90", on);
           count.classList.toggle("text-meta", !on);
         }
       }

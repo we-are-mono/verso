@@ -7,9 +7,9 @@
       <input type="search" data-verso-listing-filter autocomplete="off" aria-label="{{t "Find a message or source"}}" placeholder="{{t "Find a message or source"}}" class="h-9 w-72 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
     </div>
     <div class="inline-flex gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
-      <button type="button" data-verso-tab="" data-active="true" aria-pressed="true" class="pointer-events-none flex h-7.5 items-center gap-2 rounded-xs bg-body px-3.5 font-semibold text-white">{{t "All"}}<span class="font-mono font-medium text-white/70">0</span></button>
-      <button type="button" data-verso-tab="warnings" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Warnings"}}<span class="font-mono font-medium text-meta">0</span></button>
-      <button type="button" data-verso-tab="errors" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Errors"}}<span class="font-mono font-medium text-meta">0</span></button>
+      <button type="button" data-verso-tab="" data-active="true" aria-pressed="true" class="pointer-events-none flex h-7.5 items-center gap-2 rounded-xs bg-body px-3.5 font-semibold text-white">{{t "All"}}<span class="font-medium tabular-nums text-white/90">0</span></button>
+      <button type="button" data-verso-tab="warnings" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Warnings"}}<span class="font-medium tabular-nums text-meta">0</span></button>
+      <button type="button" data-verso-tab="errors" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Errors"}}<span class="font-medium tabular-nums text-meta">0</span></button>
     </div>
     <div class="relative flex max-w-full items-center">
       <select aria-label="{{t "Source"}}" data-verso-listing-select="source" class="h-9 max-w-48 appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 font-mono text-base text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"><option value="">{{t "Every source"}}</option></select>

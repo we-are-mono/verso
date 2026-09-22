@@ -19,7 +19,7 @@
   </div>
   {{end}}
   {{if eq .Style "interfaces"}}
-  {{range .Tabs}}<button type="button" data-verso-problem-filter{{if eq .Count 0}} hidden{{end}} data-verso-tab="{{.Match}}" aria-pressed="false" class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-2.5 text-sm text-body hover:border-faint aria-pressed:border-crimson-line aria-pressed:bg-crimson-soft aria-pressed:text-crimson-deep"><span class="size-1.5 rounded-[1px] bg-crimson" aria-hidden="true"></span>{{.Label}}<span data-verso-problem-count class="font-mono text-sm">{{.Count}}</span></button>{{end}}
+  {{range .Tabs}}<button type="button" data-verso-problem-filter{{if eq .Count 0}} hidden{{end}} data-verso-tab="{{.Match}}" aria-pressed="false" class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-2.5 text-sm text-body hover:border-faint aria-pressed:border-crimson-line aria-pressed:bg-crimson-soft aria-pressed:text-crimson-deep"><span class="size-1.5 rounded-[1px] bg-crimson" aria-hidden="true"></span>{{.Label}}<span data-verso-problem-count class="text-sm tabular-nums">{{.Count}}</span></button>{{end}}
   <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-meta" aria-label="{{t "Legend"}}">
     <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-[1px] border-[1.5px] border-inert"></span>{{t "physical port"}}</span>
     <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-full border-[1.5px] border-inert"></span>{{t "defined in software"}}</span>
@@ -29,13 +29,14 @@
   {{/* One segmented control: a quiet tray with a 2px inset, each segment 30px
        tall so the tray is the input height. The segment in force is filled in
        the body ink with white words and takes no pointer; the rest are plain
-       words that darken under the pointer. The count is mono at the label's
-       size, a step quieter than the word it prices. */}}
+       words that darken under the pointer. The count is set like the word it
+       prices, a step quieter, with tabular figures so a changing count never
+       shifts the tray. */}}
   <div class="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Tabs}}
     <button type="button" data-verso-tab="{{.Match}}"{{if .Active}} data-active="true" aria-pressed="true"{{else}} aria-pressed="false"{{end}}
       class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">
-      {{.Label}}<span class="font-mono text-sm font-medium {{if .Active}}text-white/70{{else}}text-meta{{end}}">{{.Count}}</span>
+      {{.Label}}<span class="text-sm font-medium tabular-nums {{if .Active}}text-white/90{{else}}text-meta{{end}}">{{.Count}}</span>
     </button>
     {{end}}
   </div>

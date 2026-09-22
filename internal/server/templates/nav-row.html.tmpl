@@ -15,7 +15,7 @@
     {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
     <span class="min-w-0 truncate">{{.Label}}</span>
     {{if .Dot}}<span class="size-[5px] shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
-    {{if .Detail}}<span class="ml-auto shrink-0 font-mono text-sm font-medium text-meta">{{.Detail}}</span>{{end}}
+    {{if .Detail}}<span class="ml-auto shrink-0 text-sm font-medium tabular-nums text-meta">{{.Detail}}</span>{{end}}
     {{if and .Active .Children}}<span class="ml-auto flex shrink-0 text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
   </a>
   {{if and .Active .Children}}

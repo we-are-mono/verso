@@ -42,7 +42,7 @@
   {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
        the native arrow hugs the border and can't follow the theme. */}}
   <div class="relative">
-    <select id="{{.Name}}" name="{{.Name}}"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
+    <select id="{{.Name}}" name="{{.Name}}"{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
