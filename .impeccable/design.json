@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-23T00:00:00Z",
+  "title": "Design System: Verso",
+  "extensions": {
+    "colorMeta": {
+      "denim": { "role": "primary", "displayName": "Denim", "canonical": "oklch(51.4% 0.116 255.2)", "tonalRamp": ["#002148", "#123a6b", "#275690", "#4473af", "#6d92c2", "#a1bad9", "#d0dcec", "#ecf2fb"] },
+      "denim-deep": { "role": "primary", "displayName": "Deep Denim" },
+      "denim-line": { "role": "primary", "displayName": "Denim Hairline" },
+      "denim-soft": { "role": "primary", "displayName": "Denim Wash" },
+      "green": { "role": "secondary", "displayName": "Leaf Green", "canonical": "oklch(61.1% 0.128 163.7)", "tonalRamp": ["#002c17", "#00492d", "#006745", "#00875e", "#3ca57c", "#8cc7ab", "#c6e3d4", "#e9f5ef"] },
+      "green-deep": { "role": "secondary", "displayName": "Deep Green" },
+      "green-soft": { "role": "secondary", "displayName": "Green Wash" },
+      "marigold": { "role": "secondary", "displayName": "Marigold", "canonical": "oklch(77.4% 0.159 74.6)", "tonalRamp": ["#341b00", "#543200", "#764b00", "#9a6500", "#bf8101", "#f1a728", "#fad4a2", "#fdf0de"] },
+      "marigold-deep": { "role": "secondary", "displayName": "Deep Marigold" },
+      "marigold-soft": { "role": "secondary", "displayName": "Marigold Wash" },
+      "crimson": { "role": "secondary", "displayName": "Crimson", "canonical": "oklch(58.5% 0.192 25.4)", "tonalRamp": ["#4d0000", "#73000c", "#9c1b20", "#c73334", "#e1605a", "#f29e96", "#fbcfca", "#ffecea"] },
+      "crimson-deep": { "role": "secondary", "displayName": "Deep Crimson" },
+      "crimson-soft": { "role": "secondary", "displayName": "Crimson Wash" },
+      "amethyst": { "role": "tertiary", "displayName": "Amethyst", "canonical": "oklch(55.3% 0.167 306.0)", "tonalRamp": ["#2f094a", "#4c216e", "#6a3995", "#8a51bd", "#a379ce", "#c4aae2", "#e1d4f1", "#f5effd"] },
+      "ground": { "role": "neutral", "displayName": "Paper", "tonalRamp": ["#1b1917", "#5c574f", "#6f6a60", "#8b857a", "#a09a8e", "#d2ccc2", "#ece8e0", "#faf9f7"] },
+      "canvas": { "role": "neutral", "displayName": "White" },
+      "quiet": { "role": "neutral", "displayName": "Quiet Sand" },
+      "mid": { "role": "neutral", "displayName": "Mid Sand" },
+      "rule": { "role": "neutral", "displayName": "Hairline" },
+      "rule-strong": { "role": "neutral", "displayName": "Strong Hairline" },
+      "inert": { "role": "neutral", "displayName": "Inert" },
+      "sand-5": { "role": "neutral", "displayName": "Parked" },
+      "faint": { "role": "neutral", "displayName": "Faint (never text)" },
+      "glyph": { "role": "neutral", "displayName": "Glyph (never text)" },
+      "meta": { "role": "neutral", "displayName": "Meta" },
+      "body": { "role": "neutral", "displayName": "Body" },
+      "ink": { "role": "neutral", "displayName": "Ink" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The home page's verdict heading only." },
+      "headline": { "displayName": "Headline", "purpose": "Every page's h1, on a heading line always 36px tall." },
+      "title": { "displayName": "Title", "purpose": "Band and drawer titles, in Body ink on sand." },
+      "body": { "displayName": "Body", "purpose": "All prose, labels, buttons and cells." },
+      "label": { "displayName": "Label", "purpose": "Kickers and column heads, uppercase in Meta." },
+      "value": { "displayName": "Value", "purpose": "Machine strings in rows: addresses, interface names, MACs, versions." },
+      "figure": { "displayName": "Figure", "purpose": "Big numbers; the one mono role with negative tracking." }
+    },
+    "shadows": [
+      { "name": "field-inset", "value": "inset 0 1px 2px rgba(27,25,23,.06)", "purpose": "Every input and select: a slot cut into the paper." },
+      { "name": "tooltip", "value": "0 4px 12px rgba(27,25,23,.14)", "purpose": "Tooltips and hover tips." },
+      { "name": "drawer", "value": "-8px 0 32px rgba(27,25,23,.12)", "purpose": "The side panel, cast leftward over the page." },
+      { "name": "dialog", "value": "0 8px 32px rgba(27,25,23,.16)", "purpose": "Confirmations and alerts." }
+    ],
+    "motion": [
+      { "name": "drawer-in", "value": "300ms ease-out", "purpose": "A drawer sliding in from the right." },
+      { "name": "drawer-out", "value": "200ms ease-in", "purpose": "A drawer sliding away." },
+      { "name": "nav-slide", "value": "150ms", "purpose": "A rail row sliding 4px right on hover." },
+      { "name": "press", "value": "translateY(1px)", "purpose": "Every button pressed; off under reduced motion." },
+      { "name": "waiting", "value": "4s, 12 steps", "purpose": "The four-square waiting mark's fold choreography." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px", "purpose": "The rail becomes a static column; below it, an off-canvas drawer." },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The page's one forward act, on the heading line, always with the plus glyph.",
+      "html": "<button class=\"ds-btn-primary\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Add rule</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border: 1px solid #3568a8; border-radius: 2px; background: #3568a8; color: #ffffff; font: 600 14px/1 'Hanken Grotesk', system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background-color .15s, border-color .15s; } .ds-btn-primary:hover { background: #285184; border-color: #285184; } .ds-btn-primary:focus-visible { outline: 2px solid #285184; outline-offset: 2px; } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every quiet act: words only, a hairline that warms under the pointer.",
+      "html": "<button class=\"ds-btn-secondary\">Download</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border: 1px solid #d2ccc2; border-radius: 2px; background: transparent; color: #1b1917; font: 600 14px/1 'Hanken Grotesk', system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background-color .15s, border-color .15s; } .ds-btn-secondary:hover { border-color: #a09a8e; background: #f5f2ec; } .ds-btn-secondary:focus-visible { outline: 2px solid #3568a8; outline-offset: 2px; } .ds-btn-secondary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The app's one field treatment: white slot, inset shadow, only the border changes.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input type=\"search\" placeholder=\"Find a rule\" aria-label=\"Find a rule\"></label>",
+      "css": ".ds-search { position: relative; display: inline-flex; align-items: center; } .ds-search svg { position: absolute; left: 10px; color: #a09a8e; pointer-events: none; } .ds-search input { width: 320px; height: 36px; padding: 0 12px 0 34px; border: 1px solid #d2ccc2; border-radius: 2px; background: #ffffff; box-shadow: inset 0 1px 2px rgba(27,25,23,.06); color: #1b1917; font: 400 14px 'Hanken Grotesk', system-ui, sans-serif; transition: border-color .15s; } .ds-search input::placeholder { color: #6f6a60; } .ds-search input:hover { border-color: #a09a8e; } .ds-search input:focus { border-color: #3568a8; outline: none; }"
+    },
+    {
+      "name": "Counted Dropdown",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Every cut on a control surface: one select, each option priced by what it leaves. Never a segmented switch.",
+      "html": "<span class=\"ds-select\"><select aria-label=\"Show\"><option>All families · 22</option><option>IPv4 · 14</option><option>IPv6 · 19</option></select><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg></span>",
+      "css": ".ds-select { position: relative; display: inline-flex; align-items: center; min-width: 176px; } .ds-select select { width: 100%; height: 36px; padding: 0 36px 0 12px; appearance: none; border: 1px solid #d2ccc2; border-radius: 2px; background: #ffffff; box-shadow: inset 0 1px 2px rgba(27,25,23,.06); color: #1b1917; font: 400 14px 'Hanken Grotesk', system-ui, sans-serif; cursor: pointer; } .ds-select select:hover { border-color: #a09a8e; } .ds-select select:focus { border-color: #3568a8; outline: none; } .ds-select svg { position: absolute; right: 12px; color: #6f6a60; pointer-events: none; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A config value or key, verbatim in mono; the accent variant marks what was set by hand.",
+      "html": "<span class=\"ds-chip\">pppoe</span> <span class=\"ds-chip ds-chip-accent\">reserved</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border: 1px solid #e4e0d8; border-radius: 2px; background: #f5f2ec; color: #6f6a60; font: 400 14px/16px 'Inconsolata', Menlo, monospace; white-space: nowrap; } .ds-chip-accent { border-color: #cbd8e6; background: #e8eef5; color: #285184; }"
+    },
+    {
+      "name": "Control Band",
+      "kind": "custom",
+      "refersTo": "control-band",
+      "description": "The seam between a page's heading and its content: Quiet Sand, full page width, holding only what narrows the content.",
+      "html": "<div class=\"ds-band\"><span class=\"ds-band-field\">Find a rule</span><span class=\"ds-band-field ds-band-select\">All families · 22</span></div><div class=\"ds-band-head\"><span>Name</span><span>From</span><span>To</span></div>",
+      "css": ".ds-band { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px 40px; border-top: 1px solid #e4e0d8; border-bottom: 1px solid #e4e0d8; background: #f5f2ec; } .ds-band-field { display: inline-flex; align-items: center; width: 224px; height: 36px; padding: 0 12px; border: 1px solid #d2ccc2; border-radius: 2px; background: #ffffff; box-shadow: inset 0 1px 2px rgba(27,25,23,.06); color: #6f6a60; font: 400 14px 'Hanken Grotesk', system-ui, sans-serif; } .ds-band-select { width: 176px; color: #1b1917; } .ds-band-head { display: flex; gap: 96px; padding: 10px 54px; border-bottom: 1px solid #d2ccc2; background: #faf9f7; color: #6f6a60; font: 500 12px/24px 'Hanken Grotesk', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Table Row with State Mark",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "A 44px line item: the packet square carries state, mono carries the machine string, one hairline below.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-mark\"></span><span class=\"ds-row-name\">Allow-Ping</span><span class=\"ds-row-value\">wan</span><span class=\"ds-row-count\">326</span></div>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-bottom: 1px solid #e4e0d8; background: #faf9f7; font: 400 14px/24px 'Hanken Grotesk', system-ui, sans-serif; color: #1b1917; } .ds-row:hover { background: #f5f2ec; } .ds-mark { width: 6px; height: 6px; border-radius: 1px; background: #0e9b6e; flex: none; } .ds-row-name { font-weight: 600; min-width: 160px; } .ds-row-value { font: 500 16px/24px 'Inconsolata', Menlo, monospace; min-width: 96px; } .ds-row-count { margin-left: auto; font-variant-numeric: tabular-nums; color: #5c574f; }"
+    },
+    {
+      "name": "Rail Row",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "A top-level destination: icon identity, 4px hover slide, and the current row as the rail's only surface.",
+      "html": "<nav class=\"ds-rail\"><a href=\"#\" class=\"ds-rail-row\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"/><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg>Overview</a><a href=\"#\" class=\"ds-rail-row\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\"/><path d=\"M12 18h.01\"/></svg>Devices</a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 288px; padding: 28px 0; } .ds-rail-row { display: flex; align-items: center; gap: 12px; padding: 8px 24px; border-left: 2px solid transparent; color: #5c574f; font: 400 14px/20px 'Hanken Grotesk', system-ui, sans-serif; text-decoration: none; transition: padding .15s, color .15s, background-color .15s; } .ds-rail-row svg { color: #8b857a; } .ds-rail-row:hover { padding-left: 28px; background: rgba(236,232,224,.5); color: #1b1917; } .ds-rail-row[aria-current=page] { border-left-color: #1b1917; background: #f5f2ec; color: #1b1917; font-weight: 600; } .ds-rail-row[aria-current=page] svg { color: #1b1917; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Operator's Notebook",
+    "overview": "Verso is kept the way a careful operator keeps a notebook for the router they run: warm sand paper, hairline rules, entries written in a fixed hand. The page is the ground, the router writes onto it, and nothing on the page decorates. Machine facts (addresses, interface names, versions) are set in mono like entries copied down verbatim; the words around them are plain sans. Charts sit on a 20px notebook grid. State is carried by one small square, the packet, the unit a router handles, so the same mark means \"up\", \"worth a look\" or \"down\" everywhere it appears.\n\nThe mood is calm, exact, alive. Calm, because the resting state is silent and only failures earn words. Exact, because every value on screen maps one-to-one onto the config it came from and every measure repeats: a 40px page rhythm, 44px rows, 36px controls. Alive, because calm is not grey. Live values glide, the waiting mark folds and unfolds, big numbers read at a glance, and colour appears the moment it means something. A page that reads as a dry grey box has missed the brief as badly as one that shouts.\n\nThe system is flat and dense enough for a power user, never cramped. Surfaces separate by tone and hairline, not by shadow. One colour, denim, means \"act on this\", and it is spent sparingly: one primary act per page.",
+    "keyCharacteristics": [
+      "Warm sand neutrals, eleven steps, each with a fixed job.",
+      "One action colour (denim); four status hues used as marks, never as decoration.",
+      "Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.",
+      "Flat surfaces, hairline borders, 2px corners, 1px for marks.",
+      "A 40px page rhythm; 44px rows, 52px bands, 36px controls.",
+      "A full-width sand control band is the seam between a page's heading and its content."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Denim means act. One denim button per page, on the heading line; a page with nothing to make has no denim at all.", "section": "colors" },
+      { "name": "The Mark Rule", "body": "A hue at full chroma is a mark — a square, a border, a line, a fill behind white. It never sets type. Words in a hue use its deep step, on its own wash.", "section": "colors" },
+      { "name": "The 4.5 Floor", "body": "Nothing below 4.5:1 against Paper carries words. That rules out Faint and Glyph for text, and every bare hue.", "section": "colors" },
+      { "name": "The Verbatim Rule", "body": "Mono is for strings the machine wrote and a user might copy: identifiers, addresses, versions, config keys. Never for a count, a duration or a sentence. Counts are sans with tabular figures.", "section": "typography" },
+      { "name": "The Even Pitch Rule", "body": "Mono never takes negative tracking, except the 700-weight Figure, whose wide glyphs can carry it.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Nothing on the page casts a shadow. Only a layer that floats above the page (drawer, dialog, tooltip) does, and a pressed button loses even its press shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep one denim primary per page, on the heading line, with the plus glyph.",
+      "Do put everything that narrows a list or log on the full-width Quiet Sand control band, and everything that acts on the page on the heading line.",
+      "Do use a counted <select> for every cut (\"IPv6 · 19\"), naming the whole set in its first option (\"All devices\", not \"All\").",
+      "Do space blocks 40px apart and give a section hairline 40px on both sides; step 20px inside a group.",
+      "Do build rows from a 24px line plus padding (44px), bands at 52px, controls at 36px (28px inside a row).",
+      "Do set machine strings in Inconsolata 16px and everything else in Hanken Grotesk 14px.",
+      "Do carry state with the 6px packet square in its hue; hollow for absent.",
+      "Do keep the resting state silent: say only what is wrong, in plain words."
+    ],
+    "donts": [
+      "Don't use a segmented switch or toggle track on a control surface; cuts are dropdowns, switches are checkboxes.",
+      "Don't set type in a full-chroma hue, or in Faint or Glyph.",
+      "Don't cast shadows on anything that sits on the page; only floating layers get one.",
+      "Don't use more than 2px corners on a surface, or circles for state.",
+      "Don't add icons to buttons for emphasis; the primary's plus and the direction glyphs (download, upload, open-out) are the only ones.",
+      "Don't use a circular spinner; waiting is the four-square mark.",
+      "Don't fix a row or band height with a height utility; heights come from line plus padding.",
+      "Don't centre the page or let a band's controls leave the page's column.",
+      "Don't fill a table with stripes or vertical rules, or make a whole row clickable."
+    ]
+  }
+}
