@@ -42,9 +42,12 @@
 {{/* Strings the shell's client script writes into the page (verso.js T),
      localized at render — client JS has no translator (ADR-012). */}}
 <script type="application/json" id="verso-i18n">{{.JSStrings}}</script>
-{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP. The
-     takeover's polling loop and the copy button both live here. */}}
+{{/* Shell client-side JS (ADR-004), served first-party under the strict CSP:
+     the translator and the copy button (verso.js), the takeover's polling loop
+     (verso-takeover.js), and the waiting mark its surfaces draw (verso-page.js). */}}
 <script src="/assets/verso.js" defer></script>
+<script src="/assets/verso-takeover.js" defer></script>
+<script src="/assets/verso-page.js" defer></script>
 <script src="/assets/htmx.min.js" defer></script>
 <script src="/assets/alpine.csp.min.js" defer></script>
 </body>

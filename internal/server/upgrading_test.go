@@ -61,6 +61,10 @@ func TestUpgradingRunningPaintsPreparing(t *testing.T) {
 		`data-verso-upgrading-surface="done"`,
 		"Preparing your new firmware",
 		"You&#39;re on Mono OpenWrt 25.12.5 r33051", // the done surface, pre-rendered, hidden
+		// The script that polls the job and swaps these surfaces, and the one
+		// that draws the waiting mark on them, are on the page that holds them.
+		`<script src="/assets/verso-takeover.js" defer></script>`,
+		`<script src="/assets/verso-page.js" defer></script>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the running takeover is missing %q:\n%s", want, body)
