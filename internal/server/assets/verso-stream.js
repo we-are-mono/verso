@@ -42,7 +42,9 @@
     var fill = Math.min(100, Math.max(0, reading.fill));
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {
-      bar.style.width = fill + "%";
+      // The same clip the server draws (widget.MeterClip): the bar spans the
+      // track and the clip shows the reading.
+      bar.style.clipPath = "inset(0 " + (100 - fill) + "% 0 0 round 9999px)";
       // A role-accented bar keeps its fixed colour (a dashboard hue, not a health
       // band); only a band-coloured bar recolours with its reading.
       if (!reading.role) {
@@ -207,7 +209,34 @@
       if (data && data[key]) data[key].forEach(apply);
     });
   }
-  var es = new EventSource("/overview/events");
+  // The stream is open only while the page is on screen. Every connection costs
+  // the router its own sampling each second (system info and WAN status over
+  // ubus, the sensors), and a tab left in the background would pay that for
+  // nobody; hidden, it lets go, and shown again it reconnects, where the first
+  // frame is a full snapshot, so the page is current the moment it is seen.
+  var es = null;
+  var live = document.querySelector("[data-overview-live]");
+  var pulse = null;
+  if (live && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    pulse = live.animate([{opacity:1},{opacity:0.28},{opacity:1}], {duration:2600,iterations:Infinity});
+  }
+  function connect() {
+    if (es) return;
+    es = new EventSource("/overview/events");
+    wire(es);
+  }
+  function disconnect() {
+    if (!es) return;
+    es.close();
+    es = null;
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) disconnect();
+    else connect();
+  });
+  if (!document.hidden) connect();
+
+  function wire(es) {
   listen(es, "meters", "meters", applyMeter);
   es.addEventListener("clock", function (e) {
     var d;
@@ -240,10 +269,7 @@
       if (caption) caption.parentElement.title = [tile.caption,tile.identity].filter(Boolean).join(" · ");
     });
   });
-  var live = document.querySelector("[data-overview-live]");
   if (live) {
-    var pulse;
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) pulse = live.animate([{opacity:1},{opacity:0.28},{opacity:1}], {duration:2600,iterations:Infinity});
     es.addEventListener("open", function () { live.classList.remove("bg-faint"); live.classList.add("bg-green"); if (pulse) pulse.play(); });
     es.addEventListener("error", function () { live.classList.remove("bg-green"); live.classList.add("bg-faint"); if (pulse) pulse.cancel(); });
   }
@@ -284,6 +310,7 @@
       dot.className = "mr-2.5 size-1.5 shrink-0 rounded-[1px] " + TONE_DOT(d.tempLevel);
     }
   });
+  }
 })();
 
 // The overview's Internet-traffic graph, live: it seeds from the real WAN minute
@@ -380,43 +407,89 @@
     }
     return s;
   }
+  // The live dots ride the curve's right edge. They move by transform against
+  // the plot's height, measured once and again only when the chart resizes, so
+  // a frame of the glide moves them without laying the page out; top, which the
+  // server's first paint uses, is pinned to the plot's top edge from here on.
+  var plotH = 0;
+  function measure() {
+    var parent = dots[0] && dots[0].offsetParent;
+    plotH = parent ? parent.clientHeight : 0;
+  }
+  measure();
+  if (window.ResizeObserver && dots[0] && dots[0].offsetParent) {
+    new ResizeObserver(function () { measure(); }).observe(dots[0].offsetParent);
+  }
+  function placeDot(dot, v) {
+    dot.style.top = "0";
+    dot.style.transform = "translate(50%, -50%) translateY(" + ((y(v) / H) * plotH).toFixed(1) + "px)";
+  }
   function draw() {
     updateScale();
     series.forEach(function (vals, idx) {
       var p = points(vals), head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
-      if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].setAttribute("transform", "translate(0 0)"); }
-      if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].setAttribute("transform", "translate(0 0)"); }
-      if (dots[idx]) dots[idx].style.top = ((y(vals[N - 1]) / H) * 100).toFixed(1) + "%";
+      if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].style.transform = "none"; }
+      if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].style.transform = "none"; }
+      if (dots[idx]) placeDot(dots[idx], vals[N - 1]);
     });
   }
 
+  // The notebook grid travels with the curve: the section's 20px grid is a
+  // background, and each frame shifts it by exactly the distance the curve has
+  // slid, so the data and the paper under it move as one. The chart's rendered
+  // width is cached (and refreshed on resize) so a frame never reads layout.
+  var gridEl = host.closest("section");
+  var GRID = 20;
+  var gridBase = 0;
+  var svgW = svg.getBoundingClientRect().width;
+  if (window.ResizeObserver) new ResizeObserver(function () { svgW = svg.getBoundingClientRect().width; }).observe(svg);
+  function stepPx() { return (svgW / W) * step; }
+  function moveGrid(progress) {
+    if (!gridEl) return;
+    var off = (gridBase + progress * stepPx()) % GRID;
+    gridEl.style.backgroundPositionX = (-1 - off).toFixed(2) + "px";
+  }
+
   var lastCommit = null;
-  // A fresh WAN sample: commit the newest down/up, drop the oldest, redraw.
+  var gliding = false;
+  // A fresh WAN sample: commit the newest down/up, drop the oldest, redraw, and
+  // start the glide toward it if one is not already running.
   window.__versoWanSample = function (nd, nu) {
     if (typeof nd !== "number" || typeof nu !== "number") return;
+    // The curve drops its oldest point and snaps back to zero; the grid keeps
+    // the step it already travelled, so the two stay in register.
+    if (lastCommit !== null) gridBase = (gridBase + stepPx()) % GRID;
     down.push(nd); down.shift();
     up.push(nu); up.shift();
     draw();
     if (downEl) downEl.textContent = (Math.round(nd * 10) / 10).toFixed(1);
     if (upEl) upEl.textContent = (Math.round(nu * 10) / 10).toFixed(1);
     lastCommit = performance.now();
+    if (!reduce && !gliding) {
+      gliding = true;
+      requestAnimationFrame(frame);
+    }
   };
 
   draw();
   if (reduce) return; // discrete live updates only; no glide
+  // One glide per sample: the curves slide one step left over the sample
+  // interval, and once they have arrived the loop stops until the next sample
+  // restarts it. A stream that has stopped (the tab hidden, the router gone)
+  // leaves nothing running.
   function frame(ts) {
-    if (lastCommit !== null) {
-      var progress = Math.min(1, (ts - lastCommit) / INTERVAL);
-      var tf = "translate(" + (-progress * step).toFixed(2) + " 0)";
-      lines.forEach(function (l) { if (l) l.setAttribute("transform", tf); });
-      areas.forEach(function (a) { if (a) a.setAttribute("transform", tf); });
-      series.forEach(function (vals, idx) {
-        if (!dots[idx]) return;
-        var v = vals[N - 1] * (1 - progress) + vals[N] * progress;
-        dots[idx].style.top = ((y(v) / H) * 100).toFixed(1) + "%";
-      });
-    }
-    requestAnimationFrame(frame);
+    var progress = Math.min(1, (ts - lastCommit) / INTERVAL);
+    // A CSS transform, not the SVG attribute: the attribute re-lays the chart
+    // out on every frame, the style only repaints it. In the SVG's own user
+    // units, which is what px means inside a viewBox.
+    var tf = "translateX(" + (-progress * step).toFixed(2) + "px)";
+    lines.forEach(function (l) { if (l) l.style.transform = tf; });
+    areas.forEach(function (a) { if (a) a.style.transform = tf; });
+    moveGrid(progress);
+    series.forEach(function (vals, idx) {
+      if (dots[idx]) placeDot(dots[idx], vals[N - 1] * (1 - progress) + vals[N] * progress);
+    });
+    if (progress < 1) requestAnimationFrame(frame);
+    else gliding = false;
   }
-  requestAnimationFrame(frame);
 })();

@@ -424,17 +424,21 @@ html.verso-fonts-loading body {
     color: var(--color-green-deep);
     position: relative;
   }
+  /* The beacon's pulse is a ring that grows out from its edge and fades:
+     scale and opacity only, which the compositor runs without repainting the
+     page each frame, where a growing box-shadow repainted it sixty times a
+     second for as long as the page stayed open. */
   .verso-beacon::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 55%, transparent);
+    border: 0.125rem solid color-mix(in srgb, var(--color-green) 45%, transparent);
     animation: verso-pulse 2.6s ease-out infinite;
   }
   @keyframes verso-pulse {
-    0%      { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 45%, transparent); }
-    70%,100%{ box-shadow: 0 0 0 0.875rem transparent; }
+    0%       { transform: scale(1); opacity: 1; }
+    70%,100% { transform: scale(1.58); opacity: 0; }
   }
   /* Off state: grey, calm, no pulse; headline swaps to the off copy. */
   .verso-toggle-off { display: none; }
@@ -445,7 +449,7 @@ html.verso-fonts-loading body {
     background-color: var(--color-quiet);
     color: var(--color-glyph);
   }
-  .verso-toggle:not(:has(input:checked)) .verso-beacon::after { animation: none; box-shadow: none; }
+  .verso-toggle:not(:has(input:checked)) .verso-beacon::after { animation: none; opacity: 0; }
   @media (prefers-reduced-motion: reduce) {
     .verso-beacon::after { animation: none; }
   }
@@ -570,17 +574,18 @@ html.verso-fonts-loading body {
     --verso-empty-accent-500: var(--color-green);
     --verso-empty-accent-600: var(--color-green-deep);
   }
+  /* The same ring as the beacon's, at the empty state's scale. */
   .verso-empty-icon::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--verso-empty-accent-500) 40%, transparent);
+    border: 0.125rem solid color-mix(in srgb, var(--verso-empty-accent-500) 35%, transparent);
     animation: verso-pulse-lg 3s ease-out infinite;
   }
   @keyframes verso-pulse-lg {
-    0%       { box-shadow: 0 0 0 0 color-mix(in srgb, var(--verso-empty-accent-500) 35%, transparent); }
-    70%,100% { box-shadow: 0 0 0 1.25rem transparent; }
+    0%       { transform: scale(1); opacity: 1; }
+    70%,100% { transform: scale(1.5); opacity: 0; }
   }
 
   /* A live status dot (a green badge dot) breathes an expanding ring, so "connected"
@@ -848,10 +853,12 @@ html.verso-fonts-loading body {
   .verso-flash ~ .verso-page-body .verso-filter-dock { margin-top: 0; }
 }
 
-/* Live meters glide: a fresh reading lands as a width change (verso.js
-   streams them in) and the track eases there instead of snapping. */
+/* Live meters glide: the bar spans its track and a fresh reading lands as a
+   change of the clip that shows it (verso-stream.js), which the bar eases to
+   instead of snapping. A clip repaints the bar alone; a width change would lay
+   the page out again on every frame of the glide. */
 @layer components {
-  .verso-meter-bar { transition: width 600ms ease; }
+  .verso-meter-bar { transition: clip-path 600ms ease; }
   @media (prefers-reduced-motion: reduce) {
     .verso-meter-bar { transition: none; }
   }

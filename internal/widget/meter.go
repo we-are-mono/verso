@@ -5,6 +5,7 @@ package widget
 
 import (
 	"fmt"
+	"html/template"
 	"io"
 )
 
@@ -74,7 +75,11 @@ type meterView struct {
 	Icon     string
 	Role     string // decorative accent for the track + icon; "" colours by band
 	Band     string // the tone vocabulary: "success" | "warning" | "danger" | "info"
-	Width    string // width of the track's fill, e.g. "72%"
+	// Clip shows the fill: the bar spans the whole track and this clips it to
+	// the reading, rounded at its end, e.g. "inset(0 28% 0 0 round 9999px)".
+	// A live reading changes the clip rather than the bar's width, so the
+	// glide repaints the bar and never lays the page out again.
+	Clip     template.CSS
 	Compact  bool
 	WarnMark string // tick position on the compact track, e.g. "89%"; "" hides it
 	CritMark string
@@ -98,6 +103,12 @@ func MeterBand(fill int, variant string) string {
 	return "success"
 }
 
+// MeterClip is the clip that shows a fill of pct percent on a full-width bar.
+// verso-stream.js writes the same shape when a live reading lands.
+func MeterClip(pct int) string {
+	return fmt.Sprintf("inset(0 %d%% 0 0 round 9999px)", 100-pct)
+}
+
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	fill := m.Fill
 	if fill < 0 {
@@ -118,7 +129,7 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Overview: m.Overview,
 		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
-		Width:   fmt.Sprintf("%d%%", fill),
+		Clip:    template.CSS(MeterClip(fill)), //nolint:gosec // built here from a clamped integer, never from input
 		Compact: m.Compact, WarnMark: mark(m.WarnMark), CritMark: mark(m.CritMark),
 		Tone: m.Tone, NoTrack: m.NoTrack,
 	})

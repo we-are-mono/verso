@@ -11,7 +11,7 @@
 <div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="flex min-w-0 flex-col gap-3">
   <div class="flex items-center justify-between gap-2"><span class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span><span aria-hidden="true" class="text-faint">{{icon .Icon "size-4"}}</span></div>
   <div class="flex items-baseline gap-1.5 leading-none"><span class="font-mono text-4xl font-bold tracking-[-.05em] text-ink" data-verso-meter-value>{{.Value}}</span><span class="text-base text-meta" data-verso-meter-unit>{{.Unit}}</span></div>
-  <div class="h-1.5 overflow-hidden rounded-full bg-rule"><div class="h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="width:{{.Width}}" data-verso-meter-bar></div></div>
+  <div class="h-1.5 overflow-hidden rounded-full bg-rule"><div class="verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div>
   <div class="min-w-0 truncate text-sm text-meta" data-verso-meter-detail>{{.Detail}}</div>
 </div>
 {{else if .Compact}}
@@ -29,7 +29,7 @@
   <span class="text-xs text-meta">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
   {{else}}
   <span class="relative h-1 rounded-full bg-rule">
-    <span class="verso-meter-bar absolute inset-y-0 left-0 rounded-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="width: {{.Width}}" data-verso-meter-bar></span>
+    <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
     {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-marigold-deep" style="left: {{.WarnMark}}"></span>{{end}}
     {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-crimson" style="left: calc({{.CritMark}} - 2px)"></span>{{end}}
   </span>
@@ -55,7 +55,7 @@
     {{if or .Unit .Name}}<span class="text-base font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
   <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-rule">
-    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="width: {{.Width}}" data-verso-meter-bar></div>
+    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
   </div>
   {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>

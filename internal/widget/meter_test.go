@@ -16,8 +16,10 @@ func TestRenderMeter(t *testing.T) {
 	for _, want := range []string{
 		"Storage", ">23<", ">GB<", "9 GB free",
 		"data-verso-meter-bar", // the fill element
-		"width: 72%",           // filled by Fill
-		"bg-denim",             // 72% is an ordinary quantity: the accent, not a warning
+		// filled by Fill: the bar spans the track and a clip shows the reading,
+		// so a live update repaints the bar without laying the page out again
+		"clip-path: inset(0 28% 0 0 round 9999px)",
+		"bg-denim", // 72% is an ordinary quantity: the accent, not a warning
 		"tabular-nums",
 	} {
 		if !strings.Contains(got, want) {
@@ -102,8 +104,8 @@ func TestMeterCompact(t *testing.T) {
 	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"})
 	for _, want := range []string{
 		"Memory", ">47.0<", "°C",
-		"width: 49%", // fills to the reading's own ceiling
-		"left: 89%",  // the warn tick
+		"clip-path: inset(0 51% 0 0 round 9999px)", // fills to the reading's own ceiling
+		"left: 89%", // the warn tick
 		// A reading in its ordinary range is a quantity, not a verdict, so the bar
 		// is the action colour — what the canvas draws for every normal meter.
 		// Green stays where the palette puts it: the dot beside the value.
@@ -172,7 +174,7 @@ func TestMeterUsesThePalette(t *testing.T) {
 func TestMeterClampsFill(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Label: "x", Value: "x", Fill: 150})
-	if !strings.Contains(got, "width: 100%") {
+	if !strings.Contains(got, "clip-path: inset(0 0% 0 0 round 9999px)") {
 		t.Errorf("fill>100 should fill the whole track:\n%s", got)
 	}
 }
