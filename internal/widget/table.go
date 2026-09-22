@@ -722,6 +722,12 @@ type tableCellView struct {
 	// RowName is what the row is called, for the controls in it that have no
 	// visible label of their own: a switch, a drag handle.
 	RowName string
+	// A number column that abbreviates some of its values keeps its digits in
+	// one column: Figure is the digits, Suffix the magnitude letter (k, M, G,
+	// T) that sits in a fixed slot at the cell's end, empty for a value that
+	// has none. SuffixSlot is set for every cell of such a column.
+	Figure, Suffix string
+	SuffixSlot     bool
 	TableCell
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -736,6 +742,37 @@ func (c tableCellView) OpensPanel() bool { return c.Panel != "" && c.Href == c.P
 // the row's name.
 func (c tableCellView) Control() switchControl {
 	return switchControl{Name: c.Name, On: c.On, Label: c.RowName}
+}
+
+// splitMagnitude separates a count's magnitude letter from its digits: "2.7k"
+// is "2.7" and "k". A value whose last character is not a magnitude letter
+// right after a digit has no suffix.
+func splitMagnitude(s string) (figure, suffix string) {
+	n := len(s)
+	if n < 2 || !strings.ContainsRune("kMGT", rune(s[n-1])) || s[n-2] < '0' || s[n-2] > '9' {
+		return s, ""
+	}
+	return s[:n-1], s[n-1:]
+}
+
+// suffixColumns reports which number columns abbreviate at least one value,
+// and so give every cell a magnitude slot.
+func (t *Table) suffixColumns(rows []TableRow) map[int]bool {
+	out := map[int]bool{}
+	for i, col := range t.Columns {
+		if col.Kind != "num" {
+			continue
+		}
+		for _, row := range rows {
+			if i < len(row.Cells) {
+				if _, suffix := splitMagnitude(row.Cells[i].Text); suffix != "" {
+					out[i] = true
+					break
+				}
+			}
+		}
+	}
+	return out
 }
 
 // rowName is what a row is called: its name column, else its comment (a rule
@@ -967,6 +1004,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	// head of the run it adds to; the href passes the same URL policy every
 	// plugin link does.
 	var band *TableGroup
+	suffixed := t.suffixColumns(rows)
 	for rowIndex, row := range rows {
 		if row.Group != nil {
 			lane := *row.Group
@@ -1106,6 +1144,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				}
 				if kind == "pill" && cv.Text != "" {
 					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot, Icon: cv.Icon}
+				}
+				if suffixed[i] {
+					cv.SuffixSlot = true
+					cv.Figure, cv.Suffix = splitMagnitude(cv.Text)
 				}
 			}
 			rv.Cells = append(rv.Cells, cv)

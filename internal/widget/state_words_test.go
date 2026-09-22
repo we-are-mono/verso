@@ -64,6 +64,35 @@ func TestFetchedPanelsSayTheyAreLoading(t *testing.T) {
 	}
 }
 
+// TestCountsAlignOnTheirDigits: a number column that abbreviates some values
+// (2.7k) keeps its digits in one column: the magnitude letter sits in a slot
+// of its own at the cell's end, and a value with no letter keeps the slot,
+// empty, so its last digit lines up with the others'. A column that never
+// abbreviates takes no slot at all.
+func TestCountsAlignOnTheirDigits(t *testing.T) {
+	const slot = `<span class="inline-block w-[1ch] text-left">`
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Hits", Kind: "num"}},
+		Rows: []TableRow{
+			{Cells: []TableCell{{Text: "a"}, {Text: "321"}}},
+			{Cells: []TableCell{{Text: "b"}, {Text: "2.7k"}}},
+			{Cells: []TableCell{{Text: "c"}, {Text: "1.2M"}}},
+		},
+	})
+	for _, want := range []string{"321" + slot + "</span>", "2.7" + slot + "k</span>", "1.2" + slot + "M</span>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("number column missing %q:\n%s", want, got)
+		}
+	}
+	plain := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Hits", Kind: "num"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: "a"}, {Text: "24"}}}},
+	})
+	if strings.Contains(plain, slot) {
+		t.Errorf("a column that never abbreviates takes no slot:\n%s", plain)
+	}
+}
+
 // TestTableStatesHaveWords: a yes/no cell is a check or nothing, and a missing
 // value is a dash; each says so in words to a screen reader.
 func TestTableStatesHaveWords(t *testing.T) {

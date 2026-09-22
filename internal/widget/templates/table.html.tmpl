@@ -339,7 +339,7 @@
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and
              reads in full ink; one that is nothing yet stays out of the way. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-middle tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-middle tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
         {{else}}
         <td class="border-b border-rule {{template "table.cellpad" .}} align-middle {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0">{{.Text}}</td>
         {{end}}
