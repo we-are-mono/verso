@@ -5,7 +5,5 @@
   "off_label": "Disabled",
   "help": "A disabled rule is kept but never evaluated.",
   "style": "inline",
-  "icon": "shield",
-  "meta": "Applies at the next save",
   "on": true
 }

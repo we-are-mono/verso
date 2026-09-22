@@ -509,7 +509,7 @@ func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageT
 // It does not overwrite an error a plugin already set — a semantic message is more
 // specific — and reports whether the tree carries any error after the walk, so the
 // caller blocks the write and re-renders as 422. widget.Walk covers every
-// container — a field inside a modal, a tab, a wizard step, or a table row's
+// container — a field inside a modal, a conditions item, or a table row's
 // drawer is enforced the same as one directly in a form.
 func validateSchema(w widget.Widget) bool {
 	found := false

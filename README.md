@@ -70,7 +70,7 @@ See `docs/ADR/005-ui-consistency-contract.md` for the full model.
     can't cover (system password, package verbs), each re-checked via `session.access`.
 - **Rendering:** `internal/widget` decodes the JSON schema and renders it to auto-escaped,
   token-styled HTML through the closed widget set (`table`, `card`, `form`, `stat`, `chart`,
-  `hero`, `badge`, `raw`, …).
+  `meter`, `badge`, `raw`, …).
 
 ## Repository layout
 

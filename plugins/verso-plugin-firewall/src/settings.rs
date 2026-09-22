@@ -623,8 +623,6 @@ fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
         label: label.into(),
         off_label: String::new(),
         help: help.into(),
-        meta: String::new(),
-        icon: String::new(),
         style: String::new(),
         on,
         key: name.into(),

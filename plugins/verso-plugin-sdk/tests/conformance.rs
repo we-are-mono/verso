@@ -120,8 +120,6 @@ fn write_widget_fixtures() {
                 off_label: "Disabled".into(),
                 help: "A disabled rule is kept but never evaluated.".into(),
                 style: "inline".into(),
-                icon: "shield".into(),
-                meta: "Applies at the next save".into(),
                 on: true,
                 key: String::new(),
                 tip: String::new(),

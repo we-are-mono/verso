@@ -49,12 +49,6 @@ func translateFields(w Widget, t func(string) string) {
 		for i := range n.Series {
 			n.Series[i].Label = t(n.Series[i].Label)
 		}
-	case *Choice:
-		n.Label = t(n.Label)
-		for i := range n.Options {
-			n.Options[i].Label = t(n.Options[i].Label)
-			n.Options[i].Desc = t(n.Options[i].Desc)
-		}
 	case *Code:
 		n.Label = t(n.Label)
 	case *Conditional:
@@ -127,12 +121,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.BusyTitle = t(n.BusyTitle)
 		n.BusyBody = t(n.BusyBody)
 		n.Title = t(n.Title)
-	case *NetMap:
-		translateNetNode(&n.Source, t)
-		translateNetNode(&n.Hub, t)
-		for i := range n.Leaves {
-			translateNetNode(&n.Leaves[i], t)
-		}
 	case *Ports:
 		// The port's role name ("Internet", "Network 1") is prose; its interface,
 		// address, speed and hover Note are machine facts left verbatim, and a
@@ -142,9 +130,6 @@ func translateFields(w Widget, t func(string) string) {
 				n.Items[i].Label = t(n.Items[i].Label)
 			}
 		}
-	case *Progress:
-		n.Title = t(n.Title)
-		n.Body = t(n.Body)
 	case *Properties:
 		// A row's value is prose unless the row declares otherwise: Mono marks
 		// a monospaced machine string, Chip an entity identity, Verbatim data
@@ -159,9 +144,6 @@ func translateFields(w Widget, t func(string) string) {
 				n.Items[i].Value = t(n.Items[i].Value)
 			}
 		}
-	case *Qr:
-		n.Caption = t(n.Caption)
-		n.DownloadLabel = t(n.DownloadLabel)
 	case *Raw:
 		n.Markdown = t(n.Markdown)
 	case *Repeater:
@@ -200,7 +182,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
-		n.Meta = t(n.Meta)
 	case *ActionBar:
 		translateDrawer(n.Drawer, t)
 		n.Filter = t(n.Filter)
@@ -217,23 +198,11 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Table:
 		translateTable(n, t)
-	case *Tabs:
-		for i := range n.Tabs {
-			n.Tabs[i].Label = t(n.Tabs[i].Label)
-		}
 	case *Text:
 		n.Markdown = t(n.Markdown)
 	}
 	// Any other widget (pure containers like Stack/Grid, or Overview, which is
 	// shell page content that never reaches Decode) carries no prose of its own.
-}
-
-// translateNetNode localizes a map node's label and detail. A leaf's label is
-// often a zone identity (lan, guest) rather than prose — those simply miss the
-// catalog and stay verbatim, the same way a table leaves its entity chips alone.
-func translateNetNode(n *NetNode, t func(string) string) {
-	n.Label = t(n.Label)
-	n.Detail = t(n.Detail)
 }
 
 // translateSettingsItems localizes the rows' prose; a row's pill badges are

@@ -685,8 +685,8 @@ pub enum Widget {
     },
     /// One persistent on/off setting, sharing its control with table toggle
     /// cells so a thing's enabled state looks the same in a listing and in its
-    /// editor. Style "inline" sits it beside a section heading; "hero" is a
-    /// page's one big state. A switch inside a form posts only when it is on.
+    /// editor. Style "inline" sits it beside a section heading. A switch inside
+    /// a form posts only when it is on.
     Switch {
         name: String,
         label: String,
@@ -696,10 +696,6 @@ pub enum Widget {
         help: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        icon: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        meta: String,
         /// The option this switch writes, verbatim — "drop_invalid". It rides
         /// beside the label as a mono chip exactly as a field's does: a state to
         /// flip is as much a line of the config as a value to type.
@@ -1313,8 +1309,6 @@ impl Widget {
             off_label: String::new(),
             help: String::new(),
             style: String::new(),
-            icon: String::new(),
-            meta: String::new(),
             key: key.into(),
             tip: tip.into(),
             source: String::new(),
@@ -2781,8 +2775,6 @@ mod tests {
             off_label: "Not counted".into(),
             help: "Hit counts come from the kernel.".into(),
             style: "inline".into(),
-            icon: String::new(),
-            meta: String::new(),
             key: String::new(),
             tip: String::new(),
             source: String::new(),

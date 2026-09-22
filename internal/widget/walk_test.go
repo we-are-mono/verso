@@ -21,8 +21,8 @@ func isText(w Widget) bool { _, ok := w.(*Text); return ok }
 // TestWalkReachesNestedWidgets pins the children seam of every container that
 // nests a widget slice: a marker leaf placed in each nesting position must be
 // visited. A container missing here, or a container whose children() forgets a
-// slice, is exactly the gap that once let fields inside a modal or a wizard
-// skip datatype validation.
+// slice, is exactly the gap that would let fields inside a modal skip
+// datatype validation.
 func TestWalkReachesNestedWidgets(t *testing.T) {
 	leaf := func() Widget { return &Text{Markdown: "leaf"} }
 	cases := []struct {
@@ -34,7 +34,6 @@ func TestWalkReachesNestedWidgets(t *testing.T) {
 		{"section children", &Section{Children: []Widget{leaf()}}, 1},
 		{"grid", &Grid{Children: []Widget{leaf()}}, 1},
 		{"stack", &Stack{Children: []Widget{leaf()}}, 1},
-		{"canvas", &Canvas{Children: []Widget{leaf()}}, 1},
 		{"disclosure", &Disclosure{Children: []Widget{leaf()}}, 1},
 		{"empty", &Empty{Children: []Widget{leaf()}}, 1},
 		{"modal", &Modal{Children: []Widget{leaf()}}, 1},
@@ -42,13 +41,11 @@ func TestWalkReachesNestedWidgets(t *testing.T) {
 		{"conditional", &Conditional{Fields: []Widget{leaf()}, Otherwise: []Widget{leaf()}}, 2},
 		{"conditions", &Conditions{Items: []ConditionItem{{Key: "k", Children: []Widget{leaf()}}}}, 1},
 		{"form", &Form{Fields: []Widget{leaf()}}, 1},
-		{"tabs", &Tabs{Tabs: []Tab{{Children: []Widget{leaf()}}, {Children: []Widget{leaf()}}}}, 2},
-		{"wizard", &Wizard{Steps: []WizardStep{{Children: []Widget{leaf()}}}}, 1},
 		{"repeater", &Repeater{Items: []RepeaterItem{{Section: "s", Widget: leaf()}}}, 1},
 		{"table row drawer", &Table{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{leaf()}}}}}, 1},
 		{"table seam row drawer", &Table{Seam: &TableSeam{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{leaf()}}}}}}, 1},
 		{"deep nesting", &Modal{Children: []Widget{
-			&Tabs{Tabs: []Tab{{Children: []Widget{&Form{Fields: []Widget{leaf()}}}}}},
+			&Card{Children: []Widget{&Form{Fields: []Widget{leaf()}}}},
 		}}, 1},
 	}
 	for _, tc := range cases {
@@ -108,7 +105,6 @@ func TestStripFiltersReachesEveryContainer(t *testing.T) {
 		{"section control", &Section{Control: lens()}},
 		{"grid", &Grid{Children: []Widget{lens()}}},
 		{"stack", &Stack{Children: []Widget{lens()}}},
-		{"canvas", &Canvas{Children: []Widget{lens()}}},
 		{"disclosure", &Disclosure{Children: []Widget{lens()}}},
 		{"empty", &Empty{Children: []Widget{lens()}}},
 		{"modal", &Modal{Children: []Widget{lens()}}},
@@ -116,13 +112,11 @@ func TestStripFiltersReachesEveryContainer(t *testing.T) {
 		{"conditional", &Conditional{Fields: []Widget{lens()}, Otherwise: []Widget{lens()}}},
 		{"conditions", &Conditions{Items: []ConditionItem{{Key: "k", Children: []Widget{lens()}}}}},
 		{"form", &Form{Fields: []Widget{lens()}}},
-		{"tabs", &Tabs{Tabs: []Tab{{Children: []Widget{lens()}}, {Children: []Widget{lens()}}}}},
-		{"wizard", &Wizard{Steps: []WizardStep{{Children: []Widget{lens()}}}}},
 		{"repeater", &Repeater{Items: []RepeaterItem{{Section: "s", Widget: lens()}}}},
 		{"table row drawer", &Table{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{lens()}}}}}},
 		{"table seam row drawer", &Table{Seam: &TableSeam{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{lens()}}}}}}},
 		{"deep nesting", &Modal{Children: []Widget{
-			&Tabs{Tabs: []Tab{{Children: []Widget{&Form{Fields: []Widget{lens()}}}}}},
+			&Card{Children: []Widget{&Form{Fields: []Widget{lens()}}}},
 		}}},
 	}
 	for _, tc := range cases {

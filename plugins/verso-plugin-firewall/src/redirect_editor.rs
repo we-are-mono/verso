@@ -215,8 +215,6 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
             off_label: "Disabled".into(),
             help: String::new(),
             style: "inline".into(),
-            icon: String::new(),
-            meta: String::new(),
             on: redirect.enabled,
             key: String::new(),
             tip: String::new(),

@@ -2290,9 +2290,9 @@ func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
 }
 
 // TestValidateSchemaCoversNestedContainers: the datatype gate reaches a field
-// no matter which container it nests in — a modal, a tab, a wizard step, a
-// conditions item, a drawer, or a table row's drawer. Each of these was once
-// outside the walk, letting an invalid value through to the commit.
+// no matter which container it nests in — a modal, a conditions item, a
+// drawer, or a table row's drawer. A container outside the walk would let an
+// invalid value through to the commit.
 func TestValidateSchemaCoversNestedContainers(t *testing.T) {
 	bad := func() *widget.Field { return &widget.Field{Name: "p", Datatype: "port", Value: "nope"} }
 	cases := []struct {
@@ -2300,8 +2300,6 @@ func TestValidateSchemaCoversNestedContainers(t *testing.T) {
 		tree widget.Widget
 	}{
 		{"modal", &widget.Modal{Children: []widget.Widget{bad()}}},
-		{"tabs", &widget.Tabs{Tabs: []widget.Tab{{Children: []widget.Widget{bad()}}}}},
-		{"wizard", &widget.Wizard{Steps: []widget.WizardStep{{Children: []widget.Widget{bad()}}}}},
 		{"conditions", &widget.Conditions{Items: []widget.ConditionItem{{Key: "k", Children: []widget.Widget{bad()}}}}},
 		{"drawer", &widget.Drawer{Children: []widget.Widget{bad()}}},
 		{"table row drawer", &widget.Table{Rows: []widget.TableRow{{Drawer: &widget.RowDrawer{Children: []widget.Widget{bad()}}}}}},

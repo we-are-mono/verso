@@ -28,9 +28,9 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    `advanced: true` — the author declares which reading a thing belongs to, and
    the shell filters at render, under ADR-015's invariant that mode hides
    capability, never state.
-2. **The shell owns all appearance, via Tailwind's palette.** Plugins emit semantic
-   schema; the shell renders it to HTML styled with Tailwind's default palette — `sky`
-   for accent, `slate` for neutrals, `red`/`green`/`amber` for states. The consistency
+2. **The shell owns all appearance, via the design palette.** Plugins emit semantic
+   schema; the shell renders it to HTML styled with the palette — denim for action,
+   sand for neutrals, green/marigold/crimson for states. The consistency
    contract is that a plugin *never expresses appearance*, not any particular colour
    system; the palette is the shell's alone to change, across the whole UI at once.
 3. **Closed widget set, open composition.** Verso defines and exposes a fixed set of
@@ -49,10 +49,10 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    rendered with a visible "raw" affordance, and instrumented — its usage is the demand
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →
    author migrates. Health metric: raw usage *declines* for recurring needs.
-6. **Tailwind v4, built on its default palette.** The templates use Tailwind's
-   default utility classes as the base, over a small custom `@theme` — a few semantic
-   tokens (`--color-canvas`, `--color-surface-subtle`) and a dark-mode palette that remaps
-   the neutrals and state tints under `:root.dark`. The stylesheet compiles via the
+6. **Tailwind v4, over the design palette.** The templates use Tailwind's utility
+   classes over one `@theme` — `palette.css`, the transcription of the design canvas's
+   palette, which replaces Tailwind's own colour scales. One light theme; there is no
+   dark palette. The stylesheet compiles via the
    standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
    change: plugins never see classes, so the styling stays reversible with zero plugin
    impact. Shell templates use utilities; plugins never do.
@@ -76,8 +76,8 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    intent. Behavioural widgets whose interaction never touches the server are realized
    without a round-trip: `modal` and `drawer` in **shell-owned client JS** (Alpine's CSP
    build, ADR-004) — the plugin emits only `{type:"modal", …}` and the shell owns the
-   open/close, focus-trap, and transition — while `tabs` needs no JS at all, a pure-CSS
-   radio group (`:has()`) driving which panel shows. Pure CSS, a round-trip,
+   open/close, focus-trap, and transition — while `conditional` needs no JS at all, a
+   pure-CSS `:has()` rule driving which fields show. Pure CSS, a round-trip,
    and shell JS are all just realizations of a declared intent.
    A realization is chosen per widget for what it does — the repeater's rpcd
    round-trip, the conditional's CSS, and a form's secondary *action*, which submits

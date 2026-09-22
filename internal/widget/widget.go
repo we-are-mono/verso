@@ -148,12 +148,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode text: %w", err)
 		}
 		return &t, nil
-	case "progress":
-		var p Progress
-		if err := json.Unmarshal(data, &p); err != nil {
-			return nil, fmt.Errorf("widget: decode progress: %w", err)
-		}
-		return &p, nil
 	case "row":
 		var rw Row
 		if err := json.Unmarshal(data, &rw); err != nil {
@@ -166,30 +160,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode stack: %w", err)
 		}
 		return &st, nil
-	case "tabs":
-		var t Tabs
-		if err := json.Unmarshal(data, &t); err != nil {
-			return nil, fmt.Errorf("widget: decode tabs: %w", err)
-		}
-		return &t, nil
-	case "qr":
-		var q Qr
-		if err := json.Unmarshal(data, &q); err != nil {
-			return nil, fmt.Errorf("widget: decode qr: %w", err)
-		}
-		return &q, nil
-	case "choice":
-		var c Choice
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode choice: %w", err)
-		}
-		return &c, nil
-	case "wizard":
-		var wz Wizard
-		if err := json.Unmarshal(data, &wz); err != nil {
-			return nil, fmt.Errorf("widget: decode wizard: %w", err)
-		}
-		return &wz, nil
 	case "drawer":
 		var d Drawer
 		if err := json.Unmarshal(data, &d); err != nil {
@@ -280,18 +250,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode ports: %w", err)
 		}
 		return &p, nil
-	case "netmap":
-		var nm NetMap
-		if err := json.Unmarshal(data, &nm); err != nil {
-			return nil, fmt.Errorf("widget: decode netmap: %w", err)
-		}
-		return &nm, nil
-	case "canvas":
-		var cv Canvas
-		if err := json.Unmarshal(data, &cv); err != nil {
-			return nil, fmt.Errorf("widget: decode canvas: %w", err)
-		}
-		return &cv, nil
 	case "chart":
 		var c Chart
 		if err := json.Unmarshal(data, &c); err != nil {

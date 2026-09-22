@@ -153,7 +153,6 @@ func TestFilterModeReachesEveryContainer(t *testing.T) {
 		{"section control", &Section{Control: hidden(), Children: []Widget{&Text{Markdown: "keep"}}}},
 		{"grid", &Grid{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"stack", &Stack{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
-		{"canvas", &Canvas{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"disclosure", &Disclosure{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"empty", &Empty{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"modal", &Modal{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}},
@@ -161,13 +160,11 @@ func TestFilterModeReachesEveryContainer(t *testing.T) {
 		{"conditional", &Conditional{Fields: []Widget{hidden(), &Text{Markdown: "keep"}}, Otherwise: []Widget{hidden(), &Text{Markdown: "keep"}}}},
 		{"conditions", &Conditions{Items: []ConditionItem{{Key: "k", Children: []Widget{hidden(), &Text{Markdown: "keep"}}}}}},
 		{"form", &Form{Fields: []Widget{hidden(), &Text{Markdown: "keep"}}}},
-		{"tabs", &Tabs{Tabs: []Tab{{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}}}},
-		{"wizard", &Wizard{Steps: []WizardStep{{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}}}},
 		{"repeater", &Repeater{Items: []RepeaterItem{{Section: "s", Widget: hidden()}, {Section: "t", Widget: &Text{Markdown: "keep"}}}}},
 		{"table row drawer", &Table{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}}}}},
 		{"table seam row drawer", &Table{Seam: &TableSeam{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{hidden(), &Text{Markdown: "keep"}}}}}}}},
 		{"deep nesting", &Modal{Children: []Widget{
-			&Tabs{Tabs: []Tab{{Children: []Widget{&Form{Fields: []Widget{hidden(), &Text{Markdown: "keep"}}}}}}},
+			&Card{Children: []Widget{&Form{Fields: []Widget{hidden(), &Text{Markdown: "keep"}}}}},
 		}}},
 	}
 	for _, tc := range cases {

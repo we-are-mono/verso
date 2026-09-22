@@ -406,146 +406,6 @@ html.verso-fonts-loading body {
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on { display: inline; }
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off { display: none; }
 
-  /* toggle widget: a status-hero switch (ADR-005 §7). The checkbox's :checked
-     state drives everything — no JavaScript. State-varying properties live here,
-     never as utilities, so the utility layer can't win the cascade. */
-  .verso-beacon {
-    background-color: var(--color-green-soft);
-    color: var(--color-green-deep);
-    position: relative;
-  }
-  /* The beacon's pulse is a ring that grows out from its edge and fades:
-     scale and opacity only, which the compositor runs without repainting the
-     page each frame, where a growing box-shadow repainted it sixty times a
-     second for as long as the page stayed open. */
-  .verso-beacon::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 0.125rem solid color-mix(in srgb, var(--color-green) 45%, transparent);
-    animation: verso-pulse 2.6s ease-out infinite;
-  }
-  @keyframes verso-pulse {
-    0%       { transform: scale(1); opacity: 1; }
-    70%,100% { transform: scale(1.58); opacity: 0; }
-  }
-  /* Off state: grey, calm, no pulse; headline swaps to the off copy. */
-  .verso-toggle-off { display: none; }
-  .verso-toggle:not(:has(input:checked)) .verso-toggle-on  { display: none; }
-  .verso-toggle:not(:has(input:checked)) .verso-toggle-off { display: block; }
-  .verso-toggle:not(:has(input:checked)) .verso-toggle-meta { opacity: 0.55; }
-  .verso-toggle:not(:has(input:checked)) .verso-beacon {
-    background-color: var(--color-quiet);
-    color: var(--color-glyph);
-  }
-  .verso-toggle:not(:has(input:checked)) .verso-beacon::after { animation: none; opacity: 0; }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-beacon::after { animation: none; }
-  }
-
-  /* tabs widget: a radio group drives which panel shows (ADR-005 §7) — pure CSS,
-     no JavaScript. Rules are indexed up to six tabs. The white pill (.indicator)
-     slides under the active tab; the active label's text darkens. The utility layer
-     never sets these state-varying properties, so the cascade can't override them. */
-  .verso-tab-panel { display: none; animation: verso-fade 0.3s ease both; }
-  /* A crossfade only — no rise — so switching panels is smooth without adding a second
-     "slide" over the page-level entrance on load (used by tabs and wizard steps). */
-  @keyframes verso-fade { from { opacity: 0; } to { opacity: 1; } }
-  .verso-tab-radio:focus-visible ~ .verso-tab-list {
-    outline: 2px solid var(--color-denim); outline-offset: 2px; border-radius: var(--radius-xs);
-  }
-  /* The sliding indicator: one equal column wide, translated one column per step.
-     The segment in force is filled with the action colour — the palette's own job
-     for denim — so which cut is showing reads without being read. */
-  .verso-tab-indicator {
-    position: absolute; top: 0.125rem; bottom: 0.125rem; left: 0.125rem;
-    width: calc((100% - 0.25rem) / var(--verso-tabs-n, 1));
-    border-radius: var(--radius-xs);
-    background-color: var(--color-denim);
-    transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
-  }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(2):checked) .verso-tab-indicator { transform: translateX(100%); }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(3):checked) .verso-tab-indicator { transform: translateX(200%); }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(4):checked) .verso-tab-indicator { transform: translateX(300%); }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(5):checked) .verso-tab-indicator { transform: translateX(400%); }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(6):checked) .verso-tab-indicator { transform: translateX(500%); }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(1):checked) .verso-tab-panels > :nth-child(1),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(2):checked) .verso-tab-panels > :nth-child(2),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(3):checked) .verso-tab-panels > :nth-child(3),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(4):checked) .verso-tab-panels > :nth-child(4),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(5):checked) .verso-tab-panels > :nth-child(5),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(6):checked) .verso-tab-panels > :nth-child(6) {
-    display: block;
-  }
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(1):checked) .verso-tab-list > .verso-tab-label:nth-of-type(1),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(2):checked) .verso-tab-list > .verso-tab-label:nth-of-type(2),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(3):checked) .verso-tab-list > .verso-tab-label:nth-of-type(3),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(4):checked) .verso-tab-list > .verso-tab-label:nth-of-type(4),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(5):checked) .verso-tab-list > .verso-tab-label:nth-of-type(5),
-  .verso-tabs:has(> .verso-tab-radio:nth-of-type(6):checked) .verso-tab-list > .verso-tab-label:nth-of-type(6) {
-    color: var(--color-canvas);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-tab-indicator { transition: none; }
-  }
-
-  /* choice widget: radio-cards (ADR-005 §7). The radio's :checked state lights the
-     selected card — pure CSS, no JavaScript. Border/background/tick are state-varying,
-     so they live here rather than as utilities, keeping the cascade predictable. */
-  .verso-choice-card {
-    border: 1px solid var(--color-rule-strong);
-    background-color: var(--color-ground);
-    cursor: pointer;
-    transition: border-color 0.15s, background-color 0.15s;
-  }
-  .verso-choice-card:hover { border-color: var(--color-denim); }
-  .verso-choice-tick {
-    border: 2px solid var(--color-inert);
-    transition: border-color 0.15s;
-  }
-  .verso-choice-tick::after {
-    content: "";
-    width: 0.625rem; height: 0.625rem;
-    border-radius: 9999px;
-    background-color: var(--color-denim);
-    transform: scale(0);
-    transition: transform 0.15s;
-  }
-  .verso-choice-card:has(input:checked) {
-    border-color: var(--color-denim);
-    background-color: var(--color-denim-soft);
-  }
-  .verso-choice-card:has(input:checked) .verso-choice-tick { border-color: var(--color-denim); }
-  .verso-choice-card:has(input:checked) .verso-choice-tick::after { transform: scale(1); }
-  .verso-choice-card:has(input:focus-visible) { outline: 2px solid var(--color-denim-deep); outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-choice-tick::after { transition: none; }
-  }
-
-  /* wizard widget: a radio group holds the current step (ADR-005 §7) — pure CSS.
-     One step shows at a time; the progress dots fill up to the current step. Indexed
-     up to six steps. Cross-element switching like this has no utility equivalent. */
-  .verso-wizard-step { display: none; }
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(1):checked) .verso-wizard-steps > :nth-child(1),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(2):checked) .verso-wizard-steps > :nth-child(2),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(3):checked) .verso-wizard-steps > :nth-child(3),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(4):checked) .verso-wizard-steps > :nth-child(4),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(5):checked) .verso-wizard-steps > :nth-child(5),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(6):checked) .verso-wizard-steps > :nth-child(6) {
-    display: block;
-    animation: verso-fade 0.3s ease both;
-  }
-  .verso-wizard-dot { background-color: var(--color-inert); transition: background-color 0.25s; }
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(1):checked) .verso-wizard-dots > :nth-child(-n+1),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(2):checked) .verso-wizard-dots > :nth-child(-n+2),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(3):checked) .verso-wizard-dots > :nth-child(-n+3),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(4):checked) .verso-wizard-dots > :nth-child(-n+4),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(5):checked) .verso-wizard-dots > :nth-child(-n+5),
-  .verso-wizard:has(> .verso-wizard-radio:nth-of-type(6):checked) .verso-wizard-dots > :nth-child(-n+6) {
-    background-color: var(--color-denim);
-  }
-
   /* empty widget: a first-run state (ADR-005 §7). The accent icon breathes a soft
      ring so the eye lands on the one thing to do. Keyframes have no utility equivalent. */
   .verso-empty-icon {
@@ -564,7 +424,8 @@ html.verso-fonts-loading body {
     --verso-empty-accent-500: var(--color-green);
     --verso-empty-accent-600: var(--color-green-deep);
   }
-  /* The same ring as the beacon's, at the empty state's scale. */
+  /* The ring grows out from the icon's edge and fades: scale and opacity only,
+     which the compositor runs without repainting the page each frame. */
   .verso-empty-icon::after {
     content: "";
     position: absolute;
@@ -851,26 +712,6 @@ html.verso-fonts-loading body {
   .verso-meter-bar { transition: clip-path 600ms ease; }
   @media (prefers-reduced-motion: reduce) {
     .verso-meter-bar { transition: none; }
-  }
-
-  /* netmap ants: a lit green dash pattern is the only thing on each link (no
-     track behind it). verso-netants-live streams it to say traffic is moving. */
-  .verso-netants {
-    fill: none;
-    stroke: var(--color-green);
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-dasharray: 7.7 8.5;
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-green) 55%, transparent));
-  }
-  .verso-netants-live {
-    animation: verso-netants-stream 0.405s linear infinite;
-  }
-  @keyframes verso-netants-stream {
-    to { stroke-dashoffset: -16.2; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-netants-live { animation: none; }
   }
 }
 

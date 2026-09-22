@@ -56,11 +56,9 @@ type Renderer struct {
 }
 
 // renderSeqs are the monotonic id counters that keep generated element ids
-// unique — tabs groups, wizards, confirm checkboxes, chart gradients — across
-// every render (they are shared by pointer, never copied, so concurrency is safe).
+// unique — confirm checkboxes, chart gradients — across every render (they are
+// shared by pointer, never copied, so concurrency is safe).
 type renderSeqs struct {
-	tab   atomic.Int64
-	wiz   atomic.Int64
 	cfm   atomic.Int64
 	chart atomic.Int64
 }
@@ -192,7 +190,7 @@ func (r *Renderer) renderChildren(children []Widget, csrf string) ([]template.HT
 }
 
 // joinHTML concatenates rendered fragments into one — for containers whose template
-// takes a single body blob (a tab panel, a wizard step) rather than ranging a slice.
+// takes a single body blob (a drawer's trigger) rather than ranging a slice.
 func joinHTML(parts []template.HTML) template.HTML {
 	var b strings.Builder
 	for _, p := range parts {

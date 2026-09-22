@@ -1102,18 +1102,6 @@ For object-level state, a section may place an inline switch in its heading with
 state label follows the switch and changes with it. This keeps identity and state
 together without turning the switch into a form field row.
 
-Style `"hero"` is the reassuring lead for a page's one big state — a VPN, a
-guest network: a status beacon (`icon`), a headline reading the current state in
-plain language (`label` on, `off_label` off), an optional `meta` sub-line, and a
-larger switch. Pure CSS, like every style — the page leads with "it's on" rather
-than a checkbox.
-
-```json
-{ "type": "switch", "style": "hero", "icon": "shield", "name": "vpn_on",
-  "on": true, "label": "Your home VPN is on", "off_label": "Your home VPN is off",
-  "meta": "2 of 3 devices connected" }
-```
-
 ### list — a repeating text field
 
 Several values under **one** `name`, each validated against the same `datatype`.

@@ -79,7 +79,7 @@ func TestSwitchControlIsACheckbox(t *testing.T) {
 // still counts as a change — the same contract field, list, conditional, and
 // settings rows declare.
 func TestSwitchDeclaresChangeHooks(t *testing.T) {
-	for _, style := range []string{"", "inline", "hero"} {
+	for _, style := range []string{"", "checkbox", "inline"} {
 		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: style, On: true})
 		for _, want := range []string{
 			`data-verso-change-field`, `data-verso-change-name="enabled"`,

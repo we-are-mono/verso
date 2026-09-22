@@ -232,78 +232,6 @@ func TestRenderBadge(t *testing.T) {
 	}
 }
 
-func TestRenderHeroSwitch(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Switch{
-		Style: "hero", Icon: "shield", Name: "vpn_on", On: true,
-		Label: "Your home VPN is on", OffLabel: "Your home VPN is off",
-		Meta: "2 of 3 devices connected",
-	})
-
-	for _, want := range []string{
-		"verso-toggle", // the pure-CSS state scope
-		`type="checkbox"`, `name="vpn_on"`,
-		"Your home VPN is on",      // on headline
-		"Your home VPN is off",     // off headline (CSS hides it while checked)
-		"2 of 3 devices connected", // meta
-		// The switch reflects state without JS, and it is on in the same colour
-		// every switch in the app is on in — the action colour, not a second
-		// green that would read as a verdict.
-		"peer-checked:bg-body",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("hero switch missing %q in: %s", want, got)
-		}
-	}
-	// The checked attribute is present on the input when On is true.
-	if !strings.Contains(got, `name="vpn_on" checked`) {
-		t.Errorf("checked hero switch missing the checked attribute: %s", got)
-	}
-	// The switch is pure CSS: the markup carries no script and no Alpine directive.
-	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("hero switch must be pure CSS, found script/alpine: %s", got)
-	}
-	// Unchecked renders without the checked attribute (peer-checked utility aside).
-	off := render(t, r, &Switch{Style: "hero", Name: "n", Label: "On", OffLabel: "Off"})
-	if strings.Contains(off, `name="n" checked`) {
-		t.Errorf("unchecked hero switch must not carry the checked attribute: %s", off)
-	}
-}
-
-func TestRenderTabs(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Tabs{Tabs: []Tab{
-		{Label: "My devices", Icon: "device", Children: []Widget{&Badge{Variant: "success", Text: "here"}}},
-		{Label: "Route through a provider", Icon: "globe", Children: []Widget{&Field{Name: "cfg", Label: "Config"}}},
-	}})
-
-	for _, want := range []string{
-		"verso-tabs",
-		`type="radio"`,
-		"My devices", "Route through a provider", // both labels
-		"here",       // first tab's child rendered
-		`name="cfg"`, // second tab's child rendered
-		"verso-tab-panel",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("tabs missing %q in: %s", want, got)
-		}
-	}
-	// Exactly one radio starts checked (the first tab).
-	if n := strings.Count(got, "checked"); n != 1 {
-		t.Errorf("want exactly one checked radio, got %d: %s", n, got)
-	}
-	// Pure CSS: no script, no Alpine.
-	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("tabs must be pure CSS, found script/alpine: %s", got)
-	}
-	// Two tab groups on one page get distinct radio names, so they never collide.
-	two := render(t, r, &Tabs{Tabs: []Tab{{Label: "A"}, {Label: "B"}}})
-	if strings.Contains(got, `name="verso-tabs-1"`) && strings.Contains(two, `name="verso-tabs-1"`) {
-		t.Errorf("two tab groups shared a radio group name: %s", two)
-	}
-}
-
 // TestRenderSegmentedFieldsWearTheOneTray: a segmented pick — one of three
 // verdicts, or the days of a schedule — wears the tray every switch in the app
 // wears: the segment in force filled in the body ink, the rest plain words,
@@ -336,95 +264,12 @@ func TestRenderSegmentedFieldsWearTheOneTray(t *testing.T) {
 	}
 }
 
-func TestRenderChoice(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Choice{Name: "reach", Label: "What can it reach?", Options: []ChoiceOption{
-		{Value: "home", Label: "My whole home network", Desc: "Everything on your LAN.", Checked: true},
-		{Value: "device", Label: "Just this router", Desc: "Nothing else."},
-	}})
-
-	for _, want := range []string{
-		"verso-choice", "verso-choice-card", "verso-choice-tick",
-		`type="radio"`, `name="reach"`, `value="home"`, `value="device"`,
-		"My whole home network", "Everything on your LAN.", "What can it reach?",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("choice missing %q in: %s", want, got)
-		}
-	}
-	if !strings.Contains(got, `value="home" checked`) {
-		t.Errorf("checked option not marked: %s", got)
-	}
-	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("choice must be pure CSS: %s", got)
-	}
-}
-
-func TestRenderQr(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Qr{Data: "wg://join?token=abc", Caption: "Scan with the app"})
-
-	for _, want := range []string{"<svg", "viewBox", "<path", "Scan with the app"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("qr missing %q in: %s", want, got)
-		}
-	}
-	// It is a real, self-contained code: inline SVG, no external fetch (no <img>,
-	// no src/href pulling a remote resource). The SVG xmlns is a namespace, not a fetch.
-	if strings.Contains(got, "<img") || strings.Contains(got, "src=") || strings.Contains(got, "href=") {
-		t.Errorf("qr must be inline SVG with no external fetch: %s", got)
-	}
-	// Different payloads produce different codes (proves it encodes the data).
-	other := render(t, r, &Qr{Data: "wg://join?token=xyz"})
-	if got == other {
-		t.Errorf("qr did not vary with its payload")
-	}
-	// With a download, a quiet link rides beneath the code (a data: URL survives the
-	// link URL policy).
-	dl := render(t, r, &Qr{Data: "x", DownloadHref: "data:text/plain,abc", DownloadName: "home.conf", DownloadLabel: "Download config file"})
-	for _, want := range []string{`href="data:text/plain,abc"`, `download="home.conf"`, "Download config file"} {
-		if !strings.Contains(dl, want) {
-			t.Errorf("qr download missing %q in: %s", want, dl)
-		}
-	}
-}
-
-func TestRenderWizard(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Wizard{Steps: []WizardStep{
-		{Children: []Widget{&Field{Name: "device_name", Label: "Name"}}},
-		{Children: []Widget{&Qr{Data: "x"}}},
-	}})
-
-	for _, want := range []string{
-		"verso-wizard", "verso-wizard-step", "verso-wizard-dot",
-		`name="device_name"`, // step 1 child
-		"<svg",               // step 2 child (qr)
-		"Continue", "Back", "Done",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("wizard missing %q in: %s", want, got)
-		}
-	}
-	// Exactly the first step's radio starts checked.
-	if n := strings.Count(got, "checked"); n != 1 {
-		t.Errorf("want exactly one checked step radio, got %d: %s", n, got)
-	}
-	// The Continue label on step 1 targets step 2's radio (id ...-1).
-	if !strings.Contains(got, `-1" class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium border border-denim bg-denim`) {
-		t.Errorf("Continue label does not target the next step's radio: %s", got)
-	}
-	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("wizard must be pure CSS: %s", got)
-	}
-}
-
 func TestRenderDrawer(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Drawer{
 		Title:    "My Phone",
 		Trigger:  []Widget{&Row{Icon: "phone", Title: "My Phone", Meta: "My whole home network"}},
-		Children: []Widget{&Qr{Data: "x"}, &Text{Markdown: "**Added** · 2 weeks ago"}},
+		Children: []Widget{&Badge{Text: "Connected"}, &Text{Markdown: "**Added** · 2 weeks ago"}},
 	})
 
 	for _, want := range []string{
@@ -435,7 +280,7 @@ func TestRenderDrawer(t *testing.T) {
 		"translate-x-full", // slides in from the right
 		"bg-ink/18",        // the canvas scrim: ink at 18% over a 2px blur
 		"My Phone",         // trigger + title
-		"<svg",             // qr child rendered in the body
+		"Connected",        // badge child rendered in the body
 		"Added",            // text child rendered in the body
 	} {
 		if !strings.Contains(got, want) {
@@ -1092,19 +937,6 @@ func TestRenderModalAddTrigger(t *testing.T) {
 	solid := render(t, r, &Modal{Trigger: "Open", Title: "T"})
 	if strings.Contains(solid, "border-dashed") {
 		t.Errorf("default modal trigger should be solid, not dashed: %s", solid)
-	}
-}
-
-func TestRenderProgress(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Progress{Title: "Verifying firmware", Body: "Checking the image signature."})
-	for _, want := range []string{
-		`role="status"`, `aria-live="polite"`, `data-verso-wait`,
-		"Verifying firmware", "Checking the image signature.",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("progress state missing %q: %s", want, got)
-		}
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 
 // Link is a labelled hyperlink, optionally styled as a button and optionally a
 // download. It is the escape hatch for "take me there" or "save this file" — a
-// device's config for a machine that can't scan a QR, a link to docs. The href is
+// device's config file, a link to docs. The href is
 // the plugin's to choose (a shell route, a data: URL); the shell owns the look and
 // the URL policy.
 type Link struct {
