@@ -1131,6 +1131,14 @@ func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (js
 			return result, true, err
 		}
 		return nil, true, fmt.Errorf("network state unavailable")
+	case "wirelessState":
+		if backend, ok := s.backend.(interface {
+			WirelessState(context.Context, string) (json.RawMessage, error)
+		}); ok {
+			result, err := backend.WirelessState(ctx, sid)
+			return result, true, err
+		}
+		return nil, true, fmt.Errorf("wireless state unavailable")
 	}
 	return nil, false, nil
 }
