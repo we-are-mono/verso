@@ -19,23 +19,21 @@
      critical, with warn/critical tick marks · the value with a status dot. A
      reading with no limits drops the track (never a guessed threshold) and keeps
      a neutral dot. Colour is reserved for state (the fill + dot tone). */}}
-{{/* A reading in its ordinary range is a quantity, not a verdict, so its bar is
-     the action colour — the canvas draws every normal meter in denim and turns it
-     marigold only where the reading is a caveat. Green is reserved for the dot,
-     where the palette puts it: a mark that something is well. */}}
+{{/* The bar and its dot share the reading's band: green in the ordinary range,
+     marigold past the warn trip, crimson past critical — the canvas's meter. */}}
 <div class="grid grid-cols-[9.5rem_1fr_6.5rem] items-center gap-5 border-b border-rule py-2.5 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
   <span class="text-xs text-meta">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
   {{else}}
-  <span class="relative h-1 rounded-full bg-rule">
-    <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
+  <span class="relative h-1.5 rounded-full bg-rule">
+    <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
     {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-marigold-deep" style="left: {{.WarnMark}}"></span>{{end}}
-    {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-crimson" style="left: calc({{.CritMark}} - 2px)"></span>{{end}}
+    {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-crimson" style="left: calc({{.CritMark}} - 0.125rem)"></span>{{end}}
   </span>
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">
-    <span class="size-2 shrink-0 rounded-full {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
+    <span class="size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
     <span class="text-base font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
   </span>
 </div>
@@ -55,7 +53,7 @@
     {{if or .Unit .Name}}<span class="text-base font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
   <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-rule">
-    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else}}bg-denim{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
+    <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else if eq .Band "info"}}bg-denim{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
   </div>
   {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>

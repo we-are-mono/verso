@@ -19,7 +19,7 @@ func TestRenderMeter(t *testing.T) {
 		// filled by Fill: the bar spans the track and a clip shows the reading,
 		// so a live update repaints the bar without laying the page out again
 		"clip-path: inset(0 28% 0 0 round 9999px)",
-		"bg-denim", // 72% is an ordinary quantity: the accent, not a warning
+		"bg-green", // 72% is in the ordinary range: the canvas's green band
 		"tabular-nums",
 	} {
 		if !strings.Contains(got, want) {
@@ -31,7 +31,7 @@ func TestRenderMeter(t *testing.T) {
 // TestMeterBands: the track colours itself from Fill (not from the displayed Value).
 func TestMeterBands(t *testing.T) {
 	r := newRenderer(t)
-	cases := map[int]string{45: "bg-denim", 85: "bg-marigold", 95: "bg-crimson"}
+	cases := map[int]string{45: "bg-green", 85: "bg-marigold", 95: "bg-crimson"}
 	for fill, want := range cases {
 		got := render(t, r, &Meter{Label: "x", Value: "x", Fill: fill})
 		if !strings.Contains(got, want) {
@@ -106,10 +106,9 @@ func TestMeterCompact(t *testing.T) {
 		"Memory", ">47.0<", "°C",
 		"clip-path: inset(0 51% 0 0 round 9999px)", // fills to the reading's own ceiling
 		"left: 89%", // the warn tick
-		// A reading in its ordinary range is a quantity, not a verdict, so the bar
-		// is the action colour — what the canvas draws for every normal meter.
-		// Green stays where the palette puts it: the dot beside the value.
-		"bg-denim",
+		// A reading in its ordinary range is green, bar and dot alike — the
+		// canvas's meter band — on a 6px track.
+		"h-1.5 rounded-full",
 		"bg-green",
 		"bg-marigold-deep", // the warn tick
 		"bg-crimson",       // the critical tick

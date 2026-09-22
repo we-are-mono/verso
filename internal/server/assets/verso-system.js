@@ -33,12 +33,12 @@
         seen.add(row.id);
         var error = ["emerg", "alert", "crit", "err"].indexOf(row.severity) !== -1;
         var warning = error || row.severity === "warn";
-        var line = node("div", "grid grid-cols-[3px_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-[25px] leading-6 hover:bg-mid/50 lg:flex lg:py-px");
+        var line = node("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-mid/50 lg:flex lg:py-px");
         line.setAttribute("data-log-row", String(row.id));
         line.dataset.logAt = String(row.at);
         line.setAttribute("data-verso-tags", error ? "errors warnings" : warning ? "warnings" : "");
         line.setAttribute("data-verso-facet-source", row.source);
-        line.appendChild(node("span", "row-span-2 my-0.5 w-[3px] shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
+        line.appendChild(node("span", "row-span-2 my-0.5 w-0.75 shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
         var at = new Date(row.at * 1000);
         var clock = [at.getHours(), at.getMinutes(), at.getSeconds()].map(function (n) { return String(n).padStart(2, "0"); }).join(":");
         var stamp = node("time", "shrink-0 font-mono lg:w-20 text-base font-medium text-body", clock);

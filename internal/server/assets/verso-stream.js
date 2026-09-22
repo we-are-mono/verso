@@ -24,7 +24,7 @@
   // these were stock Tailwind a step darker than the template's own stock Tailwind,
   // and neither was a colour this app's palette has.
   var BAR_BANDS = {
-    success: "bg-denim",
+    success: "bg-green",
     warning: "bg-marigold",
     danger: "bg-crimson",
     info: "bg-denim",
@@ -49,8 +49,7 @@
       // band); only a band-coloured bar recolours with its reading.
       if (!reading.role) {
         for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
-        bar.classList.remove("bg-green");
-        bar.classList.add(root.hasAttribute("data-overview-meter") && reading.band === "success" ? "bg-green" : (BAR_BANDS[reading.band] || BAR_BANDS.success));
+        bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.success);
       }
     }
     root.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());

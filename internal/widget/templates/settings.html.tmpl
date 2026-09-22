@@ -62,7 +62,7 @@
     {{range .PillsHTML}}{{.}}{{end}}
     {{/* the checkbox sits centred on the name's own 24px line. */}}
     {{if .Toggle}}<span class="flex h-6 shrink-0 items-center">{{template "switch.html.tmpl" .Control}}</span>{{end}}
-    {{if .Name}}<label class="-mt-0.5 flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-xs border border-rule-strong bg-ground px-2 transition-colors hover:border-denim focus-within:border-denim-deep">
+    {{if .Name}}<label class="-mt-0.5 flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-xs border border-rule-strong bg-ground px-2 transition-colors hover:border-faint focus-within:border-denim">
       <input type="text" name="{{.Name}}" value="{{.Value}}" aria-label="{{.Title}}"
         class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-sm tabular-nums text-ink focus:outline-none">
       {{icon "square-pen" "size-3.5 shrink-0 text-faint"}}

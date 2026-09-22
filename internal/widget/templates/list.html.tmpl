@@ -30,7 +30,7 @@
   {{/* The chips sit 2px inside the box on every side, so the box reads as their
        ground rather than as a frame standing off from them. The value being typed
        stands at the same height as the chips it is about to join. */}}
-  <div data-verso-token-list class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-ground p-0.5 transition-colors hover:border-denim focus-within:border-denim-deep">
+  <div data-verso-token-list class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-ground p-0.5 transition-colors hover:border-faint focus-within:border-denim">
     {{range .Items}}
     <span data-verso-token class="{{template "verso-token-chip"}}">
       <input type="hidden" name="{{$.Name}}" value="{{.}}"><span data-verso-token-label>{{.}}</span>

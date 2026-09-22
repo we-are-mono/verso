@@ -210,7 +210,8 @@ func TestRenderBadge(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
 	for _, want := range []string{
-		"Connected", "rounded-full",
+		// the state mark is the app's one mark: a 6px square, the packet
+		"Connected", "size-1.5 shrink-0 rounded-[1px]",
 		"border-green-line bg-green-soft text-green-deep", // light treatment is unchanged
 		"rounded-xs border",
 	} {
@@ -848,13 +849,27 @@ func TestRenderButton(t *testing.T) {
 		}
 	}
 	loading := render(t, r, &Button{Label: "Fetching sources", Icon: "refresh-cw", Style: "secondary", Loading: true})
-	for _, want := range []string{`disabled`, `aria-busy="true"`, "cursor-wait opacity-70", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
+	// Waiting is the canvas's one look whatever the style: sand ground, strong
+	// hairline, glyph label, no pointer — on the same h-9 footprint.
+	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-9", "pointer-events-none border-rule-strong bg-quiet text-glyph", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
 		if !strings.Contains(loading, want) {
 			t.Errorf("loading button missing %q: %s", want, loading)
 		}
 	}
-	if strings.Contains(loading, lucideIcons["refresh-cw"]) || strings.Contains(loading, "hover:border-denim") {
-		t.Errorf("loading button must replace its action icon and have no hover response: %s", loading)
+	for _, never := range []string{lucideIcons["refresh-cw"], "hover:", "bg-ground", "cursor-wait"} {
+		if strings.Contains(loading, never) {
+			t.Errorf("loading button must drop its icon, its style and any hover response, found %q: %s", never, loading)
+		}
+	}
+	primary := render(t, r, &Button{Label: "Signing in…", Loading: true})
+	if strings.Contains(primary, "bg-denim") {
+		t.Errorf("a waiting primary is not denim any more: %s", primary)
+	}
+	disabled := render(t, r, &Button{Label: "Apply", Disabled: true})
+	for _, want := range []string{`disabled`, "cursor-not-allowed"} {
+		if !strings.Contains(disabled, want) {
+			t.Errorf("disabled button missing %q: %s", want, disabled)
+		}
 	}
 }
 
@@ -1138,7 +1153,7 @@ func TestRenderFieldError(t *testing.T) {
 		t.Errorf("inline error not shown: %s", got)
 	}
 	for _, want := range []string{
-		"border-crimson hover:border-crimson-deep focus:border-crimson-deep", // the field names itself as the refused one
+		"border-crimson hover:border-crimson-deep focus:border-denim", // the field names itself as the refused one; focus stays the action colour
 		"bg-crimson-soft", "text-crimson-deep", // and the message sits on crimson's own ground
 		"bg-crimson", // with the mark beside it
 	} {
@@ -1152,7 +1167,10 @@ func TestRenderFieldFocus(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Field{Name: "hostname", Label: "Hostname"})
 	for _, want := range []string{
-		"border-rule-strong hover:border-denim focus:border-denim-deep", // resting, pointed at, and focused
+		// resting, pointed at, and focused: only the border changes — the
+		// strong hairline, the faint step under the pointer, the action colour
+		// while typing — as the canvas draws every input
+		"border-rule-strong hover:border-faint focus:border-denim",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("valid field missing focus treatment %q: %s", want, got)
@@ -1183,7 +1201,7 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 	for _, want := range []string{
 		`data-verso-change-name="server"`, `data-verso-change-kind="list"`,
 		"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add",
-		"border-rule-strong hover:border-denim focus:border-denim-deep",
+		"border-rule-strong hover:border-faint focus:border-denim",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("list missing %q", want)
@@ -1232,7 +1250,7 @@ func TestRenderListPerItemError(t *testing.T) {
 		t.Errorf("per-item error missing: %s", got)
 	}
 	for _, want := range []string{
-		"border-crimson hover:border-crimson-deep focus:border-crimson-deep",
+		"border-crimson hover:border-crimson-deep focus:border-denim",
 		"text-crimson-deep", // the message reads in the step of the hue that carries words
 	} {
 		if !strings.Contains(got, want) {

@@ -27,8 +27,8 @@
      cell insets it by 8px instead (table.cellpad-act). In the listing geometry
      the columns' widths space the cells and only the table's edges carry a side
      inset; elsewhere every cell keeps its own. */}}
-{{define "table.cellpad"}}{{if .Dense}}py-2 leading-6{{else}}px-3.5 py-2 leading-6{{end}}{{end}}
-{{define "table.cellpad-act"}}{{if .Dense}}py-1.5{{else}}px-3.5 py-1.5{{end}}{{end}}
+{{define "table.cellpad"}}{{if .Dense}}py-2.5 leading-6{{else}}px-3.5 py-2.5 leading-6{{end}}{{end}}
+{{define "table.cellpad-act"}}{{if .Dense}}py-2{{else}}px-3.5 py-2{{end}}{{end}}
 {{define "table.rowbtn-class"}}inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold whitespace-nowrap transition-colors {{if .Disabled}}cursor-not-allowed border-rule bg-ground text-faint opacity-70{{else}}border-rule-strong bg-transparent text-ink hover:border-faint hover:bg-quiet focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}{{end}}
 {{define "table.rows"}}
       {{range .}}
@@ -100,9 +100,9 @@
       {{/* the row names the section it is, so an act answered in place can
            find this row again in the page the answer came back with. */}}
       {{if .Drawer}}
-      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group h-11 transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{else}}
-      <tr class="group h-11 transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "reorder"}}
@@ -111,7 +111,7 @@
         {{/* the grip rests at the step the eye passes over and darkens with the
              whole row, not only under its own pointer: what is draggable is the
              row, and the row is what the hand is already on. */}}
-        <td class="w-6 border-b border-rule py-2{{if not .Dense}} pr-2{{end}} align-middle group-last:border-b-0">
+        <td class="w-6 border-b border-rule py-2.5{{if not .Dense}} pr-2{{end}} align-middle group-last:border-b-0">
           {{if .Draggable}}
           <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowName}}" aria-keyshortcuts="ArrowUp ArrowDown" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             {{icon "list-chevrons-up-down" "size-4"}}
@@ -126,13 +126,13 @@
              under it into the row, and the row's height stops being the row's. */}}
         {{/* the control sits centred on the row's 24px line, as the words in the
              next cell do; the glyph that stands in for one takes the same line. */}}
-        <td class="w-11 border-b border-rule py-1.5 pr-1 pl-3.5 align-middle group-last:border-b-0">
+        <td class="w-11 border-b border-rule py-2.5 pr-1 pl-3.5 align-middle group-last:border-b-0">
           <span class="flex h-6 items-center">{{if .Name}}{{template "switch.html.tmpl" .Control}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
         </td>
         {{else if eq .Kind "action"}}
         {{/* a compact, immediately applied row action. Name/Text carry the
              target field and value; Action is the lifecycle verb. */}}
-        <td class="w-11 border-b border-rule py-1.5 pr-1 pl-3.5 align-middle group-last:border-b-0">
+        <td class="w-11 border-b border-rule py-2 pr-1 pl-3.5 align-middle group-last:border-b-0">
           {{if and .Name .Text .Action}}
           <form method="post" class="flex">
             {{template "verso-csrf" .CSRFToken}}
@@ -208,7 +208,7 @@
         {{/* the row's own acts, at its trailing edge: quiet glyphs that darken
              under the pointer. An act with no destination is drawn and inert —
              the shape is decided, what sits behind it is not. */}}
-        <td class="border-b border-rule py-1.5 pl-3 align-middle whitespace-nowrap group-last:border-b-0">
+        <td class="border-b border-rule py-2 pl-3 align-middle whitespace-nowrap group-last:border-b-0">
           {{/* the token is the cell's; inside the range the dot is one act, and
                a sub-template's $ is the row list rather than the table. */}}
           {{$csrf := .CSRFToken}}{{$panel := .Panel}}
@@ -269,7 +269,7 @@
                     <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
                       <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ConfirmID}}-title" aria-describedby="{{.ConfirmID}}-body" class="relative w-full max-w-md {{template "modal.frame"}} p-5 text-left focus:outline-none sm:p-6">
                         <div class="sm:flex sm:items-start">
-                          <div class="mx-auto grid size-12 shrink-0 place-items-center rounded-full bg-crimson-soft text-crimson sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div>
+                          <div class="mx-auto grid size-12 shrink-0 place-items-center rounded-xs bg-crimson-soft text-crimson sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div>
                           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                             <h2 id="{{.ConfirmID}}-title" class="text-base font-semibold text-ink">{{.ConfirmTitle}}</h2>
                             <p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Confirm}}</p>

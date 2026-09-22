@@ -10,8 +10,8 @@ import (
 	"io"
 )
 
-// Canvas is a light inset surface: a rounded panel (slate-50 fill on a slate-200
-// hairline) that holds a visual — the network map, a diagram, a chart — set apart
+// Canvas is a light inset surface: a panel (the quiet ground on a hairline)
+// that holds a visual — the network map, a diagram, a chart — set apart
 // from the white page without the weight of a card. Children decode recursively
 // through Decode, so the closed set is enforced at every level.
 //

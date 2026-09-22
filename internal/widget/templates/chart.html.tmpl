@@ -38,9 +38,9 @@
 {{if .Notebook}}
 <div class="relative h-60 overflow-hidden">
   {{template "verso-chart-svg" .}}
-  {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-[19px] {{if eq $i 0}}min-w-[119px]{{else}}min-w-[59px]{{end}} items-center bg-quiet/85 px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
-  <span class="pointer-events-none absolute bottom-px left-0 flex h-[19px] min-w-[99px] items-center bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
-  <span class="pointer-events-none absolute right-0 bottom-px flex h-[19px] min-w-[59px] items-center justify-end bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XEnd}}</span>
+  {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-4.75 {{if eq $i 0}}min-w-29.75{{else}}min-w-14.75{{end}} items-center bg-quiet/85 px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+  <span class="pointer-events-none absolute bottom-px left-0 flex h-4.75 min-w-24.75 items-center bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
+  <span class="pointer-events-none absolute right-0 bottom-px flex h-4.75 min-w-14.75 items-center justify-end bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XEnd}}</span>
 </div>
 {{else if and .Readout .Stretch}}{{/* the panel: current values above the plot, labels riding below each number */}}<div{{if .Name}} data-verso-chart-block="{{.Name}}"{{end}}>
   <div class="verso-chart-panel-head">
@@ -50,7 +50,7 @@
   {{template "verso-chart-plot" .}}
 </div>{{else if .Readout}}<div class="verso-chart-hero">
   <div class="verso-chart-readout">
-    {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green"></span>{{end}}{{.Title}}</div>{{end}}
+    {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Title}}</div>{{end}}
     {{if .Note}}<div class="verso-chart-meta">{{.Note}}</div>{{end}}
     {{if .Rates}}<div class="verso-chart-rates">{{range .Rates}}<div class="verso-chart-rate verso-chart--{{.RoleClass}}"><div class="verso-chart-rate-v">{{.Value}}{{if .Unit}} <small>{{.Unit}}</small>{{end}}</div><div class="verso-chart-rate-k"><span class="verso-chart-rate-sw"></span>{{.Label}}</div></div>{{end}}</div>{{end}}
   </div>

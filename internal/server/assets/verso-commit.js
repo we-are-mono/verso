@@ -254,7 +254,7 @@
     if (el) el.textContent = text;
     if (text) versoAnnounce(text);
     if (!dot) return;
-    dot.className = "mt-[7px] size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
+    dot.className = "mt-1.75 size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
   }
 
   // The acts wait together: Apply goes to its waiting state and Discard fades,

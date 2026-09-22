@@ -30,7 +30,7 @@
   {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
   {{/* 44px, never stated: a 24px line — the mono value's own, the sans label
        and value raised to it — with 10px above and below. */}}
-  <div class="flex items-center min-h-11 box-border gap-6 py-2{{if eq $.Style "overview-connection"}} first:border-t first:border-mid{{end}}">
+  <div class="flex items-center gap-6 py-2.5{{if eq $.Style "overview-connection"}} first:border-t first:border-mid{{end}}">
     <dt class="shrink-0 text-sm leading-6 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
     <dd class="flex min-w-0 items-center text-ink{{if eq $.Style "overview-system"}} ml-auto text-right{{end}}">
       {{if .Dot}}<span class="mr-2.5 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
@@ -48,7 +48,7 @@
   {{else if eq $.Style "system"}}
   {{/* the same 44px row as the overview's: the value's 24px line, inset 10px,
        everything in it a flex item so no glyph's box can lift the line. */}}
-  <div class="flex items-center justify-between min-h-11 box-border gap-6 border-t border-mid py-2">
+  <div class="flex items-center justify-between gap-6 border-t border-mid py-2.5">
     <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
     <dd class="flex items-center text-sm font-medium text-ink">
       {{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
@@ -59,7 +59,7 @@
        is a flex line too, so a copy control or a badge sits on the line rather
        than lifting it. The plain list has no rows to keep to and keeps the
        type's own line. */}}
-  <div class="flex items-center {{if eq $.Align "left"}}gap-6{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} min-h-11 box-border py-2 leading-6{{end}}">
+  <div class="flex items-center {{if eq $.Align "left"}}gap-6{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 leading-6{{end}}">
     <dt class="shrink-0 text-meta{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
     <dd class="flex min-w-0 items-center {{if eq $.Align "left"}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
       {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="min-w-0 wrap-anywhere {{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}

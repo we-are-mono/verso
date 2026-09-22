@@ -21,7 +21,7 @@
 
   <div class="mt-8 grid grid-cols-1 border-y border-rule sm:grid-cols-2 {{if eq (len .Tiles) 5}}xl:grid-cols-5{{else if eq (len .Tiles) 3}}xl:grid-cols-3{{else}}xl:grid-cols-4{{end}}">
     {{range .Tiles}}
-    {{if .Href}}<a href="{{.Href}}"{{else}}<div{{end}} data-overview-tile="{{.ID}}" data-tone="{{.Variant}}" class="group relative flex min-w-0 flex-col gap-2.5 border-t border-rule px-4 py-[22px] first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-0 xl:last:border-r-0 xl:last:pr-0{{if .Href}} transition-colors hover:bg-quiet/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}">
+    {{if .Href}}<a href="{{.Href}}"{{else}}<div{{end}} data-overview-tile="{{.ID}}" data-tone="{{.Variant}}" class="group relative flex min-w-0 flex-col gap-2.5 border-t border-rule px-4 py-5.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-0 xl:last:border-r-0 xl:last:pr-0{{if .Href}} transition-colors hover:bg-quiet/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span>
         <span class="shrink-0 text-faint" aria-hidden="true">{{icon .Icon "size-4"}}</span>
@@ -43,7 +43,7 @@
         <h2 class="text-sm font-semibold text-ink">{{.Kind}}</h2>
         {{if .Proto}}<span class="rounded-xs border border-rule bg-quiet px-1.5 py-0.5 font-mono text-sm text-meta">{{.Proto}}</span>{{end}}
       </div>
-      {{if .Empty}}<p class="flex items-start gap-2.5 border-t border-mid pt-3 text-sm font-medium text-body"><span aria-hidden="true" class="mt-[7px] size-1.5 shrink-0 rounded-[1px] border border-faint"></span><span>{{.Empty}}</span></p>{{else}}{{.Rows}}{{end}}
+      {{if .Empty}}<p class="flex items-start gap-2.5 border-t border-mid pt-3 text-sm font-medium text-body"><span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] border border-faint"></span><span>{{.Empty}}</span></p>{{else}}{{.Rows}}{{end}}
     </section>
     {{end}}
   </div>

@@ -2717,8 +2717,10 @@ func TestNoPasswordBanner(t *testing.T) {
 	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt {
 		t.Errorf("the warning belongs at the head of the content area, above the page: warning=%d body=%d", warnAt, bodyAt)
 	}
-	if !strings.Contains(body, "-mt-px flex h-12") {
-		t.Error("the warning keeps its own menu-height band")
+	// A band, arrived at rather than stated: a 28px line inset 12px, so a
+	// sentence that wraps on a phone grows the band instead of spilling out.
+	if !strings.Contains(body, "-mt-px flex items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7") {
+		t.Error("the warning is a 52px band from its padding")
 	}
 
 	// A page may declare another important state at the same seam. The shell's

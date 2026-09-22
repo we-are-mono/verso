@@ -692,7 +692,7 @@ func TestRenderTableFlat(t *testing.T) {
 		"border-b border-rule", // hairline rows
 		// A cell is a 24px line inset 10px above and below — which is the
 		// 44px row, arrived at rather than stated.
-		"px-3.5 py-2 leading-6",
+		"px-3.5 py-2.5 leading-6",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
@@ -744,13 +744,13 @@ func TestRenderTableDense(t *testing.T) {
 	rows := []TableRow{{Cells: []TableCell{{Text: "SSH"}}}}
 
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 py-2 leading-6"} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 py-2.5 leading-6"} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2 leading-6 pr-4 align-middle`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 leading-6 pr-4 align-middle`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -1182,7 +1182,7 @@ func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		`<tr class="group h-11 transition-colors hover:bg-quiet/50" data-verso-row-id="allow_ping">`,
+		`<tr class="group transition-colors hover:bg-quiet/50" data-verso-row-id="allow_ping">`,
 		`<form method="post" data-verso-act class="contents">`,
 		`<input type="hidden" name="allow_ping" value="off">`,
 	} {

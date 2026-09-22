@@ -93,6 +93,23 @@ func TestCountsAlignOnTheirDigits(t *testing.T) {
 	}
 }
 
+// TestStateMarksAreSquares: every mark that carries state is the one mark the
+// app has — a 6px square with a 1px radius, the packet a router handles.
+// Circles are for a switch's knob and the interface tree, never for state.
+func TestStateMarksAreSquares(t *testing.T) {
+	for name, w := range map[string]Widget{
+		"badge": &Badge{Variant: "success", Text: "Up", Dot: true},
+		"stat":  &Stat{Label: "Uptime", Value: "3 d", Sub: "since boot", Dot: true, Variant: "success"},
+		"meter": &Meter{Compact: true, Label: "CPU", Value: "40", Fill: 40, Tone: "success"},
+	} {
+		// (a meter's track is a pill, which is a track, not a mark)
+		got := render(t, newRenderer(t), w)
+		if !strings.Contains(got, `<span class="size-1.5 shrink-0 rounded-[1px]`) || strings.Contains(got, "size-2 shrink-0 rounded-full") || strings.Contains(got, "size-1.5 rounded-full") {
+			t.Errorf("%s: a state mark is a 6px square, not round:\n%s", name, got)
+		}
+	}
+}
+
 // TestTableStatesHaveWords: a yes/no cell is a check or nothing, and a missing
 // value is a dash; each says so in words to a screen reader.
 func TestTableStatesHaveWords(t *testing.T) {

@@ -73,8 +73,8 @@
   // guide it; everything in mono at the reading size, because every value on
   // the line is a machine string.
   var CONSOLE = {
-    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-[29px] leading-6 hover:bg-mid/50",
-    mark: "my-0.5 w-[3px] shrink-0 rounded-full ",
+    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
+    mark: "my-0.5 w-0.75 shrink-0 rounded-full ",
     time: "w-18 shrink-0 font-mono text-base font-medium text-body",
     verdict: "w-22 shrink-0 font-mono text-base font-medium ",
     path: "flex w-66 shrink-0 items-baseline gap-2 font-mono text-base font-medium",

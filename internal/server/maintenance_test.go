@@ -154,7 +154,7 @@ func TestRestoreIsVerifiedThenAppliedThroughBackend(t *testing.T) {
 	if restored == "" {
 		t.Fatal("restore backend was not called")
 	}
-	for _, want := range []string{"BACKUP RESTORED", "Your router is restarting", "Return to OpenWrt in about 2 minutes", `href="/"`} {
+	for _, want := range []string{"BACKUP RESTORED", "Your router is restarting", "Return to OpenWrt in about 2 minutes", `href="/"`, "inline-flex h-9"} {
 		if !strings.Contains(applied.Body.String(), want) {
 			t.Errorf("restore completion page missing %q", want)
 		}

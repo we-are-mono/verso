@@ -82,4 +82,37 @@
   --color-amethyst-deep: #6d3d99; /* 6.8 : 1 on amethyst-soft */
   --color-amethyst-line: #e3d1f0;
   --color-amethyst-soft: #f4ebfa; /* the upload area's fill */
+
+  /*
+   * White — the one surface a step above the page: the top bar, and the page
+   * behind a takeover.
+   */
+  --color-canvas: #ffffff;
+
+  /*
+   * Hardware — the colours of a physical object, drawn as one: a device's port
+   * panel. A dark case with lit LEDs is what the box looks like, so these stay
+   * true to the object rather than to the page's families; nothing but the
+   * ports widget uses them. A lit LED is brighter than any mark on the page
+   * because it is a light, not ink.
+   */
+  --color-hw-case: #2b313d; /* the case, lit from above… */
+  --color-hw-case-low: #20252f; /* …falling off toward its base */
+  --color-hw-case-edge: #363d4a;
+  --color-hw-screw: #5a6272; /* a screw head's lit side… */
+  --color-hw-screw-low: #2a2f38; /* …and its shadow */
+  --color-hw-jack: #363c48; /* a jack's frame */
+  --color-hw-jack-edge: #4a5262; /* its hairline, and an SFP cage's clasp */
+  --color-hw-mouth: #0b0d12; /* the dark inside a socket */
+  --color-hw-pin: #caa14a; /* gold contacts */
+  --color-hw-off: #454d5e; /* an unlit LED, an empty cage's module */
+  --color-hw-linked-edge: #4d6a63; /* a connected jack's frame, tinted by its LED */
+  --color-hw-label: #d7deea; /* a port's name on the case */
+  --color-hw-quiet: #6a7385; /* an empty port's speed */
+  --color-hw-led-link: #34d399; /* the link LED, lit */
+  --color-hw-led-act: #fbbf24; /* the activity LED, lit */
+  --color-hw-tip: #0b0f16; /* a port's tooltip ground */
+  --color-hw-tip-text: #e8edf5;
+  --color-hw-tip-edge: #333b49;
+  --color-hw-tip-key: #8a94a8;
 }

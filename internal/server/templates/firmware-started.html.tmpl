@@ -20,10 +20,8 @@
         {{ t "OpenWrt is writing the verified firmware and restoring your settings. Do not disconnect power while the router completes the upgrade." }}
       </p>
       {{/* The one act on the page, in the treatment every forward act wears
-           (page-action.html.tmpl). It was a button drawn from scratch out of a
-           stock ramp, with dark-mode variants for a face this app does not have
-           and a radius no other button uses. */}}
-      <a href="/" class="mt-8 inline-flex items-center justify-center gap-2 rounded-xs border border-denim bg-denim px-4 py-2.5 font-semibold text-white transition-colors hover:border-denim-deep hover:bg-denim-deep active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
+           (page-action.html.tmpl): the 36px primary. */}}
+      <a href="/" class="mt-8 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">
         {{ t "Return to OpenWrt in about 5 minutes" }}
       </a>
       <p class="mt-3 text-sm text-meta">{{ t "If the router is not ready when you return, wait a little longer and try again." }}</p>

@@ -7,7 +7,7 @@
      than out of metrics of its own: one height for every small bordered thing on
      the page, and one place to retune it. Only the tone is the badge's. The lg
      banner chip is not in a row and keeps its own, larger box. */}}
-{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}<span class="size-1.5 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}{{.Text}}</span>
+{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}{{.Text}}</span>
 {{/* Each verdict on its own soft ground, worded in the step of that hue that can
      carry words — the full-chroma value stays a mark, on the dot. */}}
 {{else}}<span class="{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-box"}} font-mono{{end}}
@@ -20,6 +20,6 @@
        reference chip's quiet ground and keeps its word in full ink. */}}
   {{else}}border-rule-strong bg-mid text-ink{{end}}">
   {{if .Icon}}{{if eq .Size "lg"}}{{icon .Icon "size-4 shrink-0"}}{{else}}{{icon .Icon "size-3.5 shrink-0"}}{{end}}{{end}}
-  {{if .Dot}}<span class="size-1.5 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}
+  {{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}
   {{.Text}}
 </span>{{end}}

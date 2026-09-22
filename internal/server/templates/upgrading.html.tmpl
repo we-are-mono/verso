@@ -10,8 +10,8 @@
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
-{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready
-     and re-applies the saved theme, so neither flashes (CSP-safe, first-party). */}}
+{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready,
+     so the type never flashes (CSP-safe, first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
 {{/* The takeover: chrome-less by construction — no sidebar, no top bar, no nav —

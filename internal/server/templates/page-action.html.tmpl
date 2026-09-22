@@ -4,4 +4,4 @@
      heading row. It is the accent button of the whole page, so it speaks the
      same colour and press as the review drawer's own Apply; anything quieter
      belongs beside the content it acts on, not up here. */}}
-{{define "verso-page-action"}}<a href="{{.Href}}" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xs border border-denim bg-denim px-4 py-2 text-sm font-semibold text-white transition-colors hover:border-denim-deep hover:bg-denim-deep active:translate-y-px motion-reduce:active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>{{end}}
+{{define "verso-page-action"}}<a href="{{.Href}}" class="shrink-0 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>{{end}}

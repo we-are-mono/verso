@@ -214,6 +214,16 @@ func TestCountsAreWordsWithEvenFigures(t *testing.T) {
 	}
 }
 
+// TestRefusedFieldKeepsTheFocusColour: a refused field rests and hovers in
+// crimson, but while it is being typed into it takes the action colour like
+// any other field — focus is where you are, not what is wrong.
+func TestRefusedFieldKeepsTheFocusColour(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "ip", Label: "Address", Error: "Not an address."})
+	if !strings.Contains(got, "border-crimson hover:border-crimson-deep focus:border-denim") {
+		t.Errorf("refused field border states are wrong:\n%s", got)
+	}
+}
+
 // TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
 // it is named by the row's label and the word that joins the two.
 func TestPairSecondHalfIsNamed(t *testing.T) {

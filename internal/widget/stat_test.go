@@ -31,13 +31,21 @@ func TestRenderStat(t *testing.T) {
 	})
 	for _, want := range []string{
 		"Devices", ">9", "online now",
-		"rounded-xl",     // the radius-scale step for a tile
-		"tabular-nums",   // figures align
-		"verso-live-dot", // the pulsing dot when success
-		"bg-green",       // dot tinted by the success variant
+		"rounded-xs border border-rule", // the one flat hairline frame, 2px corners
+		"tabular-nums",                  // figures align
+		"verso-live-dot",                // the pulsing dot when success
+		"bg-green",                      // dot tinted by the success variant
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stat missing %q:\n%s", want, got)
+		}
+	}
+	linked := render(t, r, &Stat{Label: "Devices", Value: "9", Href: "/devices"})
+	for _, tile := range []string{got, linked} {
+		for _, never := range []string{"rounded-xl", "shadow", "-translate-y-px"} {
+			if strings.Contains(tile, never) {
+				t.Errorf("a tile is flat — no %q:\n%s", never, tile)
+			}
 		}
 	}
 }

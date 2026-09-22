@@ -30,9 +30,12 @@
      one red across the confirm widget and the table's confirmed row action. */}}
 {{define "verso-btn-danger"}}border border-crimson bg-crimson text-white transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
 
-{{/* verso-input-border: a form control's border/focus halo, switching to the
-     error treatment when the argument (the field's error) is set. */}}
-{{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-crimson-deep{{else}}border-rule-strong hover:border-denim focus:border-denim-deep{{end}}{{end}}
+{{/* verso-input-border: a form control's border, the only thing that changes
+     about it — the strong hairline at rest, the faint step under the pointer,
+     the action colour while typing. A refused field rests and hovers in
+     crimson, but focus stays the action colour: focus says where you are, not
+     what is wrong. */}}
+{{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-denim{{else}}border-rule-strong hover:border-faint focus:border-denim{{end}}{{end}}
 
 {{/* verso-kicker-class: the one kicker — a word or two naming the group under
      it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
@@ -246,7 +249,7 @@
      hand — a heavier scrim would make the page behind it look switched off.
      It fades over 280ms, a touch under the panel's own 300ms slide, so the
      dimming is already there as the panel arrives. */}}
-{{define "verso-overlay-backdrop"}}<div x-show="open" x-transition.opacity.duration.280ms @click="hide" class="absolute inset-0 bg-ink/18 backdrop-blur-[2px]"></div>{{end}}
+{{define "verso-overlay-backdrop"}}<div x-show="open" x-transition.opacity.duration.280ms @click="hide" class="absolute inset-0 bg-ink/18 backdrop-blur-[0.125rem]"></div>{{end}}
 
 {{/* verso-close-btn: the × that dismisses an overlay. */}}
 {{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>{{end}}
@@ -314,7 +317,7 @@
 {{define "verso-drawer-header"}}
 <header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">
   <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
-  <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-[#c1bab0] hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+  <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </header>
 {{end}}
 

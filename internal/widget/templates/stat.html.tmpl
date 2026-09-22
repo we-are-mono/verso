@@ -2,16 +2,17 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* stat: a labelled big-number tile for at-a-glance metrics. The semantic variant
      tints only the icon and the status dot; the value stays ink so numbers read
-     consistently (ADR-005). Corner radius is rounded-xl (radius-scales-with-size).
-     When Href is set the whole tile is a doorway to a detail page — it lifts on hover
-     and shows a corner chevron; otherwise it's a static tile. Icons from icons.go. */}}
+     consistently (ADR-005). The frame is the one flat hairline card with the app's
+     2px corners. When Href is set the whole tile is a doorway to a detail page — it
+     takes the row's sand wash on hover and shows a corner chevron; otherwise it's a
+     static tile. Icons from icons.go. */}}
 {{/* The tints are the palette's marks — a tone on an icon is a mark, not text, so
      it takes the mark step rather than the deep one it would take as a word. The
      label, the unit and the subtitle are all the one meta ink: the ramp this used
      to reach into had two steps of grey there and the palette has one. */}}
-{{if .Href}}<a href="{{.Href}}" class="group relative block rounded-xl border border-rule bg-ground p-4 shadow-sm transition hover:-translate-y-px hover:border-rule-strong hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+{{if .Href}}<a href="{{.Href}}" class="group relative block rounded-xs border border-rule bg-ground p-4 transition-colors hover:border-rule-strong hover:bg-quiet focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
 {{else if eq .Style "bare"}}<div{{if .Name}} data-verso-stat="{{.Name}}"{{end}}>
-{{else}}<div class="rounded-xl border border-rule bg-ground p-4 shadow-sm"{{if .Name}} data-verso-stat="{{.Name}}"{{end}}>
+{{else}}<div class="rounded-xs border border-rule bg-ground p-4"{{if .Name}} data-verso-stat="{{.Name}}"{{end}}>
 {{end}}
   <div class="flex items-center justify-between gap-2">
     <span class="{{template "verso-kicker-class"}}">{{.Label}}</span>
@@ -28,7 +29,7 @@
   </div>
   {{if .Sub}}
   <div class="mt-1.5 flex items-center gap-1.5 text-sm text-meta">
-    {{if .Dot}}<span class="size-2 shrink-0 rounded-full {{template "verso-tone-dot" .Variant}}"></span>{{end}}
+    {{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}
     <span>{{.Sub}}</span>
   </div>
   {{end}}

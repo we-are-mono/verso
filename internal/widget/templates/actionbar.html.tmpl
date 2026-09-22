@@ -21,8 +21,8 @@
   {{if eq .Style "interfaces"}}
   {{range .Tabs}}<button type="button" data-verso-problem-filter{{if eq .Count 0}} hidden{{end}} data-verso-tab="{{.Match}}" aria-pressed="false" class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-2.5 text-sm text-body hover:border-faint aria-pressed:border-crimson-line aria-pressed:bg-crimson-soft aria-pressed:text-crimson-deep"><span class="size-1.5 rounded-[1px] bg-crimson" aria-hidden="true"></span>{{.Label}}<span data-verso-problem-count class="text-sm tabular-nums">{{.Count}}</span></button>{{end}}
   <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-meta" aria-label="{{t "Legend"}}">
-    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-[1px] border-[1.5px] border-inert"></span>{{t "physical port"}}</span>
-    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-[9px] rounded-full border-[1.5px] border-inert"></span>{{t "defined in software"}}</span>
+    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-2.25 rounded-[1px] border-[1.5px] border-inert"></span>{{t "physical port"}}</span>
+    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-2.25 rounded-full border-[1.5px] border-inert"></span>{{t "defined in software"}}</span>
     <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-1.5 rounded-[1px] bg-marigold"></span>{{t "worth a look"}}</span>
   </div>
   {{else if .Tabs}}

@@ -60,7 +60,7 @@ func (q *Qr) renderInto(r *Renderer, out io.Writer, _ string) error {
 		}
 	}
 	svg := fmt.Sprintf(
-		`<svg viewBox="0 0 %d %d" width="100%%" height="100%%" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QR code"><path d="%s" fill="#0b1220"/></svg>`,
+		`<svg viewBox="0 0 %d %d" width="100%%" height="100%%" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QR code"><path d="%s" fill="currentColor"/></svg>`,
 		n, n, path.String())
 
 	view := qrView{SVG: template.HTML(svg), Caption: q.Caption, DownloadName: q.DownloadName, DownloadLabel: q.DownloadLabel}

@@ -17,8 +17,8 @@
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
-{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready and
-     re-applies the saved theme, so neither flashes on navigation (CSP-safe, first-party). */}}
+{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready,
+     so the type never flashes on navigation (CSP-safe, first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
@@ -97,12 +97,12 @@
        starts at the content. */}}
   {{/* Security state sits at the navigation seam, not inside one page's content. */}}
   {{if and .NoPassword (not .Overview)}}
-  <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 text-sm text-crimson-deep">
+  <div class="relative z-10 -mt-px flex items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7 text-crimson-deep">
     {{icon "triangle-alert" "size-4 shrink-0 text-crimson"}}
     <span><span class="font-semibold">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
   </div>
   {{else if .Banner}}
-  <div class="relative z-10 -mt-px flex h-12 items-center gap-2 border-y px-8 text-sm
+  <div class="relative z-10 -mt-px flex items-center gap-2 border-y px-8 py-3 text-sm leading-7
     {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
     {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
     {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
@@ -130,7 +130,7 @@
          subtitle. Ruled mastheads retain their divider. */}}
     <div class="{{if .Ruled}}border-b border-rule pb-6{{else}}mb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
-      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-2 shrink-0 rounded-full bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
+      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
         <div class="min-w-0">
           {{/* A Display masthead's heading is the page's own subject (the device
@@ -197,7 +197,7 @@
      rather than leaving it to be found out. */}}
 {{if .SessionExpiry}}
 <div id="verso-session-ending" hidden class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-ink/18 backdrop-blur-[2px]"></div>
+  <div class="absolute inset-0 bg-ink/18 backdrop-blur-[0.125rem]"></div>
   <div role="alertdialog" aria-modal="true" aria-labelledby="verso-session-ending-title" aria-describedby="verso-session-ending-body" tabindex="-1"
     class="relative w-full max-w-md rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)] focus:outline-none">
     <div class="px-5 pt-4 pb-5">

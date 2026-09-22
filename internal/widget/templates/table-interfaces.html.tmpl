@@ -7,16 +7,16 @@
   <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
   <table class="group/inventory w-full min-w-[66rem] table-fixed border-collapse text-left text-sm">
     <colgroup><col><col class="w-30"><col class="w-44"><col class="w-50"><col class="w-32"><col class="w-39"></colgroup>
-    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pb-2 text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-[122px]{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
+    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pb-2 text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Rows}}
       {{$row := .}}
-      <tr data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="group/row h-11 border-b border-rule hover:bg-quiet/50 data-[expanded=true]:bg-quiet">
+      <tr data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="group/row border-b border-rule hover:bg-quiet/50 data-[expanded=true]:bg-quiet">
       {{range $i, $cell := .Cells}}
         {{if eq $i 0}}
         <td class="relative py-0 pl-4">
           <svg width="66" viewBox="0 0 66 44" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-4 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
-          <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="group/identity flex min-h-11 w-full cursor-pointer items-center text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+          <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="group/identity flex w-full cursor-pointer items-center text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             <svg width="66" height="44" viewBox="0 0 66 44" class="relative shrink-0 overflow-visible text-glyph" aria-hidden="true">
               <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="18" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="22" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
             </svg>
@@ -40,7 +40,7 @@
       {{end}}
       </tr>
       <tr data-verso-expanded-row hidden><td colspan="6" class="border-b border-rule p-0">
-        <div class="relative bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-[110px]">
+        <div class="relative bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-27.5">
           {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-4 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
           <div class="@container min-w-0 [&>a]:mt-5">{{range .Expanded}}{{.}}{{end}}</div>
         </div>

@@ -30,7 +30,7 @@
         <span class="min-w-0 truncate font-mono text-base font-medium text-ink">{{.Address}}</span>
       </div>
       {{else}}
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-[18px]">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4.5">
         <span class="flex items-center gap-2.5 text-base font-semibold"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>{{.TunnelsEmpty}}</span>
       </div>
       {{end}}
@@ -44,7 +44,7 @@
       <a href="/system" aria-label="{{ t "Open System" }}" title="{{ t "Open System" }}" class="ml-auto grid size-7 shrink-0 place-items-center rounded-xs border border-transparent text-glyph hover:border-sand-5 hover:bg-mid hover:text-ink focus-visible:outline-2 focus-visible:outline-denim">{{icon "arrow-right" "size-4"}}</a>
     </div>
     <div class="grid grid-cols-1 border-t border-rule sm:grid-cols-2 xl:grid-cols-4">
-      {{range .Metrics}}<div class="min-w-0 border-t border-rule px-4 pt-[22px] pb-[26px] first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4">{{.}}</div>{{else}}<p class="px-4 py-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+      {{range .Metrics}}<div class="min-w-0 border-t border-rule px-4 pt-5.5 pb-6.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4">{{.}}</div>{{else}}<p class="px-4 py-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
     </div>
     <div class="grid grid-cols-1 divide-y divide-rule border-y border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
       <div class="min-w-0 px-4 py-2 xl:pr-11">{{.SysLeft}}</div>

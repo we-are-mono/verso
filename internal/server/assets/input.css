@@ -7,9 +7,8 @@
  * the details chevron, and the conditional widget's pure-CSS show/hide.
  *
  * Colour lives in palette.css, never here — that file is the single transcription
- * of the design canvas, and every hue Verso paints is named in it. Pages still on
- * Tailwind's own scales (`slate`, `sky`, `emerald`, `amber`, `red`) are pages not
- * yet carried over; those scales stay reachable only until the last one is.
+ * of the design canvas, and every hue Verso paints is named in it. Rules here
+ * reach a colour only through its var(--color-*).
  *
  * Plugins never touch any of this — they emit a semantic widget schema (ADR-005).
  */
@@ -21,12 +20,6 @@
    looking for it). What is scanned is now exactly what renders. */
 @import "tailwindcss" source(none);
 @import "./palette.css";
-
-/* Verso has one theme. Nothing sets .dark, so the dark: utilities still carried by
-   widget templates compile to rules that never match — and binding the variant to
-   that class rather than to the media query is what keeps a visitor's OS preference
-   from painting the UI in a dark face no design defines. */
-@custom-variant dark (&:where(.dark, .dark *));
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
@@ -94,9 +87,6 @@
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --default-font-family: var(--font-sans);
   --default-mono-font-family: var(--font-mono);
-  --color-canvas: oklch(100% 0 0);
-  --color-surface-subtle: oklch(98.4% 0.003 247.858);
-  --color-menu-interaction: oklch(98.4% 0.003 247.858);
 }
 
 /* verso-boot.js removes this pre-paint gate as soon as the three UI faces are
@@ -182,7 +172,7 @@ html.verso-fonts-loading body {
   }
 
   /* Drawers are persistent, narrow scroll surfaces, so give only their inner
-     scroller a quiet thumb that follows the shell palette in both themes. The
+     scroller a quiet thumb that follows the shell palette. The
      document scrollbar deliberately remains native. */
   .verso-drawer-scrollbar {
     scrollbar-width: thin;
@@ -192,7 +182,7 @@ html.verso-fonts-loading body {
   .verso-drawer-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .verso-drawer-scrollbar::-webkit-scrollbar-thumb {
     border: 0.125rem solid transparent;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background-color: var(--color-inert);
     background-clip: padding-box;
   }
@@ -206,7 +196,7 @@ html.verso-fonts-loading body {
   }
   [data-scroll="sand"]::-webkit-scrollbar-track {
     background: var(--color-mid);
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
   }
   [data-scroll="sand"]::-webkit-scrollbar-thumb {
     border-color: var(--color-mid);
@@ -463,7 +453,7 @@ html.verso-fonts-loading body {
      "slide" over the page-level entrance on load (used by tabs and wizard steps). */
   @keyframes verso-fade { from { opacity: 0; } to { opacity: 1; } }
   .verso-tab-radio:focus-visible ~ .verso-tab-list {
-    outline: 2px solid var(--color-denim); outline-offset: 2px; border-radius: 2px;
+    outline: 2px solid var(--color-denim); outline-offset: 2px; border-radius: var(--radius-xs);
   }
   /* The sliding indicator: one equal column wide, translated one column per step.
      The segment in force is filled with the action colour — the palette's own job
@@ -471,7 +461,7 @@ html.verso-fonts-loading body {
   .verso-tab-indicator {
     position: absolute; top: 0.125rem; bottom: 0.125rem; left: 0.125rem;
     width: calc((100% - 0.25rem) / var(--verso-tabs-n, 1));
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     background-color: var(--color-denim);
     transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
@@ -494,7 +484,7 @@ html.verso-fonts-loading body {
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(4):checked) .verso-tab-list > .verso-tab-label:nth-of-type(4),
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(5):checked) .verso-tab-list > .verso-tab-label:nth-of-type(5),
   .verso-tabs:has(> .verso-tab-radio:nth-of-type(6):checked) .verso-tab-list > .verso-tab-label:nth-of-type(6) {
-    color: #ffffff;
+    color: var(--color-canvas);
   }
   @media (prefers-reduced-motion: reduce) {
     .verso-tab-indicator { transition: none; }
@@ -588,15 +578,15 @@ html.verso-fonts-loading body {
     70%,100% { transform: scale(1.5); opacity: 0; }
   }
 
-  /* A live status dot (a green badge dot) breathes an expanding ring, so "connected"
-     reads at a glance. Static dots (offline, other variants) stay calm. */
+  /* A live state mark (a green packet) breathes an expanding ring of its own
+     shape, so "connected" reads at a glance. Static marks stay calm. */
   .verso-live-dot { position: relative; }
   .verso-live-dot::after {
     content: "";
     position: absolute;
     inset: -0.1875rem;
-    border-radius: 9999px;
-    border: 2px solid color-mix(in srgb, var(--color-green) 60%, transparent);
+    border-radius: 0.125rem;
+    border: 0.125rem solid color-mix(in srgb, var(--color-green) 60%, transparent);
     animation: verso-ring 2s ease-out infinite;
   }
   @keyframes verso-ring {
@@ -625,11 +615,11 @@ html.verso-fonts-loading body {
   .verso-ports-chassis {
     position: relative; display: inline-flex; gap: 1.375rem; align-items: flex-start; max-width: 100%;
     padding: 1.5rem 1.875rem 1.125rem;
-    background: linear-gradient(180deg, #2b313d, #20252f);
-    border: 1px solid #363d4a; border-radius: 0.875rem;
+    background: linear-gradient(180deg, var(--color-hw-case), var(--color-hw-case-low));
+    border: 1px solid var(--color-hw-case-edge); border-radius: 0.875rem;
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -14px 30px rgb(0 0 0 / 0.35);
   }
-  .verso-ports-screw { position: absolute; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: radial-gradient(circle at 35% 35%, #5a6272, #2a2f38); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4); }
+  .verso-ports-screw { position: absolute; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: radial-gradient(circle at 35% 35%, var(--color-hw-screw), var(--color-hw-screw-low)); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4); }
   .verso-ports-screw.tl { top: 0.5rem; left: 0.5rem; } .verso-ports-screw.tr { top: 0.5rem; right: 0.5rem; }
   .verso-ports-screw.bl { bottom: 0.5rem; left: 0.5rem; } .verso-ports-screw.br { bottom: 0.5rem; right: 0.5rem; }
 
@@ -638,31 +628,31 @@ html.verso-fonts-loading body {
      matches the port's live class is left in the accessibility tree. */
   .verso-port.is-linked .verso-port-state-off, .verso-port:not(.is-linked) .verso-port-state-on { display: none; }
   .verso-port-jack, .verso-port-cage { height: 3.375rem; width: auto; display: block; }
-  .verso-port-frame { fill: #363c48; stroke: #4a5262; stroke-width: 1; }
-  .verso-port-mouth { fill: #0b0d12; }
-  .verso-port-pin { stroke: #caa14a; stroke-width: 1.1; }
-  .verso-port-clasp { stroke: #4a5262; stroke-width: 2; stroke-linecap: round; fill: none; }
-  .verso-port-module { fill: #454d5e; opacity: 0; transition: opacity 0.2s; }
+  .verso-port-frame { fill: var(--color-hw-jack); stroke: var(--color-hw-jack-edge); stroke-width: 1; }
+  .verso-port-mouth { fill: var(--color-hw-mouth); }
+  .verso-port-pin { stroke: var(--color-hw-pin); stroke-width: 1.1; }
+  .verso-port-clasp { stroke: var(--color-hw-jack-edge); stroke-width: 2; stroke-linecap: round; fill: none; }
+  .verso-port-module { fill: var(--color-hw-off); opacity: 0; transition: opacity 0.2s; }
   /* Two LEDs per connector, in the lip: green carries link, amber carries
      traffic — the amber one blinks (a hardware-ish ~4 Hz steps cadence) while
      the port is active. */
-  .verso-port-led { fill: #454d5e; transition: fill 0.2s; }
+  .verso-port-led { fill: var(--color-hw-off); transition: fill 0.2s; }
   .verso-port.is-linked .verso-port-module { opacity: 1; }
-  .verso-port.is-linked .verso-port-led.led-link { fill: #34d399; filter: drop-shadow(0 0 3px rgb(52 211 153 / 0.9)); }
-  .verso-port.is-active .verso-port-led.led-act { fill: #fbbf24; filter: drop-shadow(0 0 3px rgb(251 191 36 / 0.9)); animation: verso-led-blink 0.26s steps(1) infinite; }
+  .verso-port.is-linked .verso-port-led.led-link { fill: var(--color-hw-led-link); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 90%, transparent)); }
+  .verso-port.is-active .verso-port-led.led-act { fill: var(--color-hw-led-act); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 90%, transparent)); animation: verso-led-blink 0.26s steps(1) infinite; }
   @keyframes verso-led-blink {
-    50% { fill: #454d5e; filter: none; }
+    50% { fill: var(--color-hw-off); filter: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     .verso-port.is-active .verso-port-led.led-act { animation: none; }
   }
-  .verso-port.is-linked .verso-port-frame { stroke: #4d6a63; }
-  .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px rgb(52 211 153 / 0.35)); }
+  .verso-port.is-linked .verso-port-frame { stroke: var(--color-hw-linked-edge); }
+  .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px color-mix(in srgb, var(--color-hw-led-link) 35%, transparent)); }
   .verso-port.is-empty .verso-port-jack, .verso-port.is-empty .verso-port-cage { opacity: 0.5; }
-  .verso-port-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; color: #d7deea; }
+  .verso-port-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; color: var(--color-hw-label); }
   .verso-port-speed { font-family: var(--font-mono); font-size: 0.6875rem; }
-  .verso-port.is-linked .verso-port-speed { color: #6ee7b7; }
-  .verso-port.is-empty .verso-port-speed { color: #6a7385; }
+  .verso-port.is-linked .verso-port-speed { color: var(--color-hw-led-link); }
+  .verso-port.is-empty .verso-port-speed { color: var(--color-hw-quiet); }
 
   /* per-device accent: tints the device name and the WAN port's label. One of these
      sits on the page and the other on the dark chassis, so the accent is the
@@ -677,20 +667,20 @@ html.verso-fonts-loading body {
     position: absolute; bottom: calc(100% + 0.75rem); left: 50%; transform: translateX(-50%) translateY(0.25rem);
     z-index: 5; opacity: 0; pointer-events: none; white-space: nowrap; text-align: left;
     padding: 0.5625rem 0.75rem; border-radius: 0.5625rem; font-size: 0.75rem;
-    background: #0b0f16; color: #e8edf5; border: 1px solid #333b49;
+    background: var(--color-hw-tip); color: var(--color-hw-tip-text); border: 1px solid var(--color-hw-tip-edge);
     box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.7);
     transition: opacity 0.15s, transform 0.15s;
   }
-  .verso-port-tip b { color: #fff; font-weight: 600; }
+  .verso-port-tip b { color: var(--color-canvas); font-weight: 600; }
   .verso-port-tip .role { text-transform: uppercase; }
   .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.1875rem; font-family: var(--font-mono); }
-  .verso-port-tip .r .k { color: #8a94a8; }
+  .verso-port-tip .r .k { color: var(--color-hw-tip-key); }
   .verso-port:hover .verso-port-tip, .verso-port:focus-within .verso-port-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #0b0f16; }
+  .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--color-hw-tip); }
 
   .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-meta); }
   .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
-  .verso-ports-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-inert); }
+  .verso-ports-dot { width: 0.375rem; height: 0.375rem; border-radius: 1px; background: var(--color-inert); }
   .verso-ports-dot.on { background: var(--color-green); }
   .verso-ports-dot.act { background: var(--color-marigold); }
 
@@ -708,8 +698,8 @@ html.verso-fonts-loading body {
      LEDs drawn dark and the shell paints the lit ones. The traffic LED lights
      steadily here; its blink is a follow-up on the live stream. */
   .verso-panel-art svg { display: block; width: 100%; height: auto; }
-  .verso-panel-art [data-verso-port].is-linked .led-link { fill: #22c55e; filter: drop-shadow(0 0 3px rgb(34 197 94 / 0.85)); }
-  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-marigold); filter: drop-shadow(0 0 3px rgb(240 164 25 / 0.8)); }
+  .verso-panel-art [data-verso-port].is-linked .led-link { fill: var(--color-hw-led-link); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 85%, transparent)); }
+  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-hw-led-act); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 80%, transparent)); }
   .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-denim-line); stroke-width: 1.8; }
 
   /* The running-fan glyph (customGlyphs["fan-spin"]) turns while a fan runs — a
@@ -731,7 +721,7 @@ html.verso-fonts-loading body {
   .verso-chart-baseline { stroke: var(--color-inert); stroke-width: 1.5; }
   /* endpoint dot as a round HTML overlay (a stretched SVG circle turns oval); it rides
      the plot's right edge at the series' last value, coloured to its series. */
-  .verso-chart-dot-html { position: absolute; right: 0; width: 0.4375rem; height: 0.4375rem; border-radius: 9999px; transform: translate(50%, -50%); }
+  .verso-chart-dot-html { position: absolute; right: 0; width: 0.375rem; height: 0.375rem; border-radius: 1px; transform: translate(50%, -50%); }
   .verso-chart-dot-html.verso-chart--sky { background: var(--color-denim); }
   .verso-chart-dot-html.verso-chart--violet { background: var(--color-amethyst); }
   .verso-chart-dot-html.verso-chart--emerald { background: var(--color-green); }
@@ -867,11 +857,11 @@ html.verso-fonts-loading body {
      track behind it). verso-netants-live streams it to say traffic is moving. */
   .verso-netants {
     fill: none;
-    stroke: #10b981;
+    stroke: var(--color-green);
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-dasharray: 7.7 8.5;
-    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.55));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-green) 55%, transparent));
   }
   .verso-netants-live {
     animation: verso-netants-stream 0.405s linear infinite;
