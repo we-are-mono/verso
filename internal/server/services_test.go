@@ -72,7 +72,7 @@ func TestServicesTable(t *testing.T) {
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
 		"Find a service",
-		`data-verso-tab="daemon"`,
+		`<option value="daemon" data-label="daemon">daemon · `,
 		`value="stop:dnsmasq"`,           // live stop leaves boot policy alone
 		">dnsmasq</span>",                // …and its providing package in the Package column
 		`value="stop:verso-plugin-demo"`, // the plugin's live action

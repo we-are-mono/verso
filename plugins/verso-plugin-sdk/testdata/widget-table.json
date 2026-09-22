@@ -62,7 +62,11 @@
         "key": "input_lan",
         "label": "LAN",
         "to": "Router",
-        "tally": "2 rules"
+        "tally": "2 rules",
+        "add_label": "Add rule to LAN → Router",
+        "add_text": "Add rule",
+        "add_href": "/firewall/rules?open=new&src=lan",
+        "add_panel": true
       },
       "tags": [
         "ipv4",

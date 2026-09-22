@@ -54,7 +54,9 @@ func TestPackagesInventory(t *testing.T) {
 	for _, want := range []string{
 		`href="/system/packages" aria-current="page"`,
 		`href="/system/packages/discover"`,
-		`data-verso-tab=""`, `data-verso-tab="upgradable"`,
+		`<select data-package-cut data-verso-listing-cut`, `<option value="upgradable">Upgradable · `,
+		`<option value="all" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
+		`data-verso-actionbar class="flex flex-wrap items-center gap-4 border-y border-rule bg-quiet p-4"`,
 		"htop", "3.5.1-r1", "packages", // the row
 		"font-mono text-base font-medium",               // package versions use the fixed 16px/500 mono treatment
 		"Process viewer", "GPL-2.0", ">Remove</button>", // the drawer's story and act

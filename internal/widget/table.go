@@ -374,12 +374,16 @@ type TableGroup struct {
 	// Tally is what this group amounts to, already worded ("3 online · 1
 	// offline", "6 rules"), after the label and a faint dot.
 	Tally string `json:"tally,omitempty"`
-	// AddLabel and AddHref put the lane's own add control in its band, hard
-	// right — the head of the run it adds to — as a glyph that says these
-	// words on hover; the href may pre-seed the editor with the lane's own
-	// path. A group without them renders a band with nothing on its right.
+	// AddLabel and AddHref put the lane's own add control on its row, hard
+	// right — the head of the run it adds to — saying these words on hover;
+	// the href may pre-seed the editor with the lane's own path. A group
+	// without them leaves the row's right side bare.
 	AddLabel string `json:"add_label,omitempty"`
 	AddHref  string `json:"add_href,omitempty"`
+	// AddText is the add's own words ("Add rule"), drawn beside its glyph as a
+	// quiet labelled button; AddLabel stays its tooltip, naming the lane it
+	// adds to. Without it the add is the glyph alone.
+	AddText string `json:"add_text,omitempty"`
 	// AddPanel declares that address a panel rather than a page: the lane's add
 	// opens it where the lane is, seeded with the lane's own path, and the
 	// listing stays put behind it. Without it the add is an ordinary link and
@@ -737,6 +741,9 @@ type tableRowView struct {
 	ID    string
 	Key   string
 	Group *TableGroup
+	// LaneGap marks a group that is not the listing's first: it starts its own
+	// small table, 2.5rem below the last row of the one before.
+	LaneGap bool
 	// AddLabel/AddHref mark the synthetic lane-tail add row (see TableGroup);
 	// a view row carrying them renders the affordance and nothing else.
 	AddLabel     string
@@ -1071,6 +1078,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	// head of the run it adds to; the href passes the same URL policy every
 	// plugin link does.
 	var band *TableGroup
+	lanes := 0
 	suffixed := t.suffixColumns(rows)
 	for rowIndex, row := range rows {
 		if row.Group != nil {
@@ -1127,6 +1135,8 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		}
 		if row.Group != nil {
 			rv.Group = band
+			rv.LaneGap = lanes > 0
+			lanes++
 		}
 		var expandErr error
 		rv.Expanded, expandErr = r.renderChildren(row.Expanded, csrf)

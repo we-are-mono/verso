@@ -71,7 +71,7 @@ fn live() -> Widget {
 fn bar() -> Widget {
     Widget::ActionBar {
         style: String::new(),
-        tabs: ["All", "Blocked", "Allowed"]
+        tabs: ["All traffic", "Blocked", "Allowed"]
             .into_iter()
             .zip(["", TAG_BLOCKED, TAG_ALLOWED])
             .map(|(label, matches)| ActionTab {
@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(
             bar["tabs"],
             json!([
-                {"label": "All", "active": true},
+                {"label": "All traffic", "active": true},
                 {"label": "Blocked", "match": "blocked"},
                 {"label": "Allowed", "match": "allowed"}
             ])

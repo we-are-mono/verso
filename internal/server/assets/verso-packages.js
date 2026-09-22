@@ -25,15 +25,19 @@
   }
   function filterState() {
     var field = root && root.querySelector("[data-package-query]");
-    var active = root && root.querySelector('[data-verso-tab][data-active="true"]');
-    return { query: field ? field.value : "", tab: active ? active.dataset.versoTab : "", focused: document.activeElement === field };
+    var cut = root && root.querySelector("[data-verso-listing-cut]");
+    return { query: field ? field.value : "", tab: cut ? cut.value : "", focused: document.activeElement === field };
   }
   function restore(state, url) {
     var field = root.querySelector("[data-package-query]");
     field.value = state.query;
     var tab = new URL(url).searchParams.get("tab") === "upgradable" ? "upgradable" : state.tab;
-    var button = root.querySelector('[data-verso-tab="' + CSS.escape(tab) + '"]');
-    if (button) button.click();
+    // Only the inventory narrows in place; the index's cut is already the page.
+    var cut = root.querySelector("[data-verso-listing-cut]");
+    if (cut && cut.value !== tab) {
+      cut.value = tab;
+      cut.dispatchEvent(new Event("change"));
+    }
     field.dispatchEvent(new Event("input", { bubbles: false }));
     if (state.focused) field.focus();
   }
@@ -104,13 +108,25 @@
       if (field && window.htmx) window.htmx.ajax("GET", "/system/packages/discover?q=" + encodeURIComponent(field.value), { target: form.closest("[data-verso-panel]"), swap: "innerHTML" });
     });
   }
-  document.addEventListener("click", function (event) {
-    var tab = event.target.closest("button[data-verso-tab]");
-    if (tab && root && root.contains(tab)) {
-      if (tab.dataset.versoTab) pageURL.searchParams.set("tab", tab.dataset.versoTab);
-      else pageURL.searchParams.delete("tab");
-      history.replaceState(null, "", pageURL.pathname + pageURL.search);
+  // The cut's options that name another listing load it rather than narrow
+  // this one. Caught on the way down, so the narrowing never sees a value it
+  // has no rows for; the rest narrow in place and the address follows them.
+  document.addEventListener("change", function (event) {
+    var cut = event.target.closest("[data-package-cut]");
+    if (!cut || !root || !root.contains(cut)) return;
+    var chosen = cut.options[cut.selectedIndex];
+    if (chosen && chosen.dataset.href) {
+      event.stopPropagation();
+      var url = new URL(chosen.dataset.href, window.location.origin);
+      if (!url.searchParams.has("q")) url.searchParams.set("q", filterState().query);
+      listing(url, true);
+      return;
     }
+    if (cut.value) pageURL.searchParams.set("tab", cut.value);
+    else pageURL.searchParams.delete("tab");
+    history.replaceState(null, "", pageURL.pathname + pageURL.search);
+  }, true);
+  document.addEventListener("click", function (event) {
     var link = event.target.closest("a[data-package-page]");
     if (link && root && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) {
       event.preventDefault();

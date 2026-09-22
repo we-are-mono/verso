@@ -230,7 +230,7 @@ fn bar(rules: &[Rule], blank: Option<RowDrawer>) -> Widget {
         style: String::new(),
         tabs: vec![
             ActionTab {
-                label: "All".into(),
+                label: "All families".into(),
                 count: rules.len() as u32,
                 active: true,
                 ..ActionTab::default()
@@ -314,6 +314,7 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
                         "Add rule to {}",
                         format::group_label(&lane.chain, lane.shared_dest.as_deref())
                     ),
+                    add_text: "Add rule".into(),
                     add_href: add_href(&lane),
                     add_panel: true,
                 });
@@ -537,7 +538,7 @@ mod tests {
         assert_eq!(
             bar["tabs"],
             serde_json::json!([
-                {"label": "All", "count": 9, "active": true},
+                {"label": "All families", "count": 9, "active": true},
                 {"label": "IPv4", "count": 6, "match": "ipv4"},
                 {"label": "IPv6", "count": 7, "match": "ipv6"}
             ])

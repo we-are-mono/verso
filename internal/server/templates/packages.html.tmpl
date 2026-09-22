@@ -1,17 +1,28 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <div data-verso-packages data-package-all="{{.All}}"{{if .Busy}} data-verso-package-busy{{end}}>
-<div data-verso-actionbar class="mb-8 flex flex-wrap items-center gap-4">
+{{/* The listing's control band, as every table has it. The cut is one
+     dropdown: Installed and Upgradable narrow the inventory on screen, and All
+     is a different listing — the cached index, paged by the router — so its
+     option (or, from it, theirs) loads that listing instead of narrowing. */}}
+<div data-verso-actionbar class="flex flex-wrap items-center gap-4 border-y border-rule bg-quiet p-4">
   <div class="relative flex max-w-full items-center">
     <span class="pointer-events-none absolute left-2.5 text-faint">{{icon "search" "size-4"}}</span>
     <input type="search" data-package-query {{if not .All}}data-verso-listing-filter{{end}} value="{{.Query}}" autocomplete="off" aria-label="{{t "Find a package"}}" placeholder="{{t "Find a package"}}" class="h-9 w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
   </div>
-  <div class="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xs border border-rule-strong bg-quiet p-0.5">
-    {{if .All}}<a data-package-page href="/system/packages" class="flex h-7.5 items-center gap-2 rounded-xs px-3.5 text-body hover:text-ink">{{t "Installed"}}<span class="font-medium tabular-nums text-meta">{{.Installed}}</span></a>{{else}}<button type="button" data-verso-tab="" data-active="true" aria-pressed="true" class="pointer-events-none flex h-7.5 items-center gap-2 rounded-xs bg-body px-3.5 font-semibold text-white">{{t "Installed"}}<span class="font-medium tabular-nums text-white/90">{{.Installed}}</span></button>{{end}}
-    {{if .All}}<a data-package-page href="/system/packages?tab=upgradable" class="flex h-7.5 items-center gap-2 rounded-xs px-3.5 text-body hover:text-ink">{{t "Upgradable"}}<span class="font-medium tabular-nums text-meta">{{.Upgradable}}</span></a>{{else}}
-    <button type="button" data-verso-tab="upgradable" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Upgradable"}}<span class="font-medium tabular-nums text-meta">{{.Upgradable}}</span></button>
-    {{end}}
-    <a data-package-page href="/system/packages?tab=all"{{if .All}} aria-current="true"{{end}} class="flex h-7.5 items-center gap-2 rounded-xs px-3.5 {{if .All}}bg-body font-semibold text-white{{else}}text-body hover:text-ink{{end}}">{{t "All"}}{{if .All}}<span class="font-medium tabular-nums text-white/90">{{.Count}}</span>{{end}}</a>
+  <div class="relative flex max-w-full min-w-44 items-center">
+    <select data-package-cut {{if not .All}}data-verso-listing-cut{{end}} aria-label="{{t "Show"}}" class="h-9 w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+      {{if .All}}
+      <option value="" data-href="/system/packages">{{t "Installed"}} · {{.Installed}}</option>
+      <option value="upgradable" data-href="/system/packages?tab=upgradable">{{t "Upgradable"}} · {{.Upgradable}}</option>
+      <option value="all" selected>{{t "All"}} · {{.Count}}</option>
+      {{else}}
+      <option value="" selected>{{t "Installed"}} · {{.Installed}}</option>
+      <option value="upgradable">{{t "Upgradable"}} · {{.Upgradable}}</option>
+      <option value="all" data-href="/system/packages?tab=all">{{t "All"}}</option>
+      {{end}}
+    </select>
+    <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   <div class="ml-auto flex flex-wrap items-center gap-3">
     <span data-package-note class="text-sm text-meta" aria-live="polite">{{.Note}}</span>
@@ -19,10 +30,6 @@
       {{template "verso-csrf" .CSRFToken}}<input type="hidden" name="return_to" value="/system/packages">
       <button type="submit" name="_action" value="refresh"{{if .Busy}} disabled aria-disabled="true"{{end}} class="flex h-9 items-center gap-2.5 rounded-xs border px-4 text-sm font-semibold {{if .Busy}}pointer-events-none border-rule-strong bg-quiet text-glyph{{else}}{{template "verso-btn-secondary"}}{{end}}">{{if .Busy}}{{template "verso-waiting" ""}}{{t "Refreshing index…"}}{{else}}{{t "Refresh index"}}{{end}}</button>
     </form>
-    <span x-data="modal" class="contents">
-      <a href="/system/packages/discover" @click.prevent="showPanel" class="flex h-9 items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold text-white hover:border-denim-deep hover:bg-denim-deep">{{t "Install"}}</a>
-      {{template "verso-drawer-fetched" ""}}
-    </span>
   </div>
 </div>
 {{.Body}}

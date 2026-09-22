@@ -1,15 +1,18 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <div data-verso-system-log class="contents">
-  <div data-verso-actionbar class="-mx-10 flex flex-none flex-wrap items-center gap-4 border-b border-rule-strong px-10 pb-5">
+  <div data-verso-actionbar class="-mx-10 flex flex-none flex-wrap items-center gap-4 border-b border-rule-strong pr-11 pb-5 pl-10">
     <div class="relative flex max-w-full items-center">
       <span class="pointer-events-none absolute left-2.5 text-faint">{{icon "search" "size-4"}}</span>
       <input type="search" data-verso-listing-filter autocomplete="off" aria-label="{{t "Find a message or source"}}" placeholder="{{t "Find a message or source"}}" class="h-9 w-72 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
     </div>
-    <div class="inline-flex gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
-      <button type="button" data-verso-tab="" data-active="true" aria-pressed="true" class="pointer-events-none flex h-7.5 items-center gap-2 rounded-xs bg-body px-3.5 font-semibold text-white">{{t "All"}}<span class="font-medium tabular-nums text-white/90">0</span></button>
-      <button type="button" data-verso-tab="warnings" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Warnings"}}<span class="font-medium tabular-nums text-meta">0</span></button>
-      <button type="button" data-verso-tab="errors" aria-pressed="false" class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 font-normal text-body hover:text-ink">{{t "Errors"}}<span class="font-medium tabular-nums text-meta">0</span></button>
+    <div class="relative flex max-w-full min-w-44 items-center">
+      <select data-verso-listing-cut aria-label="{{t "Show"}}" class="h-9 w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+        <option value="" data-label="{{t "All messages"}}" selected>{{t "All messages"}} · 0</option>
+        <option value="warnings" data-label="{{t "Warnings"}}">{{t "Warnings"}} · 0</option>
+        <option value="errors" data-label="{{t "Errors"}}">{{t "Errors"}} · 0</option>
+      </select>
+      <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
     </div>
     <div class="relative flex max-w-full items-center">
       <select aria-label="{{t "Source"}}" data-verso-listing-select="source" class="h-9 max-w-48 appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 font-mono text-base text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"><option value="">{{t "Every source"}}</option></select>

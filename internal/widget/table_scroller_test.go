@@ -36,6 +36,10 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 	if !strings.Contains(stack, `class="verso-stack space-y-4"`) {
 		t.Errorf("a plain stack names itself for the page rhythm:\n%s", stack)
 	}
+	bar := render(t, r, &ActionBar{Filter: "Find"})
+	if !strings.Contains(bar, `data-verso-actionbar class="flex`) {
+		t.Errorf("a control band carries no margin of its own; it sits on its listing:\n%s", bar)
+	}
 }
 
 // TestRuledSectionStandsFortyAboveAndBelowItsRule: a hairline between two of

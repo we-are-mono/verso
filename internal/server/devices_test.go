@@ -332,6 +332,29 @@ func TestEntityPanelWearsEachTabsState(t *testing.T) {
 	}
 }
 
+// TestReserveSitsOnTheHeadingLine: the roster's forward act leaves its
+// control band for the heading line, as every listing's does, while the band
+// keeps the cuts it narrows by.
+func TestReserveSitsOnTheHeadingLine(t *testing.T) {
+	m := reservingManifest()
+	m.EntityActs = []plugin.EntityAct{{Entity: "device", Slot: "add", Path: "/reserve/{id}"}}
+	backend := rosterBackend()
+	backend.access = true
+	s := newServerWith(t, backend, twoTabs(), []plugin.Manifest{m, shapingManifest()})
+	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	s.neighbors = testNeighbors
+	whole := get(t, s, "/devices").Body.String()
+	body := whole[strings.LastIndex(whole, "</style>"):]
+	heading, act := strings.Index(body, `verso-page-heading">Devices`), strings.Index(body, "Reserve an address")
+	bar := strings.Index(body, "data-verso-actionbar")
+	if heading < 0 || act < 0 || bar < 0 {
+		t.Fatalf("roster is missing its heading, act or band:\n%s", body)
+	}
+	if !(heading < act && act < bar) {
+		t.Errorf("reserve should sit on the heading line, before the band (h1 %d, act %d, band %d)", heading, act, bar)
+	}
+}
+
 // TestEntityRowShortcutsOpenTheirTab: the design gives a device a ban and a
 // sliders icon, and both lead to the one tab that decides both. The map is the
 // shell's, so the plugin claiming `shape` lights `block` without knowing it

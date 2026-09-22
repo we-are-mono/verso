@@ -346,7 +346,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 				counts[tag]++
 			}
 		}
-		tabs := []widget.ActionTab{{Label: "All", Count: len(table.Rows), Active: true}}
+		tabs := []widget.ActionTab{{Label: "All services", Count: len(table.Rows), Active: true}}
 		for _, kind := range []openwrt.ServiceKind{openwrt.ServiceDaemon, openwrt.ServiceTask, openwrt.ServiceSubsystem} {
 			tabs = append(tabs, widget.ActionTab{Label: string(kind), Match: serviceTag(kind), Count: counts[serviceTag(kind)]})
 		}

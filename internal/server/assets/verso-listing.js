@@ -179,7 +179,7 @@
     var connected = false;
     var lost = false;
     var pendingReset = false;
-    var health = el("p", "border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep");
+    var health = el("p", "verso-console-notice border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep");
     health.setAttribute("role", "status");
     health.hidden = true;
     wrapper.parentNode.insertBefore(health, wrapper);

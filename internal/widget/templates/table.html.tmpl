@@ -20,6 +20,14 @@
      rather than drifting into two shapes. Its words are a tip that hangs above
      its right edge, so a tip on the last column stays inside the table. */}}
 {{define "table.actbtn-class"}}group/act relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{/* the same quiet act with its words: meta ink at rest (the glyph step is
+     never text), ink and the sand wash under the pointer. */}}
+{{define "table.laneadd-class"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-transparent pr-2.5 pl-2 text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{/* table.laneadd-look / -body: a lane's add, given its TableGroup. With
+     words it is the labelled act, and its tooltip still names the lane unless
+     the words already say it all; without them it is the glyph alone. */}}
+{{define "table.laneadd-look"}}{{if .AddText}}{{template "table.laneadd-class"}}{{else}}{{template "table.actbtn-class"}}{{end}}{{end}}
+{{define "table.laneadd-body"}}{{icon "plus" "size-4"}}{{if .AddText}}<span>{{.AddText}}</span>{{end}}{{if ne .AddText .AddLabel}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.AddLabel}}</span>{{end}}{{end}}
 {{/* table.cellpad: a cell's inset, and the line it insets. A row states no
      height of its own: it is 44px because each of its cells is — a 24px line
      with 10px above and below it. A control shorter than the line (a checkbox,
@@ -59,17 +67,18 @@
       {{/* The lane's own add sits here, at its head, rather than in a row after
            its last: a listing whose order is its meaning reads top-down, and the
            head is where the eye already is when it decides this is the lane it
-           wants. The band is the only place in the row rhythm that can carry a
-           control without pretending to be a row. It is a glyph, and says which
-           lane it adds to on hover. */}}
-      {{/* 52px, the way a row is 44: a 28px line — the add glyph's box, so the
-           band stands at one height with or without one — with 12px above and
-           below it. The words inherit the line; the verbatim string keeps its
-           own, centred on it. */}}
-      <tr class="verso-table-group h-13 bg-quiet{{if .Seam}} verso-table-seam-row{{end}}">
-        <th colspan="{{.ColumnSpan}}" class="border-b border-rule py-2 text-left leading-7 font-normal">
+           wants. Its words say the act; its tooltip says which lane. */}}
+      {{/* A lane is a row, not a band: the listing's own 44px — a 28px line,
+           the add's box, with 8px above and below — no fill, and a strong
+           hairline under it, so the only filled surface over a listing is the
+           band it is narrowed from. Every lane after the first starts its own
+           small table, 2.5rem below the last row of the one before; the air is
+           the row's own padding, so a lane the filter hides takes its gap with
+           it. */}}
+      <tr class="verso-table-group{{if .Seam}} verso-table-seam-row{{end}}">
+        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-12{{else}}pt-2{{end}} pb-2 text-left leading-7 font-normal">
           <span class="flex items-center gap-3">
-            <span class="flex items-center gap-2 text-base font-semibold text-body">{{.Group.Label}}{{if .Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Group.To}}{{end}}</span>
+            <span class="flex items-center gap-2 text-sm font-semibold text-ink">{{.Group.Label}}{{if .Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Group.To}}{{end}}</span>
             {{if .Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Group.Chain}}</span>{{end}}
             {{if .Group.Tally}}<span class="text-faint">·</span><span class="text-meta">{{.Group.Tally}}</span>{{end}}
             <span class="flex-1"></span>
@@ -79,10 +88,10 @@
                  link is still a link, so with no script it is followed and the
                  page answers with the panel open on it. */}}
             <span x-data="modal" class="contents">
-              <a href="{{.Group.AddHref}}" @click.prevent="showPanel" aria-label="{{.Group.AddLabel}}" class="{{template "table.actbtn-class"}}">{{icon "plus" "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Group.AddLabel}}</span></a>
+              <a href="{{.Group.AddHref}}" @click.prevent="showPanel" aria-label="{{.Group.AddLabel}}" class="{{template "table.laneadd-look" .Group}}">{{template "table.laneadd-body" .Group}}</a>
               {{template "verso-drawer-fetched" ""}}
             </span>
-            {{else if .Group.AddHref}}<a href="{{.Group.AddHref}}" aria-label="{{.Group.AddLabel}}" class="{{template "table.actbtn-class"}}">{{icon "plus" "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Group.AddLabel}}</span></a>{{end}}
+            {{else if .Group.AddHref}}<a href="{{.Group.AddHref}}" aria-label="{{.Group.AddLabel}}" class="{{template "table.laneadd-look" .Group}}">{{template "table.laneadd-body" .Group}}</a>{{end}}
           </span>
         </th>
       </tr>
@@ -374,15 +383,15 @@
     <thead>
       <tr>
         {{range .Columns}}
-        {{/* The column heads sit right on top of the first row — the space above
-             them belongs to whatever introduces the listing, not to the grid. A
-             table that carries its own header band is the exception: there the
-             band is the introduction, and the heads stand off it. */}}
+        {{/* The column heads are a row of the listing's own height — a 24px
+             line with 10px above and below, as every cell under them — so
+             under a control band, a title band or nothing at all the grid
+             keeps one pitch from its head down. */}}
         {{/* The heads are the kicker: medium, spaced, quiet. In the listing
              geometry an endpoint's head starts where the chip's glyph does —
              one hairline and the chip's own inset in — so the word sits over
              the column's ink rather than its border. */}}
-        <th scope="col" class="whitespace-nowrap border-b border-rule-strong {{if eq .Kind "reorder"}}w-6 py-0{{if not $.Dense}} pr-2{{end}}{{else}}{{if not $.Dense}}px-3.5 {{end}}{{if $.Title}}pt-4 {{end}}pb-2{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-rule-strong {{if eq .Kind "reorder"}}w-6 py-0{{if not $.Dense}} pr-2{{end}}{{else}}{{if not $.Dense}}px-3.5 {{end}}py-2.5 leading-6{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-rule-strong"></th>{{end}}
       </tr>

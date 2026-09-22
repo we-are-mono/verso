@@ -628,16 +628,22 @@ outside the vocabulary tones nothing.
 
 ### actionbar — a listing's controls
 
-The row between a page's heading and its listing: `filter` (the search's
-placeholder), `tabs`, `select`, `live`, and `action` — the one forward act, the
-only denim on it. `opens_panel: true` makes the act open the listing's own panel
-blank (making one is editing one that does not exist yet); `drawer` carries that
-blank panel when the address asks for it (`?open=new`).
+The band between a page's heading and its listing: `filter` (the search's
+placeholder), `tabs`, `select`, `live`, and `action`. Over a table it is the
+listing's one filled surface — quiet sand between two hairlines, every control
+1rem from its edges — and the table sits flush under it; a `live` log's bar is
+the same controls, unfilled. `tabs` are the coarse cuts, drawn as one dropdown
+beside the search with each option priced by its `count` ("IPv4 · 14"); name
+the whole set in the first one's label ("All families", not "All"). `select` is
+a second dropdown, hard right, for a facet the rows carry.
 
-A listing with nothing to search or narrow has no toolbar. Declare the bar with
-only its `action` (no `filter`, `tabs`, `select` or `live`) as the first child of
-the page's stack, and the shell puts the act on the heading line, where it opens
-the same panel.
+`action` is the page's one forward act. Declared on the bar that is the first
+child of the page's stack, the shell lifts it onto the heading line, where every
+listing keeps its primary; a bar left with nothing else on it is dropped. A
+`quiet` act (one that takes something away, like a download) stays on the bar.
+`opens_panel: true` makes the act open the listing's own panel blank (making
+one is editing one that does not exist yet); `drawer` carries that blank panel
+when the address asks for it (`?open=new`).
 
 ```json
 { "type": "actionbar", "opens_panel": true,
@@ -768,6 +774,14 @@ config draws no handle, because a grip the device would not remember is a lie.
 The drag is bounded by the row's `group`, so a grouped listing moves a row within
 its lane and never across it; sections the listing never showed keep their places
 in the file, and a drag that ends where it began stages nothing.
+
+**Lanes.** A row's `group` opens a lane: a row of the listing's own height,
+unfilled, over a strong hairline, with `label` (→ `to`), an optional mono
+`chain` and a worded `tally`. Every lane after the first stands 2.5rem off the
+one before, so each reads as its own small table. `add_href` puts the lane's add
+hard right: `add_text` is its words ("Add rule"), `add_label` its tooltip naming
+the lane ("Add rule to WAN → Router"), and `add_panel: true` opens the listing's
+panel in place, seeded by the href.
 
 **Direct row action.** A `pill` cell may carry a compact immediate action instead
 of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens

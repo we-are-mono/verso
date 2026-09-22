@@ -132,17 +132,17 @@
     <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
-      <div class="flex flex-wrap items-start justify-between gap-5">
-        <div class="min-w-0">
-          {{/* A Display masthead's heading is the page's own subject (the device
-               name), so it carries no "— <tab>" detail — that suffix labels a
-               section page, and would only wrap a long device name onto its own line.
-               A toned heading is a message about now, not a place-label: it tints
-               in the tone vocabulary and drops the suffix the same way ("neutral"
-               drops the suffix without a tint). */}}
-          <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Display) (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
-          {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
-        </div>
+      {{/* The heading line: the heading and what acts on the page, centred on
+           each other; the lede reads under the line, so the act centres on the
+           heading, not on the heading and its lede together. */}}
+      <div class="flex flex-wrap items-center justify-between gap-5">
+        {{/* A Display masthead's heading is the page's own subject (the device
+             name), so it carries no "— <tab>" detail — that suffix labels a
+             section page, and would only wrap a long device name onto its own line.
+             A toned heading is a message about now, not a place-label: it tints
+             in the tone vocabulary and drops the suffix the same way ("neutral"
+             drops the suffix without a tint). */}}
+        <h1 class="min-w-0 verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Display) (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{if .Modes}}
         {{/* The one segmented tray every switch in the app wears: the view in
              force filled in the body ink, the rest plain words that darken
@@ -154,11 +154,12 @@
         {{end}}
         {{if .HeadingAct}}{{.HeadingAct}}{{else if .Action}}{{template "verso-page-action" .Action}}{{end}}
       </div>
+      {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
     <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
-      <div class="flex flex-wrap items-start justify-between gap-5">
+      <div class="flex flex-wrap items-center justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{if .HeadingAct}}{{.HeadingAct}}{{else if .Action}}{{template "verso-page-action" .Action}}{{end}}
       </div>

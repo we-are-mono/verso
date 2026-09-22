@@ -287,6 +287,21 @@ func (s *Server) localize(r *http.Request) (lang string, t func(string) string) 
 	return lang, b.Translator(lang)
 }
 
+// headingAct renders a listing's forward act for the heading line, where every
+// listing keeps its primary. A nil act, or one that fails to render, leaves the
+// heading line bare rather than failing the page.
+func (s *Server) headingAct(r *http.Request, act *widget.ActionBar, lang string, t func(string) string) template.HTML {
+	if act == nil {
+		return ""
+	}
+	var b strings.Builder
+	if err := s.widgets.RenderWithToken(&b, act, s.sessionCSRF(r), lang, t); err != nil {
+		log.Printf("verso: heading act render failed: %v", err)
+		return ""
+	}
+	return template.HTML(b.String()) //nolint:gosec // rendered by the shell's own templates
+}
+
 // translatorOrIdentity returns t, or the identity function for a nil t (English),
 // so shell code can localize a string unconditionally.
 func translatorOrIdentity(t func(string) string) func(string) string {
@@ -648,9 +663,10 @@ type pageHeader struct {
 	StagedStructure bool
 	Subheading      string
 	Action          *plugin.PageAction // the page's one primary doorway, hard right on the heading row
-	// HeadingAct is a listing's act lifted off a bar that had nothing else on
-	// it (widget.TakeHeadingAct), already rendered: it takes the Action's place
-	// on the heading row and opens what the bar's act would have opened.
+	// HeadingAct is a listing's forward act lifted off its control band
+	// (widget.TakeHeadingAct), already rendered (Server.headingAct): it takes
+	// the Action's place on the heading row and opens what the bar's act would
+	// have opened.
 	HeadingAct template.HTML
 	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
 	// back-link in the masthead above the heading. The plugin supplies the Href and

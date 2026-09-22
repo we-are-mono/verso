@@ -191,21 +191,24 @@ func TestSelectIsAChoiceUnlessItHoldsAMachineString(t *testing.T) {
 	}
 }
 
-// TestCountsAreWordsWithEvenFigures: a count is not a machine string, so it is
-// set in the sans like the label it prices; tabular figures keep its digits
-// the same width, so a count that changes does not shift what is beside it.
-// On the selected segment it reads at 90% white, which clears contrast on the
-// body ink.
-func TestCountsAreWordsWithEvenFigures(t *testing.T) {
+// TestCoarseCutsAreOneCountedDropdown: a control surface cuts by a dropdown,
+// never a switch — each option priced with what taking it would leave, set in
+// the sans like the label it prices, and carrying its bare label so a live
+// listing can re-price it as lines arrive.
+func TestCoarseCutsAreOneCountedDropdown(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{
-		{Label: "All", Count: 7, Active: true}, {Label: "IPv4", Count: 4, Match: "ipv4"},
+		{Label: "All families", Count: 7, Active: true}, {Label: "IPv4", Count: 4, Match: "ipv4"},
 	}})
-	if strings.Contains(got, "font-mono") {
-		t.Errorf("counts must not be mono:\n%s", got)
+	if strings.Contains(got, "font-mono") || strings.Contains(got, "data-verso-tab") {
+		t.Errorf("the cut is one sans dropdown, not a segmented switch:\n%s", got)
 	}
-	for _, want := range []string{"font-medium tabular-nums text-white/90", "font-medium tabular-nums text-meta"} {
+	for _, want := range []string{
+		`<select data-verso-listing-cut`,
+		`<option value="" data-label="All families" selected>All families · 7</option>`,
+		`<option value="ipv4" data-label="IPv4">IPv4 · 4</option>`,
+	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("count missing %q:\n%s", want, got)
+			t.Errorf("cut missing %q:\n%s", want, got)
 		}
 	}
 	problems := render(t, newRenderer(t), &ActionBar{Style: "interfaces", Tabs: []ActionTab{{Label: "Needs a look", Count: 2, Match: "problem"}}})

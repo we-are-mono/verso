@@ -7,7 +7,7 @@
   <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
   <table class="group/inventory w-full min-w-[66rem] table-fixed border-collapse text-left text-sm">
     <colgroup><col><col class="w-30"><col class="w-44"><col class="w-50"><col class="w-32"><col class="w-39"></colgroup>
-    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pb-2 text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
+    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong py-2.5 text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Rows}}
       {{$row := .}}

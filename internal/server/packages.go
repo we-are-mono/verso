@@ -147,7 +147,11 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		_, _ = w.Write([]byte(page.String()))
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Packages", Tone: "neutral"}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(page.String()))
+	// Install is the page's forward act, so it sits on the heading line where
+	// every listing keeps its primary, and opens the search panel in place.
+	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
+	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: s.headingAct(r, install, lang, t)}
+	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(page.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,

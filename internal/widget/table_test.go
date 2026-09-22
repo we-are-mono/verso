@@ -334,13 +334,13 @@ func TestRenderTableGroupHeader(t *testing.T) {
 		`colspan="2"`,
 		// The lane by its two ends, the arrow between them a glyph, then what
 		// it amounts to after a faint dot.
-		`text-base font-semibold text-body">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
+		`text-sm font-semibold text-ink">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
 		`<span class="text-faint">·</span><span class="text-meta">3 rules</span>`,
-		// The band spans the row, so it is both first and last child and takes
-		// the wrapper's edge inset like every other cell. It stands 52px tall
-		// by its inset alone: a 28px line — the add glyph's box — 12px above
-		// and below, so a band with no add is the same height as one with.
-		"verso-table-group h-13 bg-quiet", `py-2 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
+		// The lane spans the row, so it is both first and last child and takes
+		// the wrapper's edge inset like every other cell. It is a row of the
+		// listing's own 44px: a 28px line — the add's box — 8px above and
+		// below, so a lane with no add is the same height as one with.
+		`class="verso-table-group"`, `pt-2 pb-2 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
 		// The lane's add is a glyph at the band's right, its words on hover.
 		`aria-label="Add rule to Guest → Router"`, lucideIcons["plus"], ">Add rule to Guest → Router</span>",
 		// The handle is the drag's, not the band's.

@@ -87,6 +87,7 @@ pub fn listing(r: &Request) -> Widget {
         chain: files.len().to_string(),
         tally: String::new(),
         add_label: "New file".into(),
+        add_text: "New file".into(),
         add_href: format!("{ROOT}files/new"),
         add_panel: true,
     });

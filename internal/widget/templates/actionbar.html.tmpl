@@ -1,16 +1,19 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* The listing's own controls, one row under the heading. Left is finding
-     things: the search first, then the coarse cuts as one segmented control,
-     each priced with its count and the one in force filled in the body ink.
-     Right is doing things: the fine cut, the live control, and last the one
-     forward act — the only thing on the bar that leaves the page, and the only
-     thing on it in the action colour. The bar keeps 32px between itself and
-     the listing it controls, whatever rhythm the page around it has. */}}
-{{/* A bar with nothing to narrow is no toolbar: the shell lifts its act onto
-     the heading line (TakeHeadingAct), where it renders alone. */}}
+{{/* The listing's control band: the surface it is narrowed from, one row under
+     the heading. Left is finding things: the search first, then the coarse cuts
+     as one counted dropdown. Right, the fine cut and the live control. Over a
+     table it is the listing's one filled surface — the quiet sand between two
+     hairlines, every control 16px from its edges — and it sits flush on the
+     column heads, so band and table read as one object. A live log's bar is
+     the same controls, unfilled, over a strong hairline that runs to the
+     window's edges with the log flush beneath it — the system log's shape —
+     its last control ending under Log out (the top bar's 2.75rem).
+     The page's forward act is not on it: the shell lifts it to the heading line
+     (TakeHeadingAct), where every page keeps its primary; a quiet act, which
+     takes something away rather than making something, stays here. */}}
 {{if .Heading}}{{template "actionbar.act" .}}{{else}}
-<div data-verso-actionbar class="mb-8 flex flex-wrap items-center {{if eq .Style "interfaces"}}gap-x-5 gap-y-3{{else}}gap-4{{end}}">
+<div data-verso-actionbar class="flex flex-wrap items-center {{if eq .Style "interfaces"}}gap-x-5 gap-y-3{{else}}gap-4{{end}} {{if .Live}}mb-0 -mx-10 border-b border-rule-strong pr-11 pb-5 pl-10{{else}}mb-0 border-y border-rule bg-quiet p-4{{end}}">
   {{if .Filter}}
   {{/* The search box wears the app's one input treatment: white, an inset
        shadow, the strong hairline that warms to the faint step under the
@@ -29,19 +32,15 @@
     <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-1.5 rounded-[1px] bg-marigold"></span>{{t "worth a look"}}</span>
   </div>
   {{else if .Tabs}}
-  {{/* One segmented control: a quiet tray with a 2px inset, each segment 30px
-       tall so the tray is the input height. The segment in force is filled in
-       the body ink with white words and takes no pointer; the rest are plain
-       words that darken under the pointer. The count is set like the word it
-       prices, a step quieter, with tabular figures so a changing count never
-       shifts the tray. */}}
-  <div class="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xs border border-rule-strong bg-quiet p-0.5">
-    {{range .Tabs}}
-    <button type="button" data-verso-tab="{{.Match}}"{{if .Active}} data-active="true" aria-pressed="true"{{else}} aria-pressed="false"{{end}}
-      class="flex h-7.5 cursor-pointer items-center gap-2 rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">
-      {{.Label}}<span class="text-sm font-medium tabular-nums {{if .Active}}text-white/90{{else}}text-meta{{end}}">{{.Count}}</span>
-    </button>
-    {{end}}
+  {{/* The coarse cuts are one dropdown beside the search, each option priced
+       with what taking it would leave ("IPv4 · 14"). A live listing prices
+       them itself as lines arrive, from each option's own label. */}}
+  <div class="relative flex max-w-full min-w-44 items-center">
+    <select data-verso-listing-cut aria-label="{{t "Show"}}"
+      class="h-9 w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+      {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{if .Active}} selected{{end}}>{{.Label}} · {{.Count}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{end}}
   <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">

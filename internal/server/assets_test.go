@@ -164,9 +164,10 @@ func TestStylesheetTypeSystem(t *testing.T) {
 
 // TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
 // own inset, 2.5rem — the gap the page keeps from the window's top and left
-// edge — and a listing's toolbar keeps its own distance to its listing. A
-// section on the page takes its standoff from that rhythm rather than adding
-// its own on top, and blocks inside a section keep the same 2.5rem.
+// edge — and a control band's listing sits flush on it, its column heads 1rem
+// under the band. A section on the page takes its standoff from that
+// rhythm rather than adding its own on top, and blocks inside a section keep
+// the same 2.5rem.
 func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -174,7 +175,8 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	}
 	for _, want := range []string{
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console{margin-top:0}",
+		// the listing sits flush on its band, and a log (and its notice) on its bar
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section:not([data-verso-ruled]){padding-top:0}",
 		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
 	} {

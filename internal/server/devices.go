@@ -49,6 +49,7 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 			return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles())
 		}),
 	}}
+	act := widget.TakeHeadingAct(page)
 	if err := s.widgets.RenderWithToken(&body, s.reading(r, page), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
@@ -56,7 +57,8 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	// Nothing on this page stages a change; the staged-changes chip shows only
 	// when edits made elsewhere are waiting (ADR-010).
 	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading: "Devices",
+		Heading:    "Devices",
+		HeadingAct: s.headingAct(r, act, lang, t),
 	}, "wide", nil, template.HTML(body.String()))
 }
 

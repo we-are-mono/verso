@@ -53,24 +53,30 @@ type ActionBar struct {
 	Heading bool `json:"-"`
 }
 
-// TakeHeadingAct lifts the act out of a page whose bar has nothing to narrow.
-// A listing with nothing to search or filter has no toolbar — its one act sits
-// on the heading line, where every page's primary does — so a Stack whose
-// first child is a bar declaring only its act (no filter, tabs, select or live
-// control) loses that bar, which is returned marked for the heading. Any other
-// shape is left alone and nil is returned.
+// TakeHeadingAct lifts a page's primary act onto its heading line. Every page
+// keeps its one forward act there; the band under the heading is for narrowing
+// the listing — the search, the cuts, the select, the live control — and
+// nothing else. So a Stack whose first child is a band with a primary act
+// gives that act up, with whatever it opens (its panel, its drawer, its
+// entity), and the act is returned as a bar marked for the heading. A band
+// left with nothing to narrow goes from the body altogether. A quiet act takes
+// something away from the listing rather than making something, so it stays
+// with the narrowing; any other shape is left alone and nil is returned.
 func TakeHeadingAct(w Widget) *ActionBar {
 	stack, ok := w.(*Stack)
 	if !ok || len(stack.Children) == 0 {
 		return nil
 	}
 	bar, ok := stack.Children[0].(*ActionBar)
-	if !ok || bar.Action == nil || bar.Filter != "" || len(bar.Tabs) > 0 || bar.Select != nil || bar.Live != "" || bar.Style != "" {
+	if !ok || bar.Action == nil || bar.Action.Quiet() {
 		return nil
 	}
-	stack.Children = stack.Children[1:]
-	bar.Heading = true
-	return bar
+	act := &ActionBar{Action: bar.Action, OpensPanel: bar.OpensPanel, Drawer: bar.Drawer, Entity: bar.Entity, Heading: true}
+	bar.Action, bar.OpensPanel, bar.Drawer, bar.Entity = nil, false, nil, ""
+	if bar.Filter == "" && len(bar.Tabs) == 0 && bar.Select == nil && bar.Live == "" && bar.Style == "" {
+		stack.Children = stack.Children[1:]
+	}
+	return act
 }
 
 // ActionTab is one coarse cut of the listing, and what taking it would leave.

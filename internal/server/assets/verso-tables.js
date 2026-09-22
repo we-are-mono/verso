@@ -492,6 +492,7 @@ document.addEventListener(
   if (!table) return;
 
   var tabs = [].slice.call(bar.querySelectorAll("[data-verso-tab]"));
+  var cut = bar.querySelector("[data-verso-listing-cut]");
   var field = bar.querySelector("[data-verso-listing-filter]");
   var select = bar.querySelector("[data-verso-listing-select]");
   var facetKey = select ? select.getAttribute("data-verso-listing-select") : "";
@@ -503,15 +504,23 @@ document.addEventListener(
   function recount() {
     if (!rows) return;
     var lines = rows.querySelectorAll(":scope > div:not([data-verso-stream-empty])");
-    for (var i = 0; i < tabs.length; i++) {
-      var tag = tabs[i].getAttribute("data-verso-tab") || "";
+    function priced(tag) {
       var n = 0;
       for (var j = 0; j < lines.length; j++) {
         var carried = " " + (lines[j].getAttribute("data-verso-tags") || "") + " ";
         if (!tag || carried.indexOf(" " + tag + " ") !== -1) n++;
       }
+      return n;
+    }
+    for (var i = 0; i < tabs.length; i++) {
       var slot = tabs[i].querySelector("span");
-      if (slot) slot.textContent = String(n);
+      if (slot) slot.textContent = String(priced(tabs[i].getAttribute("data-verso-tab") || ""));
+    }
+    if (cut) {
+      for (var k = 0; k < cut.options.length; k++) {
+        var option = cut.options[k];
+        option.textContent = option.getAttribute("data-label") + " · " + priced(option.value);
+      }
     }
   }
 
@@ -523,6 +532,7 @@ document.addEventListener(
     for (var i = 0; i < tabs.length; i++) {
       if (tabs[i].getAttribute("data-active") === "true") tag = tabs[i].getAttribute("data-verso-tab") || "";
     }
+    if (cut) tag = cut.value;
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
     var facet = select ? select.value : "";
     if (table.closest("[data-verso-inventory]")) table.dataset.filtered = String(!!(needle || tag));
@@ -571,41 +581,18 @@ document.addEventListener(
   }
 
   for (var i = 0; i < tabs.length; i++) {
+    // A problem filter is a chip pressed on and off, not one of a set.
     tabs[i].addEventListener("click", function (e) {
-      if (e.currentTarget.hasAttribute("data-verso-problem-filter")) {
-        var pressed = e.currentTarget.getAttribute("aria-pressed") !== "true";
-        e.currentTarget.setAttribute("data-active", String(pressed));
-        e.currentTarget.setAttribute("aria-pressed", String(pressed));
-        apply();
-        return;
-      }
-      for (var j = 0; j < tabs.length; j++) {
-        var on = tabs[j] === e.currentTarget;
-        tabs[j].setAttribute("data-active", on ? "true" : "false");
-        tabs[j].setAttribute("aria-pressed", on ? "true" : "false");
-        // The segment in force is filled in the body ink with white words and
-        // takes no pointer; the rest are plain words. The same classes the
-        // template gives each state, so a segment pressed reads exactly as one
-        // rendered in force.
-        tabs[j].classList.toggle("pointer-events-none", on);
-        tabs[j].classList.toggle("bg-body", on);
-        tabs[j].classList.toggle("font-semibold", on);
-        tabs[j].classList.toggle("text-white", on);
-        tabs[j].classList.toggle("font-normal", !on);
-        tabs[j].classList.toggle("text-body", !on);
-        tabs[j].classList.toggle("hover:text-ink", !on);
-        var count = tabs[j].querySelector("span");
-        if (count) {
-          count.classList.toggle("text-white/90", on);
-          count.classList.toggle("text-meta", !on);
-        }
-      }
+      var pressed = e.currentTarget.getAttribute("aria-pressed") !== "true";
+      e.currentTarget.setAttribute("data-active", String(pressed));
+      e.currentTarget.setAttribute("aria-pressed", String(pressed));
       apply();
     });
   }
   bar.versoApplyFilters = apply;
   if (field) field.addEventListener("input", apply);
   if (select) select.addEventListener("change", apply);
+  if (cut) cut.addEventListener("change", apply);
   // A live listing's rows arrive after this ran, so the bar watches for them:
   // every batch re-prices the cuts and re-applies the one in force, and a line
   // that arrives under a cut it does not survive is hidden as it lands.

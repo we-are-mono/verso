@@ -1867,12 +1867,16 @@ pub struct TableGroup {
     /// disabled".
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tally: String,
-    /// The lane's own add control, which the shell puts in this band hard right
-    /// as a glyph with these words on hover — the head of the run it adds to;
-    /// the href may pre-seed the editor with the lane's own path. Empty leaves
-    /// the band's right side bare.
+    /// The lane's own add control, which the shell puts on this row hard right
+    /// with these words on hover — the head of the run it adds to; the href may
+    /// pre-seed the editor with the lane's own path. Empty leaves the row's
+    /// right side bare.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub add_label: String,
+    /// The words the add control says beside its glyph — "Add rule" — while
+    /// add_label keeps naming the lane it adds to. Empty draws the glyph alone.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub add_text: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub add_href: String,
     /// Declares that address a panel rather than a page: the lane's add opens it

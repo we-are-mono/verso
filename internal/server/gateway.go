@@ -451,14 +451,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// A bar with nothing to narrow is no toolbar: its act goes to the heading
 	// line. Lifted only here, for a whole page — a panel request above still
 	// finds a blank object's panel on the bar where the plugin put it.
-	if act := widget.TakeHeadingAct(wdg); act != nil {
-		var ab strings.Builder
-		if err := s.widgets.RenderWithToken(&ab, act, s.sessionCSRF(r), lang, t); err != nil {
-			log.Printf("verso: plugin %q heading act render failed: %v", m.ID, err)
-		} else {
-			hdr.HeadingAct = template.HTML(ab.String()) //nolint:gosec // rendered by the shell's own templates
-		}
-	}
+	hdr.HeadingAct = s.headingAct(r, widget.TakeHeadingAct(wdg), lang, t)
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)

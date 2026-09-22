@@ -166,7 +166,7 @@ func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string)
 	}
 	bar := &ActionBar{
 		Tabs: []ActionTab{
-			{Label: "All", Count: len(devices), Active: true},
+			{Label: "All devices", Count: len(devices), Active: true},
 			{Label: "Online", Count: online, Match: "online"},
 			{Label: "Offline", Count: offline, Match: "offline"},
 			{Label: "Reserved", Count: reserved, Match: "reserved"},
