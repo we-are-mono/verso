@@ -352,7 +352,7 @@ html.verso-fonts-loading body {
 
   /* A container of form contents: blocks stand off from each other, form rows do
      not. A row already carries its own air — 12px above and below — so two of
-     them sitting flush is what gives a form its rhythm. The 32px that rightly
+     them sitting flush is what gives a form its rhythm. The 40px that rightly
      separates a table from a callout would separate every control from the next
      and turn eight settings into eight islands.
 
@@ -364,7 +364,7 @@ html.verso-fonts-loading body {
      so a row's spacing is the row's, not its surroundings'. --verso-rhythm is
      how much air the blocks between them take; the rows themselves take none
      wherever they are. */
-  .verso-rhythm > * + * { margin-top: var(--verso-rhythm, 2rem); }
+  .verso-rhythm > * + * { margin-top: var(--verso-rhythm, calc(var(--spacing) * 10)); }
   .verso-rhythm > [data-verso-change-field] + [data-verso-change-field] { margin-top: 0; }
 
   /* The rail beside a long page marks the section you are reading: the words go
@@ -689,14 +689,30 @@ html.verso-fonts-loading body {
   }
 }
 
-/* The dock keeps a constant pt-8 so pinning never shifts the page — but a lens
-   that OPENS a page would sit 2rem below the masthead line other toolbars
+/* The dock keeps a constant pt-10 so pinning never shifts the page — but a lens
+   that OPENS a page would sit 2.5rem below the masthead line other toolbars
    start on. When its sentinel is the container's first child, the dock cancels
    that padding out of the flow; pinned geometry is unchanged. Utilities layer,
    at the end: the stack's space-y utility writes margin-block-start on every
    non-last child, and only a later utilities-layer rule outranks it. */
 @layer utilities {
-  :first-child + .verso-filter-dock { margin-top: -2.75rem; }
+  /* One page rhythm: the page's blocks stand apart by the body's own inset,
+     2.5rem — the gap the page keeps from the window's top and left edge. The
+     page's root stack carries it; a section on it takes its standoff from the
+     rhythm instead of adding its own padding on top (a ruled one keeps its
+     2.5rem under the rule). A listing's toolbar keeps its own distance to the
+     listing, so the listing takes no rhythm after it; the pinned lens holds to
+     its listing with its own padding. In utilities because the stack's space-y
+     utility sets every child's margins and only a utilities-layer rule
+     outranks it; before the dock's rules, which must still win their
+     pull-up. */
+  .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
+  .verso-page-body > .verso-stack > [data-verso-actionbar] + * { margin-top: 0; }
+  .verso-page-body > .verso-stack > .verso-console { margin-top: 0; }
+  .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
+  .verso-page-body > .verso-stack > section:not([data-verso-ruled]) { padding-top: 0; }
+
+  :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
   /* With a flash above the body, the pull-up would slide the dock's white

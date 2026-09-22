@@ -2253,7 +2253,7 @@ func TestRuledMastheadEndsInAHairline(t *testing.T) {
 			}}
 			s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 			body := get(t, s, "/plugins/demo/").Body.String()
-			if hairline := strings.Contains(body, `<div class="border-b border-rule pb-6">`); hairline != ruled {
+			if hairline := strings.Contains(body, `<div class="mb-10 border-b border-rule pb-10">`); hairline != ruled {
 				t.Errorf("lede %q ruled=%v: masthead hairline drawn=%v:\n%s", tc.sub, ruled, hairline, body)
 			}
 			if standoff := strings.Contains(body, tc.standoff); standoff == ruled {

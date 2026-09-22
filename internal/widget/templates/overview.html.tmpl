@@ -15,7 +15,7 @@
     <div class="pt-5" data-verso-traffic-chart data-verso-traffic-seed="{{.TrafficSeed}}">{{.Chart}}</div>
   </section>
 
-  <section id="overview-tunnels" class="mt-11 scroll-mt-20" aria-labelledby="overview-tunnels-title">
+  <section id="overview-tunnels" class="mt-10 scroll-mt-20" aria-labelledby="overview-tunnels-title">
     <div class="flex items-center gap-3 border-t border-rule bg-quiet px-4 py-3">
       <h2 id="overview-tunnels-title" class="text-lg font-semibold tracking-tight text-body">{{ t "Tunnels" }}</h2>
       {{if .TunnelMeta}}<span aria-hidden="true" class="text-faint">·</span><span class="min-w-0 truncate text-sm text-meta">{{.TunnelMeta}}</span>{{end}}
@@ -37,7 +37,7 @@
     </div>
   </section>
 
-  <section class="mt-11" aria-labelledby="overview-system-title">
+  <section class="mt-10" aria-labelledby="overview-system-title">
     <div class="flex items-center gap-3 border-t border-rule bg-quiet px-4 py-3">
       <h2 id="overview-system-title" class="text-lg font-semibold tracking-tight text-body">{{ t "System" }}</h2>
       {{if .SysMeta}}<span aria-hidden="true" class="text-faint">·</span><span class="min-w-0 truncate text-sm text-meta">{{.SysMeta}}</span>{{end}}
@@ -47,8 +47,8 @@
       {{range .Metrics}}<div class="min-w-0 border-t border-rule px-4 pt-5.5 pb-6.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4">{{.}}</div>{{else}}<p class="px-4 py-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
     </div>
     <div class="grid grid-cols-1 divide-y divide-rule border-y border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-      <div class="min-w-0 px-4 py-2 xl:pr-11">{{.SysLeft}}</div>
-      <div class="min-w-0 px-4 py-2 xl:pl-11">{{.SysRight}}</div>
+      <div class="min-w-0 px-4 py-2 xl:pr-10">{{.SysLeft}}</div>
+      <div class="min-w-0 px-4 py-2 xl:pl-10">{{.SysRight}}</div>
     </div>
   </section>
 

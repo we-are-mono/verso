@@ -123,12 +123,13 @@
          left one. The bottom padding becomes the natural gap before the footer.
          A full page keeps the side and top air for its masthead but never the
          bottom: what is below the masthead runs to the edge. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-10{{else if .Overview}}px-4 pt-9 pb-16 sm:px-6 md:px-11{{else}}px-10 pt-10 pb-10{{end}}">
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-10{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pt-10 pb-10{{end}}">
     <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-[40rem]{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if or .Kicker .Subheading .Display}}
     {{/* The heading block keeps a 20px gap to the content, with or without a
-         subtitle. Ruled mastheads retain their divider. */}}
-    <div class="{{if .Ruled}}border-b border-rule pb-6{{else}}mb-5{{end}}">
+         subtitle. A ruled masthead's divider takes the page's gap on both sides
+         of it, 2.5rem above and below, like every rule between a page's subjects. */}}
+    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
@@ -155,7 +156,7 @@
       </div>
     </div>
     {{else if .Heading}}
-    <div class="{{if .Ruled}}border-b border-rule pb-6{{else}}mb-5{{end}}">
+    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       <div class="flex flex-wrap items-start justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>

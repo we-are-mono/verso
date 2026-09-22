@@ -2,16 +2,16 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* filter: the page-wide lens on a sticky ground-coloured dock. The sentinel div
      lets verso.js detect the pinned state (the dock gains .verso-filter-stuck and
-     the bar breathes in). The dock bleeds past the content column (-mx-11/px-11, the
+     the bar breathes in). The dock bleeds past the content column (-mx-10/px-10, the
      page's own padding) so pinned rows slide fully beneath it, dissolving through
      the ::after gradient fade. Behaviour is shell-owned: see verso.js. */}}
 <div class="h-px"></div>
-{{/* pt-11 = the content column's own 44px gutter, so the pinned bar sits as far
+{{/* pt-10 = the content column's own 40px gutter, so the pinned bar sits as far
      from the top as the content does from the sidebar. Constant padding — a
      pin-time change would shift the page, and the lens never moves anything. */}}
 {{/* top offset is owned by the stylesheet (components layer), not a utility —
      it must yield to the subpage top bar when one is present. */}}
-<div class="verso-filter-dock sticky z-20 -mx-11 bg-ground px-11 pt-11 pb-3">
+<div class="verso-filter-dock sticky z-20 -mx-10 bg-ground px-10 pt-10 pb-3">
   {{/* the lens is a field like any other field — the page's own hairline, the
        page's own ground — because what makes it findable is that it is always
        the first thing on the page, not that it is painted louder than the

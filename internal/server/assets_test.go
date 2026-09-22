@@ -162,6 +162,28 @@ func TestStylesheetTypeSystem(t *testing.T) {
 	}
 }
 
+// TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
+// own inset, 2.5rem — the gap the page keeps from the window's top and left
+// edge — and a listing's toolbar keeps its own distance to its listing. A
+// section on the page takes its standoff from that rhythm rather than adding
+// its own on top, and blocks inside a section keep the same 2.5rem.
+func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	for _, want := range []string{
+		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console{margin-top:0}",
+		".verso-page-body>.verso-stack>section:not([data-verso-ruled]){padding-top:0}",
+		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("stylesheet is missing %q", want)
+		}
+	}
+}
+
 // TestStylesheetKeepsFocusAndStillness: two things no utility on any one
 // element can promise, so the stylesheet states them once for all. In forced
 // colours (Windows high contrast) a border's colour is overridden, so a control

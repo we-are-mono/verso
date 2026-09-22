@@ -22,18 +22,30 @@ func TestTableScrollerContainsItsHiddenWords(t *testing.T) {
 	}
 }
 
-// TestTitledTableStandsOffLikeASection: a listing with its own band is a
-// section of the page, so it stands off whatever sits above it by the gap the
-// homepage leaves before its System band — not the 16px between a listing's
-// own parts. Leading the page, it takes no gap.
-func TestTitledTableStandsOffLikeASection(t *testing.T) {
+// TestPageSpacingIsThePagesNotTheBlocks: how far a listing stands from what
+// sits above it is the page's rhythm (the stack's), not the listing's own —
+// a titled listing carries no margin of its own, and the page stack names
+// itself so the rhythm can find it.
+func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 	r := newRenderer(t)
 	titled := render(t, r, &Table{Title: "Radios", Columns: []TableColumn{{Label: "Radio"}}})
-	if !strings.Contains(titled, `class="relative mt-11 overflow-x-auto overflow-y-hidden first:mt-0`) {
-		t.Errorf("a titled listing should open with the section gap:\n%s", titled)
+	if strings.Contains(titled, "mt-11") || strings.Contains(titled, "mt-10") {
+		t.Errorf("a listing carries no page gap of its own:\n%s", titled)
 	}
-	plain := render(t, r, &Table{Columns: []TableColumn{{Label: "Network"}}})
-	if strings.Contains(plain, "mt-11") {
-		t.Errorf("a listing without a band keeps its place in the stack:\n%s", plain)
+	stack := render(t, r, &Stack{Children: []Widget{&Text{Markdown: "a"}, &Text{Markdown: "b"}}})
+	if !strings.Contains(stack, `class="verso-stack space-y-4"`) {
+		t.Errorf("a plain stack names itself for the page rhythm:\n%s", stack)
+	}
+}
+
+// TestRuledSectionStandsFortyAboveAndBelowItsRule: a hairline between two of
+// a page's subjects has the page's gap on both sides of it — 2.5rem above the
+// rule, 2.5rem from the rule to the section's heading — and the section a page
+// opens with draws neither rule nor gap.
+func TestRuledSectionStandsFortyAboveAndBelowItsRule(t *testing.T) {
+	got := render(t, newRenderer(t), &Section{Title: "Time", Hairline: true, Children: []Widget{&Text{Markdown: "x"}}})
+	want := `data-verso-ruled class="mt-10 border-t border-rule pt-10 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0"`
+	if !strings.Contains(got, want) {
+		t.Errorf("ruled section should carry %q:\n%s", want, got)
 	}
 }

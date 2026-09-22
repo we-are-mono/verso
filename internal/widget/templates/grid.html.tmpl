@@ -18,10 +18,10 @@
 {{else if eq .Style "configurations"}}
 <div class="mt-6 grid min-w-0 grid-cols-1 gap-x-12 gap-y-6 @2xl:grid-cols-2 [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-0 [&>div>span]:text-base">{{range .Children}}{{.}}{{end}}</div>
 {{else if eq .Style "settings"}}
-<div class="@container"><div class="grid min-w-0 grid-cols-1 gap-11 @5xl:grid-cols-[40rem_minmax(0,1fr)] [&>div:first-child]:max-w-[40rem] [&>div:last-child]:self-start @5xl:[&>div:last-child]:sticky @5xl:[&>div:last-child]:top-8 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem] [&_section[id]]:pb-8 [&_section[id]:first-of-type]:pt-8">{{range .Children}}<div class="min-w-0">{{.}}</div>{{end}}</div></div>
+<div class="@container"><div class="grid min-w-0 grid-cols-1 gap-10 @5xl:grid-cols-[40rem_minmax(0,1fr)] [&>div:first-child]:max-w-[40rem] [&>div:last-child]:self-start @5xl:[&>div:last-child]:sticky @5xl:[&>div:last-child]:top-8 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]">{{range .Children}}<div class="min-w-0">{{.}}</div>{{end}}</div></div>
 {{else if eq .Style "editor"}}
 <div class="@container">
-  <div class="grid min-w-0 grid-cols-1 gap-11 @5xl:grid-cols-[40rem_minmax(0,1fr)] sm:[&_[data-verso-control]]:w-[23rem] [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range .Children}}<div class="min-w-0 first:max-w-[40rem]">{{.}}</div>{{end}}</div>
+  <div class="grid min-w-0 grid-cols-1 gap-10 @5xl:grid-cols-[40rem_minmax(0,1fr)] sm:[&_[data-verso-control]]:w-[23rem] [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range .Children}}<div class="min-w-0 first:max-w-[40rem]">{{.}}</div>{{end}}</div>
 </div>
 {{else if eq .Style "rail"}}
 {{/* A rail is not an even split: it is the page's work beside a narrower column
@@ -35,7 +35,7 @@
      has taken. Short of that width the rail stacks under the work, where two
      columns would leave neither readable. */}}
 <div class="@container">
-  <div class="grid grid-cols-1 gap-11 @6xl:grid-cols-[40rem_29.25rem]">{{range .Children}}{{.}}{{end}}</div>
+  <div class="grid grid-cols-1 gap-10 @6xl:grid-cols-[40rem_29.25rem]">{{range .Children}}{{.}}{{end}}</div>
 </div>
 {{else if eq .Style "form"}}
 {{/* Fields side by side from the tablet width up, and never on a phone. */}}

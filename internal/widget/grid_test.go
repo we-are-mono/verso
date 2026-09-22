@@ -88,7 +88,7 @@ func TestGridRail(t *testing.T) {
 	})
 	for _, want := range []string{
 		`<div class="@container">`,
-		"grid grid-cols-1 gap-11 @6xl:grid-cols-[40rem_29.25rem]",
+		"grid grid-cols-1 gap-10 @6xl:grid-cols-[40rem_29.25rem]",
 		"the work", "the rail",
 	} {
 		if !strings.Contains(got, want) {

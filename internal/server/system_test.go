@@ -88,7 +88,9 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 		t.Fatal("page loads must not carry an entrance animation")
 	}
 	body := whole[strings.LastIndex(whole, "</style>"):]
-	if !strings.Contains(body, `<div class="px-4 pt-9 pb-16 sm:px-6 md:px-11">`) {
+	// The homepage keeps the page inset every page keeps: 2.5rem from the top,
+	// and from the sidebar once there is room for it.
+	if !strings.Contains(body, `<div class="px-4 pt-10 pb-16 sm:px-6 md:px-10">`) {
 		t.Error("the page's air is the frame's, outside the content measure")
 	}
 	if !strings.Contains(body, `<div class="max-w-`) {

@@ -412,7 +412,7 @@
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
-<div class="verso-console -mx-11 flex min-h-0 flex-1 flex-col bg-quiet"
+<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
   <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
     <div data-verso-stream-empty class="px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>
@@ -441,14 +441,13 @@
      panel's teleport template after its last cell, so the last cell is not the
      row's last child and would otherwise miss its inset.
 
-     A listing with its own band is a section of the page: it stands off what
-     sits above it by the gap the homepage leaves before its System band (44px),
-     not the 16px between a listing's own parts — and takes none leading the page.
+     How far a listing stands from what sits above it is the page's rhythm
+     (input.css, the page stack), not the listing's own.
 
      Relative, so the scroller is the containing block of every absolutely
      placed word inside it (a dash's screen-reader "None"): otherwise a word in
      a column scrolled out of view escapes the clip and widens the page. */}}
-<div{{if .Live}} data-verso-live-table{{end}} class="relative {{if .Title}}mt-11 {{end}}overflow-x-auto overflow-y-hidden {{if .Title}}first:mt-0 {{end}}[&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4">
+<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush

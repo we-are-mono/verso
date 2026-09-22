@@ -30,7 +30,10 @@ func TestPluginActWithNothingToNarrowSitsOnTheHeadingLine(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	body := rec.Body.String()
+	// The markup after the inlined stylesheet, whose selectors name the hooks
+	// the markup would carry.
+	whole := rec.Body.String()
+	body := whole[strings.LastIndex(whole, "</style>"):]
 	heading := strings.Index(body, ">Wireless</h1>")
 	act := strings.Index(body, ">Add network<")
 	listing := strings.Index(body, "No wireless networks yet.")

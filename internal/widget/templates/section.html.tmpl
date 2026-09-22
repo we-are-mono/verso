@@ -8,7 +8,10 @@
 {{/* Hairline is opt-in, and it means one of two things.
 
      A ruled section is one of a page's subjects, set off from the last by a rule
-     and its own air. first-of-type, not first-child: a form opens with its
+     with the page's gap on both sides of it: 2.5rem above the rule (a margin, so
+     it meets the gap the container already keeps rather than adding to it) and
+     2.5rem from the rule to the heading. The one a page opens with draws neither
+     rule nor gap. first-of-type, not first-child: a form opens with its
      hidden CSRF carrier, so the leading section is never the first child of
      anything and would draw a rule with nothing above it to divide from.
 
@@ -22,7 +25,7 @@
      enough that the phone's own bar is not covering the heading that was asked
      for, and on a wider screen no further than the air the section already keeps
      above itself. */}}
-<section{{if .Anchor}} id="{{.Anchor}}"{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}border-t border-rule pt-8 pb-2 first-of-type:border-t-0{{else if not .Flush}}pt-6{{end}}">
+<section{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-10 border-t border-rule pt-10 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not .Flush}}pt-6{{end}}">
   {{if or .Title .Meta .Control}}
   <div class="{{if .Sub}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
     <div class="flex flex-wrap items-center gap-3">

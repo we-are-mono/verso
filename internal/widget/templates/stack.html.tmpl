@@ -2,5 +2,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* stack: layout of pre-rendered children, with no surface of its own. Inline forms
      a wrapping row; Between (inline only) spreads its groups to opposite edges;
-     Divided draws hairlines; Compact tightens the default vertical rhythm. */}}
-<div class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-3{{if .Between}} w-full justify-between{{end}}{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}space-y-8{{else}}space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>
+     Divided draws hairlines; Compact tightens the default vertical rhythm. A
+     plain stack names itself (verso-stack): as the page's root it takes the
+     page rhythm from input.css — its blocks 2.5rem apart. */}}
+<div class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-3{{if .Between}} w-full justify-between{{end}}{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}verso-stack space-y-8{{else}}verso-stack space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>
