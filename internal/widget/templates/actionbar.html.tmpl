@@ -7,6 +7,9 @@
      forward act — the only thing on the bar that leaves the page, and the only
      thing on it in the action colour. The bar keeps 32px between itself and
      the listing it controls, whatever rhythm the page around it has. */}}
+{{/* A bar with nothing to narrow is no toolbar: the shell lifts its act onto
+     the heading line (TakeHeadingAct), where it renders alone. */}}
+{{if .Heading}}{{template "actionbar.act" .}}{{else}}
 <div data-verso-actionbar class="mb-8 flex flex-wrap items-center {{if eq .Style "interfaces"}}gap-x-5 gap-y-3{{else}}gap-4{{end}}">
   {{if .Filter}}
   {{/* The search box wears the app's one input treatment: white, an inset
@@ -59,6 +62,11 @@
       {{template "verso-waiting" ""}}<span data-verso-live-label>{{.Live}}</span>
     </button>
     {{end}}
+    {{template "actionbar.act" .}}
+  </div>
+</div>
+{{end}}
+{{define "actionbar.act"}}
     {{if .Action}}
     {{if and .OpensPanel (not .HasPanel)}}
     {{/* Making one opens the same panel that edits one, in place: the listing
@@ -93,5 +101,4 @@
     <a href="{{.Action.Href}}" class="flex h-9 shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
     {{end}}
     {{end}}
-  </div>
-</div>
+{{end}}

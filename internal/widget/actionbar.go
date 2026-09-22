@@ -48,6 +48,29 @@ type ActionBar struct {
 	// Open, so an address that asks for a new object arrives with the panel
 	// already in front of the operator; the Action's Href stays the fallback.
 	Drawer *RowDrawer `json:"drawer,omitempty"`
+	// Heading renders the act alone, for the heading line: set by the shell
+	// when the bar has nothing but its act (TakeHeadingAct), never by a plugin.
+	Heading bool `json:"-"`
+}
+
+// TakeHeadingAct lifts the act out of a page whose bar has nothing to narrow.
+// A listing with nothing to search or filter has no toolbar — its one act sits
+// on the heading line, where every page's primary does — so a Stack whose
+// first child is a bar declaring only its act (no filter, tabs, select or live
+// control) loses that bar, which is returned marked for the heading. Any other
+// shape is left alone and nil is returned.
+func TakeHeadingAct(w Widget) *ActionBar {
+	stack, ok := w.(*Stack)
+	if !ok || len(stack.Children) == 0 {
+		return nil
+	}
+	bar, ok := stack.Children[0].(*ActionBar)
+	if !ok || bar.Action == nil || bar.Filter != "" || len(bar.Tabs) > 0 || bar.Select != nil || bar.Live != "" || bar.Style != "" {
+		return nil
+	}
+	stack.Children = stack.Children[1:]
+	bar.Heading = true
+	return bar
 }
 
 // ActionTab is one coarse cut of the listing, and what taking it would leave.

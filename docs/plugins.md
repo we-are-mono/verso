@@ -626,6 +626,24 @@ when a catalog covers it.
 meaning, never a colour: the shell picks the ink, in both themes, and a word
 outside the vocabulary tones nothing.
 
+### actionbar — a listing's controls
+
+The row between a page's heading and its listing: `filter` (the search's
+placeholder), `tabs`, `select`, `live`, and `action` — the one forward act, the
+only denim on it. `opens_panel: true` makes the act open the listing's own panel
+blank (making one is editing one that does not exist yet); `drawer` carries that
+blank panel when the address asks for it (`?open=new`).
+
+A listing with nothing to search or narrow has no toolbar. Declare the bar with
+only its `action` (no `filter`, `tabs`, `select` or `live`) as the first child of
+the page's stack, and the shell puts the act on the heading line, where it opens
+the same panel.
+
+```json
+{ "type": "actionbar", "opens_panel": true,
+  "action": { "label": "Add network", "href": "/plugins/wireless/?open=new", "icon": "plus" } }
+```
+
 ### table — config sections as identical rows
 
 The Advanced-view listing: one row per config section under fixed columns. Every

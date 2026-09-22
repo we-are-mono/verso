@@ -549,6 +549,7 @@ type pageData struct {
 	Ruled         bool               // the masthead ends in a hairline, ruled off from the page's first section
 	Subheading    string             // optional lede under the heading
 	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
+	HeadingAct    template.HTML      // a listing's lone act, rendered in the Action's place (pageHeader.HeadingAct)
 	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
 	Width         string             // content-column width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
@@ -647,6 +648,10 @@ type pageHeader struct {
 	StagedStructure bool
 	Subheading      string
 	Action          *plugin.PageAction // the page's one primary doorway, hard right on the heading row
+	// HeadingAct is a listing's act lifted off a bar that had nothing else on
+	// it (widget.TakeHeadingAct), already rendered: it takes the Action's place
+	// on the heading row and opens what the bar's act would have opened.
+	HeadingAct template.HTML
 	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
 	// back-link in the masthead above the heading. The plugin supplies the Href and
 	// optionally a Label; the shell defaults the label to "Cancel" and fixes the
@@ -791,6 +796,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Live:          hdr.Live,
 		Subheading:    tr(hdr.Subheading),
 		Action:        localizeAction(hdr.Action, tr),
+		HeadingAct:    hdr.HeadingAct,
 		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
 		CSS:           s.currentCSS(),
