@@ -12,6 +12,7 @@ mod access;
 mod config_files;
 mod dhcp;
 mod firewall;
+mod firewall_log;
 mod firmware;
 mod packages;
 mod ubus;
@@ -51,6 +52,7 @@ const STATUS_PERMISSION_DENIED: i32 = 6;
 const STATUS_UNKNOWN_ERROR: i32 = 9;
 
 struct State {
+    firewall_log: firewall_log::Collector,
     packages: Mutex<()>,
     maintenance: Mutex<()>,
 }
@@ -95,6 +97,9 @@ impl Failure {
 }
 
 fn main() {
+    if firewall_log::command_line() {
+        return;
+    }
     let socket = socket_argument().unwrap_or_else(|message| {
         eprintln!("verso-rpcd: {message}");
         std::process::exit(2);
@@ -139,7 +144,10 @@ fn serve(socket: &Path) -> Result<(), String> {
     println!("verso-rpcd: listening on {}", socket.display());
 
     config_files::watchdog();
+    let collector = firewall_log::Collector::new();
+    collector.start();
     let state = Arc::new(State {
+        firewall_log: collector,
         packages: Mutex::new(()),
         maintenance: Mutex::new(()),
     });
@@ -429,6 +437,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
         "firewallCounters" => firewall_counters(),
+        "firewallLog" => state.firewall_log.read(&request["args"]),
         "createBackup" | "restoreBackup" | "validateFirmware" | "installFirmware" => {
             let path = argument(request, "path")?;
             let _guard = state
@@ -727,14 +736,24 @@ fn run_bounded(
 }
 
 fn run_bounded_within(
-    mut command: Command,
+    command: Command,
     name: &str,
     max_stdout: usize,
     timeout: Duration,
 ) -> Result<std::process::Output, Failure> {
+    run_bounded_with_stdin(command, name, max_stdout, timeout, Stdio::null())
+}
+
+fn run_bounded_with_stdin(
+    mut command: Command,
+    name: &str,
+    max_stdout: usize,
+    timeout: Duration,
+    stdin: Stdio,
+) -> Result<std::process::Output, Failure> {
     command
         .env_clear()
-        .stdin(Stdio::null())
+        .stdin(stdin)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = command
@@ -1198,6 +1217,7 @@ mod tests {
         "pkgRemove",
         "rootHasPassword",
         "firewallCounters",
+        "firewallLog",
         "createBackup",
         "restoreBackup",
         "validateFirmware",
@@ -1229,6 +1249,7 @@ mod tests {
         // No ubus socket is involved: the zero sid short-circuits before any
         // session lookup, which is exactly what makes this bound the helper's own.
         let state = State {
+            firewall_log: firewall_log::Collector::new(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
         };
@@ -1244,6 +1265,7 @@ mod tests {
     #[test]
     fn the_zero_session_refuses_a_read_verb_from_the_shell() {
         let state = State {
+            firewall_log: firewall_log::Collector::new(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
         };

@@ -15,6 +15,14 @@
       <select aria-label="{{t "Source"}}" data-verso-listing-select="source" class="h-9 max-w-48 appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 font-mono text-base text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"><option value="">{{t "Every source"}}</option></select>
       <span class="pointer-events-none absolute right-3 text-glyph">{{icon "chevron-down" "size-4"}}</span>
     </div>
+    <label class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-body">
+      <span class="relative inline-flex size-4.5 shrink-0 items-center justify-center">
+        <input type="checkbox" data-log-include-firewall class="peer sr-only"{{if .IncludeFirewall}} checked{{end}}>
+        <span class="absolute inset-0 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] peer-checked:border-body peer-checked:bg-body peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim"></span>
+        <span class="relative text-white opacity-0 peer-checked:opacity-100">{{icon "check" "size-3.5 [stroke-width:3]"}}</span>
+      </span>
+      {{t "Include firewall traffic"}}
+    </label>
     <div class="ml-auto flex flex-wrap items-center gap-2">
       <span class="mr-2 flex items-center gap-2 whitespace-nowrap text-sm text-meta"><span data-log-state-mark class="size-1.5 rounded-[1px] border border-faint"></span><span data-log-state role="status">{{t "Connecting…"}}</span></span>
       <button type="button" data-log-pause class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Pause"}}</button>

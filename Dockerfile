@@ -66,13 +66,14 @@ RUN apk add --no-check-certificate ca-bundle \
  && chmod 0755 /usr/libexec/verso/update-check \
  && chmod 0600 /etc/crontabs/root \
  && chmod 0755 /usr/sbin/verso-rpcd /usr/bin/verso-plugin-system \
+ && chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup \
  && chmod +x /etc/init.d/verso /etc/init.d/verso-rpcd /etc/init.d/verso-plugin-system /etc/init.d/netfix \
  # No ujail in an unprivileged container: it cannot clone namespaces (EPERM),
  # which turns jailed services (dnsmasq) into crash loops. Without the binary,
  # procd runs every instance plain — the same skip verso's own jail params
  # already get here (see /etc/init.d/verso). Jails apply on real hardware.
  && rm -f /sbin/ujail \
- && ( /etc/init.d/verso-rpcd enable || ln -sf ../init.d/verso-rpcd /etc/rc.d/S94verso-rpcd ) \
+ && ( /etc/init.d/verso-rpcd enable || ln -sf ../init.d/verso-rpcd /etc/rc.d/S18verso-rpcd ) \
  && ( /etc/init.d/verso-plugin-system enable || ln -sf ../init.d/verso-plugin-system /etc/rc.d/S93verso-plugin-system ) \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ( /etc/init.d/cron enable || ln -sf ../init.d/cron /etc/rc.d/S50cron ) \

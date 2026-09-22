@@ -219,6 +219,8 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 $(BUILDDIR)/verso-plugin-system-$(APK_GOARCH)         $(APK_PAYLOAD)/usr/bin/verso-plugin-system
 	install -Dm755 $(BUILDDIR)/verso-plugin-firewall-$(APK_GOARCH)       $(APK_PAYLOAD)/usr/bin/verso-plugin-firewall
 	install -Dm755 docker/rootfs/etc/init.d/verso                       $(APK_PAYLOAD)/etc/init.d/verso
+	install -Dm755 docker/rootfs/usr/libexec/verso/firewall-logging $(APK_PAYLOAD)/usr/libexec/verso/firewall-logging
+	install -Dm755 docker/rootfs/usr/libexec/verso/firewall-logging-setup $(APK_PAYLOAD)/usr/libexec/verso/firewall-logging-setup
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
 	install -Dm755 docker/rootfs/usr/libexec/verso/update-check         $(APK_PAYLOAD)/usr/libexec/verso/update-check
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
@@ -243,10 +245,11 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --info "description:Verso — a modern web UI for OpenWrt" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
-	  --info depends:ca-bundle \
+	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log" \
 	  --files "$(APK_PAYLOAD)" \
 	  --script post-install:$(POSTINST) \
 	  --script post-upgrade:$(POSTINST) \
+	  --script pre-deinstall:packaging/apk/pre-deinstall.sh \
 	  --sign-key "$(KEY)" \
 	  --output "$(APK_OUT)"'
 	@echo "built and signed: $(APK_OUT)  (arch $(APK_ARCH), version $(VER))"

@@ -109,11 +109,15 @@ type fakeBackend struct {
 	// The device's log ring and netifd's logical/device join — what the live
 	// activity stream reads. logEntries is served whole, filtered by the caller's
 	// cursor; logReads counts the polls (pointer: fakeBackend is used by value).
-	logEntries []openwrt.LogEntry
-	logErr     error
-	logReads   *int
-	netIfaces  []openwrt.NetIface
-	netIfErr   error
+	firewallEntries    []openwrt.LogEntry
+	firewallErr        error
+	firewallReads      *int
+	firewallGeneration string
+	logEntries         []openwrt.LogEntry
+	logErr             error
+	logReads           *int
+	netIfaces          []openwrt.NetIface
+	netIfErr           error
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {
@@ -2722,4 +2726,28 @@ func TestNoPasswordBanner(t *testing.T) {
 	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt || !strings.Contains(body, "border-crimson-line bg-crimson-soft") {
 		t.Errorf("a declared danger banner takes the same seam: warning=%d body=%d", warnAt, bodyAt)
 	}
+}
+
+// The two fake rings are independent, just like logd and the NFLOG collector.
+func (f fakeBackend) FirewallLogRead(_ context.Context, _ string, generation string, after int64, limit int) (openwrt.FirewallLogBatch, error) {
+	if f.firewallReads != nil {
+		*f.firewallReads++
+	}
+	epoch := f.firewallGeneration
+	if epoch == "" {
+		epoch = "test"
+	}
+	batch := openwrt.FirewallLogBatch{Generation: epoch, Reset: generation != epoch, Available: f.firewallErr == nil}
+	if batch.Reset {
+		after = -1
+	}
+	for _, entry := range f.firewallEntries {
+		if entry.ID > after {
+			batch.Entries = append(batch.Entries, entry)
+		}
+	}
+	if len(batch.Entries) > limit {
+		batch.Entries = batch.Entries[len(batch.Entries)-limit:]
+	}
+	return batch, f.firewallErr
 }

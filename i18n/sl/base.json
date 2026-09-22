@@ -706,5 +706,8 @@
   "Reserved": "Rezervirano",
   "Verso": "Verso",
   "holding a lease now": "s trenutno veljavnim zakupom",
-  "known, not present": "znana, trenutno ni prisotna"
+  "known, not present": "znana, trenutno ni prisotna",
+  "Include firewall traffic": "Vključi promet požarnega zidu",
+  "Firewall logs unavailable": "Dnevniki požarnega zidu niso na voljo",
+  "Some firewall events were lost.": "Nekateri dogodki požarnega zidu so bili izgubljeni."
 }

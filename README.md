@@ -139,6 +139,12 @@ Docker manages the container's cgroup. This is a development-container limitatio
 not a Verso startup failure. Normal shell, helper, and plugin startup messages go
 to stdout (`info` in `logread`); failures go to stderr (`err`).
 
+Firewall packet matches use a separate, bounded NFLOG memory buffer. They do not
+enter `logread`, `dmesg` or the serial console; system/service diagnostics remain
+in logd. The package installs `kmod-nfnetlink-log` and prepares fw4 before boot/reload.
+See [ADR-016](docs/ADR/016-firewall-packet-log-isolation.md) for retention, removal,
+independent firewall4 upgrades and custom nft include considerations.
+
 ## Decisions (ADRs)
 
 | ADR | Decision |
@@ -154,6 +160,7 @@ to stdout (`info` in `logread`); failures go to stderr (`err`).
 | 009 | Core navigation and the shell/plugin ownership boundary |
 | 010 | Coordinated changes: prepare every owner, stage once, apply once |
 | 011 | Plugin management: the shell's trust surface |
+| 016 | Firewall packet logs: NFLOG isolation from kernel/system diagnostics |
 
 ## Roadmap
 

@@ -706,7 +706,7 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Upgrading…",
 		"Refresh index", "Refreshing index…",
 		// System logs and staged reboot controls.
-		"Paused", "Logs unavailable", "Live", "Connecting…", "Nothing matches.",
+		"Paused", "Every source", "Firewall logs unavailable", "Some firewall events were lost.", "Logs unavailable", "Live", "Connecting…", "Nothing matches.",
 		"The operation could not be completed. Review staged changes before retrying.",
 	}
 	m := make(map[string]string, len(keys))

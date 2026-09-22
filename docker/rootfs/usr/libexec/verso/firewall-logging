@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+# fw4's script include runs after its transaction, under the fw4 reload lock.
+# The templates already generate NFLOG. This also repairs templates replaced
+# by a firewall4 package upgrade and migrates plain log expressions in fw4.
+if /usr/sbin/verso-rpcd --route-firewall-logging; then
+	rm -f /var/run/verso-firewall-logging.failed
+else
+	touch /var/run/verso-firewall-logging.failed
+	exit 1
+fi

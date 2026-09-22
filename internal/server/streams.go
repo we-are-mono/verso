@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -26,10 +27,6 @@ import (
 // uses a separate payload and renderer, registered here by the shell.
 
 const (
-	// fwLogTail is how much of the log ring one poll asks for. Comfortably more
-	// than a second of even a hammered uplink, so nothing is missed between
-	// ticks, and small enough to stay a cheap read.
-	fwLogTail = 200
 	// fwLogBacklog is how many past verdicts a freshly opened listing is given.
 	// A live log that opens blank makes a person wait to learn anything; one
 	// that dumps the whole ring buries the present under the past.
@@ -87,8 +84,8 @@ func (s *Server) streamHandler(source string) func(http.ResponseWriter, *http.Re
 	return nil
 }
 
-// streamFirewallLog reads the device's log ring on the sampling clock, keeps
-// the netfilter verdicts, resolves each into a row, and pushes it.
+// streamFirewallLog reads the dedicated NFLOG buffer on the sampling clock,
+// resolves packet metadata into rows, and reports collector health separately.
 //
 // The session is re-checked every tick, exactly as the overview stream does: a
 // connection the browser holds open must not outlive the sign-in, and holding
@@ -104,21 +101,23 @@ func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request, flush
 	// A dropped connection is reconnected by the browser on its own, and it
 	// hands back the id of the last event it saw. Resuming there is what keeps
 	// a reconnect from replaying the backlog into a page that already has it.
-	if resume, err := strconv.ParseInt(r.Header.Get("Last-Event-ID"), 10, 64); err == nil && resume > 0 {
-		reader.cursor, reader.started = resume, true
+
+	if epoch, cursor, ok := parseFirewallCursor(r.Header.Get("Last-Event-ID")); ok {
+		reader.generation, reader.cursor, reader.started = epoch, cursor, true
 	}
 	send := func() bool {
 		rows := reader.poll(r.Context())
-		if len(rows) == 0 {
-			return true
-		}
-		payload, err := json.Marshal(map[string]any{"rows": rows})
+		payload, err := json.Marshal(map[string]any{"rows": rows, "reset": reader.reset, "available": reader.available, "lost": reader.lost})
 		if err != nil {
-			return true // a formatting slip costs a frame, not the stream
+			return false
 		}
-		// The frame's id is the newest record in it, so a reconnect resumes
-		// exactly where this one left off.
-		_, err = fmt.Fprintf(w, "id: %d\nevent: stream\ndata: %s\n\n", rows[len(rows)-1].ID, payload)
+		// Epoch plus ID prevents a restarted collector from replaying old row IDs.
+		if reader.generation != "" {
+			if _, err = fmt.Fprintf(w, "id: %s:%d\n", reader.generation, reader.cursor); err != nil {
+				return false
+			}
+		}
+		_, err = fmt.Fprintf(w, "event: stream\ndata: %s\n\n", payload)
 		return err == nil
 	}
 	if !send() {
@@ -149,61 +148,59 @@ type fwLogReader struct {
 	limit    int   // how many rows the first poll may hand over
 	resolver *fwResolver
 	mapped   time.Time
-	// A read that fails is a quiet second, not a dead page — but a page that
-	// stays empty because the session may not read the log looks exactly like a
-	// network with nothing to say. Naming the first failure is the difference.
-	reported bool
+	// Report the first read failure to diagnostics, without repeating it every
+	// polling tick. The browser independently receives collector availability.
+	reported   bool
+	generation string
+	available  bool
+	reset      bool
+	lost       bool
+	overruns   uint64
 }
 
-// poll reads what the ring has gained since the last one and returns it oldest
-// first — the order the shell's client folds into its own newest-on-top view.
-// Every failure degrades to "no rows this tick": a log read that fails is a
-// quiet second, not a dead page.
+// parseFirewallCursor accepts only the epoch and monotonic ID emitted by us.
+func parseFirewallCursor(value string) (string, int64, bool) {
+	epoch, id, ok := strings.Cut(value, ":")
+	cursor, err := strconv.ParseInt(id, 10, 64)
+	return epoch, cursor, ok && len(epoch) > 0 && len(epoch) <= 80 && cursor >= 0 && err == nil
+}
+
+// poll never falls back to logd. A failed collector is a visible unavailable
+// state; otherwise an empty result means the network is quiet.
 func (f *fwLogReader) poll(ctx context.Context) []fwEvent {
-	entries, err := f.backend.LogRead(ctx, f.sid, fwLogTail)
+	limit, after := fwLogBurst, f.cursor
+	if !f.started {
+		limit, after = f.limit, -1
+	}
+	batch, err := f.backend.FirewallLogRead(ctx, f.sid, f.generation, after, limit)
+	f.reset, f.lost, f.available = false, false, false
 	if err != nil {
 		if !f.reported {
 			f.reported = true
-			log.Printf("verso: firewall activity: reading the log ring failed, the listing stays empty: %v", err)
+			log.Printf("verso: firewall activity: packet buffer unavailable: %v", err)
 		}
 		return nil
 	}
 	f.reported = false
-	f.refresh(ctx)
-	// logd's ids count from zero for the life of the daemon. A ring whose
-	// newest record is older than the cursor is a log that restarted under the
-	// reader, so the cursor is the one thing that must not be trusted.
-	if newest := highestID(entries); newest < f.cursor {
+	f.available, f.reset = batch.Available, batch.Reset
+	f.lost = batch.Lost || batch.Overruns > f.overruns
+	f.overruns = batch.Overruns
+	f.generation = batch.Generation
+	if batch.Reset {
 		f.cursor = 0
 	}
-	rows := make([]fwEvent, 0, 8)
-	highest := f.cursor
-	for _, entry := range entries {
+	f.refresh(ctx)
+	rows := make([]fwEvent, 0, len(batch.Entries))
+	for _, entry := range batch.Entries {
 		if entry.ID <= f.cursor {
 			continue
 		}
-		if entry.ID > highest {
-			highest = entry.ID
+		f.cursor = entry.ID
+		if line, ok := parseFWLogLine(entry.Msg); ok {
+			rows = append(rows, f.resolver.event(entry.ID, entry.Time/1000, line))
 		}
-		line, ok := parseFWLogLine(entry.Msg)
-		if !ok {
-			continue // somebody else's line: the ring carries everything
-		}
-		rows = append(rows, f.resolver.event(entry.ID, entry.Time/1000, line))
 	}
-	f.cursor = highest
-	// The first poll is a page opening onto history; every later one is the
-	// present, and the present is never trimmed from the front.
-	if !f.started {
-		f.started = true
-		if len(rows) > f.limit {
-			rows = rows[len(rows)-f.limit:]
-		}
-		return rows
-	}
-	if len(rows) > fwLogBurst {
-		rows = rows[len(rows)-fwLogBurst:]
-	}
+	f.started = true
 	return rows
 }
 

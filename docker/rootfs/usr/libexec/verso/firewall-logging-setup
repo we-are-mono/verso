@@ -1,0 +1,52 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+# Local install/boot/removal only. Never apply an operator's staged UCI edits.
+set -eu
+[ "$(id -u)" = 0 ] || exit 1
+mode=${1:-install}
+case "$mode" in install|remove) ;; *) exit 2 ;; esac
+
+# Serialize against fw4 while preparing its templates and migrating live rules.
+exec 1000>/var/run/fw4.lock
+flock -x 1000
+work=$(mktemp -d /tmp/verso-firewall-logging.XXXXXXXX)
+trap 'result=$?; if [ "$result" -ne 0 ] && [ "$mode" = install ]; then touch /var/run/verso-firewall-logging.failed; fi; rm -rf "$work" "${stage:-}"' EXIT
+trap 'exit 1' HUP INT TERM
+package="versofw_$$"
+mkdir "$work/delta" "$work/override"
+cp /etc/config/firewall "$work/$package"
+config() { uci -q -c "$work" -C "$work/override" -t "$work/delta" "$@"; }
+# A private package name also avoids reading /tmp/.uci/firewall: changing only
+# UCI's save directory would still merge that default delta path on commit.
+section="$package.verso_packet_log"
+path=/usr/libexec/verso/firewall-logging
+existing=$(config get "$section.path" || true)
+if config get "$section" >/dev/null && [ "$existing" != "$path" ]; then
+	echo 'verso: firewall include verso_packet_log already belongs to another configuration' >&2
+	exit 1
+fi
+if [ "$mode" = install ]; then
+	/usr/sbin/verso-rpcd --configure-firewall-logging
+	config set "$section=include"
+	config set "$section.type=script"
+	config set "$section.path=$path"
+	config set "$section.fw4_compatible=1"
+	config set "$section.enabled=1"
+else
+	/usr/sbin/verso-rpcd --restore-firewall-logging
+	config delete "$section" || true
+fi
+config commit "$package"
+# Keep the live file's ownership/mode and rename on its own filesystem. The
+# private directory prevents peers from substituting the temporary config.
+if ! cmp -s "$work/$package" /etc/config/firewall; then
+	stage=$(mktemp -d /etc/config/.verso-firewall.XXXXXXXX)
+	cp -p /etc/config/firewall "$stage/firewall"
+	cat "$work/$package" > "$stage/firewall"
+	mv "$stage/firewall" /etc/config/firewall
+fi
+if [ "$mode" = install ] && nft list table inet fw4 >/dev/null 2>&1; then
+	/usr/sbin/verso-rpcd --route-firewall-logging
+fi
+rm -f /var/run/verso-firewall-logging.failed

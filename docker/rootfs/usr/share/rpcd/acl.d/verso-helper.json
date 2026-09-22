@@ -5,6 +5,7 @@
       "ubus": {
         "verso": [
           "firewallCounters",
+          "firewallLog",
           "pkgUpgradable",
           "firmwareCheck",
           "configFiles"

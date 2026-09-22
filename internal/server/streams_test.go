@@ -21,13 +21,12 @@ import (
 // errStreamRead is the read failure the degradation cases inject.
 var errStreamRead = errors.New("the session may not read that")
 
-// fwLogBackend is a device whose log ring holds the captured kernel lines and
+// fwLogBackend is a device whose packet buffer holds captured netfilter metadata and
 // whose firewall config and interfaces are the ones those lines refer to — the
 // whole path from a log record to a row, with no device in it (ADR-003).
 func fwLogBackend() fakeBackend {
 	return fakeBackend{
-		logEntries: []openwrt.LogEntry{
-			{ID: 4200, Priority: 27, Source: 1, Time: 1788294050000, Msg: "verso[147852]: verso listening on :8080"},
+		firewallEntries: []openwrt.LogEntry{
 			{ID: 4201, Priority: 4, Source: 0, Time: 1788294051000, Msg: fwLineRuleDrop},
 			{ID: 4202, Priority: 4, Source: 0, Time: 1788294052000, Msg: fwLineForward},
 			{ID: 4203, Priority: 4, Source: 0, Time: 1788294053000, Msg: fwLineZonePol},
@@ -83,7 +82,7 @@ func openStream(t *testing.T, s *Server, source string) (*http.Response, string)
 	return res, ""
 }
 
-// TestFirewallLogStreamCarriesResolvedRows: the whole path — logd's records,
+// TestFirewallLogStreamCarriesResolvedRows: the whole path — NFLOG records,
 // through the netfilter parse, through the config and netifd join, onto the
 // wire as structured rows. The lines are the shapes the kernel really writes.
 func TestFirewallLogStreamCarriesResolvedRows(t *testing.T) {
@@ -99,7 +98,7 @@ func TestFirewallLogStreamCarriesResolvedRows(t *testing.T) {
 	}
 	rows := decodeStreamRows(t, payload)
 	if len(rows) != 3 {
-		t.Fatalf("got %d rows, want the three verdicts (the syslog line is not one): %+v", len(rows), rows)
+		t.Fatalf("got %d rows, want the three packet events: %+v", len(rows), rows)
 	}
 	first := rows[0]
 	if first.ID != 4201 || first.At != 1788294051 {
@@ -125,7 +124,7 @@ func TestFirewallLogStreamCarriesResolvedRows(t *testing.T) {
 func TestFirewallLogStreamAdvancesItsCursor(t *testing.T) {
 	backend := fwLogBackend()
 	reads := 0
-	backend.logReads = &reads
+	backend.firewallReads = &reads
 	reader := &fwLogReader{backend: backend, sid: "sid", limit: fwLogBacklog}
 
 	first := reader.poll(context.Background())
@@ -148,9 +147,9 @@ func TestFirewallLogStreamAdvancesItsCursor(t *testing.T) {
 // front until a burst outruns what a frame should carry.
 func TestFirewallLogStreamTrimsTheBacklogOnly(t *testing.T) {
 	backend := fwLogBackend()
-	backend.logEntries = nil
+	backend.firewallEntries = nil
 	for i := range 40 {
-		backend.logEntries = append(backend.logEntries, openwrt.LogEntry{
+		backend.firewallEntries = append(backend.firewallEntries, openwrt.LogEntry{
 			ID: int64(1000 + i), Time: 1788294051000, Msg: fwLineRuleDrop,
 		})
 	}
@@ -180,9 +179,9 @@ func TestFirewallLogStreamDegradesRatherThanDies(t *testing.T) {
 	if rows[0].From != "wan0" {
 		t.Errorf("with no zone join a row names the kernel's device: %q", rows[0].From)
 	}
-	// A log the session cannot read is a quiet second, not a dead page.
+	// A failed read returns no rows; the stream reports availability separately.
 	quiet := fwLogBackend()
-	quiet.logErr = errStreamRead
+	quiet.firewallErr = errStreamRead
 	silent := &fwLogReader{backend: quiet, sid: "sid", limit: fwLogBacklog}
 	if rows := silent.poll(context.Background()); rows != nil {
 		t.Errorf("a failed log read must yield no rows, got %+v", rows)
@@ -230,7 +229,7 @@ func TestFirewallLogStreamResumesWhereTheBrowserLeftOff(t *testing.T) {
 				break
 			}
 		}
-		if id != "4203" {
+		if id != "test:4203" {
 			t.Errorf("frame id = %q, want the newest record in it", id)
 		}
 		return data
@@ -239,18 +238,16 @@ func TestFirewallLogStreamResumesWhereTheBrowserLeftOff(t *testing.T) {
 		t.Fatalf("a fresh connection gets the backlog, got %d rows", len(rows))
 	}
 	// Resuming after the second verdict leaves exactly the third to send.
-	rows := decodeStreamRows(t, read("4202"))
+	rows := decodeStreamRows(t, read("test:4202"))
 	if len(rows) != 1 || rows[0].ID != 4203 {
 		t.Fatalf("resumed connection = %+v, want only the events after 4202", rows)
 	}
 }
 
-// TestFirewallLogStreamSurvivesALogThatRestarted: logd counts its ids from zero
-// for the life of the daemon, so a ring whose newest record is older than the
-// cursor is a log that restarted — and a cursor that outlives its log would
-// silence the page forever.
+// TestFirewallLogStreamSurvivesALogThatRestarted: the collector generation
+// invalidates cursors from a previous helper process.
 func TestFirewallLogStreamSurvivesALogThatRestarted(t *testing.T) {
-	reader := &fwLogReader{backend: fwLogBackend(), sid: "sid", limit: fwLogBacklog, cursor: 99000, started: true}
+	reader := &fwLogReader{backend: fwLogBackend(), sid: "sid", limit: fwLogBacklog, cursor: 99000, generation: "old-helper", started: true}
 	rows := reader.poll(context.Background())
 	if len(rows) != 3 {
 		t.Fatalf("got %d rows, want the restarted log's verdicts: %+v", len(rows), rows)

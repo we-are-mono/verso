@@ -162,6 +162,8 @@
 
     // rows is the ring, newest first; each remembers the tuple it collapses on
     // and the values it can be narrowed by.
+    var empty = body.querySelector("[data-verso-stream-empty]");
+    var emptyTemplate = empty && empty.cloneNode(true);
     var rows = [];
     var arrivals = []; // arrival stamps, for the rolling rate
     var paused = false;
@@ -174,7 +176,24 @@
     var backlog = true;
     // Whether the stream is up. Optimistic at load — the connection is being
     // made — and corrected by the transport's own open/error from then on.
-    var connected = true;
+    var connected = false;
+    var lost = false;
+    var pendingReset = false;
+    var health = el("p", "border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep");
+    health.setAttribute("role", "status");
+    health.hidden = true;
+    wrapper.parentNode.insertBefore(health, wrapper);
+    function updateHealth(available) {
+      connected = available;
+      health.hidden = available && !lost;
+      health.textContent = available ? T("Some firewall events were lost.") : T("Firewall logs unavailable");
+      updatePause();
+    }
+    function clearHistory() {
+      rows.forEach(function (row) { row.tr.remove(); });
+      rows = []; arrivals = []; backlog = true;
+      if (emptyTemplate && !body.querySelector("[data-verso-stream-empty]")) body.appendChild(emptyTemplate.cloneNode(true));
+    }
     // The device stamps its own events and the browser reads them; the two
     // clocks need not agree. An event that arrives *live* is by definition
     // happening now, which is exactly the offset between them — so ages are
@@ -486,6 +505,7 @@
     }
 
     function drain() {
+      if (pendingReset) { clearHistory(); pendingReset = false; }
       var waiting = buffer;
       buffer = [];
       pending = 0;
@@ -554,7 +574,15 @@
       } catch (e) {
         return; // a malformed frame costs its own second, nothing more
       }
-      if (!frame || !frame.rows || !frame.rows.length) return;
+      if (!frame) return;
+      if (frame.reset) {
+        buffer = []; pending = 0; lost = false;
+        if (paused) pendingReset = true;
+        else clearHistory();
+      }
+      lost = lost || !!frame.lost;
+      updateHealth(frame.available !== false);
+      if (!frame.rows || !frame.rows.length) return;
       if (backlog) {
         // The opening frame is what the device had already logged. It did not
         // arrive at the rate the meta measures — counting it would claim a
@@ -595,11 +623,9 @@
     // touches the pause itself — a stream that came back while a person was
     // reading stays held until they say otherwise.
     es.addEventListener("error", function () {
-      connected = false;
-      updatePause();
+      updateHealth(false);
     });
     es.addEventListener("open", function () {
-      connected = true;
       updatePause();
     });
 

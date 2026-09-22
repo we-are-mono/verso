@@ -205,9 +205,9 @@ type Backend interface {
 	// LogRead reads the tail of the device's log ring through logd's `log`
 	// object, sid-gated like the other live reads. lines bounds the tail; the
 	// records come back oldest-first, each carrying the monotonic id a reader
-	// uses as its cursor. It is the kernel's own account of what happened —
-	// firewall verdicts included — and the shell parses it, never the plugin.
+	// uses as its cursor. Packet events have their own NFLOG buffer.
 	LogRead(ctx context.Context, sid string, lines int) ([]LogEntry, error)
+	FirewallLogRead(ctx context.Context, sid, generation string, after int64, limit int) (FirewallLogBatch, error)
 	// NetworkInterfaces reads netifd's logical interfaces and the kernel device
 	// each one currently owns (`network.interface dump`), sid-gated. It is the
 	// join a kernel device name needs to become something a person named: a log
@@ -531,6 +531,7 @@ type NativeBackend struct {
 	wanStatus      wanStatusFn
 	deviceStats    deviceStatsFn
 	fwCounters     fwCountersFn
+	firewallLog    firewallLogFn
 	logRead        logReadFn
 	netIfaces      netIfacesFn
 }
@@ -589,6 +590,7 @@ func NewNativeBackend() *NativeBackend {
 		wanStatus:      dialWANStatus(""),
 		deviceStats:    dialDeviceStats(""),
 		fwCounters:     dialFirewallCounters(""),
+		firewallLog:    dialFirewallLog(""),
 		logRead:        dialLogRead(""),
 		netIfaces:      dialNetworkInterfaces(""),
 	}

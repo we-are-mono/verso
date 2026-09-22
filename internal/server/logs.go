@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ func systemLogRow(entry openwrt.LogEntry) systemLogEvent {
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	lang, _ := s.localize(r)
 	var body strings.Builder
-	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", nil); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", struct{ IncludeFirewall bool }{r.URL.Query().Get("firewall") == "1"}); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +61,13 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 // logd's cursor, including zero; a restarted ring explicitly replaces history.
 func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush http.Flusher) {
 	cursor := int64(-1)
-	if last, err := strconv.ParseInt(r.Header.Get("Last-Event-ID"), 10, 64); err == nil && last >= 0 {
+	systemCursor, firewallCursor, _ := strings.Cut(r.Header.Get("Last-Event-ID"), "|")
+	includeFirewall := r.URL.Query().Get("firewall") == "1"
+	generation, after, resumed := parseFirewallCursor(firewallCursor)
+	if !resumed {
+		after = -1
+	}
+	if last, err := strconv.ParseInt(systemCursor, 10, 64); err == nil && last >= 0 {
 		cursor = last
 	}
 	ticker := time.NewTicker(s.eventInterval)
@@ -72,26 +79,66 @@ func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush h
 			return err == nil
 		}
 		reset := len(entries) > 0 && highestID(entries) < cursor
+		var packets openwrt.FirewallLogBatch
+		firewallUnavailable := false
+		if includeFirewall {
+			var readErr error
+			packets, readErr = s.backend.FirewallLogRead(r.Context(), s.sessionSID(r), generation, after, 500)
+			firewallUnavailable = readErr != nil || !packets.Available
+			if readErr == nil {
+				reset = reset || (packets.Reset && generation != "")
+				generation = packets.Generation
+				if packets.Reset {
+					after = -1
+				}
+			} else {
+				packets = openwrt.FirewallLogBatch{}
+			}
+		}
 		if reset {
 			cursor = -1
 		}
 		rows := make([]systemLogEvent, 0, len(entries))
 		for _, entry := range entries {
 			if entry.ID > cursor {
-				rows = append(rows, systemLogRow(entry))
+				_, packet := parseFWLogLine(entry.Msg)
+				packet = packet && entry.Source == 0
+				if packet && !includeFirewall {
+					continue
+				}
+				row := systemLogRow(entry)
+				if packet {
+					row.Source = "firewall"
+				}
+				rows = append(rows, row)
 			}
 		}
 		if len(entries) > 0 {
 			cursor = highestID(entries)
 		}
+		for _, entry := range packets.Entries {
+			if entry.ID <= after {
+				continue
+			}
+			after = entry.ID
+			row := systemLogRow(entry)
+			row.ID, row.Source = -entry.ID, "firewall"
+			rows = append(rows, row)
+		}
+		sort.SliceStable(rows, func(i, j int) bool { return rows[i].At < rows[j].At })
 		frame, err := json.Marshal(struct {
-			Rows  []systemLogEvent `json:"rows"`
-			Reset bool             `json:"reset"`
-		}{rows, reset})
+			Rows                []systemLogEvent `json:"rows"`
+			Reset               bool             `json:"reset"`
+			FirewallUnavailable bool             `json:"firewall_unavailable"`
+		}{rows, reset, firewallUnavailable})
 		if err != nil {
 			return false
 		}
-		_, err = fmt.Fprintf(w, "id: %d\nevent: stream\ndata: %s\n\n", cursor, frame)
+		id := strconv.FormatInt(cursor, 10)
+		if includeFirewall && generation != "" {
+			id += "|" + generation + ":" + strconv.FormatInt(after, 10)
+		}
+		_, err = fmt.Fprintf(w, "id: %s\nevent: stream\ndata: %s\n\n", id, frame)
 		return err == nil
 	}
 	if !send() {

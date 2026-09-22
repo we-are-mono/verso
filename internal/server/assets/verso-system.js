@@ -12,11 +12,12 @@
     var mark = log.querySelector("[data-log-state-mark]");
     var pause = log.querySelector("[data-log-pause]");
     var paused = false, connected = false, unreadable = false, pendingReset = false, pending = [], seen = new Set(), sources = new Set();
-    var es = new EventSource("/streams/system-log");
+    var includeFirewall = log.querySelector("[data-log-include-firewall]");
+    var es, firewallUnavailable = false;
     function status() {
-      state.textContent = paused ? T("Paused") : unreadable ? T("Logs unavailable") : connected ? T("Live") : T("Connecting…");
-      mark.classList.toggle("bg-green", connected && !paused && !unreadable);
-      mark.classList.toggle("border", !connected || paused || unreadable);
+      state.textContent = paused ? T("Paused") : unreadable ? T("Logs unavailable") : firewallUnavailable ? T("Firewall logs unavailable") : connected ? T("Live") : T("Connecting…");
+      mark.classList.toggle("bg-green", connected && !paused && !unreadable && !firewallUnavailable);
+      mark.classList.toggle("border", !connected || paused || unreadable || firewallUnavailable);
       pause.textContent = paused ? T("Resume") : T("Pause");
     }
     function node(tag, cls, text) {
@@ -34,6 +35,7 @@
         var warning = error || row.severity === "warn";
         var line = node("div", "grid grid-cols-[3px_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-[25px] leading-6 hover:bg-mid/50 lg:flex lg:py-px");
         line.setAttribute("data-log-row", String(row.id));
+        line.dataset.logAt = String(row.at);
         line.setAttribute("data-verso-tags", error ? "errors warnings" : warning ? "warnings" : "");
         line.setAttribute("data-verso-facet-source", row.source);
         line.appendChild(node("span", "row-span-2 my-0.5 w-[3px] shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
@@ -51,7 +53,13 @@
         }
       });
       body.appendChild(fragment);
-      var lines = body.querySelectorAll("[data-log-row]");
+      var lines = Array.from(body.querySelectorAll("[data-log-row]"));
+      // Separate buffers are sampled at different instants. A delayed batch
+      // still belongs beside its timestamp, not below a newer service event.
+      if (includeFirewall.checked && rows.length) {
+        lines.sort(function (a, b) { return Number(a.dataset.logAt) - Number(b.dataset.logAt); });
+        lines.forEach(function (line) { body.appendChild(line); });
+      }
       for (var i = 0; i < lines.length - 1000; i++) { seen.delete(Number(lines[i].getAttribute("data-log-row"))); lines[i].remove(); }
       var empty = body.querySelector("[data-verso-stream-empty]");
       if (empty) { empty.textContent = T("Nothing matches."); empty.hidden = body.querySelectorAll("[data-log-row]").length > 0; }
@@ -62,22 +70,38 @@
       seen.clear();
       body.querySelectorAll("[data-log-row]").forEach(function (n) { n.remove(); });
     }
-    es.addEventListener("stream", function (event) {
-      var frame;
-      try { frame = JSON.parse(event.data); } catch (_) { return; }
-      if (!frame || !Array.isArray(frame.rows)) return;
-      unreadable = false; connected = true; status();
-      if (frame.reset) {
-        pending = [];
-        if (paused) pendingReset = true;
-        else clearRows();
-      }
-      if (paused) { pending = pending.concat(frame.rows).slice(-1000); return; }
-      draw(frame.rows);
+    function connect() {
+      es = new EventSource("/streams/system-log" + (includeFirewall.checked ? "?firewall=1" : ""));
+      es.addEventListener("stream", function (event) {
+        var frame;
+        try { frame = JSON.parse(event.data); } catch (_) { return; }
+        if (!frame || !Array.isArray(frame.rows)) return;
+        unreadable = false; firewallUnavailable = !!frame.firewall_unavailable; connected = true; status();
+        if (frame.reset) {
+          pending = [];
+          if (paused) pendingReset = true;
+          else clearRows();
+        }
+        if (paused) { pending = pending.concat(frame.rows).slice(-1000); return; }
+        draw(frame.rows);
+      });
+      es.addEventListener("open", function () { connected = true; status(); });
+      es.addEventListener("error", function () { connected = false; status(); });
+      es.addEventListener("unavailable", function () { unreadable = true; status(); });
+    }
+    connect();
+    includeFirewall.addEventListener("change", function () {
+      es.close();
+      clearRows(); pending = []; pendingReset = false;
+      sources.clear(); source.replaceChildren(new Option(T("Every source"), ""));
+      source.dispatchEvent(new Event("change", { bubbles: true }));
+      connected = false; unreadable = false; firewallUnavailable = false; status();
+      var url = new URL(window.location.href);
+      if (includeFirewall.checked) url.searchParams.set("firewall", "1");
+      else url.searchParams.delete("firewall");
+      window.history.replaceState(null, "", url);
+      connect();
     });
-    es.addEventListener("open", function () { connected = true; status(); });
-    es.addEventListener("error", function () { connected = false; status(); });
-    es.addEventListener("unavailable", function () { unreadable = true; status(); });
     pause.addEventListener("click", function () {
       paused = !paused;
       if (!paused) {

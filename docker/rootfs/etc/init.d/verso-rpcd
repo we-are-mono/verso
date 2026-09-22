@@ -3,10 +3,12 @@
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 USE_PROCD=1
-START=94
+START=18
 STOP=11
 
 start_service() {
+	# Prepare NFLOG before firewall (START=19) can install logging rules.
+	/usr/libexec/verso/firewall-logging-setup || logger -t verso-rpcd -p daemon.err 'Firewall packet logging setup failed'
 	mkdir -p /var/run/verso
 	chown root:verso /var/run/verso
 	# Shared runtime dir: the shell stages bounded upload temps (0600, owner-only)

@@ -83,8 +83,11 @@ deploy_helper() {
 	if (cd verso-rpcd && "$cargo_bin" build --locked --release --target x86_64-unknown-linux-musl) 2>&1; then
 		docker exec "$CONTAINER" /etc/init.d/verso-rpcd stop >/dev/null 2>&1 || true
 		docker cp verso-rpcd/target/x86_64-unknown-linux-musl/release/verso-rpcd "$CONTAINER":/usr/sbin/.verso-rpcd.new
+		docker exec "$CONTAINER" mkdir -p /usr/libexec/verso
+		docker cp docker/rootfs/usr/libexec/verso/firewall-logging "$CONTAINER":/usr/libexec/verso/firewall-logging
+		docker cp docker/rootfs/usr/libexec/verso/firewall-logging-setup "$CONTAINER":/usr/libexec/verso/firewall-logging-setup
 		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
-		docker exec "$CONTAINER" sh -c 'chown root:root /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
+		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
 		log "verso-rpcd reloaded"
 	else
 		log "verso-rpcd build failed — keeping the running helper"
@@ -130,7 +133,7 @@ seed_dev_livelog() {
 		uci commit firewall
 		fw4 reload >/dev/null 2>&1 || /etc/init.d/firewall reload >/dev/null 2>&1 || true
 		touch /etc/verso-dev-livelog-seeded
-	' && log "seeded a logging firewall rule — Firewall → Activity reads it (in Docker the kernel emits none: scripts/dev-livelog-feed.sh)"
+	' && log "seeded a logging firewall rule — Firewall → Activity reads its NFLOG events"
 }
 
 # deploy_i18n lands the localization catalogs — ADR-012 data files the shell
@@ -269,7 +272,7 @@ helper_sig() {
 	{
 		find verso-rpcd/src -type f -printf '%T@ %p\n'
 		find verso-rpcd/Cargo.toml verso-rpcd/Cargo.lock verso-rpcd/rust-toolchain.toml -printf '%T@ %p\n'
-		find docker/rootfs/etc/init.d/verso-rpcd -printf '%T@ %p\n'
+		find docker/rootfs/etc/init.d/verso-rpcd docker/rootfs/usr/libexec/verso/firewall-logging docker/rootfs/usr/libexec/verso/firewall-logging-setup -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum
 }
 plugins_sig() {

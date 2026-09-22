@@ -118,6 +118,16 @@ One command. What it does, and why each part matters:
   HTTPS feed indexes through `apk update`; declaring the trust bundle prevents a
   minimal image from failing every refresh with TLS verification errors.
 
+- **Requires `firewall4` and `kmod-nfnetlink-log`.** Firewall packet logs use
+  NFLOG to bypass the kernel/system logs. The kernel module must come from the
+  feed built for the router's exact kernel ABI; it does not belong in Verso's
+  architecture-only feed. For custom firmware, select
+  `CONFIG_PACKAGE_kmod-nfnetlink-log=m` before building the firmware and its
+  module feed (`=y` also installs it in the image). If the existing build omitted
+  it, adding the option changes OpenWrt's kernel ABI identifier: rebuild and
+  deploy matching firmware and modules together. Docker tests use the host's
+  kernel and cannot verify that the router's module feed is complete.
+
 - **Versions from the `VERSION` file** + a revision. `VER = <VERSION>-r<REVISION>`
   (default `REVISION=1`). Bump `VERSION` in a commit for a new version so `apk`
   sees an upgrade; pass `REVISION=2` to repackage the same version.
@@ -172,8 +182,8 @@ apk update
 apk add verso
 ```
 
-(Any `sysupgrade.mono.si` errors during `apk update` are the router's *own* feed,
-unrelated — ignore them, or scope the command to just Verso's feed as §5 does.)
+The router's normal userspace and matching kernel-module feeds must also be
+enabled and reachable so apk can resolve Verso's dependencies.
 Verso listens on **`:8080`** (coexists with LuCI on 80). Browse
 `http://<router-ip>:8080`.
 
@@ -182,19 +192,22 @@ Verso listens on **`:8080`** (coexists with LuCI on 80). Browse
 ## 5. The fast iteration loop (re-deploy)
 
 On the dev box, `make apk-publish REVISION=<n>` (bump `REVISION`, or `VERSION`, so
-`apk` sees an upgrade). Then on the router — reading **only Verso's own feed**, so
-no upstream feeds are touched:
+`apk` sees an upgrade). Then on the router:
 
 ```sh
-apk upgrade verso -U --repositories-file /etc/apk/repositories.d/verso-dev.list
+apk upgrade verso -U
 ```
 
-- `--repositories-file` replaces the system repo set with just Verso's (that file
-  is one line, one URL), so upstream feeds are never contacted — no wasted
-  requests, and none of their errors (`sysupgrade.mono.si`) in the output.
-- `-U` (`--update-cache`) forces a fresh index of that one repo, so a separate
-  `apk update` isn't needed. verso declares no dependencies, so the single feed
-  resolves on its own.
+- `-U` (`--update-cache`) refreshes the indexes, so a separate `apk update` is
+  unnecessary. Naming `verso` targets its upgrade and dependency resolution.
+- Keep the normal feeds enabled: a new Verso version can introduce a dependency
+  that is not installed yet. Restricting `--repositories-file` to Verso's feed
+  prevents apk from finding those dependencies.
+
+If apk reports `kmod-nfnetlink-log (no such package)`, first check `apk update`
+for feed errors and run `apk search -x kmod-nfnetlink-log`. On custom firmware,
+check that the matching module was actually built and published. Removing the
+dependency or forcing a module from another kernel does not supply NFLOG support.
 
 The `post-upgrade` hook does the rest: it reloads the ubusd + rpcd ACLs
 (`killall -HUP ubusd`, `rpcd reload`) and restarts verso + verso-rpcd. The login
