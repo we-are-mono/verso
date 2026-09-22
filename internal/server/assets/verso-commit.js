@@ -17,23 +17,154 @@
 // which explains itself. The leave guard is suppressed first: warning someone
 // about unsaved work in a session that can no longer hold it is a lie.
 //
-// The deadline is taken once, relative to load, so a browser clock that
-// disagrees with the router's cannot pull it forward: a stamp already in the
-// past on a page the shell just rendered is skew, not expiry, and the timer
-// stands down. Drift the other way costs nothing — the middleware redirects any
-// request that outlives the session anyway.
+// A minute before the end, the page says so first (the session-ending dialog
+// in page.html.tmpl): how long is left, and one act to stay. It asks the router
+// before it warns, because activity in this page or another tab may already
+// have moved the end, and a warning about an end that is no longer coming is
+// noise. Staying posts to /session, which is activity, and the page re-arms
+// from the answer; at the twelve-hour cap there is nothing to extend, and the
+// dialog only says so.
+//
+// Every deadline is a span from now, never a timestamp compared with the
+// browser's clock, so a clock that disagrees with the router's cannot pull the
+// end forward: the first comes from the page's stamp against load (a stamp
+// already past on a page just rendered is skew, and the timer stands down), the
+// rest from the router's own count of seconds left.
 (function () {
   var meta = document.querySelector('meta[name="verso-session-expiry"]');
   if (!meta) return;
-  var remaining = Date.parse(meta.content) - Date.now();
-  if (!(remaining > 0)) return;
-  setTimeout(function () {
+  var first = Date.parse(meta.content) - Date.now();
+  if (!(first > 0)) return;
+
+  var WARN = 60 * 1000;
+  var layer = document.getElementById("verso-session-ending");
+  var box = layer && layer.querySelector('[role="alertdialog"]');
+  var countdown = layer && layer.querySelector("[data-verso-session-countdown]");
+  var stayButton = layer && layer.querySelector("[data-verso-session-stay]");
+  var okButton = layer && layer.querySelector("[data-verso-session-dismiss]");
+  var csrfMeta = document.querySelector('meta[name="verso-csrf"]');
+  var csrf = csrfMeta ? csrfMeta.content : "";
+  var deadline = 0;
+  var warnTimer = null;
+  var endTimer = null;
+  var ticker = null;
+  var returnTo = null;
+  var extendable = true;
+
+  // The end: reload rather than navigate, so the middleware decides. A dead
+  // session lands on /login?expired=1 with its notice; one kept alive elsewhere
+  // re-renders this page and re-arms from the fresh stamp.
+  function end() {
     if (window.versoDirtyState) window.versoDirtyState.suppress();
-    // Reload rather than navigate: the middleware decides. A dead session
-    // lands on /login?expired=1 with its notice; a session another tab kept
-    // alive re-renders this page and re-arms this timer from the fresh stamp.
     window.location.reload();
-  }, remaining);
+  }
+
+  // Arm the end, and the look a minute before it. With the warning already up
+  // there is nothing more to look for: only the end is armed, or a session with
+  // under a minute left would ask the router again at once, and again.
+  function arm(ms, warning) {
+    clearTimeout(warnTimer);
+    clearTimeout(endTimer);
+    deadline = Date.now() + ms;
+    endTimer = setTimeout(end, ms);
+    if (layer && !warning) warnTimer = setTimeout(look, Math.max(0, ms - WARN));
+  }
+
+  // What the router says is left. An answer that is not the session's state is
+  // the login page a redirect led to: the session is already gone.
+  function state(method) {
+    var init = { method: method, credentials: "same-origin", headers: {} };
+    if (method === "GET") init.headers["X-Verso-Refresh"] = "1";
+    else {
+      init.headers["Content-Type"] = "application/x-www-form-urlencoded";
+      init.body = "_csrf=" + encodeURIComponent(csrf);
+    }
+    return fetch("/session", init).then(function (res) {
+      var type = res.headers.get("Content-Type") || "";
+      if (!res.ok || type.indexOf("application/json") !== 0) throw new Error("signed out");
+      return res.json();
+    });
+  }
+
+  function look() {
+    state("GET").then(function (st) {
+      if (st.remaining * 1000 > WARN + 5000) {
+        arm(st.remaining * 1000);
+        return;
+      }
+      arm(st.remaining * 1000, true);
+      show(st.extendable);
+    }, function (err) {
+      // Signed out already, or the router out of reach: either way the end is
+      // coming, and the warning is still the truest thing to show.
+      if (err && err.message === "signed out") end();
+      else show(extendable);
+    });
+  }
+
+  function clock() {
+    var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+    countdown.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+  }
+
+  function show(canExtend) {
+    extendable = canExtend;
+    [].forEach.call(layer.querySelectorAll("[data-verso-session-extendable]"), function (el) { el.hidden = !canExtend; });
+    [].forEach.call(layer.querySelectorAll("[data-verso-session-capped]"), function (el) { el.hidden = canExtend; });
+    clock();
+    clearInterval(ticker);
+    ticker = setInterval(clock, 1000);
+    if (layer.hidden) returnTo = document.activeElement;
+    layer.hidden = false;
+    versoLayerOpen(layer);
+    (canExtend ? stayButton : okButton).focus();
+  }
+
+  function hide() {
+    clearInterval(ticker);
+    layer.hidden = true;
+    versoLayerClose(layer);
+    if (returnTo && returnTo.focus && document.contains(returnTo)) returnTo.focus();
+    returnTo = null;
+  }
+
+  function stay() {
+    stayButton.disabled = true;
+    state("POST").then(function (st) {
+      stayButton.disabled = false;
+      arm(st.remaining * 1000);
+      hide();
+      versoAnnounce(T("You’re still signed in."));
+    }, end);
+  }
+
+  if (layer) {
+    stayButton.addEventListener("click", stay);
+    okButton.addEventListener("click", hide);
+    // The dialog keeps focus while it is up, and Escape answers it the way
+    // its first button does: pressing a key is someone at the router.
+    box.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (extendable) stay();
+        else hide();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      var f = versoTabbable(box);
+      if (!f.length) return;
+      var active = document.activeElement;
+      if (e.shiftKey && active === f[0]) {
+        e.preventDefault();
+        f[f.length - 1].focus();
+      } else if (!e.shiftKey && active === f[f.length - 1]) {
+        e.preventDefault();
+        f[0].focus();
+      }
+    });
+  }
+  arm(first);
 })();
 
 // The staged-changes chip and its drawer (ADR-010). Both are server-rendered

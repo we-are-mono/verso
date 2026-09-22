@@ -172,6 +172,13 @@ func (s *Sessions) expiresAt(sess session) time.Time {
 	return idle
 }
 
+// extendable reports whether activity would lengthen the session: its end is
+// the idle window, which use slides, rather than the absolute cap, which
+// nothing moves.
+func (s *Sessions) extendable(sess session) bool {
+	return sess.created.Add(s.absolute).After(s.expiresAt(sess))
+}
+
 // SetFlash stores the session's one-shot confirmation for the next render.
 func (s *Sessions) SetFlash(token, variant, message string) {
 	s.mu.Lock()

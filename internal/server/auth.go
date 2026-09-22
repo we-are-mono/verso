@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -128,6 +129,26 @@ func (s *Server) sessionExpiryStamp(r *http.Request) string {
 		return ""
 	}
 	return s.sessions.expiresAt(sess).UTC().Format(time.RFC3339)
+}
+
+// handleSessionState answers how long the request's session has left, in whole
+// seconds, and whether activity can lengthen it. The page asks before it warns
+// that the session is ending, since another tab may have kept it alive, and
+// asks with the refresh header so the look itself is not activity; "Stay signed
+// in" posts here, and that post is. Seconds rather than a timestamp, so the
+// browser's clock never has to agree with the router's.
+func (s *Server) handleSessionState(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.currentSession(r)
+	if !ok {
+		http.Redirect(w, r, loginRedirect(r), http.StatusSeeOther)
+		return
+	}
+	left := s.sessions.expiresAt(sess).Sub(s.sessions.now()).Round(time.Second)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Remaining  int  `json:"remaining"`
+		Extendable bool `json:"extendable"`
+	}{int(max(left, 0) / time.Second), s.sessions.extendable(sess)})
 }
 
 // flash stores a one-shot confirmation on the request's session — set by an

@@ -187,6 +187,37 @@
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </div>
+{{/* The session ending: a minute before this page's session runs out, the
+     page stops what it is doing and says so (verso-commit.js). An alert
+     dialog, because the time is limited and the answer is one act: staying
+     signed in slides the idle window, and signing out ends it now. At the
+     twelve-hour cap there is nothing to slide, so the same dialog only says so
+     and is acknowledged. Staged changes live in the router's stage and survive
+     either way; only typing not yet saved is at risk, and the dialog says that
+     rather than leaving it to be found out. */}}
+{{if .SessionExpiry}}
+<div id="verso-session-ending" hidden class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-ink/18 backdrop-blur-[2px]"></div>
+  <div role="alertdialog" aria-modal="true" aria-labelledby="verso-session-ending-title" aria-describedby="verso-session-ending-body" tabindex="-1"
+    class="relative w-full max-w-md rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)] focus:outline-none">
+    <div class="px-5 pt-4 pb-5">
+      <h2 id="verso-session-ending-title" class="text-base font-semibold text-ink">
+        <span data-verso-session-extendable>{{ t "You’ll be signed out in" }}</span><span data-verso-session-capped hidden>{{ t "Your session ends in" }}</span>
+        <span data-verso-session-countdown class="tabular-nums">1:00</span>
+      </h2>
+      <p id="verso-session-ending-body" class="mt-2 text-sm leading-[1.45] text-body text-pretty"><span data-verso-session-capped hidden>{{ t "Sessions last at most 12 hours." }} </span>{{ t "Staged changes are kept. Anything typed but not saved will be lost." }}</p>
+      <div class="mt-6 flex items-center gap-2 border-t border-rule pt-5">
+        <button type="button" data-verso-session-stay data-verso-session-extendable class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Stay signed in" }}</button>
+        <button type="button" data-verso-session-dismiss data-verso-session-capped hidden class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "OK" }}</button>
+        <form method="post" action="/logout" class="flex">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <button type="submit" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{ t "Sign out" }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
 {{/* Strings the shell's client script writes into the page (verso.js T),
      localized at render — client JS has no translator (ADR-012). */}}
 <script type="application/json" id="verso-i18n">{{.JSStrings}}</script>

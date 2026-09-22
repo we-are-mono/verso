@@ -17,6 +17,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /login/status", s.handleLoginStatus)
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
+	// How long the session has left: looked at (GET, as a refresh, so the look
+	// is not activity) before the page warns, and posted to when someone chooses
+	// to stay signed in, which is.
+	s.mux.HandleFunc("GET /session", s.handleSessionState)
+	s.mux.HandleFunc("POST /session", s.handleSessionState)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	// The reader mode (ADR-015): the sidebar switch posts here, the cookie flips,
 	// and the browser returns to the page it was on. It changes nothing on the
