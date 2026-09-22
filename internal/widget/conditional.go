@@ -92,6 +92,10 @@ type conditionalView struct {
 	Otherwise   []template.HTML
 }
 
+// Control is the gate's checkbox. The gate's label points at it by id, so it
+// carries no name of its own.
+func (v conditionalView) Control() switchControl { return switchControl{Name: v.Name, On: v.On} }
+
 // renderInto renders the gated field-set through the renderer, then hands the
 // template the controlling toggle. Visibility is pure CSS (ADR-005 §7): the shell
 // owns the toggle and the show/hide, the plugin only declared the intent.

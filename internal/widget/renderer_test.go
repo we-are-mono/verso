@@ -316,8 +316,8 @@ func TestRenderSegmentedFieldsWearTheOneTray(t *testing.T) {
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
 	for _, got := range []string{pick, days} {
 		for _, want := range []string{
-			`<div class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
-			`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white">`,
+			`class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
+			`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2`,
 		} {
 			if !strings.Contains(got, want) {
 				t.Errorf("segmented field missing %q:\n%s", want, got)
@@ -669,8 +669,13 @@ func TestRenderConfirm(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it", RequirePassword: true})
 	for _, want := range []string{
-		"verso-confirm", "verso-confirm-toggle", "verso-confirm-panel", "verso-confirm-trigger",
-		"Remove device", "Remove this device?", "Remove", "Keep it", `type="checkbox"`,
+		"verso-confirm", `x-data="confirm"`,
+		// The trigger and the way back are real buttons: reached by Tab, pressed
+		// by Enter or Space, and the trigger says whether it has the question open.
+		`<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded"`,
+		`<button type="button" @click="cancel"`,
+		`x-show="asking" x-cloak`,
+		"Remove device", "Remove this device?", "Remove", "Keep it",
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the icon.
@@ -684,11 +689,12 @@ func TestRenderConfirm(t *testing.T) {
 			t.Errorf("confirm missing %q in: %s", want, got)
 		}
 	}
-	// Pure CSS: no script, no Alpine.
-	if strings.Contains(got, "<script") || strings.Contains(got, "x-data") {
-		t.Errorf("confirm must be pure CSS: %s", got)
+	// No checkbox pretending to be a button, and no inline script: the
+	// behaviour is the shell's confirm component.
+	if strings.Contains(got, "<script") || strings.Contains(got, `type="checkbox"`) {
+		t.Errorf("confirm must use the shell component, not a checkbox or script: %s", got)
 	}
-	if strings.Contains(got, `for="verso-confirm-1" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs border`) {
+	if strings.Contains(got, `@click="cancel" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs border`) {
 		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
 	}
 	// Labels default when unset.
@@ -696,9 +702,9 @@ func TestRenderConfirm(t *testing.T) {
 	if !strings.Contains(def, ">Confirm<") || !strings.Contains(def, ">Cancel<") {
 		t.Errorf("confirm should default its labels: %s", def)
 	}
-	// Two confirms on a page get distinct checkbox ids.
-	if strings.Count(got+def, `id="verso-confirm-`) == 2 && strings.Contains(def, `id="verso-confirm-1"`) && strings.Contains(got, `id="verso-confirm-1"`) {
-		t.Errorf("two confirms shared an id")
+	// Two confirms on a page get distinct panel ids, the trigger's controls.
+	if !strings.Contains(got, `aria-controls="verso-confirm-1"`) || !strings.Contains(def, `id="verso-confirm-2"`) {
+		t.Errorf("each confirm's trigger controls its own panel:\n%s\n%s", got, def)
 	}
 	// A Title renders as a bold heading above the message; without one the
 	// message stands alone (no stray heading element).
@@ -1170,7 +1176,7 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 
 	got := render(t, r, &List{Name: "server", Label: "NTP servers", Datatype: "host",
 		Items: []string{"0.pool.ntp.org", "1.pool.ntp.org"}})
-	if n := strings.Count(got, `<input name="server"`); n != 3 {
+	if n := strings.Count(got, ` name="server" value=`); n != 3 {
 		t.Errorf("want 3 inputs (2 items + 1 blank), got %d: %s", n, got)
 	}
 	for _, want := range []string{

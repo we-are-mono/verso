@@ -56,6 +56,10 @@
     for (var key in surfaces) {
       if (Object.prototype.hasOwnProperty.call(surfaces, key)) surfaces[key].hidden = key !== name;
     }
+    // A new surface is a new stage of the upgrade, and someone not watching the
+    // screen has to hear that it moved: its heading is said.
+    var heading = surfaces[name].querySelector("h1,h2,h3");
+    if (heading && typeof versoAnnounce === "function") versoAnnounce(heading.textContent.trim());
     guard(name === "preparing" || name === "installing" || name === "restarting");
   }
 

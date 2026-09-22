@@ -159,7 +159,7 @@ func TestShellFormDrivenByItsConfirm(t *testing.T) {
 	if strings.Contains(got, ">Save</button>") {
 		t.Errorf("a confirm-driven form rendered a generated Save button: %s", got)
 	}
-	if !strings.Contains(got, ">Delete rule</label>") {
+	if !strings.Contains(got, ">Delete rule</button>") {
 		t.Errorf("the confirm's own trigger is missing: %s", got)
 	}
 

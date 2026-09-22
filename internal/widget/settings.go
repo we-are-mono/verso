@@ -112,6 +112,15 @@ type settingsItemView struct {
 	Condensed bool
 }
 
+// Control is the row's checkbox. Nothing labels it (the title is a heading of
+// the row, not a label), so it takes the title as its name.
+func (v settingsItemView) Control() switchControl {
+	if v.Toggle == nil {
+		return switchControl{}
+	}
+	return switchControl{Name: v.Toggle.Name, On: v.Toggle.On, Label: v.Title}
+}
+
 func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
 	out := make([]settingsItemView, 0, len(items))
 	for _, it := range items {

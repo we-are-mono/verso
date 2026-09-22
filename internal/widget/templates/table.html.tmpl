@@ -113,7 +113,7 @@
              row, and the row is what the hand is already on. */}}
         <td class="w-6 border-b border-rule py-2{{if not .Dense}} pr-2{{end}} align-middle group-last:border-b-0">
           {{if .Draggable}}
-          <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowID}}" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+          <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowName}}" aria-keyshortcuts="ArrowUp ArrowDown" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             {{icon "list-chevrons-up-down" "size-4"}}
           </button>
           {{end}}
@@ -127,7 +127,7 @@
         {{/* the control sits centred on the row's 24px line, as the words in the
              next cell do; the glyph that stands in for one takes the same line. */}}
         <td class="w-11 border-b border-rule py-1.5 pr-1 pl-3.5 align-middle group-last:border-b-0">
-          <span class="flex h-6 items-center">{{if .Name}}{{template "switch.html.tmpl" .}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
+          <span class="flex h-6 items-center">{{if .Name}}{{template "switch.html.tmpl" .Control}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
         </td>
         {{else if eq .Kind "action"}}
         {{/* a compact, immediately applied row action. Name/Text carry the
@@ -293,13 +293,13 @@
                 <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
               </form>
             {{end}}
-          {{else}}<span class="{{if .Muted}}text-meta{{else}}text-inert{{end}}">—</span>{{end}}
+          {{else}}<span class="{{if .Muted}}text-meta{{else}}text-inert{{end}}">{{template "verso-none"}}</span>{{end}}
           </span>
         </td>
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle group-last:border-b-0"><span class="flex h-6 items-center">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green"}}{{end}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle group-last:border-b-0"><span class="flex h-6 items-center">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green"}}<span class="sr-only">{{ t "Yes" }}</span>{{else}}<span class="sr-only">{{ t "No" }}</span>{{end}}</span></td>
         {{else if eq .Kind "entity"}}
         {{/* entity references — an interface, a zone, or physical ports — as icon
              chips: the Lucide glyph names the kind, the label the one. One chip or
@@ -309,14 +309,14 @@
           <span class="flex flex-wrap items-center gap-1.5">
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
           </span>
-          {{else}}<span class="text-inert">—</span>{{end}}
+          {{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "mono"}}
         {{/* value and its copy control on one flex line, so the control's box
              cannot push the row taller than the text it sits beside. */}}
         {{/* nothing to state is the faint dash, a step below a muted value: it
              is the absence of a fact, not a quiet one. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center gap-2">{{.Text}}{{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-middle font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center gap-2">{{.Text}}{{if .Dot}}<span role="img" aria-label="{{t "Available version"}}" class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds
@@ -326,7 +326,7 @@
                another, not two rows. */}}
           {{if .Text}}<div class="leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
           {{if .Sub}}<div class="leading-5 whitespace-nowrap text-meta">{{.Sub}}{{if .Copy}}{{template "verso-copy-inline" .Sub}}{{end}}</div>{{end}}
-          {{if and (not .Text) (not .Sub)}}<span class="text-inert">—</span>{{end}}
+          {{if and (not .Text) (not .Sub)}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "keyword"}}
         <td class="border-b border-rule {{template "table.cellpad" .}} align-middle whitespace-nowrap font-mono text-base font-medium text-body group-last:border-b-0">{{.Text}}</td>

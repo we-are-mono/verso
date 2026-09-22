@@ -45,6 +45,95 @@ function T(s) {
   return Object.prototype.hasOwnProperty.call(versoI18N, s) && versoI18N[s] ? versoI18N[s] : s;
 }
 
+// versoAnnounce says something to a screen reader without drawing it: what a
+// keyboard move did, what an apply came to. The region is created empty and
+// filled a frame later, because a live region that arrives already holding its
+// words is often not read at all. Saying the same thing twice in a row still
+// speaks, since the text is cleared before it is set.
+var versoAnnounce = (function () {
+  var region = null;
+  return function (text) {
+    if (!region) {
+      region = document.createElement("div");
+      region.id = "verso-announce";
+      region.className = "sr-only";
+      region.setAttribute("role", "status");
+      region.setAttribute("aria-live", "polite");
+      document.body.appendChild(region);
+    }
+    region.textContent = "";
+    window.requestAnimationFrame(function () {
+      region.textContent = text;
+    });
+  };
+})();
+
+// A dialog is announced by its title: the first heading in it names it. The
+// frames are fetched and swapped, so the name is read from what the dialog holds
+// now rather than written into a template that may not have its heading yet.
+function versoNameDialog(dialog) {
+  if (!dialog) return;
+  var heading = dialog.querySelector("h1,h2,h3,h4");
+  if (!heading) {
+    dialog.removeAttribute("aria-labelledby");
+    return;
+  }
+  if (!heading.id) heading.id = "verso-dialog-title-" + Math.random().toString(36).slice(2, 10);
+  dialog.setAttribute("aria-labelledby", heading.id);
+}
+
+// While a dialog is open the page behind it is inert: out of the tab order and
+// out of what a screen reader reads, which is what aria-modal promises and does
+// not itself do. Each layer remembers what it made inert and gives back exactly
+// that, so a dialog opened over a drawer leaves the drawer inert until it closes
+// and live regions keep speaking throughout.
+// The layer is the dialog's overlay: the element x-teleport hung on <body>.
+function versoLayerOf(el) {
+  while (el && el.parentElement && el.parentElement !== document.body) el = el.parentElement;
+  return el && el.parentElement === document.body ? el : null;
+}
+
+function versoLayerOpen(layer) {
+  if (!layer || layer._versoInerted) return;
+  layer._versoInerted = [].filter.call(document.body.children, function (node) {
+    if (node === layer || node.contains(layer) || node.inert) return false;
+    if (/^(SCRIPT|TEMPLATE|STYLE)$/.test(node.tagName)) return false;
+    return !node.matches('[role="status"],[role="alert"],[aria-live]');
+  });
+  layer._versoInerted.forEach(function (node) { node.inert = true; });
+}
+
+function versoLayerClose(layer) {
+  if (!layer || !layer._versoInerted) return;
+  layer._versoInerted.forEach(function (node) { node.inert = false; });
+  layer._versoInerted = null;
+}
+
+// What Tab can reach inside a dialog: the focusable elements that are drawn. A
+// pane hidden by x-show or [hidden] is still in the DOM, and a trap that counts
+// it wraps from an element nobody can see.
+function versoTabbable(root) {
+  return [].filter.call(root.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+  ), function (el) {
+    return el.getClientRects().length > 0 && !el.closest("[inert]");
+  });
+}
+
+// A swap inside an open dialog (a drawer's tab, a refused form coming back)
+// replaces the element that had focus, which drops focus to <body> behind the
+// dialog. Put it back where the person was working: the tab now showing, else
+// the dialog itself. The heading may have been replaced too, so the name is
+// read again.
+document.addEventListener("htmx:afterSwap", function (e) {
+  var dialog = e.target && e.target.closest && e.target.closest('[role="dialog"][aria-modal="true"]');
+  if (!dialog) return;
+  versoNameDialog(dialog);
+  if (dialog.contains(document.activeElement)) return;
+  var current = dialog.querySelector('[aria-current="page"]');
+  (current || dialog).focus();
+});
+
 document.addEventListener("alpine:init", function () {
   // copy: copy the widget's text to the clipboard and briefly show "Copied!".
   // Prefers the async Clipboard API; falls back to a hidden-textarea execCommand
@@ -60,6 +149,7 @@ document.addEventListener("alpine:init", function () {
         var flash = function () {
           self.idle = false;
           self.done = true;
+          versoAnnounce(T("Copied"));
           setTimeout(function () {
             self.done = false;
             self.idle = true;
@@ -103,11 +193,103 @@ document.addEventListener("alpine:init", function () {
       get drawerClass() {
         return this.open ? "verso-drawer-open" : "";
       },
-      toggle: function () {
-        this.open = !this.open;
+      // The hamburger's aria-expanded, as the string the attribute takes.
+      get expanded() {
+        return this.open ? "true" : "false";
       },
+      // Opening moves focus into the rail, onto its own way shut, so the next
+      // Tab walks its destinations rather than the page under it.
+      toggle: function () {
+        if (this.open) {
+          this.close();
+          return;
+        }
+        this.open = true;
+        var self = this;
+        this.$nextTick(function () {
+          if (self.$refs.railClose) self.$refs.railClose.focus();
+        });
+      },
+      // Closing hands focus back to the hamburger that opened it. Escape reaches
+      // here from anywhere on the page, so a rail that was not open is left
+      // alone, along with wherever focus is.
       close: function () {
+        if (!this.open) return;
         this.open = false;
+        var button = this.$refs.menuButton;
+        if (button && button.getClientRects().length) button.focus();
+      },
+    };
+  });
+
+  // panelFaces: which face of a board's panel art is shown, front or rear. The
+  // CSP build evaluates no expressions in bindings, so each binding is a
+  // property here; the face shown is filled in the body ink, as every selected
+  // segment in the app is.
+  Alpine.data("panelFaces", function () {
+    var on = "bg-body font-semibold text-white";
+    var off = "font-normal text-body hover:text-ink";
+    return {
+      face: "rear",
+      get rear() {
+        return this.face === "rear";
+      },
+      get front() {
+        return this.face === "front";
+      },
+      get rearClass() {
+        return this.rear ? on : off;
+      },
+      get frontClass() {
+        return this.front ? on : off;
+      },
+      get rearPressed() {
+        return this.rear ? "true" : "false";
+      },
+      get frontPressed() {
+        return this.front ? "true" : "false";
+      },
+      showRear: function () {
+        this.face = "rear";
+      },
+      showFront: function () {
+        this.face = "front";
+      },
+    };
+  });
+
+  // confirm: a destructive act that asks first. The trigger gives way to the
+  // question and focus goes to the first thing to answer with (the password, or
+  // the confirm button); the way back, or Escape, returns to the trigger. An
+  // Escape that answers the question stops there, so it does not also close the
+  // drawer the question sits in.
+  Alpine.data("confirm", function () {
+    return {
+      asking: false,
+      get idle() {
+        return !this.asking;
+      },
+      get expanded() {
+        return this.asking ? "true" : "false";
+      },
+      ask: function () {
+        this.asking = true;
+        var self = this;
+        this.$nextTick(function () {
+          if (self.$refs.first) self.$refs.first.focus();
+        });
+      },
+      cancel: function () {
+        this.asking = false;
+        var self = this;
+        this.$nextTick(function () {
+          if (self.$refs.trigger) self.$refs.trigger.focus();
+        });
+      },
+      escape: function (e) {
+        if (!this.asking) return;
+        e.stopPropagation();
+        this.cancel();
       },
     };
   });
@@ -138,9 +320,18 @@ document.addEventListener("alpine:init", function () {
         requestAnimationFrame(function () {
           self.open = true;
           self.$nextTick(function () {
-            if (self.$refs.dialog) self.$refs.dialog.focus();
+            self.enter();
           });
         });
+      },
+      // The dialog is on screen: name it, shut the page behind it, and put
+      // focus in it.
+      enter: function () {
+        var dialog = this.$refs.dialog;
+        if (!dialog) return;
+        versoNameDialog(dialog);
+        versoLayerOpen(versoLayerOf(dialog));
+        dialog.focus();
       },
       show: function () {
         this._return = document.activeElement;
@@ -156,7 +347,7 @@ document.addEventListener("alpine:init", function () {
             // A refreshed listing creates new teleported forms outside htmx's
             // swap target. Activate them before the drawer can be submitted.
             if (window.htmx) window.htmx.process(self.$refs.dialog);
-            self.$refs.dialog.focus();
+            self.enter();
           }
         });
       },
@@ -176,6 +367,9 @@ document.addEventListener("alpine:init", function () {
       hide: function () {
         if (this.busy) return;
         this.open = false;
+        // The page comes back before focus does: focus cannot land on an inert
+        // element, and the trigger it returns to is on that page.
+        versoLayerClose(versoLayerOf(this.$refs.dialog));
         if (this._return && this._return.focus) this._return.focus();
         this.releaseAddress();
         // Closing is something a script may be waiting on — a page that went
@@ -343,20 +537,23 @@ document.addEventListener("alpine:init", function () {
         if (e.key !== "Tab") return;
         var el = this.$refs.dialog;
         if (!el) return;
-        var f = el.querySelectorAll(
-          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
-        );
+        var f = versoTabbable(el);
         if (!f.length) {
           e.preventDefault();
           el.focus();
           return;
         }
         var first = f[0],
-          last = f[f.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+          last = f[f.length - 1],
+          active = document.activeElement;
+        // Focus on the dialog itself (where it lands on open) or anywhere
+        // outside it is not inside the loop yet: Tab enters at the start,
+        // Shift+Tab at the end, instead of stepping out to the page behind.
+        var outside = active === el || !el.contains(active);
+        if (e.shiftKey && (outside || active === first)) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (!e.shiftKey && (outside || active === last)) {
           e.preventDefault();
           first.focus();
         }

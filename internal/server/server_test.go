@@ -617,7 +617,20 @@ func TestTopBarCarriesTheNameplateAndTheWayOut(t *testing.T) {
 			t.Errorf("top bar missing %q:\n%s", want, header)
 		}
 	}
-	aside := body[strings.Index(body, "<aside"):strings.Index(body, "</aside>")]
+	// The hamburger says whether the rail it opens is open, and which element
+	// that rail is.
+	for _, want := range []string{`:aria-expanded="expanded"`, `aria-controls="verso-rail"`} {
+		if !strings.Contains(header, want) {
+			t.Errorf("menu button missing %q:\n%s", want, header)
+		}
+	}
+	// The rail is found by the id the menu button controls; the bar's own
+	// staged-changes drawer is an aside too, and comes first.
+	railAt := strings.Index(body, `<aside id="verso-rail"`)
+	if railAt < 0 {
+		t.Fatalf("the rail must carry the id the menu button controls:\n%s", firstLines(body, 0))
+	}
+	aside := body[railAt : railAt+strings.Index(body[railAt:], "</aside>")]
 	for _, unwanted := range []string{"gdk-edge-01", "/logout", "Log out"} {
 		if strings.Contains(aside, unwanted) {
 			t.Errorf("the rail must not carry %q:\n%s", unwanted, aside)

@@ -96,6 +96,20 @@ func (f *Field) Lane() bool      { return f.Remove != "" }
 // a plugin already wrote.
 func (f *Field) Explained() bool { return f.Tip != "" || f.Help != "" }
 
+// DescribedBy is what the control is described by: the explanation raised onto
+// its label, then the refusal under it. A screen reader reads both when the
+// field takes focus, so the help is not only for someone who hovers.
+func (f *Field) DescribedBy() string {
+	ids := make([]string, 0, 2)
+	if f.Explained() {
+		ids = append(ids, f.TipView().ID)
+	}
+	if f.Error != "" {
+		ids = append(ids, f.Name+"-error")
+	}
+	return strings.Join(ids, " ")
+}
+
 // explanation is the sentence the label raises: the explicit tip where there is
 // one, and the help line otherwise.
 func (f *Field) explanation() string {

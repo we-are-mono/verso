@@ -40,9 +40,9 @@
          blur: an invalid value gets aria-invalid + the error slot below, does not
          stage, and the page scrolls to the topmost error. */}}
     <div data-verso-inline-field class="mt-2 max-w-md">
-      <input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}" data-verso-inline-input{{if .Datatype}} data-verso-datatype="{{.Datatype}}"{{end}}
+      <input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}" aria-describedby="{{.Name}}-error" data-verso-inline-input{{if .Datatype}} data-verso-datatype="{{.Datatype}}"{{end}}
         class="{{template "verso-input-class"}} box-border border-rule-strong tabular-nums hover:border-faint focus:border-denim aria-invalid:border-crimson">
-      <p data-verso-inline-error hidden class="mt-1.5 text-sm text-crimson-deep"></p>
+      <p id="{{.Name}}-error" data-verso-inline-error hidden class="mt-1.5 text-sm text-crimson-deep"></p>
     </div>
     {{if .Desc}}<p class="mt-1.5 text-sm leading-snug text-body">{{.Desc}}</p>{{end}}
   </div>
@@ -61,9 +61,9 @@
     </div>
     {{range .PillsHTML}}{{.}}{{end}}
     {{/* the checkbox sits centred on the name's own 24px line. */}}
-    {{if .Toggle}}<span class="flex h-6 shrink-0 items-center">{{template "switch.html.tmpl" .Toggle}}</span>{{end}}
+    {{if .Toggle}}<span class="flex h-6 shrink-0 items-center">{{template "switch.html.tmpl" .Control}}</span>{{end}}
     {{if .Name}}<label class="-mt-0.5 flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-xs border border-rule-strong bg-ground px-2 transition-colors hover:border-denim focus-within:border-denim-deep">
-      <input type="text" name="{{.Name}}" value="{{.Value}}"
+      <input type="text" name="{{.Name}}" value="{{.Value}}" aria-label="{{.Title}}"
         class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-sm tabular-nums text-ink focus:outline-none">
       {{icon "square-pen" "size-3.5 shrink-0 text-faint"}}
     </label>

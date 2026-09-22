@@ -719,6 +719,9 @@ type tableCellView struct {
 	Panel     string
 	ConfirmID string
 	Dense     bool // the listing's geometry: no inset of the cell's own, the columns' widths space them
+	// RowName is what the row is called, for the controls in it that have no
+	// visible label of their own: a switch, a drag handle.
+	RowName string
 	TableCell
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -728,6 +731,43 @@ type tableCellView struct {
 // where following it would fetch the very page we are already on, only to show
 // what a swap can show without leaving.
 func (c tableCellView) OpensPanel() bool { return c.Panel != "" && c.Href == c.Panel }
+
+// Control is a toggle cell's checkbox. The row is what it switches, so it takes
+// the row's name.
+func (c tableCellView) Control() switchControl {
+	return switchControl{Name: c.Name, On: c.On, Label: c.RowName}
+}
+
+// rowName is what a row is called: its name column, else its comment (a rule
+// with no name is known by its comment), else the first cell with words in it,
+// else the path its endpoints draw.
+func (t *Table) rowName(row TableRow) string {
+	text := func(i int) string {
+		if i < len(row.Cells) {
+			return strings.TrimSpace(row.Cells[i].Text)
+		}
+		return ""
+	}
+	for _, kind := range []string{"name", "comment"} {
+		for i, col := range t.Columns {
+			if col.Kind == kind && text(i) != "" {
+				return text(i)
+			}
+		}
+	}
+	for i, col := range t.Columns {
+		if col.Kind != "num" && text(i) != "" {
+			return text(i)
+		}
+	}
+	var ends []string
+	for _, c := range row.Cells {
+		for _, ep := range c.Endpoints {
+			ends = append(ends, ep.Label)
+		}
+	}
+	return strings.Join(ends, " → ")
+}
 
 type tableEndpointView struct {
 	TableEndpoint
@@ -1014,12 +1054,13 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			rv.Drawer = true
 			rv.PanelURL = SafeHref(row.Panel)
 		}
+		rowName := t.rowName(row)
 		for i := range t.Columns {
 			kind := t.Columns[i].Kind
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Primary: i == primary, Draggable: reorderable, RowID: row.ID, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
+			cv := tableCellView{Kind: kind, Primary: i == primary, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
 			cv.Expandable = i == primary && len(row.Expanded) > 0
 			if i == primary {
 				switch {

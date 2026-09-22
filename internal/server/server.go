@@ -678,6 +678,9 @@ type pageHeader struct {
 func jsCatalog(tr func(string) string) template.JS {
 	keys := []string{
 		"Enter a valid hostname or IP address.", "Enter a valid IP address.",
+		// What a keyboard reorder says once the row has moved, and what a copy
+		// button says once the value is on the clipboard.
+		"Moved to position %d of %d", "Copied",
 		// The staged-changes chip, kept in step after an act on the page
 		// stages something, and how an apply went.
 		"1 staged change", "%d staged changes",

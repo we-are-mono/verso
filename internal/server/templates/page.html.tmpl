@@ -32,7 +32,7 @@
      hamburger that opens the rail. Only the home page adds app-wide warnings
      here. */}}
 <header class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-rule bg-canvas px-6">
-  <button type="button" @click="toggle" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
+  <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
   {{/* One line whatever the name's length; where the bar has to cut it, the
        whole name is a hover away. */}}
   <a href="/"{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
@@ -72,11 +72,11 @@
      bar, as tall as what the bar leaves of the screen. No fill of its own —
      one hairline separates it from the page, and only the active row is a
      surface. */}}
-<aside class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-rule bg-ground md:sticky md:inset-y-auto md:top-14 md:left-auto md:z-auto md:h-[calc(100vh-3.5rem)]" :class="drawerClass" @keydown.escape.window="close">
+<aside id="verso-rail" class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-rule bg-ground md:sticky md:inset-y-auto md:top-14 md:left-auto md:z-auto md:h-[calc(100vh-3.5rem)]" :class="drawerClass" @keydown.escape.window="close">
   {{/* On a phone the rail is a drawer over the bar, so it carries its own way
        shut. */}}
   <div class="flex items-center justify-end px-4 pt-4 md:hidden">
-    <button type="button" @click="close" aria-label="{{ t "Close menu" }}" class="grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink">{{icon "x" "size-5"}}</button>
+    <button type="button" @click="close" x-ref="railClose" aria-label="{{ t "Close menu" }}" class="grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink">{{icon "x" "size-5"}}</button>
   </div>
   {{/* One flat list of destinations — no titles, no rules. The row you are in
        opens its subpages beneath it, so the rail carries the whole path. */}}
@@ -181,8 +181,9 @@
      taken on this page says what just happened here, at the right, under the
      bar, where the panel it came from has just gone (verso-page.js). The same
      flash element, the same words and tones; only the place and the lifetime
-     differ. A live region, so the sentence is read aloud as it arrives. */}}
-<div id="verso-outcome" role="status" aria-live="polite" hidden class="verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md">
+     differ. The sentence is read aloud through the page's announcer as it
+     arrives (verso-page.js), since this layer is hidden until then. */}}
+<div id="verso-outcome" hidden class="verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md">
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </div>

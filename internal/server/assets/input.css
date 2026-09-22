@@ -173,9 +173,12 @@ html.verso-fonts-loading body {
      (verso.js "sidebar" adds .verso-drawer-open). On desktop (md+) it's a static rail
      with no transform. Position is Tailwind's job (fixed on mobile, sticky on md+); this
      owns only the slide. */
-  .verso-drawer { transform: translateX(-100%); transition: transform 0.28s ease; }
-  .verso-drawer.verso-drawer-open { transform: translateX(0); }
-  @media (min-width: 768px) { .verso-drawer { transform: none; transition: none; } }
+  /* Closed, the rail is hidden as well as slid away, so its links leave the tab
+     order and what a screen reader reads; the hiding waits for the slide to
+     finish, and showing it is immediate, so the motion is seen both ways. */
+  .verso-drawer { transform: translateX(-100%); visibility: hidden; transition: transform 0.28s ease, visibility 0s linear 0.28s; }
+  .verso-drawer.verso-drawer-open { transform: translateX(0); visibility: visible; transition: transform 0.28s ease, visibility 0s; }
+  @media (min-width: 768px) { .verso-drawer { transform: none; visibility: visible; transition: none; } }
   @media (prefers-reduced-motion: reduce) { .verso-drawer { transition: none; } }
 
   /* A page that fills the window (Width "full") hands its height down to the one
@@ -369,14 +372,6 @@ html.verso-fonts-loading body {
   .verso-inline-switch-off { display: inline; }
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on { display: inline; }
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off { display: none; }
-
-  /* confirm widget: an inline destructive confirmation (ADR-005 §7). A hidden
-     checkbox flips between the danger trigger and the confirm panel — pure CSS.
-     Both display states live here, never as utilities, so the cascade holds. */
-  .verso-confirm-trigger { display: block; }
-  .verso-confirm-panel { display: none; }
-  .verso-confirm:has(.verso-confirm-toggle:checked) .verso-confirm-panel { display: block; }
-  .verso-confirm:has(.verso-confirm-toggle:checked) .verso-confirm-trigger { display: none; }
 
   /* toggle widget: a status-hero switch (ADR-005 §7). The checkbox's :checked
      state drives everything — no JavaScript. State-varying properties live here,
@@ -588,6 +583,9 @@ html.verso-fonts-loading body {
   .verso-ports-screw.bl { bottom: 0.5rem; left: 0.5rem; } .verso-ports-screw.br { bottom: 0.5rem; right: 0.5rem; }
 
   .verso-port { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.5625rem; }
+  /* The port's link state in words, for a screen reader: only the one that
+     matches the port's live class is left in the accessibility tree. */
+  .verso-port.is-linked .verso-port-state-off, .verso-port:not(.is-linked) .verso-port-state-on { display: none; }
   .verso-port-jack, .verso-port-cage { height: 3.375rem; width: auto; display: block; }
   .verso-port-frame { fill: #363c48; stroke: #4a5262; stroke-width: 1; }
   .verso-port-mouth { fill: #0b0d12; }

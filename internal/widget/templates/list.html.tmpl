@@ -21,7 +21,7 @@
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-xs text-faint hover:bg-mid hover:text-ink">{{icon "x" "size-3.5"}}</button></div></template>
-    <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}" data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
+    <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a
@@ -37,7 +37,7 @@
       <button type="button" data-verso-token-remove aria-label="{{ t "Remove" }} {{.}}" class="{{template "verso-token-chip-remove"}}">{{icon "x" "size-3"}}</button>
     </span>
     {{end}}
-    <input data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="h-7.5 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-medium text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-faint">
+    <input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options"{{end}} autocomplete="off" placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="h-7.5 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-medium text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-faint">
   </div>
   {{/* The empty chip the shell clones when a value is typed in. A value the
        plugin sent and a value added here are one kind of thing, so there is one
@@ -54,21 +54,28 @@
        as it is typed into and simply goes away when nothing matches. Several can
        be taken — picking one leaves the box open for the next. */}}
   {{if .Options}}
-  <div data-verso-token-menu hidden class="verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-[0_4px_12px_rgba(27,25,23,.14)]">
-    {{range .Options}}
-    <button type="button" data-verso-token-option="{{.Value}}" class="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left font-mono text-base font-medium text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep">{{.Label}}</button>
+  {{/* A listbox the box drives: the arrow keys move through what is showing
+       and Enter takes it, while focus stays in the box being typed into. The
+       options are out of the tab order for the same reason. */}}
+  <div id="{{.Name}}-options" data-verso-token-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-[0_4px_12px_rgba(27,25,23,.14)]">
+    {{range $i, $o := .Options}}
+    <button type="button" id="{{$.Name}}-option-{{$i}}" role="option" aria-selected="false" tabindex="-1" data-verso-token-option="{{$o.Value}}" class="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left font-mono text-base font-medium text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep">{{.Label}}</button>
     {{end}}
   </div>
   {{end}}
   {{else}}
   <div class="space-y-2">
+    {{/* Every box is one value of the setting the row's label names, so each is
+         named by that label; the refused one also points at why. The label's
+         own for goes to the empty box, where a click means "add one". */}}
     {{range $i, $item := .Items}}
     <div class="space-y-1.5">
-      <input name="{{$.Name}}" value="{{$item}}" type="text"{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" (index $.Errors (printf "%d" $i))}}">
-      {{with index $.Errors (printf "%d" $i)}}<p class="text-sm text-crimson-deep">{{.}}</p>{{end}}
+      {{$err := index $.Errors (printf "%d" $i)}}
+      <input name="{{$.Name}}" value="{{$item}}" type="text" aria-labelledby="{{$.Name}}-label"{{if $err}} aria-invalid="true" aria-describedby="{{$.Name}}-error-{{$i}}"{{end}}{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" $err}}">
+      {{with $err}}<p id="{{$.Name}}-error-{{$i}}" class="text-sm text-crimson-deep">{{.}}</p>{{end}}
     </div>
     {{end}}
-    <input name="{{.Name}}" value="" type="text" placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
+    <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
   </div>
   {{end}}
   {{/* The explanation is raised onto the label, as every other row's is. */}}

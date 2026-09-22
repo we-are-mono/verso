@@ -4,8 +4,8 @@
      (ADR-005 §7) — the radio's :checked state lights the card via verso.css. The
      state-varying styles live there, never as utilities, so the cascade holds. */}}
 <div class="space-y-1.5">
-  {{if .Label}}<span class="block text-sm font-semibold text-ink">{{.Label}}</span>{{end}}
-  <div class="verso-choice grid gap-2.5">
+  {{if .Label}}<span id="{{.Name}}-label" class="block text-sm font-semibold text-ink">{{.Label}}</span>{{end}}
+  <div role="radiogroup"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} class="verso-choice grid gap-2.5">
     {{range .Options}}
     <label class="verso-choice-card flex items-start gap-3 rounded-xs p-3.5">
       <input type="radio" name="{{$.Name}}" value="{{.Value}}"{{if .Checked}} checked{{end}} class="peer sr-only">

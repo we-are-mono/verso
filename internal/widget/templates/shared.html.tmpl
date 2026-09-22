@@ -34,6 +34,20 @@
      error treatment when the argument (the field's error) is set. */}}
 {{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-crimson-deep{{else}}border-rule-strong hover:border-denim focus:border-denim-deep{{end}}{{end}}
 
+{{/* verso-none: the dash a cell shows when it has no value. The dash is for
+     the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
+{{define "verso-none"}}<span aria-hidden="true">—</span><span class="sr-only">{{ t "None" }}</span>{{end}}
+
+{{/* verso-segment-focus: a segment's input is screen-reader-only, so the
+     segment it sits in draws the keyboard focus ring for it. */}}
+{{define "verso-segment-focus"}}has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-denim{{end}}
+
+{{/* verso-field-aria: what a field's control says about itself beyond its
+     label — what describes it (its help, its refusal), whether it was refused,
+     and whether it is required. Required is stated rather than enforced: the
+     browser's own bubble would stand in front of the shell's refusal. */}}
+{{define "verso-field-aria"}}{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Error}} aria-invalid="true"{{end}}{{if .Required}} aria-required="true"{{end}}{{end}}
+
 {{/* verso-input-class: one control, one treatment. A value someone types into a
      router is a machine string — an address, a name a daemon will answer to — so
      the field is set in mono at the reading size, on the page's own ground
@@ -91,7 +105,7 @@
      every label was. */}}
 {{define "verso-field-label"}}
 <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:pt-2">
-  {{if .Label}}<label for="{{.For}}" class="text-sm font-semibold text-ink{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}>{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}</label>{{end}}
+  {{if .Label}}<label for="{{.For}}"{{with .For}} id="{{.}}-label"{{end}} class="text-sm font-semibold text-ink{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}>{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}</label>{{end}}
   {{if .Key}}<span class="{{template "verso-chip-class"}}">{{.Key}}</span>{{end}}
 </div>
 {{end}}
@@ -228,7 +242,7 @@
      at the top of its body, because the page around it is not re-rendered to
      say what happened. One definition, so the two cannot drift apart. Nothing
      draws without a message. */}}
-{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-center gap-2 rounded-xs border px-4 py-3 text-sm {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}">
+{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-center gap-2 rounded-xs border px-4 py-3 text-sm {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}" data-verso-flash-variant="{{.Variant}}">
   {{if eq .Variant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else if eq .Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0"}}{{else if eq .Variant "info"}}{{icon "info" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
   <span>{{.Message}}</span>
 </div>{{end}}{{end}}

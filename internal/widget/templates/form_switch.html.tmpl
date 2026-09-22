@@ -8,11 +8,11 @@
 {{if eq .Style "checkbox"}}
 <div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
 {{template "verso-field-label" .LabelView}}
-<div data-verso-control class="{{template "verso-field-control-class"}}"><label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label></div></div>
+<div data-verso-control class="{{template "verso-field-control-class"}}"><label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .Control}}</label></div></div>
 {{else if eq .Style "inline"}}
 <label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   <span aria-hidden="true" class="size-1 rounded-full bg-inert"></span>
-  <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .}}</span>
+  <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .Control}}</span>
   <span class="verso-inline-switch-on ml-2 translate-y-px text-ink">{{.Label}}</span>
   <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{if .OffLabel}}{{.OffLabel}}{{else}}{{ t "Disabled" }}{{end}}</span>
 </label>
@@ -55,6 +55,6 @@
          pressing the thing itself does nothing. The label in the left column
          points at the same input by id, which is what makes the setting's name
          clickable too. */}}
-    <label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label>
+    <label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .Control}}</label>
   </div>
 </div>{{end}}

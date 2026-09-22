@@ -89,6 +89,9 @@
     if (mark) mark.className = "size-1.5 shrink-0 rounded-[1px] " + (tone === "green" ? "bg-green" : "bg-crimson");
     if (label) label.textContent = text;
     if (word) word.hidden = !opensDrawer;
+    // The chip changes out of sight of anyone not looking at it; how an apply
+    // went is said as well as shown.
+    versoAnnounce(text);
   }
 
   // Take a fresh render of the page as the stage's truth: the count it carries
@@ -118,6 +121,7 @@
     var el = document.getElementById("verso-staged-note");
     var dot = document.getElementById("verso-staged-note-mark");
     if (el) el.textContent = text;
+    if (text) versoAnnounce(text);
     if (!dot) return;
     dot.className = "mt-[7px] size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
   }
@@ -131,6 +135,13 @@
       if (on) {
         apply.dataset.label = apply.textContent;
         apply.textContent = apply.getAttribute("data-applying") || "";
+        // A disabled button lets go of focus, which would drop it behind the
+        // drawer; the drawer itself holds it while the apply runs.
+        if (document.activeElement === apply) {
+          var dialog = apply.closest('[role="dialog"]');
+          if (dialog) dialog.focus();
+        }
+        versoAnnounce(apply.textContent);
       } else if (apply.dataset.label) {
         apply.textContent = apply.dataset.label;
       }

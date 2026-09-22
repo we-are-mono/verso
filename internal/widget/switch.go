@@ -55,6 +55,23 @@ func (s *Switch) LabelView() fieldLabel {
 	}
 }
 
+// switchControl is what the shared checkbox (switch.control) draws: its state,
+// the form name it posts under, and, when no label points at it, the name a
+// screen reader announces. A switch in a table or settings row has no visible
+// label of its own (the row is what it switches), so it borrows the row's name.
+// A labelled switch leaves Label empty, because an aria-label would override the
+// label it already has.
+type switchControl struct {
+	Name  string
+	On    bool
+	Label string
+}
+
+// Control is this switch's checkbox. Every style labels it (the form row's label
+// points at it by id, the inline style wraps it with its words), so it carries
+// no name of its own.
+func (s *Switch) Control() switchControl { return switchControl{Name: s.Name, On: s.On} }
+
 func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "form_switch.html.tmpl", s)
 }

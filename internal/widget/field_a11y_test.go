@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package widget
+
+import (
+	"strings"
+	"testing"
+)
+
+// TestFieldErrorIsTiedToItsControl: a refusal is read with the field it
+// refuses. The error band carries an id, the control points at it and says it
+// is invalid, so a screen reader landing on the field hears why it came back.
+func TestFieldErrorIsTiedToItsControl(t *testing.T) {
+	for _, kind := range []string{"", "select", "password", "textarea", "time", "datetime-local"} {
+		f := &Field{Name: "addr", Label: "Address", Kind: kind, Error: "Enter a valid IP address."}
+		if kind == "select" {
+			f.Options = []Option{{Value: "a", Label: "A"}}
+		}
+		got := render(t, newRenderer(t), f)
+		for _, want := range []string{`aria-invalid="true"`, `aria-describedby="addr-error"`, `id="addr-error"`} {
+			if !strings.Contains(got, want) {
+				t.Errorf("kind %q: refused field missing %q:\n%s", kind, want, got)
+			}
+		}
+	}
+	clean := render(t, newRenderer(t), &Field{Name: "addr", Label: "Address"})
+	if strings.Contains(clean, "aria-invalid") || strings.Contains(clean, "addr-error") {
+		t.Errorf("a field with no error claims none:\n%s", clean)
+	}
+}
+
+// TestFieldHelpDescribesTheControl: the explanation raised onto the label is
+// also what the control is described by, so it is read when the field takes
+// focus, not only when the label is hovered. With an error, both are read.
+func TestFieldHelpDescribesTheControl(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "mtu", Label: "MTU", Help: "Largest packet size.", Error: "Too small."})
+	if !strings.Contains(got, `id="mtu" name="mtu"`) || !strings.Contains(got, `aria-describedby="mtu-tip mtu-error"`) {
+		t.Errorf("the control must be described by its help and its error:\n%s", got)
+	}
+}
+
+// TestFieldRequiredIsStated: a field the plugin marks required says so to
+// assistive technology. Native required would put the browser's own bubble in
+// front of the shell's refusal, so it is stated, not enforced.
+func TestFieldRequiredIsStated(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "name", Label: "Name", Required: true})
+	if !strings.Contains(got, `aria-required="true"`) {
+		t.Errorf("required field must carry aria-required:\n%s", got)
+	}
+	if strings.Contains(got, " required") {
+		t.Errorf("required must not be enforced natively on a text field:\n%s", got)
+	}
+}
+
+// TestOptionSetsAreNamedGroups: segmented radios and check sets have no single
+// control a label can point at, so the set is a group named by the row's label.
+func TestOptionSetsAreNamedGroups(t *testing.T) {
+	opts := []Option{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
+	radios := render(t, newRenderer(t), &Field{Name: "family", Label: "Family", Kind: "select", Style: "segmented", Options: opts})
+	checks := render(t, newRenderer(t), &Field{Name: "days", Label: "Days", Kind: "checks", Options: opts})
+	strip := render(t, newRenderer(t), &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Options: opts})
+	for name, c := range map[string]struct{ got, role, label string }{
+		"radios": {radios, `role="radiogroup"`, `aria-labelledby="family-label"`},
+		"checks": {checks, `role="group"`, `aria-labelledby="days-label"`},
+		"strip":  {strip, `role="group"`, `aria-labelledby="days-label"`},
+	} {
+		if !strings.Contains(c.got, c.role) || !strings.Contains(c.got, c.label) {
+			t.Errorf("%s: option set must be a group named by its label (%s %s):\n%s", name, c.role, c.label, c.got)
+		}
+	}
+	if !strings.Contains(radios, `id="family-label"`) {
+		t.Errorf("the row label must carry the id the group points at:\n%s", radios)
+	}
+	// A segment's input is screen-reader-only, so the segment shows focus.
+	if !strings.Contains(radios, "has-focus-visible:outline-2") {
+		t.Errorf("a segment must show keyboard focus:\n%s", radios)
+	}
+}
+
+// TestListValuesAreNamed: every box in a list is one value of the setting its
+// row label names; a refused value points at its refusal; the token box is the
+// input its label is for, and its suggestions are a listbox it controls.
+func TestListValuesAreNamed(t *testing.T) {
+	boxes := render(t, newRenderer(t), &List{Name: "server", Label: "NTP servers",
+		Items: []string{"0.pool.ntp.org", "bad host"}, Errors: map[string]string{"1": "Not a host."}})
+	for _, want := range []string{
+		`value="0.pool.ntp.org" type="text" aria-labelledby="server-label"`,
+		`aria-invalid="true" aria-describedby="server-error-1"`, `id="server-error-1"`,
+		// The add box is named through the label's own id as well as by its
+		// for: a page section may carry the same id as the field, and a for
+		// that resolves to the section names nothing.
+		`id="server" name="server" value="" type="text" aria-labelledby="server-label"`,
+	} {
+		if !strings.Contains(boxes, want) {
+			t.Errorf("list missing %q:\n%s", want, boxes)
+		}
+	}
+	tokens := render(t, newRenderer(t), &List{Name: "proto", Label: "Protocols", Style: "tokens",
+		Options: []Option{{Value: "tcp", Label: "tcp"}, {Value: "udp", Label: "udp"}}})
+	for _, want := range []string{
+		`id="proto" aria-labelledby="proto-label" data-verso-token-input`, `role="combobox"`, `aria-controls="proto-options"`,
+		`id="proto-options" data-verso-token-menu role="listbox" aria-labelledby="proto-label"`,
+		`id="proto-option-0" role="option" aria-selected="false" tabindex="-1"`,
+	} {
+		if !strings.Contains(tokens, want) {
+			t.Errorf("token list missing %q:\n%s", want, tokens)
+		}
+	}
+}
+
+// TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
+// it is named by the row's label and the word that joins the two.
+func TestPairSecondHalfIsNamed(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "from", Label: "Ports", Value: "1000", Pair: &FieldPair{Name: "to", Value: "2000", Join: "to"}})
+	if !strings.Contains(got, `id="to" name="to"`) || !strings.Contains(got, `aria-labelledby="from-label from-join"`) || !strings.Contains(got, `id="from-join"`) {
+		t.Errorf("the pair's second input must be named by the label and the joining word:\n%s", got)
+	}
+}

@@ -14,7 +14,7 @@
        pointer and to the action colour while typing. */}}
   <div class="relative flex max-w-full items-center">
     <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
-    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}"
+    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
       class="h-9 {{if eq .Style "interfaces"}}w-60{{else}}w-80{{end}} max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
   </div>
   {{end}}
@@ -43,7 +43,7 @@
   <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">
     {{if .Select}}
     <div class="relative flex max-w-full items-center">
-      <select data-verso-listing-select="{{.Select.Key}}"
+      <select data-verso-listing-select="{{.Select.Key}}" aria-label="{{ t "Show" }}"
         class="h-9 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
         {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
       </select>

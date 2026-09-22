@@ -186,7 +186,10 @@ func TestRenderReorderHandle(t *testing.T) {
 	for _, want := range []string{
 		"data-verso-reorder-table", `data-verso-reorder-config="firewall"`,
 		"data-verso-reorder-row", "data-verso-reorder-handle",
-		`aria-label="Reorder allow-dns"`, "cursor-grab", "active:cursor-grabbing",
+		// The handle is named by what the row is called, not its config
+		// handle, and says the arrow keys move it: dragging is not the only way.
+		`aria-label="Reorder guest"`, `aria-keyshortcuts="ArrowUp ArrowDown"`,
+		"cursor-grab", "active:cursor-grabbing",
 		// The grip rests at the step the eye passes over and darkens with the
 		// whole row, not only under its own pointer.
 		lucideIcons["list-chevrons-up-down"], "text-inert", "group-hover:text-glyph",
@@ -373,7 +376,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		"bg-green-soft text-green-deep",       // accept pill through the badge palette
 		"bg-marigold-soft text-marigold-deep", // reject pill
 		"bg-denim-soft text-denim-deep",       // NAT carries the info accent
-		`<span class="text-inert">—</span>`,   // empty pill cell is a faint dash
+		`<span class="text-inert"><span aria-hidden="true">—</span><span class="sr-only">None</span></span>`, // empty pill cell is a faint dash, said as "None"
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)

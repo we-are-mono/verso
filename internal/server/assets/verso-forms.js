@@ -192,6 +192,8 @@
     });
     menu.hidden = left === 0;
     input.setAttribute("aria-expanded", String(!menu.hidden));
+    // What was showing has changed, so no option is the one in hand any more.
+    activate(input, null);
   }
 
   function hideMenu(input) {
@@ -199,6 +201,43 @@
     if (!menu) return;
     menu.hidden = true;
     input.setAttribute("aria-expanded", "false");
+    activate(input, null);
+  }
+
+  // The option in hand, as the arrow keys move through what is showing. Focus
+  // stays in the box being typed into; the option is pointed at, not focused.
+  function activate(input, option) {
+    var menu = menuOf(input);
+    if (!menu) return;
+    [].forEach.call(menu.querySelectorAll("[data-verso-token-option]"), function (each) {
+      each.setAttribute("aria-selected", each === option ? "true" : "false");
+    });
+    if (option) {
+      input.setAttribute("aria-activedescendant", option.id);
+      option.scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function step(input, by) {
+    var menu = menuOf(input);
+    if (!menu || menu.hidden) return;
+    var showing = [].filter.call(menu.querySelectorAll("[data-verso-token-option]"), function (option) {
+      return !option.hidden;
+    });
+    if (!showing.length) return;
+    var current = showing.indexOf(menu.querySelector('[aria-selected="true"]'));
+    var next = current < 0 ? (by > 0 ? 0 : showing.length - 1) : (current + by + showing.length) % showing.length;
+    activate(input, showing[next]);
+  }
+
+  function take(input, option) {
+    input.value = option.dataset.versoTokenOption;
+    addToken(input);
+    // Taking one leaves the box open for the next: a list is a list.
+    input.focus();
+    showMenu(input);
   }
 
   document.addEventListener("input", function (event) {
@@ -216,8 +255,21 @@
       hideMenu(input);
       return;
     }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      var menu = menuOf(input);
+      if (!menu || menu.hidden) return;
+      event.preventDefault();
+      step(input, event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
     if (event.key !== "Enter" && event.key !== ",") return;
     event.preventDefault();
+    var active = input.getAttribute("aria-activedescendant");
+    var picked = active && document.getElementById(active);
+    if (event.key === "Enter" && picked) {
+      take(input, picked);
+      return;
+    }
     addToken(input);
     showMenu(input);
   });
@@ -234,20 +286,22 @@
   document.addEventListener("click", function (event) {
     var option = event.target.closest && event.target.closest("[data-verso-token-option]");
     if (option) {
-      var box = option
-        .closest("[data-verso-token-menu]")
-        .parentElement.querySelector("[data-verso-token-input]");
-      box.value = option.dataset.versoTokenOption;
-      addToken(box);
-      // Taking one leaves the box open for the next: a list is a list.
-      box.focus();
-      showMenu(box);
+      take(option.closest("[data-verso-token-menu]").parentElement.querySelector("[data-verso-token-input]"), option);
       return;
     }
     var remove = event.target.closest && event.target.closest("[data-verso-token-remove]");
     if (remove) {
       var list = remove.closest("[data-verso-token-list]");
-      remove.closest("[data-verso-token]").remove();
+      var chip = remove.closest("[data-verso-token]");
+      // The button pressed goes with its chip, so focus moves on to the next
+      // chip's remove, or to the box once none follow, rather than falling out
+      // of the form to the top of the page.
+      var after = chip.nextElementSibling;
+      var next = after && after.matches("[data-verso-token]") ? after.querySelector("[data-verso-token-remove]") : null;
+      var box = list && list.querySelector("[data-verso-token-input]");
+      chip.remove();
+      if (next) next.focus();
+      else if (box) box.focus();
       if (list) list.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
@@ -664,7 +718,8 @@
   }
   function scrollToFirstError() {
     var first = document.querySelector("[data-verso-inline-error]:not([hidden])");
-    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+    var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (first) first.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
   }
   // The shell's authoritative check still runs server-side; this is the immediate,
   // per-datatype feedback at the "done" moment. It mirrors the server's rules so
@@ -1032,7 +1087,17 @@ window.versoValidate = function (datatype, value) {
   }
   document.addEventListener("click", function (e) {
     var remove = e.target.closest("[data-verso-list-remove]");
-    if (remove) { var list = remove.closest("[data-verso-list]"); remove.closest("[data-verso-list-row]").remove(); list.dispatchEvent(new Event("change", {bubbles:true})); }
+    if (remove) {
+      var list = remove.closest("[data-verso-list]");
+      var row = remove.closest("[data-verso-list-row]");
+      // Focus moves on with the list instead of dropping to the page: to the
+      // next row's remove, else the box that adds one.
+      var after = row.nextElementSibling;
+      var next = (after && after.querySelector("[data-verso-list-remove]")) || list.querySelector("[data-verso-list-input]");
+      row.remove();
+      if (next) next.focus();
+      list.dispatchEvent(new Event("change", {bubbles:true}));
+    }
     var button = e.target.closest("[data-verso-list-add]");
     if (button) add(button.closest("[data-verso-list]"));
   });

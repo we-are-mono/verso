@@ -168,20 +168,37 @@
     timer = setTimeout(leave, STAY);
   }
 
+  // A refusal or a warning stays until it is closed: it is something to act
+  // on, and a sentence that leaves on a timer can leave before it is read.
+  var lasting = false;
+
   function show(outcome) {
     clearTimeout(timer);
     slot.replaceChildren(outcome);
     layer.hidden = false;
+    var variant = outcome.getAttribute && outcome.getAttribute("data-verso-flash-variant");
+    lasting = variant === "danger" || variant === "warning";
+    // The layer was hidden a moment ago, and a live region that appears with
+    // its words already in it is often not read, so the sentence is also said
+    // through the page's announcer.
+    versoAnnounce(outcome.textContent.trim());
     // Shown on the next frame, so the layer starts from its off-screen place
     // and the arrival is a slide rather than an appearance.
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { layer.classList.add("is-shown"); });
     });
-    stay();
+    if (!lasting) stay();
   }
 
+  function resume() {
+    if (!lasting && !layer.contains(document.activeElement)) stay();
+  }
+
+  // Pointing at it or tabbing into it holds it where it is.
   layer.addEventListener("pointerenter", function () { clearTimeout(timer); });
-  layer.addEventListener("pointerleave", stay);
+  layer.addEventListener("pointerleave", resume);
+  layer.addEventListener("focusin", function () { clearTimeout(timer); });
+  layer.addEventListener("focusout", function () { setTimeout(resume, 0); });
   if (close) close.addEventListener("click", leave);
   window.versoOutcome = { show: show };
 })();

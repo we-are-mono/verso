@@ -182,14 +182,13 @@
     drag.table.style.width = drag.lock.width;
   }
 
-  function announceOrder() {
-    if (!drag) return;
-    var order = [].map.call(drag.table.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
+  function announceOrder(table, group) {
+    var order = [].map.call(table.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
       return row.dataset.versoReorderId;
     }).filter(Boolean);
-    drag.table.dispatchEvent(new CustomEvent("verso:reorder", {
+    table.dispatchEvent(new CustomEvent("verso:reorder", {
       bubbles: true,
-      detail: { group: drag.group, order: order },
+      detail: { group: group, order: order },
     }));
   }
 
@@ -202,7 +201,7 @@
     drag.floating.remove();
     restoreTable();
     document.body.classList.remove("verso-reordering", "cursor-grabbing!", "select-none!", "[&_*]:cursor-grabbing!", "[&_*]:select-none!");
-    announceOrder();
+    announceOrder(drag.table, drag.group);
     drag = null;
   }
 
@@ -289,6 +288,49 @@
 
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && drag) cancel();
+  });
+
+  // The keyboard's way to reorder: an arrow on a focused handle moves its row one
+  // place within its group, among the rows the filter still shows, and the
+  // handle keeps focus so the next press moves it again. The row moves at once;
+  // the order is staged once the keys go quiet, so a run of presses posts one
+  // order rather than a race of them.
+  var keyed = { timer: 0, table: null, group: "" };
+
+  function stageKeyed() {
+    window.clearTimeout(keyed.timer);
+    keyed.timer = window.setTimeout(function () {
+      if (keyed.table) announceOrder(keyed.table, keyed.group);
+      keyed.table = null;
+    }, 400);
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (drag || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    var handle = event.target.closest && event.target.closest("[data-verso-reorder-handle]");
+    var row = handle && handle.closest("tr[data-verso-reorder-row]");
+    var table = row && row.closest("table[data-verso-reorder-table]");
+    if (!table) return;
+    event.preventDefault();
+
+    var group = row.dataset.versoReorderGroup || "";
+    var peers = [].filter.call(table.querySelectorAll("tr[data-verso-reorder-row]"), function (peer) {
+      return peer.dataset.versoReorderGroup === group && peer.getClientRects().length > 0;
+    });
+    var from = peers.indexOf(row);
+    var to = event.key === "ArrowUp" ? from - 1 : from + 1;
+    if (from < 0 || to < 0 || to >= peers.length) return;
+
+    var target = peers[to];
+    target.parentNode.insertBefore(row, event.key === "ArrowUp" ? target : target.nextSibling);
+    handle.focus();
+    versoAnnounce(T("Moved to position %d of %d").replace("%d", to + 1).replace("%d", peers.length));
+
+    if (keyed.table && keyed.table !== table) announceOrder(keyed.table, keyed.group);
+    keyed.table = table;
+    keyed.group = group;
+    stageKeyed();
   });
 })();
 
