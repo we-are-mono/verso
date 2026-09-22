@@ -562,7 +562,12 @@ document.addEventListener(
     }
     if (band) band.hidden = bandKept === 0;
     var empty = scope.querySelector("[data-verso-listing-empty], [data-verso-stream-empty]");
-    if (empty) empty.hidden = matched > 0;
+    if (empty) {
+      // The moment the cut leaves nothing is said, since the rows vanish
+      // without anything taking focus; while it keeps matching, nothing is.
+      if (empty.hidden && matched === 0) versoAnnounce(empty.textContent.trim());
+      empty.hidden = matched > 0;
+    }
   }
 
   for (var i = 0; i < tabs.length; i++) {

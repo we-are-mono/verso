@@ -18,7 +18,7 @@
      ink a selected segment takes and never the action colour, and a white check
      sits in it. */}}
 {{define "switch.control"}}<span class="relative inline-flex size-4.5 shrink-0 cursor-pointer items-center justify-center">
-  <input type="checkbox" data-verso-switch{{if .Name}} id="{{.Name}}" name="{{.Name}}"{{end}}{{with .Label}} aria-label="{{.}}"{{end}} class="peer sr-only" value="1"{{if .On}} checked{{end}}>
+  <input type="checkbox" data-verso-switch{{if .Name}} id="{{.Name}}" name="{{.Name}}"{{end}}{{with .Label}} aria-label="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}} class="peer sr-only" value="1"{{if .On}} checked{{end}}>
   <span class="absolute inset-0 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors peer-checked:border-body peer-checked:bg-body peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim"></span>
   <span class="relative text-white opacity-0 peer-checked:opacity-100">{{icon "check" "size-3.5 [stroke-width:3]"}}</span>
 </span>{{end}}

@@ -220,13 +220,24 @@
     // pluckable wraps a value in the control it already is. The button carries
     // no treatment of its own: what is inside keeps exactly the look it has in
     // the row, because that is the thing that travels to the shelf.
+    // Its name says what pressing it does, and aria-pressed whether it is one
+    // of the values being held: the value alone ("ACCEPT") names neither.
     function pluckable(field, value, inner) {
       var button = el("button", "verso-pluck");
       button.type = "button";
       button.setAttribute("data-verso-pluck", field);
       button.setAttribute("data-verso-pluck-value", value);
+      button.setAttribute("aria-label", T("Show only %s").replace("%s", value));
+      button.setAttribute("aria-pressed", isHeld(field, value) ? "true" : "false");
       button.appendChild(inner);
       return button;
+    }
+
+    function isHeld(field, value) {
+      for (var i = 0; i < held.length; i++) {
+        if (held[i].field === field && held[i].value === value) return true;
+      }
+      return false;
     }
 
     function pillFor(verdict) {
@@ -402,12 +413,19 @@
       return { shown: shown, total: total };
     }
 
+    // Holding or letting go of a value changes what is on screen without moving
+    // focus, so the count it leaves is said as well as shown.
     function applyHeld() {
       rows.forEach(function (row) {
         row.tr.hidden = !matches(row);
       });
+      [].forEach.call(body.querySelectorAll("[data-verso-pluck]"), function (button) {
+        button.setAttribute("aria-pressed", isHeld(button.getAttribute("data-verso-pluck"), button.getAttribute("data-verso-pluck-value")) ? "true" : "false");
+      });
       renderShelf();
       updateMeta();
+      var seen = counts();
+      versoAnnounce(T("%d of %d events shown").replace("%d", seen.shown).replace("%d", seen.total));
     }
 
     function renderShelf() {
@@ -428,6 +446,7 @@
         var release = el("button", "verso-pluck verso-stream-release");
         release.type = "button";
         release.setAttribute("data-verso-stream-release", String(index));
+        release.setAttribute("aria-label", T("Remove filter %s").replace("%s", item.value));
         release.appendChild(item.chip.cloneNode(true));
         release.appendChild(el("span", "verso-stream-release-x", TIMES));
         shelf.appendChild(release);
@@ -545,7 +564,9 @@
           return;
         }
       }
-      held.push({ field: field, value: value, chip: target.firstElementChild });
+      // What travels to the shelf is what the value looks like in the row; a
+      // value drawn as bare text (the console's verdict) travels as its text.
+      held.push({ field: field, value: value, chip: target.firstElementChild || el("span", null, target.textContent) });
       applyHeld();
     });
 
@@ -555,6 +576,7 @@
       if (clear && shelf.contains(clear)) {
         held = [];
         applyHeld();
+        settleFocus(-1);
         return;
       }
       var release = event.target.closest("[data-verso-stream-release]");
@@ -563,8 +585,22 @@
       if (index >= 0 && index < held.length) {
         held.splice(index, 1);
         applyHeld();
+        settleFocus(index);
       }
     });
+
+    // The shelf is redrawn on every change, so the button that was pressed is
+    // gone: focus goes to the value now in its place, else the shelf's last,
+    // else, with the shelf gone, to the pause control beside the stream.
+    function settleFocus(index) {
+      var next = null;
+      if (shelf && index >= 0) {
+        var releases = shelf.querySelectorAll("[data-verso-stream-release]");
+        next = releases[Math.min(index, releases.length - 1)] || shelf.querySelector("[data-verso-stream-clear]");
+      }
+      if (!next) next = pause;
+      if (next) next.focus();
+    }
 
     var es = new EventSource("/streams/" + encodeURIComponent(source));
     es.addEventListener("stream", function (event) {

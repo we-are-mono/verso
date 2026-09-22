@@ -21,7 +21,7 @@
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-xs text-faint hover:bg-mid hover:text-ink">{{icon "x" "size-3.5"}}</button></div></template>
-    <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
+    <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a
@@ -37,7 +37,7 @@
       <button type="button" data-verso-token-remove aria-label="{{ t "Remove" }} {{.}}" class="{{template "verso-token-chip-remove"}}">{{icon "x" "size-3"}}</button>
     </span>
     {{end}}
-    <input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options"{{end}} autocomplete="off" placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="h-7.5 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-medium text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-faint">
+    <input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options"{{end}} autocomplete="off" placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="h-7.5 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-medium text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-faint">
   </div>
   {{/* The empty chip the shell clones when a value is typed in. A value the
        plugin sent and a value added here are one kind of thing, so there is one
@@ -75,7 +75,7 @@
       {{with $err}}<p id="{{$.Name}}-error-{{$i}}" class="text-sm text-crimson-deep">{{.}}</p>{{end}}
     </div>
     {{end}}
-    <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
+    <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
   </div>
   {{end}}
   {{/* The explanation is raised onto the label, as every other row's is. */}}

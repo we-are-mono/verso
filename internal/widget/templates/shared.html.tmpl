@@ -170,7 +170,7 @@
            wants the tab already showing asks for nothing at all. Until then this
            is a spinner and the url it would fetch. */}}
       <div data-verso-entity-body data-verso-entity-url="{{.Entity}}" class="flex min-h-0 flex-1 flex-col">
-        <div class="flex flex-1 items-center justify-center text-glyph">{{template "verso-waiting" ""}}</div>
+        <div class="flex flex-1 items-center justify-center text-glyph">{{template "verso-waiting" ""}}<span class="sr-only">{{ t "Loading…" }}</span></div>
       </div>
     </aside>
   </div>
@@ -195,9 +195,12 @@
 
      The raising element carries `group/tip` and `data-verso-tip`: the first
      reveals this on hover and focus, the second is what verso.js measures and
-     what the stylesheet hangs the tip off, above or below. */}}
+     what the stylesheet hangs the tip off, above or below. The stylesheet also
+     decides when it takes the pointer (only while shown, and bridged across
+     the gap to its label), so a pointer can move onto the sentence to read it,
+     and Escape puts it away (verso-page.js). */}}
 {{define "verso-tip-wide"}}
-<span role="tooltip" id="{{.ID}}" class="pointer-events-none absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus-visible/tip:opacity-100">
+<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus-visible/tip:opacity-100">
   <span class="text-sm leading-[1.45] text-ink">{{.Tip}}</span>
   {{if .Footer}}<span class="flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta">{{.Footer}}</span>{{end}}
 </span>
@@ -285,7 +288,7 @@
       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
       x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
       class="absolute inset-y-0 right-0 flex w-full max-w-3xl has-[[data-verso-panel-size=form]]:max-w-[40rem] flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
-      <div data-verso-panel{{if .}} data-verso-panel-url="{{.}}"{{end}} class="contents"></div>
+      <div data-verso-panel{{if .}} data-verso-panel-url="{{.}}"{{end}} class="contents"><span class="sr-only">{{ t "Loading…" }}</span></div>
     </aside>
   </div>
 </template>{{end}}

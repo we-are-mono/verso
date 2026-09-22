@@ -798,9 +798,10 @@ func TestRenderLink(t *testing.T) {
 	// One place on this page in the list of them: a block, so a run of them is a
 	// column; its own left hairline, so the run draws one continuous line; and the
 	// hook the shell marks when this is the section being read.
+	// A link to a place on this page reaches the section's namespaced id.
 	rail := render(t, r, &Link{Label: "Speed", Href: "#speed", Style: "rail"})
 	for _, want := range []string{
-		`href="#speed"`, "data-verso-rail-link", "verso-rail-link",
+		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
 		"flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm",
 	} {
 		if !strings.Contains(rail, want) {

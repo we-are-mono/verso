@@ -48,6 +48,22 @@ func TestPanelFacesSwitchWithoutExpressions(t *testing.T) {
 	}
 }
 
+// TestFetchedPanelsSayTheyAreLoading: a drawer whose contents are one request
+// away shows only the waiting mark, which is decoration; the frame also says
+// "Loading…" in words until what it fetched replaces it.
+func TestFetchedPanelsSayTheyAreLoading(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}},
+		Rows: []TableRow{
+			{ID: "a", Panel: "/plugins/x/a", Cells: []TableCell{{Text: "a"}}},
+			{ID: "b", Entity: &EntityRef{Kind: "device", ID: "b"}, Cells: []TableCell{{Text: "b"}}},
+		},
+	})
+	if n := strings.Count(got, `<span class="sr-only">Loading…</span>`); n != 2 {
+		t.Errorf("both fetched frames must say they are loading, found %d:\n%s", n, got)
+	}
+}
+
 // TestTableStatesHaveWords: a yes/no cell is a check or nothing, and a missing
 // value is a dash; each says so in words to a screen reader.
 func TestTableStatesHaveWords(t *testing.T) {

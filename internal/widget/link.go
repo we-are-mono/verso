@@ -44,8 +44,14 @@ type linkView struct {
 }
 
 func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
+	href := l.Href
+	// A link to a place on this page is a link to a section, whose id the
+	// shell namespaces (SectionID); the plugin names it by its anchor.
+	if len(href) > 1 && href[0] == '#' {
+		href = "#" + SectionID(href[1:])
+	}
 	return r.execute(out, "link.html.tmpl", linkView{
-		Desc: l.Desc, Code: l.Code, Label: l.Label, Icon: l.Icon, Href: safeHref(l.Href, l.Download != ""), Download: l.Download, Style: l.Style, NewTab: l.NewTab,
+		Desc: l.Desc, Code: l.Code, Label: l.Label, Icon: l.Icon, Href: safeHref(href, l.Download != ""), Download: l.Download, Style: l.Style, NewTab: l.NewTab,
 	})
 }
 

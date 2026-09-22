@@ -93,8 +93,14 @@ type conditionalView struct {
 }
 
 // Control is the gate's checkbox. The gate's label points at it by id, so it
-// carries no name of its own.
-func (v conditionalView) Control() switchControl { return switchControl{Name: v.Name, On: v.On} }
+// carries no name of its own; an explained gate is described by its tip.
+func (v conditionalView) Control() switchControl {
+	c := switchControl{Name: v.Name, On: v.On}
+	if v.Help != "" {
+		c.Described = v.Name + "-tip"
+	}
+	return c
+}
 
 // renderInto renders the gated field-set through the renderer, then hands the
 // template the controlling toggle. Visibility is pure CSS (ADR-005 §7): the shell

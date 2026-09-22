@@ -697,7 +697,7 @@ func jsCatalog(tr func(string) string) template.JS {
 		// The live listing: its pause control, the shelf of plucked values,
 		// what the section's meta says while events flow, and the words a
 		// row's age is stated in.
-		"Pause", "Resume", "Resume · %d new", "Clear",
+		"Pause", "Resume", "Resume · %d new", "Clear", "Show only %s", "Remove filter %s",
 		"%d of %d events shown", "~%d events/s",
 		"now", "%d s", "%d min", "%d h",
 		// Package and service actions.

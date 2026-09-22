@@ -13,7 +13,7 @@
 </div>
 {{end}}
 {{define "modal.busy"}}
-<div class="text-center">
+<div data-verso-busy class="text-center">
   <span class="mx-auto grid size-12 place-items-center text-denim">{{template "verso-waiting" ""}}</span>
   <h4 class="mt-4 text-base font-semibold text-ink">{{.BusyTitle}}</h4>
   {{if .BusyBody}}<p class="mx-auto mt-2 max-w-sm text-sm leading-[1.45] text-body">{{.BusyBody}}</p>{{end}}

@@ -100,8 +100,11 @@ func TestRenderSectionFlush(t *testing.T) {
 // firewall's settings rail was.
 func TestRenderSectionAnchor(t *testing.T) {
 	r := newRenderer(t)
+	// The id is namespaced: a plugin's anchor is often the name of the setting
+	// the section holds, and a section and its field sharing an id leave the
+	// field's label pointing at the section.
 	got := render(t, r, &Section{Title: "Speed", Anchor: "speed"})
-	for _, want := range []string{`id="speed"`, "scroll-mt-16 md:scroll-mt-0"} {
+	for _, want := range []string{`id="section-speed"`, "scroll-mt-16 md:scroll-mt-0"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("anchored section missing %q:\n%s", want, got)
 		}

@@ -125,9 +125,23 @@ function versoTabbable(root) {
 // dialog. Put it back where the person was working: the tab now showing, else
 // the dialog itself. The heading may have been replaced too, so the name is
 // read again.
+// While a panel's contents are on their way, the dialog it sits in is busy: a
+// screen reader holds off reading a region that is about to be replaced.
+function versoBusy(panel, on) {
+  var dialog = panel && panel.closest && panel.closest('[role="dialog"]');
+  if (!dialog) return;
+  if (on) dialog.setAttribute("aria-busy", "true");
+  else dialog.removeAttribute("aria-busy");
+}
+
+// A panel whose fetch failed is no longer on its way either.
+document.addEventListener("htmx:responseError", function (e) { versoBusy(e.target, false); });
+document.addEventListener("htmx:sendError", function (e) { versoBusy(e.target, false); });
+
 document.addEventListener("htmx:afterSwap", function (e) {
   var dialog = e.target && e.target.closest && e.target.closest('[role="dialog"][aria-modal="true"]');
   if (!dialog) return;
+  versoBusy(e.target, false);
   versoNameDialog(dialog);
   if (dialog.contains(document.activeElement)) return;
   var current = dialog.querySelector('[aria-current="page"]');
@@ -411,9 +425,14 @@ document.addEventListener("alpine:init", function () {
         this._closed = "";
         this.setAddress(href);
       },
+      // The dialog's busy pane replaces its form while the submission runs; its
+      // heading is said, since nothing moved focus to it.
       startBusy: function () {
         this.idle = false;
         this.busy = true;
+        var dialog = this.$refs.dialog;
+        var busy = dialog && dialog.querySelector("[data-verso-busy]");
+        if (busy) versoAnnounce(busy.textContent.replace(/\s+/g, " ").trim());
       },
       // A table row as trigger: open the drawer unless the click landed on a
       // control inside the row (a toggle's label, a link, a button) — those keep
@@ -490,6 +509,7 @@ document.addEventListener("alpine:init", function () {
         // is on screen, half-typed values included.
         if (!chrome && panel.getAttribute("data-verso-panel-loaded") === url) return;
         panel.setAttribute("data-verso-panel-loaded", url);
+        versoBusy(panel, true);
         window.htmx.ajax("GET", url, { target: panel, swap: "innerHTML" });
       },
       // The panel is a state of this page, not a page of its own: the address
@@ -511,6 +531,7 @@ document.addEventListener("alpine:init", function () {
         var url = panel.getAttribute("data-verso-entity-url");
         if (slot) url += "?tab=" + encodeURIComponent(slot);
         panel.setAttribute("data-verso-entity-tab", slot || "");
+        versoBusy(panel, true);
         window.htmx.ajax("GET", url, { target: panel, swap: "innerHTML" });
       },
       // The panel is teleported to <body>, which puts it outside this

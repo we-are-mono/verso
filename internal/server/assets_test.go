@@ -124,3 +124,26 @@ func TestEveryBehaviourFileIsEmbedded(t *testing.T) {
 		}
 	}
 }
+
+// TestStylesheetKeepsFocusAndStillness: two things no utility on any one
+// element can promise, so the stylesheet states them once for all. In forced
+// colours (Windows high contrast) a border's colour is overridden, so a control
+// that marks focus only by recolouring its border would show none; there,
+// whatever holds keyboard focus is outlined in the system's own colour. And a
+// reader who asked for less motion gets dialogs and drawers that appear rather
+// than slide or scale in.
+func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	for _, want := range []string{
+		"@media (forced-colors:active){:focus-visible{",
+		"outline:2px solid canvastext!important",
+		`@media (prefers-reduced-motion:reduce){[role=dialog],[role=alertdialog]{transition-duration:0s!important`,
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("stylesheet is missing %q", want)
+		}
+	}
+}

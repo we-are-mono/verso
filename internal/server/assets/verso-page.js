@@ -47,6 +47,28 @@
   }
   document.addEventListener("pointerover", raised);
   document.addEventListener("focusin", raised);
+
+  // Escape puts a showing tip away without the pointer or focus having to
+  // move (WCAG 1.4.13), and does only that: caught before the window's own
+  // listeners, it does not also close the drawer the tip sits in. The tip
+  // comes back the next time its label is pointed at or focused.
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    var showing = [].filter.call(document.querySelectorAll("[data-verso-tip]:hover, [data-verso-tip]:focus-visible"), function (label) {
+      return !label.hasAttribute("data-verso-tip-dismissed");
+    });
+    if (!showing.length) return;
+    showing.forEach(function (label) { label.setAttribute("data-verso-tip-dismissed", ""); });
+    event.stopPropagation();
+    event.preventDefault();
+  }, true);
+
+  function restore(event) {
+    var label = event.target.closest && event.target.closest("[data-verso-tip-dismissed]");
+    if (label && !label.contains(event.relatedTarget)) label.removeAttribute("data-verso-tip-dismissed");
+  }
+  document.addEventListener("pointerout", restore);
+  document.addEventListener("focusout", restore);
 })();
 
 // The rail beside a long page: which of its sections you are reading, marked on

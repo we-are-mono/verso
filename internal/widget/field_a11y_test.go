@@ -109,6 +109,38 @@ func TestListValuesAreNamed(t *testing.T) {
 	}
 }
 
+// TestExplainedControlsAreDescribed: whatever row raises an explanation onto
+// its label, the control the label names is described by it, so the sentence
+// is read when the control takes focus, not only when the label is hovered.
+func TestExplainedControlsAreDescribed(t *testing.T) {
+	sw := render(t, newRenderer(t), &Switch{Name: "wmm", Label: "WMM", Help: "Prioritise voice."})
+	if !strings.Contains(sw, `id="wmm" name="wmm" aria-describedby="wmm-tip"`) {
+		t.Errorf("an explained switch must be described by its tip:\n%s", sw)
+	}
+	gate := render(t, newRenderer(t), &Conditional{Name: "psk", Label: "Use a key", Help: "A shared secret."})
+	if !strings.Contains(gate, `id="psk" name="psk" aria-describedby="psk-tip"`) {
+		t.Errorf("an explained gate must be described by its tip:\n%s", gate)
+	}
+	list := render(t, newRenderer(t), &List{Name: "ntp", Label: "Servers", Help: "Tried in order."})
+	if !strings.Contains(list, `aria-labelledby="ntp-label" aria-describedby="ntp-tip"`) {
+		t.Errorf("an explained list must be described by its tip:\n%s", list)
+	}
+}
+
+// TestTipCanBeReached: the tip is not pointer-events-none, so a pointer can
+// travel from the label onto the sentence without it vanishing (WCAG 1.4.13);
+// the stylesheet decides when it takes the pointer.
+func TestTipCanBeReached(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "mtu", Label: "MTU", Help: "Largest packet size."})
+	start := strings.Index(got, `role="tooltip"`)
+	if start < 0 {
+		t.Fatalf("no tip:\n%s", got)
+	}
+	if tip := got[start : start+strings.Index(got[start:], ">")]; strings.Contains(tip, "pointer-events-none") {
+		t.Errorf("the tip must be reachable by the pointer: %s", tip)
+	}
+}
+
 // TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
 // it is named by the row's label and the word that joins the two.
 func TestPairSecondHalfIsNamed(t *testing.T) {

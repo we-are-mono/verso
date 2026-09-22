@@ -128,6 +128,18 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// SectionID is the id a section with this anchor carries, and what a link to
+// "#anchor" on the same page is sent to. A plugin names its anchors after the
+// settings they hold, and so after the fields in them; the namespace keeps the
+// section's id from ever being a field's too, which would leave that field's
+// label pointing at the section.
+func SectionID(anchor string) string {
+	if anchor == "" {
+		return ""
+	}
+	return "section-" + anchor
+}
+
 type sectionView struct {
 	Title      string
 	Anchor     string
@@ -150,7 +162,7 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	v := sectionView{
 		Title:      s.Title,
-		Anchor:     s.Anchor,
+		Anchor:     SectionID(s.Anchor),
 		Kicker:     s.Kicker,
 		Meta:       s.Meta,
 		MetaLabel:  s.MetaLabel,

@@ -112,6 +112,20 @@ html.verso-fonts-loading body {
   /* The hidden attribute must win over a display utility on the same element
      (e.g. an inline-flex row toggled hidden), regardless of utility source order. */
   [hidden] { display: none !important; }
+
+  /* Forced colours (Windows high contrast) override border colours, so a
+     control that marks focus by recolouring its border shows no focus there.
+     Whatever holds keyboard focus is outlined in the system's own colour. */
+  @media (forced-colors: active) {
+    :focus-visible { outline: 2px solid CanvasText !important; outline-offset: 2px; }
+  }
+
+  /* A reader who asked for less motion gets dialogs and drawers that appear
+     rather than slide or scale in; the backdrop's fade is not motion, and
+     stays. */
+  @media (prefers-reduced-motion: reduce) {
+    [role="dialog"], [role="alertdialog"] { transition-duration: 0s !important; }
+  }
 }
 
 @layer components {
@@ -130,12 +144,36 @@ html.verso-fonts-loading body {
   [data-verso-tip] > [role="tooltip"] {
     top: 100%;
     margin-top: 0.5rem;
+    pointer-events: none;
   }
   [data-verso-tip-above] > [role="tooltip"] {
     top: auto;
     bottom: 100%;
     margin-top: 0;
     margin-bottom: 0.5rem;
+  }
+  /* While shown, the tip takes the pointer, and a strip the height of the gap
+     joins it to its label, so moving from one to the other never passes
+     through nothing and the tip stays up to be read (WCAG 1.4.13). */
+  [data-verso-tip]:hover > [role="tooltip"],
+  [data-verso-tip]:focus-visible > [role="tooltip"] {
+    pointer-events: auto;
+  }
+  [data-verso-tip] > [role="tooltip"]::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -0.5rem;
+    height: 0.5rem;
+  }
+  [data-verso-tip-above] > [role="tooltip"]::before {
+    top: auto;
+    bottom: -0.5rem;
+  }
+  /* Escape put it away: it stays away until the pointer or focus leaves. */
+  [data-verso-tip-dismissed] > [role="tooltip"] {
+    opacity: 0 !important;
+    pointer-events: none;
   }
 
   /* Drawers are persistent, narrow scroll surfaces, so give only their inner

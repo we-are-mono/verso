@@ -65,12 +65,21 @@ type switchControl struct {
 	Name  string
 	On    bool
 	Label string
+	// Described is the id of the explanation raised onto the row's label, so
+	// the checkbox is read with it when it takes focus.
+	Described string
 }
 
 // Control is this switch's checkbox. Every style labels it (the form row's label
 // points at it by id, the inline style wraps it with its words), so it carries
-// no name of its own.
-func (s *Switch) Control() switchControl { return switchControl{Name: s.Name, On: s.On} }
+// no name of its own; an explained switch is described by its tip.
+func (s *Switch) Control() switchControl {
+	c := switchControl{Name: s.Name, On: s.On}
+	if s.Explained() {
+		c.Described = s.Name + "-tip"
+	}
+	return c
+}
 
 func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "form_switch.html.tmpl", s)
