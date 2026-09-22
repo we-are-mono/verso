@@ -14,7 +14,7 @@
 {{else}}<div class="rounded-xl border border-rule bg-ground p-4 shadow-sm"{{if .Name}} data-verso-stat="{{.Name}}"{{end}}>
 {{end}}
   <div class="flex items-center justify-between gap-2">
-    <span class="text-xs font-semibold uppercase tracking-wider text-meta">{{.Label}}</span>
+    <span class="{{template "verso-kicker-class"}}">{{.Label}}</span>
     {{if .Icon}}
     <span class="shrink-0
       {{if eq .Variant "success"}}text-green

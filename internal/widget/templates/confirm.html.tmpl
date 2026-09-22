@@ -17,7 +17,7 @@
       {{if .Title}}<div><p class="text-base font-semibold">{{.Title}}</p><p class="mt-1 leading-[1.45]">{{.Message}}</p></div>{{else}}<p class="leading-[1.45]">{{.Message}}</p>{{end}}
     </div>
     <div class="mt-6 ml-6 flex items-center justify-start gap-2">
-      {{if .RequirePassword}}<input x-ref="first" name="password" type="password" autocomplete="current-password" placeholder="{{ t "Password" }}" aria-label="{{ t "Administrator password" }}" class="{{template "verso-input-class"}} w-1/3 min-w-0 border-crimson-line hover:border-crimson focus:border-crimson-deep">{{end}}
+      {{if .RequirePassword}}<input x-ref="first" name="password" type="password" autocomplete="current-password" placeholder="{{ t "Password" }}" aria-label="{{ t "Administrator password" }}" class="{{template "verso-input-words"}} w-1/3 min-w-0 border-crimson-line hover:border-crimson focus:border-crimson-deep">{{end}}
       <button type="submit"{{if not .RequirePassword}} x-ref="first"{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-danger"}} focus-visible:outline-crimson-deep">{{.Confirm}}</button>
       {{/* the cancel keeps the explanation's tone at rest and hovers by a soft
            wash, not a colour shift — darkening the deep step desaturates it

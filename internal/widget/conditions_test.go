@@ -40,7 +40,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// Grouped, with the heading set as a kicker over its run of entries.
 		`data-verso-condition-group-name="Endpoints"`,
 		`data-verso-condition-group-name="Rate and time"`,
-		`<span class="text-xs font-semibold text-meta uppercase">Endpoints</span>`,
+		`<span class="text-xs font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
 		// A condition the rule already carries stays in the list and stays legible,
 		// but it is no longer an offer.
 		`data-verso-condition-choose="dest_port" disabled`,

@@ -271,7 +271,7 @@
                         <div class="sm:flex sm:items-start">
                           <div class="mx-auto grid size-12 shrink-0 place-items-center rounded-full bg-crimson-soft text-crimson sm:mx-0 sm:size-10">{{icon "triangle-alert" "size-6"}}</div>
                           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                            <h3 id="{{.ConfirmID}}-title" class="text-base font-semibold text-ink">{{.ConfirmTitle}}</h3>
+                            <h2 id="{{.ConfirmID}}-title" class="text-base font-semibold text-ink">{{.ConfirmTitle}}</h2>
                             <p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Confirm}}</p>
                           </div>
                         </div>
@@ -435,7 +435,7 @@
        left title, flush right link), a hairline under it so it reads as the
        table's first row. */}}
   <div class="flex min-h-13 items-center gap-3 border-b border-rule bg-quiet px-4">
-    <h3 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h3>
+    <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Detail}}<span class="text-sm text-meta">{{.Detail}}</span>{{end}}
     <span class="flex-1"></span>
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-denim transition-colors hover:text-denim-deep">{{.Action.Label}}</a>{{end}}

@@ -575,12 +575,12 @@ func TestRenderTableRowDrawerKeepsLegacyHiddenTitleVisible(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h3>`, "bg-quiet px-8", "pt-7", `aria-label="Close"`} {
+	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-8", "pt-7", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, `<h3 class="sr-only">Edit redirect</h3>`) {
+	if strings.Contains(got, `<h2 class="sr-only">Edit redirect</h2>`) {
 		t.Errorf("legacy hide_title must not remove the title band:\n%s", got)
 	}
 }
@@ -1124,7 +1124,7 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	got := render(t, r, tbl)
 	for _, want := range []string{
 		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`,
-		`<h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h3>`,
+		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h2>`,
 		// The strip: the tab in force carries the action colour under it and in
 		// its chip; the rest stay quiet.
 		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8"`,

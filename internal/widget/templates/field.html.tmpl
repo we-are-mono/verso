@@ -78,7 +78,7 @@
   {{end}}
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
   {{else if eq .Kind "file"}}
   {{/* The native input covers the drop surface invisibly: dropping works without
        plugin JavaScript, and clicking the emphasized phrase opens the OS picker. */}}
@@ -91,7 +91,7 @@
     </span>
   </label>
   {{else if eq .Kind "textarea"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
   <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
   {{else if eq .Kind "time"}}
@@ -113,7 +113,7 @@
   {{/* A unit rides inside the trailing edge: the value and what it counts read
        as one thing, and the box keeps clear of it. */}}
   {{if .Unit}}<span class="relative flex w-fit items-center">{{end}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{if eq .Measure "address"}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}{{if .Unit}} w-44 pr-20{{end}}">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if eq .Measure "address"}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}{{if .Unit}} w-44 pr-20{{end}}">
   {{if .Unit}}<span class="pointer-events-none absolute right-3 font-mono text-base font-medium text-meta">{{.Unit}}</span></span>{{end}}
   {{end}}
   {{/* On error, the helper line becomes the error — one line under the field, not

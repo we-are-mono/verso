@@ -85,7 +85,7 @@
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline
        under the label; framed cards stay ruleless. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-rule-strong {{end}}text-xs font-semibold uppercase text-meta">
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}">
     <span>{{.Title}}</span>
     {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case text-faint">{{.Meta}}</span>{{end}}
   </div>{{end}}

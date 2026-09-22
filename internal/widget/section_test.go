@@ -120,7 +120,7 @@ func TestRenderSectionAnchor(t *testing.T) {
 func TestRenderSectionKicker(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "On this page", Kicker: true})
-	if !strings.Contains(got, `<h3 class="text-xs font-semibold text-meta uppercase">On this page</h3>`) {
+	if !strings.Contains(got, `<h2 class="text-xs font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
 		t.Errorf("kicker is not set as one:\n%s", got)
 	}
 	if strings.Contains(got, "text-lg") {

@@ -2,7 +2,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{define "overview.masthead"}}
   <div class="group" data-overview-tone="{{.Tone}}">
-    <div class="flex items-center gap-2 text-xs font-semibold tracking-[.06em] text-meta uppercase group-data-[overview-tone=success]:text-green-deep group-data-[overview-tone=warning]:text-marigold-deep group-data-[overview-tone=danger]:text-crimson-deep">
+    <div class="flex items-center gap-2 {{template "verso-kicker-class"}} group-data-[overview-tone=success]:text-green-deep group-data-[overview-tone=warning]:text-marigold-deep group-data-[overview-tone=danger]:text-crimson-deep">
       <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[overview-tone=success]:border-transparent group-data-[overview-tone=success]:bg-green group-data-[overview-tone=warning]:border-transparent group-data-[overview-tone=warning]:bg-marigold group-data-[overview-tone=danger]:border-transparent group-data-[overview-tone=danger]:bg-crimson"></span>
       <span data-overview-kicker>{{.Kicker}}</span>
     </div>

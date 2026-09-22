@@ -34,6 +34,12 @@
      error treatment when the argument (the field's error) is set. */}}
 {{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-crimson-deep{{else}}border-rule-strong hover:border-denim focus:border-denim-deep{{end}}{{end}}
 
+{{/* verso-kicker-class: the one kicker — a word or two naming the group under
+     it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
+     ink. Every label set this way wears exactly this, so a reader who learns
+     it once reads it everywhere. */}}
+{{define "verso-kicker-class"}}text-xs font-medium tracking-[.08em] text-meta uppercase{{end}}
+
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
 {{define "verso-none"}}<span aria-hidden="true">—</span><span class="sr-only">{{ t "None" }}</span>{{end}}
@@ -48,11 +54,21 @@
      browser's own bubble would stand in front of the shell's refusal. */}}
 {{define "verso-field-aria"}}{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Error}} aria-invalid="true"{{end}}{{if .Required}} aria-required="true"{{end}}{{end}}
 
-{{/* verso-input-class: one control, one treatment. A value someone types into a
-     router is a machine string — an address, a name a daemon will answer to — so
-     the field is set in mono at the reading size, on the page's own ground
-     rather than on a raised white card. */}}
-{{define "verso-input-class"}}h-9 w-full rounded-xs border bg-white px-3 font-mono text-base font-medium text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors focus:outline-none{{end}}
+{{/* verso-input-box: one control, one box — the height a button beside it
+     shares, white, the inset shadow, and a placeholder in the meta ink at the
+     regular weight (it is text, and must read as such). */}}
+{{define "verso-input-box"}}h-9 w-full rounded-xs border bg-white px-3 text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
+
+{{/* verso-input-class: the box for a machine string — an address, a port, a
+     name a daemon will answer to — set in mono at the reading size, at the
+     regular weight: a step under the 500 a displayed value takes, so what is
+     being typed never reads as what has been stated. */}}
+{{define "verso-input-class"}}{{template "verso-input-box"}} font-mono text-base font-normal{{end}}
+
+{{/* verso-input-words: the box for words — a rule's name, a description, a
+     password — set in the sans at 14px, which is what Hanken's taller
+     x-height reads as beside mono at 16. */}}
+{{define "verso-input-words"}}{{template "verso-input-box"}} font-sans text-sm font-normal{{end}}
 
 {{/* verso-chip-box: every chip's shape, stated once. A chip is one height
      wherever it appears — beside a field's label, in a table's group band, on a
@@ -297,7 +313,7 @@
      panels. Only the title and close control belong here; facts live in the body. */}}
 {{define "verso-drawer-header"}}
 <header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">
-  <h3 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h3>
+  <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
   <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-[#c1bab0] hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </header>
 {{end}}

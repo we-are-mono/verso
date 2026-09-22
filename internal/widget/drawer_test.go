@@ -70,7 +70,7 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 			t.Fatalf("existing=%v: found=%v, err=%v", existing, found, err)
 		}
 		html := out.String()
-		for _, want := range []string{wantTitle + "</h3>", `aria-label="Zapri"`, `aria-label="Razdelki"`, "Ujemanje", "Karkoli", `value="name-from-config"`, `value="csrf-token"`, "Shrani", `hx-get="/panel?tab=match"`} {
+		for _, want := range []string{wantTitle + "</h2>", `aria-label="Zapri"`, `aria-label="Razdelki"`, "Ujemanje", "Karkoli", `value="name-from-config"`, `value="csrf-token"`, "Shrani", `hx-get="/panel?tab=match"`} {
 			if !strings.Contains(html, want) {
 				t.Errorf("existing=%v: localized drawer missing %q", existing, want)
 			}

@@ -43,7 +43,7 @@
         <span class="flex flex-none text-faint">{{icon "search" "size-4"}}</span>
         <input data-verso-condition-filter type="text" autocomplete="off"
           placeholder="{{ t "Filter conditions" }}" aria-label="{{ t "Filter conditions" }}"
-          class="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:text-faint">
+          class="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:font-normal placeholder:text-meta">
       </div>
       <div class="verso-drawer-scrollbar max-h-90 overflow-y-auto">
         {{/* Each hairline is the top of the thing below it, never the bottom of the
@@ -53,7 +53,7 @@
              against the panel's own border and the list ends in a seam. */}}
         {{range $i, $group := .Groups}}
         <div data-verso-condition-group{{if $group.Name}} data-verso-condition-group-name="{{$group.Name}}"{{end}}>
-          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2.5{{if $i}} border-t{{end}}"><span class="text-xs font-semibold text-meta uppercase">{{$group.Name}}</span></div>{{end}}
+          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2.5{{if $i}} border-t{{end}}"><span class="{{template "verso-kicker-class"}}">{{$group.Name}}</span></div>{{end}}
           <div>
             {{range $group.Items}}
             {{/* A condition the rule already carries stays in the list and stays

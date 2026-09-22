@@ -141,6 +141,34 @@ func TestTipCanBeReached(t *testing.T) {
 	}
 }
 
+// TestInputsFollowTheTypographyContract: what is typed into a box is set the
+// way it is read elsewhere. A machine string (an address, a port, a hostname)
+// is mono at the reading size and regular weight, a step under the 500 a
+// displayed value takes; words (a rule's name, a description, a password) are
+// sans at 14px, which is what Hanken's taller x-height reads as beside mono 16.
+func TestInputsFollowTheTypographyContract(t *testing.T) {
+	const mono, sans = "font-mono text-base font-normal", "font-sans text-sm font-normal"
+	for name, c := range map[string]struct {
+		f    *Field
+		want string
+	}{
+		"words":    {&Field{Name: "name", Label: "Name"}, sans},
+		"password": {&Field{Name: "pw", Label: "Password", Kind: "password"}, sans},
+		"prose":    {&Field{Name: "desc", Label: "Description", Kind: "textarea"}, sans},
+		"address":  {&Field{Name: "ip", Label: "Address", Datatype: "ipaddr"}, mono},
+		"number":   {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, mono},
+		"unit":     {&Field{Name: "rate", Label: "Rate", Unit: "Mbit/s"}, mono},
+	} {
+		got := render(t, newRenderer(t), c.f)
+		if !strings.Contains(got, c.want) {
+			t.Errorf("%s: want %q:\n%s", name, c.want, got)
+		}
+		if strings.Contains(got, "font-mono text-base font-medium text-ink shadow") {
+			t.Errorf("%s: an input is never set at the displayed value's 500:\n%s", name, got)
+		}
+	}
+}
+
 // TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
 // it is named by the row's label and the word that joins the two.
 func TestPairSecondHalfIsNamed(t *testing.T) {

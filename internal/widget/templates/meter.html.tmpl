@@ -46,7 +46,7 @@
        The palette has two series hues and they are the two the charts use: denim
        for what comes down, amethyst for what goes up. The role names are the
        wire's, from when they were ramp names; what they paint is the palette. */}}
-  <div class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-meta">
+  <div class="flex items-center gap-2 {{template "verso-kicker-class"}}">
     {{if .Icon}}<span class="{{if eq .Role "sky"}}text-denim{{else if eq .Role "violet"}}text-amethyst{{else if eq .Role "emerald"}}text-green{{else if eq .Role "amber"}}text-marigold{{else}}text-faint{{end}}">{{icon .Icon "size-4"}}</span>{{end}}
     <span>{{.Label}}</span>
   </div>

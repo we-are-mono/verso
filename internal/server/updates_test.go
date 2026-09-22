@@ -303,7 +303,7 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	if strings.Contains(body, "An update is ready") {
 		t.Error("a current router announces nothing")
 	}
-	if !strings.Contains(body, ">Maintenance</h2>") {
+	if !strings.Contains(body, ">Maintenance</h1>") {
 		t.Errorf("the resting masthead should name Maintenance:\n%s", body)
 	}
 }

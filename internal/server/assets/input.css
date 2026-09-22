@@ -43,13 +43,15 @@
  * Self-hosted webfonts — no CDN (ADR-001), served first-party under /assets/fonts
  * (CSP default-src 'self' covers them). Two faces only: Hanken Grotesk (sans)
  * carries every word, headings included; Inconsolata (mono) carries addresses,
- * identifiers, and machine values. Both are variable subsets covering the
- * weights Verso uses and are SIL OFL 1.1 — see their files in assets/fonts.
+ * identifiers, and machine values. Both are variable fonts, declared across the
+ * weight range each file carries (Hanken 100–900, Inconsolata 200–900) so any
+ * weight the design asks for is drawn rather than clamped to the nearest one.
+ * SIL OFL 1.1 — see their files in assets/fonts.
  */
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 100 900;
   font-display: swap;
   src: url("/assets/fonts/hanken-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
@@ -57,7 +59,7 @@
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 100 900;
   font-display: swap;
   src: url("/assets/fonts/hanken-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -65,7 +67,7 @@
 @font-face {
   font-family: "Inconsolata";
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 200 900;
   font-stretch: 100%;
   font-display: swap;
   src: url("/assets/fonts/inconsolata-latin-ext.woff2") format("woff2");
@@ -74,7 +76,7 @@
 @font-face {
   font-family: "Inconsolata";
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 200 900;
   font-stretch: 100%;
   font-display: swap;
   src: url("/assets/fonts/inconsolata-latin.woff2") format("woff2");
@@ -84,11 +86,14 @@
 /* Point Tailwind's font utilities at the embedded faces: font-sans (the body
    default, headings included) → Hanken Grotesk; font-mono (addresses and
    machine values) → Inconsolata. There is no third face: the serif utility is
-   switched off so nothing can reach for one. */
+   switched off so nothing can reach for one, and the defaults the preflight
+   gives bare elements (html; code, kbd, samp, pre) point at the same two. */
 @theme {
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-serif: initial;
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
   --color-canvas: oklch(100% 0 0);
   --color-surface-subtle: oklch(98.4% 0.003 247.858);
   --color-menu-interaction: oklch(98.4% 0.003 247.858);
@@ -350,7 +355,7 @@ html.verso-fonts-loading body {
   .verso-prose p { margin: 0 0 0.75rem; }
   .verso-prose > :last-child { margin-bottom: 0; }
   .verso-prose a { color: var(--color-denim); text-decoration: underline; }
-  .verso-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+  .verso-prose code { font-family: var(--font-mono); font-size: 0.85em; }
   .verso-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
@@ -596,7 +601,10 @@ html.verso-fonts-loading body {
 
   /* page masthead: the artifact-style header a page opts into (kicker + serif headline +
      lede), rendered by the shell chrome. Sizes live here so they hot-reload. */
-  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-denim-deep); }
+  /* The kicker is the canvas's one kicker, wherever it sits: 12px at 500,
+     uppercase at .08em, in the meta ink. Denim is for what leads somewhere, and
+     a kicker leads nowhere. */
+  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
   .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-body); }
 
@@ -647,7 +655,7 @@ html.verso-fonts-loading body {
   .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px rgb(52 211 153 / 0.35)); }
   .verso-port.is-empty .verso-port-jack, .verso-port.is-empty .verso-port-cage { opacity: 0.5; }
   .verso-port-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; color: #d7deea; }
-  .verso-port-speed { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; }
+  .verso-port-speed { font-family: var(--font-mono); font-size: 0.6875rem; }
   .verso-port.is-linked .verso-port-speed { color: #6ee7b7; }
   .verso-port.is-empty .verso-port-speed { color: #6a7385; }
 
@@ -670,7 +678,7 @@ html.verso-fonts-loading body {
   }
   .verso-port-tip b { color: #fff; font-weight: 600; }
   .verso-port-tip .role { text-transform: uppercase; }
-  .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.1875rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.1875rem; font-family: var(--font-mono); }
   .verso-port-tip .r .k { color: #8a94a8; }
   .verso-port:hover .verso-port-tip, .verso-port:focus-within .verso-port-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
   .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #0b0f16; }
@@ -744,7 +752,7 @@ html.verso-fonts-loading body {
      plot's own bottom padding already keeps them clear of it). */
   /* padding matches the y-value inset (.verso-chart-yl left) so "60 seconds ago"
      sits under the values above it, and "now" pulls in by the same amount. */
-  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; padding: 0 0.3125rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; }
+  .verso-chart-xrow { display: flex; justify-content: space-between; margin-top: 0; padding: 0 0.3125rem; font-family: var(--font-mono); font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; }
   .verso-chart-area { stroke: none; }
 
   /* The series hues. The palette keeps two for exactly this — denim for what comes
@@ -786,7 +794,7 @@ html.verso-fonts-loading body {
   /* axis labels: HTML overlaid on the plot at a true, fixed size (SVG <text> would scale
      with the graph). Y values at the top and middle of the range; window captions at the
      bottom corners. */
-  .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .verso-chart-yl, .verso-chart-xl { position: absolute; font-family: var(--font-mono); font-size: 0.6875rem; color: var(--color-meta); font-variant-numeric: tabular-nums; pointer-events: none; }
   /* a soft halo in the ground the chart sits on, so the values stay legible where
      they overlay the line and area fill. Stacked to build enough opacity for a
      solid-but-soft ring. Inert in the gutter case, where the label sits on the bare
