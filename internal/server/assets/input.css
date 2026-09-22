@@ -714,6 +714,17 @@ html.verso-fonts-loading body {
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   .verso-page-body > .verso-stack > section:not([data-verso-ruled]) { padding-top: 0; }
 
+  /* A page's control band spans the page, from the rail to the window's edge,
+     while its controls keep to the page's column, level with the heading. The
+     page (main) is the size container: the band reaches out past the frame's
+     2.5rem and the column's end, and pads back in by the same, so its content
+     box is the column whatever measure the page declares. */
+  .verso-page-body > .verso-stack > [data-verso-actionbar],
+  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] {
+    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
+    padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
+  }
+
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }

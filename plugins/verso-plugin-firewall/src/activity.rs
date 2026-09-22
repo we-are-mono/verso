@@ -82,14 +82,14 @@ fn bar() -> Widget {
             })
             .collect(),
         filter: "Find an address, port or rule".into(),
-        live: "Pause".into(),
+        live: "Live".into(),
         // Taking the buffer away with you is not the forward act this page is
-        // for — the page is for watching — so it sits with the other controls
-        // rather than wearing the action colour.
+        // for — the page is for watching — so it wears the quiet dress, beside
+        // the live control as its equal: words alone, like it.
         action: Some(TableAction {
             label: "Download".into(),
             href: format!("{}/{}", page::MOUNT, DOWNLOAD),
-            icon: "download".into(),
+            icon: String::new(),
             style: "quiet".into(),
         }),
         opens_panel: false,
@@ -261,7 +261,7 @@ mod tests {
         let body = body(&logging_snapshot());
         let bar = &body["widget"]["children"][0];
         assert_eq!(bar["type"], "actionbar");
-        assert_eq!(bar["live"], "Pause");
+        assert_eq!(bar["live"], "Live");
         assert_eq!(
             bar["tabs"],
             json!([
@@ -271,14 +271,13 @@ mod tests {
             ])
         );
         // Nothing is added here — the page is a read. The one act takes the
-        // buffer away with you, so it wears the quiet weight and its own glyph
-        // rather than the plus every "add" wears.
+        // buffer away with you, so it wears the quiet weight, in words alone
+        // like the live control it stands beside.
         assert_eq!(
             bar["action"],
             json!({
                 "label": "Download",
                 "href": "/plugins/firewall/download",
-                "icon": "download",
                 "style": "quiet"
             })
         );

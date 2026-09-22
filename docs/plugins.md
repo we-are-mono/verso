@@ -891,10 +891,12 @@ there.)
 - **Repeats.** Consecutive identical events collapse into the row already there:
   its counter climbs (`× 38`) and its clock moves up. A repeat that is *not*
   consecutive starts a fresh row, so the order never lies.
-- **Pause.** A `button` with `"live": true` in the section's `control` slot is
-  the stream's own indicator and its pause: the spinner turns while events flow
-  and stops when they are held, the label becomes `Resume · N new`, and nothing
-  on the page moves — not even the relative times — until it is pressed again.
+- **Pause.** The action bar's `live` control is the stream's own indicator and
+  its pause, and stands on the heading line with the bar's act: it reads `Live`,
+  its spinner turning, while events flow, `Paused · N new` while they are
+  held (its title says the act, Pause or Resume), `Connecting…` while the
+  stream is down, and nothing on the page moves — not even the relative
+  times — until it is pressed again.
 - **Narrowing.** Every value in a streamed row is a control: click a verdict, a
   zone, or an address and the listing narrows to it, with what was clicked
   travelling to a shelf above the table wearing the treatment it had in the row.

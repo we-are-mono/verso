@@ -154,7 +154,8 @@
     var section = table.closest("section");
     var meta = section && section.querySelector("[data-verso-section-meta]");
     var metaRest = meta ? meta.textContent : "";
-    var pause = (section || document).querySelector("button[data-verso-live]");
+    // The live control sits on the heading line, outside any section.
+    var pause = (section && section.querySelector("button[data-verso-live]")) || document.querySelector("button[data-verso-live]");
     var pauseLabel = pause && pause.querySelector("[data-verso-live-label]");
     var waiting = pause && pause.querySelector("[data-verso-wait]");
     var icons = wrapper && wrapper.querySelector("template[data-verso-stream-icons]");
@@ -481,10 +482,12 @@
 
     function updatePause() {
       if (!pause) return;
-      var label = paused ? (pending ? T("Resume · %d new").replace("%d", pending) : T("Resume")) : T("Pause");
+      // The control says what the log is doing; its title, what pressing it does.
+      var label = paused ? (pending ? T("Paused · %d new").replace("%d", pending) : T("Paused")) : connected ? T("Live") : T("Connecting…");
       if (pauseLabel) pauseLabel.textContent = label;
       else pause.textContent = label;
-      // Move the waiting mark only while events can arrive.
+      pause.title = paused ? T("Resume") : T("Pause");
+      // The spinner turns only while events can arrive.
       if (waiting) waiting.toggleAttribute("data-verso-wait-paused", paused || !connected);
     }
 
@@ -652,9 +655,10 @@
       relens();
     });
 
-    // The Pause button's spinner is this listing's only live indicator, so it
-    // has to mean what it shows: it spins while the stream is up and this page
-    // is not holding it, and stops when the connection drops. EventSource
+    // The live control is this listing's only live indicator, so it has to
+    // mean what it shows: Live, its spinner turning, while the stream is up
+    // and this page is not holding it; Connecting…, still, when the
+    // connection drops. EventSource
     // reconnects on its own, and "open" is that reconnect landing. Neither
     // touches the pause itself — a stream that came back while a person was
     // reading stays held until they say otherwise.

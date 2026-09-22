@@ -25,11 +25,11 @@ type ActionBar struct {
 	Filter string       `json:"filter,omitempty"` // the search field's placeholder; empty draws no field
 	Select *ActionPick  `json:"select,omitempty"`
 	Action *TableAction `json:"action,omitempty"`
-	// Live is the label of the control that holds a running listing still — the
-	// one thing on this bar that is not a narrowing. It belongs here rather than
-	// beside the heading because what it governs is the rows: a spinner turns in
-	// it while events arrive, and pressing it is how they stop. The shell owns
-	// the rest of that behaviour (verso.js "stream").
+	// Live is the label of the control that holds a running listing still. It
+	// is not a narrowing, so the shell lifts it to the heading line with the
+	// log's act (TakeHeadingAct): it reads Live, its spinner turning, while
+	// events arrive and Paused while they are held, and pressing it is how that
+	// changes. The shell owns the rest of that behaviour (verso-listing.js).
 	Live string `json:"live,omitempty"`
 	// Entity makes the act open a panel rather than leave the page: making a new
 	// subject of the kind this listing holds is the same job as editing one, so
@@ -51,29 +51,39 @@ type ActionBar struct {
 	// Heading renders the act alone, for the heading line: set by the shell
 	// when the bar has nothing but its act (TakeHeadingAct), never by a plugin.
 	Heading bool `json:"-"`
+	// liveLog marks a live log's bar whose live control the shell lifted to
+	// the heading line: it still sits over a log, not a table.
+	liveLog bool
 }
 
-// TakeHeadingAct lifts a page's primary act onto its heading line. Every page
-// keeps its one forward act there; the band under the heading is for narrowing
-// the listing — the search, the cuts, the select, the live control — and
-// nothing else. So a Stack whose first child is a band with a primary act
-// gives that act up, with whatever it opens (its panel, its drawer, its
-// entity), and the act is returned as a bar marked for the heading. A band
-// left with nothing to narrow goes from the body altogether. A quiet act takes
-// something away from the listing rather than making something, so it stays
-// with the narrowing; any other shape is left alone and nil is returned.
+// overLog reports whether the bar sits over a live log rather than a table,
+// which it wears unfilled.
+func (a *ActionBar) overLog() bool { return a.Live != "" || a.liveLog }
+
+// TakeHeadingAct lifts a page's acts onto its heading line. Every page keeps
+// what it does there; the band under the heading is for narrowing the listing
+// — the search, the cuts, the select — and nothing else. So a Stack whose
+// first child is a band with a primary act gives that act up, with whatever it
+// opens (its panel, its drawer, its entity), and the act is returned as a bar
+// marked for the heading. A live log gives up its live control and its act,
+// quiet or not, so the log's acts stand together as equals on the heading
+// line. A band left with nothing to narrow goes from the body altogether. On a
+// listing that is not live a quiet act takes something away rather than
+// making something, so it stays with the narrowing; any other shape is left
+// alone and nil is returned.
 func TakeHeadingAct(w Widget) *ActionBar {
 	stack, ok := w.(*Stack)
 	if !ok || len(stack.Children) == 0 {
 		return nil
 	}
 	bar, ok := stack.Children[0].(*ActionBar)
-	if !ok || bar.Action == nil || bar.Action.Quiet() {
+	if !ok || (bar.Live == "" && (bar.Action == nil || bar.Action.Quiet())) {
 		return nil
 	}
-	act := &ActionBar{Action: bar.Action, OpensPanel: bar.OpensPanel, Drawer: bar.Drawer, Entity: bar.Entity, Heading: true}
-	bar.Action, bar.OpensPanel, bar.Drawer, bar.Entity = nil, false, nil, ""
-	if bar.Filter == "" && len(bar.Tabs) == 0 && bar.Select == nil && bar.Live == "" && bar.Style == "" {
+	act := &ActionBar{Live: bar.Live, Action: bar.Action, OpensPanel: bar.OpensPanel, Drawer: bar.Drawer, Entity: bar.Entity, Heading: true}
+	bar.liveLog = bar.overLog()
+	bar.Live, bar.Action, bar.OpensPanel, bar.Drawer, bar.Entity = "", nil, false, nil, ""
+	if bar.Filter == "" && len(bar.Tabs) == 0 && bar.Select == nil && bar.Style == "" {
 		stack.Children = stack.Children[1:]
 	}
 	return act
@@ -125,10 +135,11 @@ type actionBarView struct {
 	HasPanel bool
 	Open     bool
 	Panel    drawerPanelView
+	OverLog  bool // the bar sits over a live log, which it wears unfilled
 }
 
 func (a *ActionBar) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	v := actionBarView{ActionBar: *a}
+	v := actionBarView{ActionBar: *a, OverLog: a.overLog()}
 	if v.Filter == "" {
 		v.Filter = r.tr("Filter · name, address, MAC")
 	}

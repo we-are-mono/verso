@@ -505,7 +505,7 @@
   "Waiting for the first event…": "Čakanje na prvi dogodek …",
   "Pause": "Ustavi",
   "Resume": "Nadaljuj",
-  "Resume · %d new": "Nadaljuj · %d novih",
+  "Paused · %d new": "Začasno ustavljeno · %d novih",
   "Clear": "Počisti",
   "%d of %d events shown": "Prikazanih %d od %d dogodkov",
   "Moved to position %d of %d": "Premaknjeno na mesto %d od %d",

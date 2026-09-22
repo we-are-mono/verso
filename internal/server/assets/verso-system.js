@@ -8,17 +8,24 @@
   if (log && window.EventSource) {
     var body = log.querySelector("[data-verso-console-rows]");
     var source = log.querySelector("[data-verso-listing-select]");
-    var state = log.querySelector("[data-log-state]");
-    var mark = log.querySelector("[data-log-state-mark]");
-    var pause = log.querySelector("[data-log-pause]");
+    var health = log.querySelector("[data-log-health]");
+    // The log's acts sit on the heading line, outside the log itself.
+    var pause = document.querySelector("[data-log-pause]");
+    var pauseLabel = pause.querySelector("[data-log-pause-label]");
+    var waiting = pause.querySelector("[data-verso-wait]");
     var paused = false, connected = false, unreadable = false, pendingReset = false, pending = [], seen = new Set(), sources = new Set();
     var includeFirewall = log.querySelector("[data-log-include-firewall]");
     var es, firewallUnavailable = false;
+    // The live control is the log's state; a source that cannot be read is
+    // said on the notice line above the log.
     function status() {
-      state.textContent = paused ? T("Paused") : unreadable ? T("Logs unavailable") : firewallUnavailable ? T("Firewall logs unavailable") : connected ? T("Live") : T("Connecting…");
-      mark.classList.toggle("bg-green", connected && !paused && !unreadable && !firewallUnavailable);
-      mark.classList.toggle("border", !connected || paused || unreadable || firewallUnavailable);
-      pause.textContent = paused ? T("Resume") : T("Pause");
+      pauseLabel.textContent = paused ? T("Paused") : connected ? T("Live") : T("Connecting…");
+      pause.title = paused ? T("Resume") : T("Pause");
+      // The spinner turns only while lines can arrive.
+      waiting.toggleAttribute("data-verso-wait-paused", paused || !connected);
+      var problem = unreadable ? T("Logs unavailable") : firewallUnavailable ? T("Firewall logs unavailable") : "";
+      health.textContent = problem;
+      health.hidden = !problem;
     }
     function node(tag, cls, text) {
       var n = document.createElement(tag); n.className = cls;
@@ -110,7 +117,7 @@
       }
       status();
     });
-    log.querySelector("[data-log-download]").addEventListener("click", function () {
+    document.querySelector("[data-log-download]").addEventListener("click", function () {
       var text = Array.from(body.querySelectorAll("[data-log-row]")).filter(function (n) { return !n.hidden; }).map(function (n) { return n.dataset.logText; }).join("\n");
       var url = URL.createObjectURL(new Blob([text + "\n"], { type: "text/plain;charset=utf-8" }));
       var a = document.createElement("a"); a.href = url; a.download = "router-log.txt"; a.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);

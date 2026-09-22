@@ -178,6 +178,8 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		// the listing sits flush on its band, and a log (and its notice) on its bar
 		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section:not([data-verso-ruled]){padding-top:0}",
+		// a page's control band spans the page, its controls in the column
+		".verso-page-body>.verso-stack>[data-verso-actionbar],.verso-page-body>[data-verso-packages]>[data-verso-actionbar]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10)}",
 		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
 	} {
 		if !strings.Contains(string(css), want) {

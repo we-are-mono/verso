@@ -49,12 +49,19 @@ func systemLogRow(entry openwrt.LogEntry) systemLogEvent {
 
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	lang, _ := s.localize(r)
-	var body strings.Builder
+	var body, acts strings.Builder
 	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", struct{ IncludeFirewall bool }{r.URL.Query().Get("firewall") == "1"}); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Logs", Tone: "neutral"}, "full", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+	// What acts on the log — its live control, the download, the settings —
+	// sits on the heading line; the bar keeps what narrows it.
+	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", nil); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	hdr := pageHeader{Heading: "Logs", Tone: "neutral", HeadingAct: template.HTML(acts.String())} //nolint:gosec // rendered by the shell's own templates
+	s.renderPage(w, r, http.StatusOK, hdr, "full", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
 }
 
 // Reuse the authenticated listing stream route and sampling clock. IDs are

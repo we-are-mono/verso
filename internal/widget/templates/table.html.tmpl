@@ -410,9 +410,9 @@
 {{/* A console is not a table and is not drawn as one. What a firewall log wants
      is what a terminal gives: one line per event, no grid, no hairlines between
      them, everything in mono at fixed columns so the eye reads down a column
-     without a rule to guide it, on a ground a shade darker than the page so the
-     stream reads as a surface the device is writing to rather than as content
-     the page is presenting. It fills whatever height the frame gives it and
+     without a rule to guide it, on the page's own ground: the sand band of
+     controls over it is the one filled surface, which keeps the log's controls
+     apart from the page's acts above. It fills whatever height the frame gives it and
      scrolls inside itself, and it runs to the window's right and bottom edges —
      a log has no natural end, so a margin under it would be a lie.
 
@@ -421,7 +421,7 @@
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
-<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet"
+<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-ground"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
   <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
     <div data-verso-stream-empty class="px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>

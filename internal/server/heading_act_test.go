@@ -12,6 +12,19 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 )
 
+// TestHeadingLineIsAnActsHeight: the heading line is an act's height whether
+// it holds one or not, so moving from a page with an act (Packages) to one
+// without (Services) never shifts the heading or the band under it.
+func TestHeadingLineIsAnActsHeight(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true})
+	for _, path := range []string{"/system/services", "/system/packages"} {
+		whole := get(t, s, path).Body.String()
+		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-9 flex-wrap items-center justify-between gap-5">`) {
+			t.Errorf("%s: the heading line should hold an act's height", path)
+		}
+	}
+}
+
 // TestPluginActWithNothingToNarrowSitsOnTheHeadingLine: a listing with nothing
 // to search declares its bar with only the act, and the page puts that act on
 // the heading line — the canvas's rule — instead of a toolbar row holding one

@@ -3,5 +3,7 @@
 {{/* verso-page-action: the page's one primary doorway, sat hard right on the
      heading row. It is the accent button of the whole page, so it speaks the
      same colour and press as the review drawer's own Apply; anything quieter
-     belongs beside the content it acts on, not up here. */}}
-{{define "verso-page-action"}}<a href="{{.Href}}" class="shrink-0 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>{{end}}
+     belongs beside the content it acts on, not up here. Like every page's
+     primary act it wears the plus, unless it leads somewhere else and names
+     its own glyph (actionbar.primary-glyph). */}}
+{{define "verso-page-action"}}<a href="{{.Href}}" class="shrink-0 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{if or (eq .Icon "download") (eq .Icon "upload") (eq .Icon "external-link")}}{{icon .Icon "size-4"}}{{else}}{{icon "plus" "size-4"}}{{end}}{{.Label}}</a>{{end}}

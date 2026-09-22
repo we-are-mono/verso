@@ -39,7 +39,7 @@
   {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
   <span class="hidden min-w-0 truncate text-sm font-light text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
   <div class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
-    <div class="mx-4 flex min-w-0 max-w-6xl flex-1 items-center justify-end gap-2 sm:mx-6 md:ml-11 md:mr-11 md:gap-4">
+    <div class="mx-4 flex min-w-0 max-w-6xl flex-1 items-center justify-end gap-2 sm:mx-6 md:ml-10 md:mr-10 md:gap-4">
       {{if and .Overview .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm font-semibold text-crimson-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span class="sr-only xl:not-sr-only xl:truncate">{{ t "No administrator password" }}</span></a>
       {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-denim"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
       {{/* Logging out is a plain act with the identity it ends beside it: the
@@ -91,7 +91,7 @@
      right and bottom edges instead of sitting in the reading measure. The frame
      hands it that by becoming a column and giving it the leftover height; what
      goes in it is the page's own business. */}}
-<main class="min-w-0 flex-1{{if eq .Width "full"}} flex h-[calc(100vh-3.5rem)] min-h-0 flex-col{{end}}">
+<main class="@container min-w-0 flex-1{{if eq .Width "full"}} flex h-[calc(100vh-3.5rem)] min-h-0 flex-col{{end}}">
   {{/* Subpages are the rail's business — the active row opens them beneath
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
@@ -128,14 +128,18 @@
     {{if or .Kicker .Subheading .Display}}
     {{/* The heading block keeps a 20px gap to the content, with or without a
          subtitle. A ruled masthead's divider takes the page's gap on both sides
-         of it, 2.5rem above and below, like every rule between a page's subjects. */}}
-    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
+         of it, 2.5rem above and below, like every rule between a page's subjects.
+         On a full page the masthead still keeps to the content column, so its
+         act ends under Log out like every other page's. */}}
+    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}{{if eq .Width "full"}} max-w-6xl{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
            each other; the lede reads under the line, so the act centres on the
-           heading, not on the heading and its lede together. */}}
-      <div class="flex flex-wrap items-center justify-between gap-5">
+           heading, not on the heading and its lede together. The line is an
+           act's height whether it holds one or not, so moving between pages
+           never shifts the heading or what sits under it. */}}
+      <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
         {{/* A Display masthead's heading is the page's own subject (the device
              name), so it carries no "— <tab>" detail — that suffix labels a
              section page, and would only wrap a long device name onto its own line.
@@ -157,9 +161,10 @@
       {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
-    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}">
+    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}{{if eq .Width "full"}} max-w-6xl{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
-      <div class="flex flex-wrap items-center justify-between gap-5">
+      {{/* An act's height whether it holds one or not, as above. */}}
+      <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{if .HeadingAct}}{{.HeadingAct}}{{else if .Action}}{{template "verso-page-action" .Action}}{{end}}
       </div>

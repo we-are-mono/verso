@@ -920,9 +920,10 @@ pub enum Widget {
         tabs: Vec<ActionTab>,
         #[serde(skip_serializing_if = "String::is_empty")]
         filter: String,
-        /// The label of the control that holds a running listing still. It is
-        /// the one thing on the bar that is not a narrowing, and it belongs
-        /// here because what it governs is the rows.
+        /// The label of the control that holds a running listing still —
+        /// "Live" — which the shell turns to Paused and back as it is
+        /// pressed. It is the one thing on the bar that is not a narrowing,
+        /// and it belongs here because what it governs is the rows.
         #[serde(skip_serializing_if = "String::is_empty")]
         live: String,
         #[serde(skip_serializing_if = "Option::is_none")]
