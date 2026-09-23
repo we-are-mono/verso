@@ -308,7 +308,10 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .maintenance
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
-            access::keys(argument(request, "expected")?, argument(request, "keys")?)
+            access::keys(
+                text_argument(request, "expected")?,
+                text_argument(request, "keys")?,
+            )
         }
         "setWebCertificate" => {
             let _guard = state
@@ -1063,6 +1066,17 @@ fn argument<'a>(request: &'a Value, name: &str) -> Result<&'a str, Failure> {
         .ok_or_else(|| Failure::invalid(format!("{name} is required")))
 }
 
+// text_argument is a file's whole body, which may be empty: the authorized
+// keys once the last one is removed, or the file the first one is added to.
+// It must still be sent, as a string.
+fn text_argument<'a>(request: &'a Value, name: &str) -> Result<&'a str, Failure> {
+    request
+        .get("args")
+        .and_then(|args| args.get(name))
+        .and_then(Value::as_str)
+        .ok_or_else(|| Failure::invalid(format!("{name} is required")))
+}
+
 fn set_password(username: &str, password: &str) -> Result<(), Failure> {
     // A control character (newline especially) can't survive passwd's two-line
     // stdin protocol, so reject it up front rather than silently fail to set it.
@@ -1225,6 +1239,21 @@ mod tests {
         "restart",
         "factoryReset",
     ];
+
+    #[test]
+    fn a_file_body_may_be_empty_but_must_be_sent() {
+        // Removing the last authorized key writes an empty file, and adding the
+        // first expects one: an empty body is a value, not a missing argument.
+        let empty = json!({"args": {"keys": "", "expected": ""}});
+        assert_eq!(text_argument(&empty, "keys").unwrap(), "");
+        assert_eq!(text_argument(&empty, "expected").unwrap(), "");
+        let absent = json!({"args": {}});
+        assert!(text_argument(&absent, "keys").is_err());
+        let wrong = json!({"args": {"keys": 1}});
+        assert!(text_argument(&wrong, "keys").is_err());
+        // every other argument still has to say something
+        assert!(argument(&empty, "keys").is_err());
+    }
 
     #[test]
     fn the_zero_session_grants_root_exactly_the_two_read_verbs() {
