@@ -563,11 +563,110 @@ fn access_certificate_acts_lead_somewhere_and_spend_no_denim() {
         assert!(page.contains(icon), "{icon} in {page}");
     }
     let mut r = request();
-    r.path = "/access/certificate/install".into();
-    let install = serde_json::to_string(&get(&r)).unwrap();
-    assert!(install.contains("certificate authority"), "{install}");
     r.path = "/access/certificate/trusted".into();
     assert!(serde_json::to_string(&get(&r))
         .unwrap()
         .contains("This page does not exist."));
+}
+// The first drawer a tree holds, open or not.
+fn drawer_of(v: &serde_json::Value) -> Option<&serde_json::Value> {
+    if let Some(d) = v.get("drawer").filter(|d| d.is_object()) {
+        return Some(d);
+    }
+    match v {
+        serde_json::Value::Array(a) => a.iter().find_map(drawer_of),
+        serde_json::Value::Object(o) => o.values().find_map(drawer_of),
+        _ => None,
+    }
+}
+fn certificate_act(path: &str, form: Option<&str>) -> (Envelope, serde_json::Value) {
+    let mut r = request();
+    r.path = path.into();
+    let e = match form {
+        Some(f) => post(&r, &Form::parse(f)),
+        None => get(&r),
+    };
+    let j = serde_json::to_value(&e).unwrap();
+    (e, j)
+}
+#[test]
+fn certificate_acts_that_replace_it_open_in_a_drawer_over_access() {
+    // Install and Make a new one open their forms over Access; Download is a
+    // file, and leaves as one.
+    let page: serde_json::Value = serde_json::from_str(&access_page(json!([]))).unwrap();
+    fn links(v: &serde_json::Value, out: &mut Vec<serde_json::Value>) {
+        match v {
+            serde_json::Value::Object(o) => {
+                if o.get("type").and_then(|t| t.as_str()) == Some("link") {
+                    out.push(v.clone());
+                }
+                o.values().for_each(|c| links(c, out));
+            }
+            serde_json::Value::Array(a) => a.iter().for_each(|c| links(c, out)),
+            _ => {}
+        }
+    }
+    let mut found = vec![];
+    links(&page, &mut found);
+    for (label, panel) in [
+        ("Install a certificate", true),
+        ("Make a new one", true),
+        ("Download", false),
+    ] {
+        let link = found
+            .iter()
+            .find(|l| l["label"] == label)
+            .unwrap_or_else(|| panic!("{label} in {page}"));
+        assert_eq!(link["panel"].as_bool().unwrap_or(false), panel, "{link}");
+    }
+}
+#[test]
+fn a_certificate_act_is_a_drawer_that_closes_back_on_access() {
+    for (path, title, submit) in [
+        (
+            "/access/certificate/install",
+            "Install a certificate",
+            "Install certificate",
+        ),
+        (
+            "/access/certificate/new",
+            "Make a new certificate",
+            "Make certificate",
+        ),
+    ] {
+        let (_, j) = certificate_act(path, None);
+        let drawer = drawer_of(&j["widget"]).unwrap_or_else(|| panic!("a drawer at {path}: {j}"));
+        assert_eq!(drawer["open"], true, "{drawer}");
+        assert_eq!(drawer["title"], title);
+        assert_eq!(drawer["size"], "form");
+        assert_eq!(drawer["closed"], "/system/access");
+        // Its act runs at once, so it is named for what it does, not "Save",
+        // which stages.
+        assert_eq!(drawer["children"][0]["submit"], submit, "{drawer}");
+        assert_eq!(j["back"]["href"], "/system/access");
+    }
+}
+#[test]
+fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
+    // A valid submission runs the act; the drawer stays open in the answer,
+    // so a refusal from the router is said in it.
+    let (e, j) = certificate_act("/access/certificate/new", Some("hostname=router.lan"));
+    assert_eq!(e.commands.len(), 1);
+    assert_eq!(e.commands[0].name, "certificate-generate");
+    assert_eq!(drawer_of(&j["widget"]).unwrap()["open"], true);
+    // An invalid one runs nothing and says why, in the drawer.
+    let (e, j) = certificate_act("/access/certificate/new", Some("hostname=not%20a%20host"));
+    assert!(e.commands.is_empty());
+    let drawer = drawer_of(&j["widget"]).unwrap();
+    assert_eq!(
+        drawer["children"][0]["error"],
+        "Enter a valid hostname or IP address."
+    );
+    let (e, j) = certificate_act("/access/certificate/install", Some("certificate=x&key=y"));
+    assert!(e.commands.is_empty());
+    let drawer = drawer_of(&j["widget"]).unwrap();
+    assert_eq!(
+        drawer["children"][0]["error"],
+        "Paste a PEM certificate and its private key."
+    );
 }

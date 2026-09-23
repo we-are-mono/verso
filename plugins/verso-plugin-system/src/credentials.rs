@@ -4,7 +4,7 @@ use crate::sshkey;
 use std::collections::BTreeMap;
 use verso_plugin::{
     ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Form, Property,
-    RemoveConfirm, Request, Tone, Widget,
+    RemoveConfirm, Request, RowDrawer, Tone, Widget,
 };
 // An artifact is a document the router holds — a certificate — and reads like
 // one: named, with what it is for, then each fact's value beside its label,
@@ -204,11 +204,14 @@ pub fn certificate(r: &Request) -> Widget {
     // The router cannot obtain a trusted certificate itself; one issued
     // elsewhere is installed like any other, so there is one way in.
     // Its acts are acts on a part of the section, in the dress the key set's
-    // add wears, each led by the glyph of what it does.
-    let act = |label: &str, href: &str, glyph: &str| {
+    // add wears, each led by the glyph of what it does. The two that replace
+    // the certificate open their forms in a drawer over Access; Download is a
+    // file, and leaves as one.
+    let act = |label: &str, href: &str, glyph: &str, opens: bool| {
         let mut link = Widget::link(label, href, "act");
-        if let Widget::Link { icon, .. } = &mut link {
+        if let Widget::Link { icon, panel, .. } = &mut link {
             *icon = glyph.into();
+            *panel = opens;
         }
         link
     };
@@ -217,13 +220,15 @@ pub fn certificate(r: &Request) -> Widget {
             "Install a certificate",
             "/plugins/system/access/certificate/install",
             "upload",
+            true,
         ),
         act(
             "Make a new one",
             "/plugins/system/access/certificate/new",
             "refresh-cw",
+            true,
         ),
-        act("Download", "/system/access/certificate", "download"),
+        act("Download", "/system/access/certificate", "download", false),
     ]);
     if let Widget::Stack { inline, .. } = &mut actions {
         *inline = true;
@@ -231,23 +236,30 @@ pub fn certificate(r: &Request) -> Widget {
     children.push(actions);
     Widget::section("Certificates", "", vec![Widget::stack(children)])
 }
+// A PEM block is text the machine wrote, so it is typed in the code box.
 fn textarea(name: &str, label: &str, value: &str) -> Widget {
     let mut field = Widget::field(name, label, value, "", "");
-    if let Widget::Field { kind, .. } = &mut field {
+    if let Widget::Field { kind, style, .. } = &mut field {
         *kind = "textarea".into();
+        *style = "code".into();
     }
     field
 }
 
+// route answers a certificate's act that replaces it: its form, in the drawer
+// the act opens over Access. The act runs at once, so its button names it.
+// A valid submission carries the command with the drawer still open, so a
+// refusal from the router is said in the drawer; once the act has run, the
+// shell closes it on Access read again.
 pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
     let path = r.path.trim_end_matches('/');
     let mut fields = vec![];
     let mut error = String::new();
     let mut command = None;
-    let title;
+    let (title, submit);
     match path {
         "/access/certificate/new" => {
-            title = "Make a new certificate";
+            (title, submit) = ("Make a new certificate", "Make certificate");
             let hostname = form
                 .map(|f| f.get("hostname"))
                 .unwrap_or_else(|| super::facts(&r.snapshot).hostname);
@@ -271,7 +283,7 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             }
         }
         "/access/certificate/install" => {
-            title = "Install a certificate";
+            (title, submit) = ("Install a certificate", "Install certificate");
             let certificate = form.map(|f| f.get("certificate")).unwrap_or_default();
             fields.push(Widget::text("A trusted certificate is issued for a domain you control. Obtain it from your certificate authority, then paste the certificate and its private key here."));
             fields.push(textarea("certificate", "Certificate (PEM)", &certificate));
@@ -301,19 +313,31 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
                 .with_back("Access", "/system/access")
         }
     }
-    let mut result = Envelope::page(
-        title,
-        Widget::Form {
-            style: "page".into(),
-            submit: "Save".into(),
+    let drawer = RowDrawer {
+        title: title.into(),
+        open: true,
+        closed: "/system/access".into(),
+        size: "form".into(),
+        children: vec![Widget::Form {
+            style: String::new(),
+            submit: submit.into(),
             error,
             note: String::new(),
             target: String::new(),
             fields,
-        },
-    )
-    .with_back("Access", "/system/access")
-    .with_width("form");
+        }],
+        ..Default::default()
+    };
+    let host = Widget::ActionBar {
+        style: String::new(),
+        tabs: vec![],
+        filter: String::new(),
+        live: String::new(),
+        action: None,
+        opens_panel: false,
+        drawer: Some(drawer),
+    };
+    let mut result = Envelope::page(title, host).with_back("Access", "/system/access");
     if let Some(command) = command {
         result.commands = vec![command];
         result = result.with_notice(Tone::Success, "Access credentials updated.");
