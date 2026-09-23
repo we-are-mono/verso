@@ -63,6 +63,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/logs/settings", s.handleLogSettings)
 	s.mux.HandleFunc("GET /system/packages/status", s.handlePackageStatus)
 	s.mux.HandleFunc("GET /system/packages/files", s.handlePackageFiles)
+	s.mux.HandleFunc("GET /system/packages/package", s.handlePackagePanel)
 	s.mux.HandleFunc("GET /system/services", s.handleServicesPage)
 	s.mux.HandleFunc("POST /system/services", s.handleServicesAction)
 	s.mux.HandleFunc("GET /system/maintenance", s.handleSystemMaintenance)

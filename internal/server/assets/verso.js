@@ -513,6 +513,9 @@ document.addEventListener("alpine:init", function () {
         var link = e && e.target && e.target.closest("a[href]");
         var frame = this.teleported("[data-verso-panel]");
         if (link && frame) frame.setAttribute("data-verso-panel-url", link.getAttribute("href"));
+        // A link to a thing of its own (a package, over a settings page) opens
+        // its panel as the chrome's: the page keeps its own address.
+        if (link && frame && link.hasAttribute("data-verso-panel-chrome")) frame.setAttribute("data-verso-panel-chrome", "");
         this.show();
       },
       loadPanel: function () {

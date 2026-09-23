@@ -27,6 +27,13 @@ type Link struct {
 	// work it points into.
 	Style  string `json:"style"`
 	NewTab bool   `json:"new_tab,omitempty"`
+	// Act is the status style's act: the words on the control that changes
+	// the status (the Label), where a setting's control stands.
+	Act string `json:"act,omitempty"`
+	// Panel opens the destination as a drawer over this page rather than
+	// leaving it, for a destination that is its own thing (a package to
+	// install) — the page's address stays the page's.
+	Panel bool `json:"panel,omitempty"`
 }
 
 func (*Link) isWidget() {}
@@ -43,6 +50,8 @@ type linkView struct {
 	Download   string
 	Style      string
 	NewTab     bool
+	Act        string
+	Panel      bool
 }
 
 func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -54,6 +63,7 @@ func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 	}
 	return r.execute(out, "link.html.tmpl", linkView{
 		Desc: l.Desc, Code: l.Code, Label: l.Label, Icon: l.Icon, Href: safeHref(href, l.Download != ""), Download: l.Download, Style: l.Style, NewTab: l.NewTab,
+		Act: l.Act, Panel: l.Panel,
 	})
 }
 

@@ -4,7 +4,24 @@
 {{/* a link wearing a button's clothes is the same button: one height, one radius,
      one border — stated in the same place the form's own buttons take theirs. */}}
 {{if eq .Style "status"}}
-<a href="{{.Href}}" class="flex items-center gap-3 border-y border-rule py-4 text-sm text-ink hover:text-denim-deep"><span aria-hidden="true" class="size-2 shrink-0 border border-faint"></span><span class="font-semibold">{{if .Code}}{{.Code}} {{end}}{{.Label}}</span><span class="min-w-0 flex-1 text-meta">{{.Desc}}</span>{{icon "arrow-right" "size-4 shrink-0"}}</a>
+{{/* A status among settings is a settings row: the packet and the fact where
+     a setting's name stands, a sentence under it if it has one, and the act
+     that changes it where a setting's control stands — a field-height quiet
+     button that names itself, starting where the fields' controls start. An
+     act on a thing of its own (a package) opens that thing's drawer over the
+     page; the page keeps its address, since the drawer is not a place on it. */}}
+<div class="flex max-w-[40rem] flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-8">
+  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1 sm:pt-2">
+    <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
+    <span class="text-sm font-semibold text-ink">{{.Label}}</span>
+    {{if .Desc}}<p class="basis-full text-sm leading-[1.45] text-body">{{.Desc}}</p>{{end}}
+  </div>
+  <div class="flex w-full min-w-0 flex-col items-start sm:w-64 sm:flex-none">
+    {{if .Panel}}<span x-data="modal" class="contents">{{end}}
+    <a href="{{.Href}}"{{if .Panel}} @click.prevent="showPanel" data-verso-panel-chrome{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{.Act}}</a>
+    {{if .Panel}}{{template "verso-drawer-fetched" ""}}</span>{{end}}
+  </div>
+</div>
 {{else if eq .Style "choice"}}
 <a href="{{.Href}}" class="group flex items-start gap-3.5 border-b border-rule px-8 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
   {{if .Icon}}<span class="mt-0.5 shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}

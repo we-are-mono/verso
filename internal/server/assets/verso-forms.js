@@ -642,6 +642,15 @@
     if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));
     if (xhr.getResponseHeader("X-Verso-Packages") === "changed") {
       document.dispatchEvent(new CustomEvent("verso-packages-changed", { detail: { navigation: response.querySelector("[data-package-navigation]") } }));
+      // Installed from another page (DNS & DHCP's encryption): what that page
+      // offers turns on what is installed, so its body is read again once the
+      // drawer has closed. Packages redraws its own listing.
+      if (!document.querySelector("[data-verso-packages]") && window.htmx) {
+        setTimeout(function () {
+          window.htmx.ajax("GET", window.location.pathname + window.location.search,
+            { target: ".verso-page-body", select: ".verso-page-body", swap: "outerHTML" });
+        }, 280);
+      }
       return;
     }
     fetch(window.location.pathname, { headers: { Accept: "text/html" }, credentials: "same-origin" })

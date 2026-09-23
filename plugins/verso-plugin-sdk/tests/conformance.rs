@@ -185,6 +185,8 @@ fn write_widget_fixtures() {
                 icon: "plus".into(),
                 href: "/plugins/firewall/rules/new".into(),
                 style: "button".into(),
+                act: String::new(),
+                panel: false,
             },
         ),
         (

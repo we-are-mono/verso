@@ -678,6 +678,7 @@
   "The hostname doesn't match. Type it exactly as shown.": "Ime gostitelja se ne ujema. Vnesite ga natanko tako, kot je prikazano.",
   "The package database could not be read (%v).": "Podatkovne zbirke paketov ni bilo mogoče prebrati (%v).",
   "The package index could not be read (%v). Refresh the feeds and try again.": "Kazala paketov ni bilo mogoče prebrati (%v). Osvežite vire in poskusite znova.",
+  "%s is not in the package feeds. Refresh the index on Packages and try again.": "Paketa %s ni v virih paketov. Osvežite kazalo na strani Paketi in poskusite znova.",
   "Showing the first %d of %d matches — narrow the search to see the rest": "Prikazanih je prvih %d od %d zadetkov — za preostale zožite iskanje",
   "All": "Vse",
   "procd could not be read (%v).": "Podatkov procd ni bilo mogoče prebrati (%v).",

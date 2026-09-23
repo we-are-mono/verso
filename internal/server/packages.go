@@ -4,6 +4,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,8 +49,12 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	installed, total, count := 0, 0, 0
-	all := r.URL.Query().Get("tab") == "all"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	// A search that arrives without a view searches everything: whoever links
+	// here by name (DNS & DHCP naming a package to install) is after a package
+	// that may not be installed yet.
+	tab := r.URL.Query().Get("tab")
+	all := tab == "all" || (tab == "" && q != "")
 	if len(q) > 128 {
 		http.Error(w, "bad query", http.StatusBadRequest)
 		return
@@ -668,6 +674,49 @@ func packageUpgradeDrawer(drawer *widget.RowDrawer, name, version string) {
 	drawer.Children = append(drawer.Children,
 		&widget.Properties{Items: []widget.Property{{Label: "Available version", Value: version, Mono: true}}},
 		packageActionForm(name, "upgrade", "Upgrade"))
+}
+
+// handlePackagePanel answers one package's own panel — the drawer Packages
+// opens from the package's row, Install and all — for a page that offers the
+// package where the need for it is (DNS & DHCP's encryption and blocklist),
+// so it installs without leaving that page. Asked for as a page, the package
+// is found on Packages instead.
+func (s *Server) handlePackagePanel(w http.ResponseWriter, r *http.Request) {
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	name := r.URL.Query().Get("name")
+	if !pkgNameOK(name) {
+		http.Error(w, "bad package name", http.StatusBadRequest)
+		return
+	}
+	if !panelRequest(r) {
+		http.Redirect(w, r, "/system/packages?tab=all&q="+url.QueryEscape(name), http.StatusSeeOther)
+		return
+	}
+	if feedRefresh.running() {
+		s.entityNotice(w, http.StatusConflict, tr("The feeds are being refreshed — try again in a moment."))
+		return
+	}
+	found, _, err := s.backend.PkgSearch(r.Context(), s.sessionSID(r), name)
+	if err != nil {
+		s.entityNotice(w, http.StatusBadGateway, fmt.Sprintf(tr("The package index could not be read (%v). Refresh the feeds and try again."), err))
+		return
+	}
+	i := slices.IndexFunc(found, func(p openwrt.Package) bool { return p.Name == name })
+	if i < 0 {
+		s.entityNotice(w, http.StatusNotFound, fmt.Sprintf(tr("%s is not in the package feeds. Refresh the index on Packages and try again."), name))
+		return
+	}
+	row := packageRow(found[i])
+	row.Drawer.Open = true
+	var body bytes.Buffer
+	if _, err := s.widgets.RenderOpenPanelWithToken(&body, &widget.Table{Columns: []widget.TableColumn{{}}, Rows: []widget.TableRow{row}},
+		s.sessionCSRF(r), lang, t, widget.Flash{}); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(body.Bytes())
 }
 
 func (s *Server) handlePackageFiles(w http.ResponseWriter, r *http.Request) {

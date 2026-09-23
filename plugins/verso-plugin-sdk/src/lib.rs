@@ -765,6 +765,15 @@ pub enum Widget {
         href: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
+        /// The status style's act: the words on the control that changes the
+        /// status (the label), where a setting's control stands.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        act: String,
+        /// Opens the destination as a drawer over this page rather than
+        /// leaving it — for a destination that is its own thing, such as a
+        /// package to install (`/system/packages/package?name=…`).
+        #[serde(skip_serializing_if = "is_false")]
+        panel: bool,
     },
     /// A field-set gated by a toggle: `fields` show while it is on, `otherwise`
     /// while it is off. The shell realizes the show/hide (ADR-005 §7); the
@@ -1355,6 +1364,8 @@ impl Widget {
             icon: String::new(),
             href: href.into(),
             style: style.into(),
+            act: String::new(),
+            panel: false,
         }
     }
 
