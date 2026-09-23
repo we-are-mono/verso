@@ -359,3 +359,125 @@ fn dhcp_announcements_preserve_other_options_and_validate_addresses() {
         .commit
         .is_empty());
 }
+// groups are the parts an expanded row is made of: one per uci section it
+// reads, each a section on its own ledger line.
+fn groups(row: &serde_json::Value) -> Vec<serde_json::Value> {
+    let outer = &row["expanded"][0];
+    assert_eq!(outer["type"], "section", "one frame holds the parts: {row}");
+    outer["children"].as_array().unwrap().clone()
+}
+fn labels(group: &serde_json::Value) -> Vec<String> {
+    group["children"][0]["children"][0]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["label"].as_str().unwrap().to_string())
+        .collect()
+}
+#[test]
+fn an_expanded_row_reads_as_the_uci_sections_behind_it() {
+    // A bridge carrying one network with a DHCP server: its network, its
+    // server and its device, each named as the config names it, in that order.
+    let m = Model::read(&request("/", ""));
+    let parts = groups(&inventory_row(&m, "br-lan"));
+    let heads: Vec<_> = parts
+        .iter()
+        .map(|g| (g["title"].as_str().unwrap(), g["meta"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        heads,
+        [
+            ("Network", "lan"),
+            ("DHCP server", "lan"),
+            ("Device", "br-lan")
+        ]
+    );
+    // Each part's facts stand beside the config text they are read from.
+    for (part, file) in parts.iter().zip([
+        "/etc/config/network · interface",
+        "/etc/config/dhcp · dhcp",
+        "/etc/config/network · device",
+    ]) {
+        let grid = &part["children"][0];
+        assert_eq!(grid["style"], "facts", "{part}");
+        assert_eq!(grid["children"][1]["label"], file, "{part}");
+    }
+    // Addresses first, then how the network is brought up and where it sits.
+    assert_eq!(
+        labels(&parts[0]),
+        ["IPv4", "IPv6", "ULA", "Protocol", "Uptime", "Firewall zone"]
+    );
+    // The device behind the network reads as itself: a bridge's ports first.
+    assert_eq!(labels(&parts[2])[0], "Ports");
+    // The acts stand on the line of what they edit; the network's own edit
+    // is the row's pencil, so its line carries none.
+    assert!(parts[0].get("control").is_none(), "{}", parts[0]);
+    for (part, label, href) in [
+        (
+            &parts[1],
+            "Configure DHCP",
+            "/plugins/interfaces/edit?network=lan#dhcp-server",
+        ),
+        (
+            &parts[2],
+            "Edit device",
+            "/plugins/interfaces/edit?network=&device=br-lan",
+        ),
+    ] {
+        assert_eq!(part["control"]["label"], label);
+        assert_eq!(part["control"]["style"], "act");
+        assert_eq!(part["control"]["href"], href);
+    }
+    // Nothing stands loose between the parts.
+    assert!(parts.iter().all(|g| g["type"] == "section"));
+}
+#[test]
+fn a_disabled_dhcp_server_says_so_once() {
+    let mut r = request("/", "");
+    r.snapshot = Snapshot::from_value(json!({
+        "network":{"uplink":{".name":"uplink",".type":"interface","device":"eth1","proto":"dhcp"}},
+        "dhcp":{"uplink":{".name":"uplink",".type":"dhcp","interface":"uplink","ignore":"1"}}
+    }));
+    let m = Model::read(&r);
+    let parts = groups(&inventory_row(&m, "eth1"));
+    let server = parts.iter().find(|g| g["title"] == "DHCP server").unwrap();
+    assert_eq!(labels(server), ["Server"]);
+    assert_eq!(
+        server["children"][0]["children"][0]["items"][0]["value"],
+        "Disabled"
+    );
+    // Disabled is still where it is turned on.
+    assert_eq!(server["control"]["label"], "Configure DHCP");
+}
+#[test]
+fn each_network_a_device_carries_is_its_own_part_with_its_edit() {
+    let mut r = request("/", "");
+    r.snapshot = Snapshot::from_value(json!({
+        "network":{
+         "uplink":{".name":"uplink",".type":"interface","device":"eth1","proto":"dhcp"},
+         "uplink6":{".name":"uplink6",".type":"interface","device":"eth1","proto":"dhcpv6"}}
+    }));
+    let m = Model::read(&r);
+    let parts = groups(&inventory_row(&m, "eth1"));
+    let networks: Vec<_> = parts.iter().filter(|g| g["title"] == "Network").collect();
+    assert_eq!(networks.len(), 2, "{parts:?}");
+    for (part, name) in networks.iter().zip(["uplink", "uplink6"]) {
+        assert_eq!(part["meta"], name);
+        assert_eq!(labels(part)[0], "State");
+        assert_eq!(part["control"]["label"], "Edit network");
+        assert_eq!(
+            part["control"]["href"],
+            format!("/plugins/interfaces/edit?network={name}&device=")
+        );
+    }
+}
+#[test]
+fn a_device_with_no_network_reads_as_its_device() {
+    let m = Model::read(&request("/", ""));
+    let parts = groups(&inventory_row(&m, "eth0"));
+    assert_eq!(parts.len(), 1, "{parts:?}");
+    assert_eq!(parts[0]["title"], "Device");
+    assert_eq!(parts[0]["meta"], "eth0");
+    // the row's pencil edits it
+    assert!(parts[0].get("control").is_none());
+}

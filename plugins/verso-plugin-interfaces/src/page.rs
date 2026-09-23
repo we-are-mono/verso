@@ -46,19 +46,36 @@ fn prose(label: &str, value: &str) -> Property {
         ..fact(label, value)
     }
 }
-fn pair(left: Vec<Property>, right: Vec<Property>) -> Widget {
+// beside sets what a uci section says in plain words next to the section
+// itself, as the config file spells it: the facts on the left, the text they
+// are read from on the right. A section with no facts of its own keeps its
+// text in the right column, under the others.
+fn beside(facts: Vec<Property>, config: Option<Widget>) -> Widget {
+    let mut children = vec![Widget::properties(facts)];
+    children.extend(config);
     Widget::Grid {
         columns: 2,
         style: "facts".into(),
-        children: vec![Widget::properties(left), Widget::properties(right)],
-    }
-}
-fn configuration(children: Vec<Widget>) -> Widget {
-    Widget::Grid {
-        columns: 2,
-        style: "configurations".into(),
         children,
     }
+}
+// part is one uci section an expanded row reads, on its own ledger line: the
+// kind of section, its name as the config names it, and the act that edits
+// it where it has one the row's own pencil is not.
+fn part(title: &str, name: &str, children: Vec<Widget>, edit: Option<Widget>) -> Widget {
+    let mut section = Widget::section(title, "", children);
+    if let Widget::Section { meta, control, .. } = &mut section {
+        *meta = name.into();
+        *control = edit.map(Box::new);
+    }
+    section
+}
+fn act(label: &str, href: &str) -> Widget {
+    let mut link = Widget::link(label, href, "act");
+    if let Widget::Link { icon, .. } = &mut link {
+        *icon = "square-pen".into();
+    }
+    link
 }
 fn destination(label: &str, kind: &str, description: &str, key: &str, glyph: &str) -> Widget {
     let mut link = Widget::link(label, &format!("{ROOT}new?kind={kind}"), "choice");
@@ -291,66 +308,29 @@ fn details(
 ) -> Vec<Widget> {
     let mut out = vec![];
     if nets.is_empty() {
-        let ports = m.bridge_ports(name);
-        let mtu = runtime
-            .and_then(|v| v.get("mtu"))
-            .and_then(Value::as_u64)
-            .map(|n| n.to_string())
-            .unwrap_or_default();
-        let stats = runtime.and_then(|v| v.get("statistics"));
-        let errors = match (
-            stats
-                .and_then(|v| v.get("rx_errors"))
-                .and_then(Value::as_u64),
-            stats
-                .and_then(|v| v.get("tx_errors"))
-                .and_then(Value::as_u64),
-        ) {
-            (Some(rx), Some(tx)) => format!("RX {rx} · TX {tx}"),
-            _ => String::new(),
-        };
-        let (left, right) = if kind == "bridge" {
-            let stp = flag(
-                runtime
-                    .and_then(|v| v.get("bridge-attributes"))
-                    .and_then(|v| v.get("stp")),
-            );
-            (
-                fact("Ports", ports.join(", ")),
-                prose(
-                    "STP",
-                    match stp {
-                        Some(true) => "On",
-                        Some(false) => "Off",
-                        _ => "Not reported",
-                    },
-                ),
-            )
-        } else {
-            (
-                fact("Link", speed(runtime)),
-                fact("Driver", text(runtime.and_then(|v| v.get("driver")))),
-            )
-        };
-        let mut left = vec![left, fact("MTU", mtu)];
-        let mut right = vec![right, fact("Errors", errors)];
+        let mut facts = device_facts(m, name, runtime, kind);
         let ip4 = addresses(runtime, "ipv4-address");
         let ip6 = addresses(runtime, "ipv6-address");
         if !ip4.is_empty() {
-            left.push(fact("IPv4", ip4.join(", ")));
+            facts.push(fact("IPv4", ip4.join(", ")));
         }
         if !ip6.is_empty() {
-            right.push(fact("IPv6", ip6.join(", ")));
+            facts.push(fact("IPv6", ip6.join(", ")));
         }
-        out.push(pair(left, right));
+        out.push(part(
+            "Device",
+            name,
+            vec![beside(facts, device_config(m, name))],
+            None,
+        ));
     }
     for net in nets {
         let live = m.live_network(net);
         let ip4 = addresses(live, "ipv4-address");
         let ip6 = addresses(live, "ipv6-address");
         let protocol = text(live.and_then(|v| v.get("proto")));
-        let mut left = vec![fact("IPv4", ip4.join(", ")), fact("Protocol", protocol)];
-        let mut right = vec![
+        let mut facts = vec![
+            fact("IPv4", ip4.join(", ")),
             fact(
                 "IPv6",
                 ip6.iter()
@@ -367,32 +347,13 @@ fn details(
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
+            fact("Protocol", protocol),
             fact("Uptime", uptime(live)),
         ];
-        let dhcp = m.dhcp_servers.iter().find(|s| &s.network == net);
-        if let Some(server) = dhcp {
-            left.push(prose("DHCP server", server.label()));
-            if !server.pool.is_empty() {
-                left.push(if server.pool == "reservations" {
-                    prose("DHCP pool", server.pool_label())
-                } else {
-                    fact("DHCP pool", server.pool_label())
-                });
-            }
-            if !server.lease_time.is_empty() {
-                left.push(fact("Lease time", &server.lease_time));
-            }
-            left.push(prose(
-                "Active leases",
-                &server
-                    .leases
-                    .map(|n| n.to_string())
-                    .unwrap_or_else(|| "—".into()),
-            ));
-        }
-        if nets.len() > 1 {
-            left.insert(0, fact("Network", net));
-            right.insert(
+        // A device carrying more than one network says which state is whose.
+        let several = nets.len() > 1;
+        if several {
+            facts.insert(
                 0,
                 prose(
                     "State",
@@ -400,7 +361,7 @@ fn details(
                 ),
             );
         }
-        for p in left.iter_mut().chain(right.iter_mut()) {
+        for p in facts.iter_mut() {
             p.copy = matches!(p.label.as_str(), "IPv4" | "IPv6" | "ULA") && p.value != "—";
         }
         let zones: Vec<_> = m
@@ -409,7 +370,7 @@ fn details(
             .filter(|z| z.list("network").contains(net))
             .collect();
         if !zones.is_empty() {
-            left.push(fact(
+            facts.push(fact(
                 "Firewall zone",
                 zones
                     .iter()
@@ -418,58 +379,145 @@ fn details(
                     .join(", "),
             ));
         }
-        out.push(pair(left, right));
-        if let Some(server) = dhcp {
-            out.push(Widget::link("Configure DHCP", &server.href(), "secondary"));
-        }
+        let config = m.network(net).map(|n| {
+            Widget::code(
+                "/etc/config/network · interface",
+                &config_text("interface", n.config_id(), &n.values),
+            )
+        });
+        let mut body = vec![beside(facts, config)];
         if let Some(errors) = live
             .and_then(|v| v.get("errors"))
             .and_then(Value::as_array)
             .filter(|e| !e.is_empty())
         {
-            out.push(Widget::code(
+            body.push(Widget::code(
                 "netifd",
                 &serde_json::to_string_pretty(errors).unwrap_or_default(),
             ));
         }
-        let mut configs = vec![];
-        if let Some(n) = m.network(net) {
-            configs.push(Widget::code(
-                "/etc/config/network · interface",
-                &config_text("interface", n.config_id(), &n.values),
-            ));
+        let edit = (several && m.network(net).is_some())
+            .then(|| act("Edit network", &url(net, "", "edit")));
+        out.push(part("Network", net, body, edit));
+        if let Some(server) = dhcp_part(m, net) {
+            out.push(server);
         }
-        if let Some(d) = m.dhcp(net) {
-            configs.push(Widget::code(
-                "/etc/config/dhcp · dhcp",
-                &config_text("dhcp", d.config_id(), &d.values),
-            ));
-        }
-        if !configs.is_empty() {
-            out.push(configuration(configs));
-        }
-        if nets.len() > 1 && m.network(net).is_some() {
-            out.push(Widget::link(
-                "Edit network",
-                &url(net, "", "edit"),
-                "secondary",
-            ));
-        }
-    }
-    if let Some(d) = m.device(name) {
-        out.push(configuration(vec![Widget::code(
-            "/etc/config/network · device",
-            &config_text("device", d.config_id(), &d.values),
-        )]));
     }
     if !nets.is_empty() && m.device(name).is_some() {
-        out.push(Widget::link(
-            "Edit device",
-            &url("", name, "edit"),
-            "secondary",
+        out.push(part(
+            "Device",
+            name,
+            vec![beside(
+                device_facts(m, name, runtime, kind),
+                device_config(m, name),
+            )],
+            Some(act("Edit device", &url("", name, "edit"))),
         ));
     }
-    out
+    // One frame holds the parts, so each stands on its own ledger line.
+    let mut frame = Widget::section("", "", out);
+    if let Widget::Section { flush, .. } = &mut frame {
+        *flush = true;
+    }
+    vec![frame]
+}
+// device_facts is what the kernel says about the device itself: a bridge's
+// ports and spanning tree, a port's link and driver, and for either its MTU
+// and error counts.
+fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> Vec<Property> {
+    let mtu = runtime
+        .and_then(|v| v.get("mtu"))
+        .and_then(Value::as_u64)
+        .map(|n| n.to_string())
+        .unwrap_or_default();
+    let stats = runtime.and_then(|v| v.get("statistics"));
+    let errors = match (
+        stats
+            .and_then(|v| v.get("rx_errors"))
+            .and_then(Value::as_u64),
+        stats
+            .and_then(|v| v.get("tx_errors"))
+            .and_then(Value::as_u64),
+    ) {
+        (Some(rx), Some(tx)) => format!("RX {rx} · TX {tx}"),
+        _ => String::new(),
+    };
+    let (what, how) = if kind == "bridge" {
+        let stp = flag(
+            runtime
+                .and_then(|v| v.get("bridge-attributes"))
+                .and_then(|v| v.get("stp")),
+        );
+        (
+            fact("Ports", m.bridge_ports(name).join(", ")),
+            prose(
+                "STP",
+                match stp {
+                    Some(true) => "On",
+                    Some(false) => "Off",
+                    _ => "Not reported",
+                },
+            ),
+        )
+    } else {
+        (
+            fact("Link", speed(runtime)),
+            fact("Driver", text(runtime.and_then(|v| v.get("driver")))),
+        )
+    };
+    vec![what, fact("MTU", mtu), how, fact("Errors", errors)]
+}
+fn device_config(m: &Model, name: &str) -> Option<Widget> {
+    m.device(name).map(|d| {
+        Widget::code(
+            "/etc/config/network · device",
+            &config_text("device", d.config_id(), &d.values),
+        )
+    })
+}
+// dhcp_part is a network's DHCP server: how it stands and, while it serves,
+// what it hands out. A disabled server says so once; configuring it is still
+// where it is turned on.
+fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
+    let server = m.dhcp_servers.iter().find(|s| s.network == net);
+    let config = m.dhcp(net).map(|d| {
+        Widget::code(
+            "/etc/config/dhcp · dhcp",
+            &config_text("dhcp", d.config_id(), &d.values),
+        )
+    });
+    if server.is_none() && config.is_none() {
+        return None;
+    }
+    let mut facts = vec![];
+    if let Some(server) = server {
+        facts.push(prose("Server", server.label()));
+        if server.state != "disabled" {
+            if !server.pool.is_empty() {
+                facts.push(if server.pool == "reservations" {
+                    prose("Pool", server.pool_label())
+                } else {
+                    fact("Pool", server.pool_label())
+                });
+            }
+            if !server.lease_time.is_empty() {
+                facts.push(fact("Lease time", &server.lease_time));
+            }
+            facts.push(prose(
+                "Active leases",
+                &server
+                    .leases
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| "—".into()),
+            ));
+        }
+    }
+    Some(part(
+        "DHCP server",
+        net,
+        vec![beside(facts, config)],
+        server.map(|s| act("Configure DHCP", &s.href())),
+    ))
 }
 
 pub fn listing(m: &Model, open: bool) -> Envelope {
