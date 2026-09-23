@@ -93,6 +93,22 @@ func TestUpdateCheckRecordsTheAnswerOnce(t *testing.T) {
 	}
 }
 
+// TestUpdateCheckSpeaksInlineOnly: the firmware section itself turns to
+// "Checking for updates…" and back to its verdict, so the check sets no flash —
+// a banner on top would say the same thing a second time, somewhere else.
+func TestUpdateCheckSpeaksInlineOnly(t *testing.T) {
+	idleUpdates(t)
+	s := newServer(t, fakeBackend{access: true})
+	rec, token := postPluginRequest(t, s, "/system/maintenance/updates/check", url.Values{}, nil)
+	if rec.Code != 303 {
+		t.Fatalf("check POST = %d, want a redirect back to the page", rec.Code)
+	}
+	waitForCheck(t)
+	if _, message := s.sessions.TakeFlash(token); message != "" {
+		t.Errorf("the check set a flash %q; its state belongs to the section alone", message)
+	}
+}
+
 // TestUpdateCheckSurvivesAShellRestart: the answer is a file on the device, so a
 // process that never ran the check still reports what the last one found — which
 // is what makes the daily cron run worth having.
@@ -279,12 +295,19 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 		"Check again",
 		"Checked", "1 h ago",
 		"This router runs the newest build its update server offers.",
-		"25.12.4 r32933-4ccb782af7",
-		"https://sysupgrade.mono.si",
+		// The ledger splits the build into its version and its revision, and
+		// names the server it was checked against.
+		">Current<", ">25.12.4<", "r32933-4ccb782af7",
+		"Checked against", "https://sysupgrade.mono.si",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the up-to-date Updates section is missing %q:\n%s", want, body)
 		}
+	}
+	// Nothing is offered, so the ledger has no Available column; nothing is
+	// wrong, so the verdict stands plain, not in the warning band.
+	if strings.Contains(body, ">Available<") || strings.Contains(body, "data-verso-ledger-warning") {
+		t.Errorf("a current router's ledger should have no Available column and no warning band:\n%s", body)
 	}
 	if strings.Contains(body, "Every installed package is the newest version") {
 		t.Error("the resting package lane should not render beside the verdict box")
@@ -312,54 +335,56 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 // plain sentence, and the one that is fixable offers the fix.
 func TestMaintenanceFirmwareRungs(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		firmware openwrt.FirmwareUpdate
-		want     []string
-		absent   string
+		name      string
+		firmware  openwrt.FirmwareUpdate
+		want      []string
+		absent    string
+		inWarning string // must sit inside the warning band, not beside it
 	}{
 		{
 			name:     "an available build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051", Server: "https://sysupgrade.openwrt.org", Packages: 78},
 			want: []string{
-				// The news is a notice with no version in it…
-				"The update server is reporting a newer build for this router.",
-				// …and the pair below names both, toned the way the tool's own
-				// output tones them: what runs now in amber, what could run in
-				// emerald.
-				"Installed build", `class="font-mono text-base font-medium text-marigold-deep">25.12.4 r32933</span>`,
-				"Available build", `class="font-mono text-base font-medium text-green-deep">25.12.5 r33051</span>`,
-				"78",
-				// The act is offered here, behind the same confirm the manual
-				// image install wears.
-				"Download and install", `action="/system/maintenance/updates/firmware"`,
+				// The verdict names the build on offer…
+				"25.12.5 is available", "The update server is offering a newer build for this router.",
+				// …and the ledger sets it beside what runs, the new value marked
+				// by the packet rather than by a tinted cell.
+				">Current<", ">Available<", ">25.12.4<", "r32933", ">25.12.5<", "r33051",
+				`data-verso-ledger-changed`,
+				"Built by", "https://sysupgrade.openwrt.org", "78 packages change",
+				// Installing is caution, not danger: the same one-hue confirm, in
+				// marigold, naming the build.
+				"Download and install 25.12.5", `data-verso-confirm-tone="caution"`, "Install 25.12.5 now?",
+				`action="/system/maintenance/updates/firmware"`,
 				"restart on its own", "Do not disconnect its power.",
+				"or upload a custom image…",
 			},
-			// The heading carries no sentence naming a version: the notice and the
-			// facts already say it, and one fact stated twice can disagree with
-			// itself.
-			absent: "is available for this router. It runs",
+			// The old facts list and its toned version pair are gone.
+			absent: "Installed build",
 		},
 		{
 			name:     "no upgrade tool",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoOwut, Message: "owut is not installed on this device"},
-			want:     []string{"owut", "is not installed", `href="/system/packages/discover?q=owut"`},
+			want:     []string{`data-verso-ledger-warning`, "owut", "is not installed", `href="/system/packages/discover?q=owut"`},
 		},
 		{
 			name:     "no server",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer, Server: "https://sysupgrade.mono.si", Message: "uclient error code=-1"},
-			// The plain sentence leads; the tool's verbatim words sit right
-			// below in a labelled, copyable code box — no fold for one line.
-			want: []string{"No update server answered", "Error, given by the update server", "uclient error code=-1"},
+			// A warning, not an error: the verdict stands in the marigold band,
+			// and the tool's own words ride inside it, verbatim and copyable.
+			want:      []string{`data-verso-ledger-warning`, "The update server didn&#39;t answer", "No update server answered", `data-verso-ledger-complaint`, "uclient error code=-1"},
+			inWarning: "uclient error code=-1",
 		},
 		{
-			name:     "a device the server cannot build",
-			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported, Message: "File system type '(null)'"},
-			want:     []string{"cannot build an image for this router", "Error, given by the update server", "File system type &#39;(null)&#39;"},
+			name:      "a device the server cannot build",
+			firmware:  openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported, Message: "File system type '(null)'"},
+			want:      []string{`data-verso-ledger-warning`, "No firmware updates for this router", "cannot build an image for this router", `data-verso-ledger-complaint`, "File system type &#39;(null)&#39;"},
+			inWarning: "File system type &#39;(null)&#39;",
 		},
 		{
 			name:     "a check that could not run at all",
 			firmware: openwrt.FirmwareUpdate{},
-			want:     []string{"The firmware check could not run"},
+			want:     []string{`data-verso-ledger-warning`, "The firmware check could not run"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -374,6 +399,14 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			}
 			if tc.absent != "" && strings.Contains(body, tc.absent) {
 				t.Errorf("the %s rung should not offer %q", tc.name, tc.absent)
+			}
+			if tc.inWarning != "" {
+				if band := section(t, body, "data-verso-ledger-warning", "<table"); !strings.Contains(band, tc.inWarning) {
+					t.Errorf("the %s rung should carry %q inside its warning band:\n%s", tc.name, tc.inWarning, band)
+				}
+				if strings.Contains(body, "Error, given by the update server") {
+					t.Errorf("the %s rung should not label the tool's words separately", tc.name)
+				}
 			}
 			// The manual image upload is the permanent floor under every rung —
 			// including the one that now offers the act, because a server that

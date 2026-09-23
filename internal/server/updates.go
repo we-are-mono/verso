@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync/atomic"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -122,15 +121,11 @@ func (s *Server) startFirmwareUpgrade(sid string) bool {
 }
 
 // handleUpdatesCheck starts an on-demand check. It answers immediately: the run is
-// the background job's, and the next render is what shows its result.
+// the background job's. It says nothing through the flash, started or already
+// running: the Check again button itself reads "Checking…" while the run lasts,
+// and the page reloads onto the new verdict when it ends.
 func (s *Server) handleUpdatesCheck(w http.ResponseWriter, r *http.Request) {
-	_, t := s.localize(r)
-	tr := translatorOrIdentity(t)
-	if s.startUpdateCheck(s.sessionSID(r)) {
-		s.flash(r, "info", tr("Checking for updates — reload in a moment to see the result."))
-	} else {
-		s.flash(r, "info", tr("This router is already checking for updates."))
-	}
+	s.startUpdateCheck(s.sessionSID(r))
 	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 }
 
@@ -350,161 +345,30 @@ func updatesInstallButton(checking bool) *widget.Button {
 	return button
 }
 
-// firmwareLane is the system half. Where the package lane always has an answer,
-// this one may only have a reason there is none — and a named reason is what the
-// person needs, so every rung without news says its own plain sentence under the
-// heading. The one rung with news says it as a notice instead, because it is the
-// only rung whose facts already state the whole answer. manual is the image
-// upload, the permanent floor under every rung: the way in when no server can
-// build for this device, so it rides the lane in every state — the act above it
-// on the available rung is the easier door, not the only one.
-func firmwareLane(truth updatecheck.Truth, known, checking bool, manual *widget.Modal) widget.Widget {
-	section := &widget.Section{Title: "System firmware", Hairline: true}
-	defer func() {
-		if manual != nil {
-			section.Children = append(section.Children, manual)
-		}
-	}()
-	if !known {
-		section.Sub = "Whether a newer OpenWrt build exists for this router is not known until it checks."
-		return section
-	}
-	firmware := truth.Firmware
-	switch firmware.State {
-	case openwrt.FirmwareUpdateAvailable:
-		// This rung says its news as a notice rather than as a sentence under the
-		// heading, because the facts directly below already name both builds — and
-		// they name them in the tone that makes the pair readable at a glance. A
-		// sub here would be the same fact a second time, in a second wording, free
-		// to disagree with the first. The notice carries no version at all: it says
-		// only that there is news, and the pair says what it is.
-		section.Children = []widget.Widget{
-			firmwareNews(),
-			firmwareFacts(firmware, true),
-			firmwareInstallAct(checking),
-		}
-		// The manual upload sits under the primary act here, so it recedes to a
-		// quiet link — the floor beneath the easy door, not a second button
-		// competing with it. On every other rung it is the only act and stays a
-		// button (the deferred append below leaves it as it is).
-		if manual != nil {
-			manual.TriggerStyle = "link"
-		}
-	case openwrt.FirmwareCurrent:
-		// The build it runs is right below in the facts, so the sentence names no
-		// version — one fact, one place, and a sentence a catalog can translate.
-		section.Sub = "This router runs the newest build its update server offers."
-		section.Children = []widget.Widget{firmwareFacts(firmware, false)}
-	case openwrt.FirmwareNoOwut:
-		section.Sub = "This router cannot check for firmware builds: the upgrade tool it needs, **owut**, is not installed."
-		section.Children = []widget.Widget{
-			&widget.Link{Style: "button", Label: "Install owut", Icon: "download", Href: packagesPath + "/discover?q=owut"},
-		}
-	case openwrt.FirmwareNoServer:
-		section.Sub = "No update server answered, so this router could not find out whether a newer build exists."
-		if complaint := firmwareComplaint(firmware); complaint != nil {
-			section.Children = append(section.Children, complaint)
-		}
-	case openwrt.FirmwareUnsupported:
-		section.Sub = "The update server cannot build an image for this router, so there is no firmware update to offer."
-		if complaint := firmwareComplaint(firmware); complaint != nil {
-			section.Children = append(section.Children, complaint)
-		}
-	default:
-		section.Sub = "The firmware check could not run on this router."
-	}
-	return section
-}
-
-// firmwareNews is the available rung's notice: that there is something to
-// install, and — once the act is under way — what the router is doing about it.
-// Both are fixed sentences with no version in them; the pair of builds below is
-// the one place either is named.
-func firmwareNews() widget.Widget {
-	if firmwareUpgrade.running() {
-		return &widget.Callout{Variant: "info", Title: "Installing the new firmware",
-			Body: "The update server is building the image, and this router will install it as soon as it arrives. It restarts on its own when it does, and is unavailable for several minutes. Do not disconnect its power."}
-	}
-	return &widget.Callout{Variant: "info", Body: "The update server is reporting a newer build for this router."}
-}
-
-// firmwareInstallAct is the act the news leads to. At rest it wears the same
-// confirm the manual image install does, because the consequence is the same one:
-// the router replaces its operating system and is gone while it does. With the run
-// under way there is nothing left to confirm, so the control states what is
-// happening; while apk or the check owns the helper's package guard there is
-// nothing to start, so it says that by being unavailable rather than by failing
-// after the press.
-func firmwareInstallAct(checking bool) widget.Widget {
+// firmwareInstallAct is the act an offered build leads to. It is caution, not
+// danger: the router replaces its operating system and is gone for minutes, but
+// that is the point of the act, and a slot it cannot boot falls back on its own.
+// So it asks in marigold, naming the build. With the run under way there is
+// nothing left to confirm, so the control states what is happening; while apk or
+// the check owns the helper's package guard there is nothing to start, so it says
+// that by being unavailable rather than by failing after the press. The labels
+// arrive localized, because they carry the version.
+func firmwareInstallAct(tr func(string) string, checking bool, version string) widget.Widget {
+	trigger := fmt.Sprintf(tr("Download and install %s"), version)
 	var control widget.Widget
 	switch {
 	case firmwareUpgrade.running():
 		control = &widget.Button{Label: "Installing…", Style: "primary", Icon: "download", Loading: true, Name: "action", Value: "install"}
 	case packageUpgrade.running() || feedRefresh.running() || checking:
-		control = &widget.Button{Label: "Download and install", Style: "primary", Icon: "download", Disabled: true, Name: "action", Value: "install"}
+		control = &widget.Button{Label: trigger, Style: "primary", Icon: "download", Disabled: true, Name: "action", Value: "install"}
 	default:
 		control = &widget.Confirm{
-			Trigger: "Download and install",
-			Title:   "Download and install this firmware now?",
+			Tone:    widget.ToneCaution,
+			Trigger: trigger,
+			Title:   fmt.Sprintf(tr("Install %s now?"), version),
 			Message: "The router will fetch the new build, install it, and restart on its own. It will be unavailable for several minutes. Do not disconnect its power.",
 			Confirm: "Install firmware", Cancel: "Not yet",
 		}
 	}
 	return &widget.Form{Action: firmwareInstallPath, NoSubmit: true, Fields: []widget.Widget{control}}
-}
-
-// firmwareFacts is the check's own working: which server was asked, and how much a
-// build would change. It is what makes the sentence above it verifiable.
-//
-// compare tones the two builds the way owut's own output does — what this router
-// runs in the warning tone, what it could run in the success tone — which is a
-// reading only the rung where they differ has any use for. At rest the same facts
-// state one build, and a lone amber version would be a warning about nothing.
-func firmwareFacts(firmware openwrt.FirmwareUpdate, compare bool) widget.Widget {
-	items := make([]widget.Property, 0, 4)
-	if firmware.From != "" {
-		installed := widget.Property{Label: "Installed build", Value: firmware.From, Mono: true, Emphasis: true}
-		if compare {
-			installed.Variant = "warning"
-		}
-		items = append(items, installed)
-	}
-	if firmware.To != "" && firmware.To != firmware.From {
-		available := widget.Property{Label: "Available build", Value: firmware.To, Mono: true, Emphasis: true}
-		if compare {
-			available.Variant = "success"
-		}
-		items = append(items, available)
-	}
-	if firmware.Server != "" {
-		items = append(items, widget.Property{Label: "Update server", Value: firmware.Server, Mono: true, Emphasis: true})
-	}
-	if firmware.Packages > 0 {
-		items = append(items, widget.Property{Label: "Packages it would change", Value: strconv.Itoa(firmware.Packages)})
-	}
-	return &widget.Properties{Style: "system", Items: items}
-}
-
-// firmwareComplaint shows the tool's own words under the lane's plain sentence:
-// a labelled code box, copyable, exactly as the tool wrote it — machine output
-// for the person who takes it to a forum or a support request. One line earns
-// no fold; the label names what the box is.
-func firmwareComplaint(firmware openwrt.FirmwareUpdate) widget.Widget {
-	parts := make([]string, 0, 2)
-	if firmware.Server != "" {
-		parts = append(parts, firmware.Server)
-	}
-	if firmware.Message != "" {
-		parts = append(parts, firmware.Message)
-	}
-	// A check that said nothing shows nothing: the lane's own sentence is the
-	// whole answer, and an empty quote would be chrome.
-	if len(parts) == 0 {
-		return nil
-	}
-	return &widget.Code{
-		Label: "Error, given by the update server",
-		Value: strings.Join(parts, " — "),
-		Copy:  true,
-	}
 }

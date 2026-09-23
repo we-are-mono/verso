@@ -84,6 +84,7 @@ func (s *Server) routes() {
 	// drawer applies it — unlike the immediate acts above.
 	s.mux.HandleFunc("POST /system/maintenance", s.handleUpdatesAutocheck)
 	s.mux.HandleFunc("POST /system/maintenance/restart", s.handleRestart)
+	s.mux.HandleFunc("GET "+restartStatusPath, s.handleRestartStatus)
 	s.mux.HandleFunc("POST /system/maintenance/factory-reset", s.handleFactoryReset)
 
 	// The overview stream (SSE): the browser's EventSource holds this open and

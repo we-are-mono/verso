@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-// verso-takeover.js — the firmware upgrade (ADR-004). The one screen that holds
-// someone while the router rewrites itself: poll the status, move between the
-// states the server already rendered, and say nothing in this file's own words.
+// verso-takeover.js — the takeovers (ADR-004): the firmware upgrade, and the
+// restart that ends a reboot, a restore or a factory reset. Each holds someone
+// while the router goes away: poll the status, move between the states the
+// server already rendered, and say nothing in this file's own words.
 
 // The firmware-upgrade takeover: while the server holds the person on the
 // upgrading screen, this polls the status endpoint and moves the surface between
@@ -205,6 +206,72 @@
         }
         schedule();
       });
+  }
+
+  schedule();
+})();
+
+// The restarting takeover: a reboot, a restored backup, a factory reset. The act
+// already happened when this paints, so the client only watches for the router
+// to come back. The poll answers JSON while this session lives, so the router
+// has not restarted yet. A failed request is the router away, the expected
+// middle. Once the session is gone the same request meets the login redirect
+// (reachable, not JSON), and that is the router back. This needs no down-then-up
+// sequence, which a fast restart could slip between two polls. Past the plan's
+// budget the stalled surface opens a door instead of holding the person.
+(function () {
+  var root = document.querySelector("[data-verso-restarting]");
+  if (!root) return;
+  var STATUS_URL = root.getAttribute("data-verso-restarting-status");
+  var BUDGET_MS = (parseInt(root.getAttribute("data-verso-restarting-budget"), 10) || 180) * 1000;
+  var POLL_MS = 2000;
+  var started = Date.now();
+  var done = false;
+
+  var surfaces = {};
+  [].forEach.call(root.querySelectorAll("[data-verso-restarting-surface]"), function (el) {
+    surfaces[el.getAttribute("data-verso-restarting-surface")] = el;
+  });
+
+  var clock = root.querySelector("[data-verso-restarting-clock]");
+  function paintClock() {
+    if (!clock) return;
+    var total = Math.floor((Date.now() - started) / 1000);
+    var secs = total % 60;
+    clock.textContent = Math.floor(total / 60) + ":" + (secs < 10 ? "0" : "") + secs;
+  }
+  var tick = window.setInterval(paintClock, 1000);
+
+  var timer = null;
+  var deadline = window.setTimeout(function () { finish("stalled"); }, BUDGET_MS);
+
+  function finish(name) {
+    if (done || !surfaces[name]) return;
+    done = true;
+    window.clearInterval(tick);
+    window.clearTimeout(deadline);
+    if (timer) window.clearTimeout(timer);
+    for (var key in surfaces) {
+      if (Object.prototype.hasOwnProperty.call(surfaces, key)) surfaces[key].hidden = key !== name;
+    }
+    // Someone not watching the screen hears that the wait ended, and how.
+    var heading = surfaces[name].querySelector("h1");
+    if (heading && typeof versoAnnounce === "function") versoAnnounce(heading.textContent.trim());
+  }
+
+  function schedule() {
+    if (!done) timer = window.setTimeout(poll, POLL_MS);
+  }
+
+  function poll() {
+    fetch(STATUS_URL, { headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" })
+      .then(function (res) {
+        var ct = res.headers.get("Content-Type") || "";
+        if (res.ok && !res.redirected && ct.indexOf("application/json") !== -1) schedule();
+        else if (res.ok) finish("back");
+        else schedule(); // reachable but erroring: still going down or still coming up
+      })
+      .catch(schedule);
   }
 
   schedule();

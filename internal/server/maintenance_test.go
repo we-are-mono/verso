@@ -45,9 +45,14 @@ func TestMaintenanceShowsFullBuildFacts(t *testing.T) {
 		},
 	})
 	rr := get(t, srv, "/system/maintenance")
+	// The ledger states each part once, trimmed to what identifies it: the
+	// OpenWrt version apart from its revision, the kernel by its release.
+	if strings.Contains(rr.Body.String(), "OpenWrt OpenWrt") || strings.Contains(rr.Body.String(), "PREEMPT_DYNAMIC") {
+		t.Errorf("the ledger should not repeat the distribution name or carry the kernel's build flags:\n%s", rr.Body.String())
+	}
 	for _, want := range []string{
-		"OpenWrt 25.12.4 r32933-4ccb782af7",
-		"6.12.101 #1 SMP PREEMPT_DYNAMIC",
+		">25.12.4<", "r32933-4ccb782af7",
+		">6.12.101<",
 		"qualcommax/ipq807x", "Download backup", "Restore a backup",
 		"Drop an OpenWrt backup here", `x-show="idle"`, `data-verso-autosubmit`,
 		`accept=".tar.gz,.tgz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar"`,
@@ -154,14 +159,7 @@ func TestRestoreIsVerifiedThenAppliedThroughBackend(t *testing.T) {
 	if restored == "" {
 		t.Fatal("restore backend was not called")
 	}
-	for _, want := range []string{"BACKUP RESTORED", "Your router is restarting", "Return to OpenWrt in about 2 minutes", `href="/"`, "inline-flex h-9"} {
-		if !strings.Contains(applied.Body.String(), want) {
-			t.Errorf("restore completion page missing %q", want)
-		}
-	}
-	if got := applied.Header().Get("Retry-After"); got != "120" {
-		t.Errorf("Retry-After = %q, want 120", got)
-	}
+	assertRestartingTakeover(t, applied.Body.String(), "Restoring your backup", `data-verso-restarting-budget="300"`)
 	if _, err := os.Stat(restored); !os.IsNotExist(err) {
 		t.Errorf("consumed upload still exists: %v", err)
 	}

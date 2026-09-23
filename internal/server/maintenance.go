@@ -91,45 +91,22 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		}
 		return template.HTML(b.String())
 	}
-	verRow := func(label, value string) widget.Property {
-		if value == "" {
-			return widget.Property{Label: label, Value: "Unavailable"}
-		}
-		return widget.Property{Label: label, Value: value, Mono: true, Verbatim: true}
-	}
-	kernel := board.KernelBuild
-	if kernel == "" {
-		kernel = board.Kernel
-	}
-	identity := render(&widget.Properties{Style: "overview-system", Items: []widget.Property{
-		verRow("OpenWrt", board.Firmware), verRow("Verso", version.Version),
-		verRow("Kernel", kernel), verRow("Target", board.Target),
-	}})
 	truth, known := s.updateTruth()
 	checking := updateChecks.running()
-	statusWord := tr("Not checked yet")
-	switch {
-	case checking:
-		statusWord = tr("Checking for updates…")
-	case known && truth.Firmware.State == openwrt.FirmwareCurrent:
-		statusWord = tr("Up to date")
-	case known && truth.Firmware.State == openwrt.FirmwareUpdateAvailable:
-		statusWord = fmt.Sprintf(tr("%s is available"), truth.Firmware.To)
-	case known:
-		statusWord = tr("Firmware check unavailable")
-	}
-	// Details keeps the existing firmware checks, automatic-check setting and
-	// install confirmation together, while the resting page states one verdict.
-	lane := firmwareLane(truth, known, checking, nil).(*widget.Section)
-	detailChildren := []widget.Widget{}
-	if lane.Sub != "" {
-		detailChildren = append(detailChildren, &widget.Text{Markdown: lane.Sub})
-	}
-	detailChildren = append(detailChildren, lane.Children...)
-	detailChildren = append(detailChildren, s.autocheckLane(r.Context(), sid))
-	details := render(&widget.Modal{Title: "Firmware", Trigger: "Details", TriggerStyle: "secondary", Children: detailChildren})
+	ledger := firmwareLedgerView(tr, truth, known, board, version.Version)
+	// The custom image is the floor under every verdict: the way in when no
+	// server can build for this router. Beside an offered build it recedes to a
+	// quiet link; on every other verdict it is the act, and stands as a button.
 	manual := s.firmwareModal(firmware, board)
-	manual.Trigger, manual.TriggerStyle, manual.TriggerIcon = "Upload a custom image…", "link", "upload"
+	manual.Trigger, manual.TriggerStyle, manual.TriggerIcon = "Upload a custom image…", "secondary", "upload"
+	var install, owut template.HTML
+	if ledger.Offer {
+		install = render(firmwareInstallAct(tr, checking, ledger.Rows[0].Next))
+		manual.Trigger, manual.TriggerStyle = "or upload a custom image…", "link"
+	}
+	if ledger.NeedsOwut {
+		owut = render(&widget.Link{Style: "button", Label: "Install owut", Icon: "download", Href: packagesPath + "/discover?q=owut"})
+	}
 	var notices []widget.Widget
 	if err := updateChecks.takeFailure(); err != nil {
 		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
@@ -150,13 +127,21 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		checked = fmt.Sprintf(tr("Checked %s"), localizedAgo(time.Since(truth.CheckedAt), tr))
 	}
 	stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
+	// A reboot drops every device on the network, so the plain one asks first.
+	// With changes staged the two named choices are the question already.
+	reboot := render(&widget.Confirm{
+		Trigger: "Reboot now", Title: "Reboot the router now?",
+		Message: "Every device on the network loses its connection for about a minute, then reconnects on its own.",
+		Confirm: "Reboot", Cancel: "Not now",
+	})
 	data := struct {
-		Identity, Details, Manual, Restore, Packages, Notices    template.HTML
-		CSRFToken, Status, Checked, Uptime, Hostname, StageLabel string
-		Checking, Staged                                         bool
-	}{identity, details, render(manual), render(s.restoreModal(restore)), packages,
-		render(&widget.Stack{Children: notices}), s.sessionCSRF(r), statusWord,
-		checked, uptime, s.nameplate(r), stage.Label, checking, stage.Count > 0}
+		Ledger                                                               firmwareLedger
+		Install, Owut, Autocheck, Manual, Restore, Packages, Notices, Reboot template.HTML
+		CSRFToken, Checked, Uptime, Hostname, StageLabel                     string
+		Checking, Staged                                                     bool
+	}{ledger, install, owut, render(s.autocheckLane(r.Context(), sid)), render(manual),
+		render(s.restoreModal(restore)), packages, render(&widget.Stack{Children: notices}), reboot,
+		s.sessionCSRF(r), checked, uptime, s.nameplate(r), stage.Label, checking, stage.Count > 0}
 	if renderErr != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
@@ -409,6 +394,13 @@ func (s *Server) handleRestoreApply(w http.ResponseWriter, r *http.Request) {
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "That verified backup was already used. Upload it again to restore once more."})
 		return
 	}
+	_, t := s.localize(r)
+	page, err := s.restartingPage(r, restorePlan(translatorOrIdentity(t)))
+	if err != nil {
+		s.putPendingRestore(token, pending)
+		http.Error(w, "restarting page error", http.StatusInternalServerError)
+		return
+	}
 	if err := s.backend.RestoreBackup(r.Context(), s.sessionSID(r), pending.path); err != nil {
 		log.Printf("verso: restore backup: %v", err)
 		s.putPendingRestore(token, pending) // re-stage so the operator can retry the same verified upload
@@ -416,23 +408,7 @@ func (s *Server) handleRestoreApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = os.Remove(pending.path)
-	s.renderRestoreComplete(w, r)
-}
-
-func (s *Server) renderRestoreComplete(w http.ResponseWriter, r *http.Request) {
-	lang, _ := s.localize(r)
-	var body strings.Builder
-	if err := s.pageSet(lang).ExecuteTemplate(&body, "restore-complete.html.tmpl", struct {
-		Lang string
-		CSS  template.CSS
-	}{Lang: langAttr(lang), CSS: s.currentCSS()}); err != nil {
-		http.Error(w, "restore complete page error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Retry-After", "120")
-	_, _ = io.WriteString(w, body.String())
+	writeRestarting(w, page)
 }
 
 func (s *Server) handleRestart(w http.ResponseWriter, r *http.Request) {
@@ -450,23 +426,38 @@ func (s *Server) handleRestart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	page, err := s.restartingPage(r, rebootPlan(tr))
+	if err != nil {
+		http.Error(w, "restarting page error", http.StatusInternalServerError)
+		return
+	}
 	if err := s.backend.Restart(r.Context(), s.sessionSID(r)); err != nil {
 		log.Printf("verso: restart: %v", err)
 		http.Error(w, tr("Could not restart the router."), http.StatusBadGateway)
 		return
 	}
-	_, _ = fmt.Fprintf(w, "<!doctype html><title>%s</title><p>%s</p>", template.HTMLEscapeString(tr("Restarting")), template.HTMLEscapeString(tr("The router is restarting.")))
+	writeRestarting(w, page)
 }
 
+// handleFactoryReset takes one deliberate key: the hostname, typed from what the
+// page shows. The session is already the administrator, so no password is asked
+// again. The page's script only gates the button; the server holds the key too,
+// so a form posted without the script cannot erase the router. A router whose
+// hostname cannot be read shows no field, and the button is the whole act.
 func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
-	verifier, ok := s.auth.(credentialVerifier)
-	if !ok || verifier.Verify(r.Context(), s.sessionUser(r), r.FormValue("password")) != nil {
-		s.flash(r, "danger", "The current administrator password is incorrect.")
-		http.Redirect(w, r, "/system/maintenance", http.StatusSeeOther)
+	if hostname := s.nameplate(r); hostname != "" && r.FormValue("hostname") != hostname {
+		s.flash(r, "danger", "The hostname doesn't match. Type it exactly as shown.")
+		http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
+		return
+	}
+	_, t := s.localize(r)
+	page, err := s.restartingPage(r, factoryResetPlan(translatorOrIdentity(t), boardFactoryLAN()))
+	if err != nil {
+		http.Error(w, "restarting page error", http.StatusInternalServerError)
 		return
 	}
 	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r)); err != nil {
@@ -474,7 +465,7 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not reset the router.", http.StatusBadGateway)
 		return
 	}
-	_, _ = io.WriteString(w, "<!doctype html><title>Factory reset</title><p>The router is erasing its settings and restarting.</p>")
+	writeRestarting(w, page)
 }
 
 // maintenanceUptime words the router's uptime. Two flat forms per unit (one,
@@ -488,24 +479,24 @@ func maintenanceUptime(tr func(string) string, seconds int64) string {
 	minutes := (seconds % 3600) / 60
 	parts := make([]string, 0, 2)
 	if days > 0 {
-		parts = append(parts, fmt.Sprintf(tr(plural(days, "1 day", "%d days")), days))
+		parts = append(parts, counted(tr, days, "1 day", "%d days"))
 	}
 	if hours > 0 {
-		parts = append(parts, fmt.Sprintf(tr(plural(hours, "1 hour", "%d hours")), hours))
+		parts = append(parts, counted(tr, hours, "1 hour", "%d hours"))
 	}
 	if len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf(tr(plural(minutes, "1 minute", "%d minutes")), minutes))
+		parts = append(parts, counted(tr, minutes, "1 minute", "%d minutes"))
 	}
 	return strings.Join(parts, ", ")
 }
 
-// plural picks the flat one/many form; a "1 …" form carries no verb, so the
-// Sprintf over it is a no-op.
-func plural(n int64, one, many string) string {
+// counted words a count in its flat one/many form, translated. The "1 …" form
+// carries no verb, so only the many form is formatted with the count.
+func counted(tr func(string) string, n int64, one, many string) string {
 	if n == 1 {
-		return one
+		return tr(one)
 	}
-	return many
+	return fmt.Sprintf(tr(many), n)
 }
 
 var _ openwrt.Backend = (*openwrt.NativeBackend)(nil)

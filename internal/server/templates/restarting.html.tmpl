@@ -1,0 +1,75 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<!doctype html>
+<html lang="{{ .Lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#faf9f7">
+<title>{{ .Title }} · OpenWrt</title>
+<link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style id="verso-css">{{.CSS}}</style>
+<script src="/assets/verso-boot.js"></script>
+</head>
+{{/* The restarting takeover: chrome-less, one column, the router's nameplate on
+     top so the person knows which box they are waiting for. The three surfaces
+     are all painted here; verso-takeover.js only moves [hidden] between them as
+     its poll of the status endpoint moves, and ticks the clock. */}}
+<body class="m-0 min-h-screen bg-ground font-sans text-sm leading-normal text-ink">
+  <main class="flex min-h-screen flex-col items-center px-4 py-16 sm:px-11">
+    <div class="w-full max-w-[32rem]" data-verso-restarting data-verso-restarting-status="{{.Status}}" data-verso-restarting-budget="{{.Budget}}">
+      <div class="flex min-w-0 items-center gap-4">
+        <span class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Hostname}}{{.Hostname}}{{else}}{{ t "This device" }}{{end}}</span>
+        {{if .Maker}}<span class="h-5 w-px shrink-0 bg-rule-strong"></span>
+        <span class="min-w-0 truncate text-sm font-light text-body"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
+      </div>
+
+      <div data-verso-restarting-surface="working">
+        <div class="mt-11 flex items-start gap-3.5">
+          <span class="mt-1.75">{{template "verso-waiting" ""}}</span>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{.Title}}</h1>
+            <p class="text-body text-pretty">{{.Lede}}</p>
+          </div>
+        </div>
+        <div class="mt-7 flex items-baseline gap-4">
+          {{/* Elapsed, not remaining: the one number this screen can say honestly. */}}
+          <span data-verso-restarting-clock class="font-mono text-4xl leading-none font-bold tracking-tighter tabular-nums">0:00</span>
+          <span class="text-meta">{{.Estimate}}</span>
+        </div>
+        {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.Address}}</span></div>{{end}}
+        <p class="mt-6 text-meta text-pretty">{{ t "Stay on this page. It reconnects on its own and asks you to sign in." }}</p>
+      </div>
+
+      <div data-verso-restarting-surface="back" hidden>
+        <div class="mt-11 flex items-start gap-3.5">
+          <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="absolute top-1 left-1 size-1.5 rounded-[1px] bg-green"></span></span>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "Back online" }}</h1>
+            <p class="text-body text-pretty">{{ t "It answered. Sign in again to carry on." }}</p>
+          </div>
+        </div>
+        <a href="/login" class="mt-9 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Sign in" }}</a>
+      </div>
+
+      <div data-verso-restarting-surface="stalled" hidden>
+        <div class="mt-11 flex items-start gap-3.5">
+          <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="absolute top-1 left-1 size-1.5 rounded-[1px] bg-marigold"></span></span>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "This is taking longer than expected" }}</h1>
+            <p class="text-body text-pretty">{{ t "The router hasn't answered here yet. It may still be starting." }}</p>
+          </div>
+        </div>
+        {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.Address}}</span></div>{{end}}
+        <a href="/" class="mt-9 {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{ t "Try the router again" }}</a>
+      </div>
+    </div>
+  </main>
+{{/* verso.js carries the screen-reader announcer; verso-page.js draws the
+     waiting mark; verso-takeover.js runs the poll. */}}
+<script src="/assets/verso.js" defer></script>
+<script src="/assets/verso-takeover.js" defer></script>
+<script src="/assets/verso-page.js" defer></script>
+</body>
+</html>

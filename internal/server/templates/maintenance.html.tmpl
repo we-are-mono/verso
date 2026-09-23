@@ -4,50 +4,134 @@
   <div class="w-full min-w-0 max-w-[40rem] shrink-0 border-t border-rule">
     {{.Notices}}
     <section id="firmware" class="scroll-mt-20 py-8">
-      <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
-      <div class="flex flex-wrap items-center gap-3 border-t border-rule bg-quiet px-4 py-2">
-        {{if .Checking}}{{template "verso-waiting" ""}}{{end}}
-        <span class="text-base font-semibold tracking-tight text-body">{{.Status}}</span>
-        {{if .Checked}}<span class="text-sm text-meta">· {{.Checked}}</span>{{end}}
-        <form method="post" action="/system/maintenance/updates/check" class="ml-auto">
+      {{/* The ledger: the verdict under its state mark, then what this router runs
+           part by part, with an Available column only while a build is offered.
+           The check stands on the heading line with the time it last ran. */}}
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2 class="text-lg font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
+        <form method="post" action="/system/maintenance/updates/check" class="flex items-center gap-3">
           {{template "verso-csrf" .CSRFToken}}
-          <button type="submit"{{if .Checking}} disabled{{end}} class="h-7 cursor-pointer rounded-xs border border-rule-strong px-2.5 text-sm font-medium text-ink hover:border-faint hover:bg-mid disabled:pointer-events-none disabled:text-glyph">{{t "Check again"}}</button>
+          {{if .Checked}}<span class="text-sm text-meta">{{.Checked}}</span>{{end}}
+          <button type="submit"{{if .Checking}} disabled{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-3 text-sm font-medium text-ink transition-colors hover:border-faint hover:bg-quiet disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
-      <div class="border-y border-rule px-4">{{.Identity}}</div>
-      <div class="mt-5 flex flex-wrap items-center gap-4 [&_button]:h-7 [&_button]:px-2.5">{{.Details}}</div>
-      <div class="mt-6">{{.Manual}}</div>
+      <div class="flex flex-col gap-5">
+        <div>
+          {{/* A marigold verdict is a warning, not an error: it stands in the
+               marigold band, words in the deep step. Every other verdict is plain
+               words beside its mark. */}}
+          {{if eq .Ledger.Mark "marigold"}}
+          {{/* 16px all round, the mark on the title's line, the sentence 4px
+               under it. The title is 14px semibold, a step under the section's
+               18px heading, so the two never compete. The update tool's own
+               words ride inside, under a marigold hairline, in mono, which is
+               label enough: this is what the machine wrote. They wrap rather than scroll, because a one-line
+               message cut off at the edge is a message withheld. */}}
+          <div data-verso-ledger-warning class="flex items-start gap-2 rounded-xs bg-marigold-soft p-4 text-sm leading-[1.45] text-marigold-deep">
+            <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">{{.Ledger.Title}}</p>
+              <p class="mt-1 max-w-[60ch]">{{.Ledger.Lede}}</p>
+              {{if .Ledger.Complaint}}
+              {{/* The copy control stands on the message's own first line, beside
+                   the words it copies; its 28px box is pulled up 2px so it
+                   centres on the 24px line. */}}
+              <div class="mt-3 flex items-start gap-3 border-t border-marigold-line pt-3">
+                <p data-verso-ledger-complaint class="min-w-0 flex-1 font-mono text-base leading-6 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Ledger.Complaint}}</p>
+                <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative -mt-0.5 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-marigold-deep transition-colors hover:bg-marigold-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-marigold-deep">
+                  <span x-ref="src" class="hidden">{{.Ledger.Complaint}}</span>
+                  <span x-show="idle">{{icon "copy" "size-4"}}</span>
+                  <span x-show="done" x-cloak>{{icon "check" "size-4"}}</span>
+                  <span class="{{template "verso-tip-class"}} group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
+                    <span x-show="idle">{{ t "Copy" }}</span>
+                    <span x-show="done" x-cloak>{{ t "Copied" }}</span>
+                  </span>
+                </button>
+              </div>
+              {{end}}
+            </div>
+          </div>
+          {{else}}
+          <div class="flex items-start gap-3 text-sm leading-[1.45]">
+            <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] {{if eq .Ledger.Mark "green"}}bg-green{{else if eq .Ledger.Mark "denim"}}bg-denim{{else}}border border-faint{{end}}"></span>
+            <div class="min-w-0">
+              <p class="font-semibold text-ink">{{.Ledger.Title}}</p>
+              <p class="mt-1 max-w-[60ch] text-body">{{.Ledger.Lede}}</p>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-rule-strong">
+                <th scope="col" class="w-px px-3.5 py-2.5"><span class="sr-only">{{t "Part"}}</span></th>
+                <th scope="col" class="px-3.5 py-2.5 text-left text-xs leading-6 font-medium tracking-[.08em] whitespace-nowrap text-meta uppercase">{{t "Current"}}</th>
+                {{if .Ledger.Offer}}<th scope="col" class="px-3.5 py-2.5 text-left text-xs leading-6 font-medium tracking-[.08em] whitespace-nowrap text-meta uppercase">{{t "Available"}}</th>{{end}}
+              </tr>
+            </thead>
+            <tbody>
+              {{range .Ledger.Rows}}
+              <tr class="border-b border-rule hover:bg-quiet">
+                <th scope="row" class="w-px px-3.5 py-2.5 text-left leading-6 font-semibold whitespace-nowrap text-body">{{.Label}}</th>
+                {{/* Values keep to one line: a version broken mid-token is a misread
+                     one. On a phone the revisions step aside so the diff fits. */}}
+                <td class="px-3.5 py-2.5 leading-6 whitespace-nowrap">{{if .Current}}<span class="font-mono text-base font-medium text-ink">{{.Current}}</span>{{if .CurrentRev}}<span class="ml-1.5 hidden text-meta sm:inline">{{.CurrentRev}}</span>{{end}}{{else}}<span class="text-meta">{{t "Unavailable"}}</span>{{end}}</td>
+                {{if $.Ledger.Offer}}<td class="px-3.5 py-2.5 leading-6 whitespace-nowrap">
+                  {{- if eq .Change "changed"}}<span data-verso-ledger-changed class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-denim"></span><span><span class="font-mono text-base font-medium text-ink">{{.Next}}</span>{{if .NextRev}}<span class="ml-1.5 hidden text-meta sm:inline">{{.NextRev}}</span>{{end}}</span></span>
+                  {{- else if eq .Change "same"}}<span class="text-meta">{{t "same"}}</span>
+                  {{- else}}<span class="text-meta" title="{{t "Not reported by the update server"}}"><span aria-hidden="true">—</span><span class="sr-only">{{t "Not reported by the update server"}}</span></span>{{end -}}
+                </td>{{end}}
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{if or .Ledger.Server .Ledger.Changes}}<p class="text-sm text-meta">{{.Ledger.Server}}{{if and .Ledger.Server .Ledger.Changes}} · {{end}}{{if .Ledger.Changes}}<span class="tabular-nums">{{.Ledger.Changes}}</span>{{end}}</p>{{end}}
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-3">{{.Install}}{{.Owut}}{{.Manual}}</div>
+        {{/* The standing arrangement is its own group, 40px off the acts. */}}
+        <div class="mt-5">{{.Autocheck}}</div>
+      </div>
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
     <section id="backup" class="scroll-mt-20 border-t border-rule py-8">
-      <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
+      <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
+      <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p>
       <div class="flex flex-wrap items-center gap-3">
         <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
-      <div class="mt-4 flex items-start gap-2 rounded-xs bg-quiet px-3 py-2 text-sm leading-[1.45] text-body"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-glyph"></span><span>{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</span></div>
     </section>
     <section id="reboot" class="scroll-mt-20 border-t border-rule py-8">
       <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
-      {{if .Staged}}<div class="mb-4 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
+      {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
       <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
         {{template "verso-csrf" .CSRFToken}}
         {{if .Staged}}
         <button type="submit" name="stage" value="apply" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Apply changes, then reboot"}}</button>
         <button type="submit" name="stage" value="discard" class="h-9 cursor-pointer rounded-xs border border-rule-strong px-4 font-semibold text-crimson-deep hover:border-crimson hover:bg-crimson-soft">{{t "Discard and reboot"}}</button>
-        {{else}}<button type="submit" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Reboot now"}}</button>{{end}}
+        {{else}}<div class="max-w-full">{{.Reboot}}</div>{{end}}
         <span class="text-sm text-meta">{{t "Running for"}} {{.Uptime}}</span>
         <p data-verso-reboot-error hidden role="alert" class="w-full text-sm text-crimson-deep"></p>
       </form>
     </section>
     <section id="factory-reset" class="scroll-mt-20 border-t border-rule py-8">
-      <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
-      <div class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-[1.45] text-crimson-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span>{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</span></div>
-      <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="mt-5 flex flex-col gap-5">
+      <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
+      <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p>
+      {{/* One field, one act: the button is joined to the field's right edge on
+           one row, overlapping one border so the seam is shared. The focused
+           field rises above the button so its denim edge shows whole. */}}
+      <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="flex flex-col gap-2">
         {{template "verso-csrf" .CSRFToken}}
-        {{if .Hostname}}<div class="flex flex-col gap-2"><label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label><input id="reset-host" name="hostname" required autocomplete="off" class="h-9 w-56 max-w-full rounded-xs border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"></div>{{end}}
-        <div class="flex flex-col gap-2"><label for="reset-password" class="text-sm font-semibold">{{t "Administrator password"}}</label><input id="reset-password" name="password" type="password" required autocomplete="current-password" class="h-9 w-56 max-w-full rounded-xs border border-rule-strong bg-white px-3 text-sm shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none"></div>
-        <button type="submit" class="mt-2 h-9 w-fit cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
+        {{if .Hostname}}
+        <label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label>
+        <div data-verso-reset-row class="flex max-w-full">
+          <input id="reset-host" name="hostname" required autocomplete="off" class="relative h-9 w-56 min-w-0 rounded-l-xs rounded-r-none border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:z-10 focus:border-denim focus:outline-none">
+          <button type="submit" class="-ml-px rounded-l-none h-9 shrink-0 cursor-pointer rounded-r-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
+        </div>
+        {{else}}
+        <button type="submit" class="h-9 w-fit cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep">{{t "Erase and start over"}}</button>
+        {{end}}
       </form>
     </section>
   </div>
