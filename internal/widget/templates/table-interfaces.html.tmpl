@@ -46,7 +46,7 @@
       <tr data-verso-expanded-row hidden><td colspan="6" class="border-b border-rule p-0">
         <div class="relative bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-27.5">
           {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-4 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
-          <div class="@container min-w-0 [&>a]:mt-5">{{range .Expanded}}{{.}}{{end}}</div>
+          <div class="@container min-w-0">{{range .Expanded}}{{.}}{{end}}</div>
         </div>
       </td></tr>
     {{end}}
