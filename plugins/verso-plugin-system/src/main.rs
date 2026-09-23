@@ -134,26 +134,69 @@ fn post(r: &Request, f: &Form) -> Envelope {
             )]),
         );
     };
-    let mut operations = vec![commit(
-        "system",
-        &system.name(),
-        json!({"hostname":values.hostname,"zonename":values.zonename,"timezone":values.timezone}),
-    )];
-    let globals = json!({"ula_prefix":if values.ula.is_empty(){serde_json::Value::Null}else{json!(values.ula)},"packet_steering":if values.steering{"1"}else{"0"}});
-    if let Some(g) = r.snapshot.sections_of_type("network", "globals").first() {
-        operations.push(commit("network", &g.name(), globals));
-    } else {
-        let mut op = commit_new("network", "globals", globals);
-        op.section = "globals".into();
-        operations.push(op);
+    // Only what differs from what the router has is staged. An option written
+    // with the value it already holds still counts as a change waiting to be
+    // applied — it would be counted on the chip and marked on the page as one
+    // — and a section with nothing to write is not touched at all.
+    let flag = |on: bool| json!(if on { "1" } else { "0" });
+    let mut operations = Vec::new();
+    let mut system_values = serde_json::Map::new();
+    if values.hostname != before.hostname {
+        system_values.insert("hostname".into(), json!(values.hostname));
     }
-    let ntp = json!({"enabled":if values.ntp_enabled{"1"}else{"0"},"server":if values.servers.is_empty(){serde_json::Value::Null}else{json!(values.servers)},"enable_server":if values.serve{"1"}else{"0"}});
-    operations.push(if values.ntp_section.is_empty() {
-        commit_new("system", "timeserver", ntp)
-    } else {
-        commit("system", &values.ntp_section, ntp)
-    });
-    page(values, &errors)
+    if values.zonename != before.zonename {
+        system_values.insert("zonename".into(), json!(values.zonename));
+        system_values.insert("timezone".into(), json!(values.timezone));
+    }
+    if !system_values.is_empty() {
+        operations.push(commit("system", &system.name(), system_values.into()));
+    }
+    let mut globals = serde_json::Map::new();
+    if values.ula != before.ula {
+        let ula = match values.ula.is_empty() {
+            true => serde_json::Value::Null,
+            false => json!(values.ula),
+        };
+        globals.insert("ula_prefix".into(), ula);
+    }
+    if values.steering != before.steering {
+        globals.insert("packet_steering".into(), flag(values.steering));
+    }
+    if !globals.is_empty() {
+        if let Some(g) = r.snapshot.sections_of_type("network", "globals").first() {
+            operations.push(commit("network", &g.name(), globals.into()));
+        } else {
+            let mut op = commit_new("network", "globals", globals.into());
+            op.section = "globals".into();
+            operations.push(op);
+        }
+    }
+    let mut ntp = serde_json::Map::new();
+    if values.ntp_enabled != before.ntp_enabled {
+        ntp.insert("enabled".into(), flag(values.ntp_enabled));
+    }
+    if values.servers != before.servers {
+        let servers = match values.servers.is_empty() {
+            true => serde_json::Value::Null,
+            false => json!(values.servers),
+        };
+        ntp.insert("server".into(), servers);
+    }
+    if values.serve != before.serve {
+        ntp.insert("enable_server".into(), flag(values.serve));
+    }
+    if !ntp.is_empty() {
+        operations.push(if values.ntp_section.is_empty() {
+            commit_new("system", "timeserver", ntp.into())
+        } else {
+            commit("system", &values.ntp_section, ntp.into())
+        });
+    }
+    let result = page(values, &errors);
+    if operations.is_empty() {
+        return result;
+    }
+    result
         .with_commit(operations)
         .with_notice(Tone::Success, "General settings saved.")
 }

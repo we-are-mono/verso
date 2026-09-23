@@ -314,9 +314,66 @@ pub fn post(r: &Request, f: &Form) -> Envelope {
     if !e.is_empty() {
         return page(r, Some(f), &e);
     }
+    let values = differing(section, &values);
+    if values.is_empty() {
+        return page(r, Some(f), &e);
+    }
     page(r, Some(f), &e)
-        .with_commit(vec![commit(config, &section.name(), values)])
+        .with_commit(vec![commit(config, &section.name(), values.into())])
         .with_notice(Tone::Success, "Access settings saved.")
+}
+
+// What the page shows for an option the router leaves unset, the same
+// defaults it draws with (`value` above).
+const DEFAULTS: &[(&str, &str)] = &[
+    ("Port", "22"),
+    ("PasswordAuth", "on"),
+    ("RootPasswordAuth", "on"),
+    ("redirect_https", "0"),
+    ("rfc1918_filter", "0"),
+];
+
+// differing keeps what a save changes against what the page showed. An option
+// written with the value it already holds still counts as a change waiting to
+// be applied — counted on the chip and marked on the page as one — so only
+// what differs is staged.
+fn differing(
+    section: &Section<'_>,
+    values: &serde_json::Value,
+) -> serde_json::Map<String, serde_json::Value> {
+    let Some(values) = values.as_object() else {
+        return serde_json::Map::new();
+    };
+    values
+        .iter()
+        .filter(|(key, value)| {
+            let scalar = section.scalar(key);
+            let list = section.list(key);
+            match value {
+                serde_json::Value::Null => !scalar.is_empty() || !list.is_empty(),
+                serde_json::Value::Array(items) => {
+                    let items: Vec<String> = items
+                        .iter()
+                        .map(|v| v.as_str().unwrap_or_default().to_string())
+                        .collect();
+                    items != list
+                }
+                serde_json::Value::String(wanted) => {
+                    let shown = match scalar.is_empty() {
+                        true => DEFAULTS
+                            .iter()
+                            .find(|(k, _)| k == key)
+                            .map(|(_, v)| v.to_string())
+                            .unwrap_or_default(),
+                        false => scalar,
+                    };
+                    *wanted != shown
+                }
+                _ => true,
+            }
+        })
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect()
 }
 
 // A single port keeps the reference's compact control while retaining every

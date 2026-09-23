@@ -182,7 +182,8 @@ fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
     ]
 }
 // certificate is the certificate and the acts that replace or fetch it, held
-// as one group so its acts read as the card's, not the section's.
+// as one group so its acts read as the card's, not the section's — a part of
+// the web section under a subheading of its own, as the keys are of SSH.
 pub fn certificate(r: &Request) -> Widget {
     let mut children = vec![];
     if let Some(cert) = r
@@ -228,7 +229,7 @@ pub fn certificate(r: &Request) -> Widget {
         *inline = true;
     }
     children.push(actions);
-    Widget::stack(children)
+    Widget::section("Certificates", "", vec![Widget::stack(children)])
 }
 fn textarea(name: &str, label: &str, value: &str) -> Widget {
     let mut field = Widget::field(name, label, value, "", "");

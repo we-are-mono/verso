@@ -22,6 +22,65 @@ fn general_saves_one_complete_validated_form() {
     assert_eq!(j["commit"][2]["values"]["enable_server"], "1");
     assert!(e.commands.is_empty());
 }
+// The page as drawn, posted back: what the router already has.
+const GENERAL_AS_IS: &str = "hostname=router&ula_prefix=fd42%3A1%3A1%3A%3A%2F48&packet_steering=1&zonename=UTC&ntp_enabled=1&server=time.example.org";
+#[test]
+fn general_stages_only_what_differs() {
+    // Nothing changed: nothing to stage.
+    let e = post(&request(), &Form::parse(GENERAL_AS_IS));
+    assert!(e.commit.is_empty(), "{:?}", e.commit);
+    // One switch flipped: that option, and only it, in its own section.
+    let e = post(
+        &request(),
+        &Form::parse(&GENERAL_AS_IS.replace("&packet_steering=1", "")),
+    );
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(e.commit.len(), 1, "{:?}", e.commit);
+    assert_eq!(j["commit"][0]["config"], "network");
+    assert_eq!(j["commit"][0]["values"], json!({"packet_steering": "0"}));
+    // A time server added: the list, and nothing else about time.
+    let e = post(
+        &request(),
+        &Form::parse(&format!("{GENERAL_AS_IS}&server=pool.example.org")),
+    );
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(e.commit.len(), 1, "{:?}", e.commit);
+    assert_eq!(
+        j["commit"][0]["values"],
+        json!({"server": ["time.example.org", "pool.example.org"]})
+    );
+}
+#[test]
+fn access_stages_only_what_differs() {
+    let staged = |body: &str| {
+        let e = post(&access_request(), &Form::parse(body));
+        serde_json::to_value(&e).unwrap()["commit"].clone()
+    };
+    // Either form posted back as drawn: nothing to stage, the defaults of
+    // options the router leaves unset included.
+    let ssh =
+        "_access_config=ssh&section=ssh&Port=22&Interface=lan&PasswordAuth=1&RootPasswordAuth=1";
+    let web = "_access_config=web&section=main&listen_http_port=80&listen_https_port=443";
+    assert!(
+        staged(ssh).as_array().is_none_or(Vec::is_empty),
+        "{}",
+        staged(ssh)
+    );
+    assert!(
+        staged(web).as_array().is_none_or(Vec::is_empty),
+        "{}",
+        staged(web)
+    );
+    // One switch flipped: that option alone.
+    assert_eq!(
+        staged(&ssh.replace("&PasswordAuth=1", ""))[0]["values"],
+        json!({"PasswordAuth": "off"})
+    );
+    assert_eq!(
+        staged(&format!("{web}&redirect_https=1"))[0]["values"],
+        json!({"redirect_https": "1"})
+    );
+}
 #[test]
 fn general_refuses_bad_hostname_ula_timezone_and_servers() {
     for body in [
@@ -41,12 +100,16 @@ fn general_refuses_bad_hostname_ula_timezone_and_servers() {
 fn ntp_target_is_read_from_snapshot() {
     let e = post(
         &request(),
-        &Form::parse(
-            "hostname=router&zonename=UTC&ntp_enabled=1&server=time.example.org&ntp_section=sys",
-        ),
+        &Form::parse(&format!("{GENERAL_AS_IS}&enable_server=1&ntp_section=sys")),
     );
     let j = serde_json::to_value(e).unwrap();
-    assert_eq!(j["commit"][2]["section"], "ntp");
+    let ntp = j["commit"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|op| op["values"].get("enable_server").is_some())
+        .expect("the timeserver change is staged");
+    assert_eq!(ntp["section"], "ntp");
 }
 #[test]
 fn computer_time_is_an_immediate_command() {
@@ -207,6 +270,11 @@ fn self_signed() -> serde_json::Value {
         "until":"2027-10-02","fingerprint":"9D 4C 7A","self_signed":"1",
         "days_total":"397","days_left":"376"})
 }
+fn access_request() -> Request {
+    let mut r = request();
+    r.path = "/access".into();
+    r
+}
 fn access_page(keys: serde_json::Value) -> String {
     access_with(keys, self_signed())
 }
@@ -278,7 +346,11 @@ fn sections_commit_their_settings_before_what_they_hold() {
         (Some("section"), Some("Authorized keys"))
     );
     assert_eq!(web[0]["type"], "form", "{web}");
-    let held = &web[1];
+    assert_eq!(
+        (web[1]["type"].as_str(), web[1]["title"].as_str()),
+        (Some("section"), Some("Certificates"))
+    );
+    let held = &web[1]["children"][0];
     assert_eq!(
         held["type"], "stack",
         "the certificate and its acts are one group: {web}"
@@ -448,6 +520,30 @@ fn access_forms_wait_for_a_change_before_saving() {
     let page = access_page(json!([]));
     assert_eq!(page.matches("\"style\":\"settings\"").count(), 2, "{page}");
     assert!(!page.contains("\"style\":\"page\""));
+}
+#[test]
+fn the_certificate_is_a_part_of_the_web_section_named_certificates() {
+    // Like the keys under SSH, the certificate is a part of its section with
+    // a subheading of its own over the card and its acts.
+    let page: serde_json::Value = serde_json::from_str(&access_page(json!([]))).unwrap();
+    fn find(v: &serde_json::Value) -> Option<&serde_json::Value> {
+        if v.get("type").and_then(|t| t.as_str()) == Some("section")
+            && v.get("title").and_then(|t| t.as_str()) == Some("Certificates")
+        {
+            return Some(v);
+        }
+        match v {
+            serde_json::Value::Array(a) => a.iter().find_map(find),
+            serde_json::Value::Object(o) => o.values().find_map(find),
+            _ => None,
+        }
+    }
+    let part = find(&page).expect("a Certificates part on Access");
+    let text = part.to_string();
+    assert!(
+        text.contains("HTTPS certificate") && text.contains("Install a certificate"),
+        "{text}"
+    );
 }
 #[test]
 fn access_certificate_acts_lead_somewhere_and_spend_no_denim() {
