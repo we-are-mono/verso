@@ -6,11 +6,16 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -94,6 +99,45 @@ func TestAuthorizedKeyCommandsValidateAndCompareCurrentContents(t *testing.T) {
 		t.Fatalf("wrong removal: %q", b.written)
 	}
 }
+
+// TestCertificateFactsReadAsTheBrowserDoes: the fingerprint is written the
+// way a browser's certificate viewer writes it — SHA-256 of the DER, upper-case
+// hex in space-separated pairs — so it can be matched against the browser's
+// "not secure" page by eye; and the certificate's life is counted in whole days
+// against the clock it is read by.
+func TestCertificateFactsReadAsTheBrowserDoes(t *testing.T) {
+	pemCert, _, err := generateWebCertificate("router.lan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := pem.Decode([]byte(pemCert))
+	c, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(c.Raw)
+	pairs := make([]string, len(sum))
+	for i, b := range sum {
+		pairs[i] = fmt.Sprintf("%02X", b)
+	}
+	total := int(c.NotAfter.Sub(c.NotBefore) / (24 * time.Hour))
+
+	facts := certificateFacts(c, c.NotAfter.Add(-(10*24*time.Hour + time.Hour)))
+	if facts["fingerprint"] != strings.Join(pairs, " ") {
+		t.Errorf("fingerprint = %q, want the browser's notation", facts["fingerprint"])
+	}
+	if facts["days_left"] != "10" || facts["days_total"] != strconv.Itoa(total) || facts["expired"] != "" {
+		t.Errorf("life = %s of %s (expired %q), want 10 of %d", facts["days_left"], facts["days_total"], facts["expired"], total)
+	}
+	if facts["self_signed"] != "1" || facts["subject"] != "router.lan" {
+		t.Errorf("identity lost: %v", facts)
+	}
+	gone := certificateFacts(c, c.NotAfter.Add(time.Hour))
+	if gone["days_left"] != "0" || gone["expired"] != "1" {
+		t.Errorf("an expired certificate has no days left and says so: %v", gone)
+	}
+}
+
 func TestCertificateCommandsValidatePairAndExposeOnlyPublicMaterial(t *testing.T) {
 	cert, key, err := generateWebCertificate("router.lan")
 	if err != nil {

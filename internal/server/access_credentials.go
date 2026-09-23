@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -23,6 +22,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -57,22 +57,48 @@ func (s *Server) readAccessCredentials(ctx context.Context, sid string) (json.Ra
 		}
 		keys = append(keys, map[string]string{"comment": comment, "fingerprint": ssh.FingerprintSHA256(key)})
 	}
-	cert := map[string]string{"file": data.CertificateFile}
+	cert := map[string]string{}
 	if block, _ := pem.Decode([]byte(data.Certificate)); block != nil {
 		if c, err := x509.ParseCertificate(block.Bytes); err == nil {
-			sum := sha256.Sum256(c.Raw)
-			cert["subject"] = c.Subject.CommonName
-			cert["issuer"] = c.Issuer.CommonName
-			cert["from"] = c.NotBefore.Format("2006-01-02")
-			cert["until"] = c.NotAfter.Format("2006-01-02")
-			cert["fingerprint"] = "SHA256:" + base64.RawStdEncoding.EncodeToString(sum[:])
-			cert["serial"] = hex.EncodeToString(c.SerialNumber.Bytes())
-			if c.Issuer.String() == c.Subject.String() && c.CheckSignature(c.SignatureAlgorithm, c.RawTBSCertificate, c.Signature) == nil {
-				cert["self_signed"] = "1"
-			}
+			cert = certificateFacts(c, time.Now())
 		}
 	}
+	cert["file"] = data.CertificateFile
 	return json.Marshal(map[string]any{"keys": keys, "certificate": cert})
+}
+
+// certificateFacts is what the Access page says about the web certificate. The
+// fingerprint is written as a browser's certificate viewer writes it (SHA-256
+// of the DER, upper-case hex pairs), so the one a "not secure" page shows can
+// be matched against the router's by eye. Its life is counted in whole days
+// against now: days_left rounds down, so the page never promises a day the
+// certificate does not have.
+func certificateFacts(c *x509.Certificate, now time.Time) map[string]string {
+	sum := sha256.Sum256(c.Raw)
+	pairs := make([]string, len(sum))
+	for i, b := range sum {
+		pairs[i] = strings.ToUpper(hex.EncodeToString([]byte{b}))
+	}
+	day := 24 * time.Hour
+	facts := map[string]string{
+		"subject":     c.Subject.CommonName,
+		"issuer":      c.Issuer.CommonName,
+		"from":        c.NotBefore.Format("2006-01-02"),
+		"until":       c.NotAfter.Format("2006-01-02"),
+		"fingerprint": strings.Join(pairs, " "),
+		"serial":      hex.EncodeToString(c.SerialNumber.Bytes()),
+		"days_total":  strconv.Itoa(int(c.NotAfter.Sub(c.NotBefore) / day)),
+		"days_left":   "0",
+	}
+	if left := c.NotAfter.Sub(now); left > 0 {
+		facts["days_left"] = strconv.Itoa(int(left / day))
+	} else {
+		facts["expired"] = "1"
+	}
+	if c.Issuer.String() == c.Subject.String() && c.CheckSignature(c.SignatureAlgorithm, c.RawTBSCertificate, c.Signature) == nil {
+		facts["self_signed"] = "1"
+	}
+	return facts
 }
 func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid string, cmd plugin.ApplyAction) error {
 	function := "setAuthorizedKeys"

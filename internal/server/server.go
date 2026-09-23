@@ -757,6 +757,25 @@ func pageTone(tone string) string {
 	return ""
 }
 
+// documentTitle names the page for the tab, the history and a screen reader's
+// first words: the open part of the page first, then the page, then Verso.
+// Home's heading is a status sentence rather than a name, so home is titled
+// by what it is. A tab the heading already names ("Rules" under "Firewall
+// rules") is not said twice. heading and detail arrive already localized.
+func documentTitle(overview bool, heading, detail string, tr func(string) string) string {
+	if overview {
+		heading, detail = translatorOrIdentity(tr)("Overview"), ""
+	}
+	parts := make([]string, 0, 3)
+	if detail != "" && !strings.Contains(strings.ToLower(heading), strings.ToLower(detail)) {
+		parts = append(parts, detail)
+	}
+	if heading != "" {
+		parts = append(parts, heading)
+	}
+	return strings.Join(append(parts, "Verso"), " · ")
+}
+
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, body template.HTML) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
@@ -801,7 +820,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Overview:      r.URL.Path == "/",
 		UpdateNotice:  s.homeUpdateNotice(r, tr),
 		Lang:          langAttr(lang),
-		Title:         "Verso",
+		Title:         documentTitle(r.URL.Path == "/", tr(hdr.Heading), headingDetail, tr),
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
 		Kicker:        tr(hdr.Kicker),

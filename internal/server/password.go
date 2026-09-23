@@ -28,8 +28,10 @@ type credentialVerifier interface {
 // Verso and manages Verso's sessions. Both actions are immediate and never
 // create UCI stage entries; an unrelated existing global stage may still appear.
 
-func accessForm(hasPassword bool, fieldErrs map[string]string, formErr, success string) *widget.Form {
-	fields := make([]widget.Widget, 0, 3)
+func accessForm(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string) *widget.Form {
+	fields := make([]widget.Widget, 0, 4)
+	// The account the password belongs to, for the browser's password manager.
+	fields = append(fields, &widget.Field{Name: "username", Kind: "hidden", Value: username, Autocomplete: "username"})
 	if hasPassword {
 		fields = append(fields, &widget.Field{Name: "current_password", Label: "Current password", Kind: "password", Autocomplete: "current-password", Error: fieldErrs["current_password"]})
 	}
@@ -38,11 +40,11 @@ func accessForm(hasPassword bool, fieldErrs map[string]string, formErr, success 
 	if hasPassword {
 		label = "Change password"
 	}
-	return &widget.Form{Style: "page", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields, Note: "Takes effect immediately — other sessions stay signed in."}
+	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields, Note: "Takes effect immediately — other sessions stay signed in."}
 }
-func accessBody(hasPassword bool, _ string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
+func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
 	return &widget.Stack{Children: []widget.Widget{
-		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, fieldErrs, formErr, success)}},
+		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, username, fieldErrs, formErr, success)}},
 		&widget.Section{Title: "Signed in now", Hairline: true, Children: []widget.Widget{accessSessionsTable(sessions, tr)}},
 	}}
 }

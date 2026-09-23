@@ -40,6 +40,20 @@ func TestPasswordFormRenders(t *testing.T) {
 	}
 }
 
+// The password form holds Change password until something is typed, and names
+// the account it changes for the browser's password manager, which otherwise
+// cannot tell whose new password it is saving.
+func TestAccessPasswordFormWaitsAndNamesItsAccount(t *testing.T) {
+	body := get(t, passwordServer(t, fakeBackend{}), "/system/access").Body.String()
+	form := body[strings.Index(body, `action="/system/access"`):]
+	form = form[:strings.Index(form, "</form>")]
+	for _, want := range []string{"data-verso-dirty-form", `autocomplete="username"`} {
+		if !strings.Contains(form, want) {
+			t.Errorf("password form missing %q:\n%s", want, form)
+		}
+	}
+}
+
 func TestPasswordlessAccessOmitsCurrentPasswordAndShowsNoStagedChip(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{rootNoPassword: true}), "/system/access").Body.String()
 	for _, want := range []string{"No administrator password is set.", "Set password", "New password", "Repeat new password"} {
