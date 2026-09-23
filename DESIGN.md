@@ -356,7 +356,7 @@ The signature seam of every list and log page.
 - **Below it:** the table sits flush under the band with its 44px column-head row; a log sits flush on Paper.
 
 ### Tables
-- **Rows:** 44px, Paper, one Hairline between rows, no stripes. Rows are inert: only the identity cell opens the row's drawer.
+- **Rows:** 44px, Paper, one Hairline between rows, no stripes. Rows are inert: only the identity cell opens the row's drawer. A table closes on a Hairline under its last row, except when it ends its section: then it ends on its last row, and the section's rule (or the page's end) is the only line under it.
 - **Column heads:** a full 44px row, 12px/500 uppercase Meta with 0.08em tracking, over a Strong Hairline.
 - **Lanes:** a 44px text row on a Strong Hairline, label → destination with a faint arrow, a Meta tally, and a quiet "+ Add rule" at the right.
 - **Empty:** one row where the first row would be, two sentences at most, no illustration, no button.

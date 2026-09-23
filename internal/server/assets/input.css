@@ -734,6 +734,11 @@ html.verso-fonts-loading body {
      a utility and only this layer outranks it. */
   section[data-verso-headless] > .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { padding-top: 0; }
   section > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) { padding-bottom: 0; }
+  /* A table that ends its section ends on its last row, as a list does: the
+     section's rule (or the page's end) is the line under it, and the table's
+     own closing hairline would stand 24px above that rule as a second line
+     with nothing between. */
+  section > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
 
   /* A page's control band spans the page, from the rail to the window's edge,
      while its controls keep to the page's column, level with the heading. The
