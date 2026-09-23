@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+use crate::sshkey;
 use std::collections::BTreeMap;
-use verso_plugin::{ApplyAction, Envelope, Form, Property, Request, Tone, Widget};
-// An artifact is a document the router holds — a key, a certificate — and
-// reads like one: named, with what it is for, then each fact's value beside
-// its label, read line by line.
+use verso_plugin::{
+    ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Form, Property,
+    RemoveConfirm, Request, Tone, Widget,
+};
+// An artifact is a document the router holds — a certificate — and reads like
+// one: named, with what it is for, then each fact's value beside its label,
+// read line by line.
 fn artifact(title: &str, purpose: &str, items: Vec<Property>) -> Widget {
     let mut facts = Widget::properties(items);
     if let Widget::Properties { align, .. } = &mut facts {
@@ -32,45 +36,95 @@ fn property(label: &str, value: &str, copy: bool) -> Property {
 fn value<'a>(r: &'a serde_json::Value, key: &str) -> &'a str {
     r.get(key).and_then(serde_json::Value::as_str).unwrap_or("")
 }
-pub fn keys(r: &Request) -> Widget {
-    let mut children = vec![];
-    if let Some(keys) = r
+/// The field a pasted key arrives in, and the pair a key's removal posts.
+pub const ADD_KEY: &str = "authorized_key";
+pub const REMOVE_KEY: &str = "_key_remove";
+
+// key_item is one authorized key: what its owner called it over the
+// fingerprint someone checks it by, and its removal, asked in place. A key
+// nobody named is known by its fingerprint alone.
+fn key_item(key: &serde_json::Value) -> CollectionItem {
+    let fingerprint = value(key, "fingerprint");
+    let (title, detail) = match value(key, "comment") {
+        "" => (fingerprint, ""),
+        comment => (comment, fingerprint),
+    };
+    CollectionItem {
+        title: title.into(),
+        detail: detail.into(),
+        remove: Some(CollectionRemove {
+            name: REMOVE_KEY.into(),
+            value: fingerprint.into(),
+            confirm: RemoveConfirm {
+                trigger: "Remove".into(),
+                icon: "trash-2".into(),
+                title: "Remove this key?".into(),
+                message:
+                    "Whoever holds it can no longer sign in over SSH. This takes effect at once."
+                        .into(),
+                confirm: "Remove key".into(),
+                cancel: "Not now".into(),
+            },
+        }),
+    }
+}
+// keys is the set of authorized keys, kept where they are listed: each removed
+// from its own line after asking, the next pasted into the slot at the foot,
+// which reads the key as `ssh-keygen -l` would while it is typed — the line to
+// hold against the same one on the machine the key came from. A refused paste
+// comes back as typed with its reason.
+pub fn keys(r: &Request, posted: Option<&Form>, refused: &str) -> Widget {
+    let set = match r
         .ubus
         .get("accessCredentials")
         .and_then(|v| v.get("keys"))
         .and_then(serde_json::Value::as_array)
     {
-        if keys.is_empty() {
-            children.push(Widget::text("No keys are authorized."));
+        Some(keys) => {
+            let typed = posted.map(|f| f.get(ADD_KEY)).unwrap_or_default();
+            let reading = sshkey::read(&typed)
+                .map(|k| k.summary())
+                .unwrap_or_default();
+            Widget::Collection {
+                items: keys.iter().map(key_item).collect(),
+                empty: "No keys are authorized.".into(),
+                add: Some(CollectionAdd {
+                    label: "Add a key".into(),
+                    name: ADD_KEY.into(),
+                    value: if refused.is_empty() {
+                        String::new()
+                    } else {
+                        typed
+                    },
+                    placeholder: "ssh-ed25519 AAAA… you@laptop".into(),
+                    submit: "Add key".into(),
+                    error: refused.into(),
+                    open: false,
+                    // a reading to hold against another by eye, not to paste:
+                    // no copy control over the end of its line
+                    preview: Some(Box::new(Widget::Code {
+                        label: String::new(),
+                        value: reading,
+                        copy: false,
+                        live: true,
+                    })),
+                }),
+            }
         }
-        for key in keys {
-            let fingerprint = value(key, "fingerprint");
-            children.push(artifact(
-                "",
-                "",
-                vec![
-                    property("Comment", value(key, "comment"), false),
-                    property("Fingerprint", fingerprint, true),
-                ],
-            ));
-            children.push(Widget::link(
-                "Remove",
-                &format!(
-                    "/plugins/system/access/key/remove?fingerprint={}",
-                    fingerprint.replace('+', "%2B").replace('/', "%2F")
-                ),
-                "secondary",
-            ));
-        }
-    } else {
-        children.push(Widget::text("Authorized keys could not be read."));
-    }
-    children.push(Widget::link(
-        "Add a key",
-        "/plugins/system/access/key/new",
-        "secondary",
-    ));
-    Widget::section("Authorized keys", "", children)
+        None => Widget::text("Authorized keys could not be read."),
+    };
+    Widget::section("Authorized keys", "", vec![set])
+}
+// key_command answers a key's addition or removal: the command the shell runs
+// (it parses the key again before writing), with what happened, on the page
+// the change was made from.
+pub fn key_command(page: Envelope, name: &str, arg: &str, value: String, done: &str) -> Envelope {
+    let mut e = page.with_notice(Tone::Success, done);
+    e.commands = vec![ApplyAction {
+        name: name.into(),
+        args: BTreeMap::from([(arg.into(), value)]),
+    }];
+    e
 }
 // certificate_facts answers what someone at a browser's "not secure" page
 // wants to know: is this my router's certificate (the fingerprint, written as
@@ -127,7 +181,9 @@ fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
         property("File", value(cert, "file"), false),
     ]
 }
-pub fn certificate(r: &Request) -> Vec<Widget> {
+// certificate is the certificate and the acts that replace or fetch it, held
+// as one group so its acts read as the card's, not the section's.
+pub fn certificate(r: &Request) -> Widget {
     let mut children = vec![];
     if let Some(cert) = r
         .ubus
@@ -146,28 +202,33 @@ pub fn certificate(r: &Request) -> Vec<Widget> {
     }
     // The router cannot obtain a trusted certificate itself; one issued
     // elsewhere is installed like any other, so there is one way in.
-    let mut download = Widget::link("Download", "/system/access/certificate", "secondary");
-    if let Widget::Link { icon, .. } = &mut download {
-        *icon = "download".into();
-    }
+    // Its acts are acts on a part of the section, in the dress the key set's
+    // add wears, each led by the glyph of what it does.
+    let act = |label: &str, href: &str, glyph: &str| {
+        let mut link = Widget::link(label, href, "act");
+        if let Widget::Link { icon, .. } = &mut link {
+            *icon = glyph.into();
+        }
+        link
+    };
     let mut actions = Widget::stack(vec![
-        Widget::link(
+        act(
             "Install a certificate",
             "/plugins/system/access/certificate/install",
-            "secondary",
+            "upload",
         ),
-        Widget::link(
+        act(
             "Make a new one",
             "/plugins/system/access/certificate/new",
-            "secondary",
+            "refresh-cw",
         ),
-        download,
+        act("Download", "/system/access/certificate", "download"),
     ]);
     if let Widget::Stack { inline, .. } = &mut actions {
         *inline = true;
     }
     children.push(actions);
-    children
+    Widget::stack(children)
 }
 fn textarea(name: &str, label: &str, value: &str) -> Widget {
     let mut field = Widget::field(name, label, value, "", "");
@@ -184,38 +245,6 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
     let mut command = None;
     let title;
     match path {
-        "/access/key/new" => {
-            title = "Add a key";
-            let key = form.map(|f| f.get("key")).unwrap_or_default();
-            fields.push(textarea("key", "Public key", &key));
-            if form.is_some() {
-                if key.lines().count() != 1
-                    || !(key.starts_with("ssh-") || key.starts_with("ecdsa-"))
-                    || key.split_whitespace().count() < 2
-                {
-                    error = "Paste one complete SSH public key.".into();
-                } else {
-                    command = Some(ApplyAction {
-                        name: "ssh-key-add".into(),
-                        args: BTreeMap::from([("key".into(), key)]),
-                    });
-                }
-            }
-        }
-        "/access/key/remove" => {
-            title = "Remove key";
-            let fingerprint = r.query.get("fingerprint");
-            fields.push(Widget::code("Fingerprint", &fingerprint));
-            fields.push(Widget::text(
-                "This key will no longer be able to sign in over SSH.",
-            ));
-            if form.is_some() {
-                command = Some(ApplyAction {
-                    name: "ssh-key-remove".into(),
-                    args: BTreeMap::from([("fingerprint".into(), fingerprint)]),
-                });
-            }
-        }
         "/access/certificate/new" => {
             title = "Make a new certificate";
             let hostname = form
@@ -275,12 +304,7 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
         title,
         Widget::Form {
             style: "page".into(),
-            submit: if path.ends_with("remove") {
-                "Remove"
-            } else {
-                "Save"
-            }
-            .into(),
+            submit: "Save".into(),
             error,
             note: String::new(),
             fields,

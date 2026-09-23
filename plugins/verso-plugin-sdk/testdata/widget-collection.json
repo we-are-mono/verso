@@ -1,0 +1,32 @@
+{
+  "type": "collection",
+  "items": [
+    {
+      "title": "me@laptop",
+      "detail": "SHA256:UPedI7axeQlxL8dlMkeSROduLmrflVzNxJkm5UNiHxw",
+      "remove": {
+        "name": "_key_remove",
+        "value": "SHA256:UPedI7axeQlxL8dlMkeSROduLmrflVzNxJkm5UNiHxw",
+        "confirm": {
+          "trigger": "Remove",
+          "icon": "trash-2",
+          "title": "Remove this key?",
+          "message": "It can no longer sign in over SSH."
+        }
+      }
+    }
+  ],
+  "empty": "No keys are authorized.",
+  "add": {
+    "label": "Add a key",
+    "name": "authorized_key",
+    "submit": "Add key",
+    "preview": {
+      "type": "code",
+      "label": "Reads as",
+      "value": "",
+      "copy": true,
+      "live": true
+    }
+  }
+}

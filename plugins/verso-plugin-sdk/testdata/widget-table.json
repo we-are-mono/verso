@@ -4,7 +4,6 @@
   "title": "Zones",
   "detail": "4 zones · 2 forwardings",
   "dense": true,
-  "align": "top",
   "reorder_config": "firewall",
   "reorder_label": "Rule order",
   "columns": [

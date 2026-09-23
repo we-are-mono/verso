@@ -720,9 +720,8 @@ mod tests {
     fn the_page_carries_the_shared_firewall_frame() {
         let body = body();
         assert_eq!(body["title"], HEADING);
-        // The title stands alone, with the same content gap as the listings.
+        // The title stands alone; the shell rules it off as it does every page's.
         assert!(body.get("subheading").is_none());
-        assert!(body.get("ruled").is_none());
         // Settings is a page of this plugin like the listings, and the bar says
         // so on every one of them.
         assert_eq!(body["pages"][3]["label"], "Settings");

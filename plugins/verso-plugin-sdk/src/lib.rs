@@ -882,8 +882,6 @@ pub enum Widget {
         #[serde(skip_serializing_if = "is_false")]
         dense: bool,
         #[serde(skip_serializing_if = "String::is_empty")]
-        align: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
         reorder_config: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         reorder_label: String,
@@ -1025,6 +1023,18 @@ pub enum Widget {
         confirm: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         cancel: String,
+    },
+    /// A short set of kept machine strings — authorized keys, a tunnel's
+    /// peers — each its identity over a line of detail, removed in place after
+    /// asking, the next added from a slot at the foot that unfolds where it
+    /// stands. No rules: the set stands on space. See [`CollectionItem`] and
+    /// [`CollectionAdd`].
+    Collection {
+        items: Vec<CollectionItem>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        empty: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        add: Option<CollectionAdd>,
     },
     /// The governed bridge: display-only Markdown **prose** no widget shapes
     /// (ADR-005 §4). Metered — its usage is the demand signal for the next
@@ -1550,7 +1560,8 @@ impl Widget {
     }
 
     /// button is a direct action. Style is the semantic emphasis — "primary",
-    /// "secondary", "danger" — never a colour. A button built here carries no
+    /// "secondary", "danger", or "act" for an act on a part of a section (the
+    /// subsection act's dress, as a link's "act") — never a colour. A button built here carries no
     /// `name`, so it submits nothing: it is the control a shell behaviour
     /// drives (a live listing's pause), or a visual reference. Give it a name
     /// through the variant's own fields to make it submit.
@@ -1670,6 +1681,62 @@ pub struct Property {
     /// [`Property::spanning`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub span: Option<PropertySpan>,
+}
+
+/// CollectionItem is one kept thing in a [`Widget::Collection`]: its identity
+/// (a machine string, never translated), a line of detail, and its removal.
+#[derive(Serialize, Debug, Default)]
+pub struct CollectionItem {
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remove: Option<CollectionRemove>,
+}
+
+/// CollectionRemove is an item's removal: the pair it posts, asked first.
+#[derive(Serialize, Debug, Default)]
+pub struct CollectionRemove {
+    pub name: String,
+    pub value: String,
+    pub confirm: RemoveConfirm,
+}
+
+/// RemoveConfirm is the question a removal asks in place: the trigger is the
+/// act's short word (drawn as `icon`, the item's first-line act), the title
+/// the question, the message what removing costs.
+#[derive(Serialize, Debug, Default)]
+pub struct RemoveConfirm {
+    pub trigger: String,
+    pub icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub title: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub confirm: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub cancel: String,
+}
+
+/// CollectionAdd is the slot a [`Widget::Collection`]'s next item is added
+/// from: the act's name at rest; open, the box `name` posts, a live
+/// [`Widget::preview`] of what was typed, and `submit`. A refused paste is
+/// answered with `value` kept and `error` set; the slot comes back open.
+#[derive(Serialize, Debug, Default)]
+pub struct CollectionAdd {
+    pub label: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub value: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub placeholder: String,
+    pub submit: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub error: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub open: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<Box<Widget>>,
 }
 
 /// PropertySpan is a stretch between two ends — a certificate's validity, a
@@ -2321,12 +2388,6 @@ pub struct Envelope {
     /// tint; the shell ignores anything outside the vocabulary.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tone: String,
-    /// The masthead ends in a hairline: the title and lede are the first of
-    /// the page's subjects, ruled off from the next the way ruled sections are
-    /// from each other. For a page built of ruled sections — a settings page —
-    /// not for a listing, whose toolbar follows the heading with no rule.
-    #[serde(skip_serializing_if = "is_false")]
-    pub ruled: bool,
     pub widget: Widget,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub commit: Vec<CommitOp>,
@@ -2379,7 +2440,6 @@ impl Envelope {
             state: String::new(),
             immediate: false,
             tone: String::new(),
-            ruled: false,
             widget,
             commit: Vec::new(),
             apply: Vec::new(),
@@ -2398,13 +2458,6 @@ impl Envelope {
     /// heading by the closed tone vocabulary and drops the navigation suffix.
     pub fn with_tone(mut self, tone: &str) -> Envelope {
         self.tone = tone.into();
-        self
-    }
-
-    /// ruled ends the masthead in a hairline, the rule the page's first section
-    /// is set off by.
-    pub fn ruled(mut self) -> Envelope {
-        self.ruled = true;
         self
     }
 

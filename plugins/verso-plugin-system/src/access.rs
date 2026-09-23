@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+use super::credentials::{key_command, ADD_KEY, REMOVE_KEY};
+use super::sshkey;
 use std::collections::BTreeMap;
 use verso_plugin::{commit, json, Envelope, Form, Request, Section, SelectOption, Tone, Widget};
 type Errors = BTreeMap<String, String>;
@@ -58,7 +60,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 .filter(|n| n.name() != "loopback")
                 .map(|n| SelectOption::new(&n.name(), &n.name())),
         );
-        let mut fields = vec![
+        let fields = vec![
             Widget::select(
                 "Interface",
                 "Listen on",
@@ -81,11 +83,17 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 value(s, f, "RootPasswordAuth", "on") == if f.is_some() { "1" } else { "on" },
             ),
         ];
+        // A section commits its settings first, then holds what it keeps:
+        // keys change at once and are no part of what its Save stages.
+        let mut children = vec![form("ssh", &s.name(), fields, e)];
         if index == 0 {
-            fields.push(super::credentials::keys(r));
+            children.push(super::credentials::keys(
+                r,
+                posted,
+                errors.get(ADD_KEY).map(String::as_str).unwrap_or(""),
+            ));
         }
-        let mut section =
-            Widget::section("SSH", "", vec![form("ssh", &s.name(), fields, e)]).ruled();
+        let mut section = Widget::section("SSH", "", children).ruled();
         if ssh.len() > 1 {
             if let Widget::Section { meta, .. } = &mut section {
                 *meta = s.name();
@@ -154,12 +162,10 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 fields.push(list);
             }
         }
-        let mut children = if index == 0 {
-            super::credentials::certificate(r)
-        } else {
-            vec![]
-        };
-        children.push(form("web", &s.name(), fields, e));
+        let mut children = vec![form("web", &s.name(), fields, e)];
+        if index == 0 {
+            children.push(super::credentials::certificate(r));
+        }
         let mut section = Widget::section(
             "Web interface",
             "These settings control the router's uhttpd web server.",
@@ -202,6 +208,31 @@ fn listener(v: &str) -> bool {
 pub fn post(r: &Request, f: &Form) -> Envelope {
     if r.path != "/access" && r.path != "/access/" {
         return super::credentials::route(r, Some(f));
+    }
+    // Keys are kept where they are listed: a removal posts the key's own
+    // fingerprint, a paste the key. Both are commands, run at once.
+    let removed = f.get(REMOVE_KEY);
+    if !removed.is_empty() {
+        return key_command(
+            page(r, None, &Errors::new()),
+            "ssh-key-remove",
+            "fingerprint",
+            removed,
+            "Key removed.",
+        );
+    }
+    if !f.all(ADD_KEY).is_empty() {
+        let pasted = f.get(ADD_KEY);
+        return match sshkey::read(&pasted) {
+            Ok(_) => key_command(
+                page(r, Some(f), &Errors::new()),
+                "ssh-key-add",
+                "key",
+                pasted.trim().to_string(),
+                "Key added.",
+            ),
+            Err(reason) => page(r, Some(f), &Errors::from([(ADD_KEY.into(), reason.into())])),
+        };
     }
 
     let kind = f.get("_access_config");

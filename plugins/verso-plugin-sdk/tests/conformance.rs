@@ -10,9 +10,10 @@
 use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
-    ActionTab, ColumnWidth, ConditionItem, Property, RowDrawer, SelectOption, SettingsItem,
-    SettingsPill, SettingsSeam, SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint,
-    TableGroup, TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
+    ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth, ConditionItem,
+    Property, RemoveConfirm, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam,
+    SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow,
+    TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
@@ -312,6 +313,34 @@ fn write_widget_fixtures() {
             },
         ),
         (
+            "collection",
+            Widget::Collection {
+                items: vec![CollectionItem {
+                    title: "me@laptop".into(),
+                    detail: "SHA256:UPedI7axeQlxL8dlMkeSROduLmrflVzNxJkm5UNiHxw".into(),
+                    remove: Some(CollectionRemove {
+                        name: "_key_remove".into(),
+                        value: "SHA256:UPedI7axeQlxL8dlMkeSROduLmrflVzNxJkm5UNiHxw".into(),
+                        confirm: RemoveConfirm {
+                            trigger: "Remove".into(),
+                            icon: "trash-2".into(),
+                            title: "Remove this key?".into(),
+                            message: "It can no longer sign in over SSH.".into(),
+                            ..RemoveConfirm::default()
+                        },
+                    }),
+                }],
+                empty: "No keys are authorized.".into(),
+                add: Some(CollectionAdd {
+                    label: "Add a key".into(),
+                    name: "authorized_key".into(),
+                    submit: "Add key".into(),
+                    preview: Some(Box::new(Widget::preview("Reads as", ""))),
+                    ..CollectionAdd::default()
+                }),
+            },
+        ),
+        (
             "raw",
             Widget::raw(
                 "WireGuard keeps a silent tunnel silent — an idle peer can be perfectly healthy.",
@@ -459,7 +488,6 @@ fn listing() -> Widget {
         title: "Zones".into(),
         detail: "4 zones · 2 forwardings".into(),
         dense: true,
-        align: "top".into(),
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
         columns: vec![
@@ -703,7 +731,6 @@ fn live_listing() -> Widget {
         title: String::new(),
         detail: String::new(),
         dense: true,
-        align: String::new(),
         reorder_config: String::new(),
         reorder_label: String::new(),
         columns: vec![

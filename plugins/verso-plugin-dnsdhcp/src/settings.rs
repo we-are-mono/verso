@@ -443,7 +443,6 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         },
     )
     .with_width("wide")
-    .ruled()
 }
 fn unique(f: &Form, key: &str) -> Vec<String> {
     let mut seen = BTreeSet::new();

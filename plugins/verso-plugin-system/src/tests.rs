@@ -61,6 +61,16 @@ fn computer_time_is_an_immediate_command() {
     assert_eq!(e.commands[0].args["timezone"], "UTC");
 }
 #[test]
+fn computer_time_is_an_act_on_the_clock_dressed_as_the_certificates() {
+    let text = serde_json::to_string(&page(Facts::default(), &BTreeMap::new())).unwrap();
+    assert!(
+        text.contains(
+            "\"type\":\"button\",\"label\":\"Use my computer's time\",\"icon\":\"clock\",\"style\":\"act\""
+        ),
+        "{text}"
+    );
+}
+#[test]
 fn general_never_invents_time_servers() {
     let e = page(Facts::default(), &BTreeMap::new());
     let text = serde_json::to_string(&e).unwrap();
@@ -222,6 +232,35 @@ fn certificate_reads_as_a_document_the_browser_can_be_checked_against() {
     assert!(!text.contains("Valid until"));
 }
 #[test]
+fn sections_commit_their_settings_before_what_they_hold() {
+    let page: serde_json::Value = serde_json::from_str(&access_page(json!([]))).unwrap();
+    let sections = page["widget"]["children"].as_array().unwrap();
+    let (ssh, web) = (&sections[0]["children"], &sections[1]["children"]);
+    assert_eq!(ssh[0]["type"], "form", "{ssh}");
+    assert!(
+        !ssh[0].to_string().contains("Authorized keys"),
+        "keys are not a setting"
+    );
+    assert_eq!(
+        (ssh[1]["type"].as_str(), ssh[1]["title"].as_str()),
+        (Some("section"), Some("Authorized keys"))
+    );
+    assert_eq!(web[0]["type"], "form", "{web}");
+    let held = &web[1];
+    assert_eq!(
+        held["type"], "stack",
+        "the certificate and its acts are one group: {web}"
+    );
+    assert_eq!(held["children"][0]["style"], "artifact");
+    assert_eq!(held["children"][1]["inline"], true);
+    let keys = &ssh[1]["children"];
+    assert_eq!(
+        keys.as_array().unwrap().len(),
+        1,
+        "the keys and their act are one group: {keys}"
+    );
+}
+#[test]
 fn certificate_life_turns_as_it_runs_out() {
     for (left, tone, value) in [
         ("30", "warning", "30 d"),
@@ -271,9 +310,106 @@ fn access_spells_authorized_keys_one_way() {
 }
 #[test]
 fn access_says_when_no_key_is_authorized() {
-    assert!(access_page(json!([])).contains("No keys are authorized."));
-    let one = access_page(json!([{"comment":"me@laptop","fingerprint":"SHA256:k"}]));
-    assert!(!one.contains("No keys are authorized."));
+    let none = keys_listing(json!([]));
+    assert_eq!(none["empty"], "No keys are authorized.");
+    assert!(none["items"].as_array().unwrap().is_empty());
+}
+fn keys_listing(keys: serde_json::Value) -> serde_json::Value {
+    let page: serde_json::Value = serde_json::from_str(&access_page(keys)).unwrap();
+    keys_of(&page)
+}
+fn keys_of(page: &serde_json::Value) -> serde_json::Value {
+    page["widget"]["children"][0]["children"][1]["children"][0].clone()
+}
+const PASTED: &str =
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG8/UqksrqlP7SLQWgj8xqnjV3e6cdgzDyzcNwOcT5+K demo@laptop";
+fn post_access(body: &str) -> Envelope {
+    let mut r = request();
+    r.path = "/access".into();
+    r.ubus = Ubus::from_value(
+        json!({"accessCredentials":{"keys":[{"comment":"me@laptop","fingerprint":"SHA256:a+b/c"}],"certificate":self_signed()}}),
+    );
+    post(&r, &Form::parse(body))
+}
+#[test]
+fn keys_are_a_set_kept_in_place() {
+    let set = keys_listing(json!([
+        {"comment":"me@laptop","fingerprint":"SHA256:a+b/c"},
+        {"comment":"","fingerprint":"SHA256:e"}
+    ]));
+    assert_eq!(set["type"], "collection", "{set}");
+    let item = &set["items"][0];
+    assert_eq!(
+        (item["title"].as_str(), item["detail"].as_str()),
+        (Some("me@laptop"), Some("SHA256:a+b/c"))
+    );
+    // a key nobody named is known by its fingerprint alone
+    assert_eq!(set["items"][1]["title"], "SHA256:e");
+    assert!(set["items"][1].get("detail").is_none());
+    let remove = &item["remove"];
+    assert_eq!(
+        (remove["name"].as_str(), remove["value"].as_str()),
+        (Some("_key_remove"), Some("SHA256:a+b/c"))
+    );
+    assert_eq!(remove["confirm"]["icon"], "trash-2");
+    let add = &set["add"];
+    assert_eq!(
+        (add["name"].as_str(), add["submit"].as_str()),
+        (Some("authorized_key"), Some("Add key"))
+    );
+    assert_eq!(add["preview"]["live"], true);
+    assert_eq!(add["preview"]["value"], "", "nothing typed, nothing read");
+}
+#[test]
+fn a_key_is_removed_by_its_fingerprint() {
+    let e = post_access("_key_remove=SHA256%3Aa%2Bb%2Fc");
+    assert!(e.commit.is_empty());
+    assert_eq!(e.commands.len(), 1);
+    assert_eq!(e.commands[0].name, "ssh-key-remove");
+    assert_eq!(e.commands[0].args["fingerprint"], "SHA256:a+b/c");
+}
+#[test]
+fn a_pasted_key_is_read_as_it_is_typed_and_added_as_pasted() {
+    let body = format!(
+        "authorized_key={}",
+        PASTED
+            .replace('+', "%2B")
+            .replace('/', "%2F")
+            .replace(' ', "+")
+    );
+    let e = post_access(&body);
+    assert_eq!(e.commands.len(), 1, "{e:?}");
+    assert_eq!(e.commands[0].name, "ssh-key-add");
+    assert_eq!(e.commands[0].args["key"], PASTED);
+    let page = serde_json::to_value(&e).unwrap();
+    assert_eq!(
+        keys_of(&page)["add"]["preview"]["value"],
+        "256 SHA256:UPedI7axeQlxL8dlMkeSROduLmrflVzNxJkm5UNiHxw demo@laptop (ED25519)",
+        "the reading a pasted key gets while it is typed"
+    );
+}
+#[test]
+fn a_refused_paste_comes_back_kept_with_its_reason() {
+    for body in ["authorized_key=", "authorized_key=ssh-ed25519+nope"] {
+        let e = post_access(body);
+        assert!(e.commands.is_empty(), "{body}");
+        let add = &keys_of(&serde_json::to_value(&e).unwrap())["add"];
+        assert_eq!(add["error"], "Paste one complete SSH public key.", "{body}");
+    }
+    let add =
+        &keys_of(&serde_json::to_value(post_access("authorized_key=ssh-ed25519+nope")).unwrap())
+            ["add"];
+    assert_eq!(add["value"], "ssh-ed25519 nope");
+}
+#[test]
+fn the_key_pages_are_gone_now_keys_are_kept_in_place() {
+    let mut r = request();
+    for path in ["/access/key/new", "/access/key/remove"] {
+        r.path = path.into();
+        assert!(serde_json::to_string(&get(&r))
+            .unwrap()
+            .contains("This page does not exist."));
+    }
 }
 #[test]
 fn access_forms_wait_for_a_change_before_saving() {
@@ -287,6 +423,17 @@ fn access_certificate_acts_lead_somewhere_and_spend_no_denim() {
     assert!(page.contains("Install a certificate"), "{page}");
     assert!(!page.contains("certificate/trusted"));
     assert!(!page.contains("\"style\":\"button\""));
+    // the certificate's acts are acts on a part of the section, dressed as
+    // the key set's add is
+    assert_eq!(page.matches("\"style\":\"act\"").count(), 3, "{page}");
+    // and every one of them leads with the glyph of what it does
+    for icon in [
+        "\"icon\":\"upload\"",
+        "\"icon\":\"refresh-cw\"",
+        "\"icon\":\"download\"",
+    ] {
+        assert!(page.contains(icon), "{icon} in {page}");
+    }
     let mut r = request();
     r.path = "/access/certificate/install".into();
     let install = serde_json::to_string(&get(&r)).unwrap();

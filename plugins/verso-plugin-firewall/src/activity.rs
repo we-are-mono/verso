@@ -132,7 +132,6 @@ fn console() -> Widget {
         title: String::new(),
         detail: String::new(),
         dense: true,
-        align: String::new(),
         reorder_config: String::new(),
         reorder_label: String::new(),
         columns: columns(),

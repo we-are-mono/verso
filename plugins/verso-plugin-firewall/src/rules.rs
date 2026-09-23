@@ -327,7 +327,6 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
         title: String::new(),
         detail: String::new(),
         dense: true,
-        align: String::new(),
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
         columns: columns(),

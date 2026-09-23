@@ -35,7 +35,6 @@ pub fn page(policies: &[Policy], leases: &Leases) -> Envelope {
             title: String::new(),
             detail: String::new(),
             dense: false,
-            align: String::new(),
             reorder_config: String::new(),
             reorder_label: String::new(),
             columns: columns(),

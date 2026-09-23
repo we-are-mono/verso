@@ -10,6 +10,7 @@ use verso_plugin::{
 };
 mod access;
 mod credentials;
+mod sshkey;
 mod timezones;
 use timezones::ZONES;
 #[derive(Default)]
@@ -210,8 +211,14 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
             errors.insert("0".into(), error.clone());
         }
     }
-    let mut clock_button = Widget::button("Use my computer's time", "secondary");
-    if let Widget::Button { name, value, .. } = &mut clock_button {
+    // An act on the section's clock, dressed as every act on a part of a
+    // section is (the certificate's on Access).
+    let mut clock_button = Widget::button("Use my computer's time", "act");
+    if let Widget::Button {
+        icon, name, value, ..
+    } = &mut clock_button
+    {
+        *icon = "clock".into();
         *name = "_action".into();
         *value = "clock".into();
     }
@@ -292,7 +299,6 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
     Envelope::page("General", form)
         .with_width("form")
         .with_tone("neutral")
-        .ruled()
 }
 fn valid_ula(value: &str) -> bool {
     let Some((address, prefix)) = value.split_once('/') else {
