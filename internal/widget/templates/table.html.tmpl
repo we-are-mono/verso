@@ -159,6 +159,8 @@
            that wraps still grows the row. */}}
       {{/* the row names the section it is, so an act answered in place can
            find this row again in the page the answer came back with. */}}
+      {{/* A row that carries only its group is the band alone. */}}
+      {{if not .BandOnly}}
       {{if .Drawer}}
       <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{else}}
@@ -423,7 +425,13 @@
       {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-6">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
       {{end}}
       {{end}}
+      {{end}}
 {{end}}
+{{/* table.empty-row: a listing's nothing, said where its first row would be —
+     one row across every column, the listing's inset, meta words. It gives up
+     its hairline to whatever closes the table (the table's own, or the
+     section's rule when the table ends its section). */}}
+{{define "table.empty-row"}}<tr class="group"{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0">{{.EmptyText}}</td></tr>{{end}}
 {{define "table.head"}}
     <thead>
       <tr>
@@ -533,11 +541,10 @@
            primary is the way in, so the row holds words only. */}}
       {{/* a live listing keeps its heads and marks this row: it is the wait,
            not the absence, and the first event that arrives removes it. */}}
-      <tr{{if .Stream}} data-verso-stream-empty{{end}}>
-        <td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta">{{.EmptyText}}</td>
-      </tr>
+      {{template "table.empty-row" .}}
       {{else}}
 {{template "table.rows" .Rows}}
+      {{if .EmptyUnderBand}}{{template "table.empty-row" .}}{{end}}
       {{if .SeamSummary}}
       {{/* A genuine spanning row keeps the collapsed affordance and every
            revealed row in this table's single column-sizing context. */}}

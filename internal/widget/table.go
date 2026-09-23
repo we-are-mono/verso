@@ -688,9 +688,13 @@ type tableView struct {
 	Columns   []TableColumn
 	HasDetail bool
 	Empty     bool // nothing to list: no head, no rows, one quiet sentence
-	EmptyText string
-	Legend    []TableLegend
-	Note      string
+	// EmptyUnderBand is nothing to list under bands that still stand: every
+	// row is a group's band alone, so the bands are drawn and the sentence
+	// follows them.
+	EmptyUnderBand bool
+	EmptyText      string
+	Legend         []TableLegend
+	Note           string
 	// Stream marks the live listing: the table carries the source and ring the
 	// client reads, and an empty one keeps its column heads and marks its quiet
 	// sentence row so the first arriving event can replace it.
@@ -740,6 +744,9 @@ type tableRowView struct {
 	ID    string
 	Key   string
 	Group *TableGroup
+	// BandOnly marks a row that carries its group and nothing else: the band
+	// is drawn, and no row of cells under it.
+	BandOnly bool
 	// LaneGap marks a group that is not the listing's first: it starts its own
 	// small table, 2.5rem below the last row of the one before.
 	LaneGap bool
@@ -945,6 +952,20 @@ func (t *Table) empty() bool {
 	return len(t.Rows) == 0 && (t.Seam == nil || len(t.Seam.Rows) == 0)
 }
 
+// bandsOnly reports whether every row is a group's band with no cells: a
+// listing with a heading and nothing under it.
+func (t *Table) bandsOnly() bool {
+	if len(t.Rows) == 0 || (t.Seam != nil && len(t.Seam.Rows) > 0) {
+		return false
+	}
+	for _, row := range t.Rows {
+		if row.Group == nil || len(row.Cells) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // reorderable reports whether these rows really drag. The leading "reorder"
 // column asks for the handle and ReorderConfig names the config the new order is
 // staged against; only both together make the interaction persist, so only both
@@ -1018,6 +1039,14 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	var err error
 	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDetail); err != nil {
 		return v, err
+	}
+	// Bands with nothing under them: the listing is empty all the same, so
+	// its heads go and its sentence is said, under the bands.
+	if !empty && t.bandsOnly() {
+		v.EmptyUnderBand, v.HasLabels, v.Legend, v.Note = true, false, nil, ""
+		if v.EmptyText == "" {
+			v.EmptyText = r.tr("Nothing here yet")
+		}
 	}
 	// The table-level add sits after the last row — before the seam, since a
 	// fold of stock rows is history and the next entry belongs to the person.
@@ -1155,6 +1184,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		if row.Group != nil {
 			rv.Group = band
 			rv.LaneGap = lanes > 0
+			rv.BandOnly = len(row.Cells) == 0
 			lanes++
 		}
 		var expandErr error

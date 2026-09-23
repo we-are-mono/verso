@@ -463,7 +463,7 @@ func TestRenderTableEmpty(t *testing.T) {
 	// The canvas's one row, where the first row would sit: the row's own height
 	// from padding, the listing's inset, meta words, left-aligned, a hairline.
 	for _, want := range []string{
-		`colspan="2" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta"`,
+		`colspan="2" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0"`,
 		">Nothing here yet<",
 	} {
 		if !strings.Contains(got, want) {
@@ -1291,6 +1291,31 @@ func TestEveryCellGivesUpTheLastRowsHairline(t *testing.T) {
 		if strings.Contains(td, "border-b") && !strings.Contains(td, "group-last:border-b-0") {
 			t.Errorf("a cell keeps its hairline on the last row: <td%s>", td)
 		}
+	}
+}
+
+// TestAGroupWithNothingInItSaysSo: a row that carries only its group is the
+// band alone — its name, its count, its add — and when nothing else is listed
+// the table says its empty sentence under that band, one row across every
+// column in words, never a fake row in a value column. Heads describe data, so
+// over none there are none; and the sentence gives up its own hairline to
+// whatever closes the table.
+func TestAGroupWithNothingInItSaysSo(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns:   []TableColumn{{Label: "File", Kind: "path"}, {Label: "Options", Kind: "count"}, {Kind: "actions"}},
+		EmptyText: "No custom option files",
+		Rows:      []TableRow{{Group: &TableGroup{Label: "Files", Chain: "0", AddLabel: "New file", AddText: "New file", AddHref: "/x/files/new"}}},
+	})
+	for _, want := range []string{
+		"verso-table-group", ">Files<", ">0<", ">New file<",
+		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0">No custom option files</td></tr>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "<thead") || strings.Contains(got, "data-verso-row-id") || strings.Count(got, "<td") != 1 {
+		t.Errorf("a band with nothing under it draws no heads and no empty cells:\n%s", got)
 	}
 }
 

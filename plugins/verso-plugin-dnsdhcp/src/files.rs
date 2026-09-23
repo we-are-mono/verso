@@ -68,17 +68,10 @@ pub fn listing(r: &Request) -> Widget {
             }
         })
         .collect();
+    // With no files the band still stands, alone: the table says its empty
+    // sentence under it.
     if rows.is_empty() {
-        rows.push(TableRow {
-            cells: vec![
-                TableCell {
-                    text: "No custom option files".into(),
-                    ..Default::default()
-                },
-                TableCell::default(),
-            ],
-            ..Default::default()
-        });
+        rows.push(TableRow::default());
     }
     rows[0].group = Some(TableGroup {
         key: String::new(),
@@ -255,4 +248,30 @@ pub fn post(r: &Request, f: &Form) -> Envelope {
         });
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture;
+
+    // With no files, the band still stands — its name, its count, its add —
+    // and the table says it has nothing under it in its own words, rather than
+    // a made-up row in the path column.
+    #[test]
+    fn with_no_files_the_band_stands_alone_and_the_table_says_so() {
+        let r = Request {
+            path: "/".into(),
+            query: Form::default(),
+            snapshot: fixture::snapshot(),
+            ubus: fixture::ubus(),
+        };
+        let body = serde_json::to_value(listing(&r)).expect("serialize");
+        let rows = body["rows"].as_array().expect("rows");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["group"]["label"], "Files");
+        assert_eq!(rows[0]["group"]["chain"], "0");
+        assert!(rows[0]["cells"].as_array().is_none_or(Vec::is_empty));
+        assert_eq!(body["empty_text"], "No custom option files");
+    }
 }
