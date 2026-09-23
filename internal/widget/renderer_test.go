@@ -511,6 +511,30 @@ func TestRenderPropertyVariantTonesTheValue(t *testing.T) {
 	}
 }
 
+// TestRenderConfirmCaution: an act that is disruptive but wanted asks in the same
+// one-hue shape, in marigold. White on full marigold fails the 4.5 floor, so the
+// act is white on the deep step; no crimson appears anywhere in it.
+func TestRenderConfirmCaution(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Confirm{Trigger: "Download and install 25.12.5", Title: "Install 25.12.5 now?", Message: "It restarts on its own.", Confirm: "Install firmware", Cancel: "Not yet", Tone: "caution"})
+	for _, want := range []string{
+		`data-verso-confirm-tone="caution"`,
+		"border-marigold-line bg-marigold-soft", "text-marigold-deep", "text-marigold", "hover:border-marigold",
+		"border-marigold-deep bg-marigold-deep text-white", "hover:bg-marigold-line/50",
+		"Download and install 25.12.5", "Install 25.12.5 now?", "Install firmware", "Not yet",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("caution confirm missing %q in: %s", want, got)
+		}
+	}
+	if strings.Contains(got, "crimson") {
+		t.Errorf("a caution confirm must carry no crimson: %s", got)
+	}
+	if danger := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"}); !strings.Contains(danger, `data-verso-confirm-tone="danger"`) {
+		t.Errorf("a confirm without a tone is the danger one: %s", danger)
+	}
+}
+
 func TestRenderConfirm(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it", RequirePassword: true})
@@ -530,6 +554,9 @@ func TestRenderConfirm(t *testing.T) {
 		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
 		"border-crimson bg-crimson text-white",
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
+		// The trigger is a 36px control like every other button: h-9 holds the
+		// border inside the height, where a line plus padding would add 2px.
+		"flex h-9 w-full cursor-pointer items-center justify-center rounded-xs border px-4",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)

@@ -30,6 +30,11 @@
      one red across the confirm widget and the table's confirmed row action. */}}
 {{define "verso-btn-danger"}}border border-crimson bg-crimson text-white transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
 
+{{/* verso-btn-caution: the act a caution confirm asks for. White on full
+     marigold fails the 4.5 floor, so it is white on the deep step; the palette
+     has no step below that, so hover darkens by a tenth instead. */}}
+{{define "verso-btn-caution"}}border border-marigold-deep bg-marigold-deep text-white transition-[color,background-color,border-color,filter] hover:brightness-90 {{template "verso-press"}}{{end}}
+
 {{/* verso-input-border: a form control's border, the only thing that changes
      about it — the strong hairline at rest, the faint step under the pointer,
      the action colour while typing. A refused field rests and hovers in
