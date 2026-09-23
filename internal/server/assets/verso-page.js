@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-// verso-page.js — the page's own furniture (ADR-004). Three small things that
+// verso-page.js — the page's own furniture (ADR-004). Small things that
 // belong to a page rather than to anything on it: where an explanation hangs
 // when there is no room below the label that raised it, which section of a
-// long page the rail beside it should mark, and where an act made in place
-// says how it went.
+// long page the rail beside it should mark, where an act made in place says
+// how it went, and a ledger count that rolls when its number changed.
 
 // A wide tip hangs below the label that raises it, which is where it belongs on
 // a page: the label stays readable and the explanation follows the eye down.
@@ -279,4 +279,58 @@
   });
   new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-verso-wait-paused"] });
   sync();
+})();
+
+// A ledger's count: how many things a part of a section holds. Adding or
+// removing one reloads the page, so the change would otherwise land as a
+// different number with nothing to say it moved. The page remembers each
+// count for the tab's session; when one differs from last time, the old
+// number rolls out and the new one rolls in — upward for more, downward for
+// fewer — and settles from ink to its resting meta, so the eye finds the
+// change where it happened. Reduced motion, or no storage, shows the number
+// as it is.
+(function () {
+  var counts = document.querySelectorAll("[data-verso-count]");
+  if (!counts.length) return;
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+  function recall(key) {
+    try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
+  }
+  function remember(key, value) {
+    try { window.sessionStorage.setItem(key, value); } catch (e) { /* the number simply does not roll next time */ }
+  }
+
+  function roll(count, value, from, to) {
+    var more = Number(to) > Number(from);
+    var gone = value.cloneNode(false);
+    gone.removeAttribute("data-verso-count-value");
+    gone.setAttribute("aria-hidden", "true");
+    gone.textContent = from;
+    count.insertBefore(gone, value);
+    var out = more ? "-100%" : "100%";
+    var inn = more ? "100%" : "-100%";
+    gone.animate(
+      [{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(" + out + ")", opacity: 0 }],
+      { duration: 420, easing: EASE, fill: "forwards" }
+    ).finished.then(function () { gone.remove(); }, function () { gone.remove(); });
+    value.animate(
+      [{ transform: "translateY(" + inn + ")", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
+      { duration: 420, easing: EASE }
+    );
+    var ink = getComputedStyle(count).getPropertyValue("--color-ink").trim();
+    if (ink) count.animate([{ color: ink }, { color: ink, offset: 0.35 }, {}], { duration: 1600, easing: "ease-out" });
+  }
+
+  counts.forEach(function (count) {
+    var value = count.querySelector("[data-verso-count-value]");
+    if (!value) return;
+    var key = "verso-count:" + location.pathname + ":" + count.getAttribute("data-verso-count");
+    var now = value.textContent.trim();
+    var was = recall(key);
+    remember(key, now);
+    if (was === null || was === now || still || typeof value.animate !== "function") return;
+    roll(count, value, was, now);
+  });
 })();

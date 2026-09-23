@@ -10,7 +10,7 @@
 
   function failure(message) {
     var error = root && root.querySelector("[data-package-error]");
-    if (error) { error.textContent = message || T("Packages could not be loaded. Try again."); error.hidden = false; }
+    if (error) { versoErrorLine(error, message || T("Packages could not be loaded. Try again.")); error.hidden = false; }
   }
   function swap(target, fresh) {
     // Dispose teleported drawers with their owners before replacing the listing.
@@ -151,8 +151,8 @@
       files.replaceWith(document.importNode(list, true));
     }).catch(function (error) {
       var note = files.parentNode.querySelector("[data-package-files-error]");
-      if (!note) { note = document.createElement("p"); note.dataset.packageFilesError = ""; note.className = "text-sm text-crimson-deep"; note.setAttribute("role", "alert"); files.after(note); }
-      note.textContent = error.message;
+      if (!note) { note = versoErrorLine(null, ""); note.dataset.packageFilesError = ""; note.setAttribute("role", "alert"); files.after(note); }
+      versoErrorLine(note, error.message);
     }).finally(function () { delete files.dataset.loading; files.removeAttribute("aria-busy"); });
   });
   document.addEventListener("input", function (event) {

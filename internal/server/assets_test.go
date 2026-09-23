@@ -188,6 +188,44 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	}
 }
 
+// TestSectionRulesRunToTheRailOnly: a page's rules between its sections run
+// out to the rail on the left and stop where the column ends on the right, so
+// a column with a sidebar beside it (Maintenance's "On this page") keeps a gap
+// between the rule and the sidebar.
+func TestSectionRulesRunToTheRailOnly(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	rule := string(css)
+	at := strings.Index(rule, "main [data-verso-rule]:not(")
+	if at < 0 {
+		t.Fatal("stylesheet no longer marks the page's rules")
+	}
+	rule = rule[at:]
+	rule = rule[:strings.Index(rule, "}")]
+	if !strings.Contains(rule, "margin-left:calc(var(--spacing) * -10);padding-left:calc(var(--spacing) * 10)") {
+		t.Errorf("a page's rule runs out to the rail: %s", rule)
+	}
+	if strings.Contains(rule, "margin-inline") || strings.Contains(rule, "padding-inline") {
+		t.Errorf("a page's rule stops at the column's end on the right: %s", rule)
+	}
+}
+
+// TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
+// masthead — the title's line and the page's acts — ends at the right edge
+// Log out ends at: the page's 2.5rem gutter in, never past the top bar's
+// 72rem.
+func TestMastheadEndsUnderLogOut(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	if !strings.Contains(string(css), "main [data-verso-masthead]{margin-right:calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)))}") {
+		t.Error("the masthead ends where Log out does")
+	}
+}
+
 // TestStylesheetKeepsFocusAndStillness: two things no utility on any one
 // element can promise, so the stylesheet states them once for all. In forced
 // colours (Windows high contrast) a border's colour is overridden, so a control

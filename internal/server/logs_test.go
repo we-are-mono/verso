@@ -86,6 +86,11 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 	if acts := body[live:bar]; strings.Contains(acts, "<svg") {
 		t.Errorf("the log's acts are words alone:\n%s", acts)
 	}
+	// and they wear the secondary dress every quiet button does: meta words on
+	// the strong hairline, the hairline wash and ink under the pointer
+	if acts := body[live:bar]; strings.Count(acts, "border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink") != 3 {
+		t.Errorf("the log's three acts wear the secondary dress:\n%s", acts)
+	}
 	for _, want := range []string{
 		// the controls sit on the log's top edge in the quiet sand, the log on
 		// the page's own ground under them, and keep to the content column
@@ -96,7 +101,7 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		"data-verso-wait", // the firewall log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
 		"h-9 w-56 max-w-full",
-		`<div class="mb-5 max-w-6xl">`, // the masthead keeps to the column, its acts under Log out
+		`<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5">`, // the stylesheet ends the masthead under Log out; its line gives way to the band's edge
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs bar missing %q", want)

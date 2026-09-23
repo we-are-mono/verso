@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"sort"
@@ -268,7 +269,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	hdr := pageHeader{Heading: "Access", Tone: "neutral", Ruled: true}
+	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	for _, manifest := range s.manifestList() {
 		if manifest.SystemAccess == "" {
 			continue
@@ -284,6 +285,25 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		var pluginWidth string
 		var pluginPages []pageTab
 		contribution, code := s.pluginBodyAt(request, manifest, manifest.SystemAccess, &pluginHeader, &pluginWidth, &pluginPages)
+		if !safeMethod(r.Method) && r.URL.Query().Get("plugin") == manifest.ID {
+			// A reading of a form being typed answers with the reading alone:
+			// the page around the box is already on screen.
+			if previewRequest(r) {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(code)
+				_, _ = io.WriteString(w, string(contribution))
+				return
+			}
+			// A command changed what the page shows (a key added or removed):
+			// read the page again from the router, saying once what happened.
+			if pluginHeader.CommandDone {
+				if pluginHeader.Notice != nil {
+					s.flash(r, pluginHeader.Notice.Level, pluginHeader.Notice.Text)
+				}
+				http.Redirect(w, r, "/system/access", http.StatusSeeOther)
+				return
+			}
+		}
 		if err := s.pageSet(lang).ExecuteTemplate(&body, "access-contribution.html.tmpl", contribution); err != nil {
 			http.Error(w, "render error", http.StatusInternalServerError)
 			return

@@ -252,8 +252,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// owns the schema, validation, ACL and commit intents.
 	if r.URL.Path == "/system/access" && m.SystemAccess == pluginPath {
 		widget.Walk(wdg, func(n widget.Widget) {
-			if form, ok := n.(*widget.Form); ok {
-				form.Action = "/system/access?plugin=" + m.ID
+			switch n := n.(type) {
+			case *widget.Form:
+				n.Action = "/system/access?plugin=" + m.ID
+			case *widget.Collection:
+				n.Action = "/system/access?plugin=" + m.ID
 			}
 		})
 	}
@@ -354,13 +357,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 					if errors.As(err, &validation) {
 						message = validation.Error()
 					}
+					// Said once, in the page's notice: the act failed, not any
+					// one form on the page, and a page of several forms would
+					// otherwise repeat it in each.
 					status = http.StatusUnprocessableEntity
 					env.Notice = &plugin.Notice{Level: "danger", Text: message}
-					widget.Walk(wdg, func(w widget.Widget) {
-						if form, ok := w.(*widget.Form); ok {
-							form.Error = message
-						}
-					})
 				} else {
 					hdr.CommandDone = true
 					if env.Commands[0].Name == "config-file-stage" {
@@ -470,7 +471,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
 	hdr.Tone = env.Tone
-	hdr.Ruled = env.Ruled
 	hdr.Subheading = tr(env.Subheading)
 	hdr.Action = localizeAction(env.Action, tr)
 	hdr.Back = localizeBack(env.Back, tr)
@@ -521,6 +521,11 @@ func validateSchema(w widget.Widget) bool {
 		switch n := n.(type) {
 		case *widget.Form:
 			if n.Error != "" {
+				found = true
+			}
+		case *widget.Collection:
+			// a refused addition blocks the write as a form's error does
+			if n.Add != nil && n.Add.Error != "" {
 				found = true
 			}
 		case *widget.Field:

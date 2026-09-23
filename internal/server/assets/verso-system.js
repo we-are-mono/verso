@@ -162,6 +162,6 @@
         }
       } else { await post("/uci/discard"); }
       reboot.submit();
-    } catch (e) { error.textContent = e.message; error.hidden = false; buttons.forEach(function (b) { b.disabled = false; }); }
+    } catch (e) { versoErrorLine(error, e.message); error.hidden = false; buttons.forEach(function (b) { b.disabled = false; }); }
   });
 })();

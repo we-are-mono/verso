@@ -42,8 +42,43 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	if err := passwordServer(t, fakeBackend{}).pageSet("").ExecuteTemplate(&b, "access-contribution.html.tmpl", template.HTML("<section>SSH</section>")); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(b.String(), `<div class="mt-10 border-t border-rule pt-10"><section>SSH</section></div>`) {
+	if !strings.Contains(b.String(), `<div data-verso-rule class="mt-10 border-t border-rule pt-10"><section>SSH</section></div>`) {
 		t.Errorf("want 40 above and below the seam, got %s", b.String())
+	}
+}
+
+// TestSectionRulesAreThePagesAcrossItsGutter: a page's rules between its
+// sections run out by the frame's gutter to the rail on the left, and stop
+// where the column ends on the right, on every page, so the masthead's
+// rule and a plugin's seam are marked as rules of the page; the stylesheet
+// draws them out, and keeps a drawer's own rules inside the drawer.
+func TestSectionRulesAreThePagesAcrossItsGutter(t *testing.T) {
+	s := passwordServer(t, fakeBackend{})
+	access := get(t, s, "/system/access").Body.String()
+	if !strings.Contains(access, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5`) {
+		t.Error("the masthead's rule is one of the page's")
+	}
+	if strings.Contains(access, "data-verso-bleed") {
+		t.Error("the page's rules are no one page's experiment")
+	}
+}
+
+// TestMaintenanceSectionsAreRuledAsThePages: Maintenance divides its sections
+// as every page does — the masthead ruled off, each later section 40px after
+// the last and 40px under its rule, the rules the page's own.
+func TestMaintenanceSectionsAreRuledAsThePages(t *testing.T) {
+	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
+	if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5`) {
+		t.Error("the masthead is ruled off from the first section")
+	}
+	for _, id := range []string{"backup", "reboot", "factory-reset"} {
+		want := `<section id="` + id + `" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">`
+		if !strings.Contains(body, want) {
+			t.Errorf("want %s", want)
+		}
+	}
+	if strings.Contains(body, `<section id="firmware" class="scroll-mt-20 py-8"`) || strings.Contains(body, "border-rule py-8") {
+		t.Error("no section keeps the old 32px step")
 	}
 }
 

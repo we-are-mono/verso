@@ -571,11 +571,10 @@
     // Never repeat an act after a lost response: it may already have succeeded.
     var failure = function (message) {
       if (button) button.disabled = false;
-      var notice = document.createElement("p");
-      notice.className = "mb-5 text-sm text-crimson-deep";
+      var notice = versoErrorLine(null, message || T("Could not confirm the action. Check the service state before trying again."));
+      notice.classList.add("mb-5");
       notice.setAttribute("role", "alert");
       notice.dataset.versoActError = "";
-      notice.textContent = message || T("Could not confirm the action. Check the service state before trying again.");
       var old = document.querySelector("[data-verso-act-error]");
       if (old) old.remove();
       var table = form.closest("table");
@@ -707,7 +706,7 @@
   function showError(field, message) {
     var slot = field.querySelector("[data-verso-inline-error]");
     var el = input(field);
-    if (slot) { slot.textContent = message; slot.hidden = false; }
+    if (slot) { versoErrorLine(slot, message); slot.hidden = false; }
     if (el) el.setAttribute("aria-invalid", "true");
   }
   function clearError(field) {
@@ -1114,6 +1113,39 @@ document.addEventListener("click", function(event) {
  if (!button || !button.form) return;
  var input=button.form.elements.namedItem("_client_time");
  if(input) input.value=new Date().toISOString().slice(0,19);
+});
+
+// A refusal comes back as a whole page, which a browser shows from its top.
+// The page opens where the refusal is instead: the first refused box on it is
+// brought to the middle of the view and given the cursor, so the correction
+// starts where the eye already was. It waits for Alpine, which opens a folded
+// form (a key's add box) that would otherwise have no place to scroll to.
+(function () {
+  function answer() {
+    var refused = document.querySelector('main [aria-invalid="true"]');
+    if (!refused) return;
+    window.requestAnimationFrame(function () {
+      refused.scrollIntoView({ block: "center" });
+      refused.focus({ preventScroll: true });
+    });
+  }
+  if (window.Alpine) answer();
+  else document.addEventListener("alpine:initialized", answer, { once: true });
+})();
+
+// A refusal is about the value that was refused. The first change to a
+// refused box is its correction: the box drops aria-invalid, which is all its
+// crimson hangs on, and the refusal under it (data-verso-error, named by the
+// box's aria-describedby) goes. Submitting asks again, and a value refused
+// again comes back refused. An in-place setting keeps its own check.
+document.addEventListener("input", function (e) {
+  var box = e.target;
+  if (!box.matches || !box.matches('[aria-invalid="true"]') || box.closest("[data-verso-inline-field]")) return;
+  box.removeAttribute("aria-invalid");
+  (box.getAttribute("aria-describedby") || "").split(/\s+/).forEach(function (id) {
+    var said = id && document.getElementById(id);
+    if (said && said.hasAttribute("data-verso-error")) said.hidden = true;
+  });
 });
 
 // Code fields expose their logical line count beside the editor.

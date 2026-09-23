@@ -45,6 +45,28 @@ function T(s) {
   return Object.prototype.hasOwnProperty.call(versoI18N, s) && versoI18N[s] ? versoI18N[s] : s;
 }
 
+// versoErrorLine says a refusal on a line: the crimson square hung on the
+// first line, then the words — the markup of verso-error-line and
+// verso-error-words in shared.html.tmpl, so a refusal a script writes reads as
+// one the server rendered. A slot the page already has keeps its own classes
+// (the template gives it the line's); given no line, it makes one with them
+// (the caller places it). Either way it returns the line.
+function versoErrorLine(line, message) {
+  if (!line) {
+    line = document.createElement("p");
+    line.className = versoErrorLine.lineClass;
+  }
+  var mark = document.createElement("span");
+  mark.setAttribute("aria-hidden", "true");
+  mark.className = "mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson";
+  var words = document.createElement("span");
+  words.setAttribute("data-verso-error-text", "");
+  words.textContent = message;
+  line.replaceChildren(mark, words);
+  return line;
+}
+versoErrorLine.lineClass = "flex items-start gap-2 text-sm leading-5 text-crimson-deep";
+
 // versoAnnounce says something to a screen reader without drawing it: what a
 // keyboard move did, what an apply came to. The region is created empty and
 // filled a frame later, because a live region that arrives already holding its
@@ -292,6 +314,11 @@ document.addEventListener("alpine:init", function () {
   Alpine.data("confirm", function () {
     return {
       asking: false,
+      // A slot the server answers open (a refused paste, kept as typed, with
+      // its reason) starts asking, with the cursor back in its box.
+      init: function () {
+        if (this.$el.hasAttribute("data-verso-open")) this.ask();
+      },
       get idle() {
         return !this.asking;
       },

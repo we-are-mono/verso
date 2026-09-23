@@ -81,7 +81,7 @@ func TestServicesTable(t *testing.T) {
 		"2.3 MiB",                        // runtime keeps process identity and aggregate RSS
 		"tabular-nums text-meta",         // runtime matches the landing-page RX/TX ink
 		">Memory</th>",                   // immediate restart sits before the switch
-		`aria-label="Restart"`,           // the icon-only action remains accessible
+		`aria-label="Restart dnsmasq"`,   // the icon-only action names the service it restarts
 		`name="_service_action" value="restart:dnsmasq"`,
 		">State</th>",  // the switch names and reflects persistent boot policy
 		"startup task", // lifecycle type is carried beside the service name
@@ -150,7 +150,7 @@ func TestServicesTable(t *testing.T) {
 	if !strings.Contains(firewallRow, `aria-label="Cannot be stopped from here"`) {
 		t.Errorf("firewall must explain its locked enablement: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `aria-label="Restart"`) {
+	if !strings.Contains(firewallRow, `aria-label="Restart firewall"`) {
 		t.Errorf("firewall must remain restartable: %s", firewallRow)
 	}
 	nameAt := strings.Index(body, ">verso-rpcd<")

@@ -1,9 +1,12 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <div data-verso-maintenance{{if .Checking}} data-verso-update-busy{{end}} class="flex flex-col items-start gap-11 xl:flex-row">
-  <div class="w-full min-w-0 max-w-[40rem] shrink-0 border-t border-rule">
+  {{/* Sections are divided as every page's are: the masthead ruled off above
+       the first, each later one 40px after the last and 40px under a rule
+       that is the page's own (it runs out by the frame's gutter). */}}
+  <div class="w-full min-w-0 max-w-[40rem] shrink-0">
     {{.Notices}}
-    <section id="firmware" class="scroll-mt-20 py-8">
+    <section id="firmware" class="scroll-mt-20">
       {{/* The ledger: the verdict under its state mark, then what this router runs
            part by part, with an Available column only while a build is offered.
            The check stands on the heading line with the time it last ran. */}}
@@ -12,7 +15,7 @@
         <form method="post" action="/system/maintenance/updates/check" class="flex items-center gap-3">
           {{template "verso-csrf" .CSRFToken}}
           {{if .Checked}}<span class="text-sm text-meta">{{.Checked}}</span>{{end}}
-          <button type="submit"{{if .Checking}} disabled{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-3 text-sm font-medium text-ink transition-colors hover:border-faint hover:bg-quiet disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
+          <button type="submit"{{if .Checking}} disabled{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
       <div class="flex flex-col gap-5">
@@ -94,7 +97,7 @@
       </div>
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
-    <section id="backup" class="scroll-mt-20 border-t border-rule py-8">
+    <section id="backup" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
       <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
       <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p>
       <div class="flex flex-wrap items-center gap-3">
@@ -102,7 +105,7 @@
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
     </section>
-    <section id="reboot" class="scroll-mt-20 border-t border-rule py-8">
+    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
       <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
       {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
       <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
@@ -112,22 +115,22 @@
         <button type="submit" name="stage" value="discard" class="h-9 cursor-pointer rounded-xs border border-rule-strong px-4 font-semibold text-crimson-deep hover:border-crimson hover:bg-crimson-soft">{{t "Discard and reboot"}}</button>
         {{else}}<div class="max-w-full">{{.Reboot}}</div>{{end}}
         <span class="text-sm text-meta">{{t "Running for"}} {{.Uptime}}</span>
-        <p data-verso-reboot-error hidden role="alert" class="w-full text-sm text-crimson-deep"></p>
+        <p data-verso-reboot-error hidden role="alert" class="w-full {{template "verso-error-line"}}"></p>
       </form>
     </section>
-    <section id="factory-reset" class="scroll-mt-20 border-t border-rule py-8">
+    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
       <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
       <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p>
-      {{/* One field, one act: the button is joined to the field's right edge on
-           one row, overlapping one border so the seam is shared. The focused
-           field rises above the button so its denim edge shows whole. */}}
+      {{/* One field, one act, on one row a small step apart — the pattern a
+           list's add row keeps: each control whole, its own corners and
+           border. */}}
       <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="flex flex-col gap-2">
         {{template "verso-csrf" .CSRFToken}}
         {{if .Hostname}}
         <label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label>
-        <div data-verso-reset-row class="flex max-w-full">
-          <input id="reset-host" name="hostname" required autocomplete="off" class="relative h-9 w-56 min-w-0 rounded-l-xs rounded-r-none border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:z-10 focus:border-denim focus:outline-none">
-          <button type="submit" class="-ml-px rounded-l-none h-9 shrink-0 cursor-pointer rounded-r-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
+        <div data-verso-reset-row class="flex max-w-full items-center gap-2">
+          <input id="reset-host" name="hostname" required autocomplete="off" class="h-9 w-56 min-w-0 rounded-xs border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none">
+          <button type="submit" class="h-9 shrink-0 cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
         </div>
         {{else}}
         <button type="submit" class="h-9 w-fit cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep">{{t "Erase and start over"}}</button>

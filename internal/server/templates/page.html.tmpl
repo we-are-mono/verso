@@ -97,18 +97,17 @@
        starts at the content. */}}
   {{/* Security state sits at the navigation seam, not inside one page's content. */}}
   {{if and .NoPassword (not .Overview)}}
-  <div class="relative z-10 -mt-px flex items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7 text-crimson-deep">
-    {{icon "triangle-alert" "size-4 shrink-0 text-crimson"}}
+  {{/* the square hangs on the banner's first 28px line */}}
+  <div class="relative z-10 -mt-px flex items-start gap-2.5 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7 text-crimson-deep">
+    <span class="flex shrink-0 pt-1">{{template "verso-message-mark" "danger"}}</span>
     <span><span class="font-semibold">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
   </div>
   {{else if .Banner}}
-  <div class="relative z-10 -mt-px flex items-center gap-2 border-y px-8 py-3 text-sm leading-7
+  <div class="relative z-10 -mt-px flex items-start gap-2.5 border-y px-8 py-3 text-sm leading-7
     {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
     {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
     {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
-    {{if eq .Banner.Variant "danger"}}{{icon "triangle-alert" "size-4 shrink-0 text-crimson"}}
-    {{else if eq .Banner.Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0 text-marigold"}}
-    {{else}}{{icon "info" "size-4 shrink-0 text-denim"}}{{end}}
+    <span class="flex shrink-0 pt-1">{{if or (eq .Banner.Variant "danger") (eq .Banner.Variant "warning")}}{{template "verso-message-mark" .Banner.Variant}}{{else}}{{template "verso-message-mark" "info"}}{{end}}</span>
     <span>{{if .Banner.Title}}<span class="font-semibold">{{.Banner.Title}}</span>{{end}}{{if and .Banner.Title .Banner.Body}} {{end}}{{.Banner.Body}}</span>
   </div>
   {{end}}
@@ -119,19 +118,23 @@
        against. Left-aligned against the rail; no centring, which reads better
        on a wide monitor. */}}
   <div{{if eq .Width "full"}} class="flex min-h-0 flex-1 flex-col"{{end}}>
-    {{/* pt equals px, so the masthead sits as far from the top edge as from the
-         left one. The bottom padding becomes the natural gap before the footer.
+    {{/* The title stands 20px under the top edge, the same as the line under
+         it: the masthead is a label for the page, and keeps no more air than
+         that. The bottom padding becomes the natural gap before the footer.
          A full page keeps the side and top air for its masthead but never the
-         bottom: what is below the masthead runs to the edge. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-10{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pt-10 pb-10{{end}}">
+         bottom: what is below the masthead runs to the edge. Home's display
+         verdict keeps the full 40px, as far from the top as from the left. */}}
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-5{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pt-5 pb-10{{end}}">
     <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-[40rem]{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if or .Kicker .Subheading .Display}}
-    {{/* The heading block keeps a 20px gap to the content, with or without a
-         subtitle. A ruled masthead's divider takes the page's gap on both sides
-         of it, 2.5rem above and below, like every rule between a page's subjects.
-         On a full page the masthead still keeps to the content column, so its
-         act ends under Log out like every other page's. */}}
-    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}{{if eq .Width "full"}} max-w-6xl{{end}}">
+    {{/* Every page's title (and its lede) is divided from what follows by one
+         line, 1.25rem under it and 2.5rem above what comes next — the page's
+         rule, or, on a page that opens on a control band, the band's own top
+         edge (the stylesheet folds this rule away there). Whatever measure the
+         column keeps, the stylesheet ends the masthead, its line and its acts,
+         under Log out. Home's display verdict opens onto its own strip, and on
+         a full page keeps to the column the top bar does. */}}
+    <div{{if not .Display}} data-verso-rule data-verso-masthead{{end}} class="{{if .Display}}mb-5{{if eq .Width "full"}} max-w-6xl{{end}}{{else}}mb-10 border-b border-rule pb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
@@ -161,7 +164,7 @@
       {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
-    <div class="{{if .Ruled}}mb-10 border-b border-rule pb-10{{else}}mb-5{{end}}{{if eq .Width "full"}} max-w-6xl{{end}}">
+    <div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{/* An act's height whether it holds one or not, as above. */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">

@@ -5,13 +5,13 @@
      the subpages share that identity and carry only their labels.
 
      Where the marker sits depends on whether the row opened anything. A row with
-     no subpages wears it itself — a 2px ink rule at the rail's edge and the quiet
-     surface. A row that did open subpages hands the marker down to whichever of
+     no subpages wears it itself — a 2px ink rule at the rail's content edge,
+     against the page it opens, and the quiet surface. A row that did open subpages hands the marker down to whichever of
      them you are on, and keeps only the weight and the ink, so the rail never
      marks two places at once. Inactive rows slide 4px inward on hover. */}}
 {{define "verso-nav-row"}}
 <li>
-  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-3 border-l-2 py-2 pr-6 pl-6 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink {{if .Children}}border-transparent hover:bg-quiet/50{{else}}border-ink bg-quiet{{end}}{{else}}border-transparent text-body hover:bg-mid/50 hover:pl-7 hover:text-ink{{end}}">
+  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-3 border-r-2 py-2 pr-5.5 pl-6.5 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink {{if .Children}}border-transparent hover:bg-quiet/50{{else}}border-ink bg-quiet{{end}}{{else}}border-transparent text-body hover:bg-mid/50 hover:pl-7.5 hover:text-ink{{end}}">
     {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
     <span class="min-w-0 truncate">{{.Label}}</span>
     {{if .Dot}}<span class="size-1.25 shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
@@ -23,7 +23,7 @@
        parent's label, leaving the icon column to the first tier. */}}
   <ul class="mt-1 mb-2 ml-8 flex flex-col border-l border-rule">
     {{range .Children}}
-    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-2.5 py-2 pr-6 pl-5 transition-[padding,color] duration-150 {{if .Active}}bg-quiet font-semibold text-ink shadow-[inset_0.125rem_0_0_var(--color-ink)]{{else}}text-body hover:pl-6 hover:text-ink{{end}}">
+    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-2.5 py-2 pr-6 pl-5 transition-[padding,color] duration-150 {{if .Active}}bg-quiet font-semibold text-ink shadow-[inset_-0.125rem_0_0_var(--color-ink)]{{else}}text-body hover:pl-6 hover:text-ink{{end}}">
       <span class="min-w-0 truncate">{{.Label}}</span>
     </a></li>
     {{end}}

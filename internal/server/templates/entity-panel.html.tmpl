@@ -45,7 +45,7 @@
       <button type="button" hx-post="{{.Post}}" hx-include="closest [data-verso-entity-body]"
         hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"
         class="flex h-9 cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep">{{.CTA}}</button>
-      <button type="button" @click="hide" class="flex h-9 cursor-pointer items-center rounded-xs border border-rule-strong px-4 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:border-faint hover:bg-quiet">{{ t "Cancel" }}</button>
+      <button type="button" @click="hide" class="flex h-9 cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}">{{ t "Cancel" }}</button>
     </div>
     {{if .Note}}<span class="ml-auto min-w-0 text-sm leading-snug text-meta">{{.Note}}</span>{{end}}
   </div>

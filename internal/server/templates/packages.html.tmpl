@@ -35,5 +35,5 @@
 {{.Body}}
 {{if .All}}<nav aria-label="{{t "Package pages"}}" class="mt-5 flex items-center gap-4 text-sm"><span class="text-meta">{{printf (t "%d matches") .Total}}</span>{{if .Previous}}<a data-package-page href="{{.Previous}}" class="text-denim-deep hover:underline">{{t "Previous"}}</a>{{end}}{{if .Next}}<a data-package-page href="{{.Next}}" class="text-denim-deep hover:underline">{{t "Next"}}</a>{{end}}</nav>{{end}}
 <template data-package-waiting>{{template "verso-waiting" ""}}</template>
-<p data-package-error role="alert" hidden class="mt-5 text-sm text-crimson-deep"></p>
+<p data-package-error role="alert" hidden class="mt-5 {{template "verso-error-line"}}"></p>
 </div>

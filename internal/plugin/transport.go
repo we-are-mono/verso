@@ -84,7 +84,6 @@ type Envelope struct {
 	Immediate     bool        `json:"immediate"`     // page actions are immediate: nothing on the page stages
 	Live          bool        `json:"live"`          // optional pulsing dot on the kicker
 	Tone          string      `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
-	Ruled         bool        `json:"ruled"`         // the masthead ends in a hairline: the title and lede are ruled off from the page's first section
 	Subheading    string      `json:"subheading"`    // optional lede under the heading
 	Width         string      `json:"width"`         // page width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
 	Pages         []PageTab   `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar

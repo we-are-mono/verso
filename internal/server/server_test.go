@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -676,8 +677,8 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	if strings.Contains(nav, `href="/plugins/demo/dnsdhcp/config" aria-current`) {
 		t.Error("the inactive subpage must not carry aria-current")
 	}
-	if !strings.Contains(nav, "shadow-[inset_0.125rem_0_0_var(--color-ink)]") {
-		t.Error("the active subpage should wear the rail's marker")
+	if !strings.Contains(nav, "shadow-[inset_-0.125rem_0_0_var(--color-ink)]") {
+		t.Error("the active subpage should wear the rail's marker, on the rail's content edge")
 	}
 }
 
@@ -2231,35 +2232,37 @@ func TestPluginActionRendersBesideTheHeading(t *testing.T) {
 	}
 }
 
-// TestRuledMastheadEndsInAHairline: a page whose subjects are ruled sections
-// asks for its title to be ruled off from the first of them the same way — the
-// rule 24px under the title, or under the lede when there is one, in place of
-// the 20px standoff an ordinary unruled masthead keeps, with or without a lede.
-// A page that does not ask keeps the standoff and no rule.
-func TestRuledMastheadEndsInAHairline(t *testing.T) {
-	for _, tc := range []struct {
-		sub, standoff string
-	}{
-		{"The baseline every zone falls back to.", `<div class="mb-5">`},
-		{"", `<div class="mb-5">`},
-	} {
-		for _, ruled := range []bool{true, false} {
-			tr := &fakeTransport{env: &plugin.Envelope{
-				SchemaVersion: 1, Status: http.StatusOK,
-				Title:      "Firewall settings",
-				Subheading: tc.sub,
-				Ruled:      ruled,
-				Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
-			}}
-			s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
-			body := get(t, s, "/plugins/demo/").Body.String()
-			if hairline := strings.Contains(body, `<div class="mb-10 border-b border-rule pb-10">`); hairline != ruled {
-				t.Errorf("lede %q ruled=%v: masthead hairline drawn=%v:\n%s", tc.sub, ruled, hairline, body)
-			}
-			if standoff := strings.Contains(body, tc.standoff); standoff == ruled {
-				t.Errorf("lede %q ruled=%v: the standoff drawn=%v:\n%s", tc.sub, ruled, standoff, body)
-			}
+// TestEveryMastheadEndsAtOneDivider: every page's title (with its lede, when it
+// has one) stands 20px under the page's top edge and is divided from what
+// follows by one line, 20px under it. A page that opens on a control band lets
+// the band's own top edge be that line: the stylesheet folds the masthead's
+// rule away so the band stands the same 20px under the title.
+func TestEveryMastheadEndsAtOneDivider(t *testing.T) {
+	for _, sub := range []string{"The baseline every zone falls back to.", ""} {
+		tr := &fakeTransport{env: &plugin.Envelope{
+			SchemaVersion: 1, Status: http.StatusOK,
+			Title:      "Firewall settings",
+			Subheading: sub,
+			Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
+		}}
+		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+		body := get(t, s, "/plugins/demo/").Body.String()
+		if !strings.Contains(body, `<div class="px-10 pt-5 pb-10">`) {
+			t.Errorf("lede %q: the title stands 20px under the page's top edge:\n%s", sub, body)
 		}
+		if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5">`) {
+			t.Errorf("lede %q: the title is ruled off 20px under it:\n%s", sub, body)
+		}
+		if strings.Contains(body, `<div class="mb-5">`) {
+			t.Errorf("lede %q: no title keeps the 20px standoff", sub)
+		}
+	}
+	css, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead] {\n    border-bottom-width: 0;\n    padding-bottom: 0;\n    margin-bottom: calc(var(--spacing) * 5);") {
+		t.Error("a page opening on a control band lets the band's edge, 20px under the title, be the title's line")
 	}
 }
 
@@ -2717,8 +2720,12 @@ func TestNoPasswordBanner(t *testing.T) {
 	}
 	// A band, arrived at rather than stated: a 28px line inset 12px, so a
 	// sentence that wraps on a phone grows the band instead of spilling out.
-	if !strings.Contains(body, "-mt-px flex items-center gap-2 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7") {
+	if !strings.Contains(body, "-mt-px flex items-start gap-2.5 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7") {
 		t.Error("the warning is a 52px band from its padding")
+	}
+	// its tone is the crimson square on the first line, not a glyph
+	if !strings.Contains(body, `<span class="flex shrink-0 pt-1"><span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span></span>`) {
+		t.Error("the warning is marked with the crimson square")
 	}
 
 	// A page may declare another important state at the same seam. The shell's

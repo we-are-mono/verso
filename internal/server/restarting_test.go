@@ -75,12 +75,18 @@ func TestFactoryResetAsksForTheHostnameOnly(t *testing.T) {
 	if strings.Contains(reset, `name="password"`) {
 		t.Errorf("the factory reset must not ask the signed-in administrator for a password:\n%s", reset)
 	}
-	// One field, one act: the button is joined to the field's right edge on one
-	// row, the seam shared by overlapping one border.
+	// One field, one act, on one row a small step apart — the pattern a list's
+	// add row keeps (General's time servers): each control whole, its own
+	// corners and border, never a shared seam.
 	row := section(t, reset, "data-verso-reset-row", "</form>")
 	field, button := strings.Index(row, `name="hostname"`), strings.Index(row, "Erase and start over")
-	if field < 0 || button < field || !strings.Contains(row, "rounded-r-none") || !strings.Contains(row, "-ml-px rounded-l-none") {
-		t.Errorf("the hostname field and the erase button should share one joined row:\n%s", row)
+	if field < 0 || button < field || !strings.Contains(row, `class="flex max-w-full items-center gap-2"`) {
+		t.Errorf("the hostname field and the erase button should stand a step apart on one row:\n%s", row)
+	}
+	for _, joined := range []string{"rounded-r-none", "rounded-l-none", "-ml-px"} {
+		if strings.Contains(row, joined) {
+			t.Errorf("the row keeps no joined seam (%s):\n%s", joined, row)
+		}
 	}
 }
 

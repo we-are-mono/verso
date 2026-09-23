@@ -133,7 +133,7 @@ func TestSidebarListsEveryDestinationInEveryReading(t *testing.T) {
 	} {
 		for _, want := range []string{
 			`href="/plugins/demo/dns"`,
-			`class="flex items-center gap-3 border-l-2 py-2 pr-6 pl-6`,
+			`class="flex items-center gap-3 border-r-2 py-2 pr-5.5 pl-6.5`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s sidebar missing %q", name, want)

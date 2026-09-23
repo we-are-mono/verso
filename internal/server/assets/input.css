@@ -725,6 +725,35 @@ html.verso-fonts-loading body {
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
   }
 
+  /* A page's rules between its sections — the masthead's, a plugin's seam,
+     every ruled section — run out by the frame's 2.5rem to the rail on the
+     left, and stop where the column ends on the right, clear of a sidebar
+     beside it. Each pads back in by the same, so what it rules off does not
+     move. A drawer keeps its own rules inside its padding. */
+  main [data-verso-rule]:not(.verso-drawer-scrollbar [data-verso-rule]),
+  .verso-page-body section[data-verso-ruled]:not(.verso-drawer-scrollbar section) {
+    margin-left: calc(var(--spacing) * -10);
+    padding-left: calc(var(--spacing) * 10);
+  }
+
+  /* A page's masthead — its title's line and its acts — ends where Log out
+     does, whatever measure the column below keeps: the page's gutter in from
+     the window, and never past the top bar's 72rem. The page (main) is the
+     size container; the right margin pulls the masthead out from the column's
+     end to that edge. */
+  main [data-verso-masthead] {
+    margin-right: calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
+  }
+
+  /* A page that opens on a control band lets the band's own top edge be the
+     line under its title: the masthead's rule folds away, and the band stands
+     the same 20px under the title every page's first line does. */
+  main:has([data-verso-actionbar]) [data-verso-masthead] {
+    border-bottom-width: 0;
+    padding-bottom: 0;
+    margin-bottom: calc(var(--spacing) * 5);
+  }
+
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
