@@ -41,7 +41,7 @@
     <section aria-label="{{.Kind}}" class="min-w-0 py-6 {{if eq .Side "left"}}xl:pr-11{{else}}xl:pl-11{{end}}">
       <div class="flex min-h-7 items-center gap-3 pb-3">
         <h2 class="text-sm font-semibold text-ink">{{.Kind}}</h2>
-        {{if .Proto}}<span class="rounded-xs border border-rule bg-quiet px-1.5 py-0.5 font-mono text-sm text-meta">{{.Proto}}</span>{{end}}
+        {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
       </div>
       {{if .Empty}}<p class="flex items-start gap-2.5 border-t border-mid pt-3 text-sm font-medium text-body"><span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] border border-faint"></span><span>{{.Empty}}</span></p>{{else}}{{.Rows}}{{end}}
     </section>

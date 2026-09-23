@@ -174,22 +174,26 @@
      The endpoint chips are the exception and spell their own weight: what they
      carry is an address someone will retype, and it holds the row's eye. */}}
 {{define "verso-chip-box"}}{{template "verso-chip-shape"}} text-sm font-normal{{end}}
+{{/* verso-chip-mono: the same box for a chip whose words the machine wrote —
+     mono, one step heavier (500), because mono at 400 reads a size smaller
+     than the sans beside it. */}}
+{{define "verso-chip-mono"}}{{template "verso-chip-shape"}} text-sm font-medium font-mono{{end}}
 
 {{/* verso-chip-class: the neutral category/reference chip — the one chip
      treatment an entity cited inside another row wears everywhere. Mono,
      because what it states is a machine string someone could type elsewhere. */}}
-{{define "verso-chip-class"}}{{template "verso-chip-box"}} border-rule bg-quiet font-mono text-meta{{end}}
+{{define "verso-chip-class"}}{{template "verso-chip-mono"}} border-rule bg-quiet text-meta{{end}}
 
 {{/* verso-chip-accent-class: the same chip where what it states is the action
      colour's business — an address pinned by a reservation, say. Denim on its
      own soft ground, so it reads as a decision someone made rather than as one
      more fact about the row. */}}
-{{define "verso-chip-accent-class"}}{{template "verso-chip-box"}} border-denim-line bg-denim-soft font-mono text-denim-deep{{end}}
+{{define "verso-chip-accent-class"}}{{template "verso-chip-mono"}} border-denim-line bg-denim-soft text-denim-deep{{end}}
 
 {{/* verso-chip-raised: the neutral chip on a surface that is itself quiet — a
      table's group band — where the chip has to sit a step above its ground
      rather than on it. */}}
-{{define "verso-chip-raised"}}{{template "verso-chip-box"}} border-rule bg-ground font-mono text-meta{{end}}
+{{define "verso-chip-raised"}}{{template "verso-chip-mono"}} border-rule bg-ground text-meta{{end}}
 
 {{/* verso-token-chip: the one chip that is not a citation. Every chip above
      states a fact somewhere in the page's prose and is sized to the words around
@@ -265,9 +269,16 @@
 </span>
 {{end}}
 
-{{/* verso-chip: the icon+label entity chip (an interface, a zone, a port) —
-     the Lucide glyph names the kind, the label the one. */}}
-{{define "verso-chip"}}<span{{if .Title}} title="{{.Title}}" aria-label="{{.Title}}"{{end}} class="{{if eq .Tone "accent"}}{{template "verso-chip-accent-class"}}{{else if eq .Tone "success"}}{{template "verso-chip-box"}} border-green-line bg-green-soft font-mono text-green-deep{{else if eq .Tone "warning"}}{{template "verso-chip-box"}} border-marigold-line bg-marigold-soft font-mono text-marigold-deep{{else if eq .Tone "danger"}}{{template "verso-chip-box"}} border-crimson-line bg-crimson-soft font-mono text-crimson-deep{{else}}{{template "verso-chip-class"}}{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{end}}{{.Label}}</span>{{end}}
+{{/* verso-chip-packet: the one mark a chip may lead with besides an icon —
+     the app's 6px packet square in the chip's hue, hollow when the chip has
+     none (the packet absent). Still: a chip states a fact, and the pulse is
+     for something live. Takes the tone or variant name. */}}
+{{define "verso-chip-packet"}}<span class="size-1.5 shrink-0 rounded-[1px] {{if eq . "success"}}bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else if or (eq . "info") (eq . "accent")}}bg-denim{{else}}border border-faint{{end}}" aria-hidden="true"></span>{{end}}
+
+{{/* verso-chip: the entity chip (an interface, a zone, a port) — the label
+     names the one, led by one mark or none: a Lucide glyph naming the kind, or
+     the packet square in the chip's tone. An icon wins. */}}
+{{define "verso-chip"}}<span{{if .Title}} title="{{.Title}}" aria-label="{{.Title}}"{{end}} class="{{if eq .Tone "accent"}}{{template "verso-chip-accent-class"}}{{else if eq .Tone "success"}}{{template "verso-chip-mono"}} border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}{{template "verso-chip-mono"}} border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}{{template "verso-chip-mono"}} border-crimson-line bg-crimson-soft text-crimson-deep{{else}}{{template "verso-chip-class"}}{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}</span>{{end}}
 
 {{/* verso-tone-dot: the status dot's colour for a tone (the badge vocabulary);
      success pulses — it marks something live. */}}
@@ -409,10 +420,9 @@
                force, quiet on the rest — but never its weight: the tab's label
                is what the weight marks, and a bolded chip beside a bolded word
                says the same thing twice. Sans, because what it states is a count
-               or a plain word rather than a string someone would type. A tighter
-               box than a row's chip, because it rides a line of text rather than
-               a 44px row and has to sit inside the label's own height. */}}
-          {{if .State}}<span class="inline-flex items-center rounded-xs border px-1.5 py-px text-xs leading-4 font-normal whitespace-nowrap {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
+               or a plain word rather than a string someone would type. The one
+               chip box, as every chip is: the 52px tab strip holds it. */}}
+          {{if .State}}<span class="{{template "verso-chip-box"}} {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
         {{end}}
       </nav>
       {{end}}

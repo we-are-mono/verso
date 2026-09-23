@@ -39,15 +39,25 @@
     monoEmphasis:
       "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle font-mono text-base font-medium tabular-nums whitespace-nowrap text-ink group-last:border-b-0",
   };
-  // The badge vocabulary, from badge.html.tmpl. The plugin names a verdict; the
-  // shell alone decides what colour a verdict wears.
+  // The badge vocabulary, from badge.html.tmpl: the mono chip box, one step
+  // heavier than a sans chip (verso-chip-mono in shared.html.tmpl). The
+  // plugin names a verdict; the shell alone decides what colour a verdict
+  // wears. A verdict leads with the packet it decided about (verso-chip-packet
+  // in shared.html.tmpl): still, in the verdict's hue, hollow with none.
   var PILL_BASE =
     "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono ";
   var PILL_TONE = {
     success: "border-green-line bg-green-soft text-green-deep",
     warning: "border-marigold-line bg-marigold-soft text-marigold-deep",
     danger: "border-crimson-line bg-crimson-soft text-crimson-deep",
-    neutral: "border-rule-strong bg-mid text-ink",
+    neutral: "border-rule bg-quiet text-meta",
+  };
+  var PACKET_BASE = "size-1.5 shrink-0 rounded-[1px] ";
+  var PACKET_FILL = {
+    success: "bg-green",
+    warning: "bg-marigold",
+    danger: "bg-crimson",
+    neutral: "border border-faint",
   };
   // What a verdict means in a log is not what it means in the config. There, a
   // reject is the refusal you wrote and a drop is the silence you chose. Here,
@@ -65,7 +75,7 @@
   var ENDPOINT_BASE =
     "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap ";
   var ENDPOINT_KIND = {
-    router: "border-denim-line bg-denim-soft text-xs font-medium text-denim-deep",
+    router: "border-denim-line bg-denim-soft text-sm font-normal text-denim-deep",
     device: "border-transparent font-mono text-base font-medium tabular-nums text-ink",
     zone: "border-transparent font-mono text-base font-medium tabular-nums text-ink",
   };
@@ -242,7 +252,13 @@
     }
 
     function pillFor(verdict) {
-      return el("span", PILL_BASE + (PILL_TONE[VERDICT_TONE[verdict]] || PILL_TONE.neutral), verdict);
+      var tone = PILL_TONE[VERDICT_TONE[verdict]] ? VERDICT_TONE[verdict] : "neutral";
+      var pill = el("span", PILL_BASE + PILL_TONE[tone]);
+      var packet = el("span", PACKET_BASE + PACKET_FILL[tone]);
+      packet.setAttribute("aria-hidden", "true");
+      pill.appendChild(packet);
+      pill.appendChild(document.createTextNode(verdict));
+      return pill;
     }
 
     function endpointFor(kind, label) {

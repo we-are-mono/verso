@@ -10,16 +10,19 @@
 {{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}{{.Text}}</span>
 {{/* Each verdict on its own soft ground, worded in the step of that hue that can
      carry words — the full-chroma value stays a mark, on the dot. */}}
-{{else}}<span class="{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-box"}} font-mono{{end}}
+{{else}}<span class="{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-mono"}}{{end}}
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
   {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep
-  {{/* A pill with no hue is still a verdict — the firewall's drop, which says
-       nothing at all rather than answering — so it stands a step above the
-       reference chip's quiet ground and keeps its word in full ink. */}}
-  {{else}}border-rule-strong bg-mid text-ink{{end}}">
-  {{if .Icon}}{{if eq .Size "lg"}}{{icon .Icon "size-4 shrink-0"}}{{else}}{{icon .Icon "size-3.5 shrink-0"}}{{end}}{{end}}
-  {{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}
+  {{/* A pill with no hue — the firewall's drop, which says nothing at all
+       rather than answering — is the neutral chip, like every chip without a
+       hue. */}}
+  {{else}}border-rule bg-quiet text-meta{{end}}">
+  {{/* A pill in a row is a chip, so it leads with one mark or none: an icon,
+       or the still packet square in its hue (an icon wins). The lg banner
+       keeps its own. */}}
+  {{if eq .Size "lg"}}{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}
+  {{else if .Icon}}{{icon .Icon "size-3.5 shrink-0"}}{{else if .Dot}}{{template "verso-chip-packet" .Variant}}{{end}}
   {{.Text}}
 </span>{{end}}

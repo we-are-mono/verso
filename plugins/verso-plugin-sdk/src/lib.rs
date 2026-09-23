@@ -2152,6 +2152,10 @@ pub struct TableCell {
     pub tag_variant: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tag_icon: String,
+    /// The packet square leading the tag, in its variant. A chip carries one
+    /// mark or none; an icon wins.
+    #[serde(skip_serializing_if = "is_false")]
+    pub tag_dot: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub href: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -2178,6 +2182,10 @@ pub struct TableChip {
     pub label: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tone: String,
+    /// The packet square leading the chip, in its tone, where it has no icon.
+    /// A chip carries one mark or none; an icon wins.
+    #[serde(skip_serializing_if = "is_false")]
+    pub dot: bool,
 }
 
 /// TableRowAct is one act on a row: a Lucide glyph, the sentence a pointer rests

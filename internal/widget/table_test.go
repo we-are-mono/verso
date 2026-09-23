@@ -128,8 +128,9 @@ func TestRenderTableEndpoints(t *testing.T) {
 		"guest", "10.0.0.30", "router",
 		// Only the router fills its chip: it is the one end of a path that is
 		// this device rather than something out on the network, and the action
-		// colour is what says so.
-		"border-denim-line bg-denim-soft text-xs font-medium text-denim-deep",
+		// colour is what says so. A chip, so the one chip box; sans, because
+		// "router" names a thing rather than a value someone could type.
+		chipBox + " border-denim-line bg-denim-soft text-denim-deep\">",
 		// Every other end reads verbatim, in the mono reading size, inside the
 		// same box drawn transparent so the column lines up.
 		"border-transparent font-mono text-base font-medium tabular-nums text-ink",
@@ -400,9 +401,9 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
 	}
 	// One chip box everywhere — 14px in a 16px line, 2px padding, 1px hairline —
-	// so a reader never meets two heights of the same kind of thing.
-	if !strings.Contains(got, "px-1.5 py-0.5 leading-4") ||
-		!strings.Contains(got, "text-sm font-normal border-rule bg-quiet font-mono text-meta") {
+	// so a reader never meets two heights of the same kind of thing; mono, so
+	// one step heavier.
+	if !strings.Contains(got, chipMonoBox+" border-rule bg-quiet text-meta") {
 		t.Errorf("reference chips should carry the one chip treatment:\n%s", got)
 	}
 }
@@ -1292,9 +1293,11 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	for _, want := range []string{
 		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>Safari · iPhone</span>`,
 		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
-		"py-0.5 text-xs",
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
+		// the 22px chip overhangs the 20px detail line by a pixel either side
+		// rather than making the line taller
+		chipBox + " -my-px",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1312,6 +1315,38 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	}
 	if strings.Contains(got, "text-faint\">·</span>") {
 		t.Errorf("a detail is its own line, not an inline qualifier:\n%s", got)
+	}
+}
+
+// chipBox is the one chip every citation wears, the Interfaces page's: 14px
+// regular words on a 16px line, 2px above and below, inside a 1px border.
+const chipBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-normal"
+
+// chipMonoBox is the same box for a chip whose words the machine wrote: mono,
+// one step heavier (500), because mono at 400 reads a size smaller than the
+// sans beside it.
+const chipMonoBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono"
+
+// TestTableTagAlwaysWearsItsHairline: a tag is a chip — the same box as every
+// other chip, with the hairline of its own hue — with or without an icon.
+func TestTableTagAlwaysWearsItsHairline(t *testing.T) {
+	for variant, tone := range map[string]string{
+		"":        "border-rule bg-quiet text-meta",
+		"info":    "border-denim-line bg-denim-soft text-denim-deep",
+		"warning": "border-marigold-line bg-marigold-soft text-marigold-deep",
+		"success": "border-green-line bg-green-soft text-green-deep",
+		"danger":  "border-crimson-line bg-crimson-soft text-crimson-deep",
+	} {
+		want := chipBox + " " + tone
+		for _, icon := range []string{"", "globe"} {
+			got := render(t, newRenderer(t), &Table{
+				Columns: []TableColumn{{Label: "Source", Kind: "reference"}},
+				Rows:    []TableRow{{ID: "r", Cells: []TableCell{{Text: "10.0.0.2", Tag: "this browser", TagVariant: variant, TagIcon: icon}}}},
+			})
+			if !strings.Contains(got, want) {
+				t.Errorf("tag %q (icon %q) wants %q in:\n%s", variant, icon, want, got)
+			}
+		}
 	}
 }
 

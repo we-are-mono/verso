@@ -86,8 +86,8 @@ func TestServicesTable(t *testing.T) {
 		">State</th>",  // the switch names and reflects persistent boot policy
 		"startup task", // lifecycle type is carried beside the service name
 		"subsystem",
-		"runs at boot",                    // one-shot tasks are not misreported as stopped
-		"border-rule bg-quiet font-mono",  // type reuses the one chip treatment
+		"runs at boot", // one-shot tasks are not misreported as stopped
+		"text-sm font-medium font-mono border-rule bg-quiet", // type reuses the mono chip treatment
 		">verso</span>",                   // APK ownership joins verso-rpcd to the verso package
 		"font-mono text-base font-medium", // package ownership uses fixed 16px/500 mono type
 		"max-w-6xl",                       // runtime fits without forcing a horizontal scroller

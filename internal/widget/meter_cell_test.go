@@ -68,7 +68,7 @@ func TestTextCellCarriesItsChip(t *testing.T) {
 		Columns: []TableColumn{{Label: "Security"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "WPA3", Chip: "sae"}}}},
 	})
-	for _, want := range []string{">WPA3<", "font-mono text-meta", ">sae<"} {
+	for _, want := range []string{">WPA3<", chipMonoBox + " border-rule bg-quiet text-meta", ">sae<"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("text cell missing %q:\n%s", want, got)
 		}

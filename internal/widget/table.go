@@ -539,7 +539,8 @@ type TableCell struct {
 	Detail       string          `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
 	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
-	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
+	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)
+	TagDot       bool            `json:"tag_dot,omitempty"`       // name/status cells: the packet square leading the tag, in its variant; an icon wins
 	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link
 	Button       string          `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
 	Disabled     bool            `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
@@ -601,6 +602,9 @@ type TableChip struct {
 	// where what the chip states is a decision someone made rather than one more
 	// fact about the row.
 	Tone string `json:"tone,omitempty"`
+	// Dot leads the chip with the packet square in its tone instead of an
+	// icon; a chip carries one mark or none, and an icon wins.
+	Dot bool `json:"dot,omitempty"`
 }
 
 // TableLegend is one entry in a listing's legend: the same mark a row wears,

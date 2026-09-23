@@ -9,7 +9,10 @@
      optional seam folds extra rows (stock defaults) inside the same card. */}}
 {{/* table.tag: a small coloured label after a cell's value ("new", "WAN") — the
      badge vocabulary as a compact tag, not a full pill. */}}
-{{define "table.tag"}}<span class="inline-flex items-center gap-1 rounded-xs px-1.5 {{if .Detail}}py-0.5{{else}}py-1{{end}} text-xs font-medium whitespace-nowrap {{if .TagIcon}}ring-1 ring-inset {{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep ring-denim-line{{else}}bg-quiet text-meta ring-rule{{end}}{{else}}{{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}bg-crimson-soft text-crimson-deep{{else}}bg-quiet text-meta{{end}}{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{end}}{{.Tag}}</span>{{end}}
+{{/* table.tag: a chip, so the one chip box every citation wears, with its
+     hue's hairline on its hue's wash. On a 20px detail line the 22px box
+     overhangs the line by a pixel either side rather than making it taller. */}}
+{{define "table.tag"}}<span class="{{template "verso-chip-box"}}{{if .Detail}} -my-px{{end}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{else if .TagDot}}{{template "verso-chip-packet" .TagVariant}}{{end}}{{.Tag}}</span>{{end}}
 {{/* table.rowbtn-class: the compact bordered in-row action (a drawer trigger,
      a confirmed or direct row action) — one treatment for all three, taking the
      cell as its dot. A disabled cell keeps the anatomy and drops every
@@ -210,7 +213,7 @@
                into the rule. */}}
           <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
             {{range .Endpoints}}
-            <span class="{{template "verso-chip-shape"}} {{if eq .Kind "router"}}border-denim-line bg-denim-soft text-xs font-medium text-denim-deep{{else}}border-transparent font-mono text-base font-medium tabular-nums text-ink{{end}}">
+            <span class="{{if eq .Kind "router"}}{{template "verso-chip-box"}} border-denim-line bg-denim-soft text-denim-deep{{else}}{{template "verso-chip-shape"}} border-transparent font-mono text-base font-medium tabular-nums text-ink{{end}}">
               <span class="shrink-0 {{if eq .Kind "router"}}text-denim{{else if eq .Kind "any"}}text-sand-5{{else}}text-faint{{end}}">{{icon .Icon "size-4"}}</span>{{.Label}}
             </span>
             {{end}}

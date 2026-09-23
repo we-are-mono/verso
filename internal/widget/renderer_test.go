@@ -220,12 +220,11 @@ func TestRenderBadge(t *testing.T) {
 		}
 	}
 	// An unknown/neutral variant falls back to sand, never leaks the variant
-	// name. A pill with no hue is still a verdict — the firewall's drop — so it
-	// stands a step above the reference chip's quiet ground and keeps its word
-	// in full ink.
+	// name. A pill with no hue — the firewall's drop — is the neutral chip, the
+	// same box and colours as every other chip without a hue.
 	neutral := render(t, r, &Badge{Variant: "neutral", Text: "Offline"})
-	if !strings.Contains(neutral, "border-rule-strong bg-mid text-ink") {
-		t.Errorf("neutral badge should use the sand verdict step: %s", neutral)
+	if !strings.Contains(neutral, chipMonoBox+"\n  border-rule bg-quiet text-meta") {
+		t.Errorf("neutral badge should be the neutral chip: %s", neutral)
 	}
 	if strings.Contains(neutral, "size-1.5") {
 		t.Errorf("badge without Dot should not render a dot: %s", neutral)
@@ -342,17 +341,15 @@ func TestRenderEmptyBodyIsMarkdown(t *testing.T) {
 	}
 }
 
-// TestRenderBadgeLiveDot proves a connected (success) dot gets the live pulse hook,
-// while other dots stay calm.
-func TestRenderBadgeLiveDot(t *testing.T) {
+// TestRenderBadgeDotIsStill: a pill is a chip, and a chip's packet never
+// pulses, whatever it states — the page's live mark is where liveness shows.
+func TestRenderBadgeDotIsStill(t *testing.T) {
 	r := newRenderer(t)
-	live := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
-	if !strings.Contains(live, "verso-live-dot") {
-		t.Errorf("connected dot missing the live pulse hook: %s", live)
-	}
-	calm := render(t, r, &Badge{Variant: "neutral", Text: "Offline", Dot: true})
-	if strings.Contains(calm, "verso-live-dot") {
-		t.Errorf("offline dot must not pulse: %s", calm)
+	for _, variant := range []string{"success", "neutral"} {
+		got := render(t, r, &Badge{Variant: variant, Text: "Connected", Dot: true})
+		if strings.Contains(got, "verso-live-dot") {
+			t.Errorf("a %s chip's packet must not pulse: %s", variant, got)
+		}
 	}
 }
 
