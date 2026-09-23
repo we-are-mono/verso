@@ -799,6 +799,30 @@ html.verso-fonts-loading body {
   }
 }
 
+/* A stepped dialog's line (modal.html.tmpl): the steps read left to right with
+   a short hairline between them; the packet says where each stands — green
+   when done, denim for the one in hand (Ink words, 600), hollow for what is
+   ahead (Meta words). The script moves data-state as an upload goes, so the
+   words and marks ease rather than jump. */
+@layer components {
+  .verso-step + .verso-step::before {
+    content: "";
+    width: 1.25rem;
+    height: 1px;
+    margin-inline: 0.75rem;
+    background: var(--color-rule-strong);
+  }
+  .verso-step { color: var(--color-meta); transition: color 200ms ease-out; }
+  .verso-step-mark { border: 1px solid var(--color-faint); transition: background-color 200ms ease-out, border-color 200ms ease-out; }
+  .verso-step[data-state="done"] { color: var(--color-body); }
+  .verso-step[data-state="done"] .verso-step-mark { background: var(--color-green); border-color: var(--color-green); }
+  .verso-step[data-state="current"] { color: var(--color-ink); font-weight: 600; }
+  .verso-step[data-state="current"] .verso-step-mark { background: var(--color-denim); border-color: var(--color-denim); }
+  @media (prefers-reduced-motion: reduce) {
+    .verso-step, .verso-step-mark { transition: none; }
+  }
+}
+
 /* The colophon answers its copy by washing what it copied, one fact after
    another from the left, then letting it go. The wash is the band's own sand a
    step down, never a hue: nothing changed, it was only picked up. Each fact

@@ -136,6 +136,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.BusyTitle = t(n.BusyTitle)
 		n.BusyBody = t(n.BusyBody)
 		n.Title = t(n.Title)
+		for i := range n.Steps {
+			n.Steps[i] = t(n.Steps[i])
+		}
 	case *Ports:
 		// The port's role name ("Internet", "Network 1") is prose; its interface,
 		// address, speed and hover Note are machine facts left verbatim, and a

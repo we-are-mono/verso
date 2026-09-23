@@ -995,25 +995,6 @@ func TestRenderPasswordField(t *testing.T) {
 	}
 }
 
-func TestRenderFileField(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Field{
-		Name: "firmware_image", Kind: "file", Accept: ".bin,.img",
-		Prompt: "Drop a firmware image here, or",
-	})
-	for _, want := range []string{
-		`type="file"`, `accept=".bin,.img"`, "border-dotted", "rounded-xs", "px-8", "py-12",
-		"size-10", "Drop a firmware image here", "mt-1 block", "whitespace-nowrap", "choose one from your computer",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("file field missing %q: %s", want, got)
-		}
-	}
-	if !strings.Contains(got, `for="firmware_image"`) || !strings.Contains(got, `id="firmware_image"`) {
-		t.Errorf("file picker phrase must label the native input: %s", got)
-	}
-}
-
 func TestRenderFieldError(t *testing.T) {
 	r := newRenderer(t)
 

@@ -8,7 +8,24 @@
      belongs to: a text input the password manager reads, never drawn. */}}
 {{if eq .Style "code"}}
 <div class="space-y-2 py-3" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="textarea"><label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Label}}</label><textarea id="{{.Name}}" name="{{.Name}}" rows="14" spellcheck="false" data-verso-code-editor{{template "verso-field-aria" .}} class="w-full resize-y rounded-xs border border-rule-strong bg-ground p-3 font-mono text-sm leading-relaxed text-ink outline-none hover:border-faint focus:border-denim">{{.Value}}</textarea><p class="text-right font-mono text-sm text-meta">{{t "Lines"}}: <span data-verso-code-lines>{{.LineCount}}</span></p>{{if .Error}}<p id="{{.Name}}-error" class="text-sm text-crimson-deep">{{.Error}}</p>{{end}}</div>
-{{else if and (eq .Kind "hidden") .Autocomplete}}<input type="text" name="{{.Name}}" value="{{.Value}}" autocomplete="{{.Autocomplete}}" readonly hidden>{{else if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
+{{else if and (eq .Kind "hidden") .Autocomplete}}<input type="text" name="{{.Name}}" value="{{.Value}}" autocomplete="{{.Autocomplete}}" readonly hidden>{{else if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else if eq .Kind "file"}}
+{{/* A file to drop is its dialog's whole subject, so its area fills the width:
+     the app's place-marking dashed hairline on sand, the upload glyph, what to
+     drop and the other way to choose one, and under it what fits. The native
+     input covers the area invisibly, so a drop works without the page's script
+     and a click opens the system's picker. A file dragged over it answers in
+     denim (data-dragging, set by verso-forms.js). */}}
+<div class="space-y-2">
+  <label for="{{.Name}}" data-verso-drop class="group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-10 text-center transition-colors">
+    <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}}{{if .Help}} aria-describedby="{{.Name}}-help"{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
+    <span aria-hidden="true" class="mb-2 text-glyph transition-colors group-data-dragging/drop:text-denim">{{icon "upload" "size-8"}}</span>
+    <span class="text-sm font-semibold text-ink">{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Drop a file here" }}{{end}}</span>
+    <span class="text-sm text-body">{{ t "or" }} <span class="font-semibold whitespace-nowrap text-denim-deep underline underline-offset-2">{{ t "choose one from your computer" }}</span></span>
+  </label>
+  {{if .Help}}<p id="{{.Name}}-help" class="text-sm leading-[1.45] text-pretty text-meta">{{.Help}}</p>{{end}}
+  {{if .Error}}<p class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
+</div>
+{{else}}
 {{/* One field is one row of the form, at the form's own measure: what the thing
      is on the left, growing, and the control on the right at a fixed width. The
      control column is fixed rather than the label's, because a column of
@@ -96,17 +113,6 @@
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
   <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
-  {{else if eq .Kind "file"}}
-  {{/* The native input covers the drop surface invisibly: dropping works without
-       plugin JavaScript, and clicking the emphasized phrase opens the OS picker. */}}
-  <label for="{{.Name}}" class="relative flex min-h-40 cursor-pointer items-center justify-center rounded-xs border-2 border-dotted {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:border-denim hover:bg-denim-soft{{end}} px-8 py-12 text-center transition-colors">
-    <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
-    <span class="pointer-events-none text-sm text-body">
-      <span class="mx-auto mb-4 block w-fit text-faint">{{icon "upload" "size-10"}}</span>
-      <span class="block">{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Drop a file here" }}{{end}}</span>
-      <span class="mt-1 block">{{ t "or" }} <span class="whitespace-nowrap font-semibold text-denim underline underline-offset-2">{{ t "choose one from your computer" }}</span>.</span>
-    </span>
-  </label>
   {{else if eq .Kind "textarea"}}
   <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
