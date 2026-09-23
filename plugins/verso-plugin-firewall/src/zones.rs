@@ -522,9 +522,9 @@ mod tests {
                 {"text": "wan", "emphasis": true},
                 // The three policies firewall4 evaluates separately, in the
                 // order it evaluates them.
-                {"text": "accept", "variant": "success"},
-                {"text": "accept", "variant": "success"},
-                {"text": "accept", "variant": "success"},
+                {"text": "accept", "variant": "success", "dot": true},
+                {"text": "accept", "variant": "success", "dot": true},
+                {"text": "accept", "variant": "success", "dot": true},
                 // Masquerading is a yes or a nothing, not a fourth verdict.
                 {},
                 {"actions": [{
@@ -570,7 +570,7 @@ mod tests {
         );
         assert_eq!(
             wan["cells"][3],
-            serde_json::json!({"text": "reject", "variant": "danger"})
+            serde_json::json!({"text": "reject", "variant": "danger", "dot": true})
         );
         assert_eq!(wan["cells"][6], serde_json::json!({"text": "on"}));
     }

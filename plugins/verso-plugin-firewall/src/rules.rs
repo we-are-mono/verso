@@ -859,7 +859,7 @@ mod tests {
                     {"endpoints": [{"kind": "router", "label": "router"}]},
                     {"text": "icmp · v4"},
                     {"text": "echo-request", "emphasis": true},
-                    {"text": "accept", "variant": "success"},
+                    {"text": "accept", "variant": "success", "dot": true},
                     {"text": "—", "muted": true},
                     // The row's own acts: turn it off, and open it. The power
                     // act's words name the state it would move to; its glyph is
@@ -1013,10 +1013,10 @@ mod tests {
             .find(|row| row["id"] == "block_telnet")
             .expect("row");
         // Drop says nothing at all, so it wears no hue: the pill is the plain
-        // word for what happened.
+        // word for what happened, led by the packet — hollow, for it is gone.
         assert_eq!(
             telnet["cells"][7],
-            serde_json::json!({"text": "drop", "variant": "neutral"})
+            serde_json::json!({"text": "drop", "variant": "neutral", "dot": true})
         );
         // A rule that is off offers to come back on, and says so.
         assert_eq!(

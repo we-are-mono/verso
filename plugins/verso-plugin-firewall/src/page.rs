@@ -183,6 +183,9 @@ pub fn pill_cell(text: &str, variant: &str) -> TableCell {
     TableCell {
         text: text.into(),
         variant: variant.into(),
+        // a verdict leads with the packet it decides about: filled in the
+        // verdict's hue, hollow for drop, where the packet is simply gone
+        dot: true,
         ..TableCell::default()
     }
 }
