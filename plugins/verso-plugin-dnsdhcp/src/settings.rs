@@ -251,14 +251,20 @@ fn proxy_address(proxy: &Options) -> String {
     };
     format!("127.0.0.1#{port}")
 }
-fn status(label: &str, desc: &str, href: &str) -> Widget {
+// missing is a capability this page needs a package for: the fact, a sentence
+// under it where it has one, and the act that installs the package — in the
+// package's own drawer, over this page (the shell's package panel), so it is
+// added where the need for it is and the page then shows the setting it adds.
+fn missing(label: &str, desc: &str, package: &str) -> Widget {
     Widget::Link {
         label: label.into(),
         desc: desc.into(),
-        href: href.into(),
+        href: format!("/system/packages/package?name={package}"),
         style: "status".into(),
         code: String::new(),
-        icon: String::new(),
+        icon: "download".into(),
+        act: format!("Install {package}"),
+        panel: true,
     }
 }
 fn part(title: &str, lede: &str, anchor: &str, fields: Vec<Widget>) -> Widget {
@@ -305,10 +311,10 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                 s.flag("rebind_protection"),
             ]
         } else {
-            vec![status(
+            vec![missing(
                 "No local resolver",
-                "devices ask the upstream servers directly",
-                "/system/packages?q=dnsmasq",
+                "Devices ask the upstream servers directly.",
+                "dnsmasq",
             )]
         },
     ));
@@ -352,11 +358,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             },
         ]
     } else {
-        vec![status(
-            "Queries leave in plain text",
-            "install https-dns-proxy to encrypt them",
-            "/system/packages?q=https-dns-proxy",
-        )]
+        vec![missing("Queries leave in plain text", "", "https-dns-proxy")]
     };
     if s.resolver {
         privacy.push(s.flag("dnssec"));
@@ -379,11 +381,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             if s.blocking {
                 vec![s.check("adblock", "Block ads and trackers", "adblock")]
             } else {
-                vec![status(
-                    "No blocklist",
-                    "install adblock to filter ads and trackers",
-                    "/system/packages?q=adblock",
-                )]
+                vec![missing("No blocklist", "", "adblock")]
             },
         ));
         sections.push(part(
@@ -784,6 +782,33 @@ mod tests {
             ),
         }
     }
+    // Every status row the page draws, wherever it sits in the tree.
+    fn statuses(v: &Value) -> Vec<Value> {
+        match v {
+            Value::Object(m) if m.get("style").and_then(Value::as_str) == Some("status") => vec![v.clone()],
+            Value::Object(m) => m.values().flat_map(statuses).collect(),
+            Value::Array(a) => a.iter().flat_map(statuses).collect(),
+            _ => vec![],
+        }
+    }
+
+    // A capability this page needs a package for is a settings row whose act
+    // installs the package in its own drawer over the page — never a link that
+    // leaves for Packages and lands on an empty Installed list.
+    #[test]
+    fn a_missing_package_installs_in_its_own_drawer_over_the_page() {
+        let mut r = request();
+        r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false}}));
+        let rows = statuses(&serde_json::to_value(page(&r)).expect("serialize"));
+        for (label, package) in [("Queries leave in plain text", "https-dns-proxy"), ("No blocklist", "adblock")] {
+            let row = rows.iter().find(|w| w["label"] == label).unwrap_or_else(|| panic!("no row for {label}"));
+            assert_eq!(row["act"], format!("Install {package}"), "{label}");
+            assert_eq!(row["href"], format!("/system/packages/package?name={package}"), "{label}");
+            assert_eq!(row["icon"], "download", "{label}");
+            assert_eq!(row["panel"], true, "{label}");
+        }
+    }
+
     fn encoded(s: &str) -> String {
         s.bytes().map(|b| format!("%{b:02X}")).collect()
     }
