@@ -79,6 +79,14 @@
       "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border: 1px solid #d2ccc2; border-radius: 2px; background: transparent; color: #1b1917; font: 600 14px/1 'Hanken Grotesk', system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background-color .15s, border-color .15s; } .ds-btn-secondary:hover { border-color: #a09a8e; background: #f5f2ec; } .ds-btn-secondary:focus-visible { outline: 2px solid #3568a8; outline-offset: 2px; } .ds-btn-secondary:active { transform: translateY(1px); }"
     },
     {
+      "name": "Confirmation",
+      "kind": "custom",
+      "refersTo": "confirm",
+      "description": "A consequential act asking in place, in one hue throughout. Shown in danger (crimson); the caution tone is the same anatomy in marigold, with its act white on Deep Marigold.",
+      "html": "<div class=\"ds-confirm\" role=\"group\" aria-label=\"Reboot now\"><div class=\"ds-confirm-q\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><div><p class=\"ds-confirm-title\">Reboot the router now?</p><p class=\"ds-confirm-body\">Every device on the network loses its connection for about a minute, then reconnects on its own.</p></div></div><div class=\"ds-confirm-answers\"><button class=\"ds-btn-danger\">Reboot</button><button class=\"ds-btn-danger-back\">Not now</button></div></div>",
+      "css": ".ds-confirm { max-width: 640px; padding: 16px; border: 1px solid #f0c2c2; border-radius: 2px; background: #fbe9e9; color: #9e2222; font: 400 14px/1.45 'Hanken Grotesk', system-ui, sans-serif; } .ds-confirm-q { display: flex; gap: 8px; } .ds-confirm-q svg { flex: none; margin-top: 2px; color: #d63b3b; } .ds-confirm-title { margin: 0; font-size: 16px; font-weight: 600; } .ds-confirm-body { margin: 4px 0 0; } .ds-confirm-answers { display: flex; align-items: center; gap: 8px; margin: 24px 0 0 24px; } .ds-btn-danger { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border: 1px solid #d63b3b; border-radius: 2px; background: #d63b3b; color: #ffffff; font: 600 14px/1 'Hanken Grotesk', system-ui, sans-serif; cursor: pointer; transition: background-color .15s, border-color .15s; } .ds-btn-danger:hover { background: #9e2222; border-color: #9e2222; } .ds-btn-danger:focus-visible { outline: 2px solid #9e2222; outline-offset: 2px; } .ds-btn-danger:active { transform: translateY(1px); } .ds-btn-danger-back { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border: 0; border-radius: 2px; background: transparent; color: #9e2222; font: 600 14px/1 'Hanken Grotesk', system-ui, sans-serif; cursor: pointer; transition: background-color .15s; } .ds-btn-danger-back:hover { background: rgba(240,194,194,.5); } .ds-btn-danger-back:focus-visible { outline: 2px solid #9e2222; outline-offset: -2px; }"
+    },
+    {
       "name": "Search Field",
       "kind": "input",
       "refersTo": "input",
@@ -154,7 +162,8 @@
       "Do build rows from a 24px line plus padding (44px), bands at 52px, controls at 36px (28px inside a row).",
       "Do set machine strings in Inconsolata 16px and everything else in Hanken Grotesk 14px.",
       "Do carry state with the 6px packet square in its hue; hollow for absent.",
-      "Do keep the resting state silent: say only what is wrong, in plain words."
+      "Do keep the resting state silent: say only what is wrong, in plain words.",
+      "Do ask before a consequential act, in place and in one hue: crimson when it destroys or drops something, marigold when it is disruptive but wanted (installing firmware)."
     ],
     "donts": [
       "Don't use a segmented switch or toggle track on a control surface; cuts are dropdowns, switches are checkboxes.",
@@ -165,7 +174,8 @@
       "Don't use a circular spinner; waiting is the four-square mark.",
       "Don't fix a row or band height with a height utility; heights come from line plus padding.",
       "Don't centre the page or let a band's controls leave the page's column.",
-      "Don't fill a table with stripes or vertical rules, or make a whole row clickable."
+      "Don't fill a table with stripes or vertical rules, or make a whole row clickable.",
+      "Don't pair a danger button with a sand or bordered secondary; the way back speaks the question's hue."
     ]
   }
 }

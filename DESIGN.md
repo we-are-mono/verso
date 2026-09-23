@@ -115,6 +115,33 @@ components:
     height: "36px"
   button-danger-hover:
     backgroundColor: "{colors.crimson-deep}"
+  button-danger-back:
+    backgroundColor: "transparent"
+    textColor: "{colors.crimson-deep}"
+    typography: "{typography.body}"
+    rounded: "{rounded.xs}"
+    padding: "0 12px"
+    height: "36px"
+  button-danger-back-hover:
+    backgroundColor: "{colors.crimson-line}"
+  button-caution:
+    backgroundColor: "{colors.marigold-deep}"
+    textColor: "{colors.canvas}"
+    rounded: "{rounded.xs}"
+    padding: "0 16px"
+    height: "36px"
+  confirm-caution:
+    backgroundColor: "{colors.marigold-soft}"
+    textColor: "{colors.marigold-deep}"
+    typography: "{typography.body}"
+    rounded: "{rounded.xs}"
+    padding: "16px"
+  confirm:
+    backgroundColor: "{colors.crimson-soft}"
+    textColor: "{colors.crimson-deep}"
+    typography: "{typography.body}"
+    rounded: "{rounded.xs}"
+    padding: "16px"
   button-row:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
@@ -270,7 +297,7 @@ Verso is flat at rest. Depth comes from tone (Paper → Quiet Sand → Mid Sand)
 - **Field inset** (`box-shadow: inset 0 1px 2px rgba(27,25,23,.06)`): every input and select — a field reads as a slot cut into the paper.
 - **Tooltip** (`box-shadow: 0 4px 12px rgba(27,25,23,.14)`): tooltips and hover tips.
 - **Drawer** (`box-shadow: -8px 0 32px rgba(27,25,23,.12)`): the 640px side panel, cast leftward over the page.
-- **Dialog** (`box-shadow: 0 8px 32px rgba(27,25,23,.16)`): confirmations and alerts.
+- **Dialog** (`box-shadow: 0 8px 32px rgba(27,25,23,.16)`): modal dialogs and alerts. A confirmation asks in place and casts none.
 
 ### Named Rules
 **The Flat-By-Default Rule.** Nothing on the page casts a shadow. Only a layer that floats above the page (drawer, dialog, tooltip) does, and a pressed button loses even its press shadow.
@@ -290,10 +317,23 @@ Plain and exact.
 - **Shape:** gently squared (2px), 36px tall, 16px side padding, 14px/600 text.
 - **Primary:** Denim fill, white words, and always a leading 16px plus glyph, unless the act leads elsewhere and names its own (download, upload, open-out). It lives on the heading line, one per page.
 - **Secondary:** transparent, Ink words, Strong Hairline border; on hover the border warms to Faint and the fill to Quiet Sand. Words only; no decorative icons.
-- **Danger:** Crimson fill, white words, for the confirmation step only.
+- **Danger:** Crimson fill, white words, for the confirmation step only, and always beside its way back (see Confirmation).
 - **Row buttons:** 28px, 12px side padding, the same secondary dress. Icon-only row acts are 28px squares in Glyph that wash to Hairline on hover and show a tooltip.
 - **Press:** every button nudges down 1px and drops its shadow when pressed (off under reduced motion).
 - **Waiting:** a button busy with a slow act keeps its footprint, goes Quiet Sand with Parked words, shows the waiting mark and a present-participle label with a real ellipsis ("Applying…").
+
+### Confirmation
+How a consequential act asks first. The whole exchange is one hue, so the question and both answers read as a single voice. The hue is the act's cost:
+- **Danger (crimson):** the act destroys or drops something: rebooting, deleting a rule.
+- **Caution (marigold):** the act is disruptive but wanted, and is the point of being here: installing firmware. It steadies rather than scares.
+
+The anatomy is the same in both:
+- **In place:** the trigger gives way to the question where it stood. Nothing floats and nothing casts a shadow. Focus moves to the first answer; Escape and the way back return it to the trigger.
+- **One hue, every step of it:** the tone's Wash ground inside its Hairline, 2px corners, 16px padding, every word in its Deep step. Full chroma appears as a mark only: the 16px triangle-alert icon, and for danger the fill behind the act's white words. No sand, no Ink, no second border.
+- **Trigger:** the act's own name ("Reboot now", "Download and install 25.12.5") on the Wash with the Hairline, 14px/600 words in the Deep step, a 36px control like every other; the hairline turns full chroma on hover.
+- **Question:** a 16px/600 question ("Reboot the router now?") over one or two sentences of consequence at 14px/1.45. The icon leads on the question's first line.
+- **The answer pair:** the act (36px, named with the verb: "Reboot", "Install firmware"), then the way back as bare words in the Deep step ("Not now", "Not yet"): no border, no fill, 12px side padding, washing to the Hairline at half strength on hover. Danger's act is white on full Crimson. Caution's act is white on Deep Marigold, because white on full Marigold fails the 4.5 floor. The pair starts 24px below the message and indents 24px, so it lines up with the words, not the icon; 8px between the two. Never "OK" and "Cancel".
+- **With a password:** when the act needs re-authorizing, the password field leads the answer row with a Crimson Hairline border.
 
 ### Chips
 - **Style:** lowercase Inconsolata 14px in Meta on Quiet Sand, Hairline border, 2px corners, 2px 6px padding. They carry config values and config keys (`hostname`, `pppoe`), never decoration.
@@ -341,6 +381,7 @@ The signature seam of every list and log page.
 - **Do** set machine strings in Inconsolata 16px and everything else in Hanken Grotesk 14px.
 - **Do** carry state with the 6px packet square in its hue; hollow for absent.
 - **Do** keep the resting state silent: say only what is wrong, in plain words.
+- **Do** ask before a consequential act, in place and in one hue: crimson when it destroys or drops something, marigold when it is disruptive but wanted (installing firmware).
 
 ### Don't:
 - **Don't** use a segmented switch or toggle track on a control surface; cuts are dropdowns, switches are checkboxes.
@@ -352,3 +393,4 @@ The signature seam of every list and log page.
 - **Don't** fix a row or band height with a height utility; heights come from line plus padding.
 - **Don't** centre the page or let a band's controls leave the page's column.
 - **Don't** fill a table with stripes or vertical rules, or make a whole row clickable.
+- **Don't** pair a danger button with a sand or bordered secondary; the way back speaks the question's hue.
