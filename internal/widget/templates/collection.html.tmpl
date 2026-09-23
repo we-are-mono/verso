@@ -26,10 +26,21 @@
     </li>
     {{end}}
   </ul>
-  {{/* where the first item's name would stand: no air of its own above */}}
-  {{else if .Empty}}<p class="pb-2.5 text-sm leading-6 text-body">{{.Empty}}</p>{{end}}
+  {{/* Where the first item would stand, while there is none: a place, not a
+       sentence. Quiet Sand inside a dashed Strong Hairline, the one line in the
+       app that marks a place rather than a thing, holding the hollow packet
+       (absent) and the set's empty words in Meta. It is inert: the add stays
+       at the foot, where it stands under the items once there are some. The
+       slot keeps no air above it: the subheading's is the gap. */}}
+  {{else if .Empty}}
+  <div data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5">
+    <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
+    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.Empty}}</p>
+  </div>
+  {{end}}
   {{with .Add}}
-  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="pt-2.5">
+  {{/* under the last item's row, or 16px under the empty slot's edge */}}
+  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="{{if $.Items}}pt-2.5{{else}}pt-4{{end}}">
     <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{.Label}}</button>
     <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="space-y-3">
       {{template "verso-csrf" $.CSRFToken}}

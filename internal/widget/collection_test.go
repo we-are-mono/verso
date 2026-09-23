@@ -133,18 +133,36 @@ func TestSubsectionActsWearOneDress(t *testing.T) {
 	}
 }
 
-// TestCollectionSaysWhenEmpty: with nothing kept, the set says so in one line
-// where the first item would be, and still offers the add.
+// TestCollectionSaysWhenEmpty: with nothing kept, the set draws the place its
+// first item would take — a dashed Quiet Sand slot marked absent, saying so in
+// the words of a state — and the add stands at the foot under it, where it
+// stands under the items once there are some.
 func TestCollectionSaysWhenEmpty(t *testing.T) {
 	empty := `{"type":"collection","empty":"No keys are authorized.","items":[],
 	  "add":{"label":"Add a key","name":"authorized_key","submit":"Add key"}}`
 	got := renderCollection(t, empty, "")
-	if !strings.Contains(got, ">No keys are authorized.</p>") || !strings.Contains(got, ">Add a key</button>") {
-		t.Errorf("want the empty line and the add:\n%s", got)
+	for _, want := range []string{
+		`<div data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5">`,
+		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No keys are authorized.</p>`,
+		`x-data="confirm" @keydown.escape="escape" class="pt-4"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
 	}
-	// It stands where the first item's name would: no air of its own above
-	// it, the subheading's air being the gap.
-	if !strings.Contains(got, `<p class="pb-2.5 text-sm leading-6 text-body">No keys are authorized.</p>`) {
-		t.Errorf("the empty line keeps a row's air above it:\n%s", got)
+	// The slot is a place, not a control: nothing in it answers the pointer.
+	slot := got[strings.Index(got, "data-verso-slot"):strings.Index(got, `x-data="confirm"`)]
+	if strings.Contains(slot, "hover:") || strings.Contains(slot, "@click") || strings.Contains(slot, "<button") {
+		t.Errorf("the empty slot is inert:\n%s", slot)
+	}
+}
+
+// TestCollectionWithItemsAddsFromTheFoot: once the set holds something, no
+// slot is drawn and the add stands under the last item.
+func TestCollectionWithItemsAddsFromTheFoot(t *testing.T) {
+	got := renderCollection(t, keyCollection(), "")
+	if strings.Contains(got, "data-verso-slot") || !strings.Contains(got, `x-data="confirm" @keydown.escape="escape" class="pt-2.5"`) {
+		t.Errorf("a set with items adds from its foot:\n%s", got)
 	}
 }
