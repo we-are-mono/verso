@@ -4,6 +4,10 @@
 package server
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -40,8 +44,48 @@ func TestSessionsFoldIntoSourceAndLastSeen(t *testing.T) {
 		t.Errorf("revoke = %+v (confirm %q), want one icon act that asks first", acts, other[2].Confirm)
 	}
 
-	if current[0].Tag != "this browser" || len(current[2].Actions) != 0 {
-		t.Errorf("this browser is marked and cannot revoke itself: %+v", current)
+	if current[0].Tag != "this browser" {
+		t.Errorf("this browser is marked: %+v", current[0])
+	}
+	// This browser revokes itself with the same act, which signs it out; the
+	// question says so in its own words.
+	own := current[2]
+	if len(own.Actions) != 1 || own.Actions[0].Value != "end-session:a" || own.Actions[0].Icon != "log-out" ||
+		own.Confirm == "" || own.Confirm == other[2].Confirm {
+		t.Errorf("own revoke = %+v, want the same act asking in its own words", own)
+	}
+}
+
+// Revoking this browser's own session is logging out: the session ends, the
+// cookie goes, and the browser lands on sign-in.
+func TestRevokingOwnSessionLogsOut(t *testing.T) {
+	s := passwordServer(t, fakeBackend{})
+	token, err := s.sessions.CreateWithMetadata("sid-current", "root", "10.0.0.232", "Firefox/142.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, _ := s.sessions.get(token)
+	form := url.Values{"_csrf": {current.csrf}, "_action": {"end-session:" + current.id}}
+	post := httptest.NewRequest(http.MethodPost, "/system/access", strings.NewReader(form.Encode()))
+	post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	post.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, post)
+
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/login" {
+		t.Fatalf("revoking own session = %d → %q, want 303 → /login", rec.Code, rec.Header().Get("Location"))
+	}
+	if _, ok := s.sessions.get(token); ok {
+		t.Error("own session is still live")
+	}
+	cleared := false
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == sessionCookie && c.MaxAge < 0 {
+			cleared = true
+		}
+	}
+	if !cleared {
+		t.Error("the session cookie was not cleared")
 	}
 }
 

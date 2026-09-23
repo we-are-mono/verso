@@ -58,22 +58,21 @@ type accessSession struct {
 // accessSessionsTable lists who is signed in: where from, with the browser
 // under the address, and when last seen, with when it started under that. Two
 // stacked columns and an icon keep a full IPv6 address and the way to revoke
-// inside the form's measure. Revoking asks first; this browser cannot revoke
-// itself here (Log out does that).
+// inside the form's measure. Every session revokes the same way and asks
+// first; revoking this browser's own is logging out, and the question says so.
 func accessSessionsTable(sessions []accessSession, tr func(string) string) *widget.Table {
 	rows := make([]widget.TableRow, 0, len(sessions))
 	for _, session := range sessions {
 		source := widget.TableCell{Text: session.Address, Detail: session.Browser}
-		action := widget.TableCell{}
+		action := widget.TableCell{
+			Actions:      []widget.TableRowAct{{Icon: "log-out", Title: tr("Revoke session"), Name: "_action", Value: "end-session:" + session.ID}},
+			ConfirmTitle: tr("Revoke this session?"),
+			Confirm:      tr("That browser is signed out at once and has to sign in again."),
+		}
 		if session.Current {
 			source.Tag = tr("this browser")
 			source.TagVariant = "success"
-		} else {
-			action = widget.TableCell{
-				Actions:      []widget.TableRowAct{{Icon: "log-out", Title: tr("Revoke session"), Name: "_action", Value: "end-session:" + session.ID}},
-				ConfirmTitle: tr("Revoke this session?"),
-				Confirm:      tr("That browser is signed out at once and has to sign in again."),
-			}
+			action.Confirm = tr("This browser is signed out at once, the same as Log out.")
 		}
 		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, {Text: session.LastActive, Detail: session.Since}, action}})
 	}
@@ -238,9 +237,16 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 	s.renderAccess(w, r, http.StatusOK, nil, "", "Password updated.")
 }
 
+// handleEndSession revokes one session. This browser's own is logging out, so
+// it ends the way Log out does: the cookie goes and the browser lands on
+// sign-in.
 func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request, id string) {
 	current, _ := s.currentSession(r)
-	if id == "" || id == current.id || !s.sessions.destroyID(id) {
+	if id != "" && id == current.id {
+		s.handleLogout(w, r)
+		return
+	}
+	if id == "" || !s.sessions.destroyID(id) {
 		s.renderAccess(w, r, http.StatusBadRequest, nil, "That session could not be ended.", "")
 		return
 	}
