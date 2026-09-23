@@ -1278,6 +1278,22 @@ func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
 	}
 }
 
+// TestEveryCellGivesUpTheLastRowsHairline: whatever its kind, a cell on the
+// last row draws no hairline of its own — the table's closing line, or the
+// section's rule when the table ends its section, is the only line under it.
+func TestEveryCellGivesUpTheLastRowsHairline(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "File", Kind: "path"}, {Label: "Options", Kind: "count"}},
+		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "ads.conf", Sub: "/etc/dnsmasq.d/"}, {Text: "2", Sub: "options"}}}},
+	})
+	for _, td := range strings.Split(got, "<td")[1:] {
+		td = td[:strings.Index(td, ">")]
+		if strings.Contains(td, "border-b") && !strings.Contains(td, "group-last:border-b-0") {
+			t.Errorf("a cell keeps its hairline on the last row: <td%s>", td)
+		}
+	}
+}
+
 // TestCellDetailStandsUnderItsValue: a value that needs a line of words to say
 // what it is (the browser behind an address) or since when (a session's
 // start) carries them on a second line under it, in the secondary step, and the

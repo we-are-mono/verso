@@ -259,9 +259,9 @@
           </span>
         </td>
         {{else if eq .Kind "path"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} break-all align-top font-mono text-base"><span class="text-meta">{{.Sub}}</span><span class="text-ink">{{.Text}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} break-all align-top font-mono text-base group-last:border-b-0"><span class="text-meta">{{.Sub}}</span><span class="text-ink">{{.Text}}</span></td>
         {{else if eq .Kind "count"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap text-sm text-meta">{{.Text}} {{.Sub}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap text-sm text-meta group-last:border-b-0">{{.Text}} {{.Sub}}</td>
         {{else if eq .Kind "actions"}}
         {{/* A 12px lead-in separates the preceding value from the 28px actions,
              including dense tables. The reference reserves 96px for three
