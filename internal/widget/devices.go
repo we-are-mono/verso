@@ -113,7 +113,7 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		rows = append(rows, row)
 	}
 	return &Table{
-		Style: "flat", Align: "top",
+		Style: "flat",
 		// Every column but the device's own is fixed, so the grid holds its shape
 		// whatever this particular network happens to be named and however short
 		// one device's address is.

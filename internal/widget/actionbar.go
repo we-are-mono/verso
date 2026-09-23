@@ -13,9 +13,9 @@ import "io"
 //
 // The parts read left to right in the order a person reaches for them. Tabs are
 // the coarse cut, each carrying its own count so the cut is priced before it is
-// made. Then, hard right, the fine cuts: a free-text Filter, a Select for the
-// one dimension a listing is always sliced along, and Action — the single
-// forward act, and the only denim on the bar.
+// made. With them, the fine cuts: a free-text Filter and a Select for the one
+// dimension a listing is always sliced along. Hard right, only Action — the
+// single forward act, and the only denim on the bar.
 //
 // Everything here narrows what is already on screen, so the whole bar is
 // client-side: nothing it does is a request, and nothing it does can fail.

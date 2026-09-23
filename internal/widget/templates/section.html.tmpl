@@ -21,31 +21,49 @@
      it cancels the standoff its container would give it: the rule under the last
      row IS the separation, and air above that rule would detach it from the set
      it belongs to. */}}
+{{/* A section inside a section takes no lead-in of its own: it is one of its
+     parent's blocks, and the parent's block rhythm already stands it off. */}}
 {{/* A section someone can be sent to stops short of the viewport's top edge: far
      enough that the phone's own bar is not covering the heading that was asked
      for, and on a wider screen no further than the air the section already keeps
      above itself. */}}
-<section{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-10 border-t border-rule pt-10 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not .Flush}}pt-6{{end}}">
-  {{if or .Title .Meta .Control}}
+<section{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-10 border-t border-rule pt-10 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
+  {{if and .Nested .Title (not .Kicker)}}
+  {{/* A section inside a section is a part of its subject, and it stands on
+       a ledger line: its name at the label's size, how many things it holds,
+       and a hairline running on to the column's end — the start of a group,
+       which a field label never is. The count is the set's own length, keyed
+       by the part's name, so the page can roll it when the number changes
+       (verso-page.js). The first thing in the part stands 20px under the
+       name, a group's step. */}}
+  <div data-verso-ledger class="mb-2.5 flex items-center gap-3">
+    <h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">{{.Title}}</h3>
+    {{if .Counted}}<span data-verso-count="{{.Title}}" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]">{{.Count}}</span></span>{{end}}
+    {{if .Meta}}<span data-verso-section-meta class="shrink-0 text-sm text-meta">{{.Meta}}</span>{{end}}
+    <span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule"></span>
+    {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
+  </div>
+  {{else if or .Title .Meta .Control}}
   <div class="{{if .Sub}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
     <div class="flex flex-wrap items-center gap-3">
       {{/* A kicker names the group under it and nothing more, so it is set at the
            meta size in caps rather than as a heading — a second 18px heading
            beside a rail's list of headings would read as one of them. */}}
-      {{/* A section inside a section is a part of its subject: h3, at the
-           label's size, so it never reads as a peer of the heading above it. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else if .Nested}}<h3 class="text-sm font-semibold text-ink">{{.Title}}</h3>{{else}}<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}
       {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
-      {{/* the control beside a heading is the same control as anywhere else.
-           It used to be scaled down a step, from when a button's size was its
-           padding's business; now every button is one height, and a second,
-           smaller one here would be a second button. */}}
-      {{if .Control}}<span class="flex items-center">{{.Control}}</span>{{end}}
     </div>
     {{if and .Meta (not .MetaInline)}}<span class="inline-flex items-center gap-1.5 text-sm">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="text-meta">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-semibold text-body">{{.Meta}}</span></span>{{end}}
+    {{/* the control on a heading line acts on what the section holds, so it
+         stands in the column its fields' controls do — their width, hard
+         right — and starts where they start. On a phone, where a field's
+         control takes the row, it takes the row under the title. A button
+         there stands where a field would, so it takes a field's height and a
+         primary's footprint while keeping its own dress: the one place a
+         section's act is not the smaller subsection act. */}}
+    {{if .Control}}<span class="flex w-full items-center sm:w-64 [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
   </div>
   {{end}}
   {{if .Sub}}<div class="verso-prose mb-5 max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div>{{end}}

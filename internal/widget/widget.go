@@ -184,6 +184,12 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode properties: %w", err)
 		}
 		return &p, nil
+	case "collection":
+		var c Collection
+		if err := json.Unmarshal(data, &c); err != nil {
+			return nil, fmt.Errorf("widget: decode collection: %w", err)
+		}
+		return &c, nil
 	case "confirm":
 		var c Confirm
 		if err := json.Unmarshal(data, &c); err != nil {

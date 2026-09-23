@@ -27,9 +27,26 @@
      that is there but not yet spoken for, and takes denim the moment it is. */}}
 {{define "verso-btn-waiting"}}disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta disabled:active:translate-y-0{{end}}
 
-{{/* verso-btn-secondary: the quiet bordered action that warms to the accent on
-     hover. Layout stays at the call site, as with verso-btn-primary. */}}
-{{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-ink transition-colors hover:border-faint hover:bg-quiet {{template "verso-press"}}{{end}}
+{{/* verso-btn-secondary: the quiet bordered action, in the colours of the
+     subsection act: meta words on the strong hairline at rest, the hairline
+     wash, the parked border and ink words under the pointer — so every quiet
+     button answers the pointer alike, whatever its size. Layout stays at the
+     call site, as with verso-btn-primary. */}}
+{{/* verso-btn-act: an act on a part of a section — adding a key, installing
+     or fetching a certificate. The 28px quiet size, the strong hairline of a
+     secondary control at rest, warming to the hairline wash under the pointer.
+     The call site adds the inset: pl-2 pr-2.5 before a leading glyph, px-2.5
+     for words alone. */}}
+{{define "verso-btn-act"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+
+{{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
+     remove, a list's remove, a copy beside a value or on a code box. A 28px
+     square in Glyph on no border, taking the parked border, the hairline wash
+     and Ink under the pointer, as a subsection act does. The call site sets
+     the display (grid, or inline-grid inside a line of text) and position. */}}
+{{define "verso-btn-icon"}}size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+
+{{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-danger: the destructive action's colour + interaction chain —
      one red across the confirm widget and the table's confirmed row action. */}}
@@ -42,10 +59,15 @@
 
 {{/* verso-input-border: a form control's border, the only thing that changes
      about it — the strong hairline at rest, the faint step under the pointer,
-     the action colour while typing. A refused field rests and hovers in
-     crimson, but focus stays the action colour: focus says where you are, not
-     what is wrong. */}}
-{{define "verso-input-border"}}{{if .}}border-crimson hover:border-crimson-deep focus:border-denim{{else}}border-rule-strong hover:border-faint focus:border-denim{{end}}{{end}}
+     the action colour while typing. A refused field stays crimson at rest,
+     under the pointer and while focused, deep crimson for the last two: it is
+     the box that is wrong while it is being corrected. Focused, its edge
+     doubles to 2px (an inset line beside the field's own inset shadow), since
+     a change of shade alone does not read as focus. The crimson hangs on
+     aria-invalid, which the page drops on the first keystroke (verso-forms.js),
+     since the refusal was about the value that was there — the box then
+     returns to the hairline and the action colour. */}}
+{{define "verso-input-border"}}border-rule-strong hover:border-faint focus:border-denim{{if .}} aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),inset_0_1px_2px_rgba(27,25,23,.06)]{{end}}{{end}}
 
 {{/* verso-kicker-class: the one kicker — a word or two naming the group under
      it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
@@ -274,10 +296,33 @@
      at the top of its body, because the page around it is not re-rendered to
      say what happened. One definition, so the two cannot drift apart. Nothing
      draws without a message. */}}
-{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-center gap-2 rounded-xs border px-4 py-3 text-sm {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}" data-verso-flash-variant="{{.Variant}}">
-  {{if eq .Variant "danger"}}{{icon "circle-alert" "size-4 shrink-0"}}{{else if eq .Variant "warning"}}{{icon "triangle-alert" "size-4 shrink-0"}}{{else if eq .Variant "info"}}{{icon "info" "size-4 shrink-0"}}{{else}}{{icon "circle-check" "size-4 shrink-0"}}{{end}}
+{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-5 {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}" data-verso-flash-variant="{{.Variant}}">
+  {{template "verso-message-mark" .Variant}}
   <span>{{.Message}}</span>
 </div>{{end}}{{end}}
+
+{{/* verso-message-mark: how an error, a notice, a warning or a confirmation
+     says its tone — the state mark, the 6px square in the tone's hue, hung on
+     the message's first 20px line. Never an alert glyph: the square is the
+     one mark for state everywhere, and a message is state. */}}
+{{define "verso-message-mark"}}<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] {{template "verso-message-hue" .}}"></span>{{end}}
+
+{{/* verso-error-line: a refusal under the thing it refuses — a box, a row, a
+     button. The line's class, and its words after the crimson square; the
+     words stand in their own span so a script that says a refusal
+     (versoErrorLine, verso.js) writes them without losing the mark. */}}
+{{define "verso-error-line"}}flex items-start gap-2 text-sm leading-5 text-crimson-deep{{end}}
+
+{{/* verso-refusal-band: a refusal under the box it refuses — a field, a key's
+     box, a list's box — is that line set on crimson's own wash, so a wrong
+     value is findable without reading and reads the same wherever it was
+     typed. Its words are verso-error-words. */}}
+{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep{{end}}
+{{define "verso-error-words"}}{{template "verso-message-mark" "danger"}}<span data-verso-error-text>{{.}}</span>{{end}}
+
+{{/* verso-message-hue: the square's hue for a tone. Caution is marigold, as
+     warning is; anything unnamed is an outcome that went well. */}}
+{{define "verso-message-hue"}}{{if eq . "danger"}}bg-crimson{{else if or (eq . "warning") (eq . "caution")}}bg-marigold{{else if eq . "info"}}bg-denim{{else}}bg-green{{end}}{{end}}
 
 {{/* verso-drawer-panel: the slide-in detail panel — the one drawer language,
      shared by the drawer widget and a table row's drawer (drawerPanelView).

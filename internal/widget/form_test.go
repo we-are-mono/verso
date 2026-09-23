@@ -78,7 +78,7 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 		">Save</button>",
 		`name="_action" value="generate-keypair"`, ">Generate keypair</button>",
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
-		"hover:border-faint hover:bg-quiet",
+		"hover:border-sand-5 hover:bg-rule",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("form render missing %q", want)
@@ -116,6 +116,31 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 	}
 	if strings.Contains(got, "disabled:opacity-40") {
 		t.Errorf("a waiting Save must not be a faded denim:\n%s", got)
+	}
+}
+
+// A form that commits one section stands its Save under its own fields, with
+// no rule of its own: the next section's rule is the only line between them,
+// and a ruled Save would read as a section of its own. A form that is the
+// page's (its sections inside it) commits the whole page, so its Save stands
+// under a section rule of the page's own — 40px either side, run out to the
+// rail. A form in a panel keeps its own rule inside the panel.
+func TestSectionFormCommitsWithoutARule(t *testing.T) {
+	r := newRenderer(t)
+	form := func() *Form {
+		return &Form{Style: "settings", Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}
+	}
+	sectioned := render(t, r, &Section{Title: "SSH", Hairline: true, Children: []Widget{form()}})
+	if !strings.Contains(sectioned, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
+		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
+	}
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-rule class="flex flex-wrap items-center mt-10 gap-4 border-t border-rule pt-10">`) {
+		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
+	}
+	framed := form()
+	framed.Frame = "panel"
+	if got := render(t, r, framed); !strings.Contains(got, `<div class="flex flex-wrap items-center mt-7 gap-4 border-t border-rule pt-5">`) {
+		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
 }
 

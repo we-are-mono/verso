@@ -43,7 +43,19 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 		}
 	}
 	got := render(t, r, table)
-	if !strings.Contains(got, `preserveAspectRatio="none"`) || !strings.Contains(got, `vector-effect="non-scaling-stroke"`) {
-		t.Fatal("branches must stretch with wrapped rows without changing stroke width")
+	// A wrapped row hangs from its first line: the node and its branch stay on
+	// the first 44px, and only the trunks that run on to later rows stretch
+	// down the rest of the row, without changing their stroke.
+	for _, want := range []string{
+		`class="pointer-events-none absolute top-0 left-4 h-11`,
+		`class="pointer-events-none absolute top-11 bottom-0 left-4`,
+		`preserveAspectRatio="none"`, `vector-effect="non-scaling-stroke"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if n := strings.Count(got, "align-top"); n < 6 {
+		t.Errorf("every cell of a row stands at its top, got %d:\n%s", n, got)
 	}
 }

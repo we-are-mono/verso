@@ -1,0 +1,44 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* collection: a short set of kept machine strings. No rules: each item is
+     its identity over its detail, stood apart from the next by the row's own
+     air, its one act on its first line. The act asks in place and drops its
+     question under the item (the confirm is laid into the item's own row).
+     The next item is added from the foot: a quiet act that unfolds where it
+     stands into the box that takes one, the plugin's live reading of what was
+     typed, and the act that adds it. A refused paste comes back open. */}}
+<div class="verso-collection">
+  {{if .Items}}
+  <ul>
+    {{range .Items}}
+    <li>
+      <form method="post"{{if $.Action}} action="{{$.Action}}"{{end}} class="flex flex-wrap items-start justify-between gap-x-6 py-2.5">
+        {{template "verso-csrf" $.CSRFToken}}
+        {{if .Name}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+        <div class="min-w-0 flex-1">
+          <p class="font-mono text-base leading-6 font-medium wrap-anywhere text-ink">{{.Title}}</p>
+          {{if .Detail}}<p class="font-mono text-sm leading-5 wrap-anywhere text-meta">{{.Detail}}</p>{{end}}
+        </div>
+        {{.Remove}}
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else if .Empty}}<p class="py-2.5 text-sm leading-6 text-body">{{.Empty}}</p>{{end}}
+  {{with .Add}}
+  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="pt-2.5">
+    <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{.Label}}</button>
+    <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="space-y-3">
+      {{template "verso-csrf" $.CSRFToken}}
+      <label for="{{$.AddID}}-input" class="sr-only">{{.Label}}</label>
+      <input x-ref="first" id="{{$.AddID}}-input" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}} autocomplete="off" spellcheck="false"{{if .Error}} aria-invalid="true" aria-describedby="{{$.AddID}}-error"{{end}} class="{{template "verso-input-class"}} w-full {{template "verso-input-border" .Error}}">
+      {{if .Error}}<p id="{{$.AddID}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
+      {{$.Preview}}
+      <div class="flex items-center gap-2 pt-2">
+        <button type="submit" class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{.Submit}}</button>
+        <button type="button" @click="cancel" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{ t "Not now" }}</button>
+      </div>
+    </form>
+  </div>
+  {{end}}
+</div>

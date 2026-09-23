@@ -8,6 +8,44 @@ import (
 	"testing"
 )
 
+// TestSectionControlStandsInTheFieldColumn: the control on a section's heading
+// line acts on what the section holds, so it stands in the column its fields'
+// controls do — the same width, hard right — rather than trailing the title.
+// A button there stands where a field would, so it takes a field's size (a
+// primary's footprint) while keeping its own dress.
+func TestSectionControlStandsInTheFieldColumn(t *testing.T) {
+	got := render(t, newRenderer(t), &Section{
+		Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline",
+		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
+		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
+	})
+	column := `<span class="flex w-full items-center sm:w-64 [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">`
+	at := strings.Index(got, column)
+	if at < 0 {
+		t.Fatalf("the heading's control is not in the field column:\n%s", got)
+	}
+	title := strings.Index(got, "</h2>")
+	meta := strings.Index(got, "data-verso-section-meta")
+	if !(title < meta && meta < at) || !strings.Contains(got[at:], "Use my computer") {
+		t.Errorf("title and meta lead, the control stands in the field column after them:\n%s", got)
+	}
+}
+
+// TestListAddHoversAsEverySecondaryButton: a list's Add is a secondary button
+// and answers the pointer as every other does — the subsection act's hover.
+func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
+	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server"})
+	at := strings.Index(got, "data-verso-list-add")
+	if at < 0 {
+		t.Fatalf("the list lost its Add:\n%s", got)
+	}
+	add := got[at:]
+	add = add[:strings.Index(add, ">")]
+	if !strings.Contains(add, "hover:border-sand-5 hover:bg-rule") || strings.Contains(add, "hover:bg-quiet") {
+		t.Errorf("Add hovers as every secondary button: %s", add)
+	}
+}
+
 // TestRenderSectionSub: the description belongs to the heading — tight beneath
 // the title (mb-1 instead of mb-3), with the saved space moved below the sub so
 // the title-to-content distance is preserved. Markdown renders; without a sub

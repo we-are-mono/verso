@@ -548,9 +548,9 @@ func TestRenderConfirm(t *testing.T) {
 		"Remove device", "Remove this device?", "Remove", "Keep it",
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
-		// value stays a mark, on the icon.
-		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "text-crimson", "<svg",
-		"mt-6 ml-6 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
+		// value stays a mark, on the square.
+		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 shrink-0 rounded-[1px] bg-crimson",
+		"mt-6 ml-4 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
 		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
 		"border-crimson bg-crimson text-white",
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
@@ -648,7 +648,7 @@ func TestRenderLink(t *testing.T) {
 			t.Errorf("link missing %q in: %s", want, dl)
 		}
 	}
-	if !strings.Contains(dl, "border border-rule-strong bg-transparent text-ink") || !strings.Contains(dl, "hover:border-faint hover:bg-quiet") {
+	if !strings.Contains(dl, "border border-rule-strong bg-transparent text-meta") || !strings.Contains(dl, "hover:border-sand-5 hover:bg-rule") {
 		t.Errorf("ghost link missing the secondary-button treatment: %s", dl)
 	}
 	if !strings.Contains(dl, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
@@ -660,8 +660,8 @@ func TestRenderLink(t *testing.T) {
 	}
 	secondary := render(t, r, &Link{Label: "Restart router", Href: "/restart", Style: "secondary"})
 	for _, want := range []string{
-		"hover:border-faint hover:bg-quiet",
-		"border-rule-strong bg-transparent text-ink",
+		"hover:border-sand-5 hover:bg-rule",
+		"border-rule-strong bg-transparent text-meta",
 		"active:translate-y-px",
 	} {
 		if !strings.Contains(secondary, want) {
@@ -715,7 +715,7 @@ func TestRenderButton(t *testing.T) {
 		t.Errorf("inert button must not submit anything: %s", inert)
 	}
 	submit := render(t, r, &Button{Label: "Apply", Style: "secondary", Name: "_action", Value: "apply"})
-	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-rule-strong bg-ground text-ink"} {
+	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-rule-strong bg-transparent text-meta", "hover:border-sand-5 hover:bg-rule hover:text-ink"} {
 		if !strings.Contains(submit, want) {
 			t.Errorf("submitting button missing %q: %s", want, submit)
 		}
@@ -737,6 +737,19 @@ func TestRenderButton(t *testing.T) {
 	if strings.Contains(primary, "bg-denim") {
 		t.Errorf("a waiting primary is not denim any more: %s", primary)
 	}
+	// act: an act on a part of a section wears the subsection act's one dress,
+	// the same as a Link's act, whether it leads somewhere or submits.
+	act := render(t, r, &Button{Label: "Use my computer's time", Icon: "clock", Style: "act", Name: "_action", Value: "clock"})
+	for _, want := range []string{`type="submit"`, `name="_action"`, "group/act", "h-7", "border-rule-strong bg-transparent", "hover:bg-rule", "pl-2 pr-2.5", lucideIcons["clock"]} {
+		if !strings.Contains(act, want) {
+			t.Errorf("act button missing %q: %s", want, act)
+		}
+	}
+	for _, never := range []string{"h-9", "bg-denim", "bg-ground"} {
+		if strings.Contains(act, never) {
+			t.Errorf("act button wears another dress's %q: %s", never, act)
+		}
+	}
 	disabled := render(t, r, &Button{Label: "Apply", Disabled: true})
 	for _, want := range []string{`disabled`, "cursor-not-allowed"} {
 		if !strings.Contains(disabled, want) {
@@ -757,7 +770,7 @@ func TestRenderLiveButton(t *testing.T) {
 		"data-verso-live",
 		`data-verso-wait`, "size-1.5 rounded-[1px] bg-sand-5",
 		"<span data-verso-live-label>Pause</span>",
-		"hover:border-faint",    // hover intact
+		"hover:border-sand-5",   // hover intact
 		"cursor-pointer",        // the pointer says "press me"
 		"active:translate-y-px", // and it presses
 	} {
@@ -1012,7 +1025,7 @@ func TestRenderFieldError(t *testing.T) {
 		t.Errorf("inline error not shown: %s", got)
 	}
 	for _, want := range []string{
-		"border-crimson hover:border-crimson-deep focus:border-denim", // the field names itself as the refused one; focus stays the action colour
+		refusedBorder,                          // the field names itself as the refused one, focused too
 		"bg-crimson-soft", "text-crimson-deep", // and the message sits on crimson's own ground
 		"bg-crimson", // with the mark beside it
 	} {
@@ -1109,7 +1122,7 @@ func TestRenderListPerItemError(t *testing.T) {
 		t.Errorf("per-item error missing: %s", got)
 	}
 	for _, want := range []string{
-		"border-crimson hover:border-crimson-deep focus:border-denim",
+		refusedBorder,
 		"text-crimson-deep", // the message reads in the step of the hue that carries words
 	} {
 		if !strings.Contains(got, want) {

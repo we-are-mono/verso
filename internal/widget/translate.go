@@ -60,6 +60,16 @@ func translateFields(w Widget, t func(string) string) {
 			n.Items[i].Label = t(n.Items[i].Label)
 			n.Items[i].Help = t(n.Items[i].Help)
 		}
+	case *Collection:
+		// An item is a machine string (a key's name, its fingerprint) and is
+		// never ours to translate; the words around the set are. The removal's
+		// confirmations are children, and translate as every confirm does.
+		n.Empty = t(n.Empty)
+		if n.Add != nil {
+			n.Add.Label = t(n.Add.Label)
+			n.Add.Submit = t(n.Add.Submit)
+			n.Add.Error = t(n.Add.Error)
+		}
 	case *Confirm:
 		n.Trigger = t(n.Trigger)
 		n.Title = t(n.Title)

@@ -756,7 +756,7 @@ func TestRenderTableDense(t *testing.T) {
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 leading-6 pr-4 align-middle`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 leading-6 pr-4 align-top`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -857,6 +857,59 @@ func TestRowButtonNamesItsRow(t *testing.T) {
 	}
 }
 
+// TestRowsHangFromTheirFirstLine: every cell stands at the row's top, so when
+// one cell spans two lines the others — the row's acts above all — stay level
+// with its first line rather than floating to the middle of the block. A
+// stacked cell holds its first line on the same 22px centre a one-line cell's
+// 24px line has, and the row keeps its height.
+func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Kind: "addr"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "k", Cells: []TableCell{{Text: "demo@laptop", Sub: "SHA256:x"}, {Actions: []TableRowAct{
+			{Icon: "trash-2", Title: "Remove", Href: "/remove"},
+		}}}}},
+	})
+	if strings.Count(got, "align-top") < 2 {
+		t.Errorf("every cell stands at the row's top:\n%s", got)
+	}
+	if strings.Contains(got, "align-middle") {
+		t.Errorf("no cell centres itself against the others:\n%s", got)
+	}
+	if !strings.Contains(got, "pt-3 pb-2") {
+		t.Errorf("a stacked cell lifts its first line onto the one-line centre:\n%s", got)
+	}
+}
+
+// TestRowActNamesItsRow: a row's icon act is named with its row too — a column
+// of trash cans read out of the table is still a list of different keys. The
+// tip a pointer rests on keeps the short word; the row is already in view. An
+// inert mark (no destination) explains a state and keeps its own sentence.
+func TestRowActNamesItsRow(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "demo@laptop"}, {Actions: []TableRowAct{
+			{Icon: "trash-2", Title: "Remove", Href: "/remove?a"},
+			{Icon: "pencil", Title: "Edit"},
+		}}}}},
+	})
+	for _, want := range []string{`aria-label="Remove demo@laptop"`, `aria-label="Edit"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	// the row is named by its identity, never by a placeholder dash that
+	// happens to sit in an earlier column
+	svc := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Order", Kind: "mono"}, {Label: "Service", Kind: "reference"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "fw", Cells: []TableCell{{Text: "—"}, {Text: "firewall"}, {Actions: []TableRowAct{
+			{Icon: "rotate-cw", Title: "Restart", Name: "_action", Value: "restart:firewall"},
+		}}}}},
+	})
+	if !strings.Contains(svc, `aria-label="Restart firewall"`) {
+		t.Errorf("want the row named by its service:\n%s", svc)
+	}
+}
+
 // TestRenderTableDirectAction: an immediate row command posts its action marker
 // from the standard alert dialog without manufacturing an edit drawer.
 func TestRenderTableDirectAction(t *testing.T) {
@@ -872,9 +925,9 @@ func TestRenderTableDirectAction(t *testing.T) {
 	for _, want := range []string{
 		`method="post"`, `name="_action"`, `value="end-session:iphone"`,
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
-		"bg-crimson-soft text-crimson", `>End session<`, `>Cancel<`, // the alarm's mark, at full chroma on its own soft ground
-		"border-crimson bg-crimson text-white",       // the destructive act
-		"border-rule-strong bg-transparent text-ink", // Cancel is the ordinary quiet button
+		"size-1.5 shrink-0 rounded-[1px] bg-crimson", `>End session<`, `>Cancel<`, // the alarm's mark: the square at full chroma
+		"border-crimson bg-crimson text-white",        // the destructive act
+		"border-rule-strong bg-transparent text-meta", // Cancel is the ordinary quiet button
 		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
 	} {
 		if !strings.Contains(got, want) {

@@ -26,6 +26,14 @@ type Confirm struct {
 	// firmware — and asks in marigold, so it steadies rather than scares. Anything
 	// else is danger: the act destroys something, and asks in crimson.
 	Tone string `json:"tone"`
+	// Icon draws the trigger as an item's icon act (a 28px glyph, the trigger
+	// its tip) rather than as the act's named control, and lays the confirm
+	// into the item's own row, so the question drops full-width under the item
+	// it asks about. For an act on one of a set's items: removing a key.
+	Icon string `json:"icon,omitempty"`
+	// subject is the item an icon act acts on, named after the trigger for
+	// anyone who hears the control rather than sees its row.
+	subject string
 }
 
 // Confirm tones: the closed set a Tone resolves to.
@@ -43,6 +51,7 @@ func (*Confirm) children() []Widget { return nil }
 type confirmView struct {
 	ID                                             string
 	Trigger, Title, Message, Confirm, Cancel, Tone string
+	Icon, Subject                                  string
 	RequirePassword                                bool
 }
 
@@ -67,6 +76,8 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Message:         c.Message,
 		Confirm:         confirm,
 		Cancel:          cancel,
+		Icon:            c.Icon,
+		Subject:         c.subject,
 		RequirePassword: c.RequirePassword,
 	})
 }

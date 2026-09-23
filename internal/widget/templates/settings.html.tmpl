@@ -42,7 +42,7 @@
     <div data-verso-inline-field class="mt-2 max-w-md">
       <input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}" aria-describedby="{{.Name}}-error" data-verso-inline-input{{if .Datatype}} data-verso-datatype="{{.Datatype}}"{{end}}
         class="{{template "verso-input-class"}} box-border border-rule-strong tabular-nums hover:border-faint focus:border-denim aria-invalid:border-crimson">
-      <p id="{{.Name}}-error" data-verso-inline-error hidden class="mt-1.5 text-sm text-crimson-deep"></p>
+      <p id="{{.Name}}-error" data-verso-inline-error hidden class="mt-1.5 {{template "verso-error-line"}}"></p>
     </div>
     {{if .Desc}}<p class="mt-1.5 text-sm leading-snug text-body">{{.Desc}}</p>{{end}}
   </div>

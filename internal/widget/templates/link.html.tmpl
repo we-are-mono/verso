@@ -15,7 +15,7 @@
 {{else if eq .Style "button"}}
 <a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "ghost"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border border-rule-strong bg-transparent text-ink transition-colors hover:border-faint hover:bg-quiet {{template "verso-press"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "rail"}}
 {{/* One place on this page, in the list of them. It is a block so a run of them
      is a column, and it carries its own left hairline so the run draws one
@@ -27,6 +27,9 @@
      rule that draws the other two — the utility layer wins the cascade whatever
      the specificity. */}}
 <a href="{{.Href}}" data-verso-rail-link class="verso-rail-link flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm transition-colors">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+{{else if eq .Style "act"}}
+{{/* act: an act on a part of a section, in the subsection act's one dress. */}}
+<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "secondary"}}
 <a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else}}

@@ -217,13 +217,35 @@ func TestCoarseCutsAreOneCountedDropdown(t *testing.T) {
 	}
 }
 
-// TestRefusedFieldKeepsTheFocusColour: a refused field rests and hovers in
-// crimson, but while it is being typed into it takes the action colour like
-// any other field — focus is where you are, not what is wrong.
-func TestRefusedFieldKeepsTheFocusColour(t *testing.T) {
+// refusedBorder is a refused box's border: crimson at rest, deep crimson under
+// the pointer and while focused — the box stays the one that is wrong while
+// it is being corrected. It hangs on aria-invalid, so once the value changes
+// (the refusal was about the old one) dropping the attribute returns the box
+// to the ordinary hairline and the action colour.
+// Focused, the edge doubles to 2px — an inset line inside the border, beside
+// the field's own inset shadow — so focus reads without the box growing.
+const refusedBorder = "border-rule-strong hover:border-faint focus:border-denim aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),inset_0_1px_2px_rgba(27,25,23,.06)]"
+
+// TestRefusedFieldStaysCrimsonWhileFocused: a refused field is marked as the
+// one that is wrong at rest, under the pointer and while it has focus, and
+// its refusal is marked as one the page can take away once it is answered.
+func TestRefusedFieldStaysCrimsonWhileFocused(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "ip", Label: "Address", Error: "Not an address."})
-	if !strings.Contains(got, "border-crimson hover:border-crimson-deep focus:border-denim") {
-		t.Errorf("refused field border states are wrong:\n%s", got)
+	for _, want := range []string{refusedBorder, `aria-invalid="true"`, `id="ip-error" data-verso-error`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("refused field missing %q:\n%s", want, got)
+		}
+	}
+	for name, w := range map[string]Widget{
+		"collection add": &Collection{Add: &CollectionAdd{Label: "Add a key", Name: "authorized_key", Submit: "Add key", Error: "Paste one complete SSH public key."}},
+		"list box":       &List{Name: "server", Label: "Servers", Items: []string{"x"}, Errors: map[string]string{"0": "Enter a hostname."}},
+	} {
+		got := render(t, newRenderer(t), w)
+		for _, want := range []string{refusedBorder, `aria-invalid="true"`, "data-verso-error"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s missing %q:\n%s", name, want, got)
+			}
+		}
 	}
 }
 

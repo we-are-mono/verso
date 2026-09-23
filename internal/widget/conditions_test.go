@@ -57,7 +57,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// The glyph is inside the row's measure, so the form is 40rem wide
 		// whether or not a row ends in one.
 		`data-verso-condition="dest_port" class="flex max-w-[40rem] items-start gap-8"`,
-		"hover:border-faint hover:bg-quiet", "border-rule-strong bg-transparent text-ink",
+		"hover:border-sand-5 hover:bg-rule", "border-rule-strong bg-transparent text-meta",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditions missing %q:\n%s", want, got)

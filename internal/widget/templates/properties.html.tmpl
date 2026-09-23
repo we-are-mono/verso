@@ -12,7 +12,7 @@
      the mark step, darkens to ink under the pointer, and turns green the moment
      the value is on the clipboard — the one place a hue at full chroma answers
      an act rather than states a condition. */}}
-{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1 inline-grid size-6 shrink-0 place-items-center rounded-xs align-middle text-glyph transition-colors hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1 -my-1 inline-grid align-middle {{template "verso-btn-icon"}}">
   <span x-ref="src" class="hidden">{{.}}</span>
   <span x-show="idle">{{icon "copy" "size-4"}}</span>
   <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>

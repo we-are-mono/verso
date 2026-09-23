@@ -70,11 +70,6 @@ type Table struct {
 	// the listing that knows how many columns it has is the one that says it.
 	Dense bool `json:"dense,omitempty"`
 
-	// Align "top" pins every cell to the row's top instead of centring it — so a
-	// cell that stacks two values (an IPv4 over an IPv6) keeps its first line on
-	// the shared top line with the single-value cells, the second dangling below.
-	Align string `json:"align,omitempty"`
-
 	// Legend explains the marks the rows carry, under the last row: a listing
 	// that states something with a dot owes the reader the dot's meaning once,
 	// where the dots are, rather than in a tooltip they have to go looking for.
@@ -680,7 +675,6 @@ type tableView struct {
 	// hairlines, filling the frame and running to its edges.
 	Style     string
 	Dense     bool
-	AlignTop  bool
 	Title     string
 	Detail    string
 	Action    *TableAction
@@ -853,13 +847,16 @@ func (t *Table) suffixColumns(rows []TableRow) map[int]bool {
 // with no name is known by its comment), else the first cell with words in it,
 // else the path its endpoints draw.
 func (t *Table) rowName(row TableRow) string {
+	// A placeholder dash says a value is absent; it never names a row.
 	text := func(i int) string {
 		if i < len(row.Cells) {
-			return strings.TrimSpace(row.Cells[i].Text)
+			if s := strings.TrimSpace(row.Cells[i].Text); s != "—" && s != "-" {
+				return s
+			}
 		}
 		return ""
 	}
-	for _, kind := range []string{"name", "comment"} {
+	for _, kind := range []string{"name", "comment", "reference"} {
 		for i, col := range t.Columns {
 			if col.Kind == kind && text(i) != "" {
 				return text(i)
@@ -952,7 +949,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	empty := t.empty()
 	stream := t.streaming()
 	v := tableView{
-		Live: t.Style == "live", Card: t.Style == "card", Style: t.consoleStyle(), Dense: t.Dense, AlignTop: t.Align == "top",
+		Live: t.Style == "live", Card: t.Style == "card", Style: t.consoleStyle(), Dense: t.Dense,
 		Title: t.Title, Detail: t.Detail, Action: t.Action,
 		// A live listing keeps its heads while it waits: they name what is
 		// about to arrive, and the first event must not shift the layout.

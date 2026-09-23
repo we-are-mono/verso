@@ -77,7 +77,10 @@ func TestRowsHangFromTheirFirstLine(t *testing.T) {
 func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 	got := render(t, newRenderer(t), &Card{Style: "artifact", Title: "HTTPS certificate", Subtitle: "What this router shows browsers.", Children: []Widget{&Properties{}}})
 	for _, want := range []string{
-		`<div class="border-b border-rule-strong py-2.5"><h3 class="text-base leading-6 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-snug text-body">What this router shows browsers.</p></div>`,
+		// the header opens 20px under the frame's top edge, as the sides hold
+		// the words 20px in, and closes on the rows' 17px: the subtitle sits
+		// on the rows' own 24px line
+		`<div class="border-b border-rule-strong pt-3.5 pb-2.5"><h3 class="text-base leading-6 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-6 text-body">What this router shows browsers.</p></div>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -85,12 +88,14 @@ func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 	}
 }
 
-// TestArtifactFrameKeepsOneInset: the frame around a stored document holds its
-// rows 20px from every edge — the rows' own 10px above and below plus the
-// frame's 10px — so the frame's inset reads the same on all four sides.
+// TestArtifactFrameKeepsOneInset: inside the frame around a stored document,
+// every word stands 17px from the line above and below it — a row's 10px plus
+// the 7px of air its 24px line keeps over its capitals and under its baseline
+// — and the frame's own top and bottom edges are lines like any other, so it
+// adds nothing to them. At the sides the frame holds the words 20px in.
 func TestArtifactFrameKeepsOneInset(t *testing.T) {
 	got := render(t, newRenderer(t), &Card{Style: "artifact", Children: []Widget{&Properties{}}})
-	if !strings.Contains(got, `class="rounded-xs border border-rule bg-quiet px-5 py-2.5"`) {
+	if !strings.Contains(got, `class="rounded-xs border border-rule bg-quiet px-5"`) {
 		t.Errorf("want one inset on every side:\n%s", got)
 	}
 }

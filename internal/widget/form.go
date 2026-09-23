@@ -139,6 +139,14 @@ type formView struct {
 	Search     bool
 	Page       bool
 	Dirty      bool
+	// Sectioned is a form that commits one section of a page rather than the
+	// page: its Save stands under its fields with no rule, because the next
+	// section's rule is the line that closes it.
+	Sectioned bool
+	// ClosesPage is the page's own form, its sections inside it: its Save
+	// commits the whole page, so the rule above it is a section rule of the
+	// page's.
+	ClosesPage bool
 	Icon       string
 	Note       template.HTML
 	Submit     string
@@ -172,9 +180,11 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		}
 		note = template.HTML(buf.String())
 	}
+	page := f.Style == "page" || f.Style == "settings"
 	return r.execute(out, "form.html.tmpl", formView{
 		CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: f.Style == "page" || f.Style == "settings", Dirty: f.Style == "settings", Icon: f.Icon, Note: note,
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
+		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

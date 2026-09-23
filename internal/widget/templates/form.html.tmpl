@@ -19,14 +19,14 @@
 <form method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="{{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}space-y-6{{end}}">
   {{template "verso-csrf" .CSRFToken}}
   {{if .Success}}
-  <div class="flex items-center gap-2 rounded-xs border border-green-line bg-green-soft px-3 py-2 text-sm text-green-deep">
-    {{icon "circle-check" "size-4 shrink-0"}}
+  <div class="flex items-start gap-2 rounded-xs border border-green-line bg-green-soft px-3 py-2 text-sm leading-5 text-green-deep">
+    {{template "verso-message-mark" "success"}}
     <span>{{.Success}}</span>
   </div>
   {{end}}
   {{if .Error}}
-  <div class="flex items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm text-crimson-deep">
-    {{icon "circle-alert" "size-4 shrink-0"}}
+  <div class="flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">
+    {{template "verso-message-mark" "danger"}}
     <span>{{.Error}}</span>
   </div>
   {{end}}
@@ -55,7 +55,12 @@
        out at the right — read last, where someone's eye already is once they
        have decided to press. A form driven inline keeps its old tight row: it
        is one control's companion, not a page's ending. */}}
-  <div class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
+  {{/* A form that commits one section of a page draws no rule: its Save
+       stands under its own fields, and the next section's rule closes it. A
+       page's own form commits the whole page, so its Save stands under a
+       section rule of the page's — 40px either side, run out to the rail. A
+       panel's form closes on its own rule, inside the panel. */}}
+  <div{{if .ClosesPage}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .Sectioned}}mt-5 gap-4{{else if .ClosesPage}}mt-10 gap-4 border-t border-rule pt-10{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{if .Submit}}<button type="submit" class="{{template "verso-btn-box"}}{{if .Inline}} rounded-l-none{{end}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}

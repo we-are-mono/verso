@@ -21,8 +21,10 @@ type Link struct {
 	Icon     string `json:"icon,omitempty"`
 	Href     string `json:"href"`
 	Download string `json:"download"` // non-empty => a download with this filename
-	// Style is "" (an ordinary link), "button", "ghost", "secondary", or "rail" —
-	// one place on this page in a list of them, beside the work it points into.
+	// Style is "" (an ordinary link), "button", "ghost", "secondary", "act" (an
+	// act on a part of a section, in the 28px quiet dress a set's add slot
+	// wears), or "rail" — one place on this page in a list of them, beside the
+	// work it points into.
 	Style  string `json:"style"`
 	NewTab bool   `json:"new_tab,omitempty"`
 }

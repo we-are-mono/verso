@@ -14,13 +14,15 @@
      shell's to keep current: the marker below is what the form watcher finds,
      and what it replaces when the plugin has re-rendered from the values on
      screen. Everything inside it is ordinary code markup — a preview that
-     styled itself differently would read as a different kind of thing. */}}
-<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if .Live}} data-verso-preview{{end}}>
+     styled itself differently would read as a different kind of thing. With
+     nothing to read yet it is there for the watcher but hidden: an empty box
+     would read as a box to fill. */}}
+<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
   {{if .Label}}<span class="font-mono text-sm font-medium text-meta">{{.Label}}</span>{{end}}
   <div class="relative min-w-0">
     <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink">{{.Value}}</div>
     {{if .Copy}}
-    <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy absolute top-2 right-2 grid size-6 cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+    <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy absolute top-1.5 right-1.5 grid {{template "verso-btn-icon"}}">
       <span x-ref="src" class="hidden">{{.Value}}</span>
       <span x-show="idle">{{icon "copy" "size-4"}}</span>
       <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>

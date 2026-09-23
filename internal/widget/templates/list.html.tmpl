@@ -16,11 +16,11 @@
     <div data-verso-list-items>
     {{range $i, $item := .Items}}<div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0">
       <input type="hidden" name="{{$.Name}}" value="{{$item}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink">{{$item}}</span>
-      <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-xs text-faint hover:bg-mid hover:text-ink">{{icon "x" "size-3.5"}}</button>
-      {{with index $.Errors (printf "%d" $i)}}<span class="text-sm text-crimson-deep">{{.}}</span>{{end}}
+      <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button>
+      {{with index $.Errors (printf "%d" $i)}}<span class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
     </div>{{end}}
     </div>
-    <template><div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-xs text-faint hover:bg-mid hover:text-ink">{{icon "x" "size-3.5"}}</button></div></template>
+    <template><div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
     <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
@@ -72,7 +72,7 @@
     <div class="space-y-1.5">
       {{$err := index $.Errors (printf "%d" $i)}}
       <input name="{{$.Name}}" value="{{$item}}" type="text" aria-labelledby="{{$.Name}}-label"{{if $err}} aria-invalid="true" aria-describedby="{{$.Name}}-error-{{$i}}"{{end}}{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" $err}}">
-      {{with $err}}<p id="{{$.Name}}-error-{{$i}}" class="text-sm text-crimson-deep">{{.}}</p>{{end}}
+      {{with $err}}<p id="{{$.Name}}-error-{{$i}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .}}</p>{{end}}
     </div>
     {{end}}
     <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">

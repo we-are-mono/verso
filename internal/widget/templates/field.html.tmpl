@@ -88,7 +88,7 @@
        value; a sign-in password never does. */}}
   <span x-data="reveal" class="flex w-full items-center gap-2">
     <input id="{{.Name}}" name="{{.Name}}" type="password" :type="inputType" value="{{.Value}}" autocomplete="off" spellcheck="false"{{template "verso-field-aria" .}} class="min-w-0 flex-1 {{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
-    <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid size-9 shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-faint hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+    <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid size-9 shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
       <span x-show="masked" class="flex">{{icon "eye" "size-4"}}</span>
       <span x-show="shown" x-cloak class="flex">{{icon "eye-off" "size-4"}}</span>
     </button>
@@ -137,10 +137,7 @@
        two. An error is a band on crimson's own soft ground with the mark beside
        it, because a refusal should be findable without reading. */}}
   {{if .Error}}
-  <span id="{{.Name}}-error" class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2">
-    <span class="mt-1.5 size-1.5 flex-none bg-crimson"></span>
-    <span class="text-sm leading-snug text-crimson-deep">{{.Error}}</span>
-  </span>
+  <span id="{{.Name}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</span>
   {{/* Help is not a line under the control: it is what the label explains, and
        it is raised from there. Only a refusal takes space in the row. */}}
   {{end}}

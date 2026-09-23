@@ -2,7 +2,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* The listing's control band: the surface it is narrowed from, one row under
      the heading. Left is finding things: the search first, then the coarse cuts
-     as one counted dropdown. Right, the fine cut. Over a table it is the
+     as one counted dropdown, then the dimension the listing is sliced along.
+     Right, only what acts. Over a table it is the
      listing's one filled surface — the quiet sand between two hairlines, every
      control 16px from its edges — and it sits flush on the column heads, so
      band and table read as one object. Over a live log it is the same sand
@@ -48,16 +49,16 @@
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{end}}
+  {{if .Select}}
+  <div class="relative flex max-w-full items-center">
+    <select data-verso-listing-select="{{.Select.Key}}" aria-label="{{ t "Show" }}"
+      class="h-9 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+      {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
+  </div>
+  {{end}}
   <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">
-    {{if .Select}}
-    <div class="relative flex max-w-full items-center">
-      <select data-verso-listing-select="{{.Select.Key}}" aria-label="{{ t "Show" }}"
-        class="h-9 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
-        {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
-      </select>
-      <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
-    </div>
-    {{end}}
     {{if .Live}}{{template "actionbar.live" .}}{{end}}
     {{template "actionbar.act" .}}
   </div>
