@@ -62,6 +62,28 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 	}
 }
 
+// TestListRowsTakeTheirHeightFromPadding: a list's values are rows, and a row's
+// height is its line plus its padding, never a fixed floor — the 28px remove
+// and 8px either side, 44px, as a table's row with a control in it. The first
+// gives back 4px above, so its value centres on the label's 36px line, as a
+// group's first row gives up its air. The add box stands 16px under the last
+// remove (the last row's 8px and the set's own 8px), and a set with nothing in
+// it keeps no gap, so its box stays level with the label.
+func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
+	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
+		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
+	const row = `class="flex items-center justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"`
+	if strings.Count(got, row) != 3 { // two values and the row the shell clones
+		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
+	}
+	if strings.Contains(got, "min-h-8") {
+		t.Errorf("no fixed row floor:\n%s", got)
+	}
+	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:pb-2">`) || strings.Contains(got, `<div class="mt-2 flex items-center gap-2">`) {
+		t.Errorf("the gap above the add box belongs to the set, and only when it holds something:\n%s", got)
+	}
+}
+
 // TestRenderSectionSub: the description belongs to the heading — tight beneath
 // the title (mb-1 instead of mb-3), with the saved space moved below the sub so
 // the title-to-content distance is preserved. Markdown renders; without a sub

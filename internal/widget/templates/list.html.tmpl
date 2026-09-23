@@ -12,16 +12,22 @@
   {{template "verso-field-label" .LabelView}}
   <div data-verso-control class="{{template "verso-field-control-class"}} relative">
   {{if eq .Style "rows"}}
+  {{/* Each value is a row, and a row's height is its line and its padding: the
+       28px remove with 8px either side, 44px, a hairline between. The first
+       gives back 4px above so its value centres on the label's 36px line, as a
+       group's first row gives up its air. The set holds the 8px that, with the
+       last row's own, stands the add box 16px under the last remove — and holds
+       none while it is empty, so the box then stays level with the label. */}}
   <div data-verso-list>
-    <div data-verso-list-items>
-    {{range $i, $item := .Items}}<div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0">
+    <div data-verso-list-items class="has-[>*]:pb-2">
+    {{range $i, $item := .Items}}<div data-verso-list-row class="flex items-center justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0">
       <input type="hidden" name="{{$.Name}}" value="{{$item}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink">{{$item}}</span>
       <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button>
       {{with index $.Errors (printf "%d" $i)}}<span class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
     </div>{{end}}
     </div>
-    <template><div data-verso-list-row class="flex min-h-8 items-center justify-between gap-3 border-b border-rule last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
-    <div class="mt-2 flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
+    <template><div data-verso-list-row class="flex items-center justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="break-all font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
+    <div class="flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a
