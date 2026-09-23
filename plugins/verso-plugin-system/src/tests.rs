@@ -61,6 +61,38 @@ fn computer_time_is_an_immediate_command() {
     assert_eq!(e.commands[0].args["timezone"], "UTC");
 }
 #[test]
+fn general_says_where_each_option_lives() {
+    // The shell marks a control whose option waits on the stage by its full
+    // address, so every control names the config and section it writes.
+    let page = serde_json::to_value(get(&request())).unwrap();
+    let text = page.to_string();
+    let find = |name: &str| -> serde_json::Value {
+        fn walk(v: &serde_json::Value, name: &str) -> Option<serde_json::Value> {
+            if v.get("name").and_then(|n| n.as_str()) == Some(name) && v.get("key").is_some() {
+                return Some(v.clone());
+            }
+            match v {
+                serde_json::Value::Array(a) => a.iter().find_map(|x| walk(x, name)),
+                serde_json::Value::Object(o) => o.values().find_map(|x| walk(x, name)),
+                _ => None,
+            }
+        }
+        walk(&page, name).unwrap_or_else(|| panic!("{name} not on the page: {text}"))
+    };
+    assert_eq!(find("hostname")["target"], "system.sys");
+    assert_eq!(find("zonename")["target"], "system.sys");
+    assert_eq!(find("ula_prefix")["target"], "network.globals");
+    assert_eq!(find("packet_steering")["target"], "network.globals");
+    // the time section's own options live in the timeserver section
+    assert!(text.contains("\"target\":\"system.ntp\""), "{text}");
+}
+#[test]
+fn access_forms_say_where_their_options_live() {
+    let page = access_page(json!([]));
+    assert!(page.contains("\"target\":\"dropbear.ssh\""), "{page}");
+    assert!(page.contains("\"target\":\"uhttpd.main\""), "{page}");
+}
+#[test]
 fn computer_time_is_an_act_on_the_clock_dressed_as_the_certificates() {
     let text = serde_json::to_string(&page(Facts::default(), &BTreeMap::new())).unwrap();
     assert!(

@@ -50,6 +50,7 @@ pub fn panel_form(submit: &str, mut fields: Vec<Widget>) -> Widget {
         error: String::new(),
         fields,
         note: String::new(),
+        target: String::new(),
     }
 }
 
@@ -84,6 +85,7 @@ pub fn delete_form(action: &str, message: &str) -> Widget {
             },
         ],
         note: String::new(),
+        target: String::new(),
     }
 }
 
@@ -136,6 +138,7 @@ pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Err
         style: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 
@@ -174,5 +177,6 @@ pub fn token_list(
         tip: String::new(),
         options: Vec::new(),
         remove: String::new(),
+        target: String::new(),
     }
 }

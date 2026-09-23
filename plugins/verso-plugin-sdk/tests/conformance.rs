@@ -51,6 +51,7 @@ fn write_widget_fixtures() {
                 mode: "advanced".into(),
                 flush: true,
                 hairline: false,
+                target: "firewall.cfg0a1b2c".into(),
                 control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
                 children: vec![Widget::text("body")],
             },
@@ -125,6 +126,7 @@ fn write_widget_fixtures() {
                 key: String::new(),
                 tip: String::new(),
                 source: String::new(),
+                target: String::new(),
             },
         ),
         (
@@ -199,6 +201,7 @@ fn write_widget_fixtures() {
                     "The device's name.",
                 )],
                 note: String::new(),
+                target: "system.cfg01e48a".into(),
             },
         ),
         (
@@ -222,6 +225,7 @@ fn write_widget_fixtures() {
                 style: "segmented".into(),
                 remove: String::new(),
                 pair: None,
+                target: String::new(),
             },
         ),
         (
@@ -240,6 +244,7 @@ fn write_widget_fixtures() {
                 tip: "The clocks this router asks for the time.".into(),
                 options: vec![SelectOption::new("0.openwrt.pool.ntp.org", "OpenWrt pool")],
                 remove: "yes".into(),
+                target: String::new(),
             },
         ),
         (

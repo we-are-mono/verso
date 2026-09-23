@@ -177,6 +177,7 @@ fn page(
             ),
         ],
         note: String::new(),
+        target: String::new(),
     }];
     if section.is_some() {
         children.push(fields::delete_form(
@@ -209,6 +210,7 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
         mode: String::new(),
         flush: true,
         hairline: false,
+        target: String::new(),
         control: Some(Box::new(Widget::Switch {
             name: "enabled".into(),
             label: "Enabled".into(),
@@ -219,6 +221,7 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
             key: String::new(),
             tip: String::new(),
             source: String::new(),
+            target: String::new(),
         })),
         children: vec![fields::row_group(vec![fields::text_field(
             "name",

@@ -31,13 +31,16 @@ fn form(kind: &str, section: &str, fields: Vec<Widget>, e: &Errors) -> Widget {
     let mut fields = fields;
     fields.insert(0, Widget::hidden("_access_config", kind));
     fields.insert(1, Widget::hidden("section", section));
+    let config = if kind == "ssh" { "dropbear" } else { "uhttpd" };
     Widget::Form {
         style: "settings".into(),
         submit: "Save".into(),
         error: e.values().next().cloned().unwrap_or_default(),
         note: String::new(),
+        target: String::new(),
         fields,
     }
+    .at(config, section)
 }
 pub fn get(r: &Request) -> Envelope {
     if r.path != "/access" && r.path != "/access/" {

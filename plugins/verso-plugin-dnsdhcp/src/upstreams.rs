@@ -182,6 +182,7 @@ fn editor(index: Option<usize>, upstream: &Upstream, errors: &Errors) -> Envelop
             ),
         ],
         note: String::new(),
+        target: String::new(),
     }];
     if index.is_some() {
         children.push(form::delete_form(

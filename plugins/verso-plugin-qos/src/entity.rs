@@ -47,6 +47,7 @@ pub fn tab(policy: &Policy, leases: &Leases, errors: &Errors) -> Envelope {
             error: String::new(),
             fields: controls(policy, errors),
             note: String::new(),
+            target: String::new(),
         },
         // Two files, two blocks — so neither is declared live: only one preview
         // per form can be kept current, and choosing between these two is this
@@ -152,6 +153,7 @@ fn clock(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> W
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         },
         name,
         errors,
@@ -181,6 +183,7 @@ fn cap(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         },
         name,
         errors,

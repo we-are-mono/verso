@@ -563,6 +563,11 @@ pub enum Widget {
         /// inside a section are separated by space, sections by a hairline.
         #[serde(skip_serializing_if = "is_false")]
         hairline: bool,
+        /// Where the options this section's controls write live,
+        /// "config.section", when they all live in one place — said once here
+        /// rather than on each control. Set it through `at`.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        target: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         control: Option<Box<Widget>>,
         children: Vec<Widget>,
@@ -611,6 +616,11 @@ pub enum Widget {
         /// rollback", not "click here to save".
         #[serde(skip_serializing_if = "String::is_empty")]
         note: String,
+        /// Where the options this form's controls write live,
+        /// "config.section", when the form writes one uci section. Set it
+        /// through `at`.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        target: String,
         fields: Vec<Widget>,
     },
     /// One labelled input with a declared datatype the shell enforces (ADR-008).
@@ -646,6 +656,12 @@ pub enum Widget {
         /// form, and someone who does not can ignore it.
         #[serde(skip_serializing_if = "String::is_empty")]
         key: String,
+        /// Where `key` lives, "config.section", when the form or section around
+        /// the field does not already say it. With `key` it is the option's full
+        /// address, which is how the shell marks a field whose change waits on
+        /// the stage, on every visit. Set it through `at`.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        target: String,
         /// What the field is, for someone meeting it for the first time — raised
         /// from the label rather than kept on screen, because `help` already
         /// says what to put in the control and a paragraph beside every row
@@ -701,6 +717,9 @@ pub enum Widget {
         /// flip is as much a line of the config as a value to type.
         #[serde(skip_serializing_if = "String::is_empty")]
         key: String,
+        /// Where `key` lives, as a field's `target`. Set it through `at`.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        target: String,
         /// The longer answer to "what even is this", raised onto the label. Help
         /// is the same sentence said as a plugin already wrote it; where both
         /// are set the label raises this one.
@@ -789,6 +808,9 @@ pub enum Widget {
         /// label — a list of values is as much a line of the config as one value.
         #[serde(skip_serializing_if = "String::is_empty")]
         key: String,
+        /// Where `key` lives, as a field's `target`. Set it through `at`.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        target: String,
         /// The longer explanation, raised onto the label as a field's is.
         #[serde(skip_serializing_if = "String::is_empty")]
         tip: String,
@@ -1066,6 +1088,7 @@ impl Widget {
             mode: String::new(),
             flush: false,
             hairline: false,
+            target: String::new(),
             control: None,
             children,
         }
@@ -1207,6 +1230,28 @@ impl Widget {
         self
     }
 
+    /// at says where the options written here live — the uci config and the
+    /// section, by the name the snapshot gives it — so the shell can mark a
+    /// control whose change waits on the stage, on every visit until it is
+    /// applied. On a form or section it holds for every control inside that
+    /// names no place of its own; on a field, switch or list it is that
+    /// control's own. A section not yet written has no name, and so no
+    /// address; anything else comes back as it was.
+    pub fn at(mut self, config: &str, section: &str) -> Widget {
+        if config.is_empty() || section.is_empty() {
+            return self;
+        }
+        match &mut self {
+            Widget::Form { target, .. }
+            | Widget::Section { target, .. }
+            | Widget::Field { target, .. }
+            | Widget::Switch { target, .. }
+            | Widget::List { target, .. } => *target = format!("{config}.{section}"),
+            _ => {}
+        }
+        self
+    }
+
     /// suggesting offers the values worth offering on a list, shown as it is
     /// typed in. It is a suggestion and not a restriction: whatever the config
     /// accepts can still be typed.
@@ -1331,6 +1376,7 @@ impl Widget {
             key: key.into(),
             tip: tip.into(),
             source: String::new(),
+            target: String::new(),
             on,
         }
     }
@@ -1343,6 +1389,7 @@ impl Widget {
             error: String::new(),
             fields,
             note: String::new(),
+            target: String::new(),
         }
     }
 
@@ -1367,6 +1414,7 @@ impl Widget {
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         }
     }
 
@@ -1397,6 +1445,7 @@ impl Widget {
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         }
     }
 
@@ -1427,6 +1476,7 @@ impl Widget {
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         }
     }
 
@@ -1451,6 +1501,7 @@ impl Widget {
             style: String::new(),
             remove: String::new(),
             pair: None,
+            target: String::new(),
         }
     }
 
@@ -1470,6 +1521,7 @@ impl Widget {
             tip: String::new(),
             options: Vec::new(),
             remove: String::new(),
+            target: String::new(),
         }
     }
 
@@ -1490,6 +1542,7 @@ impl Widget {
             tip: String::new(),
             options: Vec::new(),
             remove: String::new(),
+            target: String::new(),
         }
     }
 
@@ -2935,6 +2988,7 @@ mod tests {
             key: String::new(),
             tip: String::new(),
             source: String::new(),
+            target: String::new(),
             on: false,
         };
         assert_eq!(
@@ -3016,6 +3070,7 @@ mod tests {
             mode: String::new(),
             flush: true,
             hairline: false,
+            target: String::new(),
             control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
             children: vec![],
         };

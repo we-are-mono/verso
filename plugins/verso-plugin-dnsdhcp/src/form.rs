@@ -88,6 +88,7 @@ pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Err
         style: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 
@@ -130,6 +131,7 @@ pub fn delete_form(trigger: &str, message: &str) -> Widget {
             },
         ],
         note: String::new(),
+        target: String::new(),
     }
 }
 

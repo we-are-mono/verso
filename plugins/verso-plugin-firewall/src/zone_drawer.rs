@@ -370,6 +370,7 @@ fn traffic_fields(
         style: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     });
     // The two other ways a zone covers something. A network is what the rest of the
     // config names; these are for what it does not — a kernel device the network
@@ -783,6 +784,7 @@ fn policy_field(
         style: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 

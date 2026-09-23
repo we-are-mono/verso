@@ -154,6 +154,7 @@ pub fn page_form(refusal: &str, fields: Vec<Widget>) -> Widget {
         error: refusal.into(),
         fields,
         note: String::new(),
+        target: String::new(),
     }
 }
 

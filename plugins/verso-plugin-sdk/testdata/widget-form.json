@@ -3,6 +3,7 @@
   "style": "page",
   "submit": "Save",
   "error": "Some values aren’t ones the daemon accepts.",
+  "target": "system.cfg01e48a",
   "fields": [
     {
       "type": "field",

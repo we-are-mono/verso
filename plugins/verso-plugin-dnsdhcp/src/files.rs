@@ -165,6 +165,7 @@ fn editor(
         error: error.into(),
         fields,
         note: String::new(),
+        target: String::new(),
     };
     let drawer = RowDrawer {
         title: if path.is_empty() {

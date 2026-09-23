@@ -219,7 +219,11 @@ pub fn page(model: &Firewall) -> Envelope {
                         })
                         .collect(),
                     note: String::new(),
-                },
+                    target: String::new(),
+                }
+                // Everything this form writes is the defaults section's, which
+                // is where the shell looks for what waits on the stage.
+                .at(model::CONFIG, &d.section),
                 rail(model),
             ],
         },
@@ -382,6 +386,7 @@ fn choice(name: &str, label: &str, help: &str, value: &str, options: &[(&str, &s
         unit: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 
@@ -410,6 +415,7 @@ fn policy(name: &str, label: &str, help: &str, value: &str) -> Widget {
         unit: String::new(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 
@@ -628,6 +634,7 @@ fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
         key: name.into(),
         tip: String::new(),
         source: String::new(),
+        target: String::new(),
     }
 }
 
@@ -653,6 +660,7 @@ fn field(name: &str, label: &str, help: &str, value: &str, unit: &str) -> Widget
         unit: unit.into(),
         remove: String::new(),
         pair: None,
+        target: String::new(),
     }
 }
 
@@ -664,6 +672,16 @@ mod tests {
 
     fn body() -> Value {
         serde_json::to_value(page(&fixture::firewall())).expect("serialize")
+    }
+
+    /// The shell marks a control whose option waits on the stage by its full
+    /// address, so the form names the defaults section its options live in.
+    #[test]
+    fn the_settings_form_says_the_defaults_section_holds_its_options() {
+        let model = fixture::firewall();
+        let want = format!("\"target\":\"firewall.{}\"", model.defaults.section);
+        assert!(!model.defaults.section.is_empty());
+        assert!(body().to_string().contains(&want), "{want} in {}", body());
     }
 
     /// The block the page shows and the write the page performs are the same thing

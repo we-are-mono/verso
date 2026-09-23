@@ -255,6 +255,7 @@ fn editor(section: Option<&str>, host: &Host, errors: &Errors) -> Envelope {
         error: String::new(),
         fields: controls(host, errors, Subject::Reservation),
         note: String::new(),
+        target: String::new(),
     }];
     children.push(footnote(section, host));
     if section.is_some() {
@@ -556,6 +557,7 @@ fn tab(section: Option<&str>, host: &Host, subject: Subject, cta: &str) -> Envel
             error: String::new(),
             fields: controls(host, &Errors::default(), subject),
             note: String::new(),
+            target: String::new(),
         },
         footnote(section, host),
     ]);

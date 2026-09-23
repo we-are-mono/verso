@@ -424,10 +424,14 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             style: "settings".into(),
             columns: 2,
             children: vec![
+                // Most of what this form writes is the daemon's own section, so
+                // that is where its controls' options live unless they say
+                // otherwise; an option of another config is simply not marked.
                 Widget::Form {
                     style: "settings".into(),
                     submit: "Save".into(),
                     note: String::new(),
+                    target: String::new(),
                     error: if e.is_empty() {
                         ""
                     } else {
@@ -435,7 +439,8 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                     }
                     .into(),
                     fields: sections,
-                },
+                }
+                .at("dhcp", &s.daemon.section),
                 Widget::section("On this page", "", vec![Widget::stack(anchors).flush()])
                     .kicker()
                     .flush(),
@@ -800,6 +805,13 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join("&"),
         )
+    }
+    #[test]
+    fn the_settings_form_says_the_daemon_section_holds_its_options() {
+        // The shell marks a control whose option waits on the stage by its
+        // full address; the form names the daemon's section once.
+        let page = serde_json::to_string(&page(&request())).unwrap();
+        assert!(page.contains("\"target\":\"dhcp.main\""), "{page}");
     }
     #[test]
     fn unchanged_settings_do_not_stage_defaults() {

@@ -18,6 +18,10 @@ struct Facts {
     hostname: String,
     zonename: String,
     timezone: String,
+    // Where the options live, by the snapshot's section names, so each control
+    // can say it (Widget::at) and the shell can mark what waits on the stage.
+    system_section: String,
+    globals_section: String,
     ntp_section: String,
     ntp_enabled: bool,
     servers: Vec<String>,
@@ -169,6 +173,8 @@ fn facts(s: &Snapshot) -> Facts {
         hostname: system.map(|s| s.scalar("hostname")).unwrap_or_default(),
         zonename,
         timezone,
+        system_section: system.map(|s| s.name()).unwrap_or_default(),
+        globals_section: globals.map(|s| s.name()).unwrap_or_default(),
         ntp_section: ntp.map(|s| s.name()).unwrap_or_default(),
         ntp_enabled: ntp.is_some_and(|s| s.scalar("enabled") != "0"),
         servers: ntp.map(|s| s.list("server")).unwrap_or_default(),
@@ -234,7 +240,8 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
                 zones,
                 e.get("zonename").map(String::as_str).unwrap_or(""),
             )
-            .writes("zonename"),
+            .writes("zonename")
+            .at("system", &v.system_section),
             Widget::switch_keyed(
                 "ntp_enabled",
                 "Keep the clock synced over the internet",
@@ -252,7 +259,8 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
             ),
         ],
     )
-    .ruled();
+    .ruled()
+    .at("system", &v.ntp_section);
     if let Widget::Section {
         meta,
         meta_position,
@@ -268,6 +276,7 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
         style: "page".into(),
         submit: "Save".into(),
         note: String::new(),
+        target: String::new(),
         error: if e.is_empty() {
             String::new()
         } else {
@@ -278,18 +287,22 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
                 "",
                 "",
                 vec![
-                    keyed("hostname", "Router name", "hostname", &v.hostname, e),
-                    keyed("ula_prefix", "Private IPv6 prefix", "ula_prefix", &v.ula, e).explained(
-                        "Devices get a stable local address even without an ISP prefix.",
-                        "network globals",
-                    ),
+                    keyed("hostname", "Router name", "hostname", &v.hostname, e)
+                        .at("system", &v.system_section),
+                    keyed("ula_prefix", "Private IPv6 prefix", "ula_prefix", &v.ula, e)
+                        .explained(
+                            "Devices get a stable local address even without an ISP prefix.",
+                            "network globals",
+                        )
+                        .at("network", &v.globals_section),
                     Widget::switch_keyed(
                         "packet_steering",
                         "Spread packet handling over all cores",
                         "packet_steering",
                         "",
                         v.steering,
-                    ),
+                    )
+                    .at("network", &v.globals_section),
                 ],
             )
             .ruled(),

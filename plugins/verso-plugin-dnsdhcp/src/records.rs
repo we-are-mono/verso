@@ -225,6 +225,7 @@ fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
             ),
         ],
         note: String::new(),
+        target: String::new(),
     }];
     if section.is_some() {
         children.push(record_delete_form(record));
