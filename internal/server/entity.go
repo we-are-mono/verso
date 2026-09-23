@@ -498,7 +498,9 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	// A plugin that refused its own submission asks for no writes; one that
 	// accepted states them, and the shell performs them on the operator's behalf.
 	if env.Status != http.StatusUnprocessableEntity && len(env.Commit) > 0 {
-		if body, status, ok := s.brokerStage(r.Context(), m, sid, env.Commit, ptr); !ok {
+		// A panel's tab is the plugin's part of whichever page opened the
+		// panel; its changes are filed under the plugin's own page.
+		if body, status, ok := s.brokerStage(r.Context(), m, authorAt(m, "/"), sid, env.Commit, ptr); !ok {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(status)
 			_, _ = w.Write([]byte(body))

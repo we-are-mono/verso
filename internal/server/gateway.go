@@ -398,7 +398,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 			}
 
 			if len(env.Commit) > 0 {
-				if body, st, ok := s.brokerStage(r.Context(), m, s.sessionSID(r), env.Commit, tr); !ok {
+				if body, st, ok := s.brokerStage(r.Context(), m, authorAt(m, pluginPath), s.sessionSID(r), env.Commit, tr); !ok {
 					return body, st
 				}
 				hdr.StagedCommit = true
@@ -742,7 +742,7 @@ func (s *Server) authorizePluginWrite(ctx context.Context, m plugin.Manifest, si
 // operator's sid on every call. On refusal or failure it returns a contained
 // notice and a status with ok=false; on success ok is true and the caller
 // renders the plugin's returned widget.
-func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string, ops []plugin.CommitOp, tr func(string) string) (template.HTML, int, bool) {
+func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, who stageAuthor, sid string, ops []plugin.CommitOp, tr func(string) string) (template.HTML, int, bool) {
 	declared := declaredUCIConfigs(m)
 	// Preflight the entire batch before staging its first operation. In
 	// particular, a named create must never overwrite an existing interface.
@@ -779,6 +779,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 				log.Printf("verso: plugin %q delete in uci %q failed: %v", m.ID, op.Config, err)
 				return s.stageFailed(tr)
 			}
+			s.authors.note(sid, sectionAddress(op.Config, op.Section), who)
 			continue
 		}
 		// An op with no section and a type creates the section first (through
@@ -794,6 +795,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 				return s.stageFailed(tr)
 			}
 			section, added = created, true
+			s.authors.note(sid, sectionAddress(op.Config, section), who)
 		}
 		// A null value clears its option. uci.set has no way to say "unset", so
 		// the nulls leave as option-level deletes and only the remaining values
@@ -816,6 +818,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 				log.Printf("verso: plugin %q clear of uci %q option %q failed: %v", m.ID, op.Config, option, err)
 				return s.stageFailed(tr)
 			}
+			s.authors.note(sid, optionAddress(op.Config, section, option), who)
 		}
 		if len(values) == 0 && len(cleared) > 0 {
 			// Every option this op named was already absent and it set none: not
@@ -834,6 +837,9 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, sid string,
 		if err := s.backend.UCISet(ctx, sid, op.Config, section, values); err != nil {
 			log.Printf("verso: plugin %q write to uci %q failed: %v", m.ID, op.Config, err)
 			return s.stageFailed(tr)
+		}
+		for option := range values {
+			s.authors.note(sid, optionAddress(op.Config, section, option), who)
 		}
 	}
 	return "", 0, true

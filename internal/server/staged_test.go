@@ -234,6 +234,57 @@ func TestReviewDrawerGroupsByPage(t *testing.T) {
 	}
 }
 
+// TestReviewDrawerFilesAChangeUnderThePageThatMadeIt: a config is often
+// shared — network is written by Interfaces and by General alike — so a change
+// is filed under the plugin that staged it, not the first to declare its
+// config. What the shell staged itself it remembers until the stage is applied
+// or discarded.
+func TestReviewDrawerFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
+	first := demoManifest()
+	first.ID, first.Name, first.Socket = "interfaces", "Interfaces", "/run/verso/interfaces.sock"
+	first.ACL = plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "network", Function: "write"}}}
+	// One plugin, two pages: its own General, and its part of the shell's
+	// Access. The drawer names the page, not the plugin.
+	general := demoManifest()
+	general.ID, general.Name, general.Socket = "general", "System", "/run/verso/general.sock"
+	general.Nav = []plugin.NavEntry{{Section: "System", Label: "General", Path: "/"}}
+	general.ACL = first.ACL
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "General", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+		Commit: []plugin.CommitOp{{Config: "network", Section: "globals", Values: map[string]any{"packet_steering": "0"}}},
+	}}
+	calls := []uciWrite{}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls, changes: map[string][][]string{
+		"network": {{"set", "globals", "packet_steering", "0"}},
+	}}, tr, []plugin.Manifest{first, general})
+
+	if rec := postPlugin(t, s, "/plugins/general/", url.Values{"packet_steering": {""}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("stage answered %d", rec.Code)
+	}
+	body := getPanel(t, s, "/uci/review").Body.String()
+	for _, unwanted := range []string{`text-body">Interfaces</span>`, `text-body">System</span>`} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("filed under %s, not the page that made it:\n%s", unwanted, body)
+		}
+	}
+	if !strings.Contains(body, `text-body">General</span>`) {
+		t.Errorf("the change is filed under the page that made it, General:\n%s", body)
+	}
+	if got := pageLabel(general, "/"); got != "General" {
+		t.Errorf("the plugin's root page is %q, want General", got)
+	}
+	general.SystemAccess = "/access"
+	if got := pageLabel(general, "/access"); got != "Access" {
+		t.Errorf("the plugin's part of Access is %q, want Access", got)
+	}
+	// Discarded, the record goes with the stage.
+	postPlugin(t, s, "/uci/discard", url.Values{})
+	if _, ok := s.authors.of("test-sid", optionAddress("network", "globals", "packet_steering")); ok {
+		t.Error("the record of who staged what outlives the stage it describes")
+	}
+}
+
 // TestReviewDrawerEmpty: a clean stage still answers the drawer, saying so, with
 // nothing to apply and only the way out.
 func TestReviewDrawerEmpty(t *testing.T) {

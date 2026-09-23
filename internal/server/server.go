@@ -85,6 +85,9 @@ type Server struct {
 	// another operator's apply, and a drained or failed action never lingers.
 	pendingApplyMu sync.Mutex
 	pendingApply   map[string][]plugin.ApplyAction
+	// authors is which plugin staged each change, per session's stage, so the
+	// review drawer files a change under the page it was made on.
+	authors stageAuthors
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
 	// remove (ADR-011 §7), so every read goes through the accessors below.

@@ -141,6 +141,11 @@ type stagedChange struct {
 type stagedRow struct {
 	config string
 	item   stagedItem
+	// author is the plugin whose page the change was made on and that page
+	// (authorOf); authored is false for a change no plugin owns — the shell's
+	// own.
+	author   stageAuthor
+	authored bool
 }
 
 // declaredConfigsUnion is the set of uci configs any installed plugin declares,
@@ -201,7 +206,13 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	// first appear.
 	index := map[string]int{}
 	for _, row := range s.describeStaged(ctx, sid, flat, tr) {
-		page := s.pageOf(row.config, tr, pluginTr)
+		page := tr("System")
+		switch {
+		case row.authored && row.author.Shell:
+			page = tr(row.author.Page)
+		case row.authored:
+			page = pluginTr(row.author.Plugin)(row.author.Page)
+		}
 		i, ok := index[page]
 		if !ok {
 			i = len(v.Groups)
@@ -242,13 +253,29 @@ func stagedTally(n int, tr func(string) string) string {
 	return fmt.Sprintf(tr("%d changes"), n)
 }
 
-// pageOf names the page a change belongs to: the plugin that owns its config,
-// by the name that plugin's catalog gives it, or System for the shell's own.
-func (s *Server) pageOf(config string, tr func(string) string, pluginTr func(string) func(string) string) string {
-	if m, ok := s.configOwner(config); ok {
-		return pluginTr(m.ID)(m.Name)
+// authorOf names the plugin a change belongs to and the page it was made on,
+// as the shell recorded when it staged it (stageAuthors): by the option it
+// touches, else by its section. A change with no record falls back to the
+// first plugin that declares its config, under that plugin's name, and one no
+// plugin declares is the shell's own. The drawer files the change under the
+// page, and asks the plugin to describe it.
+func (s *Server) authorOf(sid string, c stagedChange) (plugin.Manifest, stageAuthor, bool) {
+	var addresses []string
+	if section, option, ok := changedOption(c.tuple); ok {
+		addresses = append(addresses, optionAddress(c.config, section, option))
 	}
-	return tr("System")
+	if len(c.tuple) >= 2 {
+		addresses = append(addresses, sectionAddress(c.config, c.tuple[1]))
+	}
+	for _, address := range addresses {
+		if who, ok := s.authors.of(sid, address); ok {
+			if m, ok := s.manifestByID(who.Plugin); ok {
+				return m, who, true
+			}
+		}
+	}
+	m, ok := s.configOwner(c.config)
+	return m, stageAuthor{Plugin: m.ID, Page: m.Name}, ok
 }
 
 // describeStaged turns the flattened net changes into the drawer's rows: each
@@ -257,13 +284,17 @@ func (s *Server) pageOf(config string, tr func(string) string, pluginTr func(str
 // call that failed — keeps its raw uci line. Order follows the flattened set, and
 // a plain sentence lands where the first change it covers would have.
 func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedChange, tr func(string) string) []stagedRow {
-	// Group each change's position by the plugin that owns its config. The shell's
-	// own configs, and any config no installed plugin writes, own no describer.
+	// Group each change's position by the plugin it belongs to (authorOf). The
+	// shell's own configs, and any config no installed plugin writes, own no
+	// describer.
 	byPlugin := map[string][]int{}
 	sockets := map[string]string{}
 	manifests := map[string]plugin.Manifest{}
+	authors := make([]stageAuthor, len(flat))
+	authored := make([]bool, len(flat))
 	for i, c := range flat {
-		m, ok := s.configOwner(c.config)
+		m, who, ok := s.authorOf(sid, c)
+		authors[i], authored[i] = who, ok
 		if !ok {
 			continue
 		}
@@ -326,10 +357,10 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 			for _, g := range r.indices {
 				changes = append(changes, flat[g])
 			}
-			rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(r.plain, false, changes, tr)})
+			rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(r.plain, false, changes, tr), author: authors[i], authored: authored[i]})
 			continue
 		}
-		rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(c.raw, true, []stagedChange{c}, tr)})
+		rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(c.raw, true, []stagedChange{c}, tr), author: authors[i], authored: authored[i]})
 	}
 	return rows
 }
@@ -610,6 +641,8 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "confirm failed", http.StatusBadGateway)
 		return
 	}
+	// The stage is applied and kept: who staged what no longer describes it.
+	s.authors.forget(s.sessionSID(r))
 	writeOK(w)
 }
 
@@ -635,6 +668,7 @@ func (s *Server) handleUCIDiscard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.clearPendingApply(sid)
+	s.authors.forget(sid)
 	writeOK(w)
 }
 

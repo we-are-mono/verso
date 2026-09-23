@@ -23,11 +23,11 @@ func TestNamedCreationPreflightsWholeBatch(t *testing.T) {
 	tr := func(s string) string { return s }
 	update := plugin.CommitOp{Config: "network", Section: "lan", Values: map[string]any{"auto": "0"}}
 	duplicate := plugin.CommitOp{Config: "network", Section: "lan", Type: "interface", Values: map[string]any{"proto": "dhcp"}}
-	if _, _, ok := s.brokerStage(context.Background(), m, "sid", []plugin.CommitOp{update, duplicate}, tr); ok || len(writes) > 0 || len(adds) > 0 {
+	if _, _, ok := s.brokerStage(context.Background(), m, authorAt(m, "/"), "sid", []plugin.CommitOp{update, duplicate}, tr); ok || len(writes) > 0 || len(adds) > 0 {
 		t.Fatal("partial write before duplicate creation was rejected")
 	}
 	duplicate.Section = "guest"
-	if _, _, ok := s.brokerStage(context.Background(), m, "sid", []plugin.CommitOp{duplicate}, tr); !ok {
+	if _, _, ok := s.brokerStage(context.Background(), m, authorAt(m, "/"), "sid", []plugin.CommitOp{duplicate}, tr); !ok {
 		t.Fatal("named create failed")
 	}
 	if len(adds) != 1 || adds[0] != "network interface guest" || len(writes) != 1 || writes[0].section != "guest" {
