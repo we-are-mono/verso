@@ -154,3 +154,145 @@ fn unknown_access_page_is_contained() {
         .unwrap()
         .contains("This page does not exist."));
 }
+fn access_with(keys: serde_json::Value, certificate: serde_json::Value) -> String {
+    let mut r = request();
+    r.path = "/access".into();
+    r.ubus = Ubus::from_value(json!({"accessCredentials":{"keys":keys,"certificate":certificate}}));
+    serde_json::to_string(&get(&r)).unwrap()
+}
+fn self_signed() -> serde_json::Value {
+    json!({"file":"/etc/uhttpd.crt","subject":"OpenWrt","issuer":"OpenWrt","from":"2026-08-31",
+        "until":"2027-10-02","fingerprint":"9D 4C 7A","self_signed":"1",
+        "days_total":"397","days_left":"376"})
+}
+fn access_page(keys: serde_json::Value) -> String {
+    access_with(keys, self_signed())
+}
+fn property<'a>(page: &'a serde_json::Value, label: &str) -> &'a serde_json::Value {
+    fn find<'a>(v: &'a serde_json::Value, label: &str) -> Option<&'a serde_json::Value> {
+        match v {
+            serde_json::Value::Object(m)
+                if m.get("label").and_then(|l| l.as_str()) == Some(label)
+                    && m.contains_key("value") =>
+            {
+                Some(v)
+            }
+            serde_json::Value::Object(m) => m.values().find_map(|c| find(c, label)),
+            serde_json::Value::Array(a) => a.iter().find_map(|c| find(c, label)),
+            _ => None,
+        }
+    }
+    find(page, label).unwrap_or_else(|| panic!("no {label} row in {page}"))
+}
+#[test]
+fn certificate_reads_as_a_document_the_browser_can_be_checked_against() {
+    let page: serde_json::Value = serde_json::from_str(&access_page(json!([]))).unwrap();
+    let signed = property(&page, "Signed by");
+    assert_eq!(signed["value"], "The router itself");
+    assert_eq!(signed["dot"], "warning");
+    assert!(signed["help"]
+        .as_str()
+        .unwrap()
+        .starts_with("Browsers warn"));
+    let valid = property(&page, "Valid");
+    assert_eq!(
+        valid["span"],
+        json!({"from":"2026-08-31","to":"2027-10-02","at":5,"tone":"success"})
+    );
+    let left = property(&page, "Time left");
+    assert_eq!(
+        (left["value"].as_str(), left["dot"].as_str()),
+        (Some("376 d"), Some("success"))
+    );
+    let print = property(&page, "Fingerprint");
+    assert_eq!(print["value"], "9D 4C 7A");
+    assert!(print["help"].as_str().unwrap().contains("your browser"));
+    let text = page.to_string();
+    for said in [
+        "\"title\":\"HTTPS certificate\"",
+        "\"subtitle\":\"What this router shows browsers that connect over HTTPS.\"",
+    ] {
+        assert!(text.contains(said), "the card says what it holds: {text}");
+    }
+    assert!(text.contains("\"align\":\"left\""), "{text}");
+    assert!(
+        !text.contains("\"markdown\":\"Self-signed"),
+        "the warning belongs to its fact"
+    );
+    assert!(!text.contains("Valid until"));
+}
+#[test]
+fn certificate_life_turns_as_it_runs_out() {
+    for (left, tone, value) in [
+        ("30", "warning", "30 d"),
+        ("7", "danger", "7 d"),
+        ("0", "danger", "Expired"),
+    ] {
+        let mut cert = self_signed();
+        cert["days_left"] = json!(left);
+        if left == "0" {
+            cert["expired"] = json!("1");
+        }
+        let page: serde_json::Value = serde_json::from_str(&access_with(json!([]), cert)).unwrap();
+        let row = property(&page, "Time left");
+        assert_eq!(
+            (row["value"].as_str(), row["dot"].as_str()),
+            (Some(value), Some(tone)),
+            "{left}"
+        );
+        assert_eq!(property(&page, "Valid")["span"]["tone"], tone);
+    }
+}
+#[test]
+fn a_certificate_someone_else_signed_names_its_signer() {
+    let mut cert = self_signed();
+    cert["issuer"] = json!("R11");
+    cert.as_object_mut().unwrap().remove("self_signed");
+    let page: serde_json::Value = serde_json::from_str(&access_with(json!([]), cert)).unwrap();
+    let signed = property(&page, "Signed by");
+    assert_eq!(
+        (signed["value"].as_str(), signed["mono"].as_bool()),
+        (Some("R11"), Some(true))
+    );
+    assert_eq!(signed["dot"], "success");
+    assert!(signed.get("help").is_none());
+}
+#[test]
+fn access_names_the_rebinding_guard_for_what_it_does() {
+    let page = access_page(json!([]));
+    assert!(page.contains("Block DNS rebinding"), "{page}");
+    assert!(!page.contains("Refuse requests from the internet"));
+}
+#[test]
+fn access_spells_authorized_keys_one_way() {
+    let page = access_page(json!([]));
+    assert!(page.contains("Authorized keys"), "{page}");
+    assert!(!page.contains("Authorised"));
+}
+#[test]
+fn access_says_when_no_key_is_authorized() {
+    assert!(access_page(json!([])).contains("No keys are authorized."));
+    let one = access_page(json!([{"comment":"me@laptop","fingerprint":"SHA256:k"}]));
+    assert!(!one.contains("No keys are authorized."));
+}
+#[test]
+fn access_forms_wait_for_a_change_before_saving() {
+    let page = access_page(json!([]));
+    assert_eq!(page.matches("\"style\":\"settings\"").count(), 2, "{page}");
+    assert!(!page.contains("\"style\":\"page\""));
+}
+#[test]
+fn access_certificate_acts_lead_somewhere_and_spend_no_denim() {
+    let page = access_page(json!([]));
+    assert!(page.contains("Install a certificate"), "{page}");
+    assert!(!page.contains("certificate/trusted"));
+    assert!(!page.contains("\"style\":\"button\""));
+    let mut r = request();
+    r.path = "/access/certificate/install".into();
+    let install = serde_json::to_string(&get(&r)).unwrap();
+    assert!(install.contains("certificate authority"), "{install}");
+    r.path = "/access/certificate/trusted".into();
+    assert!(serde_json::to_string(&get(&r))
+        .unwrap()
+        .contains("This page does not exist."));
+}

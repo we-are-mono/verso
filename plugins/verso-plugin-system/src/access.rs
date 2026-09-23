@@ -16,15 +16,21 @@ fn value(s: &Section<'_>, f: Option<&Form>, key: &str, default: &str) -> String 
         }
     })
 }
-fn switch(name: &str, label: &str, on: bool) -> Widget {
-    Widget::switch_keyed(name, label, name, "", on)
+fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
+    let mut w = Widget::switch_keyed(name, label, name, "", on);
+    if let Widget::Switch { help: h, .. } = &mut w {
+        *h = help.into();
+    }
+    w
 }
+// A settings form holds its Save until something in it changes, so the page
+// spends no action colour on a form with nothing to stage.
 fn form(kind: &str, section: &str, fields: Vec<Widget>, e: &Errors) -> Widget {
     let mut fields = fields;
     fields.insert(0, Widget::hidden("_access_config", kind));
     fields.insert(1, Widget::hidden("section", section));
     Widget::Form {
-        style: "page".into(),
+        style: "settings".into(),
         submit: "Save".into(),
         error: e.values().next().cloned().unwrap_or_default(),
         note: String::new(),
@@ -65,11 +71,13 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
             switch(
                 "PasswordAuth",
                 "Allow password login",
+                "",
                 value(s, f, "PasswordAuth", "on") == if f.is_some() { "1" } else { "on" },
             ),
             switch(
                 "RootPasswordAuth",
                 "Allow root to log in with a password",
+                "",
                 value(s, f, "RootPasswordAuth", "on") == if f.is_some() { "1" } else { "on" },
             ),
         ];
@@ -111,11 +119,13 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
             switch(
                 "redirect_https",
                 "Redirect to HTTPS",
+                "",
                 value(s, f, "redirect_https", "0") == "1",
             ),
             switch(
                 "rfc1918_filter",
-                "Refuse requests from the internet",
+                "Block DNS rebinding",
+                "Refuses requests from private addresses sent to the router's public address.",
                 value(s, f, "rfc1918_filter", "0") == "1",
             ),
         ];

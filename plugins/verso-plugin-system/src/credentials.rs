@@ -2,10 +2,21 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use std::collections::BTreeMap;
 use verso_plugin::{ApplyAction, Envelope, Form, Property, Request, Tone, Widget};
-fn artifact(items: Vec<Property>) -> Widget {
-    let mut card = Widget::card("", vec![Widget::Properties { items }]);
-    if let Widget::Card { style, .. } = &mut card {
+// An artifact is a document the router holds — a key, a certificate — and
+// reads like one: named, with what it is for, then each fact's value beside
+// its label, read line by line.
+fn artifact(title: &str, purpose: &str, items: Vec<Property>) -> Widget {
+    let mut facts = Widget::properties(items);
+    if let Widget::Properties { align, .. } = &mut facts {
+        *align = "left".into();
+    }
+    let mut card = Widget::card(title, vec![facts]);
+    if let Widget::Card {
+        style, subtitle, ..
+    } = &mut card
+    {
         *style = "artifact".into();
+        *subtitle = purpose.into();
     }
     card
 }
@@ -29,12 +40,19 @@ pub fn keys(r: &Request) -> Widget {
         .and_then(|v| v.get("keys"))
         .and_then(serde_json::Value::as_array)
     {
+        if keys.is_empty() {
+            children.push(Widget::text("No keys are authorized."));
+        }
         for key in keys {
             let fingerprint = value(key, "fingerprint");
-            children.push(artifact(vec![
-                property("Comment", value(key, "comment"), false),
-                property("Fingerprint", fingerprint, true),
-            ]));
+            children.push(artifact(
+                "",
+                "",
+                vec![
+                    property("Comment", value(key, "comment"), false),
+                    property("Fingerprint", fingerprint, true),
+                ],
+            ));
             children.push(Widget::link(
                 "Remove",
                 &format!(
@@ -52,7 +70,62 @@ pub fn keys(r: &Request) -> Widget {
         "/plugins/system/access/key/new",
         "secondary",
     ));
-    Widget::section("Authorised keys", "", children)
+    Widget::section("Authorized keys", "", children)
+}
+// certificate_facts answers what someone at a browser's "not secure" page
+// wants to know: is this my router's certificate (the fingerprint, written as
+// the browser writes it), who vouches for it, and how long it has left — the
+// stretch it is valid for, filled up to today. The fill turns marigold a
+// month before the end and crimson in the last week.
+fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
+    let days = |key| value(cert, key).parse::<u32>().unwrap_or(0);
+    let (left, total) = (days("days_left"), days("days_total").max(1));
+    let expired = value(cert, "expired") == "1";
+    let tone = match left {
+        _ if expired => Tone::Danger,
+        0..=7 => Tone::Danger,
+        8..=30 => Tone::Warning,
+        _ => Tone::Success,
+    };
+    let signed = if value(cert, "self_signed") == "1" {
+        Property {
+            label: "Signed by".into(),
+            value: "The router itself".into(),
+            ..Default::default()
+        }
+        .marked(Tone::Warning)
+        .noted("Browsers warn until you trust it on each device, or replace it.")
+    } else {
+        property("Signed by", value(cert, "issuer"), false).marked(Tone::Success)
+    };
+    let remaining = Property {
+        label: "Time left".into(),
+        value: if expired {
+            "Expired".into()
+        } else {
+            format!("{left} d")
+        },
+        verbatim: !expired,
+        ..Default::default()
+    };
+    vec![
+        property("Issued to", value(cert, "subject"), true),
+        signed,
+        Property {
+            label: "Valid".into(),
+            ..Default::default()
+        }
+        .spanning(
+            value(cert, "from"),
+            value(cert, "until"),
+            (total.saturating_sub(left) * 100 / total).min(100) as u8,
+            tone,
+        ),
+        remaining.marked(tone),
+        property("Fingerprint", value(cert, "fingerprint"), true)
+            .noted("Compare it with the SHA-256 fingerprint your browser shows for this site."),
+        property("File", value(cert, "file"), false),
+    ]
 }
 pub fn certificate(r: &Request) -> Vec<Widget> {
     let mut children = vec![];
@@ -62,29 +135,24 @@ pub fn certificate(r: &Request) -> Vec<Widget> {
         .and_then(|v| v.get("certificate"))
     {
         if !value(cert, "fingerprint").is_empty() {
-            children.push(artifact(vec![
-                property("File", value(cert, "file"), false),
-                property("Issued to", value(cert, "subject"), true),
-                property("Signed by", value(cert, "issuer"), false),
-                property("Made", value(cert, "from"), false),
-                property("Valid until", value(cert, "until"), false),
-                property("Fingerprint", value(cert, "fingerprint"), true),
-            ]));
-            if value(cert, "self_signed") == "1" {
-                children.push(Widget::text("Self-signed — browsers warn until you install it as trusted on each device, or replace it."));
-            }
+            children.push(artifact(
+                "HTTPS certificate",
+                "What this router shows browsers that connect over HTTPS.",
+                certificate_facts(cert),
+            ));
         } else {
             children.push(Widget::text("No readable web certificate was found."));
         }
     }
+    // The router cannot obtain a trusted certificate itself; one issued
+    // elsewhere is installed like any other, so there is one way in.
+    let mut download = Widget::link("Download", "/system/access/certificate", "secondary");
+    if let Widget::Link { icon, .. } = &mut download {
+        *icon = "download".into();
+    }
     let mut actions = Widget::stack(vec![
         Widget::link(
-            "Get a trusted certificate",
-            "/plugins/system/access/certificate/trusted",
-            "button",
-        ),
-        Widget::link(
-            "Use my own",
+            "Install a certificate",
             "/plugins/system/access/certificate/install",
             "secondary",
         ),
@@ -93,7 +161,7 @@ pub fn certificate(r: &Request) -> Vec<Widget> {
             "/plugins/system/access/certificate/new",
             "secondary",
         ),
-        Widget::link("Download", "/system/access/certificate", "secondary"),
+        download,
     ]);
     if let Widget::Stack { inline, .. } = &mut actions {
         *inline = true;
@@ -173,8 +241,9 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             }
         }
         "/access/certificate/install" => {
-            title = "Use my own certificate";
+            title = "Install a certificate";
             let certificate = form.map(|f| f.get("certificate")).unwrap_or_default();
+            fields.push(Widget::text("A trusted certificate is issued for a domain you control. Obtain it from your certificate authority, then paste the certificate and its private key here."));
             fields.push(textarea("certificate", "Certificate (PEM)", &certificate));
             // A failed attempt may keep its public certificate, never its key.
             fields.push(textarea("key", "Private key (PEM)", ""));
@@ -196,12 +265,6 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
                     });
                 }
             }
-        }
-        "/access/certificate/trusted" => {
-            return Envelope::page("Get a trusted certificate", Widget::stack(vec![
-                Widget::text("A trusted certificate is issued for a domain you control. Use your certificate authority to obtain it, then install the certificate and its private key here."),
-                Widget::link("Use my own", "/plugins/system/access/certificate/install", "button"),
-            ])).with_back("Access", "/system/access").with_width("form");
         }
         _ => {
             return Envelope::page("Access", Widget::text("This page does not exist."))
