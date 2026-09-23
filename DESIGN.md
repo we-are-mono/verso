@@ -267,7 +267,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Display** (600, 1.875rem/30px, 1.1): the home page's verdict heading only.
 - **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always 36px tall so pages never shift between each other.
 - **Title** (600, 1.125rem/18px, -0.025em): band and drawer titles, in Body ink on sand.
-- **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading.
+- **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the name, then how many things the part holds (500, Meta, tabular), then a Hairline running on to the column's end, so it reads as the start of a group and never as one more field label. The count is the set's own length. When it differs from the last time the page was shown, the old number rolls out and the new one rolls in (up for more, down for fewer, 420ms exponential ease-out), arriving in Ink and settling to Meta. Under reduced motion it simply shows the number. The part's first line stands 20px under the name.
 - **Body** (400, 0.875rem/14px, 1.5): all prose, labels (600), buttons (600), cells. Ledes cap at 60ch.
 - **Label** (500, 0.75rem/12px, 0.08em, uppercase): kickers and column heads, in Meta.
 - **Value** (Inconsolata 500, 1rem/16px): machine strings in rows — addresses, interface names, MACs, versions. Inputs for identifiers use Inconsolata 400 at 16px.
@@ -282,7 +282,9 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 
 The page is left-aligned against a 288px rail, never centred. The frame keeps 40px of air on every side, and inside it the page declares a measure: wide pages cap at 1152px, forms at 640px. The top bar's right group ends on the same column edge, so a page's primary act sits exactly under Log out.
 
-**The rhythm is 40 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A hairline between two sections has 40px on both sides of it. Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), section bands are 52px, controls are 36px, and a control inside a row is 28px. Heights come from line plus padding, never from a fixed height, so a row stays a row whatever it holds.
+**The rhythm is 40 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A hairline between two sections has 40px on both sides of it, and it runs out by the same 40px to the rail on the left, and stops where the column ends on the right, clear of any sidebar beside the column. The rule is the page's, so it starts at the page's frame, while what it separates stays in the column. Every page's title stands 20px under the page's top edge, and its masthead ends in one line 20px under the title (or under its lede, when it has one): a masthead labels the page and keeps no more air than that. The line runs to the rail as a section rule does. The home page's sentence keeps the full 40px above it. Unlike a section rule, it ends on the right where Log out does, whatever measure the column keeps, and the page's acts on the heading line end there too. Its line is a hairline on a page of forms or sections, the control band's top edge on a list or log, never both. Only the home page, whose heading is a sentence, stands unruled. A drawer keeps its own rules inside its padding. Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), section bands are 52px, controls are 36px, and a control inside a row is 28px. Heights come from line plus padding, never from a fixed height, so a row stays a row whatever it holds.
+
+Acts sit at the level they act on. A page's acts stand on its heading line. A form that is the whole page commits every section on it, so it closes on a section rule of the page's (40px either side, run out to the rail) with its Save under it. A form in a drawer closes on its own hairline inside the drawer. A form that commits one section draws no hairline: its Save stands 20px under its last field, and the next section's rule is the only line between them. Within a section, its settings and their Save come first, then what the section holds (keys, a certificate), with that thing's own acts 16px under it.
 
 Every list page reads top to bottom as: the heading line (h1 left, page acts right), then the **control band**, then the content flush beneath it. The band spans the full page width, from the rail to the window edge, while its controls stay in the page's column, level with the h1. It is the seam between "the page" and "the thing on the page".
 
@@ -317,9 +319,14 @@ Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no verti
 Plain and exact.
 - **Shape:** gently squared (2px), 36px tall, 16px side padding, 14px/600 text.
 - **Primary:** Denim fill, white words, and always a leading 16px plus glyph, unless the act leads elsewhere and names its own (download, upload, open-out). It lives on the heading line, one per page.
-- **Secondary:** transparent, Ink words, Strong Hairline border; on hover the border warms to Faint and the fill to Quiet Sand. Words only; no decorative icons.
+- **Secondary:** the subsection act's colours at any size: transparent, Meta words, Strong Hairline border; on hover the border turns Parked, the fill Hairline, the words Ink. Every quiet button answers the pointer alike (a list's Add, Cancel, a log's Live · Download · Settings, a row button). Words only; no decorative icons.
 - **Danger:** Crimson fill, white words, for the confirmation step only, and always beside its way back (see Confirmation).
-- **Row buttons:** 28px, 12px side padding, the same secondary dress. Icon-only row acts are 28px squares in Glyph that wash to Hairline on hover and show a tooltip.
+- **Subsection acts:** the acts on a part of a section: "+ Add a key", and a certificate's Install · Make a new one · Download. One dress for all of them:
+  - 28px tall, 14px/500 words in Meta, a Strong Hairline border on no fill.
+  - Always a leading 16px glyph that names the act (plus, upload, refresh, download), with 8px padding before it and 10px after the words.
+  - On hover the border turns Parked, the fill Hairline, the words Ink.
+  - One exception: an act on a section's heading line (General's "Use my computer's time") stands in the field column, where a field would, so it starts where the fields' controls start and takes a field's 36px height with 16px side padding, in the same colours.
+- **Row buttons:** 28px, 12px side padding, the same secondary dress. Every icon-only act wears one dress, wherever it stands (a row's edit or remove, a list's remove ×, a copy beside a value or on a code box): a 28px square with a 16px glyph in Glyph on no border, taking a Parked border, the Hairline fill and Ink on hover, with a tooltip. Beside a line of text it keeps the line's height.
 - **Press:** every button nudges down 1px and drops its shadow when pressed (off under reduced motion).
 - **Resting:** a settings form's Save before anything in it has changed is disabled in Quiet Sand, a Strong Hairline border and Meta words, and turns denim the moment something changes. A page with no primary act and nothing changed therefore shows no denim.
 - **Waiting:** a button busy with a slow act keeps its footprint, goes Quiet Sand with Parked words, shows the waiting mark and a present-participle label with a real ellipsis ("Applying…").
@@ -344,8 +351,8 @@ The anatomy is the same in both:
 
 ### Control Band
 The signature seam of every list and log page.
-- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge.
-- **Contents:** only what narrows the content — search first (the app's field treatment), then counted dropdowns ("IPv4 · 14", "All families · 22"), never segmented switches. Everything that acts (primary add, Live, Download, Settings) goes on the heading line instead.
+- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 20px under the title, and its top Hairline is the masthead's line; the masthead draws none of its own above a band.
+- **Contents:** only what narrows the content, side by side from the left, 16px apart — search first (the app's field treatment), then counted dropdowns ("IPv4 · 14", "All families · 22"), then the dimension the listing is sliced along ("All networks"); never segmented switches, and no dropdown strays to the band's far end. Everything that acts (primary add, Live, Download, Settings) goes on the heading line instead.
 - **Below it:** the table sits flush under the band with its 44px column-head row; a log sits flush on Paper.
 
 ### Tables
@@ -353,15 +360,23 @@ The signature seam of every list and log page.
 - **Column heads:** a full 44px row, 12px/500 uppercase Meta with 0.08em tracking, over a Strong Hairline.
 - **Lanes:** a 44px text row on a Strong Hairline, label → destination with a faint arrow, a Meta tally, and a quiet "+ Add rule" at the right.
 - **Empty:** one row where the first row would be, two sentences at most, no illustration, no button.
+- **Acts hang from the first line:** when the thing a row names spans more than one line (a key's name over its fingerprint, an address over its IPv6, a value that wraps), the icons that act on it (edit, delete, copy) align with its first line, not the middle of the block. The first line is the thing's identity, and the acts belong to it. The same holds for a label and a status pill beside a wrapping value, in tables and fact lists alike. On a one-line row, centred and first-line are the same place.
+
+### Collections
+A short set of machine strings someone keeps by hand: authorized keys, a tunnel's peers. It's not a table. A handful of identities needs no rules, and every act on the set happens where the set is.
+- **Items:** the identity in 16px mono Ink over one line of detail in 14px mono Meta (a fingerprint, an address), wrapping anywhere on a phone. Items are separated by their own 10px of air, never a hairline.
+- **Remove:** a 28px trash icon on the item's first line, named with the item for screen readers. Pressed, the crimson confirmation drops full-width under the item ("Remove this key?", **Remove key** · Not now), focus on the act, and Escape or Not now returns focus to the icon.
+- **Add:** "+ Add a key" (a subsection act) at the foot unfolds in place into a mono box (cursor in it), the plugin's live reading of what is typed (a key reads as `ssh-keygen -l` prints it), and **Add key** · Not now. The reading stays hidden until there is something to read. A refused paste comes back open, as typed, with its reason under the box.
+- **After:** the change runs at once and the page reads the router again, saying once what happened ("Key added.").
 
 ### Inputs / Fields
 - **Style:** White fill, Strong Hairline border, 2px corners, field inset shadow, 36px tall. Sans 14px for words, mono 16px for identifiers.
 - **Width by content:** full for free text and every select; 176px for fixed-format identifiers (IPv4, MAC, time); 96px for numbers (port, MTU, VLAN id).
-- **States:** only the border changes — Strong Hairline at rest, Faint on hover, Denim while focused. Errors rest on Crimson and still focus Denim. Placeholders are Meta, never lighter.
+- **States:** only the border changes — Strong Hairline at rest, Faint on hover, Denim while focused. A refused field stays the one that is wrong while it is corrected: Crimson at rest, Deep Crimson under the pointer, and a 2px Deep Crimson edge while focused (an inset line, so the box never grows), with its reason under it on a band of Crimson Wash (12px side padding, 8px vertical, 2px corners: the crimson square, then the words). The band is the same under a field, a key's box or a list's box. A page that comes back refused opens at its first refused field, in the middle of the view with the cursor in it, never at the page's top. The first change to its value answers the refusal, so the box returns to the Strong Hairline and Denim focus and the reason goes; submitting asks again. Placeholders are Meta, never lighter.
 - **Checkboxes:** 18px, 2px corners, White with the inset shadow; checked is Body ink with a white check. Every switch in the app is drawn as a checkbox, because every change is staged.
 
 ### Navigation
-- **Rail:** 288px, no fill of its own, one hairline against the page. Top-level rows carry a 16px Lucide icon in Glyph (Ink when active), wash to Mid Sand and slide 4px right on hover. The row you are on is the only surface: Quiet Sand with a 2px Ink bar on its left edge. A parent whose sub-page is open goes bold Ink without the surface, and its sub-pages hang off a hairline under its icon, with no icons of their own; the open sub-page carries the 2px Ink bar.
+- **Rail:** 288px, no fill of its own, one hairline against the page. Top-level rows carry a 16px Lucide icon in Glyph (Ink when active), wash to Mid Sand and slide 4px right on hover. The row you are on is the only surface: Quiet Sand with a 2px Ink bar on its right edge, against the page it opens. A parent whose sub-page is open goes bold Ink without the surface, and its sub-pages hang off a hairline under its icon, with no icons of their own; the open sub-page carries the 2px Ink bar on the same right edge.
 - **Top bar:** White, 56px, the hostname in bold mono on the left, the staged-changes chip and Log out on the right, aligned to the content column.
 - **Mobile:** the rail becomes an off-canvas drawer behind a menu button, over an Ink scrim.
 
@@ -390,7 +405,9 @@ The signature seam of every list and log page.
 - **Don't** set type in a full-chroma hue, or in Faint or Glyph.
 - **Don't** cast shadows on anything that sits on the page; only floating layers get one.
 - **Don't** use more than 2px corners on a surface, or circles for state.
-- **Don't** add icons to buttons for emphasis; the primary's plus and the direction glyphs (download, upload, open-out) are the only ones.
+- **Don't** mark a message with an alert glyph. An error, a notice, a warning, a banner or a confirmation says its tone with the 6px state square in that tone's hue, hung on its first line (the flash, a form's error, the no-password band, the crimson and marigold confirms).
+- **Don't** repeat a failure in every form on the page. A failed act is said once, in the page's notice.
+- **Don't** add icons to buttons for emphasis. Glyphs appear only on the primary (its plus), on the direction glyphs (download, upload, open-out), and on every subsection act, where the glyph names the act.
 - **Don't** use a circular spinner; waiting is the four-square mark.
 - **Don't** fix a row or band height with a height utility; heights come from line plus padding.
 - **Don't** centre the page or let a band's controls leave the page's column.
