@@ -42,7 +42,7 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	if err := passwordServer(t, fakeBackend{}).pageSet("").ExecuteTemplate(&b, "access-contribution.html.tmpl", template.HTML("<section>SSH</section>")); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(b.String(), `<div data-verso-rule class="mt-10 border-t border-rule pt-10"><section>SSH</section></div>`) {
+	if !strings.Contains(b.String(), `<div data-verso-rule class="mt-6 border-t border-rule pt-6"><section>SSH</section></div>`) {
 		t.Errorf("want 40 above and below the seam, got %s", b.String())
 	}
 }
@@ -55,7 +55,7 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 func TestSectionRulesAreThePagesAcrossItsGutter(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5`) {
+	if !strings.Contains(access, `<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5`) {
 		t.Error("the masthead's rule is one of the page's")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
@@ -68,11 +68,11 @@ func TestSectionRulesAreThePagesAcrossItsGutter(t *testing.T) {
 // the last and 40px under its rule, the rules the page's own.
 func TestMaintenanceSectionsAreRuledAsThePages(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5`) {
+	if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5`) {
 		t.Error("the masthead is ruled off from the first section")
 	}
 	for _, id := range []string{"backup", "reboot", "factory-reset"} {
-		want := `<section id="` + id + `" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">`
+		want := `<section id="` + id + `" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
 		}

@@ -30,7 +30,7 @@
        stages the change on commit, the counterpart of a row switch. The field
        takes the same compact width as ordinary inputs, with its actions inset
        into the right edge. */}}
-  <div class="{{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 [&:has(+details)]:border-b-0">
+  <div class="{{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Title}}</label>
 
@@ -47,7 +47,7 @@
     {{if .Desc}}<p class="mt-1.5 text-sm leading-snug text-body">{{.Desc}}</p>{{end}}
   </div>
   {{else}}
-  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
+  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
     {{/* The name and its chip share the first line; the description sits below
          them at the row's full reading width, wrapping as it needs — a sentence
          cut by an ellipsis is a sentence withheld. The control keeps the hard

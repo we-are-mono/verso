@@ -31,6 +31,22 @@ func TestSectionControlStandsInTheFieldColumn(t *testing.T) {
 	}
 }
 
+// TestHeadlessSectionStartsAtItsFirstBox: a section with no heading has
+// nothing for its first row's top padding to stand off from, so it is marked
+// headless and the stylesheet takes that padding back — the first box starts
+// where the section does. A titled section keeps it, as the gap after its
+// heading.
+func TestHeadlessSectionStartsAtItsFirstBox(t *testing.T) {
+	r := newRenderer(t)
+	row := func() []Widget { return []Widget{&Field{Name: "hostname", Label: "Router name"}} }
+	if got := render(t, r, &Section{Children: row()}); !strings.Contains(got, "<section data-verso-headless") {
+		t.Errorf("an untitled section is marked headless:\n%s", got)
+	}
+	if got := render(t, r, &Section{Title: "Time", Children: row()}); strings.Contains(got, "data-verso-headless") {
+		t.Errorf("a titled section keeps its first row's air:\n%s", got)
+	}
+}
+
 // TestListAddHoversAsEverySecondaryButton: a list's Add is a secondary button
 // and answers the pointer as every other does — the subsection act's hover.
 func TestListAddHoversAsEverySecondaryButton(t *testing.T) {

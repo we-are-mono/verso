@@ -8,6 +8,17 @@ import (
 	"testing"
 )
 
+// TestTheLastSettingsRowEndsAtItsWords: rows are divided by hairlines, each
+// with its air above and below; the last has no hairline under it, so it has
+// no air under it either — the list ends at its last words, and the section's
+// own air is all that stands between them and the next rule.
+func TestTheLastSettingsRowEndsAtItsWords(t *testing.T) {
+	got := render(t, newRenderer(t), &Settings{Items: []SettingsItem{{Title: "Check for updates automatically", Desc: "Once a day."}, {Title: "Keep logs", Value: "7 days"}}})
+	if n := strings.Count(got, "border-b border-rule last:border-b-0 last:pb-0"); n != 2 {
+		t.Errorf("every row drops its air with its hairline when it is last, got %d:\n%s", n, got)
+	}
+}
+
 // firewallDefaults is the "config defaults" block in miniature: a read-only
 // policy row carrying value pills, and toggle rows carrying the shared switch
 // plus their underlying option name as a code chip.

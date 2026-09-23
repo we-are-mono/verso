@@ -60,7 +60,7 @@
        page's own form commits the whole page, so its Save stands under a
        section rule of the page's — 40px either side, run out to the rail. A
        panel's form closes on its own rule, inside the panel. */}}
-  <div{{if .ClosesPage}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .Sectioned}}mt-5 gap-4{{else if .ClosesPage}}mt-10 gap-4 border-t border-rule pt-10{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
+  <div{{if .ClosesPage}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .Sectioned}}mt-5 gap-4{{else if .ClosesPage}}mt-6 gap-4 border-t border-rule pt-6{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{if .Submit}}<button type="submit" class="{{template "verso-btn-box"}}{{if .Inline}} rounded-l-none{{end}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}

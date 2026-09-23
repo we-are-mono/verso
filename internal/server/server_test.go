@@ -2250,7 +2250,7 @@ func TestEveryMastheadEndsAtOneDivider(t *testing.T) {
 		if !strings.Contains(body, `<div class="px-10 pt-5 pb-10">`) {
 			t.Errorf("lede %q: the title stands 20px under the page's top edge:\n%s", sub, body)
 		}
-		if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5">`) {
+		if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5">`) {
 			t.Errorf("lede %q: the title is ruled off 20px under it:\n%s", sub, body)
 		}
 		if strings.Contains(body, `<div class="mb-5">`) {

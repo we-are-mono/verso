@@ -212,6 +212,42 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 	}
 }
 
+// TestARuledSectionStandsByItsRulesAir: a ruled section on the page's stack
+// stands 24px after the block before it — the title's own air, which every
+// rule keeps on both sides — not the 40px between unruled blocks.
+func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	if !strings.Contains(string(css), ".verso-page-body>.verso-stack>section[data-verso-ruled]{margin-top:calc(var(--spacing) * 6)}") {
+		t.Error("a ruled section on the page's stack keeps the 40px block gap")
+	}
+}
+
+// TestASectionKeepsTheMastheadsAirAndNoMore: a section holds the masthead's
+// 20px inside its rule itself, so the rows it starts and ends with give their
+// own padding back — an untitled section's first visible row starts where the
+// section does, and every section's last visible row ends where it does.
+// Hidden carriers ahead of the first row are not a block: the first row after
+// them takes no block gap.
+func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
+	raw, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	css := string(raw)
+	for _, want := range []string{
+		`section[data-verso-headless]>.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){padding-top:0}`,
+		`section>.verso-rhythm>:not(input[type=hidden]):not(:has(~:not(input[type=hidden]))){padding-bottom:0}`,
+		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("stylesheet is missing %s", want)
+		}
+	}
+}
+
 // TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
 // masthead — the title's line and the page's acts — ends at the right edge
 // Log out ends at: the page's 2.5rem gutter in, never past the top bar's

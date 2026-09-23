@@ -97,7 +97,7 @@
       </div>
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
-    <section id="backup" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
+    <section id="backup" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
       <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
       <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p>
       <div class="flex flex-wrap items-center gap-3">
@@ -105,7 +105,7 @@
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
     </section>
-    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
+    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
       <h2 class="mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
       {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
       <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
@@ -118,7 +118,7 @@
         <p data-verso-reboot-error hidden role="alert" class="w-full {{template "verso-error-line"}}"></p>
       </form>
     </section>
-    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-10 border-t border-rule pt-10">
+    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
       <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
       <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p>
       {{/* One field, one act, on one row a small step apart — the pattern a

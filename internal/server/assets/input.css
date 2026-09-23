@@ -366,6 +366,9 @@ html.verso-fonts-loading body {
      wherever they are. */
   .verso-rhythm > * + * { margin-top: var(--verso-rhythm, calc(var(--spacing) * 10)); }
   .verso-rhythm > [data-verso-change-field] + [data-verso-change-field] { margin-top: 0; }
+  /* Hidden carriers are not blocks: the first row after them — the first a
+     reader sees — takes no gap above it. */
+  .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { margin-top: 0; }
 
   /* The rail beside a long page marks the section you are reading: the words go
      to ink and take on weight, and the hairline the link already carries becomes
@@ -713,6 +716,19 @@ html.verso-fonts-loading body {
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   .verso-page-body > .verso-stack > section:not([data-verso-ruled]) { padding-top: 0; }
+  /* A rule keeps the title's own air on both sides of it — 24px, the 20px
+     under the title's 36px heading line plus the half of that line the title
+     leaves — so a ruled section stands 24px after the block before it, not
+     the 40px between unruled blocks. */
+  .verso-page-body > .verso-stack > section[data-verso-ruled] { margin-top: calc(var(--spacing) * 6); }
+  /* A section holds the masthead's 20px inside its rule itself, so the rows
+     it starts and ends with give their own padding back: an untitled
+     section's first visible row starts where the section does (a titled one
+     keeps it, as the air under its heading), and every section's last visible
+     row ends where the section does. In utilities, because a row's padding is
+     a utility and only this layer outranks it. */
+  section[data-verso-headless] > .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { padding-top: 0; }
+  section > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) { padding-bottom: 0; }
 
   /* A page's control band spans the page, from the rail to the window's edge,
      while its controls keep to the page's column, level with the heading. The

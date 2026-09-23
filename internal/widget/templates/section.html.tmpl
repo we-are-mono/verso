@@ -27,7 +27,10 @@
      enough that the phone's own bar is not covering the heading that was asked
      for, and on a wider screen no further than the air the section already keeps
      above itself. */}}
-<section{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-10 border-t border-rule pt-10 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
+{{/* A section with no heading has nothing for its first row's top padding to
+     stand off from: it is marked headless, and the stylesheet takes that
+     padding back so its first box starts where the section does. */}}
+<section{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-6 border-t border-rule pt-6 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
        a ledger line: its name at the label's size, how many things it holds,

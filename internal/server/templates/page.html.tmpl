@@ -134,7 +134,7 @@
          column keeps, the stylesheet ends the masthead, its line and its acts,
          under Log out. Home's display verdict opens onto its own strip, and on
          a full page keeps to the column the top bar does. */}}
-    <div{{if not .Display}} data-verso-rule data-verso-masthead{{end}} class="{{if .Display}}mb-5{{if eq .Width "full"}} max-w-6xl{{end}}{{else}}mb-10 border-b border-rule pb-5{{end}}">
+    <div{{if not .Display}} data-verso-rule data-verso-masthead{{end}} class="{{if .Display}}mb-5{{if eq .Width "full"}} max-w-6xl{{end}}{{else}}mb-6 border-b border-rule pb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
@@ -164,7 +164,7 @@
       {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
-    <div data-verso-rule data-verso-masthead class="mb-10 border-b border-rule pb-5">
+    <div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{/* An act's height whether it holds one or not, as above. */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
