@@ -194,14 +194,12 @@ pub fn fields(
         out.push(Widget::text(NEW_NOTE));
         return out;
     }
-    out.push(Widget::Properties {
-        items: vec![Property {
-            label: REACHED_BY.into(),
-            value: list_or_none(&model.forwards_into(name)),
-            mono: true,
-            ..Property::default()
-        }],
-    });
+    out.push(Widget::properties(vec![Property {
+        label: REACHED_BY.into(),
+        value: list_or_none(&model.forwards_into(name)),
+        mono: true,
+        ..Property::default()
+    }]));
     out.push(Widget::text(REACHED_BY_NOTE));
     out
 }

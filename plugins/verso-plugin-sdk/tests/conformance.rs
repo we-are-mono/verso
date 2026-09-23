@@ -271,15 +271,25 @@ fn write_widget_fixtures() {
         (
             "properties",
             Widget::Properties {
-                items: vec![Property {
-                    label: "Endpoint".into(),
-                    value: "203.0.113.7:51820".into(),
-                    mono: true,
-                    verbatim: false,
-                    copy: true,
-                    ..Property::default()
-                }
-                .toned(Tone::Success)],
+                items: vec![
+                    Property {
+                        label: "Endpoint".into(),
+                        value: "203.0.113.7:51820".into(),
+                        mono: true,
+                        verbatim: false,
+                        copy: true,
+                        ..Property::default()
+                    }
+                    .toned(Tone::Success)
+                    .marked(Tone::Success)
+                    .noted("Reached over the internet."),
+                    Property {
+                        label: "Valid".into(),
+                        ..Property::default()
+                    }
+                    .spanning("2026-08-31", "2027-10-02", 6, Tone::Success),
+                ],
+                align: "left".into(),
             },
         ),
         (

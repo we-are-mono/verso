@@ -349,9 +349,7 @@ fn traffic_fields(
         None => out.push(
             fields::text_field("name", "Name", &form.name, NEW_NAME_HELP, errors).writes("name"),
         ),
-        Some(zone) => out.push(Widget::Properties {
-            items: vec![machine("Name", &zone.name)],
-        }),
+        Some(zone) => out.push(Widget::properties(vec![machine("Name", &zone.name)])),
     }
     out.push(Widget::Field {
         name: "network".into(),
@@ -497,13 +495,11 @@ pub fn reaches_fields(
     // may it go"; these are what goes with it if the zone is renamed or removed,
     // which is the other thing a reader comes to this tab for.
     let references = model.references(&zone.name);
-    out.push(Widget::Properties {
-        items: vec![
-            count("Traffic rules", references.rules),
-            count("Port forwards and redirects", references.redirects),
-            count("Source NAT rules", references.nats),
-        ],
-    });
+    out.push(Widget::properties(vec![
+        count("Traffic rules", references.rules),
+        count("Port forwards and redirects", references.redirects),
+        count("Source NAT rules", references.nats),
+    ]));
     out
 }
 

@@ -1,8 +1,18 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* Legacy groups are sections. A frame is reserved for a stored artifact. */}}
-<section{{if eq .Style "artifact"}} class="rounded-xs border border-rule bg-quiet px-5 py-4"{{end}}>
-  {{if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-8 mb-2{{else}}mb-5{{end}}">
+{{/* Legacy groups are sections. A frame is reserved for a stored artifact.
+     Its rows carry 10px above and below, so the frame adds 10px to make 20 —
+     the same inset on all four sides. */}}
+<section{{if eq .Style "artifact"}} class="rounded-xs border border-rule bg-quiet px-5 py-2.5"{{end}}>
+  {{if eq .Style "artifact"}}
+  {{/* A stored document says what it is before its facts do: the name over a
+       sentence of what it is for, a row on the frame's inset, closed off from
+       the facts by the strong hairline a column head sits on. */}}
+  {{if .Title}}<div class="border-b border-rule-strong py-2.5">
+    <h3 class="text-base leading-6 font-semibold text-ink">{{.Title}}</h3>
+    {{if .Subtitle}}<p class="text-sm leading-snug text-body">{{.Subtitle}}</p>{{end}}
+  </div>{{end}}
+  {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-8 mb-2{{else}}mb-5{{end}}">
     {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} text-ink">{{.Title}}</h3>{{end}}
     {{if .Subtitle}}<p class="mt-1 text-sm leading-snug text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}

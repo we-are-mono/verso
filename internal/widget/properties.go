@@ -3,7 +3,11 @@
 
 package widget
 
-import "io"
+import (
+	"fmt"
+	"html/template"
+	"io"
+)
 
 // Properties is a label/value detail list (a description list): each row shows a
 // name on the left and its value on the right. It is the read-only companion to a
@@ -60,6 +64,26 @@ type Property struct {
 	// script can refresh the value — and the dot's tone — in place.
 	Dot string `json:"dot,omitempty"`
 	Key string `json:"key,omitempty"`
+	// Span makes the value a stretch between two ends — a certificate's
+	// validity, a lease's term — drawn as the meter's track, filled in its
+	// tone up to where now is. The ends are data, written under the track's
+	// ends and never translated.
+	Span *PropertySpan `json:"span,omitempty"`
+}
+
+// PropertySpan is a stretch between From and To, filled At a share of it
+// (0–100) in Tone's hue (the tone vocabulary; "" is a hollow track).
+type PropertySpan struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	At   int    `json:"at"`
+	Tone string `json:"tone,omitempty"`
+}
+
+// Pos is where the mark stands, as a CSS length along the ruler: At, held
+// within the stretch.
+func (s *PropertySpan) Pos() template.CSS {
+	return template.CSS(fmt.Sprintf("%d%%", min(max(s.At, 0), 100))) //nolint:gosec // built here from a clamped integer, never from input
 }
 
 func (*Properties) isWidget() {}

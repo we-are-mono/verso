@@ -50,10 +50,7 @@ fn pair(left: Vec<Property>, right: Vec<Property>) -> Widget {
     Widget::Grid {
         columns: 2,
         style: "facts".into(),
-        children: vec![
-            Widget::Properties { items: left },
-            Widget::Properties { items: right },
-        ],
+        children: vec![Widget::properties(left), Widget::properties(right)],
     }
 }
 fn configuration(children: Vec<Widget>) -> Widget {

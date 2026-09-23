@@ -842,8 +842,14 @@ pub enum Widget {
         variant: String,
         children: Vec<Widget>,
     },
-    /// A label/value fact sheet.
-    Properties { items: Vec<Property> },
+    /// A label/value fact sheet. Build it with [`Widget::properties`]. `align`
+    /// "left" sets the values beside a fixed label column rather than on the
+    /// right edge — the reading order for a document's facts, read line by line.
+    Properties {
+        items: Vec<Property>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        align: String,
+    },
     /// Config sections as identical rows under fixed columns: each column
     /// declares a kind ("name", "mono", "keyword", "pill", "endpoint",
     /// "toggle", "comment", …) and that kind renders every cell in it the same
@@ -1521,6 +1527,14 @@ impl Widget {
         }
     }
 
+    /// properties is a fact sheet of these rows, values on the right edge.
+    pub fn properties(items: Vec<Property>) -> Widget {
+        Widget::Properties {
+            items,
+            align: String::new(),
+        }
+    }
+
     /// text is a short run of styled prose.
     pub fn text(markdown: &str) -> Widget {
         Widget::Text {
@@ -1644,12 +1658,60 @@ pub struct Property {
     pub copy: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub variant: String,
+    /// A note under the value, in the value's column: what the fact means for
+    /// the reader. Set it with [`Property::noted`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    /// The state mark leading the value, a tone word. Set it with
+    /// [`Property::marked`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub dot: String,
+    /// Makes the value a stretch between two ends. Set it with
+    /// [`Property::spanning`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub span: Option<PropertySpan>,
+}
+
+/// PropertySpan is a stretch between two ends — a certificate's validity, a
+/// lease's term — drawn as the meter's track, filled `at` a share of it (0–100).
+/// The ends are data and are never translated.
+#[derive(Serialize, Debug)]
+pub struct PropertySpan {
+    pub from: String,
+    pub to: String,
+    pub at: u8,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tone: String,
 }
 
 impl Property {
     /// toned gives this fact's value a semantic tone from the badge vocabulary.
     pub fn toned(mut self, variant: Tone) -> Property {
         self.variant = variant.as_str().into();
+        self
+    }
+
+    /// noted sets the sentence under the value that says what it means.
+    pub fn noted(mut self, help: &str) -> Property {
+        self.help = help.into();
+        self
+    }
+
+    /// marked leads the value with the state mark in this tone.
+    pub fn marked(mut self, tone: Tone) -> Property {
+        self.dot = tone.as_str().into();
+        self
+    }
+
+    /// spanning makes the value the stretch from `from` to `to`, drawn as a
+    /// track filled `at` a share of it (held within 0–100), in `tone`.
+    pub fn spanning(mut self, from: &str, to: &str, at: u8, tone: Tone) -> Property {
+        self.span = Some(PropertySpan {
+            from: from.into(),
+            to: to.into(),
+            at: at.min(100),
+            tone: tone.as_str().into(),
+        });
         self
     }
 }

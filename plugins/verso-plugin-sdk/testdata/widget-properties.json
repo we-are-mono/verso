@@ -6,7 +6,20 @@
       "value": "203.0.113.7:51820",
       "mono": true,
       "copy": true,
-      "variant": "success"
+      "variant": "success",
+      "help": "Reached over the internet.",
+      "dot": "success"
+    },
+    {
+      "label": "Valid",
+      "value": "",
+      "span": {
+        "from": "2026-08-31",
+        "to": "2027-10-02",
+        "at": 6,
+        "tone": "success"
+      }
     }
-  ]
+  ],
+  "align": "left"
 }

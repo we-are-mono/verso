@@ -25,6 +25,15 @@
     <span x-show="done" x-cloak>{{ t "Copied" }}</span>
   </span>
 </button>{{end}}
+{{/* verso-mark-hue: the packet's fill for a tone — the hue at full chroma, as
+     a mark; no tone is the hollow packet, the absent state. Still, never the
+     live ring: a fact on a sheet is read, not streamed. */}}
+{{define "verso-mark-hue"}}{{if eq . "success"}}bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else if eq . "info"}}bg-denim{{else}}border border-faint{{end}}{{end}}
+{{/* verso-prop-span: a stretch between two ends, drawn as the meter's own
+     track — never a hairline, which a list of hairline rows would swallow —
+     filled in the state's hue up to where now is. The ends are written under
+     the track's ends; a screen reader hears them as one range. */}}
+{{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-6"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
 <dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-mid{{end}}">
   {{range .Items}}
   {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
@@ -59,13 +68,24 @@
        is a flex line too, so a copy control or a badge sits on the line rather
        than lifting it. The plain list has no rows to keep to and keeps the
        type's own line. */}}
-  <div class="flex items-center {{if eq $.Align "left"}}gap-6{{else}}justify-between gap-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 leading-6{{end}}">
-    <dt class="shrink-0 text-meta{{if eq $.Align "left"}} w-24{{end}}">{{.Label}}</dt>
-    <dd class="flex min-w-0 items-center {{if eq $.Align "left"}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
-      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="min-w-0 wrap-anywhere {{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+  {{/* Every part of a row is a 24px line, and the row hangs from its first:
+       a value that wraps keeps its label, copy control and pill level with its
+       top line. A row's mark hangs in the gutter, centred on that line, so a
+       marked value starts where every other row's value does; its note sits
+       under the value, in the value's column, and wraps there. */}}
+  {{/* Left-set facts are a document's, read beside a fixed label column; on a
+       phone the label sits over its value, which then has the card's width. */}}
+  <div class="flex {{if eq $.Align "left"}}flex-col items-start gap-y-1 sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap gap-y-1 {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 leading-6{{end}}">
+    <dt class="shrink-0 text-meta{{if eq $.Align "left"}} sm:w-24{{end}}">{{.Label}}</dt>
+    <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
+      {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
+      {{if .Dot}}<span class="absolute -left-3.75 top-2.25 size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}" aria-hidden="true"></span>{{end}}
+      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
-      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex shrink-0 align-middle">{{template "badge.html.tmpl" .Status}}</span>{{end}}
+      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
+      {{end}}
     </dd>
+    {{if .Help}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-snug font-normal text-body">{{.Help}}</p>{{end}}
   </div>
   {{end}}
   {{end}}

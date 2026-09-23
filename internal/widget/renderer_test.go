@@ -458,8 +458,8 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`<dt class="shrink-0 text-meta">Installed</dt>`,
-		`<dd class="flex min-w-0 items-center justify-end text-right text-base font-medium text-ink">`,
-		`class="min-w-0 wrap-anywhere font-mono text-base font-medium">aarch64_generic</span>`,
+		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink">`,
+		`class="min-w-0 wrap-anywhere text-balance font-mono text-base font-medium">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
 			t.Errorf("emphasised properties missing %q:\n%s", want, emphasised)
