@@ -1074,6 +1074,19 @@ window.versoValidate = function (datatype, value) {
   document.addEventListener("change", function (e) { branches(e.target.closest("form") || document); });
   document.addEventListener("DOMContentLoaded", function () { branches(document); });
   document.addEventListener("htmx:afterSwap", function () { branches(document); });
+  // versoBreakable writes a machine string into el so that it wraps where it
+  // divides itself: after each of the first separator it has, "/" before "."
+  // before ":", and nowhere else — widget.Breakable's rule, for a value added
+  // here rather than sent by the server.
+  function versoBreakable(el, value) {
+    var mark = ["/", ".", ":"].filter(function (s) { return value.indexOf(s) >= 0; })[0];
+    el.textContent = "";
+    if (!mark) { el.textContent = value; return; }
+    value.split(mark).forEach(function (part, i, parts) {
+      if (i > 0 && (part || i < parts.length - 1)) el.appendChild(document.createElement("wbr"));
+      el.appendChild(document.createTextNode(i < parts.length - 1 ? part + mark : part));
+    });
+  }
   function add(list) {
     var input = list.querySelector("[data-verso-list-input]");
     var value = input.value.trim();
@@ -1086,7 +1099,7 @@ window.versoValidate = function (datatype, value) {
     if (!duplicate) {
       var row = list.querySelector("template").content.cloneNode(true);
       row.querySelector("input").value = value;
-      row.querySelector("[data-verso-list-value]").textContent = value;
+      versoBreakable(row.querySelector("[data-verso-list-value]"), value);
       list.querySelector("[data-verso-list-items]").appendChild(row);
     }
     input.value = "";

@@ -95,7 +95,7 @@ func identityTranslator(s string) string { return s }
 // binds funcs at parse time).
 func parseWidgetTemplates(t func(string) string) (*template.Template, error) {
 	return template.New("widget").
-		Funcs(template.FuncMap{"icon": Icon, "t": t}).
+		Funcs(template.FuncMap{"icon": Icon, "t": t, "breakable": Breakable}).
 		ParseFS(templateFS, "templates/*.tmpl")
 }
 

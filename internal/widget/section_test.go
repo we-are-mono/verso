@@ -72,7 +72,7 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-center justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"`
+	const row = `class="flex items-start justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}
