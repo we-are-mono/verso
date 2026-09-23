@@ -46,34 +46,78 @@ fn prose(label: &str, value: &str) -> Property {
         ..fact(label, value)
     }
 }
-// beside sets what a uci section says in plain words next to the section
-// itself, as the config file spells it: the facts on the left, the text they
-// are read from on the right. A section with no facts of its own keeps its
-// text in the right column, under the others.
-fn beside(facts: Vec<Property>, config: Option<Widget>) -> Widget {
-    let mut children = vec![Widget::properties(facts)];
-    children.extend(config);
+// facts sets what a uci section says, in plain words, as two columns of an
+// expanded row: the first half in reading order on the left (a network's
+// addresses), the rest on the right (how it is brought up, since when, where
+// it sits). The section as the config spells it is not repeated here: the
+// drawer that edits it shows what it writes.
+fn facts(mut facts: Vec<Property>) -> Widget {
+    let right = facts.split_off(facts.len().div_ceil(2));
     Widget::Grid {
         columns: 2,
         style: "facts".into(),
-        children,
+        children: vec![Widget::properties(facts), Widget::properties(right)],
     }
 }
 // part is one uci section an expanded row reads, on its own ledger line: the
-// kind of section, its name as the config names it, and the act that edits
-// it where it has one the row's own pencil is not.
-fn part(title: &str, name: &str, children: Vec<Widget>, edit: Option<Widget>) -> Widget {
+// glyph of its kind, the kind of section, its name as the config names it,
+// and the act that edits it where it has one the row's own pencil is not.
+fn part(
+    glyph: &str,
+    title: &str,
+    name: &str,
+    children: Vec<Widget>,
+    edit: Option<Widget>,
+) -> Widget {
     let mut section = Widget::section(title, "", children);
-    if let Widget::Section { meta, control, .. } = &mut section {
+    if let Widget::Section {
+        icon,
+        meta,
+        control,
+        ..
+    } = &mut section
+    {
+        *icon = glyph.into();
         *meta = name.into();
         *control = edit.map(Box::new);
     }
     section
 }
+// glyph is the mark of a device's kind, the same one the chooser makes it
+// with: a bridge, a VLAN, a tunnel or a physical port, else a device defined
+// in software.
+fn glyph(kind: &str) -> &'static str {
+    match kind {
+        "bridge" => "git-merge",
+        k if k.starts_with("vlan") => "tag",
+        k if k.starts_with("port") => "ethernet-port",
+        "pppoe" | "tunnel" | "sit" | "ip6tnl" | "gre" | "gretap" | "vxlan" | "wireguard" => {
+            "git-branch"
+        }
+        _ => "cpu",
+    }
+}
+// network_glyph is a network's mark: the globe for a line to the internet
+// (brought up by DHCP or PPPoE, or in the wan zone), the network mark for
+// one of the router's own.
+fn network_glyph(m: &Model, net: &str, protocol: &str) -> &'static str {
+    let wan_zone = m
+        .zones
+        .iter()
+        .any(|z| z.get("name") == "wan" && z.list("network").iter().any(|n| n == net));
+    if wan_zone || matches!(protocol, "dhcp" | "dhcpv6" | "pppoe" | "pppoa") {
+        "globe"
+    } else {
+        "network"
+    }
+}
+// act is the act that edits one part of an expanded row: it opens the
+// object's editor in a drawer over the listing, which keeps its address.
 fn act(label: &str, href: &str) -> Widget {
     let mut link = Widget::link(label, href, "act");
-    if let Widget::Link { icon, .. } = &mut link {
+    if let Widget::Link { icon, panel, .. } = &mut link {
         *icon = "square-pen".into();
+        *panel = true;
     }
     link
 }
@@ -308,28 +352,24 @@ fn details(
 ) -> Vec<Widget> {
     let mut out = vec![];
     if nets.is_empty() {
-        let mut facts = device_facts(m, name, runtime, kind);
+        let mut read = device_facts(m, name, runtime, kind);
         let ip4 = addresses(runtime, "ipv4-address");
         let ip6 = addresses(runtime, "ipv6-address");
         if !ip4.is_empty() {
-            facts.push(fact("IPv4", ip4.join(", ")));
+            read.push(fact("IPv4", ip4.join(", ")));
         }
         if !ip6.is_empty() {
-            facts.push(fact("IPv6", ip6.join(", ")));
+            read.push(fact("IPv6", ip6.join(", ")));
         }
-        out.push(part(
-            "Device",
-            name,
-            vec![beside(facts, device_config(m, name))],
-            None,
-        ));
+        out.push(part(glyph(kind), "Device", name, vec![facts(read)], None));
     }
     for net in nets {
         let live = m.live_network(net);
         let ip4 = addresses(live, "ipv4-address");
         let ip6 = addresses(live, "ipv6-address");
         let protocol = text(live.and_then(|v| v.get("proto")));
-        let mut facts = vec![
+        let mark = network_glyph(m, net, &protocol);
+        let mut read = vec![
             fact("IPv4", ip4.join(", ")),
             fact(
                 "IPv6",
@@ -353,7 +393,7 @@ fn details(
         // A device carrying more than one network says which state is whose.
         let several = nets.len() > 1;
         if several {
-            facts.insert(
+            read.insert(
                 0,
                 prose(
                     "State",
@@ -361,7 +401,7 @@ fn details(
                 ),
             );
         }
-        for p in facts.iter_mut() {
+        for p in read.iter_mut() {
             p.copy = matches!(p.label.as_str(), "IPv4" | "IPv6" | "ULA") && p.value != "—";
         }
         let zones: Vec<_> = m
@@ -370,7 +410,7 @@ fn details(
             .filter(|z| z.list("network").contains(net))
             .collect();
         if !zones.is_empty() {
-            facts.push(fact(
+            read.push(fact(
                 "Firewall zone",
                 zones
                     .iter()
@@ -379,13 +419,7 @@ fn details(
                     .join(", "),
             ));
         }
-        let config = m.network(net).map(|n| {
-            Widget::code(
-                "/etc/config/network · interface",
-                &config_text("interface", n.config_id(), &n.values),
-            )
-        });
-        let mut body = vec![beside(facts, config)];
+        let mut body = vec![facts(read)];
         if let Some(errors) = live
             .and_then(|v| v.get("errors"))
             .and_then(Value::as_array)
@@ -398,19 +432,17 @@ fn details(
         }
         let edit = (several && m.network(net).is_some())
             .then(|| act("Edit network", &url(net, "", "edit")));
-        out.push(part("Network", net, body, edit));
+        out.push(part(mark, "Network", net, body, edit));
         if let Some(server) = dhcp_part(m, net) {
             out.push(server);
         }
     }
     if !nets.is_empty() && m.device(name).is_some() {
         out.push(part(
+            glyph(kind),
             "Device",
             name,
-            vec![beside(
-                device_facts(m, name, runtime, kind),
-                device_config(m, name),
-            )],
+            vec![facts(device_facts(m, name, runtime, kind))],
             Some(act("Edit device", &url("", name, "edit"))),
         ));
     }
@@ -467,43 +499,32 @@ fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> V
     };
     vec![what, fact("MTU", mtu), how, fact("Errors", errors)]
 }
-fn device_config(m: &Model, name: &str) -> Option<Widget> {
-    m.device(name).map(|d| {
-        Widget::code(
-            "/etc/config/network · device",
-            &config_text("device", d.config_id(), &d.values),
-        )
-    })
-}
 // dhcp_part is a network's DHCP server: how it stands and, while it serves,
 // what it hands out. A disabled server says so once; configuring it is still
 // where it is turned on.
 fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
     let server = m.dhcp_servers.iter().find(|s| s.network == net);
-    let config = m.dhcp(net).map(|d| {
-        Widget::code(
-            "/etc/config/dhcp · dhcp",
-            &config_text("dhcp", d.config_id(), &d.values),
-        )
-    });
-    if server.is_none() && config.is_none() {
+    if server.is_none() && m.dhcp(net).is_none() {
         return None;
     }
-    let mut facts = vec![];
+    let mut read = vec![];
     if let Some(server) = server {
-        facts.push(prose("Server", server.label()));
+        // The server's state is the part's own, said once with its mark.
+        let mut standing = prose("Server", server.label());
+        standing.dot = server.tone().into();
+        read.push(standing);
         if server.state != "disabled" {
             if !server.pool.is_empty() {
-                facts.push(if server.pool == "reservations" {
+                read.push(if server.pool == "reservations" {
                     prose("Pool", server.pool_label())
                 } else {
-                    fact("Pool", server.pool_label())
+                    pool(m, net, server)
                 });
             }
             if !server.lease_time.is_empty() {
-                facts.push(fact("Lease time", &server.lease_time));
+                read.push(fact("Lease time", &server.lease_time));
             }
-            facts.push(prose(
+            read.push(prose(
                 "Active leases",
                 &server
                     .leases
@@ -513,14 +534,53 @@ fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
         }
     }
     Some(part(
+        "server",
         "DHCP server",
         net,
-        vec![beside(facts, config)],
+        vec![facts(read)],
         server.map(|s| act("Configure DHCP", &s.href())),
     ))
 }
+// pool is the addresses a server hands out, as the stretch from its first to
+// its last, filled by how much of it is leased when both the leases and the
+// pool's size are known; else the range as words.
+fn pool(m: &Model, net: &str, server: &verso_plugin::dhcp::Server) -> Property {
+    let range = fact("Pool", server.pool_label());
+    let limit = m
+        .dhcp(net)
+        .map(|d| d.get("limit"))
+        .and_then(|l| l.parse::<u64>().ok())
+        .filter(|l| *l > 0);
+    let ends = server
+        .pool
+        .split_once('–')
+        .or_else(|| server.pool.split_once('-'));
+    match (server.leases, limit, ends) {
+        (Some(leases), Some(limit), Some((first, last))) => range.spanning(
+            first.trim(),
+            last.trim(),
+            (leases.saturating_mul(100) / limit).min(100) as u8,
+            match server.tone() {
+                "success" => Tone::Success,
+                "warning" => Tone::Warning,
+                "danger" => Tone::Danger,
+                _ => Tone::Neutral,
+            },
+        ),
+        _ => range,
+    }
+}
 
+// listing is the inventory with the chooser for a new interface on its bar,
+// open when the address asked for it.
 pub fn listing(m: &Model, open: bool) -> Envelope {
+    with_drawer(m, chooser(open))
+}
+// with_drawer is the inventory with the given panel on its bar: the chooser,
+// or an object's editor open over the listing (editor.rs), so that the
+// editor's address shows the listing with the drawer open, and a request for
+// the panel alone is answered from the same tree.
+pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
     let parents = m.parents();
     let mut names = m.names();
     names.extend(parents.keys().cloned());
@@ -679,6 +739,9 @@ pub fn listing(m: &Model, open: bool) -> Envelope {
             } else {
                 vec![]
             },
+            // The row's editor is its panel: the pencil, whose address this
+            // is, opens it in place rather than leaving the listing.
+            panel: actions[3].href.clone(),
             expanded: details(m, &name, &nets, runtime, &kind),
             cells: vec![
                 TableCell {
@@ -748,7 +811,7 @@ pub fn listing(m: &Model, open: bool) -> Envelope {
             ..Default::default()
         }),
         opens_panel: true,
-        drawer: Some(chooser(open)),
+        drawer: Some(drawer),
     };
     let columns = [
         ("Device · network", "reference"),

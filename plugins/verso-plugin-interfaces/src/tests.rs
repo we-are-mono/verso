@@ -366,11 +366,14 @@ fn groups(row: &serde_json::Value) -> Vec<serde_json::Value> {
     assert_eq!(outer["type"], "section", "one frame holds the parts: {row}");
     outer["children"].as_array().unwrap().clone()
 }
+// labels are a part's facts in reading order: its left column, then its
+// right.
 fn labels(group: &serde_json::Value) -> Vec<String> {
-    group["children"][0]["children"][0]["items"]
+    group["children"][0]["children"]
         .as_array()
         .unwrap()
         .iter()
+        .flat_map(|column| column["items"].as_array().unwrap().iter())
         .map(|p| p["label"].as_str().unwrap().to_string())
         .collect()
 }
@@ -380,28 +383,48 @@ fn an_expanded_row_reads_as_the_uci_sections_behind_it() {
     // server and its device, each named as the config names it, in that order.
     let m = Model::read(&request("/", ""));
     let parts = groups(&inventory_row(&m, "br-lan"));
+    // Each on its ledger line with the glyph of its kind, so parts of
+    // different kinds are told apart at a glance.
     let heads: Vec<_> = parts
         .iter()
-        .map(|g| (g["title"].as_str().unwrap(), g["meta"].as_str().unwrap()))
+        .map(|g| {
+            (
+                g["icon"].as_str().unwrap(),
+                g["title"].as_str().unwrap(),
+                g["meta"].as_str().unwrap(),
+            )
+        })
         .collect();
     assert_eq!(
         heads,
         [
-            ("Network", "lan"),
-            ("DHCP server", "lan"),
-            ("Device", "br-lan")
+            ("network", "Network", "lan"),
+            ("server", "DHCP server", "lan"),
+            ("git-merge", "Device", "br-lan")
         ]
     );
-    // Each part's facts stand beside the config text they are read from.
-    for (part, file) in parts.iter().zip([
-        "/etc/config/network · interface",
-        "/etc/config/dhcp · dhcp",
-        "/etc/config/network · device",
-    ]) {
+    // A line to the internet wears the globe.
+    let uplink = groups(&inventory_row(&m, "eth1"));
+    assert_eq!(uplink[0]["icon"], "globe", "{uplink:?}");
+    // Each part reads as its facts alone, in two columns split evenly in
+    // reading order: the config text is the drawer's.
+    for part in &parts {
         let grid = &part["children"][0];
         assert_eq!(grid["style"], "facts", "{part}");
-        assert_eq!(grid["children"][1]["label"], file, "{part}");
+        let columns = grid["children"].as_array().unwrap();
+        assert_eq!(columns.len(), 2, "{part}");
+        assert!(columns.iter().all(|c| c["type"] == "properties"), "{part}");
+        let (left, right) = (
+            columns[0]["items"].as_array().unwrap().len(),
+            columns[1]["items"].as_array().unwrap().len(),
+        );
+        assert!(left == right || left == right + 1, "{part}");
     }
+    // A network's addresses stand on the left, how it stands on the right.
+    assert_eq!(
+        parts[0]["children"][0]["children"][1]["items"][0]["label"],
+        "Protocol"
+    );
     // Addresses first, then how the network is brought up and where it sits.
     assert_eq!(
         labels(&parts[0]),
@@ -430,6 +453,108 @@ fn an_expanded_row_reads_as_the_uci_sections_behind_it() {
     }
     // Nothing stands loose between the parts.
     assert!(parts.iter().all(|g| g["type"] == "section"));
+}
+#[test]
+fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
+    let mut r = request("/", "");
+    r.ubus = Ubus::from_value(json!({
+        "networkState":{"devices":{"eth0":{"up":true},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]},
+        "dhcpState":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249","lease_time":"12h","leases":30}}}
+    }));
+    let m = Model::read(&r);
+    let parts = groups(&inventory_row(&m, "br-lan"));
+    let items = |column: usize| parts[1]["children"][0]["children"][column]["items"].clone();
+    // The server's state is said once, with its mark.
+    assert_eq!(items(0)[0]["label"], "Server");
+    assert_eq!(items(0)[0]["value"], "Running");
+    assert_eq!(items(0)[0]["dot"], "success");
+    // The pool is the stretch from its first address to its last, filled by
+    // the share of its 150 addresses that are leased.
+    let pool = items(0)[1].clone();
+    assert_eq!(pool["label"], "Pool");
+    assert_eq!(pool["span"]["from"], "192.168.1.100");
+    assert_eq!(pool["span"]["to"], "192.168.1.249");
+    assert_eq!(pool["span"]["at"], 20);
+    assert_eq!(pool["span"]["tone"], "success");
+    // Without a lease count there is no fill to draw: the range as words.
+    r.ubus = Ubus::from_value(json!({
+        "dhcpState":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}
+    }));
+    let parts = groups(&inventory_row(&Model::read(&r), "br-lan"));
+    let pool = parts[1]["children"][0]["children"][0]["items"][1].clone();
+    assert_eq!(pool["value"], "192.168.1.100–192.168.1.249");
+    assert!(pool.get("span").is_none(), "{pool}");
+}
+// open_drawer is the one panel a listing's bar says is open.
+fn open_drawer(e: &Envelope) -> serde_json::Value {
+    let j = serde_json::to_value(e).unwrap();
+    let bar = j["widget"]["children"][0].clone();
+    assert_eq!(bar["type"], "actionbar", "{j}");
+    assert_eq!(bar["drawer"]["open"], true, "{bar}");
+    bar["drawer"].clone()
+}
+#[test]
+fn an_object_is_edited_in_a_drawer_over_the_listing() {
+    let m = Model::read(&request("/", ""));
+    // The editor's address shows the listing with the object's drawer open:
+    // the form measure, closed on the listing's own address, the form's
+    // preview at its foot.
+    for (query, title) in [("network=lan", "lan"), ("network=&device=br-lan", "br-lan")] {
+        let e = editor::edit(
+            &m,
+            &Form::parse(query).get("network"),
+            &Form::parse(query).get("device"),
+        );
+        let drawer = open_drawer(&e);
+        assert_eq!(drawer["title"], title);
+        assert_eq!(drawer["size"], "form");
+        assert_eq!(drawer["closed"], ROOT);
+        let form = &drawer["children"][0];
+        assert_eq!(form["type"], "form", "{drawer}");
+        let last = form["fields"].as_array().unwrap().last().unwrap();
+        assert_eq!(last["type"], "code");
+        assert_eq!(last["live"], true);
+        assert_eq!(last["grammar"], "uci");
+        assert_eq!(last["label"], "/etc/config/network");
+        // The listing stands behind it.
+        let j = serde_json::to_string(&e).unwrap();
+        assert!(j.contains("\"id\":\"br-lan\""), "{j}");
+    }
+    // So does a new one, from the kind chosen.
+    assert_eq!(
+        open_drawer(&editor::new(&m, "bridge"))["title"],
+        "New bridge"
+    );
+    // A refused save comes back as the drawer, still open.
+    let refused = post(
+        &request("/edit", "network=lan"),
+        &Form::parse("name=lan&device=br-lan&proto=static&ipaddr=invalid"),
+    );
+    assert!(refused.commit.is_empty());
+    assert_eq!(
+        open_drawer(&refused)["children"][0]["error"],
+        "Check the highlighted fields."
+    );
+}
+#[test]
+fn every_way_into_the_editor_opens_it_in_place() {
+    let m = Model::read(&request("/", ""));
+    // A row's pencil is its panel, so the shell opens it over the listing.
+    for (id, href) in [
+        ("br-lan", "/plugins/interfaces/edit?network=lan&device="),
+        ("eth1", "/plugins/interfaces/edit?network=uplink&device="),
+    ] {
+        let row = inventory_row(&m, id);
+        assert_eq!(row["panel"], href, "{row}");
+        let pencil = row["cells"][5]["actions"][3].clone();
+        assert_eq!(pencil["href"], href, "{row}");
+    }
+    // The acts on an expanded row's parts open the same drawer.
+    let parts = groups(&inventory_row(&m, "br-lan"));
+    for part in &parts[1..] {
+        assert_eq!(part["control"]["style"], "act");
+        assert_eq!(part["control"]["panel"], true, "{part}");
+    }
 }
 #[test]
 fn a_disabled_dhcp_server_says_so_once() {

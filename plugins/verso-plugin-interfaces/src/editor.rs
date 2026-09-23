@@ -5,7 +5,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Envelope, Form, SelectOption, Tone, Widget,
+    commit, commit_delete, commit_new, json, CommitOp, Envelope, Form, RowDrawer, SelectOption,
+    Tone, Widget,
 };
 
 type Errors = BTreeMap<String, String>;
@@ -579,16 +580,6 @@ fn page(
     }
     advanced.push(field(v, e, "macaddr", "MAC address override", ""));
     sections.push(section("Advanced", "", "advanced", advanced));
-    let anchors = sections
-        .iter()
-        .filter_map(|s| {
-            if let Widget::Section { title, anchor, .. } = s {
-                Some(Widget::link(title, &format!("#{anchor}"), "rail"))
-            } else {
-                None
-            }
-        })
-        .collect();
     let mut blocks = vec![];
     for op in operations(m, kind, network, device, v) {
         if op.delete || op.config != "network" {
@@ -613,19 +604,14 @@ fn page(
             .unwrap_or(&op.section);
         blocks.push(crate::page::config_text(typ, config_id, &values));
     }
-    let rail = Widget::stack(vec![
-        Widget::section("On this page", "", vec![Widget::stack(anchors).flush()])
-            .kicker()
-            .flush(),
-        Widget::Card {
-            style: "preview".into(),
-            title: "Configuration".into(),
-            subtitle: String::new(),
-            children: vec![Widget::preview("", &blocks.join("\n\n"))],
-        },
-    ]);
+    // The form's own footnote: the lines it will write, kept current as it is
+    // edited, at the foot of the form behind a hairline.
+    sections.push(Widget::config_preview(
+        "/etc/config/network",
+        &blocks.join("\n\n"),
+    ));
     let form = Widget::Form {
-        style: "page".into(),
+        style: String::new(),
         submit: "Save".into(),
         error: if error.is_empty() && !e.is_empty() {
             "Check the highlighted fields.".into()
@@ -636,16 +622,22 @@ fn page(
         target: String::new(),
         fields: sections,
     };
-    Envelope::page(
-        title,
-        Widget::Grid {
-            style: "editor".into(),
-            columns: 2,
-            children: vec![form, rail],
+    // The editor is the object's drawer, open over the listing: an address
+    // naming it shows the listing with the drawer open, a request for the
+    // panel alone is answered from the same tree, and closing it leaves the
+    // listing's own address.
+    crate::page::with_drawer(
+        m,
+        RowDrawer {
+            title: title.into(),
+            open: true,
+            closed: ROOT.into(),
+            size: "form".into(),
+            children: vec![form],
+            ..Default::default()
         },
     )
     .with_back("Interfaces", ROOT)
-    .with_width("wide")
 }
 fn err(e: &mut Errors, k: &str, msg: &str) {
     e.entry(k.into()).or_insert(msg.into());
