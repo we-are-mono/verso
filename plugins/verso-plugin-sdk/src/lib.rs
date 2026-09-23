@@ -2141,6 +2141,11 @@ pub struct TableCell {
     pub muted: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub sub: String,
+    /// A line of words under the value saying what it is or since when (the
+    /// browser behind an address); the cell's tag rides it. Name, reference
+    /// and text cells.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub detail: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tag: String,
     #[serde(skip_serializing_if = "String::is_empty")]

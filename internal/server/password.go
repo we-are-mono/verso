@@ -51,24 +51,33 @@ func accessBody(hasPassword bool, username string, fieldErrs map[string]string, 
 }
 
 type accessSession struct {
-	ID, Browser, Address, SignedIn, LastActive string
-	Current                                    bool
+	ID, Browser, Address, Since, LastActive string
+	Current                                 bool
 }
 
+// accessSessionsTable lists who is signed in: where from, with the browser
+// under the address, and when last seen, with when it started under that. Two
+// stacked columns and an icon keep a full IPv6 address and the way to revoke
+// inside the form's measure. Revoking asks first; this browser cannot revoke
+// itself here (Log out does that).
 func accessSessionsTable(sessions []accessSession, tr func(string) string) *widget.Table {
 	rows := make([]widget.TableRow, 0, len(sessions))
 	for _, session := range sessions {
-		source := widget.TableCell{Text: session.Address, Sub: session.Browser}
+		source := widget.TableCell{Text: session.Address, Detail: session.Browser}
 		action := widget.TableCell{}
 		if session.Current {
 			source.Tag = tr("this browser")
 			source.TagVariant = "success"
 		} else {
-			action = widget.TableCell{Button: tr("Revoke"), Name: "_action", Action: "end-session:" + session.ID, Confirm: tr("Revoke this session?"), ConfirmTitle: tr("Revoke session"), Variant: "danger"}
+			action = widget.TableCell{
+				Actions:      []widget.TableRowAct{{Icon: "log-out", Title: tr("Revoke session"), Name: "_action", Value: "end-session:" + session.ID}},
+				ConfirmTitle: tr("Revoke this session?"),
+				Confirm:      tr("That browser is signed out at once and has to sign in again."),
+			}
 		}
-		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, {Text: session.SignedIn}, {Text: session.LastActive}, action}})
+		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, {Text: session.LastActive, Detail: session.Since}, action}})
 	}
-	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Started", Kind: "mono"}, {Label: "Last seen", Kind: "mono"}, {Kind: "pill"}}, Rows: rows}
+	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen", Kind: "text"}, {Kind: "actions"}}, Rows: rows}
 }
 
 func (s *Server) accessSessions(r *http.Request) []accessSession {
@@ -97,7 +106,7 @@ func (s *Server) accessSessions(r *http.Request) []accessSession {
 		}
 		out = append(out, accessSession{
 			ID: sess.id, Browser: browserLabel(tr, sess.agent), Address: address,
-			SignedIn: formatSessionStart(tr, sess.created, now), LastActive: relativeSessionTime(tr, sess.lastSeen, now),
+			Since: sessionSince(tr, sess.created, now), LastActive: relativeSessionTime(tr, sess.lastSeen, now),
 			Current: sess.id == current.id,
 		})
 	}
@@ -139,13 +148,15 @@ func browserLabel(tr func(string) string, ua string) string {
 	return browser
 }
 
-func formatSessionStart(tr func(string) string, created, now time.Time) string {
+// sessionSince says when a session started, as the line under when it was
+// last seen: today by the clock alone, any other day by its date.
+func sessionSince(tr func(string) string, created, now time.Time) string {
 	cy, cm, cd := created.Date()
 	ny, nm, nd := now.Date()
 	if cy == ny && cm == nm && cd == nd {
-		return fmt.Sprintf(tr("Today, %s"), created.Format("15:04"))
+		return fmt.Sprintf(tr("since today, %s"), created.Format("15:04"))
 	}
-	return created.Format("2 Jan, 15:04")
+	return fmt.Sprintf(tr("since %s"), created.Format("2 Jan, 15:04"))
 }
 
 // relativeSessionTime words a session's age. Two flat forms per unit (one, and

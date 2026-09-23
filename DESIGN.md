@@ -360,6 +360,8 @@ The signature seam of every list and log page.
 - **Column heads:** a full 44px row, 12px/500 uppercase Meta with 0.08em tracking, over a Strong Hairline.
 - **Lanes:** a 44px text row on a Strong Hairline, label → destination with a faint arrow, a Meta tally, and a quiet "+ Add rule" at the right.
 - **Empty:** one row where the first row would be, two sentences at most, no illustration, no button.
+- **Detail line:** when a value needs words to say what it is or since when (the browser behind an address, when a session started), they stand on a second 20px line under it in 14px Meta, never beside it, and the cell's tag rides that line. The row becomes a stacked row: two 20px lines with 12px above and below, 64px, so the first line keeps the 22px centre of a one-line cell and of the row's 28px acts. Folding a qualifier under its value is how a narrow measure holds a long identifier: Signed in now is Source (address over browser), Last seen ("3 min ago" over "since 22 Sep, 09:12") and a revoke icon, which fits 640px with a full IPv6 address.
+- **Icon acts that end something** ask first, in the same alert as the labelled row act, with the act's own name on the danger button ("Revoke session").
 - **Acts hang from the first line:** when the thing a row names spans more than one line (a key's name over its fingerprint, an address over its IPv6, a value that wraps), the icons that act on it (edit, delete, copy) align with its first line, not the middle of the block. The first line is the thing's identity, and the acts belong to it. The same holds for a label and a status pill beside a wrapping value, in tables and fact lists alike. On a one-line row, centred and first-line are the same place.
 
 ### Collections

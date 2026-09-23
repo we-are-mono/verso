@@ -9,7 +9,7 @@
      optional seam folds extra rows (stock defaults) inside the same card. */}}
 {{/* table.tag: a small coloured label after a cell's value ("new", "WAN") — the
      badge vocabulary as a compact tag, not a full pill. */}}
-{{define "table.tag"}}<span class="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-xs font-medium whitespace-nowrap {{if .TagIcon}}ring-1 ring-inset {{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep ring-denim-line{{else}}bg-quiet text-meta ring-rule{{end}}{{else}}{{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}bg-crimson-soft text-crimson-deep{{else}}bg-quiet text-meta{{end}}{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{end}}{{.Tag}}</span>{{end}}
+{{define "table.tag"}}<span class="inline-flex items-center gap-1 rounded-xs px-1.5 {{if .Detail}}py-0.5{{else}}py-1{{end}} text-xs font-medium whitespace-nowrap {{if .TagIcon}}ring-1 ring-inset {{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep ring-denim-line{{else}}bg-quiet text-meta ring-rule{{end}}{{else}}{{if eq .TagVariant "info"}}bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}bg-crimson-soft text-crimson-deep{{else}}bg-quiet text-meta{{end}}{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{end}}{{.Tag}}</span>{{end}}
 {{/* table.rowbtn-class: the compact bordered in-row action (a drawer trigger,
      a confirmed or direct row action) — one treatment for all three, taking the
      cell as its dot. A disabled cell keeps the anatomy and drops every
@@ -42,6 +42,44 @@
      8px below, which puts its first line on the 22px centre a one-line cell's
      24px line has, and keeps the row at 60px. */}}
 {{define "table.cellpad-stack"}}{{if .Dense}}pt-3 pb-2{{else}}px-3.5 pt-3 pb-2{{end}}{{end}}
+{{/* table.confirm-dialog: the alert a row act that ends something asks in,
+     inside the act's own x-data="modal": the question, what is at stake, and
+     the act named again on the danger button, which posts the one pair. */}}
+{{define "table.confirm-dialog"}}
+<template x-teleport="body">
+  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
+    {{template "verso-overlay-backdrop"}}
+    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
+      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ID}}-title" aria-describedby="{{.ID}}-body" class="relative w-full max-w-md {{template "modal.frame"}} p-5 text-left whitespace-normal focus:outline-none sm:p-6">
+        {{/* the danger square hangs on the title's 24px line, as on every
+             message; the words say what is at stake */}}
+        <div class="flex items-start gap-2.5">
+          <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
+          <div class="min-w-0">
+            <h2 id="{{.ID}}-title" class="text-base leading-6 font-semibold text-ink">{{.Title}}</h2>
+            <p id="{{.ID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Body}}</p>
+          </div>
+        </div>
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+          <form method="post">
+            {{template "verso-csrf" .CSRFToken}}
+            <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-9 w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
+          </form>
+          <button type="button" @click="hide" class="inline-flex h-9 w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+{{end}}
+{{/* table.cellpad-detail: a value over its detail line, 12px above and below
+     — the first line's centre stays on the 22px a one-line cell and a row's
+     28px acts keep, and the stack sits evenly in its 64px row. */}}
+{{define "table.cellpad-detail"}}{{if .Dense}}py-3{{else}}px-3.5 py-3{{end}}{{end}}
+{{/* table.detail: the line of words under a cell's value — what it is, or
+     since when — in the secondary step, on one 20px line with the cell's tag
+     riding it (the tag keeps to the line). */}}
+{{define "table.detail"}}<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>{{.Detail}}</span>{{if .Tag}}{{template "table.tag" .}}{{end}}</span>{{end}}
 {{define "table.cellpad-act"}}{{if .Dense}}py-2{{else}}px-3.5 py-2{{end}}{{end}}
 {{define "table.rowbtn-class"}}inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold whitespace-nowrap transition-colors {{if .Disabled}}cursor-not-allowed border-rule bg-ground text-faint opacity-70{{else}}{{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}{{end}}
 {{/* table.rowbtn-name: a row's labelled act names the row it acts on, the
@@ -186,8 +224,8 @@
         {{/* A block-level flex, not an inline one: the cell is then exactly as
              tall as the tallest thing in it, and a glyph's box cannot lift the
              line it would otherwise sit in. */}}
-        <td class="relative border-b border-rule {{template "table.cellpad" .}}{{if .Dense}} pr-4{{end}} align-top group-last:border-b-0">
-          <span class="flex items-center gap-3">
+        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}}{{if .Dense}} pr-4{{end}} align-top group-last:border-b-0">
+          <span class="flex items-center gap-3{{if .Detail}} *:leading-5{{end}}">
             {{if and .LeadIcon (not .Expandable)}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
             {{/* the name is the door wherever the row has one: to the panel that
                  holds this subject, or to the page that edits it. Everything
@@ -201,8 +239,9 @@
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
             {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{if .ChipIcon}}<span class="text-faint">{{icon .ChipIcon "size-3.5"}}</span>{{end}}{{.Chip}}</span>{{end}}
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
-            {{if .Tag}}{{template "table.tag" .}}{{end}}
+            {{if and .Tag (not .Detail)}}{{template "table.tag" .}}{{end}}
           </span>
+          {{if .Detail}}{{template "table.detail" .}}{{end}}
         </td>
         {{else if eq .Kind "status"}}
         {{/* a state cell: a dot and the word for it. A hue at full chroma is a
@@ -232,10 +271,19 @@
                a sub-template's $ is the row list rather than the table. */}}
           {{/* each act is named with its row, as a row's labelled act is; an
                inert mark explains a state, not an act, and keeps its sentence. */}}
-          {{$csrf := .CSRFToken}}{{$panel := .Panel}}{{$row := .RowName}}
+          {{$csrf := .CSRFToken}}{{$panel := .Panel}}{{$row := .RowName}}{{$cell := .}}
           <span class="flex items-center justify-end">
             {{range .Actions}}
-            {{if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+            {{/* an act that ends something asks first, in the alert the
+                 labelled row act uses, and posts only from its answer */}}
+            {{if and .Name $cell.Confirm}}<span x-data="modal" class="inline-flex">
+              <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+                {{icon .Icon "size-4"}}
+                <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+              </button>
+              {{template "table.confirm-dialog" ($cell.ConfirmDialog .Name .Value .Title)}}
+            </span>
+            {{else if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
               {{icon .Icon "size-4"}}
               <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
             </button>
@@ -284,31 +332,7 @@
             {{else if .Confirm}}
               <span x-data="modal" class="inline">
                 <button type="button" @click="show"{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
-                <template x-teleport="body">
-                  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
-                    {{template "verso-overlay-backdrop"}}
-                    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
-                      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ConfirmID}}-title" aria-describedby="{{.ConfirmID}}-body" class="relative w-full max-w-md {{template "modal.frame"}} p-5 text-left focus:outline-none sm:p-6">
-                        {{/* the danger square hangs on the title's 24px line, as on
-                             every message; the words say what is at stake */}}
-                        <div class="flex items-start gap-2.5">
-                          <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
-                          <div class="min-w-0">
-                            <h2 id="{{.ConfirmID}}-title" class="text-base leading-6 font-semibold text-ink">{{.ConfirmTitle}}</h2>
-                            <p id="{{.ConfirmID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Confirm}}</p>
-                          </div>
-                        </div>
-                        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                          <form method="post">
-                            {{template "verso-csrf" .CSRFToken}}
-                            <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="inline-flex h-9 w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Button}}</button>
-                          </form>
-                          <button type="button" @click="hide" class="inline-flex h-9 w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </template>
+                {{template "table.confirm-dialog" (.ConfirmDialog "_action" (or .Action .RowID) .Button)}}
               </span>
             {{else}}
               <form method="post" class="inline">
@@ -376,7 +400,11 @@
         {{else}}
         {{/* a word, and when it stands for a config value, that value in the
              chip beside it — "WPA3" and the `sae` it writes. */}}
+        {{if .Detail}}
+        <td class="border-b border-rule {{template "table.cellpad-detail" .}} align-top group-last:border-b-0"><div class="leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</div>{{template "table.detail" .}}</td>
+        {{else}}
         <td class="border-b border-rule {{template "table.cellpad" .}} align-top {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0">{{if .Chip}}<span class="flex items-center gap-2 whitespace-nowrap">{{.Text}}<span class="{{template "verso-chip-class"}}">{{.Chip}}</span></span>{{else}}{{.Text}}{{end}}</td>
+        {{end}}
         {{end}}
         {{end}}
         {{if .HasDetail}}

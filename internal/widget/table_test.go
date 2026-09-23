@@ -1277,6 +1277,71 @@ func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
 	}
 }
 
+// TestCellDetailStandsUnderItsValue: a value that needs a line of words to say
+// what it is (the browser behind an address) or since when (a session's
+// start) carries them on a second line under it, in the secondary step, and the
+// cell takes the stacked row's padding. A tag rides the detail line.
+func TestCellDetailStandsUnderItsValue(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen"}},
+		Rows: []TableRow{{ID: "s1", Cells: []TableCell{
+			{Text: "fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b", Detail: "Safari · iPhone", Tag: "this browser", TagVariant: "success"},
+			{Text: "Now", Detail: "since today, 16:43"},
+		}}},
+	})
+	for _, want := range []string{
+		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>Safari · iPhone</span>`,
+		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
+		"py-0.5 text-xs",
+		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
+		">this browser</span>",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	// Even air around the stack: 12px above and below, so its first line keeps
+	// the 22px centre of a one-line cell and of the row's acts.
+	for _, want := range []string{
+		`relative border-b border-rule px-3.5 py-3 align-top`,
+		`border-b border-rule px-3.5 py-3 align-top group-last:border-b-0"><div class="leading-5`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a stacked cell sits evenly in its row, want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "text-faint\">·</span>") {
+		t.Errorf("a detail is its own line, not an inline qualifier:\n%s", got)
+	}
+}
+
+// TestPostingActAsksFirstWhenItsCellDoes: an icon act that ends something
+// asks before it posts, in the same alert the labelled row act uses; its
+// danger button is named with the act.
+func TestPostingActAsksFirstWhenItsCellDoes(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Source", Kind: "reference"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "s2", Cells: []TableCell{
+			{Text: "10.0.10.117"},
+			{Actions: []TableRowAct{{Icon: "log-out", Title: "Revoke session", Name: "_action", Value: "end-session:s2"}},
+				Confirm: "Whoever holds it is signed out.", ConfirmTitle: "Revoke this session?"},
+		}}},
+	})
+	for _, want := range []string{
+		`x-data="modal"`, `role="alertdialog"`, ">Revoke this session?</h2>",
+		`name="_action" value="end-session:s2"`,
+		`aria-label="Revoke session 10.0.10.117"`,
+		">Revoke session</button>",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "data-verso-act") {
+		t.Errorf("an act that asks first must not post where it stands:\n%s", got)
+	}
+}
+
 func TestRowWithItsOwnDoorDrawsNoDetailsLink(t *testing.T) {
 	open := func(cells []TableCell) string {
 		return render(t, newRenderer(t), &Table{

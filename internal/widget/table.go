@@ -536,6 +536,7 @@ type TableCell struct {
 	Key          string          `json:"key,omitempty"`           // optional stable live-update hook; not displayed
 	Muted        bool            `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
 	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
+	Detail       string          `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
 	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
 	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon on the tag — promotes it to a ring-chip (e.g. WAN's globe), kept its colour to stand out
@@ -766,6 +767,23 @@ type tableRowView struct {
 	DrawerLabel string
 	DrawerIcon  string
 	Panel       drawerPanelView // the row's slide-in detail panel (shared with the drawer widget)
+}
+
+// confirmDialogView is what the alert a row act asks in says and posts: the
+// cell's question and consequence, and the one pair the act submits under
+// the name of the act.
+type confirmDialogView struct {
+	ID, Title, Body, CSRFToken string
+	Name, Value, Act           string
+}
+
+// ConfirmDialog is the cell's alert for one of its acts: a labelled row act
+// passes its button's pair and words, an icon act its own.
+func (c tableCellView) ConfirmDialog(name, value, act string) confirmDialogView {
+	return confirmDialogView{
+		ID: c.ConfirmID, Title: c.ConfirmTitle, Body: c.Confirm, CSRFToken: c.CSRFToken,
+		Name: name, Value: value, Act: act,
+	}
 }
 
 type tableCellView struct {
