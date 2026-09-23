@@ -3,7 +3,10 @@
 
 package widget
 
-import "io"
+import (
+	"io"
+	"strings"
+)
 
 // Code displays a long machine value — a public key, a token, an ID — in a
 // full-width monospace box with an optional inline copy. It is the right home for
@@ -23,6 +26,66 @@ type Code struct {
 	// daemon's grammar, and a preview the shell computed for itself would be a
 	// second copy of them, drifting.
 	Live bool `json:"live,omitempty"`
+	// Grammar is what the value is written in, when the shell should read it
+	// line by line rather than show it whole: "uci" for a section as
+	// /etc/config spells it, so a keyword reads apart from the key and value
+	// after it. Empty is an opaque value — a key, a token — shown as one
+	// string.
+	Grammar string `json:"grammar,omitempty"`
+}
+
+// CodeLine is one line of a Code block read in its grammar: the indent it
+// keeps, the keyword that opens it (config, option, list), the key after the
+// keyword, and the quoted value, held apart so each can be set in its own
+// ink. A line the grammar does not read keeps its whole text in Raw.
+type CodeLine struct {
+	Indent  string
+	Keyword string
+	Key     string
+	Value   string // the text between the quotes; Quoted says there were any
+	Quoted  bool
+	Rest    string // what follows an unquoted key (a bare value, or nothing)
+	Raw     string
+}
+
+// Lines reads the value in its grammar, one CodeLine a line, or nothing for
+// an opaque value, which the template shows whole.
+func (c *Code) Lines() []CodeLine {
+	if c.Grammar != "uci" {
+		return nil
+	}
+	var lines []CodeLine
+	for _, raw := range strings.Split(c.Value, "\n") {
+		lines = append(lines, uciLine(raw))
+	}
+	return lines
+}
+
+// uciLine reads one line of a uci section: an indent, a keyword, a key, and
+// a value in single quotes (uci quotes every value it writes). A line shaped
+// any other way is kept raw.
+func uciLine(raw string) CodeLine {
+	body := strings.TrimLeft(raw, " \t")
+	indent := raw[:len(raw)-len(body)]
+	keyword, rest, _ := strings.Cut(body, " ")
+	switch keyword {
+	case "config", "option", "list":
+	default:
+		return CodeLine{Raw: raw}
+	}
+	key, rest, _ := strings.Cut(strings.TrimLeft(rest, " "), " ")
+	if key == "" {
+		return CodeLine{Raw: raw}
+	}
+	line := CodeLine{Indent: indent, Keyword: keyword, Key: key, Raw: raw}
+	rest = strings.TrimLeft(rest, " ")
+	if len(rest) >= 2 && strings.HasPrefix(rest, "'") && strings.HasSuffix(rest, "'") {
+		line.Value = rest[1 : len(rest)-1]
+		line.Quoted = true
+	} else {
+		line.Rest = rest
+	}
+	return line
 }
 
 func (*Code) isWidget() {}

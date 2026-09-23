@@ -536,6 +536,12 @@ pub enum Widget {
     /// (ADR-015); empty belongs to both.
     Section {
         title: String,
+        /// The glyph of what the section is, by Lucide name, leading its
+        /// title on a part's ledger line (an expanded row's network, its DHCP
+        /// server, the bridge under them), so parts of one kind are told
+        /// apart from parts of another at a glance. Identity, never state.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        icon: String,
         /// The name this section is addressed by, so a link elsewhere on the page
         /// can bring it into view. A page long enough to be worth listing the
         /// parts of needs them addressable.
@@ -859,6 +865,13 @@ pub enum Widget {
         /// becomes a second copy of it in the browser.
         #[serde(skip_serializing_if = "is_false")]
         live: bool,
+        /// The grammar the value is written in, when the shell should read
+        /// it line by line rather than as one string: `uci` for a section as
+        /// `/etc/config` spells it, so a keyword reads apart from the key and
+        /// value after it. Empty is an opaque value — a key, a token — shown
+        /// whole.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        grammar: String,
     },
     /// A whole-page state that is not a listing — a page waiting on a
     /// precondition: icon, headline, reassurance, and the call(s) to action as
@@ -1089,6 +1102,7 @@ impl Widget {
     pub fn section(title: &str, sub: &str, children: Vec<Widget>) -> Widget {
         Widget::Section {
             title: title.into(),
+            icon: String::new(),
             anchor: String::new(),
             kicker: false,
             sub: sub.into(),
@@ -1575,6 +1589,31 @@ impl Widget {
             value: value.into(),
             copy: true,
             live: false,
+            grammar: String::new(),
+        }
+    }
+
+    /// config shows a uci section as `/etc/config` spells it, read line by
+    /// line.
+    pub fn config(label: &str, value: &str) -> Widget {
+        Widget::Code {
+            label: label.into(),
+            value: value.into(),
+            copy: true,
+            live: false,
+            grammar: "uci".into(),
+        }
+    }
+
+    /// config_preview is a [`Widget::preview`] of the uci sections the form
+    /// around it writes, read line by line as [`Widget::config`] is.
+    pub fn config_preview(label: &str, value: &str) -> Widget {
+        Widget::Code {
+            label: label.into(),
+            value: value.into(),
+            copy: true,
+            live: true,
+            grammar: "uci".into(),
         }
     }
 
@@ -1588,6 +1627,7 @@ impl Widget {
             value: value.into(),
             copy: true,
             live: true,
+            grammar: String::new(),
         }
     }
 
@@ -3086,6 +3126,7 @@ mod tests {
     fn a_section_carries_its_control_beside_the_title() {
         let widget = Widget::Section {
             title: "Rule".into(),
+            icon: String::new(),
             anchor: String::new(),
             kicker: false,
             sub: String::new(),

@@ -59,12 +59,31 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 			`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 			`<span data-verso-count="Authorized keys" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]"`,
 			want,
-			`<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule"></span>`,
+			// the strong hairline, so the ledger is told from the rows under it
+			`<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`,
 		} {
 			if !strings.Contains(got, part) {
 				t.Errorf("%d keys: ledger line missing %s in:\n%s", n, part, got)
 			}
 		}
+	}
+	// A part with a glyph leads with it, in Glyph, before its name.
+	got := render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{
+		&Section{Title: "DHCP server", Icon: "server", Meta: "lan", Children: []Widget{&Text{Markdown: "x"}}},
+	}})
+	if !strings.Contains(got, `<div data-verso-ledger class="mb-6 flex items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {
+		t.Errorf("a part's glyph leads its ledger line:\n%s", got)
+	}
+	if !strings.Contains(got, `</svg></span><h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">DHCP server</h3>`) {
+		t.Errorf("the name follows the glyph:\n%s", got)
+	}
+	// The glyph survives the schema: a plugin's section decodes with it.
+	decoded, err := Decode([]byte(`{"type":"section","title":"Device","icon":"git-merge","meta":"br-lan","children":[]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if section, ok := decoded.(*Section); !ok || section.Icon != "git-merge" {
+		t.Errorf("a decoded section keeps its icon: %+v", decoded)
 	}
 }
 
@@ -93,7 +112,7 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 		t.Errorf("only the outer section takes the lead-in, got %d:\n%s", n, got)
 	}
 	// a part without a set to count still stands on its ledger line
-	if !strings.Contains(got, `<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule"></span>`) || strings.Contains(got, "data-verso-count") {
+	if !strings.Contains(got, `<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`) || strings.Contains(got, "data-verso-count") {
 		t.Errorf("the part stands on its ledger line, with no count of nothing:\n%s", got)
 	}
 	sibling := render(t, r, &Stack{Children: []Widget{&Section{Title: "A"}, &Section{Title: "B"}}})

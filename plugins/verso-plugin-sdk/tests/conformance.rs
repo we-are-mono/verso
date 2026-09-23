@@ -42,6 +42,7 @@ fn write_widget_fixtures() {
             "section",
             Widget::Section {
                 title: "Rule".into(),
+                icon: String::new(),
                 anchor: "rule".into(),
                 kicker: false,
                 sub: "Devices that may connect.".into(),

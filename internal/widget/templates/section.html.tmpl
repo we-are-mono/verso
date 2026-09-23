@@ -38,14 +38,19 @@
        which a field label never is. The count is the set's own length, keyed
        by the part's name, so the page can roll it when the number changes
        (verso-page.js). The first box in the part stands 24px under the
-       name, as a form's rows stand apart. */}}
+       name, as a form's rows stand apart. The line is the strong hairline,
+       the one that stands between sections, so a ledger is told from the
+       hairlines between the rows under it; a part with a glyph leads with
+       it, in Glyph, so parts of different kinds are told apart at a
+       glance. */}}
   <div data-verso-ledger class="mb-6 flex items-center gap-3">
+    {{if .Icon}}<span class="shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
     <h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">{{.Title}}</h3>
     {{if .Counted}}<span data-verso-count="{{.Title}}" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]">{{.Count}}</span></span>{{end}}
     {{/* A part's meta is its name as the config writes it (an expanded
          row's network `lan`), so it is set verbatim, in mono. */}}
     {{if .Meta}}<span data-verso-section-meta class="shrink-0 font-mono text-base leading-5 font-medium text-ink">{{.Meta}}</span>{{end}}
-    <span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule"></span>
+    <span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>
     {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
   </div>
   {{else if or .Title .Meta .Control}}

@@ -20,7 +20,11 @@
 <div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
   {{if .Label}}<span class="font-mono text-sm font-medium text-meta">{{.Label}}</span>{{end}}
   <div class="relative min-w-0">
-    <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink">{{.Value}}</div>
+    {{/* A block in the uci grammar is read a line at a time: the keyword in
+         Meta, the key and the value in Ink, the quotes in Meta, so a key
+         stands out from the word that introduces it. The copy control still
+         takes the value whole, from the hidden span. */}}
+    <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink">{{if .Lines}}{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}{{if $l.Keyword}}{{$l.Indent}}<span class="text-meta">{{$l.Keyword}}</span> {{$l.Key}}{{if $l.Quoted}} <span class="text-meta">'</span>{{$l.Value}}<span class="text-meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}{{end}}{{else}}{{.Value}}{{end}}</div>
     {{if .Copy}}
     <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy absolute top-1.5 right-1.5 grid {{template "verso-btn-icon"}}">
       <span x-ref="src" class="hidden">{{.Value}}</span>

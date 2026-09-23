@@ -37,6 +37,11 @@ import (
 // never two.
 type Section struct {
 	Title string `json:"title"`
+	// Icon is the glyph of what the section is, by Lucide name, leading its
+	// title on a part's ledger line (an expanded row's network, its DHCP
+	// server, the bridge under them), so parts of one kind are told apart
+	// from parts of another at a glance. It is identity, never state.
+	Icon string `json:"icon,omitempty"`
 	// Anchor is the name this section is addressed by — what a link elsewhere on
 	// the page points at to bring it into view. A page long enough to need a list
 	// of its own parts needs them addressable; without this the list is a row of
@@ -89,6 +94,7 @@ func (s *Section) prune(keep func(Widget) bool) {
 func (s *Section) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Title        string            `json:"title"`
+		Icon         string            `json:"icon"`
 		Anchor       string            `json:"anchor"`
 		Kicker       bool              `json:"kicker"`
 		Sub          string            `json:"sub"`
@@ -107,6 +113,7 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	s.Title = raw.Title
+	s.Icon = raw.Icon
 	s.Anchor = raw.Anchor
 	s.Kicker = raw.Kicker
 	s.Sub = raw.Sub
@@ -148,6 +155,7 @@ func SectionID(anchor string) string {
 
 type sectionView struct {
 	Title      string
+	Icon       string
 	Anchor     string
 	Kicker     bool
 	Sub        template.HTML
@@ -189,6 +197,7 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	v := sectionView{
 		Nested:     r.depth > 0,
 		Title:      s.Title,
+		Icon:       s.Icon,
 		Anchor:     SectionID(s.Anchor),
 		Kicker:     s.Kicker,
 		Meta:       s.Meta,

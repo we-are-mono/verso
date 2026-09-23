@@ -107,6 +107,7 @@ pub fn keys(r: &Request, posted: Option<&Form>, refused: &str) -> Widget {
                         value: reading,
                         copy: false,
                         live: true,
+                        grammar: String::new(),
                     })),
                 }),
             }

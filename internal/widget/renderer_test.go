@@ -681,6 +681,17 @@ func TestRenderLink(t *testing.T) {
 	if strings.Contains(rail, "underline") || strings.Contains(rail, "text-denim") {
 		t.Errorf("a rail link is not an ordinary link: %s", rail)
 	}
+	// So does a link to a place on a page it opens: the act into an editor's
+	// DHCP section reaches that section's namespaced id, and a link with no
+	// place named is left alone.
+	into := render(t, r, &Link{Label: "Configure DHCP", Href: "/plugins/interfaces/edit?network=lan#dhcp-server", Style: "act", Panel: true})
+	if !strings.Contains(into, `href="/plugins/interfaces/edit?network=lan#section-dhcp-server"`) {
+		t.Errorf("a link into a page's section must reach its id: %s", into)
+	}
+	bare := render(t, r, &Link{Label: "Interfaces", Href: "/plugins/interfaces/", Style: "act"})
+	if !strings.Contains(bare, `href="/plugins/interfaces/"`) {
+		t.Errorf("a link with no place named is left alone: %s", bare)
+	}
 	// Its three colour states are the named rule's. A utility for any one of them
 	// would beat the rule that draws the other two — this is the cascade bug that
 	// left the current section marked everywhere except in its colour.
@@ -842,6 +853,59 @@ func TestRenderCode(t *testing.T) {
 	// leaves it alone: a public key is not a reading of the form beside it.
 	if strings.Contains(got, "data-verso-preview") {
 		t.Errorf("a plain code block must not read as a live preview: %s", got)
+	}
+}
+
+// TestRenderCodeInUciGrammar: a block in the uci grammar is read a line at a
+// time, the keyword and quotes set apart from the key and value, with the
+// text's own whitespace kept, while the copy control still takes it whole.
+func TestRenderCodeInUciGrammar(t *testing.T) {
+	r := newRenderer(t)
+	text := "config interface 'lan'\n\toption device 'br-lan'\n\tlist dns '9.9.9.9'\n\toption proto 'static'"
+	block := &Code{Label: "/etc/config/network · interface", Value: text, Copy: true, Grammar: "uci"}
+	// The box keeps whitespace as written, so the indent, the spaces between
+	// the tokens and the line breaks are in the markup itself.
+	var raw strings.Builder
+	if err := r.RenderWithToken(&raw, block, "", "", nil); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
+	}
+	got := raw.String()
+	for _, want := range []string{
+		"<span class=\"text-meta\">config</span> interface <span class=\"text-meta\">'</span>lan<span class=\"text-meta\">'</span>\n\t<span class=\"text-meta\">option</span> device <span class=\"text-meta\">'</span>br-lan<span class=\"text-meta\">'</span>\n\t<span class=\"text-meta\">list</span> dns",
+		`<span x-ref="src" class="hidden">config interface &#39;lan&#39;`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("uci code block missing %q in: %s", want, got)
+		}
+	}
+	if strings.Count(got, "text-meta\">option") != 2 || strings.Count(got, "text-meta\">list") != 1 {
+		t.Errorf("every keyword is set apart: %s", got)
+	}
+	// An opaque value is shown whole, as before.
+	plain := render(t, r, &Code{Value: "config interface 'lan'"})
+	if strings.Contains(plain, "text-meta\">config") {
+		t.Errorf("a block without a grammar is one string: %s", plain)
+	}
+}
+
+// TestUciLine: a uci line splits into its keyword, key and quoted value; a
+// line shaped any other way stays raw.
+func TestUciLine(t *testing.T) {
+	for _, c := range []struct {
+		raw  string
+		want CodeLine
+	}{
+		{"\toption proto 'static'", CodeLine{Indent: "\t", Keyword: "option", Key: "proto", Value: "static", Quoted: true, Raw: "\toption proto 'static'"}},
+		{"config device", CodeLine{Keyword: "config", Key: "device", Raw: "config device"}},
+		{"\tlist ports 'lan 0'", CodeLine{Indent: "\t", Keyword: "list", Key: "ports", Value: "lan 0", Quoted: true, Raw: "\tlist ports 'lan 0'"}},
+		{"\toption mtu 1500", CodeLine{Indent: "\t", Keyword: "option", Key: "mtu", Rest: "1500", Raw: "\toption mtu 1500"}},
+		{"# a comment", CodeLine{Raw: "# a comment"}},
+		{"", CodeLine{Raw: ""}},
+		{"option", CodeLine{Raw: "option"}},
+	} {
+		if got := uciLine(c.raw); got != c.want {
+			t.Errorf("uciLine(%q) = %+v, want %+v", c.raw, got, c.want)
+		}
 	}
 }
 

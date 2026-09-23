@@ -201,6 +201,7 @@ fn page(
 fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::Section {
         title: "Port forward".into(),
+        icon: String::new(),
         anchor: String::new(),
         kicker: false,
         sub: String::new(),
