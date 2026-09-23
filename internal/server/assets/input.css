@@ -321,9 +321,14 @@ html.verso-fonts-loading body {
      edge with the panel's own timing and leaves the same way. */
   .verso-outcome { opacity: 0; transform: translateX(calc(100% + 1.5rem)); transition: transform 0.3s ease-out, opacity 0.3s ease-out; }
   .verso-outcome.is-shown { opacity: 1; transform: none; }
-  /* The row a panel just saved: a wash of the action colour that holds a moment
-     and fades, so the eye finds the row the outcome was about. */
-  @keyframes verso-landed { from, 50% { background-color: var(--color-denim-soft); } to { background-color: transparent; } }
+  /* The row a panel just saved: its change waits on the stage, so it washes in
+     the stage's marigold for a moment and fades, and the change flies from it
+     to the chip (verso-commit.js). */
+  /* The page a staged save lands on holds the chip back until the change
+     flies to it (verso-boot.js sets the mark, verso-commit.js lifts it). */
+  [data-verso-landing] #verso-staged { visibility: hidden; }
+
+  @keyframes verso-landed { from, 50% { background-color: var(--color-marigold-soft); } to { background-color: transparent; } }
   tr.verso-landed { animation: verso-landed 1.4s ease-out; }
   @media (prefers-reduced-motion: reduce) {
     .verso-outcome { transform: none; transition: opacity 0.2s ease-out; }

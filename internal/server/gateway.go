@@ -35,6 +35,9 @@ const supportedSchemaVersion = 1
 // tokens. It is NOT a reverse proxy — plugin bytes are data the shell renders,
 // never markup streamed to the browser.
 func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
+	// One read of the stage serves the marks and the chip. Nothing reads it
+	// before this request's own change is staged.
+	r = withStageMemo(r)
 	m, ok := s.manifestByID(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
@@ -89,8 +92,22 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// destination render's own translator leaves a sentence that is not a base
 	// key alone.
 	if !safeMethod(r.Method) && (hdr.StagedCommit || hdr.CommandDone) && hdr.Back != nil && hdr.Back.Href != "" {
-		s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
+		if hdr.Notice != nil && hdr.Notice.Text != "" {
+			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
+		}
 		http.Redirect(w, r, hdr.Back.Href, http.StatusSeeOther)
+		return
+	}
+	// A page's own save that staged answers with the page read again. Drawn as
+	// the answer to the post, a reload would post the save a second time — and
+	// a change just discarded from the review drawer would be staged again
+	// behind the person's back. A refusal is drawn in place, with what was
+	// typed; a row's act, which the page reads by fetch, keeps its answer.
+	if !safeMethod(r.Method) && hdr.StagedCommit && status < http.StatusBadRequest && !actRequest(r) {
+		if hdr.Notice != nil && hdr.Notice.Text != "" {
+			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
+		}
+		http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
 		return
 	}
 	// A plugin filing a page into System joins the shell's mixed-ownership
@@ -138,16 +155,18 @@ func restructures(ops []plugin.CommitOp) bool {
 	return false
 }
 
-// stagedOutcome is what a submission that changed the stage says about itself:
-// the plugin's half, what happened to what, and the shell's half, what that
-// means in the staged model. The model is the shell's, so no plugin has to know
-// about applying; a plugin that said nothing gets the plain word.
-func stagedOutcome(n *plugin.Notice, tr func(string) string) *plugin.Notice {
-	level, text := "success", tr("Saved.")
-	if n != nil && n.Text != "" {
-		level, text = n.Level, n.Text
+// stagedOutcome is what a submission that changed the stage says on the page:
+// nothing, as a rule. The change has not happened yet — it waits — and the
+// chip in the top bar is what says a change waits; the page shows where it
+// went (verso-commit.js). A green "saved" beside a marigold "waiting" would
+// say two things about one act. Only a plugin's warning or refusal about the
+// change still speaks, in its own tone, because it is something to read
+// before applying.
+func stagedOutcome(n *plugin.Notice) *plugin.Notice {
+	if n == nil || n.Text == "" || (n.Level != "warning" && n.Level != "danger") {
+		return nil
 	}
-	return &plugin.Notice{Level: level, Text: text + " " + tr("Nothing is live until you apply.")}
+	return n
 }
 
 // previewRequest reports whether a submission is asking what the form on screen
@@ -157,6 +176,13 @@ func stagedOutcome(n *plugin.Notice, tr func(string) string) *plugin.Notice {
 // remembered, whatever the plugin returns.
 func previewRequest(r *http.Request) bool {
 	return !safeMethod(r.Method) && r.Header.Get("X-Verso-Interaction") == "preview"
+}
+
+// actRequest reports whether a submission is a row's act — a switch flipped or
+// a lifecycle pressed in a listing — which the page posts by fetch and
+// reconciles in place from the answer, rather than a page being submitted.
+func actRequest(r *http.Request) bool {
+	return r.Header.Get("X-Verso-Interaction") == "act"
 }
 
 // pluginBody returns the rendered page body for a plugin request, or a contained
@@ -382,6 +408,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		}
 	}
 
+	// The router holds the stage, so every control whose option waits on it is
+	// marked on every visit — after this request's own change is written, and
+	// until the change is applied or discarded.
+	widget.MarkStaged(wdg, s.waitingOptions(r.Context(), s.sessionSID(r)))
+
 	// Everything above judged what the plugin declared; everything below renders
 	// what this reader sees. The mode filter (ADR-015) runs on that boundary: the
 	// datatype gate and the brokered write are never softened by a reading, and the
@@ -409,7 +440,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// listing an editor returns to, and the outcome a closing panel hands back.
 	hdr.Notice = localizeNotice(env.Notice, tr)
 	if hdr.StagedCommit {
-		hdr.Notice = stagedOutcome(hdr.Notice, tr)
+		hdr.Notice = stagedOutcome(hdr.Notice)
 	}
 
 	// A request for one panel is not a request for a page: the frame is already

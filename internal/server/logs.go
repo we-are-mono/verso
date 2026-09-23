@@ -201,7 +201,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		} else if err := s.backend.UCISet(r.Context(), s.sessionSID(r), "system", section, input); err != nil {
 			status, message, values = http.StatusBadGateway, "Log settings could not be saved.", input
 		} else {
-			s.flash(r, "info", tr("Saved. Nothing is live until you apply."))
+			// Staged, so not yet done: the chip says a change waits.
 			if panelRequest(r) {
 				w.Header().Set("HX-Redirect", "/system/logs")
 				return

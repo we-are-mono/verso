@@ -270,6 +270,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
+	r = withStageMemo(r)
 	for _, manifest := range s.manifestList() {
 		if manifest.SystemAccess == "" {
 			continue
@@ -296,8 +297,11 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 			}
 			// A command changed what the page shows (a key added or removed):
 			// read the page again from the router, saying once what happened.
-			if pluginHeader.CommandDone {
-				if pluginHeader.Notice != nil {
+			// A command changed what the page shows, or a save staged a change:
+			// either way Access is read again rather than drawn as the answer to
+			// the post, so a reload never posts it a second time.
+			if pluginHeader.CommandDone || (pluginHeader.StagedCommit && code < http.StatusBadRequest) {
+				if pluginHeader.Notice != nil && pluginHeader.Notice.Text != "" {
 					s.flash(r, pluginHeader.Notice.Level, pluginHeader.Notice.Text)
 				}
 				http.Redirect(w, r, "/system/access", http.StatusSeeOther)

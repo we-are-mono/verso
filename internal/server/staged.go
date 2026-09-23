@@ -12,9 +12,77 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/we-are-mono/verso/internal/plugin"
 )
+
+// stageMemo holds one request's read of the stage. A page asks the stage twice
+// — for the marks on the controls whose options wait, and for the chip — and
+// both must read the same stage, once: a ubus round trip is the router's CPU,
+// which is the budget a LAN page spends. The memo is installed where a page is
+// answered, after anything that request stages has been written.
+type stageMemo struct {
+	once    sync.Once
+	changes map[string][][]string
+	err     error
+}
+
+type stageMemoKey struct{}
+
+// withStageMemo gives a request's context one shared read of the stage.
+func withStageMemo(r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), stageMemoKey{}, &stageMemo{}))
+}
+
+// stageChanges reads the pending changes, once per request where a memo is
+// installed.
+func (s *Server) stageChanges(ctx context.Context, sid string) (map[string][][]string, error) {
+	memo, ok := ctx.Value(stageMemoKey{}).(*stageMemo)
+	if !ok {
+		return s.backend.UCIChanges(ctx, sid)
+	}
+	memo.once.Do(func() { memo.changes, memo.err = s.backend.UCIChanges(ctx, sid) })
+	return memo.changes, memo.err
+}
+
+// waitingOptions is the set of options that wait on the stage, by their full
+// address "config.section.option", for the configs the shell manages — what
+// MarkStaged asks each control about. A change to a whole section (made or
+// removed) names no option and marks no control; its row says so instead.
+func (s *Server) waitingOptions(ctx context.Context, sid string) func(string) bool {
+	waiting := map[string]bool{}
+	if sid != "" {
+		changes, err := s.stageChanges(ctx, sid)
+		if err != nil {
+			log.Printf("verso: uci changes unavailable: %v", err)
+		}
+		declared := s.declaredConfigsUnion()
+		for config, list := range changes {
+			if !declared[config] {
+				continue
+			}
+			for _, ch := range coalesceChanges(list) {
+				if section, option, ok := changedOption(ch); ok {
+					waiting[config+"."+section+"."+option] = true
+				}
+			}
+		}
+	}
+	return func(address string) bool { return waiting[address] }
+}
+
+// changedOption names the option a change tuple touches: a value set or
+// removed, or one value added to or taken from a list. A change to a whole
+// section names none.
+func changedOption(ch []string) (section, option string, ok bool) {
+	switch {
+	case len(ch) == 4 && (ch[0] == "set" || ch[0] == "list-add" || ch[0] == "list-del"),
+		len(ch) == 3 && ch[0] == "remove":
+		return ch[1], ch[2], true
+	}
+	return "", "", false
+}
 
 // uciRollbackTimeout is the window rpcd holds an applied configuration before
 // reverting it on the device, unless the browser confirms (ADR-010).
@@ -101,7 +169,7 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	if sid == "" {
 		return v
 	}
-	changes, err := s.backend.UCIChanges(ctx, sid)
+	changes, err := s.stageChanges(ctx, sid)
 	if err != nil {
 		log.Printf("verso: uci changes unavailable: %v", err)
 		return v

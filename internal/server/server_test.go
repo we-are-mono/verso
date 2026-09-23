@@ -59,12 +59,13 @@ type fakeBackend struct {
 	factoryReset     func(ctx context.Context, sid string) error
 	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
 	// of what the shell committed, applied, confirmed, or reverted.
-	changes    map[string][][]string
-	changesErr error
-	commits    *[]string // records committed configs (pointer: fakeBackend is by value)
-	reverts    *[]string // records reverted configs
-	applies    *[]int    // records UCIApply rollback timeouts
-	confirms   *int      // counts UCIConfirm calls
+	changes     map[string][][]string
+	changesErr  error
+	changesRead *int      // counts UCIChanges calls
+	commits     *[]string // records committed configs (pointer: fakeBackend is by value)
+	reverts     *[]string // records reverted configs
+	applies     *[]int    // records UCIApply rollback timeouts
+	confirms    *int      // counts UCIConfirm calls
 	// procd's rc view (ADR-011): canned per-service states, and records of the
 	// lifecycle actions the shell forwarded.
 	rcStates map[string]openwrt.RCState
@@ -244,6 +245,9 @@ func (f fakeBackend) UCIOrder(_ context.Context, _, config string, sections []st
 }
 
 func (f fakeBackend) UCIChanges(context.Context, string) (map[string][][]string, error) {
+	if f.changesRead != nil {
+		*f.changesRead++
+	}
 	return f.changes, f.changesErr
 }
 
@@ -1404,8 +1408,8 @@ func TestPluginCommitBrokered(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(calls) != 1 {
 		t.Fatalf("UCISet calls = %d, want 1 (the shell must broker the write)", len(calls))
@@ -1492,12 +1496,9 @@ func TestPluginPanelSubmissionThatStagedValuesIsDone(t *testing.T) {
 		t.Errorf("HX-Reswap = %q, want none: the panel is closing, not being replaced", got)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`<div class="verso-flash`, "border-green-line", "Rule saved. Nothing is live until you apply."} {
-		if !strings.Contains(body, want) {
-			t.Errorf("outcome missing %q:\n%s", want, body)
-		}
-	}
-	for _, unwanted := range []string{"<form", "<html", "<table", "Allow-DHCP"} {
+	// The panel closes on a change that is only staged: the chip says it
+	// waits, and the row it came from sends it there (verso-commit.js).
+	for _, unwanted := range []string{"<form", "<html", "<table", "Allow-DHCP", `<div class="verso-flash`, "Nothing is live"} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("the outcome is said alone, not with %q:\n%s", unwanted, body)
 		}
@@ -1561,15 +1562,46 @@ func TestPluginPanelSubmissionThatAddedARowGoesToThePage(t *testing.T) {
 	if len(calls) != 1 || calls[0].section != "cfg0a1b2c" {
 		t.Errorf("staged %+v, want the new section's values", calls)
 	}
-	if variant, message := s.sessions.TakeFlash(token); variant != "success" || message != "Rule added. Nothing is live until you apply." {
-		t.Errorf("flash = %q %q, want the composed outcome waiting for the listing", variant, message)
+	if variant, message := s.sessions.TakeFlash(token); message != "" {
+		t.Errorf("flash = %q %q, want none: the chip says a staged change waits", variant, message)
 	}
 }
 
-// TestStagedSubmissionSaysWhatItMeans: whichever way a submission that changed
-// the stage is answered, the sentence is the same — the plugin's half and the
-// shell's — so a page post lands on the same words a closing panel says.
-func TestStagedSubmissionSaysWhatItMeans(t *testing.T) {
+// TestAStagedOptionIsMarkedOnEveryVisit: the router holds the stage, so a
+// page drawn at any time marks each control whose option waits — a visit
+// after navigating away, not only the landing after a save — and only that
+// option at that address. The chip and the marks read one stage per request.
+func TestAStagedOptionIsMarkedOnEveryVisit(t *testing.T) {
+	var reads int
+	b := fakeBackend{access: true, changes: map[string][][]string{
+		"system": {{"set", "sys", "hostname", "edge"}, {"set", "other", "timezone", "UTC"}},
+	}, changesRead: &reads}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "General", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"form","style":"page","target":"system.sys","fields":[
+		  {"type":"field","name":"hostname","label":"Router name","key":"hostname","value":"edge"},
+		  {"type":"field","name":"timezone","label":"Time zone","key":"timezone","value":"UTC"}]}`),
+	}}
+	s := newServerWith(t, b, tr, []plugin.Manifest{demoACLManifest()})
+	body := get(t, s, "/plugins/demo/").Body.String()
+	if n := strings.Count(body, "data-verso-staged-row"); n != 1 {
+		t.Errorf("want the one waiting option marked, got %d marks:\n%s", n, body)
+	}
+	at := strings.Index(body, "data-verso-staged-row")
+	if at < 0 || !strings.Contains(body[max(0, at-600):at], "hostname") {
+		t.Errorf("the mark stands on the hostname row")
+	}
+	if reads != 1 {
+		t.Errorf("the stage was read %d times for one page, want once", reads)
+	}
+}
+
+// TestAStagedSaveIsSaidByTheChip: a save that staged something has not
+// happened yet, so nothing on the page says it did — no green band. The chip
+// in the top bar is what says a change is waiting, and the page (verso-
+// commit.js) shows where it went. A plugin's warning about the change is not a
+// routine outcome, and still speaks in its own tone.
+func TestAStagedSaveIsSaidByTheChip(t *testing.T) {
 	calls := []uciWrite{}
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Rules", Status: http.StatusOK,
@@ -1579,15 +1611,46 @@ func TestStagedSubmissionSaysWhatItMeans(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
-	body := postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}).Body.String()
-	if !strings.Contains(body, "Rule saved. Nothing is live until you apply.") {
-		t.Errorf("a page post should say what the stage means in its flash:\n%s", body)
+	for _, notice := range []*plugin.Notice{{Level: "success", Text: "Rule saved."}, {Level: "info", Text: "Rule saved."}, nil} {
+		tr.env.Notice = notice
+		rec, token := postPluginRequest(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}, nil)
+		if variant, message := s.sessions.TakeFlash(token); message != "" {
+			t.Errorf("notice %+v: a staged save must not be said on the page, flashed %q %q", notice, variant, message)
+		}
+		if strings.Contains(rec.Body.String(), `<div class="verso-flash`) {
+			t.Errorf("notice %+v: a staged save must not be said on the page", notice)
+		}
 	}
-	// A plugin that said nothing still gets the plain word.
-	tr.env.Notice = nil
-	body = postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}).Body.String()
-	if !strings.Contains(body, "Saved. Nothing is live until you apply.") {
-		t.Errorf("a silent plugin's save should still be said:\n%s", body)
+	tr.env.Notice = &plugin.Notice{Level: "warning", Text: "Applying this closes the SSH port."}
+	_, token := postPluginRequest(t, s, "/plugins/demo/", url.Values{"src": {"wan"}}, nil)
+	if variant, message := s.sessions.TakeFlash(token); variant != "warning" || message != "Applying this closes the SSH port." {
+		t.Errorf("a plugin's warning about the change still speaks in its tone on the page it lands on, got %q %q", variant, message)
+	}
+}
+
+// TestAStagedSaveComesBackAsAPlainRead: a save that staged answers with the
+// page read again, not with a page drawn as the answer to a post — reloading
+// that would post the save again, and a change just discarded from the review
+// drawer would be staged once more behind the person's back. A refused save
+// is drawn in place, with what was typed.
+func TestAStagedSaveComesBackAsAPlainRead(t *testing.T) {
+	calls := []uciWrite{}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Rules", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "r1", Values: map[string]any{"src": "wan"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"wan"}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/plugins/demo/" {
+		t.Fatalf("a staged save answers %d → %q, want 303 back to the page", rec.Code, rec.Header().Get("Location"))
+	}
+	if len(calls) != 1 {
+		t.Errorf("the save was staged %d times, want once", len(calls))
+	}
+	tr.env.Status, tr.env.Commit = http.StatusUnprocessableEntity, nil
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"src": {"bad"}}); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("a refused save is drawn in place, got %d", rec.Code)
 	}
 }
 
@@ -1650,10 +1713,10 @@ func TestPluginPanelSubmissionThePanelDoesNotSurviveGoesToThePage(t *testing.T) 
 	if len(deletes) != 1 || deletes[0] != "system.r1" {
 		t.Errorf("staged deletes = %v, want the one on r1", deletes)
 	}
-	// And the outcome is waiting on the page the frame is sent to, composed as
-	// every staged outcome is.
-	if variant, message := s.sessions.TakeFlash(token); variant != "success" || message != "Rule deleted. Nothing is live until you apply." {
-		t.Errorf("flash = %q %q, want the composed outcome waiting for the listing", variant, message)
+	// Nothing waits on the page the frame is sent to: the chip says the
+	// staged delete waits.
+	if variant, message := s.sessions.TakeFlash(token); message != "" {
+		t.Errorf("flash = %q %q, want none: the chip says a staged change waits", variant, message)
 	}
 }
 
@@ -1715,8 +1778,8 @@ func TestPluginCommitCreatesSection(t *testing.T) {
 	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"name": {"disk"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(adds) != 1 || adds[0] != "system led" {
 		t.Fatalf("UCIAdd calls = %v, want one system/led create", adds)
@@ -1738,8 +1801,8 @@ func TestPluginCommitListOption(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"server": {"a.pool", "b.pool"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(calls) != 1 {
 		t.Fatalf("UCISet calls = %d, want 1", len(calls))
@@ -1763,8 +1826,8 @@ func TestPluginCommitDeletesSection(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"_delete": {"1"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(dels) != 1 || dels[0] != "system.cfg07led" {
 		t.Fatalf("UCIDelete calls = %v, want one \"system.cfg07led\"", dels)
@@ -1821,8 +1884,8 @@ func TestPluginCommitNullClearsOption(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(dels) != 2 || dels[0] != "system.ntp.interface" || dels[1] != "system.ntp.server" {
 		t.Fatalf("cleared options = %v, want interface then server (sorted)", dels)
@@ -1844,8 +1907,8 @@ func TestPluginCommitAllNullsWritesNothing(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls, deletes: &dels}, tr, []plugin.Manifest{demoACLManifest()})
 
-	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(dels) != 1 || len(calls) != 0 {
 		t.Errorf("clears = %v, writes = %v; want one clear and no write", dels, calls)
@@ -1877,8 +1940,8 @@ func TestPluginCommitClearOfAnAbsentOptionStagesOn(t *testing.T) {
 	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200: an option that was never set is already clear", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: an option that was never set is already clear", rec.Code)
 	}
 	if len(dels) != 2 {
 		t.Fatalf("clears = %v, want both attempted", dels)
@@ -1930,8 +1993,8 @@ func TestPluginCommitAllClearsAbsentChecksTheSectionIsThere(t *testing.T) {
 			uci: map[string]map[string]any{"system": {"ntp": map[string]any{".type": "timeserver"}}}}
 		s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
 
-		if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusOK {
-			t.Fatalf("status = %d, want 200: a section that carries none of those options is already as asked", rec.Code)
+		if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusSeeOther {
+			t.Fatalf("status = %d, want 303: a section that carries none of those options is already as asked", rec.Code)
 		}
 		if len(dels) != 2 {
 			t.Errorf("clears = %v, want both attempted", dels)
@@ -1971,8 +2034,8 @@ func TestPluginCommitWithARealWriteNeverReadsBack(t *testing.T) {
 		}}
 	s := newServerWith(t, be, tr, []plugin.Manifest{demoACLManifest()})
 
-	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}}); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"enabled": {"1"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if reads != 0 {
 		t.Errorf("config reads = %d, want none: the write itself is the proof", reads)
@@ -2139,8 +2202,8 @@ func TestPluginDatatypeValidCommits(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"host": {"router.lan"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 for a valid submission", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303 for a valid submission: a staged save is read again", rec.Code)
 	}
 	if len(calls) != 1 {
 		t.Errorf("a valid submission must broker the commit; got %d writes", len(calls))

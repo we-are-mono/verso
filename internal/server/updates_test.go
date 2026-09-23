@@ -739,20 +739,30 @@ func TestAutocheckSaveWritesAnExplicitOff(t *testing.T) {
 	}
 }
 
-// TestAutocheckSaveSpeaksOnce: the setting's outcome — saved, or refused —
-// reaches the person on the page the redirect lands on, and only there. One
-// session carries both requests, the way a browser does.
+// TestAutocheckStagedSaysNothingOnThePage: a staged setting has not happened
+// yet, so the page it lands on says nothing about it — the chip says a change
+// waits.
+func TestAutocheckStagedSaysNothingOnThePage(t *testing.T) {
+	idleUpdates(t)
+	s := newServer(t, fakeBackend{access: true})
+	do := sameSession(t, s)
+	if rec := do(http.MethodPost, "/system/maintenance", url.Values{"autocheck": {"on"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("autocheck POST = %d, want a redirect", rec.Code)
+	}
+	if body := do(http.MethodGet, maintenancePath, nil).Body.String(); strings.Contains(body, "Nothing is live until you apply.") || strings.Contains(body, `<div class="verso-flash`) {
+		t.Errorf("a staged setting is said on the page:\n%s", body)
+	}
+}
+
+// TestAutocheckSaveSpeaksOnce: a refusal reaches the person on the page the
+// redirect lands on, and only there. One session carries both requests, the
+// way a browser does.
 func TestAutocheckSaveSpeaksOnce(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		backend fakeBackend
 		want    string
 	}{
-		{
-			name:    "a staged setting",
-			backend: fakeBackend{access: true},
-			want:    "Saved. Nothing is live until you apply.",
-		},
 		{
 			name:    "a write rpcd refused",
 			backend: fakeBackend{access: true, uciErr: errors.New("rpcd refused")},

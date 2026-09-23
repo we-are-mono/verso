@@ -702,6 +702,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		// The staged-changes chip, kept in step after an act on the page
 		// stages something, and how an apply went.
 		"1 staged change", "%d staged changes",
+		// The mark a row takes when its change has gone to the stage, and what
+		// the page says of it to a screen reader.
+		"staged", "Staged — %s. Review and apply from the top bar.",
 		"1 change applied", "%d changes applied", "Apply rolled back",
 		"Couldn’t apply — check the settings and try again",
 		"Couldn’t confirm — the router may have rolled back",

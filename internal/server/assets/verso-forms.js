@@ -561,6 +561,9 @@
     reconcileRows(doc);
     if (window.versoStaged && window.versoStaged.sync) window.versoStaged.sync(doc);
   }
+  // The stage's drawer asks for the same when the stage changes under the page
+  // (verso-commit.js), read inside its handler.
+  window.versoReconcile = reconcile;
 
   document.addEventListener("submit", function (e) {
     var form = e.target;
@@ -634,6 +637,7 @@
     var response = new DOMParser().parseFromString(xhr.responseText, "text/html");
     var outcome = response.querySelector(".verso-flash");
     var row = rowOf(frame);
+    var before = window.versoStaged ? window.versoStaged.count() : 0;
     frame.dispatchEvent(new CustomEvent("verso-panel-done", { bubbles: true }));
     if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));
     if (xhr.getResponseHeader("X-Verso-Packages") === "changed") {
@@ -649,7 +653,10 @@
         // The chip keeps its last count; the next page says the rest.
       })
       .then(function () {
-        if (row) landed(row);
+        if (!row) return;
+        landed(row);
+        // The change the panel staged leaves its row for the chip.
+        if (window.versoStaged) window.versoStaged.fly(row.querySelector("td") || row, before);
       });
   });
 

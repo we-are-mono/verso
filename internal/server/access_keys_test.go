@@ -78,6 +78,28 @@ func TestACommandThatFailsIsSaidOnce(t *testing.T) {
 	}
 }
 
+// TestAccessStagedSaveComesBackAsAPlainRead: Access answers a staged save as
+// every page does — with Access read again — so a reload never posts it twice.
+func TestAccessStagedSaveComesBackAsAPlainRead(t *testing.T) {
+	calls := []uciWrite{}
+	b := &credentialsFake{fakeBackend: fakeBackend{access: true, writes: &calls}}
+	m := credentialManifest()
+	m.Socket, m.SystemAccess, m.Name = "/run/system.sock", "/access", "System"
+	m.SchemaVersion = supportedSchemaVersion
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "dropbear", Function: "write"})
+	env := &plugin.Envelope{SchemaVersion: 1, Title: "Access", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"ssh"}`),
+		Commit: []plugin.CommitOp{{Config: "dropbear", Section: "main", Values: map[string]any{"RootPasswordAuth": "off"}}}}
+	s := newServerWith(t, b, &fakeTransport{env: env}, []plugin.Manifest{m})
+	rec := postPlugin(t, s, "/system/access?plugin=system", url.Values{"RootPasswordAuth": {""}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+		t.Fatalf("a staged Access save answers %d → %q, want 303 to Access", rec.Code, rec.Header().Get("Location"))
+	}
+	if len(calls) != 1 {
+		t.Errorf("staged %d writes, want the one", len(calls))
+	}
+}
+
 // TestAccessRereadsAfterAKeyIsAdded: a key added in place is written at once,
 // and the page is read again from the router, so the new key stands in the set
 // with what happened said once.

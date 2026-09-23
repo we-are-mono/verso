@@ -73,8 +73,8 @@ func TestPluginSaveStagesWithoutCommit(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, writes: &writes, commits: &commits}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if len(writes) != 1 {
 		t.Fatalf("UCISet calls = %d, want 1 (the write must stage)", len(writes))
@@ -472,8 +472,8 @@ func TestPluginApplyActionRunsAfterUCIApply(t *testing.T) {
 		},
 	}, tr, []plugin.Manifest{manifest})
 
-	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"router"}}); rec.Code != http.StatusOK {
-		t.Fatalf("prepare status = %d, want 200", rec.Code)
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"router"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("prepare status = %d, want 303: a staged save is read again", rec.Code)
 	}
 	if rec := postPlugin(t, s, "/uci/apply", nil); rec.Code != http.StatusOK {
 		t.Fatalf("apply status = %d, want 200", rec.Code)

@@ -171,8 +171,9 @@
 // from UCI's own stage: the chip with the page, the drawer when it opens. This
 // client keeps the chip in step when an act on the page stages something
 // without a reload, and drives the drawer's two posts. Discard reverts, the
-// drawer shows the empty stage, and the page reloads clean once the drawer is
-// closed. Apply commits with the device-side rollback
+// drawer shows the empty stage, and the page under it shows the settings as
+// they are at once (read whole on close only where rows came or went). Apply
+// commits with the device-side rollback
 // armed, then polls confirm inside the window (the LuCI cadence); confirmed,
 // the drawer closes, the chip says so in green and fades, and the page reloads
 // clean behind it. If confirm never lands the router reverts itself, and the
@@ -225,13 +226,84 @@
     versoAnnounce(text);
   }
 
+  // arrive: the chip takes the change that just reached it — its mark pops
+  // from twice its size and its ground warms to the marigold line and settles,
+  // once. Colour and scale only; nothing around it moves.
+  function arrive() {
+    if (typeof chip.animate !== "function") return;
+    var line = getComputedStyle(chip).getPropertyValue("--color-marigold-line").trim();
+    if (line) chip.animate([{ backgroundColor: line }, {}], { duration: 900, easing: "ease-out" });
+    if (mark && !still()) mark.animate([{ transform: "scale(2.4)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+  }
+
+  function still() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // release lets go of a chip the page held back for a landing (verso-boot.js):
+  // from here it shows whatever the flight has set it to say.
+  function release() {
+    document.documentElement.removeAttribute("data-verso-landing");
+  }
+
   // Take a fresh render of the page as the stage's truth: the count it carries
   // is the count, and the chip shows it. No node is replaced, so the chip's
   // own scope stays bound.
+  //
+  // fly shows where a change that was just staged went. Nothing on the page
+  // says a staged save happened, because it has not: the chip says a change
+  // waits. So the change is seen going there, once — a marigold square, the
+  // chip's own mark, lifts off the row that changed and travels in an arc to
+  // the chip, which shows the count it had until the square lands and then
+  // takes the new one. A chip that was empty appears as the square arrives.
+  // It flies only when the stage grew since `before`; under reduced motion
+  // the chip only warms.
   window.versoStaged = {
     sync: function (doc) {
       var fresh = doc && doc.getElementById("verso-staged");
       rest(fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0);
+    },
+    count: count,
+    fly: function (from, before) {
+      var now = count();
+      if (!(now > before)) { release(); return; }
+      versoAnnounce(T("Staged — %s. Review and apply from the top bar.").replace("%s", stagedLabel(now)));
+      var a = from && from.getBoundingClientRect();
+      if (still() || !a || !a.width || typeof chip.animate !== "function") { release(); arrive(); return; }
+      // Measured while still held out of sight: visibility keeps its box.
+      var target = (mark || chip).getBoundingClientRect();
+      // A chip the layout does not show (a narrow top bar) has nowhere to be
+      // flown to; it only warms.
+      if (!target.width) { release(); arrive(); return; }
+      var x0 = a.left + a.width / 2, y0 = a.top + a.height / 2;
+      var dx = target.left + target.width / 2 - x0, dy = target.top + target.height / 2 - y0;
+      var square = document.createElement("span");
+      square.setAttribute("aria-hidden", "true");
+      square.className = "pointer-events-none fixed z-[60] size-1.5 rounded-[1px] bg-marigold";
+      square.style.left = (x0 - 3) + "px";
+      square.style.top = (y0 - 3) + "px";
+      document.body.appendChild(square);
+      // Until the square lands the chip says what it said before the save: the
+      // old count, or nothing at all.
+      if (before > 0) { if (label) label.textContent = stagedLabel(before); }
+      else chip.style.opacity = "0";
+      release();
+      // The arc: the square lifts off the row first, then crosses to the chip.
+      var lift = Math.min(64, Math.abs(dy) * 0.25 + 24);
+      square.animate([
+        { transform: "translate(0, 0) scale(1)" },
+        { transform: "translate(" + dx * 0.3 + "px, " + (dy * 0.2 - lift) + "px) scale(1.8)", offset: 0.35 },
+        { transform: "translate(" + dx + "px, " + dy + "px) scale(1)" },
+      ], { duration: 680, easing: "cubic-bezier(0.45, 0, 0.2, 1)" }).finished.then(land, land);
+      function land() {
+        square.remove();
+        if (label) label.textContent = stagedLabel(now);
+        if (before <= 0) {
+          chip.style.opacity = "";
+          chip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+        }
+        arrive();
+      }
     },
   };
 
@@ -287,9 +359,49 @@
     if (panel) panel.dispatchEvent(new CustomEvent("verso-panel-done", { bubbles: true }));
   }
 
+  // behind brings the page under the drawer up to date the moment the stage
+  // changes under it — discarded or applied — rather than when the drawer
+  // closes. Each form that shows settings is read again and replaced by its
+  // fresh self: the staged marks go, the controls show what is on the router,
+  // and the replacement is taken as the form's new baseline, so nothing reads
+  // as unsaved. A listing's rows are reconciled. It answers whether the page
+  // is whole again: a change to which forms or rows there are is not
+  // something to patch, and waits for the page to be read whole, on close.
+  function behind() {
+    return fetch(window.location.pathname + window.location.search, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+      .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
+      .then(function (html) {
+        if (!html) return false;
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var mine = document.querySelectorAll("main form");
+        var fresh = doc.querySelectorAll("main form");
+        var rows = function (d) { return [].map.call(d.querySelectorAll("tr[data-verso-row-id]"), function (r) { return r.getAttribute("data-verso-row-id"); }).join(" "); };
+        var whole = mine.length === fresh.length && rows(document) === rows(doc);
+        if (mine.length === fresh.length) {
+          [].forEach.call(mine, function (form, i) {
+            if (!form.querySelector("[data-verso-change-field]")) return;
+            var next = document.importNode(fresh[i], true);
+            form.replaceWith(next);
+            if (window.htmx) window.htmx.process(next);
+          });
+        }
+        if (window.versoReconcile) window.versoReconcile(doc);
+        return whole;
+      })
+      .catch(function () {
+        // The page keeps what it shows; closing the drawer reads it whole.
+        return false;
+      });
+  }
+
+  // reload reads the page again — a fresh GET of its address, never a reload,
+  // which on a page drawn as the answer to a post (a refusal) would post it
+  // again and could stage what was just discarded. The fragment is left off:
+  // an address that differs from this one only by it is a jump within the
+  // page, not a read of it.
   function reload() {
     if (window.versoDirtyState) window.versoDirtyState.suppress();
-    window.location.reload();
+    window.location.replace(window.location.pathname + window.location.search);
   }
 
   function apply() {
@@ -300,6 +412,7 @@
     function applied() {
       close();
       verdict("green", n === 1 ? T("1 change applied") : T("%d changes applied").replace("%d", n), false);
+      behind();
       // The word fades once it has been read, and the page comes back clean
       // behind it: what it shows was rendered against a stage that is now
       // empty, and a corner of it — the hostname, say — may have just changed.
@@ -375,8 +488,10 @@
         }
         // The stage is empty. The drawer stays open and reads it again — its
         // empty state, with a Close — so what just happened is on screen
-        // rather than swept away by a reload.
+        // rather than swept away by a reload, and the page under it shows
+        // the settings as they are again at once.
         stale = true;
+        behind().then(function (whole) { if (whole) stale = false; });
         window.htmx.ajax("GET", panel.getAttribute("data-verso-panel-loaded") || "/uci/review", { target: panel, swap: "innerHTML" });
       })
       .catch(function () {
@@ -401,4 +516,93 @@
     if (target.id === "verso-staged-apply") apply();
     else discard();
   });
+})();
+
+// A page form's save reloads the page, so where its change went is noted as it
+// is submitted and shown when the page comes back: which rows differ from what
+// the page was drawn with, where its Save stood on screen, and the count the
+// chip had. On landing the page opens where the person was (the Save back at
+// the same height), each row that changed takes the marigold "staged" mark,
+// and the change flies from the first of them to the chip (versoStaged.fly).
+// A refusal lands differently — at the refused box (verso-forms.js) — and
+// nothing is marked. A note older than a few seconds, or from another page,
+// is not this save's.
+(function () {
+  var KEY = "verso-staged-origin";
+
+  function differs(control) {
+    var type = (control.type || "").toLowerCase();
+    if (type === "checkbox" || type === "radio") return control.checked !== control.defaultChecked;
+    if (control.tagName === "SELECT") return [].some.call(control.options, function (o) { return o.selected !== o.defaultSelected; });
+    if (type === "hidden" || type === "submit" || type === "button" || type === "file") return false;
+    return control.value !== control.defaultValue;
+  }
+
+  function changedRows(form) {
+    return [].filter.call(form.querySelectorAll("[data-verso-change-field][data-verso-change-name]"), function (row) {
+      return [].some.call(row.querySelectorAll("input, select, textarea"), differs);
+    });
+  }
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || !form.matches || !form.matches("main form") || form.hasAttribute("hx-post") || form.hasAttribute("data-verso-act")) return;
+    var rows = changedRows(form);
+    if (!rows.length || !window.versoStaged) return;
+    var save = e.submitter || form.querySelector('[type="submit"]');
+    var note = {
+      path: window.location.pathname,
+      names: rows.map(function (row) { return row.getAttribute("data-verso-change-name"); }),
+      at: save ? save.getBoundingClientRect().top : null,
+      count: window.versoStaged.count(),
+      time: Date.now(),
+    };
+    try { window.sessionStorage.setItem(KEY, JSON.stringify(note)); } catch (err) { /* the save lands at the top, as a plain reload */ }
+  }, true);
+
+  // mark: the row's change waits on the stage — the chip's own mark and word
+  // beside the row's name. The server draws it wherever a control says where
+  // its option lives (verso-staged-row); a row that does not say is marked
+  // here, the same way. It returns the square, which the flight leaves from.
+  function mark(row) {
+    var drawn = row.querySelector("[data-verso-staged-row] [aria-hidden]");
+    if (drawn) return drawn;
+    var label = row.querySelector("label");
+    var host = label ? label.parentElement : row.firstElementChild || row;
+    var tag = document.createElement("span");
+    tag.setAttribute("data-verso-staged-row", "");
+    tag.className = "inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep";
+    var square = document.createElement("span");
+    square.setAttribute("aria-hidden", "true");
+    square.className = "size-1.5 shrink-0 rounded-[1px] bg-marigold";
+    tag.append(square, document.createTextNode(T("staged")));
+    host.appendChild(tag);
+    return square;
+  }
+
+  // letGo shows the chip the page held back for this landing (verso-boot.js)
+  // when there is no flight to wait for after all.
+  function letGo() {
+    document.documentElement.removeAttribute("data-verso-landing");
+  }
+
+  var note = null;
+  try {
+    note = JSON.parse(window.sessionStorage.getItem(KEY) || "null");
+    window.sessionStorage.removeItem(KEY);
+  } catch (err) { note = null; }
+  if (!note || note.path !== window.location.pathname || Date.now() - note.time > 15000) return letGo();
+  if (document.querySelector('main [aria-invalid="true"]') || !window.versoStaged) return letGo();
+  var rows = (note.names || []).map(function (name) {
+    return document.querySelector('main [data-verso-change-field][data-verso-change-name="' + CSS.escape(name) + '"]');
+  }).filter(Boolean);
+  if (!rows.length) return letGo();
+  var form = rows[0].closest("form");
+  var save = form && form.querySelector('[type="submit"]');
+  if (save && typeof note.at === "number") window.scrollBy(0, save.getBoundingClientRect().top - note.at);
+  if (!(window.versoStaged.count() > note.count)) return letGo();
+  var squares = rows.map(mark);
+  // A beat after the page is drawn, so the eye has found the row before the
+  // change leaves it.
+  window.setTimeout(function () { window.versoStaged.fly(squares[0], note.count); }, 240);
 })();

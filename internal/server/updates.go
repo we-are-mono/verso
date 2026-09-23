@@ -233,9 +233,8 @@ func (s *Server) handleUpdatesAutocheck(w http.ResponseWriter, r *http.Request) 
 	if err := s.stageVersoOption(r.Context(), s.sessionSID(r), updatesSectionName, autocheckOption, value); err != nil {
 		log.Printf("verso: updates: staging the automatic check failed: %v", err)
 		s.flash(r, "danger", tr("That setting could not be saved just now. Try again in a moment."))
-	} else {
-		s.flash(r, "info", tr("Saved. Nothing is live until you apply."))
 	}
+	// Staged, the setting has not happened yet: the chip says a change waits.
 	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 }
 
