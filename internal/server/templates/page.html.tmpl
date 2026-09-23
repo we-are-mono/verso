@@ -91,7 +91,10 @@
      right and bottom edges instead of sitting in the reading measure. The frame
      hands it that by becoming a column and giving it the leftover height; what
      goes in it is the page's own business. */}}
-<main class="@container min-w-0 flex-1{{if eq .Width "full"}} flex h-[calc(100vh-3.5rem)] min-h-0 flex-col{{end}}">
+{{/* Every other page is a column too, at least as tall as what the bar leaves
+     of the screen, so its colophon stands at the bottom of a short page and
+     under the last of a long one. */}}
+<main class="@container flex min-w-0 flex-1 flex-col{{if eq .Width "full"}} h-[calc(100vh-3.5rem)] min-h-0{{end}}">
   {{/* Subpages are the rail's business — the active row opens them beneath
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
@@ -117,7 +120,7 @@
        a wide page is 1152px of content, which is what every canvas is drawn
        against. Left-aligned against the rail; no centring, which reads better
        on a wide monitor. */}}
-  <div{{if eq .Width "full"}} class="flex min-h-0 flex-1 flex-col"{{end}}>
+  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}">
     {{/* The title stands 20px under the top edge, the same as the line under
          it: the masthead is a label for the page, and keeps no more air than
          that. The bottom padding becomes the natural gap before the footer.
@@ -183,7 +186,34 @@
     </div>
     </div>
   </div>
-
+  {{/* The colophon: what runs this router, the page's last line, on a
+       hairline from the rail to the window's edge; its words keep to the page's
+       column and end under Log out. A log has none: it runs on as long as the
+       router writes, and a footer would only be pushed away under it. The
+       copy puts the facts on the clipboard as a bug report asks for them, and
+       the line answers by washing what it copied, fact by fact, the way a
+       selection would (verso.css). */}}
+  {{if ne .Width "full"}}{{with .Colophon}}
+  <footer data-verso-colophon x-data="copy" :data-copied="done" class="border-t border-rule bg-quiet">
+    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-10 py-3 font-mono text-base leading-6 text-meta">
+      <p class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
+        <span class="verso-colophon-fact font-medium">{{.Release}}</span>
+        {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon-fact hidden [--fact:1] sm:inline">{{.Revision}}</span>{{end}}
+        {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden [--fact:2] xl:inline">{{.Target}}</span>{{end}}
+      </p>
+      <span class="verso-colophon-fact shrink-0 [--fact:3]">Verso {{.Verso}}</span>
+      <button type="button" @click="run" aria-label="{{ t "Copy for a bug report" }}" class="group/copy relative grid {{template "verso-btn-icon"}}">
+        <span x-ref="src" class="hidden">{{.Report}}</span>
+        <span x-show="idle">{{icon "copy" "size-4"}}</span>
+        <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
+        <span class="{{template "verso-tip-class"}} font-sans group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
+          <span x-show="idle">{{ t "Copy for a bug report" }}</span>
+          <span x-show="done" x-cloak>{{ t "Copied" }}</span>
+        </span>
+      </button>
+    </div>
+  </footer>
+  {{end}}{{end}}
 </main>
 </div>
 {{/* The outcome layer: where an act made in place says how it went. A page you

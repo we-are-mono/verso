@@ -794,6 +794,32 @@ html.verso-fonts-loading body {
   }
 }
 
+/* The colophon answers its copy by washing what it copied, one fact after
+   another from the left, then letting it go. The wash is the band's own sand a
+   step down, never a hue: nothing changed, it was only picked up. Each fact
+   carries 6px of side padding that its margin gives back, so the wash sits
+   around the words like a chip while the line at rest does not move, and the
+   words go to Ink under it. The check in the button says the same thing under
+   reduced motion. */
+@layer components {
+  .verso-colophon-fact {
+    margin-inline: calc(var(--spacing) * -1.5);
+    padding-inline: calc(var(--spacing) * 1.5);
+    border-radius: var(--radius-xs);
+  }
+  [data-copied] .verso-colophon-fact {
+    animation: verso-colophon-copied 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--fact, 0) * 70ms);
+  }
+  @keyframes verso-colophon-copied {
+    0%, 100% { background-color: transparent; }
+    12%, 55% { background-color: var(--color-rule-strong); color: var(--color-ink); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-copied] .verso-colophon-fact { animation: none; }
+  }
+}
+
 /* A table wider than its box scrolls inside it, and on a phone that hides the
    trailing columns, a row's own act among them. While more of the table waits to
    the right, the box's trailing edge fades into the page, so the cut reads as

@@ -591,6 +591,7 @@ type pageData struct {
 	Nameplate string
 	Maker     string
 	Model     string
+	Colophon  colophon   // the page's last line: what runs this router, and its copy for a bug report
 	Dev       bool       // dev session: inject the CSS hot-reload script
 	Staged    stagedView // pending uci changes the staged-changes chip shows (ADR-010)
 	// JSStrings is the localized catalog for the strings the shell's client
@@ -846,6 +847,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Nameplate:     nameplate,
 		Maker:         hw.Maker,
 		Model:         hw.Model,
+		Colophon:      pageColophon(),
 		Dev:           s.devCSS != "",
 		Staged:        staged,
 		JSStrings:     jsCatalog(tr),

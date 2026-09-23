@@ -260,14 +260,7 @@ func loginFirmware() string {
 // that names no release keeps whatever its description says, revision and all,
 // rather than going silent about what it is running.
 func releaseName(data []byte) string {
-	release := map[string]string{}
-	for _, line := range strings.Split(string(data), "\n") {
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		release[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), "'\"")
-	}
+	release := releaseKeys(data)
 	version := release["DISTRIB_RELEASE"]
 	if version == "" {
 		return release["DISTRIB_DESCRIPTION"]
@@ -277,6 +270,20 @@ func releaseName(data []byte) string {
 		name = "OpenWrt"
 	}
 	return name + " " + version
+}
+
+// releaseKeys reads /etc/openwrt_release, a shell fragment of KEY='value'
+// lines, into its keys with the quotes taken off.
+func releaseKeys(data []byte) map[string]string {
+	release := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		release[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), "'\"")
+	}
+	return release
 }
 
 // loginUptime is how long this board has been running, in seconds. Zero on any
