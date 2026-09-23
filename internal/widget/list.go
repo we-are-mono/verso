@@ -28,6 +28,10 @@ type List struct {
 	// Key is the option this list writes, verbatim, for the mono chip beside the
 	// label — a list of values is as much a line of the config as a single one.
 	Key string `json:"key,omitempty"`
+	// Target is where Key lives, "config.section", as a field's is; Staged is
+	// the shell's word that the list's option waits to be applied.
+	Target string `json:"target,omitempty"`
+	Staged bool   `json:"-"`
 	// Tip is the longer explanation, raised onto the label as a field's is.
 	Tip string `json:"tip,omitempty"`
 	// Options are the values worth offering: the control suggests them as you
@@ -54,7 +58,7 @@ func (l *List) LabelView() fieldLabel {
 	tip := (&Field{Name: l.Name, Key: l.Key, Tip: l.Tip, Help: l.Help}).TipView()
 	return fieldLabel{
 		For: l.Name, Label: l.Label, Key: l.Key,
-		Explained: l.Explained(), Tip: tip,
+		Explained: l.Explained(), Tip: tip, Staged: l.Staged,
 	}
 }
 

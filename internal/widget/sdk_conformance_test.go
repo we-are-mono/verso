@@ -30,3 +30,24 @@ func TestSDKFixturesDecode(t *testing.T) {
 		}
 	}
 }
+
+// TestSDKTargetsReachTheShell: where a form's or section's options live, as
+// the SDK serializes it, is what the shell marks staged controls by — it must
+// survive the trip.
+func TestSDKTargetsReachTheShell(t *testing.T) {
+	dir := filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata")
+	for file, want := range map[string]string{"widget-form.json": "system.cfg01e48a", "widget-section.json": "firewall.cfg0a1b2c"} {
+		data, err := os.ReadFile(filepath.Join(dir, file))
+		if err != nil {
+			t.Skipf("SDK fixture %s not present: %v", file, err)
+		}
+		w, err := Decode(data)
+		if err != nil {
+			t.Fatalf("decode %s: %v", file, err)
+		}
+		holder, ok := w.(targetHolder)
+		if !ok || holder.defaultTarget() != want {
+			t.Errorf("%s: target lost in decode, want %q", file, want)
+		}
+	}
+}

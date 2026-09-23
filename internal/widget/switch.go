@@ -29,6 +29,10 @@ type Switch struct {
 	// Source names what reads the option — "firewall defaults". With Key it makes
 	// the tip's footer, placing the option in the config it belongs to.
 	Source string `json:"source,omitempty"`
+	// Target is where Key lives, "config.section", as a field's is; Staged is
+	// the shell's word that the switch's option waits to be applied.
+	Target string `json:"target,omitempty"`
+	Staged bool   `json:"-"`
 }
 
 func (*Switch) isWidget() {}
@@ -46,7 +50,7 @@ func (s *Switch) LabelView() fieldLabel {
 	tip := (&Field{Name: s.Name, Key: s.Key, Source: s.Source, Tip: s.Tip, Help: s.Help}).TipView()
 	return fieldLabel{
 		For: s.Name, Label: s.Label, Key: s.Key,
-		Explained: s.Explained(), Tip: tip,
+		Explained: s.Explained(), Tip: tip, Staged: s.Staged,
 	}
 }
 

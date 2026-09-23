@@ -158,8 +158,16 @@
 <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:pt-2">
   {{if .Label}}<label for="{{.For}}"{{with .For}} id="{{.}}-label"{{end}} class="text-sm font-semibold text-ink{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}>{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}</label>{{end}}
   {{if .Key}}<span class="{{template "verso-chip-class"}}">{{.Key}}</span>{{end}}
+  {{if .Staged}}{{template "verso-staged-row"}}{{end}}
 </div>
 {{end}}
+
+{{/* verso-staged-row: this setting's change waits on the stage — the chip's
+     own square and word beside the setting's name. The shell marks it on every
+     visit until the change is applied or discarded (MarkStaged); the page's
+     script flies the square from it to the chip once, after a save
+     (verso-commit.js), and draws the same markup when it marks a row itself. */}}
+{{define "verso-staged-row"}}<span data-verso-staged-row class="inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>{{t "staged"}}</span>{{end}}
 {{/* A chip's word is set at the regular weight. The box already separates it
      from the prose around it, so weight on top of a border and a fill is one
      emphasis too many — and a page of bolded chips reads as a page of shouting.

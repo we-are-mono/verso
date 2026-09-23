@@ -26,19 +26,23 @@ type Form struct {
 	// plugin's own open panel, which posts to the page's own address — the one
 	// the address bar already names, because an open panel is a place. Empty
 	// everywhere else, which is an ordinary form that posts its page.
-	Frame      string       `json:"-"`
-	Panel      string       `json:"-"`
-	Multipart  bool         `json:"-"`               // shell-owned file-transfer encoding
-	NoSubmit   bool         `json:"-"`               // shell-owned forms may be driven by a child control
-	AutoSubmit bool         `json:"-"`               // submit when a file is selected
-	Style      string       `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one compound search field + inset submit) | "page"
-	Icon       string       `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
-	Note       string       `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
-	Submit     string       // submit button label (default "Save")
-	Success    string       // optional message shown after a successful save
-	Error      string       // optional error not tied to a single field, shown above the fields
-	Actions    []FormAction // secondary submit buttons besides Save (below)
-	Fields     []Widget     // form contents
+	Frame      string `json:"-"`
+	Panel      string `json:"-"`
+	Multipart  bool   `json:"-"`               // shell-owned file-transfer encoding
+	NoSubmit   bool   `json:"-"`               // shell-owned forms may be driven by a child control
+	AutoSubmit bool   `json:"-"`               // submit when a file is selected
+	Style      string `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one compound search field + inset submit) | "page"
+	Icon       string `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
+	Note       string `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
+	// Target is where the options this form's controls write live,
+	// "config.section", when the form writes one uci section — said once here
+	// rather than on each control (MarkStaged).
+	Target  string       `json:"target,omitempty"`
+	Submit  string       // submit button label (default "Save")
+	Success string       // optional message shown after a successful save
+	Error   string       // optional error not tied to a single field, shown above the fields
+	Actions []FormAction // secondary submit buttons besides Save (below)
+	Fields  []Widget     // form contents
 }
 
 // FormAction is a secondary submit button: it submits the form — all its fields —
@@ -102,6 +106,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 		Submit  string            `json:"submit"`
 		Icon    string            `json:"icon"`
 		Note    string            `json:"note"`
+		Target  string            `json:"target"`
 		Success string            `json:"success"`
 		Error   string            `json:"error"`
 		Actions []FormAction      `json:"actions"`
@@ -114,6 +119,7 @@ func (f *Form) UnmarshalJSON(data []byte) error {
 	f.Submit = raw.Submit
 	f.Icon = raw.Icon
 	f.Note = raw.Note
+	f.Target = raw.Target
 	f.Success = raw.Success
 	f.Error = raw.Error
 	f.Actions = raw.Actions

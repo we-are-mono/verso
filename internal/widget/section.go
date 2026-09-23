@@ -51,15 +51,19 @@ type Section struct {
 	// MetaVerbatim declares Meta a machine value or an already-composed string
 	// — data the localization walk leaves exactly as authored. Prose meta
 	// stays undeclared and translates.
-	MetaVerbatim bool     `json:"meta_verbatim,omitempty"`
-	MetaLabel    string   `json:"meta_label,omitempty"`
-	MetaIcon     string   `json:"meta_icon,omitempty"`
-	MetaPosition string   `json:"meta_position,omitempty"`
-	Mode         string   `json:"mode,omitempty"`
-	Hairline     bool     `json:"hairline,omitempty"`
-	Flush        bool     `json:"flush,omitempty"`
-	Control      Widget   `json:"-"`
-	Children     []Widget `json:"children"`
+	MetaVerbatim bool   `json:"meta_verbatim,omitempty"`
+	MetaLabel    string `json:"meta_label,omitempty"`
+	MetaIcon     string `json:"meta_icon,omitempty"`
+	MetaPosition string `json:"meta_position,omitempty"`
+	Mode         string `json:"mode,omitempty"`
+	Hairline     bool   `json:"hairline,omitempty"`
+	Flush        bool   `json:"flush,omitempty"`
+	// Target is where the options this section's controls write live,
+	// "config.section", when they all live in one place — said once here
+	// rather than on each control (MarkStaged).
+	Target   string   `json:"target,omitempty"`
+	Control  Widget   `json:"-"`
+	Children []Widget `json:"children"`
 }
 
 func (*Section) isWidget() {}
@@ -95,6 +99,7 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		Mode         string            `json:"mode"`
 		Hairline     bool              `json:"hairline"`
 		Flush        bool              `json:"flush"`
+		Target       string            `json:"target"`
 		Control      json.RawMessage   `json:"control"`
 		Children     []json.RawMessage `json:"children"`
 	}
@@ -112,6 +117,7 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 	s.Mode = raw.Mode
 	s.Hairline = raw.Hairline
 	s.Flush = raw.Flush
+	s.Target = raw.Target
 	s.Control = nil
 	if len(raw.Control) != 0 && string(raw.Control) != "null" {
 		control, err := Decode(raw.Control)

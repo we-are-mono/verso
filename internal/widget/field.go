@@ -40,6 +40,13 @@ type Field struct {
 	// can see which line they are editing without leaving the form, and someone
 	// who does not can ignore it: the label is still the label.
 	Key string `json:"key,omitempty"`
+	// Target is where Key lives, "config.section" — set when the form or
+	// section around the field does not already say it. With Key it is the
+	// option's full address, which is how the shell finds a field whose change
+	// waits on the stage (MarkStaged) and marks it on every visit.
+	Target string `json:"target,omitempty"`
+	// Staged is the shell's word that this field's option waits to be applied.
+	Staged bool `json:"-"`
 	// Tip explains what the field is to someone meeting it for the first time,
 	// on hovering or focusing the label. It is the deliberate version of Help:
 	// where both are set the label raises this one, because a plugin's Help was
@@ -135,13 +142,16 @@ type fieldLabel struct {
 	Key       string
 	Explained bool
 	Tip       TipView
+	// Staged draws the stage's mark beside the key: this setting's change
+	// waits to be applied.
+	Staged bool
 }
 
 // LabelView is this field's left column.
 func (f *Field) LabelView() fieldLabel {
 	return fieldLabel{
 		For: f.Name, Label: f.Label, Key: f.Key,
-		Explained: f.Explained(), Tip: f.TipView(),
+		Explained: f.Explained(), Tip: f.TipView(), Staged: f.Staged,
 	}
 }
 
