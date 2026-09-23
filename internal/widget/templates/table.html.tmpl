@@ -38,6 +38,10 @@
 {{define "table.cellpad"}}{{if .Dense}}py-2.5 leading-6{{else}}px-3.5 py-2.5 leading-6{{end}}{{end}}
 {{define "table.cellpad-act"}}{{if .Dense}}py-2{{else}}px-3.5 py-2{{end}}{{end}}
 {{define "table.rowbtn-class"}}inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold whitespace-nowrap transition-colors {{if .Disabled}}cursor-not-allowed border-rule bg-ground text-faint opacity-70{{else}}border-rule-strong bg-transparent text-ink hover:border-faint hover:bg-quiet focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}{{end}}
+{{/* table.rowbtn-name: a row's labelled act names the row it acts on, the
+     visible label leading, so a column of "Revoke" buttons read on their own is
+     still a list of different acts. */}}
+{{define "table.rowbtn-name"}}{{if .RowName}} aria-label="{{.Button}} {{.RowName}}"{{end}}{{end}}
 {{define "table.rows"}}
       {{range .}}
       {{if .AddLabel}}
@@ -266,12 +270,12 @@
           {{if .Pill}}{{template "badge.html.tmpl" .Pill}}
           {{else if .Button}}
             {{if .Disabled}}
-              <button type="button" disabled class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
+              <button type="button" disabled{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
             {{else if .Drawer}}
-              <button type="button" @click="show" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
+              <button type="button" @click="show"{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
             {{else if .Confirm}}
               <span x-data="modal" class="inline">
-                <button type="button" @click="show" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
+                <button type="button" @click="show"{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
                 <template x-teleport="body">
                   <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
                     {{template "verso-overlay-backdrop"}}
@@ -299,7 +303,7 @@
             {{else}}
               <form method="post" class="inline">
                 {{template "verso-csrf" .CSRFToken}}
-                <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}" class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
+                <button type="submit" name="_action" value="{{if .Action}}{{.Action}}{{else}}{{.RowID}}{{end}}"{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
               </form>
             {{end}}
           {{else}}<span class="{{if .Muted}}text-meta{{else}}text-inert{{end}}">{{template "verso-none"}}</span>{{end}}
@@ -456,7 +460,7 @@
      Relative, so the scroller is the containing block of every absolutely
      placed word inside it (a dash's screen-reader "None"): otherwise a word in
      a column scrolled out of view escapes the clip and widens the page. */}}
-<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4">
+<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush

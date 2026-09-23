@@ -151,16 +151,20 @@ type sectionView struct {
 	MetaInline bool
 	Hairline   bool
 	Flush      bool
-	Control    template.HTML
-	Children   []template.HTML
+	// Nested marks a section inside another section: a part of that subject,
+	// titled at h3 and set as a label, not a second heading beside its parent's.
+	Nested   bool
+	Control  template.HTML
+	Children []template.HTML
 }
 
 func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	children, err := r.renderChildren(s.Children, csrf)
+	children, err := r.nested().renderChildren(s.Children, csrf)
 	if err != nil {
 		return err
 	}
 	v := sectionView{
+		Nested:     r.depth > 0,
 		Title:      s.Title,
 		Anchor:     SectionID(s.Anchor),
 		Kicker:     s.Kicker,

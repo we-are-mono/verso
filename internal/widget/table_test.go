@@ -837,6 +837,26 @@ func TestRenderTableDisabledRowButton(t *testing.T) {
 	}
 }
 
+// TestRowButtonNamesItsRow: a row's labelled act says which row it acts on, so
+// a list of buttons read out of the table ("Revoke, Revoke") is still a list
+// of different acts. The visible label leads the name, as a voice user speaks it.
+func TestRowButtonNamesItsRow(t *testing.T) {
+	r := newRenderer(t)
+	for name, cell := range map[string]TableCell{
+		"confirmed": {Button: "Revoke", Action: "end:a", Confirm: "Signed out."},
+		"direct":    {Button: "Revoke", Action: "end:a"},
+		"disabled":  {Button: "Revoke", Disabled: true},
+	} {
+		got := render(t, r, &Table{
+			Columns: []TableColumn{{Label: "Source", Kind: "name"}, {Kind: "pill"}},
+			Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.229"}, cell}}},
+		})
+		if !strings.Contains(got, `aria-label="Revoke 10.0.0.229"`) {
+			t.Errorf("%s: the row button must name its row:\n%s", name, got)
+		}
+	}
+}
+
 // TestRenderTableDirectAction: an immediate row command posts its action marker
 // from the standard alert dialog without manufacturing an edit drawer.
 func TestRenderTableDirectAction(t *testing.T) {

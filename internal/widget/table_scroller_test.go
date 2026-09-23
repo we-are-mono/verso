@@ -22,6 +22,16 @@ func TestTableScrollerContainsItsHiddenWords(t *testing.T) {
 	}
 }
 
+// TestTableScrollerSaysThereIsMore: a table wider than its box (a phone) keeps
+// its trailing columns — a row's act among them — out of sight, so the scroller
+// wears the edge that fades while more waits to the right.
+func TestTableScrollerSaysThereIsMore(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{Columns: []TableColumn{{Label: "Source"}}})
+	if !strings.Contains(got, "verso-scroll-edge") {
+		t.Errorf("the table's scroller must mark what waits past its edge:\n%s", got)
+	}
+}
+
 // TestPageSpacingIsThePagesNotTheBlocks: how far a listing stands from what
 // sits above it is the page's rhythm (the stack's), not the listing's own —
 // a titled listing carries no margin of its own, and the page stack names

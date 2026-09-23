@@ -4,10 +4,11 @@
      input type (text, select, checks, password, file, textarea, datetime-local).
      Kind "hidden" is the bare carrier — no label, no chrome — for a value a
      form must post but a person never edits (e.g. which object a button acts
-     on). */}}
+     on). With an Autocomplete it is instead the account a password form
+     belongs to: a text input the password manager reads, never drawn. */}}
 {{if eq .Style "code"}}
 <div class="space-y-2 py-3" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="textarea"><label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Label}}</label><textarea id="{{.Name}}" name="{{.Name}}" rows="14" spellcheck="false" data-verso-code-editor{{template "verso-field-aria" .}} class="w-full resize-y rounded-xs border border-rule-strong bg-ground p-3 font-mono text-sm leading-relaxed text-ink outline-none hover:border-faint focus:border-denim">{{.Value}}</textarea><p class="text-right font-mono text-sm text-meta">{{t "Lines"}}: <span data-verso-code-lines>{{.LineCount}}</span></p>{{if .Error}}<p id="{{.Name}}-error" class="text-sm text-crimson-deep">{{.Error}}</p>{{end}}</div>
-{{else if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
+{{else if and (eq .Kind "hidden") .Autocomplete}}<input type="text" name="{{.Name}}" value="{{.Value}}" autocomplete="{{.Autocomplete}}" readonly hidden>{{else if eq .Kind "hidden"}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{else}}
 {{/* One field is one row of the form, at the form's own measure: what the thing
      is on the left, growing, and the control on the right at a fixed width. The
      control column is fixed rather than the label's, because a column of
@@ -129,7 +130,7 @@
   {{/* A unit rides inside the trailing edge: the value and what it counts read
        as one thing, and the box keeps clear of it. */}}
   {{if .Unit}}<span class="relative flex w-fit items-center">{{end}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if eq .Measure "address"}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}{{if .Unit}} w-44 pr-20{{end}}">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if eq .Measure "address"}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}{{if .Unit}} w-44 pr-20{{end}}">
   {{if .Unit}}<span class="pointer-events-none absolute right-3 font-mono text-base font-medium text-meta">{{.Unit}}</span></span>{{end}}
   {{end}}
   {{/* On error, the helper line becomes the error — one line under the field, not

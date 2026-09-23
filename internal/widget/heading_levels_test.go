@@ -35,3 +35,28 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		}
 	}
 }
+
+// TestNestedSectionIsASubheading: a section inside a section is a part of that
+// subject, not a subject of the page — an h3, set as a label rather than a
+// second 18px heading beside its parent's. Depth counts sections only, so a
+// section reached through a form is still nested.
+func TestNestedSectionIsASubheading(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Section{Title: "SSH", Children: []Widget{
+		&Form{Style: "settings", Submit: "Save", Fields: []Widget{
+			&Section{Title: "Authorized keys", Children: []Widget{&Text{Markdown: "None."}}},
+		}},
+	}})
+	for _, want := range []string{
+		`<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">SSH</h2>`,
+		`<h3 class="text-sm font-semibold text-ink">Authorized keys</h3>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	sibling := render(t, r, &Stack{Children: []Widget{&Section{Title: "A"}, &Section{Title: "B"}}})
+	if strings.Contains(sibling, "<h3") {
+		t.Errorf("sections side by side stay h2:\n%s", sibling)
+	}
+}

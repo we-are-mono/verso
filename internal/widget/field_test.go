@@ -8,6 +8,36 @@ import (
 	"testing"
 )
 
+// A hidden field that names an autocomplete purpose is an account a password
+// form belongs to: present for the password manager, never drawn. A plain
+// hidden carrier stays a hidden input.
+func TestHiddenFieldWithAutocompleteNamesTheAccount(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "username", Kind: "hidden", Value: "root", Autocomplete: "username"})
+	want := `<input type="text" name="username" value="root" autocomplete="username" readonly hidden>`
+	if got != want {
+		t.Errorf("got %s\nwant %s", got, want)
+	}
+	plain := render(t, r, &Field{Name: "section", Kind: "hidden", Value: "ssh"})
+	if plain != `<input type="hidden" name="section" value="ssh">` {
+		t.Errorf("a plain carrier changed: %s", plain)
+	}
+}
+
+// A number-measured field (a port, an MTU, a VLAN id) asks a phone for the
+// digit pad; any other field keeps the full keyboard.
+func TestNumberFieldsAskForTheDigitPad(t *testing.T) {
+	r := newRenderer(t)
+	for _, f := range []*Field{{Name: "p", Key: "Port"}, {Name: "q", Datatype: "port"}, {Name: "m", Key: "mtu"}} {
+		if got := render(t, r, f); !strings.Contains(got, `inputmode="numeric"`) {
+			t.Errorf("%s: want the digit pad:\n%s", f.Name, got)
+		}
+	}
+	if got := render(t, r, &Field{Name: "hostname", Key: "hostname"}); strings.Contains(got, "inputmode") {
+		t.Errorf("a words field keeps the full keyboard:\n%s", got)
+	}
+}
+
 // TestRenderFieldChecks: the checks kind is membership in a known set — every
 // box shares the field's name (posting multi-value, the list contract), the
 // current values come back checked, and the rest don't.

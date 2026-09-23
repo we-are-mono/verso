@@ -744,6 +744,32 @@ html.verso-fonts-loading body {
   }
 }
 
+/* A table wider than its box scrolls inside it, and on a phone that hides the
+   trailing columns, a row's own act among them. While more of the table waits to
+   the right, the box's trailing edge fades into the page, so the cut reads as
+   "there is more" rather than as the end of the row; scrolled to the end, the
+   edge is solid again. The fade is driven by the scroll itself: a table with
+   nothing to scroll has no timeline, and nothing fades. A browser without
+   scroll timelines keeps the plain edge. */
+@property --verso-scroll-edge {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@layer components {
+  @supports (animation-timeline: scroll()) {
+    .verso-scroll-edge {
+      mask-image: linear-gradient(to left, transparent, #000 var(--verso-scroll-edge));
+      animation: verso-scroll-edge linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+  @keyframes verso-scroll-edge {
+    0%, 95% { --verso-scroll-edge: calc(var(--spacing) * 10); }
+    100% { --verso-scroll-edge: 0px; }
+  }
+}
+
 /* The live listing (verso.js opens the stream, builds the rows). A row arrives
    at a fixed point — the top — so the only motion is its own settling in;
    nothing below it moves, and nothing at all moves while the stream is paused.

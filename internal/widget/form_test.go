@@ -100,6 +100,25 @@ func TestPageFormWithoutLabelRendersNoButtonOfItsOwn(t *testing.T) {
 	}
 }
 
+// A settings form's Save waits for a change, and while it waits it rests in
+// sand, not in a faded denim: denim means there is something to act on, and a
+// form with nothing changed has nothing.
+func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
+	f := &Form{Style: "settings", Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}
+	got := render(t, newRenderer(t), f)
+	for _, want := range []string{
+		"data-verso-dirty-form",
+		"disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("settings form missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "disabled:opacity-40") {
+		t.Errorf("a waiting Save must not be a faded denim:\n%s", got)
+	}
+}
+
 // A record editor opts into its own submit by giving the page form a label; it
 // then carries its own button (it stages and returns to the listing).
 func TestPageFormWithLabelCarriesOwnSubmit(t *testing.T) {

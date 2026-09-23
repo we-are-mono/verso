@@ -22,6 +22,11 @@
      call site owns layout (flex, gap, padding, radius, focus treatment). */}}
 {{define "verso-btn-primary"}}border border-denim bg-denim text-white transition-colors hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}{{end}}
 
+{{/* verso-btn-waiting: a primary that has nothing to act on yet — a settings
+     form's Save before anything in it changed. It rests in sand, as a control
+     that is there but not yet spoken for, and takes denim the moment it is. */}}
+{{define "verso-btn-waiting"}}disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta disabled:active:translate-y-0{{end}}
+
 {{/* verso-btn-secondary: the quiet bordered action that warms to the accent on
      hover. Layout stays at the call site, as with verso-btn-primary. */}}
 {{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-ink transition-colors hover:border-faint hover:bg-quiet {{template "verso-press"}}{{end}}
