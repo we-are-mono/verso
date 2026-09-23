@@ -72,10 +72,16 @@ impl Options {
     }
 
     /// list reads an option that may be written either as a uci list or as one
-    /// whitespace-separated string — uci accepts both, and configs use both.
+    /// whitespace-separated string — uci accepts both, and configs use both. An
+    /// empty entry is no value (a package's `doh_backup_server=''`), so it is
+    /// left out rather than read as one blank item.
     pub fn list(&self, option: &str) -> Vec<String> {
         if let Some(items) = self.lists.get(option) {
-            return items.clone();
+            return items
+                .iter()
+                .filter(|item| !item.trim().is_empty())
+                .cloned()
+                .collect();
         }
         self.scalar(option)
             .split_whitespace()
@@ -445,6 +451,21 @@ fn first_value(section: &Section, option: &str) -> String {
 mod tests {
     use super::*;
     use crate::fixture;
+
+    // An empty entry in a list is no value: https-dns-proxy leaves
+    // `doh_backup_server=''` behind, and reading it as one blank server drew
+    // an empty upstream with a remove beside it.
+    #[test]
+    fn a_list_drops_its_empty_entries() {
+        let snapshot = verso_plugin::Snapshot::from_value(serde_json::json!({"dhcp": {"cfg01": {
+            ".name": "cfg01", ".type": "dnsmasq",
+            "doh_backup_server": [""],
+            "server": ["", "1.1.1.1", " "]
+        }}}));
+        let daemon = Options::read(&snapshot.sections_of_type("dhcp", "dnsmasq")[0]);
+        assert!(daemon.list("doh_backup_server").is_empty());
+        assert_eq!(daemon.list("server"), vec!["1.1.1.1".to_string()]);
+    }
 
     #[test]
     fn a_section_reads_scalars_and_lists_the_same_way() {
