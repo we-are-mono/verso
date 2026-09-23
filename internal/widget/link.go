@@ -32,7 +32,8 @@ type Link struct {
 	Act string `json:"act,omitempty"`
 	// Panel opens the destination as a drawer over this page rather than
 	// leaving it, for a destination that is its own thing (a package to
-	// install) — the page's address stays the page's.
+	// install, a certificate to replace) — the page's address stays the page's.
+	// The status and act styles honour it.
 	Panel bool `json:"panel,omitempty"`
 }
 

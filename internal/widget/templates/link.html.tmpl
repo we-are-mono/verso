@@ -45,8 +45,15 @@
      the specificity. */}}
 <a href="{{.Href}}" data-verso-rail-link class="verso-rail-link flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm transition-colors">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else if eq .Style "act"}}
-{{/* act: an act on a part of a section, in the subsection act's one dress. */}}
+{{/* act: an act on a part of a section, in the subsection act's one dress. One
+     that makes or replaces the thing it stands under opens its form in a drawer
+     over the page, which keeps its address. */}}
+{{if .Panel}}<span x-data="modal" class="contents">
+<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+{{template "verso-drawer-fetched" ""}}</span>
+{{else}}
 <a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
+{{end}}
 {{else if eq .Style "secondary"}}
 <a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</a>
 {{else}}

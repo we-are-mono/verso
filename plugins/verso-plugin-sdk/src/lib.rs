@@ -771,7 +771,8 @@ pub enum Widget {
         act: String,
         /// Opens the destination as a drawer over this page rather than
         /// leaving it — for a destination that is its own thing, such as a
-        /// package to install (`/system/packages/package?name=…`).
+        /// package to install (`/system/packages/package?name=…`) or a
+        /// certificate to replace. The status and act styles honour it.
         #[serde(skip_serializing_if = "is_false")]
         panel: bool,
     },

@@ -43,6 +43,13 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// A plugin's part of Access, and what it keeps under it (a certificate's
+	// acts, drawers over Access), are not pages of their own: asked for as a
+	// page, the address lands on Access, which composes them.
+	if accessPart(m, r.PathValue("path")) && safeMethod(r.Method) && !panelRequest(r) {
+		http.Redirect(w, r, "/system/access", http.StatusSeeOther)
+		return
+	}
 	hdr := pageHeader{Heading: m.Name}
 	width := ""
 	var pages []pageTab
@@ -460,7 +467,16 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// all: the listing behind the panel has to be drawn again to show it, and a
 	// request that names no open panel is a page in any case — a stale address,
 	// a direct visit, a delete.
-	if panelRequest(r) && !hdr.StagedStructure {
+	//
+	// An act the panel ran (a certificate made) changed what the page under it
+	// shows, so it is not answered here either: the frame is sent to the page,
+	// read again. One the router refused is still the panel's to say.
+	//
+	// The panel's forms post back to the address it was read from. For a panel
+	// that is a place that is the address in the bar already; for one opened
+	// over a page that keeps its own address, it is the only way back to it.
+	if panelRequest(r) && !hdr.StagedStructure && !hdr.CommandDone {
+		widget.PostIntoFrame(wdg, widget.FramePanel, r.URL.RequestURI())
 		if hdr.StagedCommit {
 			var outcome strings.Builder
 			if err := s.pageSet(lang).ExecuteTemplate(&outcome, "verso-flash", panelFlash(hdr.Notice)); err != nil {
