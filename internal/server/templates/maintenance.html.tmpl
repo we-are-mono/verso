@@ -97,7 +97,7 @@
       </div>
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
-    <section id="backup" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
+    <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
       <h2 class="mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
       <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p>
       <div class="flex flex-wrap items-center gap-3">
@@ -142,7 +142,7 @@
     <h2 class="mb-3 text-xs font-medium tracking-[.08em] text-meta uppercase">{{t "On this page"}}</h2>
     <nav class="flex flex-col border-l border-rule">
       <a data-verso-rail-link href="#firmware" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm font-semibold text-ink hover:text-denim-deep">{{t "Firmware"}}</a>
-      <a data-verso-rail-link href="#backup" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Back up and restore"}}</a>
+      <a data-verso-rail-link href="#back-up-and-restore" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Back up and restore"}}</a>
       <a data-verso-rail-link href="#reboot" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Reboot"}}</a>
       <a data-verso-rail-link href="#factory-reset" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm text-body hover:text-ink">{{t "Factory reset"}}</a>
     </nav>

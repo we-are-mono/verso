@@ -6,6 +6,7 @@ package server
 import (
 	"bytes"
 	"html/template"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -63,15 +64,36 @@ func TestSectionRulesAreThePagesAcrossItsGutter(t *testing.T) {
 	}
 }
 
+// TestServerPagesNameEachThingOnce: an id names one element. Two with one
+// name send a label, an error, or the rail's link to whichever the browser
+// finds first — Maintenance's restore box and its section once shared
+// "backup", so the rail's "Back up and restore" pointed at a hidden input.
+func TestServerPagesNameEachThingOnce(t *testing.T) {
+	s := passwordServer(t, fakeBackend{})
+	ids := regexp.MustCompile(`\sid="([^"]+)"`)
+	for _, path := range []string{"/system/maintenance", "/system/access"} {
+		body := get(t, s, path).Body.String()
+		seen := map[string]int{}
+		for _, m := range ids.FindAllStringSubmatch(body, -1) {
+			seen[m[1]]++
+		}
+		for id, n := range seen {
+			if n > 1 {
+				t.Errorf("%s names %d elements %q", path, n, id)
+			}
+		}
+	}
+}
+
 // TestMaintenanceSectionsAreRuledAsThePages: Maintenance divides its sections
-// as every page does — the masthead ruled off, each later section 40px after
-// the last and 40px under its rule, the rules the page's own.
+// as every page does — the masthead ruled off, each later section 24px after
+// the last and 24px under its rule, the rules the page's own.
 func TestMaintenanceSectionsAreRuledAsThePages(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
 	if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5`) {
 		t.Error("the masthead is ruled off from the first section")
 	}
-	for _, id := range []string{"backup", "reboot", "factory-reset"} {
+	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
 		want := `<section id="` + id + `" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
