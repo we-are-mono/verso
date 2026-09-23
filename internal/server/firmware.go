@@ -46,12 +46,16 @@ func (s *Server) firmwareModal(state firmwareState, board openwrt.Board) *widget
 	if model == "" {
 		model = "this device"
 	}
+	// The dialog says the words its trigger says, and where it is: an image is
+	// chosen, then verified by OpenWrt, then installed.
 	m := &widget.Modal{
 		Trigger: "Choose firmware…", TriggerIcon: "upload",
-		Open: state.open, Title: "Install firmware", BusyTitle: "Verifying firmware",
+		Open: state.open, Title: "Upload a custom image", BusyTitle: "Verifying firmware",
 		BusyBody: fmt.Sprintf("Checking the image and confirming that it matches %s.", model),
+		Steps:    []string{"Choose", "Verify", "Install"},
 	}
 	if state.verified {
+		m.Step = 2
 		m.BusyTitle = "Installing firmware"
 		m.BusyBody = "Writing the verified image. Do not disconnect power while the router restarts."
 		result := widget.Widget(&widget.Callout{
@@ -71,7 +75,9 @@ func (s *Server) firmwareModal(state firmwareState, board openwrt.Board) *widget
 			&widget.Form{Action: "/system/maintenance/firmware/apply", NoSubmit: true, Fields: []widget.Widget{
 				&widget.Field{Name: "firmware_token", Kind: "hidden", Value: state.token},
 				&widget.Field{Name: "password", Label: "Password", Kind: "password", Autocomplete: "current-password", Error: state.passwordError, Help: "Re-enter your password to authorize the upgrade."},
-				&widget.Confirm{Trigger: "Install and restart", Message: "Install this verified firmware now? The router will be unavailable for several minutes. Do not disconnect its power.", Confirm: "Install firmware", Cancel: "Not yet"},
+				// Installing firmware is disruptive but wanted: it asks in caution's
+				// marigold, as every firmware install does, not in crimson.
+				&widget.Confirm{Trigger: "Install and restart", Message: "Install this verified firmware now? The router will be unavailable for several minutes. Do not disconnect its power.", Confirm: "Install firmware", Cancel: "Not yet", Tone: "caution"},
 			}},
 		}
 		return m
@@ -88,6 +94,7 @@ func (s *Server) firmwareModal(state firmwareState, board openwrt.Board) *widget
 		Fields: []widget.Widget{&widget.Field{
 			Name: "firmware_image", Kind: "file", Accept: ".bin,application/octet-stream",
 			Prompt: "Drop a sysupgrade image here", Required: true,
+			Help: fmt.Sprintf("A sysupgrade image built for %s · .bin, up to 128 MiB", model),
 		}},
 	})
 	m.Children = children

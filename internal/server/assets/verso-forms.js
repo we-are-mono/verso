@@ -844,12 +844,144 @@
 // Auto-submit file forms: choosing a file in a form marked data-verso-autosubmit
 // submits it immediately, anywhere on the page — not only inside a modal. These
 // upload forms carry NoSubmit, so this is their only submit path.
+//
+// Inside a stepped dialog the file goes up where the person can watch it: the
+// drop area gives way to the file itself — its name, its size, a bar and how
+// much of it has gone — the dialog moves to Verify, and once the last byte is
+// up it shows what the router is doing with it. The server answers with the
+// dialog's own contents on the step it reached (X-Verso-Upload), which take
+// the place of what the dialog held. Anywhere else the form posts as it is.
 (function () {
+  // A file dragged over a drop area: the area answers in denim until the file
+  // is dropped or leaves (field.html.tmpl, data-dragging). Entering a child
+  // fires dragenter before the parent's dragleave, so the depth is counted.
+  var depth = new WeakMap();
+  function dropArea(e) { return e.target && e.target.closest ? e.target.closest("[data-verso-drop]") : null; }
+  document.addEventListener("dragenter", function (e) {
+    var area = dropArea(e);
+    if (!area) return;
+    depth.set(area, (depth.get(area) || 0) + 1);
+    area.setAttribute("data-dragging", "");
+  });
+  document.addEventListener("dragleave", function (e) {
+    var area = dropArea(e);
+    if (!area) return;
+    var left = (depth.get(area) || 1) - 1;
+    depth.set(area, left);
+    if (left <= 0) area.removeAttribute("data-dragging");
+  });
+  document.addEventListener("drop", function (e) {
+    var area = dropArea(e);
+    if (!area) return;
+    depth.set(area, 0);
+    area.removeAttribute("data-dragging");
+  }, true);
+
+  function megabytes(n) { return (n / 1048576).toFixed(1); }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    node.className = cls;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  // setStep moves the dialog's step line to the step in hand.
+  function setStep(dialog, index) {
+    [].forEach.call(dialog.querySelectorAll("[data-verso-step]"), function (step, i) {
+      step.setAttribute("data-state", i < index ? "done" : i === index ? "current" : "ahead");
+      if (i === index) step.setAttribute("aria-current", "step");
+      else step.removeAttribute("aria-current");
+    });
+  }
+
+  function uploadInDialog(form, file, dialog) {
+    var scope = window.Alpine ? window.Alpine.$data(dialog) : null;
+    var row = el("div", "space-y-2");
+    row.setAttribute("data-verso-upload", "");
+    var line = el("div", "flex items-baseline justify-between gap-4");
+    line.appendChild(el("span", "min-w-0 font-mono text-base font-medium wrap-anywhere text-ink", file.name));
+    line.appendChild(el("span", "shrink-0 text-sm tabular-nums text-meta", megabytes(file.size) + " MB"));
+    var track = el("div", "h-1.5 overflow-hidden rounded-[1px] bg-rule");
+    track.setAttribute("role", "progressbar");
+    track.setAttribute("aria-label", T("Uploading…"));
+    track.setAttribute("aria-valuemin", "0");
+    track.setAttribute("aria-valuemax", "100");
+    track.setAttribute("aria-valuenow", "0");
+    // The bar fills by scaling, so each step repaints the bar alone.
+    var fill = el("div", "h-full origin-left scale-x-0 bg-denim transition-transform duration-200 ease-out motion-reduce:transition-none");
+    track.appendChild(fill);
+    var note = el("p", "text-sm tabular-nums text-meta", T("Uploading…"));
+    row.appendChild(line);
+    row.appendChild(track);
+    row.appendChild(note);
+    var old = dialog.querySelector("[data-verso-upload-error]");
+    if (old) old.remove();
+    form.hidden = true;
+    form.parentNode.insertBefore(row, form.nextSibling);
+    setStep(dialog, 1);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", form.action);
+    xhr.setRequestHeader("X-Verso-Upload", "dialog");
+    xhr.upload.addEventListener("progress", function (e) {
+      if (!e.lengthComputable) return;
+      var share = e.loaded / e.total;
+      fill.style.transform = "scaleX(" + share + ")";
+      track.setAttribute("aria-valuenow", String(Math.round(share * 100)));
+      note.textContent = T("%s of %s MB").replace("%s", megabytes(e.loaded)).replace("%s", megabytes(e.total));
+    });
+    // The last byte is up: what is left is the router's, so the dialog says
+    // what the router is doing with the file.
+    xhr.upload.addEventListener("load", function () {
+      if (scope && scope.startBusy) scope.startBusy();
+    });
+    var stopped = function () {
+      row.remove();
+      form.reset();
+      form.hidden = false;
+      setStep(dialog, 0);
+      if (scope) { scope.busy = false; scope.idle = true; }
+      var band = versoErrorLine(null, T("The upload stopped. Check the connection, then choose the file again."));
+      band.setAttribute("role", "alert");
+      band.setAttribute("data-verso-upload-error", "");
+      form.parentNode.insertBefore(band, form);
+    };
+    xhr.addEventListener("error", stopped);
+    xhr.addEventListener("abort", stopped);
+    xhr.addEventListener("load", function () {
+      var type = xhr.getResponseHeader("Content-Type") || "";
+      // Anything but the dialog's contents (the sign-in page after a session
+      // ran out, a failure page) is a page, and the page is read again.
+      if (type.indexOf("text/html") !== 0 || /<html[\s>]/i.test(xhr.responseText)) {
+        window.location.reload();
+        return;
+      }
+      dialog.innerHTML = xhr.responseText;
+      if (scope) { scope.busy = false; scope.idle = true; }
+      if (window.htmx) window.htmx.process(dialog);
+      // Focus goes to what the next step asks for: the password that
+      // authorizes it, or the drop area again after a refusal.
+      // A frame later: the idle face the field sits in is shown on the next
+      // tick, and a field still hidden takes no focus.
+      window.requestAnimationFrame(function () {
+        var first = dialog.querySelector("input:not([type=hidden]):not([hidden])");
+        if (first) first.focus();
+      });
+    });
+    xhr.send(new FormData(form));
+  }
+
   document.addEventListener("change", function (e) {
     var input = e.target;
     if (!input || input.type !== "file" || !input.files || input.files.length === 0) return;
     var form = input.closest("form[data-verso-autosubmit]");
-    if (form && form.requestSubmit) form.requestSubmit();
+    if (!form) return;
+    var dialog = form.closest("[role=dialog]");
+    if (dialog && dialog.querySelector("[data-verso-steps]") && window.XMLHttpRequest && window.FormData) {
+      uploadInDialog(form, input.files[0], dialog);
+      return;
+    }
+    if (form.requestSubmit) form.requestSubmit();
   });
 })();
 

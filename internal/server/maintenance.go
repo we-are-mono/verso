@@ -5,6 +5,7 @@ package server
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/rand"
 	"encoding/hex"
@@ -83,6 +84,24 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	// An upload made from its dialog is answered with that dialog's contents
+	// alone, on the step it reached: the page around it is already on screen,
+	// and the dialog swaps what it holds (verso-forms.js).
+	if r.Header.Get("X-Verso-Upload") == "dialog" {
+		dialog := s.firmwareModal(firmware, board)
+		if restore.open {
+			dialog = s.restoreModal(restore)
+		}
+		var b bytes.Buffer
+		if err := s.widgets.RenderModalContents(&b, dialog, s.sessionCSRF(r), lang, t); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = w.Write(b.Bytes())
+		return
+	}
 	var renderErr error
 	render := func(w widget.Widget) template.HTML {
 		var b strings.Builder
@@ -159,8 +178,10 @@ func (s *Server) restoreModal(state restoreState) *widget.Modal {
 		Trigger: "Restore a backup…", TriggerIcon: "upload", TriggerStyle: "secondary",
 		Open: state.open, Title: "Restore a backup", BusyTitle: "Checking backup",
 		BusyBody: "Reading the archive and confirming that OpenWrt can restore it.",
+		Steps:    []string{"Choose", "Verify", "Restore"},
 	}
 	if state.verified {
+		m.Step = 2
 		m.BusyTitle = "Restoring backup"
 		m.BusyBody = "Applying the saved settings. The router will restart when the restore is complete."
 		result := widget.Widget(&widget.Callout{Variant: "success", Title: "Backup is ready", Body: "The archive is readable and can be restored by OpenWrt."})
@@ -186,7 +207,8 @@ func (s *Server) restoreModal(state restoreState) *widget.Modal {
 	}
 	children = append(children, &widget.Form{
 		Action: "/system/maintenance/restore", Multipart: true, AutoSubmit: true, NoSubmit: true,
-		Fields: []widget.Widget{&widget.Field{Name: "backup", Kind: "file", Accept: ".tar.gz,.tgz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar", Prompt: "Drop an OpenWrt backup here", Required: true}},
+		Fields: []widget.Widget{&widget.Field{Name: "backup", Kind: "file", Accept: ".tar.gz,.tgz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar", Prompt: "Drop an OpenWrt backup here", Required: true,
+			Help: "A backup made by OpenWrt · .tar.gz, up to 32 MiB"}},
 	})
 	m.Children = children
 	return m

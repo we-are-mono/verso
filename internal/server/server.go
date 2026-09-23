@@ -701,6 +701,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		// What a keyboard reorder says once the row has moved, and what a copy
 		// button says once the value is on the clipboard.
 		"Moved to position %d of %d", "Copied",
+		// A file uploading from its dialog: how far along, and what to do when
+		// the upload stops.
+		"Uploading…", "%s of %s MB", "The upload stopped. Check the connection, then choose the file again.",
 		// What staying signed in says once the session has been extended.
 		"You’re still signed in.",
 		// The staged-changes chip, kept in step after an act on the page

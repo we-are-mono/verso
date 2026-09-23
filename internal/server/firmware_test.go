@@ -22,13 +22,61 @@ func TestMaintenanceFirmwarePickerMatchesSysupgradeImages(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Mono Gateway DK"}})
 	rr := get(t, srv, "/system/maintenance")
 	for _, want := range []string{
-		"Upload a custom image…", "Install firmware", "Drop a sysupgrade image here",
+		// the dialog says the trigger's words, where it is, and what fits
+		"Upload a custom image…", ">Upload a custom image</h2>", "Drop a sysupgrade image here",
+		`data-state="current" aria-current="step"`, ">Choose</span>", ">Verify</span>", ">Install</span>",
+		"A sysupgrade image built for Mono Gateway DK · .bin, up to 128 MiB",
 		`accept=".bin,application/octet-stream"`, `action="/system/maintenance/firmware"`,
 		`data-verso-autosubmit`,
 	} {
 		if !strings.Contains(rr.Body.String(), want) {
 			t.Errorf("Maintenance firmware picker missing %q", want)
 		}
+	}
+}
+
+// An image uploaded from the dialog is answered with the dialog's contents
+// alone — the page around it is already on screen — on the step it reached:
+// refused, it is back at Choose with the reason; verified, it is at Install.
+func TestFirmwareUploadedFromTheDialogAnswersTheDialog(t *testing.T) {
+	for name, tc := range map[string]struct {
+		valid  bool
+		status int
+		want   []string
+	}{
+		"refused":  {false, http.StatusUnprocessableEntity, []string{"Firmware could not be verified", `aria-current="step" class="verso-step flex items-center gap-2"><span aria-hidden="true" class="verso-step-mark size-1.5 shrink-0 rounded-[1px]"></span><span>Choose</span>`}},
+		"verified": {true, http.StatusOK, []string{"Firmware verified", "Install and restart", `aria-current="step" class="verso-step flex items-center gap-2"><span aria-hidden="true" class="verso-step-mark size-1.5 shrink-0 rounded-[1px]"></span><span>Install</span>`}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			srv := newServer(t, fakeBackend{
+				board: openwrt.Board{Model: "Mono Gateway DK"},
+				validateFirmware: func(context.Context, string, string) (openwrt.FirmwareInfo, error) {
+					return openwrt.FirmwareInfo{Valid: tc.valid, Version: "25.12.5"}, nil
+				},
+			})
+			token, sess := maintenanceSession(t, srv)
+			var body bytes.Buffer
+			mw := multipart.NewWriter(&body)
+			_ = mw.WriteField("_csrf", sess.csrf)
+			part, _ := mw.CreateFormFile("firmware_image", "image.bin")
+			_, _ = part.Write([]byte("image"))
+			_ = mw.Close()
+			req := httptest.NewRequest(http.MethodPost, "/system/maintenance/firmware", &body)
+			req.Header.Set("Content-Type", mw.FormDataContentType())
+			req.Header.Set("X-Verso-Upload", "dialog")
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+			rr := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(rr, req)
+			got := rr.Body.String()
+			if rr.Code != tc.status || strings.Contains(got, "<main") || strings.Contains(got, "x-teleport") {
+				t.Fatalf("want the dialog's contents alone with %d, got %d:\n%s", tc.status, rr.Code, got)
+			}
+			for _, want := range append(tc.want, ">Upload a custom image</h2>") {
+				if !strings.Contains(got, want) {
+					t.Errorf("missing %q in:\n%s", want, got)
+				}
+			}
+		})
 	}
 }
 
