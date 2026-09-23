@@ -267,6 +267,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Display** (600, 1.875rem/30px, 1.1): the home page's verdict heading only.
 - **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always 36px tall so pages never shift between each other.
 - **Title** (600, 1.125rem/18px, -0.025em): band and drawer titles, in Body ink on sand.
+- **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading.
 - **Body** (400, 0.875rem/14px, 1.5): all prose, labels (600), buttons (600), cells. Ledes cap at 60ch.
 - **Label** (500, 0.75rem/12px, 0.08em, uppercase): kickers and column heads, in Meta.
 - **Value** (Inconsolata 500, 1rem/16px): machine strings in rows — addresses, interface names, MACs, versions. Inputs for identifiers use Inconsolata 400 at 16px.
@@ -320,6 +321,7 @@ Plain and exact.
 - **Danger:** Crimson fill, white words, for the confirmation step only, and always beside its way back (see Confirmation).
 - **Row buttons:** 28px, 12px side padding, the same secondary dress. Icon-only row acts are 28px squares in Glyph that wash to Hairline on hover and show a tooltip.
 - **Press:** every button nudges down 1px and drops its shadow when pressed (off under reduced motion).
+- **Resting:** a settings form's Save before anything in it has changed is disabled in Quiet Sand, a Strong Hairline border and Meta words, and turns denim the moment something changes. A page with no primary act and nothing changed therefore shows no denim.
 - **Waiting:** a button busy with a slow act keeps its footprint, goes Quiet Sand with Parked words, shows the waiting mark and a present-participle label with a real ellipsis ("Applying…").
 
 ### Confirmation
