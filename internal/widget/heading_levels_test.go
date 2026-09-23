@@ -54,7 +54,8 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 			&Section{Title: "Authorized keys", Children: []Widget{keys(n)}},
 		}})
 		for _, part := range []string{
-			`<div data-verso-ledger class="mb-2.5 flex items-center gap-3">`,
+			// 24px to the first box under it, as a form's rows stand apart
+			`<div data-verso-ledger class="mb-6 flex items-center gap-3">`,
 			`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 			`<span data-verso-count="Authorized keys" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]"`,
 			want,

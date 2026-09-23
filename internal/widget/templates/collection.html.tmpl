@@ -11,7 +11,9 @@
   {{if .Items}}
   <ul>
     {{range .Items}}
-    <li>
+    {{/* the first item's name starts where the set does: the air above it is
+         the subheading's (24px), not the item's own */}}
+    <li class="first:[&>form]:pt-0">
       <form method="post"{{if $.Action}} action="{{$.Action}}"{{end}} class="flex flex-wrap items-start justify-between gap-x-6 py-2.5">
         {{template "verso-csrf" $.CSRFToken}}
         {{if .Name}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
@@ -24,7 +26,8 @@
     </li>
     {{end}}
   </ul>
-  {{else if .Empty}}<p class="py-2.5 text-sm leading-6 text-body">{{.Empty}}</p>{{end}}
+  {{/* where the first item's name would stand: no air of its own above */}}
+  {{else if .Empty}}<p class="pb-2.5 text-sm leading-6 text-body">{{.Empty}}</p>{{end}}
   {{with .Add}}
   <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="pt-2.5">
     <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{.Label}}</button>

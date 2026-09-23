@@ -37,9 +37,9 @@
        and a hairline running on to the column's end — the start of a group,
        which a field label never is. The count is the set's own length, keyed
        by the part's name, so the page can roll it when the number changes
-       (verso-page.js). The first thing in the part stands 20px under the
-       name, a group's step. */}}
-  <div data-verso-ledger class="mb-2.5 flex items-center gap-3">
+       (verso-page.js). The first box in the part stands 24px under the
+       name, as a form's rows stand apart. */}}
+  <div data-verso-ledger class="mb-6 flex items-center gap-3">
     <h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">{{.Title}}</h3>
     {{if .Counted}}<span data-verso-count="{{.Title}}" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]">{{.Count}}</span></span>{{end}}
     {{if .Meta}}<span data-verso-section-meta class="shrink-0 text-sm text-meta">{{.Meta}}</span>{{end}}

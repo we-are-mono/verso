@@ -45,6 +45,11 @@ func TestCollectionItemsStandOnSpaceAlone(t *testing.T) {
 			t.Errorf("a collection draws no %s:\n%s", absent, got)
 		}
 	}
+	// The first item's name starts where the set does: the air above it is
+	// the subheading's, not the item's own.
+	if !strings.Contains(got, `<li class="first:[&>form]:pt-0">`) {
+		t.Errorf("the first item keeps its own air above it:\n%s", got)
+	}
 }
 
 // TestCollectionRemovesInPlace: an item's act is the icon on its first line;
@@ -136,5 +141,10 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 	got := renderCollection(t, empty, "")
 	if !strings.Contains(got, ">No keys are authorized.</p>") || !strings.Contains(got, ">Add a key</button>") {
 		t.Errorf("want the empty line and the add:\n%s", got)
+	}
+	// It stands where the first item's name would: no air of its own above
+	// it, the subheading's air being the gap.
+	if !strings.Contains(got, `<p class="pb-2.5 text-sm leading-6 text-body">No keys are authorized.</p>`) {
+		t.Errorf("the empty line keeps a row's air above it:\n%s", got)
 	}
 }
