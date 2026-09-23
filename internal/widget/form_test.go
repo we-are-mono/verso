@@ -117,6 +117,14 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 	if strings.Contains(got, "disabled:opacity-40") {
 		t.Errorf("a waiting Save must not be a faded denim:\n%s", got)
 	}
+	// It is drawn resting: a Save drawn denim and put to rest by the page's
+	// script a moment later blinks denim on every visit.
+	if !strings.Contains(got, `<button type="submit" disabled class=`) {
+		t.Errorf("a settings form's Save is drawn resting, not put to rest after:\n%s", got)
+	}
+	if plain := render(t, newRenderer(t), &Form{Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}); strings.Contains(plain, " disabled class=") {
+		t.Errorf("an ordinary form's Save is not held:\n%s", plain)
+	}
 }
 
 // A form that commits one section stands its Save under its own fields, with

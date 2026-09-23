@@ -38,12 +38,12 @@
        carriers; secondary actions remain separate controls alongside it. */}}
   <div class="relative w-full max-w-sm [&_input[type=text]]:pr-28">
     {{range .Fields}}{{.}}{{end}}
-    {{if .Submit}}<button type="submit" class="absolute inset-y-1 right-1 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="absolute inset-y-1 right-1{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
   <div class="flex flex-wrap items-center gap-3">
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Cancel"}}</a>{{end}}
-    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if .Note}}<span class="text-sm text-body [&>p]:inline">{{.Note}}</span>{{end}}
   </div>
   {{end}}
@@ -63,9 +63,12 @@
   <div{{if .ClosesPage}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .Sectioned}}mt-5 gap-4{{else if .ClosesPage}}mt-6 gap-4 border-t border-rule pt-6{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
-    {{if .Submit}}<button type="submit" class="{{template "verso-btn-box"}}{{if .Inline}} rounded-l-none{{end}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{/* A form that waits for a change draws its acts resting, as the page's
+         script keeps them until something changes (verso-forms.js): drawn
+         active and put to rest after, they would blink denim on every visit. */}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}}{{if .Inline}}rounded-l-none{{end}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Cancel"}}</a>{{end}}
-    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
+    {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if .Note}}<span class="{{if not .Inline}}ml-auto {{else}}self-center {{end}}text-sm text-meta [&>p]:inline">{{.Note}}</span>{{end}}
   </div>
   {{end}}
