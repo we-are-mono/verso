@@ -224,6 +224,24 @@ mod tests {
         }
     }
 
+    // An editor is one form, so it keeps the form's measure: its fields, its
+    // Advanced disclosure and the rule its Save stands under all end at 640px,
+    // rather than the disclosure and the rule running a wider column the
+    // fields never reach.
+    #[test]
+    fn every_editor_keeps_the_forms_measure() {
+        for path in [
+            "/dns/records/new",
+            "/dns/records/domain_backup_v4",
+            "/dns/servers/new",
+            "/dns/servers/0",
+            "/config/reservations/new",
+            "/config/reservations/host_nas",
+        ] {
+            assert_eq!(read(path)["width"], "form", "{path}");
+        }
+    }
+
     #[test]
     fn each_editor_sub_path_opens_its_own_page() {
         for (path, title) in [

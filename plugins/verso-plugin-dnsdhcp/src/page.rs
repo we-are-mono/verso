@@ -108,24 +108,25 @@ pub fn dns(widget: Widget) -> Envelope {
 /// dns_editor frames one DNS object's page. The title is a fixed label — "Edit
 /// record", "New upstream" — so it stays translatable, and the object's own name
 /// rides the subheading rather than being composed into the title. DNS has no
-/// top bar, so the editor declares none either; the reading column is normal,
-/// because one object is a form, not a wide listing.
+/// top bar, so the editor declares none either; the column is the form's
+/// 640px, because one object is a form — its fields, its Advanced disclosure
+/// and the rule its Save stands under all end where the fields do.
 pub fn dns_editor(title: &str, subheading: &str, widget: Widget) -> Envelope {
     Envelope::page(title, widget)
         .with_subheading(subheading)
-        .with_width("normal")
+        .with_width("form")
         // Cancel and a completed save both return to the DNS page, where the
         // record now waits in the stage.
         .with_back("Cancel", &format!("{MOUNT}/{DNS}"))
 }
 
-/// dhcp_editor frames one DHCP object's page. Like dns_editor, but it keeps the
-/// DHCP top bar so the Leases/Configuration tabs stay put underneath an operator
-/// editing a reservation.
+/// dhcp_editor frames one DHCP object's page. Like dns_editor, the form's
+/// measure, but it keeps the DHCP top bar so the Leases/Configuration tabs stay
+/// put underneath an operator editing a reservation.
 pub fn dhcp_editor(title: &str, subheading: &str, widget: Widget) -> Envelope {
     Envelope::page(title, widget)
         .with_subheading(subheading)
-        .with_width("normal")
+        .with_width("form")
         .with_pages(tabs())
         // The reservation lives on the DHCP configuration page; that is where
         // Cancel and a completed save return.
