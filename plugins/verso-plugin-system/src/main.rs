@@ -5,11 +5,12 @@ use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv6Addr};
 use std::time::{SystemTime, UNIX_EPOCH};
 use verso_plugin::{
-    commit, commit_new, json, serve, ApplyAction, Envelope, Form, Request, SelectOption, Snapshot,
-    Tone, Widget,
+    commit, commit_new, json, serve_described, ApplyAction, Envelope, Form, Request, SelectOption,
+    Snapshot, Tone, Widget,
 };
 mod access;
 mod credentials;
+mod describe;
 mod sshkey;
 mod timezones;
 use timezones::ZONES;
@@ -30,7 +31,7 @@ struct Facts {
     serve: bool,
 }
 fn main() {
-    serve("system", get, post);
+    serve_described("system", get, post, describe::describe);
 }
 fn get(r: &Request) -> Envelope {
     if r.path.starts_with("/access") {
