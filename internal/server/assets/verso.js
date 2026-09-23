@@ -546,13 +546,22 @@ document.addEventListener("alpine:init", function () {
           this.setAddress(url);
         }
         if (!window.htmx) return;
+        // An address that names a part of the panel (an expanded row's
+        // "Configure DHCP", into the editor's DHCP section) opens the panel
+        // scrolled to that part, fetched or already here.
+        var hash = url.indexOf("#") === -1 ? "" : url.slice(url.indexOf("#") + 1);
+        function reveal() {
+          if (!hash) return;
+          var part = panel.querySelector("#" + CSS.escape(hash));
+          if (part) part.scrollIntoView({ block: "start" });
+        }
         // The fetch is the other question, and it has its own answer: ask only
         // for what is not already here, so opening the same panel again keeps what
         // is on screen, half-typed values included.
-        if (!chrome && panel.getAttribute("data-verso-panel-loaded") === url) return;
+        if (!chrome && panel.getAttribute("data-verso-panel-loaded") === url) { reveal(); return; }
         panel.setAttribute("data-verso-panel-loaded", url);
         versoBusy(panel, true);
-        window.htmx.ajax("GET", url, { target: panel, swap: "innerHTML" });
+        window.htmx.ajax("GET", url, { target: panel, swap: "innerHTML" }).then(reveal, function () { /* the error handlers above have already said so */ });
       },
       // The panel is a state of this page, not a page of its own: the address
       // follows what is on screen so it can be linked and reloaded, but it does

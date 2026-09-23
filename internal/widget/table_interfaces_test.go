@@ -59,3 +59,29 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 		t.Errorf("every cell of a row stands at its top, got %d:\n%s", n, got)
 	}
 }
+
+// TestInterfaceRowOpensItsEditorInPlace: a row whose pencil's address is its
+// panel hosts the panel scope and ships the empty frame, and the pencil opens
+// it in place; any other act, and a row without a panel, is a plain link.
+func TestInterfaceRowOpensItsEditorInPlace(t *testing.T) {
+	edit := "/plugins/interfaces/edit?network=lan&device="
+	acts := func(edit string) []TableRowAct {
+		return []TableRowAct{{Icon: "trash-2", Title: "Delete", Href: "/plugins/interfaces/delete?network=lan&device="}, {Icon: "square-pen", Title: "Edit", Href: edit}}
+	}
+	table := &Table{Style: "interfaces", Columns: []TableColumn{{Kind: "reference"}, {Kind: "keyword"}, {Kind: "mono"}, {Kind: "mono"}, {Kind: "status"}, {Kind: "actions"}}, Rows: []TableRow{
+		{ID: "br-lan", Panel: edit, Cells: []TableCell{{Text: "br-lan"}, {}, {}, {}, {}, {Actions: acts(edit)}}},
+		{ID: "eth2", Cells: []TableCell{{Text: "eth2"}, {}, {}, {}, {}, {Actions: acts("/plugins/interfaces/edit?network=&device=eth2")}}},
+	}}
+	r := newRenderer(t)
+	got := render(t, r, table)
+	escaped := strings.ReplaceAll(edit, "&", "&amp;")
+	if strings.Count(got, `x-data="modal"`) != 1 || strings.Count(got, `data-verso-panel-url="`+escaped+`"`) != 1 {
+		t.Errorf("one row hosts one panel frame:\n%s", got)
+	}
+	if !strings.Contains(got, `<a href="`+escaped+`" @click.prevent="showPanel" aria-label="Edit br-lan"`) {
+		t.Errorf("the pencil opens the panel in place:\n%s", got)
+	}
+	if strings.Count(got, `@click.prevent="showPanel"`) != 1 {
+		t.Errorf("only the panel's own address opens in place:\n%s", got)
+	}
+}

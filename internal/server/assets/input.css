@@ -939,3 +939,46 @@ html.verso-fonts-loading body {
   }
   .verso-stream-release:hover .verso-stream-release-x { color: var(--color-ink); }
 }
+
+/* An inventory row unfolds into the sections behind it (verso-tables.js).
+   The fold is a grid track that grows from nothing to whatever the sheet
+   holds, so the row opens at the height of its own content without anyone
+   measuring it, and the sheet is clipped to the track while it grows; once
+   it has settled the clip is lifted, so a tooltip inside it can hang past
+   its edge. A re-expand after a refresh, or a reader who asked for less
+   motion, gets the row open, not opening. */
+@layer components {
+  .verso-unfold {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .verso-unfold > * { min-height: 0; overflow: hidden; }
+  [data-verso-expanded-row][data-verso-open] .verso-unfold { grid-template-rows: 1fr; }
+  [data-verso-expanded-row][data-verso-still] .verso-unfold { transition: none; }
+  [data-verso-expanded-row][data-verso-settled] .verso-unfold > * { overflow: visible; }
+
+  /* As the fold opens, its parts arrive in reading order: each ledger line
+     draws itself from its name outward, and everything under it — the facts,
+     the config text, the act at the line's end — rises the height of a
+     hairline's air into place, one after another, by the delay the script
+     hands each. The rise starts from nothing so that a part whose turn has
+     not come is not already there. */
+  [data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden] {
+    transform-origin: left;
+    animation: verso-ledger-draw 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--verso-stagger, 0ms);
+  }
+  [data-verso-expanded-row][data-verso-unfolding] [data-verso-rise] {
+    animation: verso-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--verso-stagger, 0ms);
+  }
+  @keyframes verso-ledger-draw { from { transform: scaleX(0); } }
+  @keyframes verso-rise { from { opacity: 0; transform: translateY(0.375rem); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .verso-unfold { transition: none; }
+    [data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden],
+    [data-verso-expanded-row][data-verso-unfolding] [data-verso-rise] { animation: none; }
+  }
+}
