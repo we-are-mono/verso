@@ -54,6 +54,12 @@ typography:
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "-0.025em"
+  section-heading:
+    fontFamily: "Hanken Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 600
+    lineHeight: 1.25
+    letterSpacing: "-0.025em"
   body:
     fontFamily: "Hanken Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
@@ -169,6 +175,11 @@ components:
   control-band:
     backgroundColor: "{colors.quiet}"
     padding: "16px 40px"
+  section-band:
+    backgroundColor: "{colors.quiet}"
+    textColor: "{colors.ink}"
+    typography: "{typography.section-heading}"
+    padding: "12px 0 12px 40px"
   table-row:
     backgroundColor: "{colors.ground}"
     textColor: "{colors.ink}"
@@ -215,7 +226,8 @@ The system is flat and dense enough for a power user, never cramped. Surfaces se
 - One action colour (denim); four status hues used as marks, never as decoration.
 - Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.
 - Flat surfaces, hairline borders, 2px corners, 1px for marks.
-- A 40px page rhythm; 44px rows, 52px bands, 36px controls.
+- A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 12px vertical padding.
+- Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.
 - A full-width sand control band is the seam between a page's heading and its content.
 
 ## Colors
@@ -241,7 +253,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Quiet Sand** (#f5f2ec): every quiet surface — control bands, section bands, chips, row hover.
 - **Mid Sand** (#ece8e0): the only mid ground — icon-button hover, the gateway card.
 - **Hairline** (#e4e0d8): hairlines inside a card, between rows, around a control band.
-- **Strong Hairline** (#d2ccc2): hairlines between sections, under a lane, every input border.
+- **Strong Hairline** (#d2ccc2): subsection ledger lines, the line under a lane, every input border.
 - **Inert** (#c9c3b8) and **Parked** (#c1bab0): an off switch track, an empty port; the waiting mark's parked squares.
 - **Faint** (#a09a8e) and **Glyph** (#8b857a): decorative and action icons. Never text.
 - **Meta** (#6f6a60): kickers, column heads, units, placeholders — the lightest ink that may carry words.
@@ -266,20 +278,17 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 ### Hierarchy
 - **Display** (600, 1.875rem/30px, 1.1): the home page's verdict heading only.
 - **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always 36px tall so pages never shift between each other.
-- **Title** (600, 1.125rem/18px, -0.025em): band and drawer titles, in Body ink on sand.
+- **Title** (600, 1.125rem/18px, -0.025em): table and drawer titles, and the overview's traffic graph title, in Body ink on sand.
+- **Section heading** (600, 1rem/16px, 1.25, -0.025em): full-section h2s in Quiet Sand bands, in Ink. Page titles, dialog titles and the overview's graph title retain their own roles.
 - **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the glyph of what the part is, when it has one (16px Lucide in Glyph: a network, a DHCP server, a bridge), then the name, then how many things the part holds (500, Meta, tabular), then a Strong Hairline running on to the column's end, the line that stands between sections, so it reads as the start of a group and never as one more field label, and is told from the Hairlines between the rows under it. The count is the set's own length. When it differs from the last time the page was shown, the old number rolls out and the new one rolls in (up for more, down for fewer, 420ms exponential ease-out), arriving in Ink and settling to Meta. Under reduced motion it simply shows the number. The part's first box stands 24px under the name, as a form's rows stand apart (a set's first item gives up its own air above).
-- **Body** (400, 0.875rem/14px, 1.5): all prose, labels (600), buttons (600), cells. Ledes cap at 60ch.
+- **Body** (400, 0.875rem/14px, 1.5): all prose, labels (600), buttons (600), cells. Page ledes cap at 60ch; section ledes use a snug 1.375 line height and cap at 36rem inside their heading band.
 - **Label** (500, 0.75rem/12px, 0.08em, uppercase): kickers and column heads, in Meta.
 - **Value** (Inconsolata 500, 1rem/16px): machine strings in rows — addresses, interface names, MACs, versions. Inputs for identifiers use Inconsolata 400 at 16px.
 - **Figure** (Inconsolata 700, 2.25rem/36px, -0.05em): big numbers.
 
-Full section headings carry a 6×6px square marker with 1px corners in Strong
-Hairline (`rule-strong`), one palette step darker than the section dividers and
-matching the size of the homepage’s Connected marker.
-It sits in the left gutter with an 8px gap before the words, centered on the first
-line, and takes no layout space: text alignment, wrapping and spacing stay unchanged.
-Page titles, smaller subsection headings, navigation kickers and dialog titles
-do not carry it. The marker is decorative and conveys no state.
+Full section headings and their ledes share a Quiet Sand band. The band has no
+decorative marker or border; its surface establishes the section's hierarchy.
+Smaller subsection headings retain their ledger lines; square marks carry state.
 
 ### Named Rules
 **The Verbatim Rule.** Mono is for strings the machine wrote and a user might copy: identifiers, addresses, versions, config keys. Never for a count, a duration or a sentence. Counts are sans with tabular figures.
@@ -290,9 +299,15 @@ do not carry it. The marker is decorative and conveys no state.
 
 The page is left-aligned against a 288px rail, never centred. The frame keeps 40px of air on every side, and inside it the page declares a measure: wide pages cap at 1152px, forms at 640px. The top bar's right group ends on the same column edge, so a page's primary act sits exactly under Log out.
 
-**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. Every line that divides a page keeps the title's own air on both sides: the title stands 20px under the page's top edge in a 36px heading line, so its words sit about 24px from the edge and from its line, and every section rule, the page Save's rule and a plugin's seam keep 24px above and below. A section holds that air itself: the rows it starts and ends with give their own padding back (a titled section keeps its first row's, as the air under its heading), and the last row of a hairline-divided list drops its padding with its hairline. The same holds with or without a heading. The 24px is measured from a row's box, not its words: a row is always its control's 36px, so a checkbox row, whose label is centred on that line as the title is on its own, keeps a few pixels of its own air below its words, and that is not trimmed. A rule runs out by 40px to the rail on the left, and stops where the column ends on the right, clear of any sidebar beside the column. The rule is the page's, so it starts at the page's frame, while what it separates stays in the column. The masthead ends in one line 20px under the title's heading line (or under its lede, when it has one), and what follows it starts 24px under that line: a masthead labels the page and keeps no more air than that. The line runs to the rail as a section rule does. The home page's sentence keeps the full 40px above it. Unlike a section rule, it ends on the right where Log out does, whatever measure the column keeps, and the page's acts on the heading line end there too. Its line is a hairline on a page of forms or sections, the control band's top edge on a list or log, never both. Only the home page, whose heading is a sentence, stands unruled. A drawer's section rules span its full width; subsection and list rules keep the content inset. Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), section bands are 52px, controls are 36px, and a control inside a row is 28px. Heights come from line plus padding, never from a fixed height, so a row stays a row whatever it holds.
+**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A full section that used a leading divider keeps its 24px separation from the preceding content, but its heading band replaces the divider and the space below that divider. The complete band keeps 20px before the content; its heading and optional lede share 12px of padding above and below, with a 4px gap between them. Height follows the contents, with no fixed or minimum band height.
 
-Acts sit at the level they act on. A page's acts stand on its heading line. A form that is the whole page commits every section on it, so it closes on a section rule of the page's (40px either side, run out to the rail) with its Save under it. A form in a drawer closes on its own hairline inside the drawer, unless it ends in a configuration card: its actions finish that card without another rule. A form that commits one section draws no hairline: its Save stands 20px under its last field, and the next section's rule is the only line between them. Within a section, its settings and their Save come first, then what the section holds (keys, a certificate), with that thing's own acts 16px under it.
+Untitled sections, the page Save's rule and plugin seams retain their hairlines and 24px of air on either side. A plugin contribution that opens with a section band, as SSH does on Access, needs only the 24px gap before that band, with no extra hairline or padding. The 24px is measured from a row's box, not its words: a row is always its control's 36px, so a checkbox row keeps a few pixels of its own air below its words. Sections give back their first and last rows' unnecessary padding; a titled section keeps its first row's padding under the band. A rule runs out by 40px to the rail on the left and stops where the column ends on the right, clear of a sidebar beside it. Heading bands follow the same horizontal reach, keeping their words aligned with the content. A drawer's section bands and configuration dividers span its full width; subsection and list rules keep the content inset.
+
+The masthead has no divider beneath the h1 or its lede. Its 20px bottom padding is the complete gap before the content, with no additional bottom margin, letting the first section band establish its own boundary. Page acts end where Log out does, whatever measure the content column keeps. On a list or log, the control band starts 20px below the title and retains its own borders. The home page's sentence keeps the full 40px above it and stands unruled.
+
+Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), drawer headers are 52px, controls are 36px, and a control inside a row is 28px. Section bands grow with wrapped headings, ledes and controls; their vertical padding stays 12px in every case.
+
+Acts sit at the level they act on. A page's acts stand on its heading line. A form that is the whole page commits every section on it, so it closes on a section rule of the page's (40px either side, run out to the rail) with its Save under it. A form in a drawer closes on its own hairline inside the drawer, unless it ends in a configuration card: its actions finish that card without another rule. A form that commits one section draws no hairline: its Save stands 20px under its last field, and the next section's band identifies the next subject. Within a section, its settings and their Save come first, then what the section holds (keys, a certificate), with that thing's own acts 16px under it.
 
 Every list page reads top to bottom as: the heading line (h1 left, page acts right), then the **control band**, then the content flush beneath it. The band spans the full page width, from the rail to the window edge, while its controls stay in the page's column, level with the h1. It is the seam between "the page" and "the thing on the page".
 
@@ -322,6 +337,15 @@ The state mark is a 6px square (5px in the nav), the packet. Filled means presen
 Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no vertical rules and no stripes; rows are separated by a single hairline.
 
 ## Components
+
+### Section headings
+- **Surface:** full-section h2s sit in Quiet Sand, the same surface as the active main-navigation row, with square corners, no decorative marker and no border. The band replaces the section's leading hairline.
+- **Contents:** the heading is 16px/600. Its metadata and controls share the heading row; a lede belongs inside the same band, on the next row with a 4px gap, in 14px Body ink and at most 36rem wide. Markdown and links retain their normal prose styling.
+- **Padding:** 12px above and below the complete contents, with or without a lede. Do not impose a fixed or minimum height; wrapping and controls determine the height. The content below starts after the band's 20px gap.
+- **Content inset:** the first field row contributes another 12px above its contents, so its controls begin 32px below the band. Handwritten section bodies, such as Maintenance's action groups, supply that same 12px top inset themselves. Count it once; a body containing padded field rows already has it.
+- **Content bottom spacing:** Maintenance keeps 32px from the end of each section's content to the next heading band, matching the 32px above the content. This applies to action groups and the optional software-updates section; it is separate from the band's own 12px padding.
+- **Reach:** the page band extends through the left gutter to meet the menu, or the screen edge on mobile, and ends at the content column's right edge. Words keep their existing horizontal alignment. In a drawer the band reaches both edges while its contents keep the body's 32px inset.
+- **Scope:** page h1s, drawer and dialog titles, navigation kickers and smaller subsection headings keep their own treatments. The overview's traffic h2 is a graph title: 18px in Body ink, inside the chart's own header with 16px horizontal padding and no section band extending into the gutter. Subsections retain their inset ledger lines.
 
 ### Buttons
 Plain and exact.
@@ -363,7 +387,7 @@ The anatomy is the same in both:
 
 ### Control Band
 The signature seam of every list and log page.
-- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 20px under the title, and its top Hairline is the masthead's line; the masthead draws none of its own above a band.
+- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 20px under the title. These borders belong to the control band; the masthead has no divider.
 - **Contents:** only what narrows the content, side by side from the left, 16px apart — search first (the app's field treatment), then counted dropdowns ("IPv4 · 14", "All families · 22"), then the dimension the listing is sliced along ("All networks"); never segmented switches, and no dropdown strays to the band's far end. Everything that acts (primary add, Live, Download, Settings) goes on the heading line instead.
 - **Below it:** the table sits flush under the band with its 44px column-head row; a log sits flush on Paper.
 
@@ -424,7 +448,7 @@ Save stages a change; nothing happens on the router until it is applied from the
 
 ### Drawers
 - **Shell:** a panel from the right on Paper, behind a Strong Hairline and cast with the drawer shadow. It slides in over 300ms (ease-out) and out over 200ms (ease-in). Its width follows its content: 640px for a form (the standard edit drawer), 768px for a wide read, 448px for a short one. Header is a 52px Quiet Sand band holding only the title ("New rule", "Edit Allow-Ping") and a 28px close.
-- **Sections:** each drawer starts its own heading hierarchy, independent of the page section that opened it. Full sections use the standard heading and gutter square. A Hairline separates each section from the preceding content, with 24px above and below it. Full section dividers span the drawer edge to edge, like the top header's divider. Headings and fields retain their 32px horizontal inset; subsection and list dividers stay inset to make the hierarchy clear. The opening section has no leading divider.
+- **Sections:** each drawer starts its own heading hierarchy, independent of the page section that opened it. Full sections use the standard Quiet Sand heading band, edge to edge, with a 16px heading and any lede inside. The band has no border and keeps 12px vertical padding, 24px separation from the preceding section and 20px before its content. Headings, ledes and fields retain their 32px horizontal inset; subsection and list dividers stay inset. The opening section has no leading divider.
 - **Configuration card:** the drawer reads as form name → fields → configuration card → actions. The filename alone labels the card, above the code; it has no section heading, marker, “Written to” prefix or repeated explanation of staging. A full-width hairline separates it from the fields; the filename and code keep the content's 32px horizontal inset. Live previews and copy controls stay part of the card.
 - **Footer:** when a configuration card ends the form, Save follows it with a small gap and no intervening hairline: the card and the act that saves it are one unit. Other drawer footers keep their inset Hairline. Removing an object belongs to its listing’s trash action, which opens a compact confirmation naming the object and its consequences, with the destructive act and Cancel. Edit drawers carry no duplicate removal action.
 

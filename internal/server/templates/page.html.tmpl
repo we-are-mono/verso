@@ -121,23 +121,21 @@
        against. Left-aligned against the rail; no centring, which reads better
        on a wide monitor. */}}
   <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}">
-    {{/* The title stands 20px under the top edge, the same as the line under
-         it: the masthead is a label for the page, and keeps no more air than
-         that. The bottom padding becomes the natural gap before the footer.
+    {{/* The title stands 20px under the top edge. The masthead labels the page
+         without a dividing line. The frame's bottom padding becomes the
+         natural gap before the footer.
          A full page keeps the side and top air for its masthead but never the
          bottom: what is below the masthead runs to the edge. Home's display
          verdict keeps the full 40px, as far from the top as from the left. */}}
     <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-5{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pt-5 pb-10{{end}}">
     <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-[40rem]{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if or .Kicker .Subheading .Display}}
-    {{/* Every page's title (and its lede) is divided from what follows by one
-         line, 1.25rem under it and 2.5rem above what comes next — the page's
-         rule, or, on a page that opens on a control band, the band's own top
-         edge (the stylesheet folds this rule away there). Whatever measure the
-         column keeps, the stylesheet ends the masthead, its line and its acts,
-         under Log out. Home's display verdict opens onto its own strip, and on
-         a full page keeps to the column the top bar does. */}}
-    <div{{if not .Display}} data-verso-rule data-verso-masthead{{end}} class="{{if .Display}}mb-5{{if eq .Width "full"}} max-w-6xl{{end}}{{else}}mb-6 border-b border-rule pb-5{{end}}">
+    {{/* Page titles and ledes have no divider. Their 20px bottom padding
+         separates them from the content; a control band keeps its own 20px
+         gap. Whatever measure the column keeps, the stylesheet ends
+         the masthead's acts under Log out. Home's display verdict opens onto
+         its own strip, and on a full page keeps to the top bar's column. */}}
+    <div{{if not .Display}} data-verso-masthead{{end}} class="{{if .Display}}mb-5{{if eq .Width "full"}} max-w-6xl{{end}}{{else}}pb-5{{end}}">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
@@ -167,7 +165,7 @@
       {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
-    <div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5">
+    <div data-verso-masthead class="pb-5">
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{/* An act's height whether it holds one or not, as above. */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">

@@ -84,10 +84,8 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	}
 }
 
-// TestRenderSectionSub: the description belongs to the heading — tight beneath
-// the title (mb-1 instead of mb-3), with the saved space moved below the sub so
-// the title-to-content distance is preserved. Markdown renders; without a sub
-// the title keeps its original spacing.
+// TestRenderSectionSub: the description belongs to the heading band and keeps
+// its rendered Markdown, with the content gap below the complete band.
 func TestRenderSectionSub(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{
@@ -96,10 +94,10 @@ func TestRenderSectionSub(t *testing.T) {
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
-		"mb-2",                   // title pulled tight to its description
-		"mb-5",                   // the gap moves below the sub
-		"<strong>Input</strong>", // sub renders Markdown
-		"text-body",              // sub is muted head-matter, not body prose
+		"data-verso-section-lede", // description stays inside the band
+		"mb-5",                    // the gap moves below the sub
+		"<strong>Input</strong>",  // sub renders Markdown
+		"text-body",               // sub is muted head-matter, not body prose
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section sub missing %q:\n%s", want, got)

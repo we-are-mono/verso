@@ -1,17 +1,14 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* section: a grouped block with an optional heading and generous space above it,
-     marking a new context on the page. The top space is padding (not margin), so it
-     never collapses against the previous element. With a sub, the description sits
-     tight under the title (they read as one head unit) and the saved space moves
-     below the sub — the title-to-content distance stays what it was without one. */}}
+{{/* section: a grouped block with an optional heading. Full headings and their
+     descriptions share a Quiet Sand band with 12px vertical padding and 20px
+     before the content. Nested sections keep their smaller ledger headings. */}}
 {{/* Hairline is opt-in, and it means one of two things.
 
      A ruled section is one of a page's subjects, set off from the last by a rule
-     with the page's gap on both sides of it: 2.5rem above the rule (a margin, so
-     it meets the gap the container already keeps rather than adding to it) and
-     2.5rem from the rule to the heading. The one a page opens with draws neither
-     rule nor gap. first-of-type, not first-child: a form opens with its
+     with 24px on either side. When it has a full heading, the stylesheet replaces
+     the rule and its lower gap with the heading band. The one a page opens with
+     draws neither rule nor gap. first-of-type, not first-child: a form opens with its
      hidden CSRF carrier, so the leading section is never the first child of
      anything and would draw a rule with nothing above it to divide from.
 
@@ -30,6 +27,7 @@
 {{/* A section with no heading has nothing for its first row's top padding to
      stand off from: it is marked headless, and the stylesheet takes that
      padding back so its first box starts where the section does. */}}
+{{$band := and .Title (not .Nested) (not .Kicker)}}
 <section{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-6 border-t border-rule pt-6 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
@@ -54,12 +52,12 @@
     {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
   </div>
   {{else if or .Title .Meta .Control}}
-  <div class="{{if .Sub}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
     <div class="flex flex-wrap items-center gap-3">
       {{/* A kicker names the group under it and nothing more, so it is set at the
-           meta size in caps rather than as a heading — a second 18px heading
+           meta size in caps rather than as a heading — a second 16px heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="verso-section-heading text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-base leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}
@@ -74,9 +72,10 @@
          primary's footprint while keeping its own dress: the one place a
          section's act is not the smaller subsection act. */}}
     {{if .Control}}<span class="flex w-full items-center sm:w-64 [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
+    {{if and .Sub $band}}<div class="w-full"><div data-verso-section-lede class="verso-prose max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div></div>{{end}}
   </div>
   {{end}}
-  {{if .Sub}}<div class="verso-prose mb-5 max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div>{{end}}
+  {{if and .Sub (not $band)}}<div class="verso-prose mb-5 max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div>{{end}}
   {{/* Blocks stand off from each other; form rows sit flush. The rule is named
        in input.css, where the two declarations can be ordered deliberately. */}}
   <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>

@@ -480,22 +480,6 @@ html.verso-fonts-loading body {
   .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-body); }
 
-  /* A full section's neutral marker hangs in the gutter. It takes no inline
-     space, so the heading keeps its alignment and available width. Center it
-     on the first line even when the heading wraps. */
-  .verso-section-heading { position: relative; }
-  .verso-section-heading::before {
-    content: "";
-    position: absolute;
-    inset-inline-start: -14px;
-    top: calc(0.5lh - 3px);
-    width: 6px;
-    height: 6px;
-    border-radius: 1px;
-    background-color: var(--color-rule-strong);
-    pointer-events: none;
-  }
-
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
      chassis is a physical object — deliberately dark in both themes. Display-only;
      the hover/focus tooltip is pure CSS (no JS). Connector art has no utility
@@ -775,8 +759,8 @@ html.verso-fonts-loading body {
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
   }
 
-  /* A page's rules between its sections — the masthead's, a plugin's seam,
-     every ruled section — run out by the frame's 2.5rem to the rail on the
+  /* A page's rules between its sections — a plugin's seam and every ruled
+     section — run out by the frame's 2.5rem to the rail on the
      left, and stop where the column ends on the right, clear of a sidebar
      beside it. Each pads back in by the same, so what it rules off does not
      move. Drawer section rules use their own frame below. */
@@ -795,6 +779,31 @@ html.verso-fonts-loading body {
     padding-inline: calc(var(--spacing) * 8);
   }
 
+  /* Section heads share the active navigation's quiet surface.
+     The band reaches the frame edge; its words keep their content alignment. */
+  main { --verso-section-band-inset: calc(var(--spacing) * 10); }
+  [data-verso-section-band] {
+    display: flex;
+    align-items: center;
+    min-height: 0;
+    height: auto;
+    margin-inline-start: calc(-1 * var(--verso-section-band-inset));
+    padding-inline-start: var(--verso-section-band-inset);
+    padding-block: calc(var(--spacing) * 3);
+    background-color: var(--color-quiet);
+    border-bottom-width: 0;
+  }
+  section:has(> [data-verso-section-band]) {
+    border-top-width: 0;
+    padding-top: 0;
+  }
+  [data-verso-drawer-body] { --verso-section-band-inset: calc(var(--spacing) * 8); }
+  [data-verso-drawer-body] [data-verso-section-band] {
+    margin-inline-end: calc(var(--spacing) * -8);
+    padding-inline-end: calc(var(--spacing) * 8);
+  }
+  .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-section-band-inset: 0px; }
+
   /* A page's masthead — its title's line and its acts — ends where Log out
      does, whatever measure the column below keeps: the page's gutter in from
      the window, and never past the top bar's 72rem. The page (main) is the
@@ -804,11 +813,9 @@ html.verso-fonts-loading body {
     margin-right: calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
   }
 
-  /* A page that opens on a control band lets the band's own top edge be the
-     line under its title: the masthead's rule folds away, and the band stands
-     the same 20px under the title every page's first line does. */
+  /* A page that opens on a control band keeps 20px between the title and the
+     band's own top edge. The masthead itself draws no divider. */
   main:has([data-verso-actionbar]) [data-verso-masthead] {
-    border-bottom-width: 0;
     padding-bottom: 0;
     margin-bottom: calc(var(--spacing) * 5);
   }

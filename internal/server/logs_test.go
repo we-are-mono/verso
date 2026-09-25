@@ -101,7 +101,7 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		"data-verso-wait", // the firewall log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
 		"h-9 w-56 max-w-full",
-		`<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5">`, // the stylesheet ends the masthead under Log out; its line gives way to the band's edge
+		`<div data-verso-masthead class="pb-5">`, // the stylesheet ends the masthead under Log out, 20px above the control band
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs bar missing %q", want)

@@ -1,24 +1,26 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <div data-verso-maintenance{{if .Checking}} data-verso-update-busy{{end}} class="flex flex-col items-start gap-11 xl:flex-row">
-  {{/* Sections are divided as every page's are: the masthead ruled off above
-       the first, each later one 40px after the last and 40px under a rule
-       that is the page's own (it runs out by the frame's gutter). */}}
+  {{/* The masthead opens onto the first section without a rule. Later sections start
+       with a Quiet Sand heading band, 32px after the preceding content. Bands
+       extend through the frame's left gutter while their words stay aligned. */}}
   <div class="w-full min-w-0 max-w-[40rem] shrink-0">
     {{.Notices}}
     <section id="firmware" class="scroll-mt-20">
       {{/* The ledger: the verdict under its state mark, then what this router runs
            part by part, with an Available column only while a build is offered.
            The check stands on the heading line with the time it last ran. */}}
-      <div class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 class="verso-section-heading text-lg font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
+      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2 class="text-base leading-tight font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
         <form method="post" action="/system/maintenance/updates/check" class="flex items-center gap-3">
           {{template "verso-csrf" .CSRFToken}}
           {{if .Checked}}<span class="text-sm text-meta">{{.Checked}}</span>{{end}}
           <button type="submit"{{if .Checking}} disabled{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
-      <div class="flex flex-col gap-5">
+      {{/* Handwritten content keeps the first field row's 12px top inset, as
+           Access does, in addition to the heading band's 20px content gap. */}}
+      <div class="flex flex-col gap-5 pt-3">
         <div>
           {{/* A marigold verdict is a warning, not an error: it stands in the
                marigold band, words in the deep step. Every other verdict is plain
@@ -26,7 +28,7 @@
           {{if eq .Ledger.Mark "marigold"}}
           {{/* 16px all round, the mark on the title's line, the sentence 4px
                under it. The title is 14px semibold, a step under the section's
-               18px heading, so the two never compete. The update tool's own
+               16px heading, so the two never compete. The update tool's own
                words ride inside, under a marigold hairline, in mono, which is
                label enough: this is what the machine wrote. They wrap rather than scroll, because a one-line
                message cut off at the edge is a message withheld. */}}
@@ -93,35 +95,41 @@
         <div class="mt-5">{{.Autocheck}}</div>
       </div>
     </section>
-    {{if .Packages}}<div id="package-updates" class="scroll-mt-20 pb-8">{{.Packages}}</div>{{end}}
-    <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
-      <h2 class="verso-section-heading mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
-      <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p>
-      <div class="flex flex-wrap items-center gap-3">
+    {{if .Packages}}<div id="package-updates" class="scroll-mt-20 mt-8 [&>section>.verso-rhythm]:pt-3">{{.Packages}}</div>{{end}}
+    <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+      <div data-verso-section-band class="mb-5 flex-col gap-1">
+        <h2 class="w-full text-base leading-tight font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
+        <div class="w-full"><p data-verso-section-lede class="max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p></div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 pt-3">
         <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
     </section>
-    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
-      <h2 class="verso-section-heading mb-5 text-lg font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
-      {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
-      <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
-        {{template "verso-csrf" .CSRFToken}}
-        {{if .Staged}}
-        <button type="submit" name="stage" value="apply" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Apply changes, then reboot"}}</button>
-        <button type="submit" name="stage" value="discard" class="h-9 cursor-pointer rounded-xs border border-rule-strong px-4 font-semibold text-crimson-deep hover:border-crimson hover:bg-crimson-soft">{{t "Discard and reboot"}}</button>
-        {{else}}<div class="max-w-full">{{.Reboot}}</div>{{end}}
-        <span class="text-sm text-meta">{{t "Running for"}} {{.Uptime}}</span>
-        <p data-verso-reboot-error hidden role="alert" class="w-full {{template "verso-error-line"}}"></p>
-      </form>
+    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+      <h2 data-verso-section-band class="mb-5 text-base leading-tight font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
+      <div class="pt-3">
+        {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
+        <form method="post" action="/system/maintenance/restart" data-verso-reboot class="flex flex-wrap items-center gap-3">
+          {{template "verso-csrf" .CSRFToken}}
+          {{if .Staged}}
+          <button type="submit" name="stage" value="apply" class="h-9 cursor-pointer rounded-xs border px-4 font-semibold {{template "verso-btn-secondary"}}">{{t "Apply changes, then reboot"}}</button>
+          <button type="submit" name="stage" value="discard" class="h-9 cursor-pointer rounded-xs border border-rule-strong px-4 font-semibold text-crimson-deep hover:border-crimson hover:bg-crimson-soft">{{t "Discard and reboot"}}</button>
+          {{else}}<div class="max-w-full">{{.Reboot}}</div>{{end}}
+          <span class="text-sm text-meta">{{t "Running for"}} {{.Uptime}}</span>
+          <p data-verso-reboot-error hidden role="alert" class="w-full {{template "verso-error-line"}}"></p>
+        </form>
+      </div>
     </section>
-    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-6 border-t border-rule pt-6">
-      <h2 class="verso-section-heading mb-2 text-lg font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
-      <p class="mb-5 max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p>
+    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+      <div data-verso-section-band class="mb-5 flex-col gap-1">
+        <h2 class="w-full text-base leading-tight font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
+        <div class="w-full"><p data-verso-section-lede class="max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p></div>
+      </div>
       {{/* One field, one act, on one row a small step apart — the pattern a
            list's add row keeps: each control whole, its own corners and
            border. */}}
-      <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="flex flex-col gap-2">
+      <form method="post" action="/system/maintenance/factory-reset" data-verso-reset data-hostname="{{.Hostname}}" class="flex flex-col gap-2 pt-3">
         {{template "verso-csrf" .CSRFToken}}
         {{if .Hostname}}
         <label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label>

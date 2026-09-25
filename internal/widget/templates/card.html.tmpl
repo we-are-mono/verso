@@ -19,7 +19,7 @@
     {{if .Subtitle}}<p class="text-sm leading-6 text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
   {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-8 mb-2{{else}}mb-5{{end}}">
-    {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}verso-section-heading text-lg font-semibold tracking-tight{{end}} text-ink">{{.Title}}</h3>{{end}}
+    {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} text-ink">{{.Title}}</h3>{{end}}
     {{if .Subtitle}}<p class="mt-1 text-sm leading-snug text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
   <div class="space-y-5">{{range .Children}}{{.}}{{end}}</div>

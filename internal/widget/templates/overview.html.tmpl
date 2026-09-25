@@ -5,7 +5,7 @@
 
   <section aria-label="{{.ChartTitle}}" class="-mt-px border-t border-rule bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[20px_20px] bg-position-[-1px_-1px]">
     <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 xl:h-10 xl:py-0">
-      <h2 class="verso-section-heading text-lg font-semibold tracking-tight text-body">{{.ChartTitle}}</h2>
+      <h2 class="text-lg font-semibold tracking-tight text-body">{{.ChartTitle}}</h2>
       {{if .ChartMeta}}<span aria-hidden="true" class="text-faint">·</span><span class="font-mono text-base font-medium text-meta">{{.ChartMeta}}</span>{{end}}
       <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
         <span class="inline-flex items-baseline gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="min-w-12 text-right font-mono text-lg font-semibold" data-verso-traffic-down>{{.DownVal}}</span><span class="text-sm text-meta">{{ t "Mbit/s down" }}</span></span>

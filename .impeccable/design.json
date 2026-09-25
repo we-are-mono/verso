@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T11:24:07Z",
+  "generatedAt": "2026-09-25T14:22:49Z",
   "title": "Design System: Verso",
   "extensions": {
     "colorMeta": {
@@ -35,7 +35,8 @@
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "The home page's verdict heading only." },
       "headline": { "displayName": "Headline", "purpose": "Every page's h1, on a heading line always 36px tall." },
-      "title": { "displayName": "Title", "purpose": "Band and drawer titles, in Body ink on sand." },
+      "title": { "displayName": "Title", "purpose": "Table and drawer titles, and the overview's traffic graph title, in Body ink on sand." },
+      "section-heading": {"displayName": "Section heading", "purpose": "Full-section h2s in Quiet Sand bands, with their ledes inside the same surface."},
       "body": { "displayName": "Body", "purpose": "All prose, labels, buttons and cells." },
       "label": { "displayName": "Label", "purpose": "Kickers and column heads, uppercase in Meta." },
       "value": { "displayName": "Value", "purpose": "Machine strings in rows: addresses, interface names, MACs, versions." },
@@ -135,11 +136,12 @@
       "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 288px; padding: 28px 0; } .ds-rail-row { display: flex; align-items: center; gap: 12px; padding: 8px 24px; border-left: 2px solid transparent; color: #5c574f; font: 400 14px/20px 'Hanken Grotesk', system-ui, sans-serif; text-decoration: none; transition: padding .15s, color .15s, background-color .15s; } .ds-rail-row svg { color: #8b857a; } .ds-rail-row:hover { padding-left: 28px; background: rgba(236,232,224,.5); color: #1b1917; } .ds-rail-row[aria-current=page] { border-left-color: #1b1917; background: #f5f2ec; color: #1b1917; font-weight: 600; } .ds-rail-row[aria-current=page] svg { color: #1b1917; }"
     },
     {
-      "name": "Section Heading",
+      "name": "Section Band",
       "kind": "custom",
-      "description": "Full section headings carry a 6×6px square with 1px corners in Strong Hairline (rule-strong), one palette step darker than the section dividers and matching the homepage’s Connected marker size. It sits in the left gutter with an 8px gap before the words. The marker takes no layout space and is centered on the first line. Page titles and smaller subsection headings do not carry it.",
-      "html": "<div class=\"ds-section-example\"><h2 class=\"ds-section-heading\">Radios</h2></div>",
-      "css": ".ds-section-example { padding-inline-start: 14px; } .ds-section-heading { position: relative; margin: 0; color: var(--color-ink, #1b1917); font: 600 18px/1.25 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.025em; } .ds-section-heading::before { content: \"\"; position: absolute; inset-inline-start: -14px; top: calc(0.5lh - 3px); width: 6px; height: 6px; border-radius: 1px; background-color: var(--color-rule-strong, #d2ccc2); pointer-events: none; }"
+      "description": "Full-section h2s use a 16px semibold heading on Quiet Sand, matching active navigation. The band has no border or decorative marker, keeps 12px vertical padding with or without a lede, and grows with its contents. Its surface reaches the left frame edge while words stay aligned; drawer bands reach both edges with a 32px content inset.",
+      "html": "<div class=\"ds-section-example\"><div class=\"ds-section-band\"><h2 class=\"ds-section-heading\">Radios</h2></div><div class=\"ds-section-band\"><h2 class=\"ds-section-heading\">Web interface</h2><p class=\"ds-section-lede\">These settings control the router's uhttpd web server.</p></div></div>",
+      "css": ".ds-section-example { padding-inline-start: 40px; background: var(--color-ground, #faf9f7); } .ds-section-band { margin-inline-start: -40px; padding: 12px 0 12px 40px; border: 0; border-radius: 0; background: var(--color-quiet, #f5f2ec); } .ds-section-band + .ds-section-band { margin-block-start: 24px; } .ds-section-heading { margin: 0; color: var(--color-ink, #1b1917); font: 600 16px/1.25 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.025em; } .ds-section-lede { margin: 4px 0 0; max-width: 36rem; color: var(--color-body, #5c574f); font: 400 14px/1.375 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; }",
+      "refersTo": "section-band"
     }
   ],
   "narrative": {
@@ -150,7 +152,8 @@
       "One action colour (denim); four status hues used as marks, never as decoration.",
       "Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.",
       "Flat surfaces, hairline borders, 2px corners, 1px for marks.",
-      "A 40px page rhythm; 44px rows, 52px bands, 36px controls.",
+      "A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 12px vertical padding.",
+      "Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.",
       "A full-width sand control band is the seam between a page's heading and its content."
     ],
     "rules": [

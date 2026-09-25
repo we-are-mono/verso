@@ -2301,12 +2301,10 @@ func TestPluginActionRendersBesideTheHeading(t *testing.T) {
 	}
 }
 
-// TestEveryMastheadEndsAtOneDivider: every page's title (with its lede, when it
-// has one) stands 20px under the page's top edge and is divided from what
-// follows by one line, 20px under it. A page that opens on a control band lets
-// the band's own top edge be that line: the stylesheet folds the masthead's
-// rule away so the band stands the same 20px under the title.
-func TestEveryMastheadEndsAtOneDivider(t *testing.T) {
+// TestEveryMastheadHasNoDivider: every page's title, with or without a lede,
+// stands 20px under the page's top edge and has no dividing line. A page that
+// opens on a control band keeps the band's own top edge 20px under the title.
+func TestEveryMastheadHasNoDivider(t *testing.T) {
 	for _, sub := range []string{"The baseline every zone falls back to.", ""} {
 		tr := &fakeTransport{env: &plugin.Envelope{
 			SchemaVersion: 1, Status: http.StatusOK,
@@ -2319,8 +2317,8 @@ func TestEveryMastheadEndsAtOneDivider(t *testing.T) {
 		if !strings.Contains(body, `<div class="px-10 pt-5 pb-10">`) {
 			t.Errorf("lede %q: the title stands 20px under the page's top edge:\n%s", sub, body)
 		}
-		if !strings.Contains(body, `<div data-verso-rule data-verso-masthead class="mb-6 border-b border-rule pb-5">`) {
-			t.Errorf("lede %q: the title is ruled off 20px under it:\n%s", sub, body)
+		if !strings.Contains(body, `<div data-verso-masthead class="pb-5">`) {
+			t.Errorf("lede %q: the title keeps its spacing without a divider:\n%s", sub, body)
 		}
 		if strings.Contains(body, `<div class="mb-5">`) {
 			t.Errorf("lede %q: no title keeps the 20px standoff", sub)
@@ -2330,8 +2328,8 @@ func TestEveryMastheadEndsAtOneDivider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead] {\n    border-bottom-width: 0;\n    padding-bottom: 0;\n    margin-bottom: calc(var(--spacing) * 5);") {
-		t.Error("a page opening on a control band lets the band's edge, 20px under the title, be the title's line")
+	if !strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead] {\n    padding-bottom: 0;\n    margin-bottom: calc(var(--spacing) * 5);") {
+		t.Error("a page opening on a control band keeps the band's edge 20px under the title")
 	}
 }
 
