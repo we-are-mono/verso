@@ -66,6 +66,12 @@ type Overview struct {
 
 	// SecurityHref is resolved from the live plugin registry, not a guessed URL.
 	SecurityHref string
+	// FirewallState comes from fw4's loaded kernel table, not its configuration.
+	// Empty means the runtime read failed. The count uses the same UCI rule
+	// sections as the Firewall page, including disabled and staged rules.
+	FirewallState      string
+	FirewallRules      int
+	FirewallRulesKnown bool
 }
 
 // OverviewInterface is one kernel interface enriched with runtime topology and

@@ -21,7 +21,7 @@
 
   <div class="mt-8 grid grid-cols-1 border-y border-rule sm:grid-cols-2 {{if eq (len .Tiles) 5}}xl:grid-cols-5{{else if eq (len .Tiles) 3}}xl:grid-cols-3{{else}}xl:grid-cols-4{{end}}">
     {{range .Tiles}}
-    {{if .Href}}<a href="{{.Href}}"{{else}}<div{{end}} data-overview-tile="{{.ID}}" data-tone="{{.Variant}}" class="group relative flex min-w-0 flex-col gap-2.5 border-t border-rule px-4 py-5.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-0 xl:last:border-r-0 xl:last:pr-0{{if .Href}} transition-colors hover:bg-quiet/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}">
+    {{if .Href}}<a href="{{.Href}}"{{else}}<div{{end}} data-overview-tile="{{.ID}}" data-tone="{{.Variant}}" class="group relative flex min-w-0 flex-col gap-2.5 border-t border-rule px-4 py-5.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4{{if .Href}} transition-colors hover:bg-quiet/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span>
         <span class="shrink-0 text-faint" aria-hidden="true">{{icon .Icon "size-4"}}</span>
@@ -38,7 +38,7 @@
   {{if .Facts}}
   <div class="grid grid-cols-1 divide-y divide-rule border-b border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
     {{range .Facts}}
-    <section aria-label="{{.Kind}}" class="min-w-0 py-6 {{if eq .Side "left"}}xl:pr-11{{else}}xl:pl-11{{end}}">
+    <section aria-label="{{.Kind}}" class="min-w-0 py-6 {{if eq .Side "left"}}xl:pr-6{{else}}xl:pl-6{{end}}">
       <div class="flex min-h-7 items-center gap-3 pb-3">
         <h2 class="text-sm font-semibold text-ink">{{.Kind}}</h2>
         {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}

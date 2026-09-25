@@ -39,7 +39,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
-	liveOverview := &widget.Overview{}
+	liveOverview := &widget.Overview{SecurityHref: s.navLabelHref("Firewall")}
 	meters := time.NewTicker(s.eventInterval)
 	defer meters.Stop()
 
@@ -135,6 +135,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		return err == nil
 	}
 	sendOverview := func() bool {
+		s.applyFirewallStatus(r.Context(), sid, liveOverview)
 		payload, err := json.Marshal(liveOverview.LiveStatus(tr))
 		if err != nil {
 			return false

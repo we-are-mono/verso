@@ -45,6 +45,20 @@ func (o *Overview) firewallTile(tr func(string) string) ohTile {
 	if tile.Href != "" {
 		tile.Caption = tr("Review firewall settings")
 	}
+	switch o.FirewallState {
+	case "active":
+		tile.Status, tile.Variant = tr("Active"), "success"
+		tile.Caption = tr("Ruleset loaded")
+		if o.FirewallRulesKnown {
+			tile.Caption = overviewCount(tr, o.FirewallRules, "%d configured rule", "%d configured rules (two)", "%d configured rules (few)", "%d configured rules")
+		}
+	case "inactive":
+		tile.Status, tile.Variant = tr("Inactive"), "danger"
+		tile.Caption = tr("Firewall is not running")
+	case "partial":
+		tile.Status, tile.Variant = tr("Incomplete"), "warning"
+		tile.Caption = tr("Some filter chains are missing")
+	}
 	return tile
 }
 
@@ -158,6 +172,9 @@ func (o *Overview) masthead(tr func(string) string) overviewMastheadView {
 		return v
 	}
 	issues := 0
+	if o.FirewallState == "inactive" || o.FirewallState == "partial" {
+		issues++
+	}
 	for _, n := range o.Interfaces {
 		if (n.Physical || n.Kind == "tunnel") && (n.State == "down" || n.State == "lowerlayerdown") {
 			issues++
@@ -206,7 +223,7 @@ type overviewTileStatus struct {
 func (o *Overview) LiveStatus(tr func(string) string) OverviewStatus {
 	v := o.masthead(tr)
 	status := OverviewStatus{Kicker: v.Kicker, Lead: v.Lead, Accent: v.Accent, Tail: v.Tail, Tone: v.Tone}
-	for _, tile := range []ohTile{o.internetTile(tr), o.tunnelTile(tr), o.interfacesTile(tr)} {
+	for _, tile := range []ohTile{o.internetTile(tr), o.firewallTile(tr), o.tunnelTile(tr), o.interfacesTile(tr)} {
 		status.Tiles = append(status.Tiles, overviewTileStatus{ID: tile.ID, Tone: tile.Variant, Status: tile.Status, Caption: tile.Caption, Identity: tile.Identity})
 	}
 	return status

@@ -953,6 +953,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Resolve each domain by its registered navigation entry, leaving a tile
 	// unlinked while no running plugin serves its destination.
 	ov.SecurityHref = s.navLabelHref("Firewall")
+	s.applyFirewallStatus(r.Context(), sid, ov)
 	ov.TunnelsHref = s.navLabelHref("Tunnels")
 	ov.InterfacesHref = s.navLabelHref("Interfaces")
 

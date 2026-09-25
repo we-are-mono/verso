@@ -100,7 +100,7 @@ func TestOverviewStatusFollowsReadings(t *testing.T) {
 	}
 	o.Interfaces[1].State = "down"
 	status = o.LiveStatus(tr)
-	if status.Tone != "warning" || status.Kicker != "1 needs attention" || status.Tiles[1].Tone != "danger" {
+	if status.Tone != "warning" || status.Kicker != "1 needs attention" || status.Tiles[2].Tone != "danger" {
 		t.Fatalf("tunnel down = %+v", status)
 	}
 	o.Interfaces[1].State = "up"
@@ -140,5 +140,38 @@ func TestOverviewCountGrammarAndFallback(t *testing.T) {
 		if got := interfaceCount(tr, tc.n); got != tc.sl {
 			t.Errorf("sl(%d)=%q", tc.n, got)
 		}
+	}
+}
+
+func TestOverviewFirewallPageAndLiveStates(t *testing.T) {
+	tr := func(s string) string { return s }
+	for _, tc := range []struct {
+		state, status, tone, caption, verdict string
+		rules                                 int
+	}{
+		{"", "Status unavailable", "neutral", "Review firewall settings", "success", 0},
+		{"active", "Active", "success", "1 configured rule", "success", 1},
+		{"active", "Active", "success", "53 configured rules", "success", 53},
+		{"inactive", "Inactive", "danger", "Firewall is not running", "warning", 0},
+		{"partial", "Incomplete", "warning", "Some filter chains are missing", "warning", 12},
+	} {
+		t.Run(tc.status+tc.caption, func(t *testing.T) {
+			o := &Overview{WANKnown: true, WANUp: true, SecurityHref: "/plugins/firewall/", FirewallState: tc.state, FirewallRules: tc.rules, FirewallRulesKnown: true}
+			tile := o.firewallTile(tr)
+			if tile.Status != tc.status || tile.Variant != tc.tone || tile.Caption != tc.caption {
+				t.Fatalf("tile = %+v", tile)
+			}
+			page := render(t, newRenderer(t), o)
+			if !strings.Contains(page, tc.status) || !strings.Contains(page, tc.caption) {
+				t.Fatalf("page missing firewall reading %s / %s", tc.status, tc.caption)
+			}
+			live := o.LiveStatus(tr)
+			if len(live.Tiles) != 4 || live.Tiles[1].ID != "firewall" || live.Tiles[1].Status != tile.Status || live.Tiles[1].Tone != tile.Variant || live.Tiles[1].Caption != tile.Caption {
+				t.Fatalf("live reading differs from first paint: %+v", live)
+			}
+			if live.Tone != tc.verdict {
+				t.Fatalf("verdict = %s, want %s", live.Tone, tc.verdict)
+			}
+		})
 	}
 }

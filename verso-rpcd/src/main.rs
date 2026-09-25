@@ -440,6 +440,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
         "firewallCounters" => firewall_counters(),
+        "firewallStatus" => firewall_status(),
         "firewallLog" => state.firewall_log.read(&request["args"]),
         "createBackup" | "restoreBackup" | "validateFirmware" | "installFirmware" => {
             let path = argument(request, "path")?;
@@ -495,6 +496,18 @@ fn firewall_counters() -> Result<Value, Failure> {
         return Err(command_failure("list firewall counters", output));
     }
     firewall::counters(&output.stdout).map_err(Failure::unknown)
+}
+
+fn firewall_status() -> Result<Value, Failure> {
+    let mut command = Command::new("/usr/sbin/nft");
+    // Omit set elements: the overview needs the loaded chains and rule count,
+    // not potentially large blocklists. A missing fw4 table is a valid reading.
+    command.args(["-j", "-t", "list", "ruleset", "inet"]);
+    let output = run_bounded(command, "read firewall status", 4 * 1024 * 1024)?;
+    if !output.status.success() {
+        return Err(command_failure("read firewall status", output));
+    }
+    firewall::status(&output.stdout).map_err(Failure::unknown)
 }
 
 // firmware_check asks owut whether the device's attended-sysupgrade server can
@@ -1231,6 +1244,7 @@ mod tests {
         "pkgRemove",
         "rootHasPassword",
         "firewallCounters",
+        "firewallStatus",
         "firewallLog",
         "createBackup",
         "restoreBackup",

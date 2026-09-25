@@ -202,6 +202,9 @@ type Backend interface {
 	// raw JSON: the shell brokers it to a declaring plugin (ADR-007) and the plugin,
 	// not the shell, owns what a firewall counter means.
 	FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error)
+	// FirewallStatus reports fw4's loaded kernel state, independently of staged
+	// configuration or whether its settings plugin is available.
+	FirewallStatus(ctx context.Context, sid string) (FirewallStatus, error)
 	// LogRead reads the tail of the device's log ring through logd's `log`
 	// object, sid-gated like the other live reads. lines bounds the tail; the
 	// records come back oldest-first, each carrying the monotonic id a reader
@@ -531,6 +534,7 @@ type NativeBackend struct {
 	wanStatus      wanStatusFn
 	deviceStats    deviceStatsFn
 	fwCounters     fwCountersFn
+	fwStatus       firewallStatusFn
 	firewallLog    firewallLogFn
 	logRead        logReadFn
 	netIfaces      netIfacesFn
@@ -590,6 +594,7 @@ func NewNativeBackend() *NativeBackend {
 		wanStatus:      dialWANStatus(""),
 		deviceStats:    dialDeviceStats(""),
 		fwCounters:     dialFirewallCounters(""),
+		fwStatus:       dialFirewallStatus(""),
 		firewallLog:    dialFirewallLog(""),
 		logRead:        dialLogRead(""),
 		netIfaces:      dialNetworkInterfaces(""),

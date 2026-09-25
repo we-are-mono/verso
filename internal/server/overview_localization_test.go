@@ -27,6 +27,11 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 		t.Fatal(problems)
 	}
 	backend := metersBackend()
+	backend.fwStatus = openwrt.FirewallStatus{State: "active", Rules: 53}
+	backend.uci = map[string]map[string]any{"firewall": {
+		"one": map[string]any{".type": "rule"},
+		"two": map[string]any{".type": "rule", "enabled": "0"},
+	}}
 	backend.wan = openwrt.WANState{Devices: []openwrt.WANDevice{{Device: "wan-live", Uptime: 8040, Routes: []openwrt.WANRoute{{Family: 4, Table: 254, Main: true}}}}}
 	backend.wanConn = openwrt.WANConn{V4Proto: "DHCP", V4Addr: "192.0.2.1/24", V4Gateway: "192.0.2.254", V6Proto: "DHCPv6 client", V6Prefix: "2001:db8::/56", V6Valid: 480}
 	srv := newServer(t, backend)
@@ -34,6 +39,9 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	srv.stats = fakeStats{cpu: 91, root: sysstat.Storage{Used: 95, Free: 5}}
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: uint64(time.Now().UnixMilli()), Interfaces: []telemetry.Interface{{Name: "eth0", Physical: true, Kind: "port", Operstate: "down"}, {Name: "wg0", Kind: "tunnel", Operstate: "unknown"}}}}
 	body := getLang(t, srv, "/", "sl-SI")
+	if !strings.Contains(body, "Aktiven") || !strings.Contains(body, "2 nastavljeni pravili") {
+		t.Error("firewall first paint is not translated")
+	}
 	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Požarni zid", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mbit/s prejem", "Mbit/s oddaja", "pred 60 s", "že 2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Slovenian overview missing %q", want)
@@ -93,6 +101,9 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			}
 			if status.Lead != "Vaše omrežje zahteva pozornost" || status.Tone != "warning" {
 				t.Errorf("stream verdict=%+v", status)
+			}
+			if len(status.Tiles) != 4 || status.Tiles[1].ID != "firewall" || status.Tiles[1].Status != "Aktiven" || status.Tiles[1].Caption != "2 nastavljeni pravili" {
+				t.Errorf("untranslated firewall reading: %+v", status.Tiles)
 			}
 			for _, required := range []string{"clock", "meters", "interfaces", "wan"} {
 				if !seen[required] {

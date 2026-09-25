@@ -20,8 +20,8 @@
       {{range .Metrics}}<div class="min-w-0 border-t border-rule px-4 pt-5.5 pb-6.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4">{{.}}</div>{{else}}<p class="px-4 py-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
     </div>
     <div class="grid grid-cols-1 divide-y divide-rule border-y border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-      <div class="min-w-0 px-4 py-2 xl:pr-10">{{.SysLeft}}</div>
-      <div class="min-w-0 px-4 py-2 xl:pl-10">{{.SysRight}}</div>
+      <div class="min-w-0 px-4 py-2 xl:pr-6">{{.SysLeft}}</div>
+      <div class="min-w-0 px-4 py-2 xl:pl-6">{{.SysRight}}</div>
     </div>
   </section>
 

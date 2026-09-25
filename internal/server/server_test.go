@@ -106,8 +106,10 @@ type fakeBackend struct {
 	devErr   error
 	// The helper's brokered firewall read (ADR-007): the canned counters payload the
 	// shell forwards to a declaring plugin, and the failure that degrades it away.
-	fwCounters json.RawMessage
-	fwErr      error
+	fwCounters  json.RawMessage
+	fwErr       error
+	fwStatus    openwrt.FirewallStatus
+	fwStatusErr error
 	// The device's log ring and netifd's logical/device join — what the live
 	// activity stream reads. logEntries is served whole, filtered by the caller's
 	// cursor; logReads counts the polls (pointer: fakeBackend is used by value).
@@ -408,6 +410,10 @@ func (f fakeBackend) Restart(ctx context.Context, sid string) error {
 
 func (f fakeBackend) FirewallCounters(context.Context, string) (json.RawMessage, error) {
 	return f.fwCounters, f.fwErr
+}
+
+func (f fakeBackend) FirewallStatus(context.Context, string) (openwrt.FirewallStatus, error) {
+	return f.fwStatus, f.fwStatusErr
 }
 
 func (f fakeBackend) LogRead(context.Context, string, int) ([]openwrt.LogEntry, error) {
