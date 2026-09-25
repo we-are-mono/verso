@@ -275,13 +275,14 @@ func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, acti
 
 // entityPanelData is the panel's render model.
 type entityPanelData struct {
-	Kind  string
-	ID    string
-	Title string
-	Tabs  []entityTabView
-	Body  template.HTML
-	CTA   string
-	Note  string
+	JoinsCode bool
+	Kind      string
+	ID        string
+	Title     string
+	Tabs      []entityTabView
+	Body      template.HTML
+	CTA       string
+	Note      string
 	// Post is where the commit row's verb submits: the tab in force, on the
 	// panel's own route. The row is the panel's frame rather than part of the
 	// plugin's form, so it carries the route itself.
@@ -382,6 +383,7 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 			continue
 		}
 		data.Body, data.CTA, data.Note, data.Post = template.HTML(body.String()), tab.CTA, tab.Note, tab.Href
+		data.JoinsCode = widget.EndsWithCode(tab.Body)
 	}
 	return data, nil
 }

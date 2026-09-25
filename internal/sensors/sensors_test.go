@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 	"testing/fstest"
+
+	"github.com/we-are-mono/verso/profiles"
 )
 
 // --- profile parsing -------------------------------------------------------
@@ -17,7 +19,7 @@ func TestLoadProfile(t *testing.T) {
 	  "id": "mono,gateway-dk",
 	  "name": "Mono Gateway Development Kit",
 	  "ports": ["eth1", "eth0"],
-	  "fans": [ { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1" } ],
+	  "fans": [ { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1", "main": true } ],
 	  "power": [
 	    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery" },
 	    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU", "main": true }
@@ -45,6 +47,9 @@ func TestLoadProfile(t *testing.T) {
 	if p.Power[0].Main {
 		t.Fatal("non-main rail flagged main")
 	}
+	if !p.Fans[0].Main {
+		t.Fatal("primary fan flag not loaded")
+	}
 	cpu := p.Thermal[0]
 	if cpu.Path != "cluster-thermal" || !cpu.CPU {
 		t.Fatalf("cpu thermal entry wrong: %+v", cpu)
@@ -58,13 +63,13 @@ func TestLoadProfile(t *testing.T) {
 
 func TestResolveProfiled(t *testing.T) {
 	root := t.TempDir()
-	// Thermal zones — the CPU site plus a second zone for the count.
+	// Thermal zones — the profile's CPU pick beats a hotter unrelated zone.
 	zone(t, root, 0, "cluster-thermal", 52000, [][2]string{{"passive", "85000"}, {"critical", "95000"}})
-	zone(t, root, 1, "ddr-thermal", 48000, nil)
-	// emc2305 fan controller: fan1 running, fan2 header empty.
+	zone(t, root, 1, "ddr-thermal", 68000, nil)
+	// The primary fan must win even when another fan runs faster.
 	dt := hwmon(t, root, 0, "emc2305", "soc/i2c@2180000/i2c-mux@70/i2c@3/fan-controller@2e")
 	write(t, filepath.Join(dt, "fan1_input"), "3630")
-	write(t, filepath.Join(dt, "fan2_input"), "0")
+	write(t, filepath.Join(dt, "fan2_input"), "5200")
 	// Two INA power rails; @41 is the 5V main.
 	main := hwmon(t, root, 1, "ina234", "soc/i2c@2180000/i2c-mux@70/i2c@0/power_sensor@41")
 	write(t, filepath.Join(main, "power1_input"), "12400000") // 12.4 W
@@ -72,7 +77,7 @@ func TestResolveProfiled(t *testing.T) {
 	write(t, filepath.Join(aux, "power1_input"), "800000")
 
 	p := &Profile{
-		Fans:    []Entry{{Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@0", Name: "System Fan 1"}, {Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@1", Name: "System Fan 2"}},
+		Fans:    []Entry{{Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@0", Name: "System Fan 1", Main: true}, {Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@1", Name: "System Fan 2"}},
 		Power:   []Entry{{Path: "i2c-mux@70/i2c@0/power_sensor@41", Name: "5V PSU", Main: true}, {Path: "i2c-mux@70/i2c@0/power_sensor@42", Name: "1V"}},
 		Thermal: []Entry{{Path: "cluster-thermal", Name: "cluster", CPU: true}},
 	}
@@ -84,14 +89,11 @@ func TestResolveProfiled(t *testing.T) {
 	if f.CPUTemp.Status != "Normal" || f.CPUTemp.Level != "success" {
 		t.Fatalf("cpu status: %+v", f.CPUTemp)
 	}
-	if f.Fan == nil || f.Fan.RPM != 3630 { // the running channel, not the empty header
+	if f.Fan == nil || f.Fan.RPM != 3630 { // the primary channel, not the fastest
 		t.Fatalf("fan: %+v", f.Fan)
 	}
 	if f.Power == nil || f.Power.MicroW != 12400000 { // the main rail, not summed
 		t.Fatalf("power: %+v", f.Power)
-	}
-	if f.PowerCount != 2 || f.ThermalCount != 2 {
-		t.Fatalf("counts: power=%d thermal=%d", f.PowerCount, f.ThermalCount)
 	}
 }
 
@@ -121,11 +123,83 @@ func TestResolveGeneric(t *testing.T) {
 	if f.CPUTemp == nil || f.CPUTemp.MilliC != 45000 {
 		t.Fatalf("generic cpu temp: %+v", f.CPUTemp)
 	}
-	if f.Fan == nil || f.Fan.RPM != 900 {
-		t.Fatalf("generic fan: %+v", f.Fan)
+	if f.Fan != nil {
+		t.Fatalf("generic fan must not be selected without a profile: %+v", f.Fan)
 	}
 	if f.Power != nil {
-		t.Fatalf("generic power must hide, got %+v", f.Power)
+		t.Fatalf("generic power must remain unavailable, got %+v", f.Power)
+	}
+}
+
+func TestResolvePrimaryMissingAndTemperatureFallback(t *testing.T) {
+	root := t.TempDir()
+	zone(t, root, 0, "cpu-thermal", 47000, nil)
+	fan := hwmon(t, root, 0, "emc2305", "board/fan-controller@2e")
+	write(t, filepath.Join(fan, "fan2_input"), "5200")
+	rail := hwmon(t, root, 1, "ina234", "board/power_sensor@41")
+	write(t, filepath.Join(rail, "power1_input"), "800000")
+	for _, tc := range []struct {
+		name    string
+		profile *Profile
+	}{
+		{"no profile", nil},
+		{"empty profile", &Profile{}},
+		{"unmarked sensors", &Profile{
+			Fans:    []Entry{{Path: "board/fan-controller@2e/fan@1"}},
+			Power:   []Entry{{Path: "board/power_sensor@41"}},
+			Thermal: []Entry{{Path: "cpu-thermal"}},
+		}},
+		{"missing primary sensors", &Profile{
+			Fans:    []Entry{{Path: "board/fan-controller@2e/fan@0", Main: true}, {Path: "board/fan-controller@2e/fan@1"}},
+			Power:   []Entry{{Path: "board/power_sensor@40", Main: true}, {Path: "board/power_sensor@41"}},
+			Thermal: []Entry{{Path: "missing-thermal", CPU: true}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := Resolve(tc.profile, &Reader{Root: filepath.Join(root, "sys")})
+			if f.CPUTemp == nil || f.CPUTemp.MilliC != 47000 {
+				t.Fatalf("generic temperature fallback: %+v", f.CPUTemp)
+			}
+			if f.Fan != nil || f.Power != nil {
+				t.Fatalf("unselected fan/power must be unavailable: %+v", f)
+			}
+		})
+	}
+}
+
+func TestResolveGatewayReadFailuresAndZero(t *testing.T) {
+	p, ok := LoadProfile(profiles.FS, "mono,gateway-dk")
+	if !ok {
+		t.Fatal("Gateway profile missing")
+	}
+	root := t.TempDir()
+	zone(t, root, 0, "cluster-thermal", 52000, nil)
+	ct := hwmon(t, root, 0, "coretemp", "")
+	write(t, filepath.Join(ct, "temp1_input"), "45000")
+	fan := hwmon(t, root, 1, "emc2305", "board/i2c-mux@70/i2c@3/fan-controller@2e")
+	write(t, filepath.Join(fan, "fan1_input"), "3630")
+	write(t, filepath.Join(fan, "fan2_input"), "5200")
+	power := hwmon(t, root, 2, "ina234", "board/i2c-mux@70/i2c@0/power_sensor@40")
+	write(t, filepath.Join(power, "power1_input"), "12400000")
+	reader := &Reader{Root: filepath.Join(root, "sys")}
+	f := Resolve(p, reader)
+	if f.CPUTemp == nil || f.CPUTemp.MilliC != 52000 || f.Fan == nil || f.Fan.RPM != 3630 || f.Power == nil || f.Power.MicroW != 12400000 {
+		t.Fatalf("Gateway primary selections: %+v", f)
+	}
+	// Failed sysfs reads must not turn into a healthy zero. CPU falls back;
+	// the other two stay unavailable rather than substituting another channel.
+	write(t, filepath.Join(root, "sys/class/thermal/thermal_zone0/temp"), "unreadable")
+	write(t, filepath.Join(fan, "fan1_input"), "unreadable")
+	write(t, filepath.Join(power, "power1_input"), "unreadable")
+	f = Resolve(p, reader)
+	if f.CPUTemp == nil || f.CPUTemp.MilliC != 45000 || f.Fan != nil || f.Power != nil {
+		t.Fatalf("failed primary readings: %+v", f)
+	}
+	write(t, filepath.Join(fan, "fan1_input"), "0")
+	write(t, filepath.Join(power, "power1_input"), "0")
+	f = Resolve(p, reader)
+	if f.Fan == nil || f.Fan.RPM != 0 || f.Power == nil || f.Power.MicroW != 0 {
+		t.Fatalf("valid zero readings must remain available: %+v", f)
 	}
 }
 

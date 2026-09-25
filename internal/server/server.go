@@ -701,6 +701,7 @@ func jsCatalog(tr func(string) string) template.JS {
 		// What a keyboard reorder says once the row has moved, and what a copy
 		// button says once the value is on the clipboard.
 		"Moved to position %d of %d", "Copied",
+		"Couldn’t copy. Select the text and copy it manually.",
 		// A file uploading from its dialog: how far along, and what to do when
 		// the upload stops.
 		"Uploading…", "%s of %s MB", "The upload stopped. Check the connection, then choose the file again.",

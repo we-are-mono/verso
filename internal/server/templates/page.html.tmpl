@@ -202,14 +202,11 @@
         {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden [--fact:2] xl:inline">{{.Target}}</span>{{end}}
       </p>
       <span class="verso-colophon-fact shrink-0 [--fact:3]">Verso {{.Verso}}</span>
-      <button type="button" @click="run" aria-label="{{ t "Copy for a bug report" }}" class="group/copy relative grid {{template "verso-btn-icon"}}">
+      <button type="button" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy for a bug report" }}" class="group/copy relative grid {{template "verso-btn-icon"}}">
         <span x-ref="src" class="hidden">{{.Report}}</span>
         <span x-show="idle">{{icon "copy" "size-4"}}</span>
         <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
-        <span class="{{template "verso-tip-class"}} font-sans group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
-          <span x-show="idle">{{ t "Copy for a bug report" }}</span>
-          <span x-show="done" x-cloak>{{ t "Copied" }}</span>
-        </span>
+        <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy for a bug report"}}</span>
       </button>
     </div>
   </footer>

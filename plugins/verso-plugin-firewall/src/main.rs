@@ -96,22 +96,23 @@ fn post(request: &Request, form: &Form) -> Envelope {
             let (envelope, ops) = settings::save(&mut model, form);
             envelope.with_commit(ops)
         }
-        // A rule and a zone are made, changed and removed in the panel beside
-        // their listing, at the listing's own address, and the panel's forms say
-        // so with their marker. The address cannot tell the two apart: an open
-        // panel puts its name in the address, and a row's power act posts to that
-        // address too — read by the address, the act arrived as the panel's form
-        // and wrote a rule stripped of everything but its switch. Anything on a
-        // listing that does not say it is the panel's is a switch someone flipped
-        // where they stand.
-        Route::Listing(Listing::Rules) if fields::from_panel(form) => rules::save(
-            &request.snapshot,
-            &mut model,
-            &counters,
-            &request.query,
-            form,
-        ),
-        Route::Listing(Listing::Zones) if fields::from_panel(form) => {
+        // Editing and confirmed removal carry explicit markers. A power act
+        // posts to this same address, even while an editor is open, so the
+        // query alone must never turn a row action into a form submission.
+        Route::Listing(Listing::Rules)
+            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+        {
+            rules::save(
+                &request.snapshot,
+                &mut model,
+                &counters,
+                &request.query,
+                form,
+            )
+        }
+        Route::Listing(Listing::Zones)
+            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+        {
             zones::save(&request.snapshot, &mut model, &request.query, form)
         }
         Route::Listing(listing) => flip(&request.snapshot, &mut model, &counters, listing, form),
@@ -344,6 +345,30 @@ mod tests {
     fn answer_asking(path: &str, query: &str, body: &str) -> Value {
         let envelope = post(&asking(path, query), &Form::parse(body));
         serde_json::to_value(&envelope).expect("serialize")
+    }
+
+    #[test]
+    fn a_row_removal_names_its_subject_independently_of_the_open_editor() {
+        for (path, section) in [("/", "allow_ping"), ("/zones", "guest_zone")] {
+            for query in ["", "open=new", "open=elsewhere"] {
+                let body = answer_asking(path, query, &format!("_remove={section}"));
+                assert_eq!(
+                    body["commit"],
+                    json!([{"config":"firewall", "section":section, "delete":true}])
+                );
+            }
+            for missing in ["missing", "new"] {
+                let body = answer_asking(
+                    path,
+                    &format!("open={section}"),
+                    &format!("_remove={missing}"),
+                );
+                assert!(
+                    body.get("commit").is_none(),
+                    "a stale removal must stage nothing: {body}"
+                );
+            }
+        }
     }
 
     /// Each listing page IS its grid, so a test names the listing it expects by

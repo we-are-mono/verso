@@ -62,12 +62,12 @@ searching, no label-matching, no traversal — the key *is* the location.
   "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
 
   "fans": [
-    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1" },
+    { "i2c-mux@70/i2c@3/fan-controller@2e/fan@0": "System Fan 1", "main": true },
     { "i2c-mux@70/i2c@3/fan-controller@2e/fan@1": "System Fan 2" }
   ],
 
   "power": [
-    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU", "main": true },
+    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery", "main": true },
     { "i2c-mux@70/i2c@0/power_sensor@42": "1V Core PSU" }
   ],
 
@@ -126,13 +126,23 @@ The uniform JSON hides four small mechanics — the resolver picks by kind:
 
 ### Flags pick the home-dashboard headlines
 
-Everything in the arrays shows in the **Sensors view**, in array order. Two optional
+Everything in the arrays shows in the **Sensors view**, in array order. Optional
 flags lift one entry each onto the **calm home dashboard**:
 
 - **`"cpu": true`** on a thermal entry → *the* CPU temperature.
+- **`"main": true`** on a fan entry → the primary fan's speed, even when another
+  channel spins faster.
 - **`"main": true`** on a power entry → *the* headline power figure. Use the board
   **input** rail: downstream regulators (Core/DDR/…) are fed from it, so summing all
   rails would double-count.
+
+The homepage always shows **CPU Temperature**, **Fan speed**, and **Power draw**.
+If the profile has no readable CPU pick, temperature falls back to the system's
+CPU thermal zone or standard CPU hwmon reading, then its hottest thermal zone.
+Fan speed and power draw require a readable entry marked `main`: without a
+matching profile, primary entry, or reading, they show **N/A**. Temperature also
+shows **N/A** when no system reading is available. Missing readings stay N/A in
+live updates; a valid zero remains a measured zero.
 
 There is no separate overrides block — the arrays *are* the labels, the order, and
 the visibility. To hide a reading from the Sensors view, leave it out of the array.

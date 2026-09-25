@@ -13,7 +13,8 @@ func TestRenderOverview(t *testing.T) {
 		WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min",
 		InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 9,
 		SecurityHref: "/plugins/firewall/", Model: "Mono Gateway Development Kit",
-		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6 d 04:00",
+		TunnelsHref: "/plugins/wireguard/",
+		Firmware:    "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6 d 04:00",
 		Clock: "14:52:07", Zone: "CEST",
 		Temperature: "52 °C", TempDot: "success", Fan: "3630 rpm", Power: "12.4 W",
 		V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
@@ -29,9 +30,9 @@ func TestRenderOverview(t *testing.T) {
 		"Firewall", `href="/plugins/firewall/"`, "Tunnels", "All ports linked", "2 interfaces", "9 devices connected",
 		"IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
 		"Internet traffic", "Mbit/s down", "Mbit/s up", "verso-chart-area", "verso-chart--emerald", `data-chart-padding="0"`,
-		`id="overview-tunnels"`, "wg-home", "WireGuard", "10.200.0.1/24",
+		`href="/plugins/wireguard/"`,
 		"System", "CPU", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "OpenWrt 25.12.4", "Linux 6.12.101",
-		"14:52:07", "CEST", "6 d 04:00", "52 °C", "3630 rpm", "12.4 W",
+		"14:52:07", "CEST", "6 d 04:00", "CPU Temperature", "Fan speed", "Power draw", "52 °C", "3630 rpm", "12.4 W",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)
@@ -43,6 +44,9 @@ func TestRenderOverview(t *testing.T) {
 	if strings.Contains(got, `id="overview-interfaces"`) || strings.Contains(got, "<table") {
 		t.Error("the homepage must not render an interface inventory")
 	}
+	if strings.Contains(got, "overview-tunnels") || strings.Contains(got, "overview-system-title") {
+		t.Error("the homepage must not render the tunnel inventory or System header")
+	}
 	if strings.Contains(got, "Protected") {
 		t.Error("an answering plugin is not proof the firewall protects the network")
 	}
@@ -51,12 +55,12 @@ func TestRenderOverview(t *testing.T) {
 func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 	r := newRenderer(t)
 	bare := render(t, r, &Overview{})
-	for _, want := range []string{"Status unavailable", "Tunnel status unavailable", "none reported", "System readings unavailable"} {
+	for _, want := range []string{"Status unavailable", "Unavailable", "N/A", "CPU Temperature", "Fan speed", "Power draw", "System readings unavailable"} {
 		if !strings.Contains(bare, want) {
 			t.Errorf("missing fallback %q", want)
 		}
 	}
-	for _, falseClaim := range []string{"healthy", "All ports linked", "All interfaces up", "Power draw", "Both bands active"} {
+	for _, falseClaim := range []string{"healthy", "All ports linked", "All interfaces up", "Both bands active"} {
 		if strings.Contains(bare, falseClaim) {
 			t.Errorf("unknown router claims %q", falseClaim)
 		}

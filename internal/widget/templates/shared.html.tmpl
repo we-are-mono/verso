@@ -246,6 +246,15 @@
      is hovered or focused; the caller supplies those variants. */}}
 {{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity{{end}}
 
+{{/* Copy feedback is prose, even beside a machine value. A refused copy keeps
+     its explanation visible briefly, including after a touch activation. */}}
+{{define "verso-copy-tip-class"}}{{template "verso-tip-class"}} font-sans group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100 group-data-[copy-failed=true]/copy:opacity-100{{end}}
+{{define "verso-copy-label"}}
+  <span x-show="ready">{{t .}}</span>
+  <span x-show="done" x-cloak>{{t "Copied"}}</span>
+  <span x-show="failed" x-cloak>{{t "Couldn’t copy"}}</span>
+{{end}}
+
 {{/* verso-tip-wide: the tooltip that carries a sentence rather than a word —
      a form label explaining what the thing it names actually is. The narrow tip
      above states a control's name and so can sit on one line; this one wraps at
@@ -429,7 +438,7 @@
       {{/* A panel that answered its own submission leads with how it went,
            where the page's flash slot would have said it: the page is not
            being drawn around this, so the panel says it itself. */}}
-      <div data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-8 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}px-8 pt-7 pb-8{{end}} [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-8 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}px-8 pt-7 pb-8{{end}} [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
         {{template "verso-flash" .Flash}}
         {{range .Body}}{{.}}{{end}}
       </div>

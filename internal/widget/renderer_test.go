@@ -104,7 +104,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section><div class="mb-5"><h3 class="text-lg font-semibold tracking-tight text-ink">empty</h3></div><div class="space-y-5"></div></section>`
+	want := `<section><div class="mb-5"><h3 class="verso-section-heading text-lg font-semibold tracking-tight text-ink">empty</h3></div><div class="space-y-5"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -113,7 +113,7 @@ func TestRenderCardChrome(t *testing.T) {
 func TestRenderCardSubtitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
-	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight text-ink">Your gateway</h3>`) {
+	if !strings.Contains(got, `<h3 class="verso-section-heading text-lg font-semibold tracking-tight text-ink">Your gateway</h3>`) {
 		t.Errorf("card title missing:\n%s", got)
 	}
 	if !strings.Contains(got, `<p class="mt-1 text-sm leading-snug text-body">the back of the box</p>`) {

@@ -578,6 +578,10 @@ type TableRowAct struct {
 	// both — one glyph cannot mean two things.
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
+	// Confirm guards only this action. ConfirmTitle may use %s for the row's
+	// name, substituted after localization so machine identities stay verbatim.
+	ConfirmTitle string `json:"confirm_title,omitempty"`
+	Confirm      string `json:"confirm,omitempty"`
 	// Opens makes the act open the row's own drawer instead of leading anywhere.
 	// An act on a row's subject usually belongs in the panel that already holds
 	// that subject, not on a page of its own — the icon is the shortcut, the
@@ -788,6 +792,11 @@ type confirmDialogView struct {
 	Name, Value, Act           string
 }
 
+type tableRowActView struct {
+	TableRowAct
+	Dialog *confirmDialogView
+}
+
 // ConfirmDialog is the cell's alert for one of its acts: a labelled row act
 // passes its button's pair and words, an icon act its own.
 func (c tableCellView) ConfirmDialog(name, value, act string) confirmDialogView {
@@ -826,6 +835,7 @@ type tableCellView struct {
 	// empty when the cell has no reading to draw.
 	Clip template.CSS
 	TableCell
+	Actions   []tableRowActView
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
 }
@@ -1242,13 +1252,27 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				// statement about the row's subject, so no cell in that row can
 				// disagree with the rest.
 				cv.Muted = cv.Muted || row.Muted
-				if len(cv.Actions) > 0 {
-					acts := make([]TableRowAct, len(cv.Actions))
-					for j, a := range cv.Actions {
+				if len(cv.TableCell.Actions) > 0 {
+					acts := make([]tableRowActView, len(cv.TableCell.Actions))
+					for j, a := range cv.TableCell.Actions {
 						if a.Href != "" {
 							a.Href = SafeHref(a.Href)
 						}
-						acts[j] = a
+						acts[j].TableRowAct = a
+						body, title := a.Confirm, a.ConfirmTitle
+						if body == "" {
+							body, title = cv.Confirm, cv.ConfirmTitle
+						}
+						if a.Name != "" && body != "" {
+							if title == "" {
+								title = r.tr("Are you sure?")
+							}
+							acts[j].Dialog = &confirmDialogView{
+								ID:    fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1)),
+								Title: strings.ReplaceAll(title, "%s", rowName), Body: body, CSRFToken: csrf,
+								Name: a.Name, Value: a.Value, Act: a.Title,
+							}
+						}
 					}
 					cv.Actions = acts
 				}

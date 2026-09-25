@@ -16,7 +16,10 @@ use verso_plugin::{Form, SelectOption, Widget};
 
 use crate::rule_form::{Errors, RuleForm};
 
-/// DELETE_FIELD marks the submission of the delete form rather than the editor's.
+/// REMOVE_FIELD names the subject of a confirmed act from a listing.
+pub const REMOVE_FIELD: &str = "_remove";
+
+/// DELETE_FIELD marks a legacy delete form rather than an editor submission.
 pub const DELETE_FIELD: &str = "_delete";
 
 /// PANEL_FIELD marks a submission as the open panel's own. A panel is edited at

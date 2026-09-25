@@ -67,9 +67,13 @@ func (r *Reader) Zones() []Zone {
 		if typ == "" {
 			continue
 		}
+		milliC, ok := readIntOK(filepath.Join(d, "temp"))
+		if !ok {
+			continue
+		}
 		out = append(out, Zone{
 			Type:   typ,
-			MilliC: readInt(filepath.Join(d, "temp")),
+			MilliC: milliC,
 			Trips:  readTrips(d),
 			OfNode: ofNodePath(filepath.Join(d, "device", "of_node")),
 		})
@@ -135,7 +139,9 @@ func readChannels(dir, kind string) map[int]int {
 	out := make(map[int]int, len(files))
 	for _, f := range files {
 		if n, ok := channelIndex(filepath.Base(f), kind); ok {
-			out[n] = readInt(f)
+			if value, valid := readIntOK(f); valid {
+				out[n] = value
+			}
 		}
 	}
 	return out
@@ -146,7 +152,9 @@ func readChannels64(dir, kind string) map[int]int64 {
 	out := make(map[int]int64, len(files))
 	for _, f := range files {
 		if n, ok := channelIndex(filepath.Base(f), kind); ok {
-			out[n] = int64(readInt(f))
+			if value, valid := readInt64OK(f); valid {
+				out[n] = value
+			}
 		}
 	}
 	return out

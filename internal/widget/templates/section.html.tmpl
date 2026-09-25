@@ -30,7 +30,7 @@
 {{/* A section with no heading has nothing for its first row's top padding to
      stand off from: it is marked headless, and the stylesheet takes that
      padding back so its first box starts where the section does. */}}
-<section{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-6 border-t border-rule pt-6 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
+<section{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-6 border-t border-rule pt-6 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
        a ledger line: its name at the label's size, how many things it holds,
@@ -59,7 +59,7 @@
       {{/* A kicker names the group under it and nothing more, so it is set at the
            meta size in caps rather than as a heading — a second 18px heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="verso-section-heading text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}

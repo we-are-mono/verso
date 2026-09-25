@@ -606,13 +606,19 @@
     return target && target.matches && target.matches("[data-verso-panel]") ? target : null;
   }
 
-  // rowOf is the row whose panel this frame is. The frame lives in <body>, moved
-  // there from the row's own template, and the template still knows its clone.
-  function rowOf(frame) {
-    return [].find.call(document.querySelectorAll("tr[data-verso-row-id]"), function (row) {
-      var template = row.querySelector("template[x-teleport]");
-      return !!(template && template._x_teleport && template._x_teleport.contains(frame));
+  // openerOf is the template this frame was opened from. The frame lives in
+  // <body>, moved there from its template, and the template still knows its
+  // clone and where on the page it stands (a row, a settings row's act).
+  function openerOf(frame) {
+    return [].find.call(document.querySelectorAll("template[x-teleport]"), function (template) {
+      return !!(template._x_teleport && template._x_teleport.contains(frame));
     }) || null;
+  }
+
+  // rowOf is the row whose panel this frame is.
+  function rowOf(frame) {
+    var opener = openerOf(frame);
+    return (opener && opener.closest("tr[data-verso-row-id]")) || null;
   }
 
   // landed washes the row a panel just saved in the action colour for a moment,

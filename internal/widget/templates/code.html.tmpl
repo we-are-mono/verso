@@ -17,7 +17,7 @@
      styled itself differently would read as a different kind of thing. With
      nothing to read yet it is there for the watcher but hidden: an empty box
      would read as a box to fill. */}}
-<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
+<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-5{{end}}"{{if not (and .Live (not .Label))}} data-verso-code-divider{{end}}{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
   {{if .Label}}<span class="font-mono text-sm font-medium text-meta">{{.Label}}</span>{{end}}
   <div class="relative min-w-0">
     {{/* A block in the uci grammar is read a line at a time: the keyword in
@@ -26,14 +26,11 @@
          takes the value whole, from the hidden span. */}}
     <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink">{{if .Lines}}{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}{{if $l.Keyword}}{{$l.Indent}}<span class="text-meta">{{$l.Keyword}}</span> {{$l.Key}}{{if $l.Quoted}} <span class="text-meta">'</span>{{$l.Value}}<span class="text-meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}{{end}}{{else}}{{.Value}}{{end}}</div>
     {{if .Copy}}
-    <button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy absolute top-1.5 right-1.5 grid {{template "verso-btn-icon"}}">
+    <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="group/copy absolute top-1.5 right-1.5 grid {{template "verso-btn-icon"}}">
       <span x-ref="src" class="hidden">{{.Value}}</span>
       <span x-show="idle">{{icon "copy" "size-4"}}</span>
       <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
-      <span class="{{template "verso-tip-class"}} group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
-        <span x-show="idle">{{ t "Copy" }}</span>
-        <span x-show="done" x-cloak>{{ t "Copied" }}</span>
-      </span>
+      <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy"}}</span>
     </button>
     {{end}}
   </div>

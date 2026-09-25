@@ -5,7 +5,6 @@ package widget
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -88,67 +87,36 @@ func (o *Overview) interfacesTile(tr func(string) string) ohTile {
 	return tile
 }
 
-type overviewTunnel struct{ Name, Kind, State, Tone, Address string }
+type overviewTunnel struct{ Name, Tone string }
 
-func (o *Overview) tunnels(tr func(string) string) []overviewTunnel {
+func (o *Overview) tunnels() []overviewTunnel {
 	var rows []overviewTunnel
 	for _, n := range o.Interfaces {
 		if n.Kind != "tunnel" {
 			continue
 		}
-		row := overviewTunnel{Name: n.Name, Kind: tr("Tunnel"), State: tr("Unknown"), Tone: "neutral", Address: n.Subnet}
-		switch n.Proto {
-		case "wireguard":
-			row.Kind = "WireGuard"
-		case "openvpn":
-			row.Kind = "OpenVPN"
-		case "tailscale":
-			row.Kind = "Tailscale"
-		}
+		row := overviewTunnel{Name: n.Name, Tone: "neutral"}
 		// A netdev's state says nothing about a remote peer or a handshake.
 		switch n.State {
 		case "up":
-			row.State, row.Tone = tr("Up"), "success"
+			row.Tone = "success"
 		case "down", "lowerlayerdown":
-			row.State, row.Tone = tr("Down"), "danger"
+			row.Tone = "danger"
 		}
 		rows = append(rows, row)
 	}
 	return rows
 }
 
-func (o *Overview) tunnelInventory(tr func(string) string) string {
-	counts := map[string]int{}
-	for _, row := range o.tunnels(tr) {
-		counts[row.Kind]++
-	}
-	kinds := make([]string, 0, len(counts))
-	for kind := range counts {
-		kinds = append(kinds, kind)
-	}
-	sort.Slice(kinds, func(i, j int) bool {
-		if counts[kinds[i]] != counts[kinds[j]] {
-			return counts[kinds[i]] > counts[kinds[j]]
-		}
-		return kinds[i] < kinds[j]
-	})
-	var parts []string
-	for _, kind := range kinds {
-		if kind == tr("Tunnel") {
-			parts = append(parts, interfaceCount(tr, counts[kind]))
-		} else {
-			parts = append(parts, fmt.Sprintf("%d %s", counts[kind], kind))
-		}
-	}
-	return strings.Join(parts, " · ")
-}
-
 func (o *Overview) tunnelTile(tr func(string) string) ohTile {
-	tile := ohTile{ID: "tunnels", Label: tr("Tunnels"), Icon: "lock", Variant: "neutral", Status: tr("Unavailable"), Href: "#overview-tunnels"}
+	tile := ohTile{ID: "tunnels", Label: tr("Tunnels"), Icon: "lock", Variant: "neutral", Status: tr("Unavailable"), Href: o.TunnelsHref}
+	if tile.Href == "" {
+		tile.Href = o.InterfacesHref
+	}
 	if !o.InterfacesKnown {
 		return tile
 	}
-	rows := o.tunnels(tr)
+	rows := o.tunnels()
 	if len(rows) == 0 {
 		tile.Status = tr("None observed")
 		return tile

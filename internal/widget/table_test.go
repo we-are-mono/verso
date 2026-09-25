@@ -1418,6 +1418,28 @@ func TestPostingActAsksFirstWhenItsCellDoes(t *testing.T) {
 	}
 }
 
+func TestConfirmationBelongsToItsPostingAction(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","columns":[{"label":"Network","kind":"name"},{"kind":"actions"}],"rows":[{"cells":[{"text":"Guest <wifi>"},{"actions":[{"icon":"power","title":"Disable","name":"guest","value":"off"},{"icon":"trash-2","title":"Remove network","name":"_remove","value":"guest","confirm_title":"Remove network “%s”?","confirm":"Applied later."}]}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := newRenderer(t)
+	tr := fakeCatalog(map[string]string{"Remove network “%s”?": "Odstranim omrežje »%s«?", "Applied later.": "Velja po uveljavitvi."})
+	var out strings.Builder
+	if err := r.RenderWithToken(&out, w, "csrf-example", "", tr); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if strings.Count(got, `role="alertdialog"`) != 1 || strings.Count(got, `data-verso-act`) != 1 {
+		t.Fatalf("only removal asks first; the power act remains direct:\n%s", got)
+	}
+	for _, want := range []string{`Odstranim omrežje »Guest &lt;wifi&gt;«?`, `Velja po uveljavitvi.`, `name="_remove" value="guest"`, `value="csrf-example"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+}
+
 func TestRowWithItsOwnDoorDrawsNoDetailsLink(t *testing.T) {
 	open := func(cells []TableCell) string {
 		return render(t, newRenderer(t), &Table{

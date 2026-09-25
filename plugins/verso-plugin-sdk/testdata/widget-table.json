@@ -138,6 +138,14 @@
               "title": "Disable lan",
               "name": "cfg02zone",
               "value": "off"
+            },
+            {
+              "icon": "trash-2",
+              "title": "Delete zone",
+              "name": "_remove",
+              "value": "cfg02zone",
+              "confirm_title": "Delete zone “%s”?",
+              "confirm": "Its networks will use the global defaults when applied."
             }
           ]
         }

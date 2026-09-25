@@ -123,11 +123,9 @@ pub struct Open {
     errors: Errors,
 }
 
-/// save answers a panel's submission. The panel is where a rule is made, changed
-/// and removed — there is no page for it — so this is the only place those three
-/// happen, and each answers with the listing carrying the panel it came from: a
-/// refusal lands on the controls that caused it, and a save lands on the row it
-/// changed.
+/// save answers an editing panel or a confirmed removal from the listing.
+/// A refusal stays with its controls; removal returns the listing without
+/// opening the editor or depending on which panel the address happens to name.
 pub fn save(
     snapshot: &Snapshot,
     model: &mut Firewall,
@@ -135,12 +133,17 @@ pub fn save(
     query: &Form,
     form: &Form,
 ) -> Envelope {
-    let section = query.get(rule_drawer::OPEN).trim().to_string();
+    let removal = form.get(fields::REMOVE_FIELD);
+    let section = if removal.is_empty() {
+        query.get(rule_drawer::OPEN).trim().to_string()
+    } else {
+        removal.trim().to_string()
+    };
     let tab = rule_drawer::reading(query.get(rule_drawer::TAB).trim()).to_string();
     let stated = RuleForm::submitted(form);
     let errors = stated.validate(&model.zone_names());
 
-    if section == rule_drawer::NEW {
+    if section == rule_drawer::NEW && removal.is_empty() {
         let answer = opened_blank(model, counters, &stated, &errors, &tab);
         if !errors.is_empty() {
             return answer.with_notice(Tone::Danger, REFUSED);
@@ -156,7 +159,7 @@ pub fn save(
     // Removing is the one act here that cannot be undone, which is why it is
     // asked for separately and answers with the listing the rule is leaving
     // rather than with a panel about something that no longer exists.
-    if form.get(fields::DELETE_FIELD) == "1" {
+    if !removal.is_empty() || form.get(fields::DELETE_FIELD) == "1" {
         let removed = model.rules.remove(index);
         return page(model, counters)
             .with_notice(Tone::Success, "Rule deleted.")
@@ -385,7 +388,10 @@ fn row(
                 &rule.section,
                 rule.enabled,
                 door.clone(),
-                page::rule_href(&rule.section),
+                page::remove_act(
+                    &rule.section, "Delete rule", "Delete rule “%s”?",
+                    "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next.",
+                ),
             ),
         ],
         drawer,
@@ -877,12 +883,14 @@ mod tests {
                             "title": "Edit",
                             "href": "/plugins/firewall/?open=allow_ping"
                         },
-                        // Deleting is a door to the confirmation on the rule's
-                        // own page, never the act itself from the listing.
+                        // Only the delete action asks for confirmation.
                         {
                             "icon": "trash-2",
-                            "title": "Delete",
-                            "href": "/plugins/firewall/rules/allow_ping"
+                            "title": "Delete rule",
+                            "name": "_remove",
+                            "value": "allow_ping",
+                            "confirm_title": "Delete rule “%s”?",
+                            "confirm": "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next."
                         }
                     ]}
                 ]

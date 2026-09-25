@@ -8,6 +8,25 @@ import (
 	"testing"
 )
 
+func TestDrawerActionsFinishTheirConfigurationCard(t *testing.T) {
+	for name, tail := range map[string][]Widget{
+		"direct":              {&Code{Label: "/etc/config/wireless", Live: true}},
+		"nested with carrier": {&Section{Children: []Widget{&Code{Label: "/etc/config/firewall", Live: true}}}, &Field{Name: "_panel", Kind: "hidden", Value: "1"}},
+		"static cards":        {&Code{Label: "/etc/config/firewall"}, &Code{Label: "/etc/config/qos"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &Form{Frame: FramePanel, Submit: "Save", Fields: tail}
+			got := render(t, newRenderer(t), f)
+			if !strings.Contains(got, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
+				t.Errorf("Save must join the card without another rule:\n%s", got)
+			}
+			if EndsWithCode(&Stack{Children: append(append([]Widget{}, tail...), &Field{Name: "after", Kind: "text"})}) {
+				t.Error("a card followed by another control must not absorb the actions")
+			}
+		})
+	}
+}
+
 func TestFormDecodesActions(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"form","submit":"Save",` +
 		`"actions":[{"label":"Generate keypair","action":"generate-keypair"}],"fields":[]}`))

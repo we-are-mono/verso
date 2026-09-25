@@ -109,9 +109,9 @@ MTU — PPPoE, a tunnel — do not stall.";
 const LOG_LABEL: &str = "Log refused traffic";
 const LOG_HELP: &str = "Writes a system-log line for every packet this zone rejects or drops.";
 
-const DELETE_TRIGGER: &str = "Delete zone";
+pub const DELETE_TRIGGER: &str = "Delete zone";
 
-const DELETE_MESSAGE: &str = "Delete this zone? Its networks fall to the global defaults, and \
+pub const DELETE_MESSAGE: &str = "When applied, its networks fall to the global defaults, and \
 every rule, forward and forwarding that names it stops matching until it is pointed somewhere \
 else.";
 
@@ -284,13 +284,10 @@ fn body(
         CONFIG_PATH,
         &uci_block(&zone.section, form, reaches, true),
     ));
-    vec![
-        fields::panel_form("Save", vec![Widget::section(title, sub, fields).flush()]),
-        // Removing the zone is a second, small form behind a confirmation, so the
-        // one act that cannot be undone is never a keystroke away from the one
-        // that can.
-        fields::delete_form(DELETE_TRIGGER, DELETE_MESSAGE),
-    ]
+    vec![fields::panel_form(
+        "Save",
+        vec![Widget::section(title, sub, fields).flush()],
+    )]
 }
 
 fn tab_body(

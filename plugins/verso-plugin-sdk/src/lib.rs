@@ -1999,8 +1999,8 @@ pub struct TableRow {
 }
 
 /// RowDrawer is a row's edit surface: a slide-in panel carrying the row's own
-/// form and, where it applies, the confirm that deletes it. It is where a small
-/// object is edited — one record, one host; an object with a page's worth of
+/// form. Removal belongs to a separate confirmed action on its listing. A small
+/// object is edited here — one record, one host; an object with a page's worth of
 /// settings gets a page instead. Size widens the panel ("" reading width |
 /// "wide"), HideTitle drops the heading where the first section already names
 /// the object, and Open renders the panel already open — which is how a
@@ -2259,6 +2259,12 @@ pub struct TableRowAct {
     pub name: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub value: String,
+    /// A posting action can ask for confirmation independently of the other
+    /// actions in its cell. In the title, `%s` names the row after localization.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub confirm_title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub confirm: String,
 }
 
 impl TableCell {

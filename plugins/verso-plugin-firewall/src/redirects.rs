@@ -59,7 +59,6 @@ fn bar() -> Widget {
     }
 }
 
-
 fn columns() -> Vec<TableColumn> {
     [
         ("Name", "name", ColumnWidth::Grow),
@@ -120,7 +119,12 @@ fn row(redirect: &Redirect, counters: &Counters) -> TableRow {
                 &redirect.section,
                 redirect.enabled,
                 page::redirect_href(&redirect.section),
-                page::redirect_href(&redirect.section),
+                verso_plugin::TableRowAct {
+                    icon: "trash-2".into(),
+                    title: "Delete".into(),
+                    href: page::redirect_href(&redirect.section),
+                    ..Default::default()
+                },
             ),
         ],
         drawer: None,

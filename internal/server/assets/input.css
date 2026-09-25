@@ -171,6 +171,14 @@ html.verso-fonts-loading body {
     pointer-events: none;
   }
 
+  /* A copy belongs to the value's first line. Its 28px hit area keeps the
+     surrounding line height, with one 4px gap supplied by the control. */
+  .verso-copy-inline {
+    align-self: flex-start;
+    margin-inline-start: var(--spacing);
+    margin-block: calc((1lh - var(--spacing) * 7) / 2);
+  }
+
   /* Drawers are persistent, narrow scroll surfaces, so give only their inner
      scroller a quiet thumb that follows the shell palette. The
      document scrollbar deliberately remains native. */
@@ -472,6 +480,22 @@ html.verso-fonts-loading body {
   .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-body); }
 
+  /* A full section's neutral marker hangs in the gutter. It takes no inline
+     space, so the heading keeps its alignment and available width. Center it
+     on the first line even when the heading wraps. */
+  .verso-section-heading { position: relative; }
+  .verso-section-heading::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: -14px;
+    top: calc(0.5lh - 3px);
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background-color: var(--color-rule-strong);
+    pointer-events: none;
+  }
+
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
      chassis is a physical object — deliberately dark in both themes. Display-only;
      the hover/focus tooltip is pure CSS (no JS). Connector art has no utility
@@ -755,11 +779,20 @@ html.verso-fonts-loading body {
      every ruled section — run out by the frame's 2.5rem to the rail on the
      left, and stop where the column ends on the right, clear of a sidebar
      beside it. Each pads back in by the same, so what it rules off does not
-     move. A drawer keeps its own rules inside its padding. */
+     move. Drawer section rules use their own frame below. */
   main [data-verso-rule]:not(.verso-drawer-scrollbar [data-verso-rule]),
   .verso-page-body section[data-verso-ruled]:not(.verso-drawer-scrollbar section) {
     margin-left: calc(var(--spacing) * -10);
     padding-left: calc(var(--spacing) * 10);
+  }
+
+  /* Full sections and configuration cards divide the drawer edge to edge;
+     their content keeps the body's 32px inset. Subsections and lists keep
+     inset rules. Choice drawers already have an unpadded body. */
+  [data-verso-drawer-body] [data-verso-section-divider],
+  [data-verso-drawer-body] [data-verso-code-divider] {
+    margin-inline: calc(var(--spacing) * -8);
+    padding-inline: calc(var(--spacing) * 8);
   }
 
   /* A page's masthead — its title's line and its acts — ends where Log out

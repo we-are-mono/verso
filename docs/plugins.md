@@ -787,8 +787,7 @@ panel in place, seeded by the href.
 of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
 its standard alert dialog and posts `_action=<action>` back to the page only after
 the operator confirms. Use this for a command with no edit surface, such as ending
-a login session. An act worth showing first — the object's facts, then the button —
-belongs in the row's drawer.
+a login session.
 
 ```json
 { "button": "End session", "action": "end-session:iphone",
@@ -796,11 +795,27 @@ belongs in the row's drawer.
   "confirm": "Anyone using this session will be signed out of Verso immediately." }
 ```
 
+An individual icon in an `actions` cell can also carry `confirm_title` and
+`confirm`. Only that action opens the dialog; its neighboring toggle or edit
+action keeps its usual behavior. The shell substitutes the row's name for `%s`
+in the title after translation. On confirmation it posts the action's `name`
+and `value` to the listing. Identify the removal target in that value rather
+than the `open` query parameter, which may still name a different editor.
+
+```json
+{ "actions": [
+  { "icon": "trash-2", "title": "Remove network",
+    "name": "_remove", "value": "guest",
+    "confirm_title": "Remove network “%s”?",
+    "confirm": "Devices using this network will disconnect when the change is applied." }
+] }
+```
+
 **Row drawer.** A row with a `drawer` opens a right slide-in panel on the object
 behind the row, beside the listing it belongs to: its facts as `properties`, a
-callout naming what depends on it, the form that edits it, and action buttons —
-one or several, each a complete act (delete this rule, reserve this address),
-guarded by `confirm` where the act deserves a pause. **An object lives in its
+callout naming what depends on it, and the form that edits it. Keep removal on
+the listing's trash action with a focused confirmation, rather than duplicating
+it beneath Save in the editor. **An object lives in its
 drawer.** The listing's add opens the same panel blank (`add_panel`, or a link
 such as `?open=new`), so making one and editing one are one surface drawn from
 one set of fields, and a Save inside the panel stages like any other write (see
@@ -821,7 +836,7 @@ the shell arrives with the row's panel already in front of the operator
 ```json
 { "id": "lease-iphone", "cells": [ /* … */ ],
   "drawer": { "title": "iPhone — 10.0.0.23",
-              "children": [ /* properties, callout, confirm */ ] } }
+              "children": [ /* properties, callout, form */ ] } }
 ```
 
 **Seam.** A table may fold extra rows behind a collapsed block *inside the same

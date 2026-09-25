@@ -276,17 +276,17 @@
                a sub-template's $ is the row list rather than the table. */}}
           {{/* each act is named with its row, as a row's labelled act is; an
                inert mark explains a state, not an act, and keeps its sentence. */}}
-          {{$csrf := .CSRFToken}}{{$panel := .Panel}}{{$row := .RowName}}{{$cell := .}}
+          {{$csrf := .CSRFToken}}{{$panel := .Panel}}{{$row := .RowName}}
           <span class="flex items-center justify-end">
             {{range .Actions}}
             {{/* an act that ends something asks first, in the alert the
                  labelled row act uses, and posts only from its answer */}}
-            {{if and .Name $cell.Confirm}}<span x-data="modal" class="inline-flex">
+            {{if .Dialog}}<span x-data="modal" class="inline-flex">
               <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
                 {{icon .Icon "size-4"}}
                 <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
               </button>
-              {{template "table.confirm-dialog" ($cell.ConfirmDialog .Name .Value .Title)}}
+              {{template "table.confirm-dialog" .Dialog}}
             </span>
             {{else if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
               {{icon .Icon "size-4"}}
@@ -368,7 +368,7 @@
              cannot push the row taller than the text it sits beside. */}}
         {{/* nothing to state is the faint dash, a step below a muted value: it
              is the absence of a fact, not a quiet one. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center gap-2">{{.Text}}{{if .Dot}}<span role="img" aria-label="{{t "Available version"}}" class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-top font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center"><span>{{.Text}}</span>{{if .Dot}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds
@@ -376,8 +376,8 @@
         <td class="border-b border-rule {{template "table.cellpad-stack" .}} align-top font-mono text-base font-medium tabular-nums group-last:border-b-0">
           {{/* the two lines sit at the tighter step: one fact stacked on
                another, not two rows. */}}
-          {{if .Text}}<div class="leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
-          {{if .Sub}}<div class="leading-5 whitespace-nowrap text-meta">{{.Sub}}{{if .Copy}}{{template "verso-copy-inline" .Sub}}{{end}}</div>{{end}}
+          {{if .Text}}<div class="flex items-center leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}"><span>{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
+          {{if .Sub}}<div class="flex items-center leading-5 whitespace-nowrap text-meta"><span>{{.Sub}}</span>{{if .Copy}}{{template "verso-copy-inline" .Sub}}{{end}}</div>{{end}}
           {{if and (not .Text) (not .Sub)}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "keyword"}}
@@ -395,7 +395,7 @@
         <td class="border-b border-rule {{template "table.cellpad" .}} align-top group-last:border-b-0">
           {{if .Clip}}<span class="flex items-center gap-3 pr-6">
             <span class="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span></span>
-            <span class="w-10 shrink-0 text-right font-mono text-base font-medium tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+            <span class="w-10 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "num"}}

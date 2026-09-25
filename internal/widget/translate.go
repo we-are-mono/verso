@@ -298,6 +298,8 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			}
 			for k := range c.Actions {
 				c.Actions[k].Title = t(c.Actions[k].Title)
+				c.Actions[k].ConfirmTitle = t(c.Actions[k].ConfirmTitle)
+				c.Actions[k].Confirm = t(c.Actions[k].Confirm)
 			}
 		}
 		translateDrawer(rows[i].Drawer, t)

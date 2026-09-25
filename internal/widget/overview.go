@@ -46,16 +46,14 @@ type Overview struct {
 	// renders an unavailable state.
 	SysMetrics []OverviewMeter
 
-	// Model is the board's human name. Temperature/Fan/Power/SensorSummary are
-	// the resolved hardware sensor facts (see internal/sensors); an empty string
-	// hides that row — an unprofiled PC shows no power draw rather than a zero.
+	// Model is the board's human name. Temperature/Fan/Power are the resolved
+	// hardware sensor facts (see internal/sensors); an absent reading shows N/A.
 	// TempDot is the temperature status tone ("success"|"warning"|"danger").
-	Model         string
-	Temperature   string
-	TempDot       string
-	Fan           string
-	Power         string
-	SensorSummary string
+	Model       string
+	Temperature string
+	TempDot     string
+	Fan         string
+	Power       string
 
 	// Interfaces is the live listing: every kernel interface, enriched with its
 	// topology/UCI meaning.
@@ -179,9 +177,6 @@ type overviewMastheadView struct {
 // chrome (the masthead block, the traffic panel's legend). The page owns
 // composition and rhythm.
 type overviewView struct {
-	Tunnels                               []overviewTunnel
-	TunnelsEmpty, TunnelMeta, TunnelsHref string
-
 	Masthead overviewMastheadView
 
 	ChartTitle  string
@@ -192,7 +187,6 @@ type overviewView struct {
 	Chart       template.HTML
 	TrafficSeed string // {"down":[…],"up":[…]} — the live layer's starting series
 
-	SysMeta  string
 	Metrics  []template.HTML
 	SysLeft  template.HTML
 	SysRight template.HTML
@@ -261,7 +255,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		return err
 	}
 	sysLeft, err := o.renderWidget(r, &Properties{Style: "overview-system", Items: []Property{
-		sysProp("Model", o.Model, false),
+		sysProp("Device", o.Model, false),
 		sysProp("Firmware", o.Firmware, true),
 		sysProp("Kernel", o.Kernel, true),
 	}}, csrf)
@@ -275,28 +269,19 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 
 	masthead := o.masthead(r.tr)
 	masthead.Tiles, masthead.Facts = tiles, facts
-	tunnels := o.tunnels(r.tr)
-
 	v := overviewView{
-		Masthead: masthead,
-		Tunnels:  tunnels, TunnelsHref: o.TunnelsHref,
-		TunnelsEmpty: r.tr("No tunnel interfaces"),
-		TunnelMeta:   o.tunnelInventory(r.tr),
-		ChartTitle:   r.tr("Internet traffic"),
-		ChartMeta:    o.WANDevice,
-		DownVal:      o.DownVal,
-		UpVal:        o.UpVal,
-		RateUnit:     "Mbit/s",
-		Chart:        chartHTML,
-		TrafficSeed:  string(seed),
+		Masthead:    masthead,
+		ChartTitle:  r.tr("Internet traffic"),
+		ChartMeta:   o.WANDevice,
+		DownVal:     o.DownVal,
+		UpVal:       o.UpVal,
+		RateUnit:    "Mbit/s",
+		Chart:       chartHTML,
+		TrafficSeed: string(seed),
 
-		SysMeta:  "",
 		Metrics:  metrics,
 		SysLeft:  sysLeft,
 		SysRight: sysRight,
-	}
-	if !o.InterfacesKnown {
-		v.TunnelsEmpty = r.tr("Tunnel status unavailable")
 	}
 	return r.execute(out, "overview.html.tmpl", v)
 }
@@ -339,28 +324,25 @@ func (o *Overview) sysMeters() []*Meter {
 	return out
 }
 
-// sysRight builds the hardware-sensor fact sheet, omitting any reading the box
-// doesn't expose — a PC with no power sensor simply shows no "Power draw" row,
-// never a fabricated zero. Keys tag the live rows for the overview stream.
+// sysRight keeps three sensor rows, with N/A for an unavailable reading. Keys
+// tag each value for the overview stream, including a sensor that appears later.
 func (o *Overview) sysRight() *Properties {
-	rows := make([]Property, 0, 4)
-	if o.Temperature != "" {
-		value, note, _ := strings.Cut(o.Temperature, " · ")
-		rows = append(rows, Property{Label: "Temperature", Value: value, Help: note, HelpVerbatim: true, Mono: true, Verbatim: true, Dot: o.TempDot, Key: "temperature"})
+	reading := func(value string) string {
+		if value == "" {
+			return "N/A"
+		}
+		return value
 	}
-	if o.Fan != "" {
-		rows = append(rows, Property{Label: "Fan", Value: o.Fan, Mono: true, Verbatim: true, Key: "fan"})
+	value, note, _ := strings.Cut(reading(o.Temperature), " · ")
+	tone := o.TempDot
+	if tone == "" {
+		tone = "neutral"
 	}
-	if o.Power != "" {
-		rows = append(rows, Property{Label: "Power draw", Value: o.Power, Mono: true, Verbatim: true, Key: "power"})
-	}
-	if o.SensorSummary != "" {
-		rows = append(rows, Property{Label: "Sensors", Value: o.SensorSummary, Verbatim: true, Key: "summary"})
-	}
-	if len(rows) == 0 {
-		rows = append(rows, Property{Label: "Sensors", Value: "none reported", Dot: "neutral"})
-	}
-	return &Properties{Style: "overview-system", Items: rows}
+	return &Properties{Style: "overview-system", Items: []Property{
+		{Label: "CPU Temperature", Value: value, Help: note, HelpVerbatim: true, Mono: true, Verbatim: true, Dot: tone, Key: "temperature"},
+		{Label: "Fan speed", Value: reading(o.Fan), Mono: true, Verbatim: true, Key: "fan"},
+		{Label: "Power draw", Value: reading(o.Power), Mono: true, Verbatim: true, Key: "power"},
+	}}
 }
 
 // factCols builds the IPv4/IPv6 connection-facts columns from the live fields:

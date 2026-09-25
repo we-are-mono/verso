@@ -148,18 +148,21 @@ pub struct Open {
     errors: Errors,
 }
 
-/// save answers a panel's submission. The panel is where a zone is made, changed
-/// and removed — there is no page for it — so this is the only place those three
-/// happen, and each answers with the listing carrying the panel it came from: a
-/// refusal lands on the controls that caused it, and a save lands on the row it
-/// changed.
+/// save answers an editing panel or a confirmed removal from the listing.
+/// A refusal stays with its controls; removal returns the listing without
+/// opening the editor or depending on which panel the address happens to name.
 pub fn save(snapshot: &Snapshot, model: &mut Firewall, query: &Form, form: &Form) -> Envelope {
-    let section = query.get(zone_drawer::OPEN).trim().to_string();
+    let removal = form.get(fields::REMOVE_FIELD);
+    let section = if removal.is_empty() {
+        query.get(zone_drawer::OPEN).trim().to_string()
+    } else {
+        removal.trim().to_string()
+    };
     let tab = zone_drawer::reading(query.get(zone_drawer::TAB).trim()).to_string();
 
     let reaches = Crossings::submitted(form);
 
-    if section == zone_drawer::NEW {
+    if section == zone_drawer::NEW && removal.is_empty() {
         let stated = ZoneForm::submitted(form);
         let mut errors = stated.validate_new(&model.network_names(), &model.zone_names());
         errors.merge(reaches.validate(&model.zone_names()));
@@ -183,7 +186,7 @@ pub fn save(snapshot: &Snapshot, model: &mut Firewall, query: &Form, form: &Form
     // Removing is the one act here that cannot be undone, which is why it is
     // asked for separately and answers with the listing the zone is leaving
     // rather than with a panel about something that no longer exists.
-    if form.get(fields::DELETE_FIELD) == "1" {
+    if !removal.is_empty() || form.get(fields::DELETE_FIELD) == "1" {
         let removed = model.zones.remove(index);
         return page(model)
             .with_notice(Tone::Success, "Zone deleted.")
@@ -364,7 +367,15 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
             nat,
             // The row's trailing affordance reads the way the other two listings'
             // do, so one glyph opens an object everywhere in this plugin.
-            page::edit_act_cell(door.clone()),
+            page::edit_act_cell(
+                door.clone(),
+                page::remove_act(
+                    &zone.section,
+                    zone_drawer::DELETE_TRIGGER,
+                    "Delete zone “%s”?",
+                    zone_drawer::DELETE_MESSAGE,
+                ),
+            ),
         ],
         drawer,
         // The row ships an empty frame and fetches this address when it opens;
@@ -531,6 +542,13 @@ mod tests {
                     "icon": "square-pen",
                     "title": "Edit",
                     "href": "/plugins/firewall/zones?open=cfg02dc81"
+                }, {
+                    "icon": "trash-2",
+                    "title": "Delete zone",
+                    "name": "_remove",
+                    "value": "cfg02dc81",
+                    "confirm_title": "Delete zone “%s”?",
+                    "confirm": zone_drawer::DELETE_MESSAGE
                 }]}
             ])
         );

@@ -234,21 +234,10 @@ fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &s
     // while the form is up here is a Save nobody finds. Save puts the rule in
     // the stage and closes the panel; applying is the bar's, and so is saying
     // what it costs.
-    vec![
-        fields::panel_form("Save", vec![Widget::section(title, sub, fields).flush()]),
-        // Removing the rule is a second, small form behind a confirmation, so
-        // the one act that cannot be undone is never a keystroke away from the
-        // one that can. It is here because the panel is the whole of a rule's
-        // editing: there is no page left for it to live on.
-        fields::delete_form(
-            "Delete rule",
-            &format!(
-                "Delete {}? Traffic it allowed will be decided by whatever rule or zone policy \
-                 comes next.",
-                fields::subject(&rule.name, "this rule")
-            ),
-        ),
-    ]
+    vec![fields::panel_form(
+        "Save",
+        vec![Widget::section(title, sub, fields).flush()],
+    )]
 }
 
 /// match_fields is what the rule is about, as one flat set of conditions rather
@@ -1427,28 +1416,19 @@ mod tests {
     }
 
     #[test]
-    fn only_an_existing_rule_offers_to_delete_itself() {
-        let body = open("everything");
-        let delete = fixture::find_with(&body, &|value| {
-            value["type"] == "form" && value["fields"][0]["name"] == DELETE_FIELD
-        })
-        .expect("an existing rule offers to delete itself");
-        assert_eq!(delete["type"], "form");
-        assert!(
-            delete.get("submit").is_none(),
-            "the confirm carries the submit, so the form draws no Save"
-        );
-        assert_eq!(delete["fields"][0]["name"], DELETE_FIELD);
-        assert_eq!(delete["fields"][0]["value"], "1");
-        assert_eq!(delete["fields"][1]["type"], "confirm");
-
-        // A rule that does not exist yet has nothing to remove.
-        let blank = opened_new();
-        assert!(
-            fixture::find_with(&blank, &|value| value["type"] == "form"
-                && value["fields"][0]["name"] == DELETE_FIELD)
-            .is_none(),
-            "a rule that does not exist yet offers no delete"
-        );
+    fn editing_a_rule_keeps_removal_on_the_listing() {
+        for body in [open("everything"), opened_new()] {
+            let drawer = fixture::find_with(&body, &|value| {
+                value["open"] == true && value["children"].is_array()
+            })
+            .expect("the opened drawer");
+            assert!(
+                fixture::find_with(&drawer, &|value| value["type"] == "confirm"
+                    || value["name"] == DELETE_FIELD
+                    || value["name"] == fields::REMOVE_FIELD)
+                .is_none(),
+                "an edit drawer only edits; removal belongs to its row action"
+            );
+        }
     }
 }

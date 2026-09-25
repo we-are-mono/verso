@@ -9,14 +9,11 @@ import (
 )
 
 // Facts are the resolved home-dashboard sensor readings. A nil pointer means the
-// box exposes no such reading and the row is hidden — never a zero shown as real.
+// box exposes no selected reading — never a zero shown as real.
 type Facts struct {
 	CPUTemp *Temp
 	Fan     *Fan
 	Power   *Power
-
-	PowerCount   int // power channels the box exposes (for the summary)
-	ThermalCount int // thermal sources the box exposes
 }
 
 // Temp is the CPU temperature with its trip-derived status and a tone level
@@ -27,7 +24,7 @@ type Temp struct {
 	Level  string
 }
 
-// Fan is the headline fan speed in RPM (the fastest running channel).
+// Fan is the profile's primary fan speed in RPM.
 type Fan struct {
 	RPM int
 }
@@ -40,31 +37,20 @@ type Power struct {
 // Resolve reads the box's sensors and produces the home-dashboard facts. With a
 // profile, sensors are keyed by their of_node path tails (power and thermal
 // matched directly, a fan's path pointing at its controller's channel child);
-// without one, CPU temp and fan are auto-detected and power is left unread — an
-// unprofiled board can't say which of many rails is the headline draw.
+// CPU temperature falls back to generic detection when the profile has no
+// readable CPU pick. Fan and power require their profile's main:true entry.
 func Resolve(p *Profile, r *Reader) Facts {
 	zones := r.Zones()
 	hwmons := r.Hwmons()
 
 	var f Facts
-	for _, h := range hwmons {
-		f.PowerCount += len(h.Power)
-	}
-	f.ThermalCount = len(zones)
-	if f.ThermalCount == 0 {
-		for _, h := range hwmons {
-			f.ThermalCount += len(h.Temp)
-		}
-	}
-
 	if p != nil {
 		f.CPUTemp = profileCPUTemp(p, zones)
 		f.Fan = profileFan(p, hwmons)
 		f.Power = profilePower(p, hwmons)
-	} else {
+	}
+	if f.CPUTemp == nil {
 		f.CPUTemp = genericCPUTemp(zones, hwmons)
-		f.Fan = genericFan(hwmons)
-		// No generic power: hidden.
 	}
 	return f
 }
@@ -83,12 +69,14 @@ func profileCPUTemp(p *Profile, zones []Zone) *Temp {
 	return nil
 }
 
-// profileFan resolves the profile's fan entries and returns the fastest running
-// channel. Each key points at a controller child (…/fan-controller@2e/fan@0):
+// profileFan resolves the fan entry flagged main:true. Each key points at a
+// controller child (…/fan-controller@2e/fan@0):
 // the parent of_node identifies the hwmon, the child's index the channel.
 func profileFan(p *Profile, hwmons []Hwmon) *Fan {
-	best := -1
 	for _, e := range p.Fans {
+		if !e.Main {
+			continue
+		}
 		parent, child := splitLastSeg(e.Path)
 		ch, ok := indexAfterAt(child)
 		if !ok {
@@ -98,14 +86,11 @@ func profileFan(p *Profile, hwmons []Hwmon) *Fan {
 		if !ok {
 			continue
 		}
-		if rpm, ok := h.Fan[ch+1]; ok && rpm > best { // fan@0 → fan1_input
-			best = rpm
+		if rpm, ok := h.Fan[ch+1]; ok { // fan@0 → fan1_input
+			return &Fan{RPM: rpm}
 		}
 	}
-	if best < 0 {
-		return nil
-	}
-	return &Fan{RPM: best}
+	return nil
 }
 
 // profilePower resolves the power entry flagged main:true — the board input rail,
@@ -151,20 +136,6 @@ func genericCPUTemp(zones []Zone, hwmons []Hwmon) *Temp {
 		return nil
 	}
 	return tempFromZone(*pick)
-}
-
-// genericFan returns the fastest running fan across all hwmon chips.
-func genericFan(hwmons []Hwmon) *Fan {
-	best := -1
-	for _, h := range hwmons {
-		if rpm, ok := maxChannel(h.Fan); ok && rpm > best {
-			best = rpm
-		}
-	}
-	if best <= 0 {
-		return nil
-	}
-	return &Fan{RPM: best}
 }
 
 func tempFromZone(z Zone) *Temp {

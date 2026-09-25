@@ -22,13 +22,6 @@ pub const ZONES: &str = "zones";
 pub const SETTINGS: &str = "settings";
 pub const ACTIVITY: &str = "activity";
 
-/// RULE_EDITOR is the sub-path a rule's own page lives under, which now holds
-/// nothing but its delete confirmation; a redirect's page lives directly under the
-/// listing it belongs to. Zones have no sub-path at all — a zone is read and
-/// edited in the panel beside the listing, addressed by a query on it. NEW is the
-/// one name below a listing that is not a section: `<listing>/new` opens a blank
-/// editor, `<listing>/<section>` opens that section's.
-pub const RULE_EDITOR: &str = "rules";
 pub const NEW: &str = "new";
 
 /// MOUNT is where the shell serves this plugin. A widget's href is a route
@@ -56,14 +49,6 @@ pub fn port_forwards_href() -> String {
 
 pub fn zones_href() -> String {
     format!("{MOUNT}/{ZONES}")
-}
-
-/// rule_href is the address of one rule's own page. A rule is read and edited in
-/// the panel beside the listing; the page is where the act that cannot be undone
-/// lives, behind its confirmation, so the trash glyph leads here rather than
-/// deleting from under the pointer.
-pub fn rule_href(section: &str) -> String {
-    format!("{MOUNT}/{RULE_EDITOR}/{section}")
 }
 
 /// redirect_href is the address of one port forward's editor.
@@ -199,7 +184,7 @@ pub fn pill_cell(text: &str, variant: &str) -> TableCell {
 /// sentence always describe what pressing it does rather than what is already
 /// true. Off is the resting state made visible: the row reads muted, and the act
 /// offers to turn it back on.
-pub fn acts_cell(section: &str, enabled: bool, href: String, delete_href: String) -> TableCell {
+pub fn acts_cell(section: &str, enabled: bool, href: String, removal: TableRowAct) -> TableCell {
     let (icon, title, value) = match enabled {
         true => ("power", "Disable", "off"),
         false => ("power-off", "Enable", "on"),
@@ -219,16 +204,7 @@ pub fn acts_cell(section: &str, enabled: bool, href: String, delete_href: String
                 href,
                 ..TableRowAct::default()
             },
-            // Deleting is the one act on this row that cannot be undone, so the
-            // glyph is a door to the confirmation rather than the act itself:
-            // nothing on a listing should be removable by a single click at the
-            // end of a row someone was only reading.
-            TableRowAct {
-                icon: "trash-2".into(),
-                title: "Delete".into(),
-                href: delete_href,
-                ..TableRowAct::default()
-            },
+            removal,
         ],
         ..TableCell::default()
     }
@@ -236,15 +212,31 @@ pub fn acts_cell(section: &str, enabled: bool, href: String, delete_href: String
 
 /// edit_act_cell is the row's trailing act where the row has no state to flip —
 /// a zone is not switched off, it is edited or it is deleted.
-pub fn edit_act_cell(href: String) -> TableCell {
+pub fn edit_act_cell(href: String, removal: TableRowAct) -> TableCell {
     TableCell {
-        actions: vec![TableRowAct {
-            icon: "square-pen".into(),
-            title: "Edit".into(),
-            href,
-            ..TableRowAct::default()
-        }],
+        actions: vec![
+            TableRowAct {
+                icon: "square-pen".into(),
+                title: "Edit".into(),
+                href,
+                ..TableRowAct::default()
+            },
+            removal,
+        ],
         ..TableCell::default()
+    }
+}
+
+/// remove_act asks about exactly this row, independently of its edit and power acts.
+pub fn remove_act(section: &str, title: &str, question: &str, consequence: &str) -> TableRowAct {
+    TableRowAct {
+        icon: "trash-2".into(),
+        title: title.into(),
+        name: crate::fields::REMOVE_FIELD.into(),
+        value: section.into(),
+        confirm_title: question.into(),
+        confirm: consequence.into(),
+        ..TableRowAct::default()
     }
 }
 

@@ -96,6 +96,34 @@ func (c *Code) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "code.html.tmpl", c)
 }
 
+// EndsWithCode reports whether a surface ends in a visible configuration card.
+// Drawer actions belong to that card, so they follow it without another rule.
+// Hidden form carriers take no space and do not break that relationship.
+func EndsWithCode(w Widget) bool {
+	var children []Widget
+	switch v := w.(type) {
+	case *Code:
+		return !v.Live || v.Label != "" || v.Value != ""
+	case *Form:
+		children = v.Fields
+	case *Section:
+		children = v.Children
+	case *Stack:
+		children = v.Children
+	case *Card:
+		children = v.Children
+	default:
+		return false
+	}
+	for i := len(children) - 1; i >= 0; i-- {
+		if f, ok := children[i].(*Field); ok && f.Kind == "hidden" {
+			continue
+		}
+		return EndsWithCode(children[i])
+	}
+	return false
+}
+
 // RenderLivePreviewWithToken renders just the live preview a tree carries, for
 // a request that is asking only what the form would write. The page around it is
 // already on screen and is not being replaced — re-rendering it would take the

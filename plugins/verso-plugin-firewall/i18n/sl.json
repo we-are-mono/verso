@@ -1,4 +1,8 @@
 {
+  "When applied, its networks fall to the global defaults, and every rule, forward and forwarding that names it stops matching until it is pointed somewhere else.": "Po uveljavitvi njegova omrežja preidejo na globalne privzete nastavitve. Pravila in posredovanja, ki ga navajajo, se ne bodo več ujemala, dokler jih ne usmerite drugam.",
+  "Delete zone “%s”?": "Izbrišem območje »%s«?",
+  "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next.": "Po uveljavitvi bo o prometu, ki ga je pravilo dovoljevalo, odločalo naslednje pravilo ali politika območja.",
+  "Delete rule “%s”?": "Izbrišem pravilo »%s«?",
   "Firewall": "Požarni zid",
   "Zones": "Območja",
   "Rules": "Pravila",
@@ -108,7 +112,6 @@
   "Trims outgoing segment sizes so connections over a link with a smaller MTU — PPPoE, a tunnel — do not stall.": "Skrajša velikost odhodnih segmentov, da povezave prek povezave z manjšim MTU — PPPoE, predor — ne obstanejo.",
   "Log refused traffic": "Beleži zavrnjeni promet",
   "Writes a system-log line for every packet this zone rejects or drops.": "Za vsak paket, ki ga to območje zavrne ali zavrže, zapiše vrstico v sistemski dnevnik.",
-  "Delete this zone? Its networks fall to the global defaults, and every rule, forward and forwarding that names it stops matching until it is pointed somewhere else.": "Ali želite izbrisati to območje? Njegova omrežja preidejo na globalne privzete nastavitve, vsako pravilo, posredovanje in posredovanje med območji, ki ga imenuje, pa se preneha ujemati, dokler ga ne usmerite drugam.",
   "Say which traffic this rule is about, and what the router should do with it.": "Povejte, za kateri promet gre pri tem pravilu in kaj naj usmerjevalnik z njim stori.",
   "Say which arriving traffic to catch, and where the router should send it.": "Povejte, kateri prihajajoči promet naj se ujame in kam naj ga usmerjevalnik pošlje.",
   "Identifies the rule in listings, hit counts, and the system log.": "Označuje pravilo v seznamih, štetju zadetkov in sistemskem dnevniku.",

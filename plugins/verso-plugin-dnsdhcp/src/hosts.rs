@@ -371,7 +371,7 @@ fn footnote(section: Option<&str>, host: &Host) -> Widget {
     // Not a live preview: this page's block is built where it is rendered, and
     // making it follow the form is a decision for this plugin's own pass.
     Widget::code(
-        &format!("Written to /etc/config/{CONFIG}"),
+        &format!("/etc/config/{CONFIG}"),
         &uci_preview(section, host),
     )
 }
@@ -657,10 +657,7 @@ mod tests {
         assert_eq!(nas["widget"]["children"][0]["style"], "page");
         // children[1] is the form's own footnote — the lines this save writes.
         assert_eq!(nas["widget"]["children"][1]["type"], "code");
-        assert_eq!(
-            nas["widget"]["children"][1]["label"],
-            "Written to /etc/config/dhcp"
-        );
+        assert_eq!(nas["widget"]["children"][1]["label"], "/etc/config/dhcp");
         assert_eq!(nas["widget"]["children"][2]["fields"][1]["type"], "confirm");
 
         let blank = body(blank(&fixture::leases(), &Form::default()));

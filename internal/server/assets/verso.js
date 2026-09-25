@@ -183,48 +183,72 @@ document.addEventListener("alpine:init", function () {
     };
   });
 
-  // copy: copy the widget's text to the clipboard and briefly show "Copied!".
+  // copy: copy the widget's text and report the clipboard's actual answer.
   // Prefers the async Clipboard API; falls back to a hidden-textarea execCommand
   // for non-secure origins (a router reached over plain http on the LAN).
   Alpine.data("copy", function () {
     return {
       idle: true,
       done: false,
+      failed: false,
+      _timer: null,
+      _attempt: 0,
+      get ready() { return !this.done && !this.failed; },
+      destroy: function () {
+        clearTimeout(this._timer);
+        this._attempt++;
+      },
       run: function () {
         var src = this.$refs.src;
         var text = src ? src.textContent : "";
         var self = this;
-        var flash = function () {
-          self.idle = false;
-          self.done = true;
-          versoAnnounce(T("Copied"));
-          setTimeout(function () {
+        var attempt = ++this._attempt;
+        clearTimeout(this._timer);
+        this.idle = true;
+        this.done = this.failed = false;
+        var finish = function (copied) {
+          // A late clipboard answer must not overwrite a newer attempt.
+          if (attempt !== self._attempt) return;
+          self.idle = !copied;
+          self.done = copied;
+          self.failed = !copied;
+          versoAnnounce(T(copied ? "Copied" : "Couldn’t copy. Select the text and copy it manually."));
+          self._timer = setTimeout(function () {
             self.done = false;
+            self.failed = false;
             self.idle = true;
-          }, 1500);
+          }, copied ? 1500 : 4000);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(flash, function () {
-            self.fallback(text);
-            flash();
+          navigator.clipboard.writeText(text).then(function () {
+            finish(true);
+          }, function () {
+            if (attempt !== self._attempt) return;
+            finish(self.fallback(text));
           });
         } else {
-          self.fallback(text);
-          flash();
+          finish(self.fallback(text));
         }
       },
       fallback: function (text) {
+        var active = document.activeElement;
+        var ta = document.createElement("textarea");
         try {
-          var ta = document.createElement("textarea");
           ta.value = text;
+          ta.readOnly = true;
+          ta.tabIndex = -1;
           ta.style.position = "fixed";
+          ta.style.top = "0";
+          ta.style.left = "0";
           ta.style.opacity = "0";
           document.body.appendChild(ta);
           ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
+          return document.execCommand("copy");
         } catch (e) {
-          /* clipboard unavailable; nothing more we can do */
+          return false;
+        } finally {
+          ta.remove();
+          if (active && active.isConnected && active.focus) active.focus({ preventScroll: true });
         }
       },
     };
@@ -380,6 +404,8 @@ document.addEventListener("alpine:init", function () {
       // The dialog is on screen: name it, shut the page behind it, and put
       // focus in it.
       enter: function () {
+        // Escape can close it before the queued opening callback runs.
+        if (!this.open) return;
         var dialog = this.$refs.dialog;
         if (!dialog) return;
         versoNameDialog(dialog);
@@ -519,9 +545,8 @@ document.addEventListener("alpine:init", function () {
         this.show();
       },
       loadPanel: function () {
-        // The frame is teleported to <body>, so it is no longer under the row
-        // that owns it — Alpine keeps the moved node on the template, which is
-        // the only honest way back to it.
+        // The frame is teleported to body, so look inside this modal's dialog
+        // rather than the row that opened it.
         var panel = this.teleported("[data-verso-panel-url]");
         if (!panel) return;
         var url = panel.getAttribute("data-verso-panel-url");
@@ -585,20 +610,17 @@ document.addEventListener("alpine:init", function () {
         versoBusy(panel, true);
         window.htmx.ajax("GET", url, { target: panel, swap: "innerHTML" });
       },
-      // The panel is teleported to <body>, which puts it outside this
-      // component's element and so outside $refs. Alpine keeps the link on the
-      // template it came from, and that is the only structural path back to it;
-      // a row whose drawer is not an entity panel has none, and asking for a tab
-      // on one is simply an open.
+      // A row whose drawer is not an entity panel has none, and asking for a
+      // tab on one is simply an open.
       entityPanel: function () {
         return this.teleported("[data-verso-entity-body]");
       },
-      // Whatever this scope's teleported frame holds, found through the template
-      // Alpine moved it from.
+      // The dialog ref belongs to this modal, even after teleporting to body.
+      // A row may also contain a modal for its removal confirmation; the first
+      // teleport template under the row need not belong to its edit drawer.
       teleported: function (selector) {
-        var template = this._root && this._root.querySelector("template[x-teleport]");
-        var moved = template && template._x_teleport;
-        return moved ? moved.querySelector(selector) : null;
+        var dialog = this.$refs.dialog;
+        return dialog ? dialog.querySelector(selector) : null;
       },
       onKeydown: function (e) {
         if (!this.open) return;

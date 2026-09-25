@@ -19,7 +19,7 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		w    Widget
 		want string
 	}{
-		"section": {&Section{Title: "Privacy"}, `<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">Privacy</h2>`},
+		"section": {&Section{Title: "Privacy"}, `<h2 class="verso-section-heading text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">Privacy</h2>`},
 		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="text-xs font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`},
 		"band":    {&Table{Title: "Leases", Columns: []TableColumn{{Label: "Name"}}}, `<h2 class="text-lg font-semibold tracking-tight text-body">Leases</h2>`},
 		"drawer":  {&Drawer{Title: "Edit rule", Trigger: []Widget{&Text{Markdown: "Edit"}}}, `<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit rule</h2>`},
@@ -99,7 +99,7 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 		}},
 	}})
 	for _, want := range []string{
-		`<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">SSH</h2>`,
+		`<h2 class="verso-section-heading text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">SSH</h2>`,
 		`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -118,5 +118,50 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 	sibling := render(t, r, &Stack{Children: []Widget{&Section{Title: "A"}, &Section{Title: "B"}}})
 	if strings.Contains(sibling, "<h3") {
 		t.Errorf("sections side by side stay h2:\n%s", sibling)
+	}
+}
+
+func TestDrawerSectionsStartTheirOwnHierarchy(t *testing.T) {
+	for _, kind := range []string{"row", "actionbar", "drawer"} {
+		t.Run(kind, func(t *testing.T) {
+			body := []Widget{&Form{Fields: []Widget{
+				&Section{Title: "Security", Children: []Widget{&Section{Title: "Encryption"}}},
+			}}}
+			panel := &RowDrawer{Title: "Edit network", Open: true, Children: body}
+			var opener Widget
+			switch kind {
+			case "row":
+				opener = &Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Network"}}, Drawer: panel}}}
+			case "actionbar":
+				opener = &ActionBar{Action: &TableAction{Label: "Add network", Href: "?open=new"}, Drawer: panel}
+			case "drawer":
+				opener = &Drawer{Title: "Edit network", Trigger: []Widget{&Text{Markdown: "Edit"}}, Children: body}
+			}
+			tree := &Section{Title: "Wireless", Children: []Widget{
+				opener,
+				&Section{Title: "Page subsection"},
+			}}
+			r := newRenderer(t)
+			got := render(t, r, tree)
+			for _, want := range []string{
+				`<h2 class="verso-section-heading text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">Security</h2>`,
+				`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Encryption</h3>`,
+				`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Page subsection</h3>`,
+			} {
+				if !strings.Contains(got, want) {
+					t.Errorf("missing %s in:\n%s", want, got)
+				}
+			}
+			if kind != "drawer" {
+				var fragment strings.Builder
+				found, err := r.RenderOpenPanelWithToken(&fragment, tree, "", "", nil, Flash{})
+				if err != nil || !found {
+					t.Fatalf("open panel: found=%v, err=%v", found, err)
+				}
+				if !strings.Contains(fragment.String(), `text-ink">Security</h2>`) || !strings.Contains(fragment.String(), `text-ink">Encryption</h3>`) {
+					t.Errorf("panel fragment hierarchy differs from the full page:\n%s", fragment.String())
+				}
+			}
+		})
 	}
 }

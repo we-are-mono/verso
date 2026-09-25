@@ -104,6 +104,13 @@ type drawerPanelView struct {
 	Body    []template.HTML
 }
 
+// drawer starts a panel's own section hierarchy. A drawer opened from a nested
+// listing has the same headings as one rendered on its own after a form post.
+// The trigger keeps the enclosing page's depth; only the body starts afresh.
+func (r *Renderer) drawer() *Renderer {
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq}
+}
+
 // renderPanel draws a row drawer into the one panel view every open panel is
 // drawn from — a row's, the bar's, and the answer to a frame asking for its
 // contents alone. An open panel is a place, its address in the address bar, so
@@ -113,7 +120,7 @@ func (r *Renderer) renderPanel(d *RowDrawer, csrf string, flash Flash) (drawerPa
 	for _, child := range d.Children {
 		PostIntoFrame(child, FramePanel, "")
 	}
-	body, err := r.renderChildren(d.Children, csrf)
+	body, err := r.drawer().renderChildren(d.Children, csrf)
 	if err != nil {
 		return drawerPanelView{}, err
 	}
@@ -155,7 +162,7 @@ func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	children, err := r.renderChildren(d.Children, csrf)
+	children, err := r.drawer().renderChildren(d.Children, csrf)
 	if err != nil {
 		return err
 	}

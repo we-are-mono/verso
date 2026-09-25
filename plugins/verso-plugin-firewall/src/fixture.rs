@@ -114,10 +114,8 @@ fn find(value: &Value, wanted: &dyn Fn(&Value) -> bool) -> Option<Value> {
 /// what would really arrive.
 pub fn submission(body: &Value) -> String {
     let mut pairs: Vec<(String, String)> = Vec::new();
-    // The panel's own form, and only it. The delete form below it is a second
-    // form carrying the marker that means "remove this" — a browser posts one
-    // form or the other, never both, and gathering the pair would submit a
-    // deletion nobody asked for.
+    // Gather only the editor's form. The surrounding listing carries its own
+    // toggle and removal actions, which a Save never submits.
     gather(&editing_form(body).expect("the panel's form"), &mut pairs);
     pairs
         .iter()

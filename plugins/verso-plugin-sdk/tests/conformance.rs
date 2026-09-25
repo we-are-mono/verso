@@ -646,6 +646,16 @@ fn listing() -> Widget {
                                 value: "off".into(),
                                 ..TableRowAct::default()
                             },
+                            TableRowAct {
+                                icon: "trash-2".into(),
+                                title: "Delete zone".into(),
+                                name: "_remove".into(),
+                                value: "cfg02zone".into(),
+                                confirm_title: "Delete zone “%s”?".into(),
+                                confirm: "Its networks will use the global defaults when applied."
+                                    .into(),
+                                ..TableRowAct::default()
+                            },
                         ],
                         ..TableCell::default()
                     },

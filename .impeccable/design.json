@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-23T00:00:00Z",
+  "generatedAt": "2026-09-25T11:24:07Z",
   "title": "Design System: Verso",
   "extensions": {
     "colorMeta": {
@@ -133,6 +133,13 @@
       "description": "A top-level destination: icon identity, 4px hover slide, and the current row as the rail's only surface.",
       "html": "<nav class=\"ds-rail\"><a href=\"#\" class=\"ds-rail-row\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"/><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg>Overview</a><a href=\"#\" class=\"ds-rail-row\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\"/><path d=\"M12 18h.01\"/></svg>Devices</a></nav>",
       "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 288px; padding: 28px 0; } .ds-rail-row { display: flex; align-items: center; gap: 12px; padding: 8px 24px; border-left: 2px solid transparent; color: #5c574f; font: 400 14px/20px 'Hanken Grotesk', system-ui, sans-serif; text-decoration: none; transition: padding .15s, color .15s, background-color .15s; } .ds-rail-row svg { color: #8b857a; } .ds-rail-row:hover { padding-left: 28px; background: rgba(236,232,224,.5); color: #1b1917; } .ds-rail-row[aria-current=page] { border-left-color: #1b1917; background: #f5f2ec; color: #1b1917; font-weight: 600; } .ds-rail-row[aria-current=page] svg { color: #1b1917; }"
+    },
+    {
+      "name": "Section Heading",
+      "kind": "custom",
+      "description": "Full section headings carry a 6×6px square with 1px corners in Strong Hairline (rule-strong), one palette step darker than the section dividers and matching the homepage’s Connected marker size. It sits in the left gutter with an 8px gap before the words. The marker takes no layout space and is centered on the first line. Page titles and smaller subsection headings do not carry it.",
+      "html": "<div class=\"ds-section-example\"><h2 class=\"ds-section-heading\">Radios</h2></div>",
+      "css": ".ds-section-example { padding-inline-start: 14px; } .ds-section-heading { position: relative; margin: 0; color: var(--color-ink, #1b1917); font: 600 18px/1.25 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.025em; } .ds-section-heading::before { content: \"\"; position: absolute; inset-inline-start: -14px; top: calc(0.5lh - 3px); width: 6px; height: 6px; border-radius: 1px; background-color: var(--color-rule-strong, #d2ccc2); pointer-events: none; }"
     }
   ],
   "narrative": {

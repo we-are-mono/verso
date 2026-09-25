@@ -7,12 +7,12 @@
      button (shell-owned "copy", verso.js); icons from icons.go. */}}
 {{/* verso-copy-inline: the icon-sized copy control beside a value — context is the
      text to copy. Shared by properties rows and mono table cells. */}}
-{{/* The control is a 24px square that only fills on hover, so a column of them
+{{/* The control is a 28px square that only fills on hover, so a column of them
      beside a column of addresses stays a column of addresses. Its glyph rests at
      the mark step, darkens to ink under the pointer, and turns green the moment
      the value is on the clipboard — the one place a hue at full chroma answers
      an act rather than states a condition. */}}
-{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" aria-label="{{ t "Copy" }}" class="group/copy relative ml-1 -my-1 inline-grid align-middle {{template "verso-btn-icon"}}">
+{{define "verso-copy-inline"}}<button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative inline-grid align-middle {{template "verso-btn-icon"}}">
   <span x-ref="src" class="hidden">{{.}}</span>
   <span x-show="idle">{{icon "copy" "size-4"}}</span>
   <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
@@ -20,10 +20,7 @@
        what keeps it inside the table on the last column. Pure-CSS reveal on
        hover/keyboard focus — the group is NAMED so an ancestor `group` (a table
        row wears one for its border styling) can never reveal it from afar. */}}
-  <span class="{{template "verso-tip-class"}} group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100">
-    <span x-show="idle">{{ t "Copy" }}</span>
-    <span x-show="done" x-cloak>{{ t "Copied" }}</span>
-  </span>
+  <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy"}}</span>
 </button>{{end}}
 {{/* verso-mark-hue: the packet's fill for a tone — the hue at full chroma, as
      a mark; no tone is the hollow packet, the absent state. Still, never the

@@ -84,12 +84,6 @@
   }
 
   function applyInterface(iface) {
-    var tunnel = document.querySelector('[data-overview-tunnel="' + CSS.escape(iface.name) + '"]');
-    if (tunnel) {
-      setText(tunnel, "[data-overview-tunnel-label]", iface.state);
-      var state = tunnel.querySelector("[data-overview-tunnel-state]");
-      if (state) state.dataset.tone = iface.operstate === "up" ? "success" : (iface.operstate === "down" || iface.operstate === "lowerlayerdown" ? "danger" : "neutral");
-    }
     var rows = document.querySelectorAll("[data-verso-row]");
     var root = null, key = "interface:" + iface.name;
     rows.forEach(function (row) {
@@ -283,8 +277,8 @@
     if (d && window.__versoWanSample) window.__versoWanSample(d.down, d.up);
   });
   // The hardware-sensor frame updates the System panel's temperature/fan/power
-  // rows in place; an absent reading (a row hidden at load) has no element to
-  // find, so it is silently skipped. The temperature dot recolours to match.
+  // rows in place, including N/A when a reading disappears. The temperature
+  // dot returns to its hollow neutral state when no reading is available.
   function setSensor(name, val) {
     if (val == null) return;
     var el = document.querySelector('[data-verso-prop="' + name + '"]');
@@ -303,10 +297,9 @@
     setSensor("temperature", d.temperature);
     setSensor("fan", d.fan);
     setSensor("power", d.power);
-    setSensor("summary", d.summary);
     var dot = document.querySelector('[data-verso-prop-dot="temperature"]');
     if (dot && d.tempLevel) {
-      dot.className = "mr-2.5 size-1.5 shrink-0 rounded-[1px] " + TONE_DOT(d.tempLevel);
+      dot.className = "mr-2.5 size-1.5 shrink-0 rounded-[1px] " + (d.tempLevel === "neutral" ? "border border-faint" : TONE_DOT(d.tempLevel));
     }
   });
   }

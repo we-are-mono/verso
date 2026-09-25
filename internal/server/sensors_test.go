@@ -4,6 +4,7 @@
 package server
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/sensors"
@@ -11,13 +12,11 @@ import (
 
 func TestFormatSensors(t *testing.T) {
 	// A fully-instrumented board: temperature rounds from milli-°C, power from
-	// micro-watts, and the summary counts both kinds.
+	// micro-watts.
 	v := formatSensors(identityTranslator, "Mono Gateway Development Kit", sensors.Facts{
-		CPUTemp:      &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "warning"},
-		Fan:          &sensors.Fan{RPM: 3630},
-		Power:        &sensors.Power{MicroW: 12400000},
-		PowerCount:   8,
-		ThermalCount: 5,
+		CPUTemp: &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "warning"},
+		Fan:     &sensors.Fan{RPM: 3630},
+		Power:   &sensors.Power{MicroW: 12400000},
 	})
 	if v.Model != "Mono Gateway Development Kit" {
 		t.Errorf("model: %q", v.Model)
@@ -31,25 +30,35 @@ func TestFormatSensors(t *testing.T) {
 	if v.Power != "12.4 W" {
 		t.Errorf("power: %q", v.Power)
 	}
-	if v.Summary != "8 power · 5 thermal" {
-		t.Errorf("summary: %q", v.Summary)
-	}
 }
 
-func TestFormatSensorsHidesAbsent(t *testing.T) {
-	// An unprofiled PC: temperature only, no fan, no power. Blank fields hide
-	// their rows; the summary drops the kind that has no sensors.
+func TestFormatSensorsAbsent(t *testing.T) {
+	// An unprofiled PC keeps its system temperature and shows N/A for the rest.
 	v := formatSensors(identityTranslator, "", sensors.Facts{
-		CPUTemp:      &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "success"},
-		ThermalCount: 3,
+		CPUTemp: &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "success"},
 	})
 	if v.Temperature != "45 °C · Normal" {
 		t.Errorf("temperature: %q", v.Temperature)
 	}
-	if v.Fan != "" || v.Power != "" {
-		t.Errorf("absent fan/power must be blank: fan=%q power=%q", v.Fan, v.Power)
+	if v.Fan != "N/A" || v.Power != "N/A" {
+		t.Errorf("absent fan/power: fan=%q power=%q", v.Fan, v.Power)
 	}
-	if v.Summary != "3 thermal" {
-		t.Errorf("summary should drop the empty power kind: %q", v.Summary)
+	// A missing tick must send all three values and a neutral temperature tone,
+	// so a browser clears readings that were present on the preceding tick.
+	payload, err := json.Marshal(formatSensors(identityTranslator, "", sensors.Facts{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]string
+	if err := json.Unmarshal(payload, &fields); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"temperature", "fan", "power"} {
+		if fields[key] != "N/A" {
+			t.Errorf("absent %s omitted or not N/A: %s", key, payload)
+		}
+	}
+	if fields["tempLevel"] != "neutral" {
+		t.Errorf("absent temperature must clear its status: %s", payload)
 	}
 }

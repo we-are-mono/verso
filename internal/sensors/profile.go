@@ -42,7 +42,7 @@ type Profile struct {
 type Entry struct {
 	Path string
 	Name string
-	Main bool // power: the headline draw (the input rail)
+	Main bool // fan: the primary channel; power: the headline draw (input rail)
 	CPU  bool // thermal: the CPU temperature
 }
 
