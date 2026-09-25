@@ -42,17 +42,17 @@ func roster() []Device {
 	}
 }
 
-// testActs stands in for the shell's slot vocabulary: the four device slots in
-// their designed order, with the first opening the panel and the rest inert —
-// the shape a board with only dnsdhcp installed would draw.
+// testActs stands in for the shell's slot vocabulary: one reservation action
+// followed by limits, with only the reserve tab claimed in this fixture.
 func testActs(d Device) []TableRowAct {
-	titles := DeviceActTitles()
-	return []TableRowAct{
-		{Icon: "bookmark-plus", Title: titles["reserve"], Opens: true},
-		{Icon: "trash-2", Title: titles["unreserve"]},
-		{Icon: "ban", Title: titles["block"]},
-		{Icon: "sliders-horizontal", Title: titles["shape"]},
+	titles := DeviceActTitles(d)
+	var acts []TableRowAct
+	if d.Reserved {
+		acts = append(acts, TableRowAct{Icon: "pin-off", Title: titles["unreserve"]})
+	} else {
+		acts = append(acts, TableRowAct{Icon: "pin", Title: titles["reserve"], Opens: true})
 	}
+	return append(acts, TableRowAct{Icon: "sliders-horizontal", Title: titles["shape"]})
 }
 
 // TestRenderDevicesTable: the roster is one listing banded by network — name
@@ -69,9 +69,9 @@ func TestRenderDevicesTable(t *testing.T) {
 		"reserved", "this browser", // the chips that qualify a name
 		"Online", "Offline",
 		"Reserve an address",                        // the act that leads somewhere
-		"Block internet",                            // one that is drawn and inert
+		"Edit limits",                               // one that is drawn and inert
 		"holding a lease now", "known, not present", // the legend for the marks
-		"Offline devices stay listed until their lease expires.",
+		"Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		`data-verso-entity-url="/entity/device/a4:83:e7:2b:19:0c"`, // the row points at the shell's panel
 	} {
 		if !strings.Contains(got, want) {

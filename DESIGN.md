@@ -56,7 +56,7 @@ typography:
     letterSpacing: "-0.025em"
   section-heading:
     fontFamily: "Hanken Grotesk, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1rem"
+    fontSize: "1.125rem"
     fontWeight: 600
     lineHeight: 1.25
     letterSpacing: "-0.025em"
@@ -179,7 +179,7 @@ components:
     backgroundColor: "{colors.quiet}"
     textColor: "{colors.ink}"
     typography: "{typography.section-heading}"
-    padding: "12px 0 12px 40px"
+    padding: "16px 0 16px 40px"
   table-row:
     backgroundColor: "{colors.ground}"
     textColor: "{colors.ink}"
@@ -226,7 +226,7 @@ The system is flat and dense enough for a power user, never cramped. Surfaces se
 - One action colour (denim); four status hues used as marks, never as decoration.
 - Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.
 - Flat surfaces, hairline borders, 2px corners, 1px for marks.
-- A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 12px vertical padding.
+- A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 16px vertical padding.
 - Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.
 - A full-width sand control band is the seam between a page's heading and its content.
 
@@ -237,7 +237,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 ### Primary
 - **Denim** (#3568a8): the only colour that means "act on this, or this changed" — the primary button, links, focus, the selected tab underline. Nothing else is denim, and a page with no primary act has no denim.
 - **Deep Denim** (#285184): denim one step darker, for hover and focus rings.
-- **Denim Hairline** (#cbd8e6) and **Denim Wash** (#e8eef5): the hairline and ground of the accent chip ("configured by hand": reserved, static) and of info bands.
+- **Denim Hairline** (#cbd8e6) and **Denim Wash** (#e8eef5): the hairline and ground of the accent chip (network and zone references, static addresses) and of info bands.
 
 ### Secondary
 - **Leaf Green** (#0e9b6e): up, healthy, accept — as a mark (state square, the accept chip's mark). **Deep Green** (#066b4b) carries green words on **Green Wash** (#e4f2ec).
@@ -279,7 +279,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Display** (600, 1.875rem/30px, 1.1): the home page's verdict heading only.
 - **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always 36px tall so pages never shift between each other.
 - **Title** (600, 1.125rem/18px, -0.025em): table and drawer titles, and the overview's traffic graph title, in Body ink on sand.
-- **Section heading** (600, 1rem/16px, 1.25, -0.025em): full-section h2s in Quiet Sand bands, in Ink. Page titles, dialog titles and the overview's graph title retain their own roles.
+- **Section heading** (600, 1.125rem/18px, 1.25, -0.025em): full-section h2s in Quiet Sand bands, in Ink. Page titles, dialog titles and the overview's graph title retain their own roles.
 - **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the glyph of what the part is, when it has one (16px Lucide in Glyph: a network, a DHCP server, a bridge), then the name, then how many things the part holds (500, Meta, tabular), then a Strong Hairline running on to the column's end, the line that stands between sections, so it reads as the start of a group and never as one more field label, and is told from the Hairlines between the rows under it. The count is the set's own length. When it differs from the last time the page was shown, the old number rolls out and the new one rolls in (up for more, down for fewer, 420ms exponential ease-out), arriving in Ink and settling to Meta. Under reduced motion it simply shows the number. The part's first box stands 24px under the name, as a form's rows stand apart (a set's first item gives up its own air above).
 - **Body** (400, 0.875rem/14px, 1.5): all prose, labels (600), buttons (600), cells. Page ledes cap at 60ch; section ledes use a snug 1.375 line height and cap at 36rem inside their heading band.
 - **Label** (500, 0.75rem/12px, 0.08em, uppercase): kickers and column heads, in Meta.
@@ -299,13 +299,13 @@ Smaller subsection headings retain their ledger lines; square marks carry state.
 
 The page is left-aligned against a 288px rail, never centred. The frame keeps 40px of air on every side, and inside it the page declares a measure: wide pages cap at 1152px, forms at 640px. The top bar's right group ends on the same column edge, so a page's primary act sits exactly under Log out.
 
-**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A full section that used a leading divider keeps its 24px separation from the preceding content, but its heading band replaces the divider and the space below that divider. The complete band keeps 20px before the content; its heading and optional lede share 12px of padding above and below, with a 4px gap between them. Height follows the contents, with no fixed or minimum band height.
+**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A full section that used a leading divider keeps its 24px separation from the preceding content, but its heading band replaces the divider and the space below that divider. The complete band keeps 20px before the content; its heading and optional lede share 16px of padding above and below, with a 4px gap between them. Height follows the contents, with no fixed or minimum band height.
 
 Untitled sections, the page Save's rule and plugin seams retain their hairlines and 24px of air on either side. A plugin contribution that opens with a section band, as SSH does on Access, needs only the 24px gap before that band, with no extra hairline or padding. The 24px is measured from a row's box, not its words: a row is always its control's 36px, so a checkbox row keeps a few pixels of its own air below its words. Sections give back their first and last rows' unnecessary padding; a titled section keeps its first row's padding under the band. A rule runs out by 40px to the rail on the left and stops where the column ends on the right, clear of a sidebar beside it. Heading bands follow the same horizontal reach, keeping their words aligned with the content. A drawer's section bands and configuration dividers span its full width; subsection and list rules keep the content inset.
 
 The masthead has no divider beneath the h1 or its lede. Its 20px bottom padding is the complete gap before the content, with no additional bottom margin, letting the first section band establish its own boundary. Page acts end where Log out does, whatever measure the content column keeps. On a list or log, the control band starts 20px below the title and retains its own borders. The home page's sentence keeps the full 40px above it and stands unruled.
 
-Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), drawer headers are 52px, controls are 36px, and a control inside a row is 28px. Section bands grow with wrapped headings, ledes and controls; their vertical padding stays 12px in every case.
+Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), drawer headers are 52px, controls are 36px, and a control inside a row is 28px. Section bands grow with wrapped headings, ledes and controls; their vertical padding stays 16px in every case.
 
 Acts sit at the level they act on. A page's acts stand on its heading line. A form that is the whole page commits every section on it, so it closes on a section rule of the page's (40px either side, run out to the rail) with its Save under it. A form in a drawer closes on its own hairline inside the drawer, unless it ends in a configuration card: its actions finish that card without another rule. A form that commits one section draws no hairline: its Save stands 20px under its last field, and the next section's band identifies the next subject. Within a section, its settings and their Save come first, then what the section holds (keys, a certificate), with that thing's own acts 16px under it.
 
@@ -340,10 +340,10 @@ Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no verti
 
 ### Section headings
 - **Surface:** full-section h2s sit in Quiet Sand, the same surface as the active main-navigation row, with square corners, no decorative marker and no border. The band replaces the section's leading hairline.
-- **Contents:** the heading is 16px/600. Its metadata and controls share the heading row; a lede belongs inside the same band, on the next row with a 4px gap, in 14px Body ink and at most 36rem wide. Markdown and links retain their normal prose styling.
-- **Padding:** 12px above and below the complete contents, with or without a lede. Do not impose a fixed or minimum height; wrapping and controls determine the height. The content below starts after the band's 20px gap.
+- **Contents:** the heading is 18px/600. Its metadata and controls share the heading row; a lede belongs inside the same band, on the next row with a 4px gap, in 14px Body ink and at most 36rem wide. Markdown and links retain their normal prose styling. Maintenance's Reboot uptime and Firmware check controls align right with a 16px inset, matching the tables' outer cell padding; they wrap within the band when needed.
+- **Padding:** 16px above and below the complete contents, with or without a lede. Do not impose a fixed or minimum height; wrapping and controls determine the height. The content below starts after the band's 20px gap.
 - **Content inset:** the first field row contributes another 12px above its contents, so its controls begin 32px below the band. Handwritten section bodies, such as Maintenance's action groups, supply that same 12px top inset themselves. Count it once; a body containing padded field rows already has it.
-- **Content bottom spacing:** Maintenance keeps 32px from the end of each section's content to the next heading band, matching the 32px above the content. This applies to action groups and the optional software-updates section; it is separate from the band's own 12px padding.
+- **Content bottom spacing:** Maintenance keeps 32px from the end of each section's content to the next heading band, matching the 32px above the content. This applies to action groups and the optional software-updates section; it is separate from the band's own 16px padding.
 - **Reach:** the page band extends through the left gutter to meet the menu, or the screen edge on mobile, and ends at the content column's right edge. Words keep their existing horizontal alignment. In a drawer the band reaches both edges while its contents keep the body's 32px inset.
 - **Scope:** page h1s, drawer and dialog titles, navigation kickers and smaller subsection headings keep their own treatments. The overview's traffic h2 is a graph title: 18px in Body ink, inside the chart's own header with 16px horizontal padding and no section band extending into the gutter. Subsections retain their inset ledger lines.
 
@@ -380,8 +380,8 @@ The anatomy is the same in both:
 
 ### Chips
 - **Style:** lowercase Inconsolata 14px in Meta on Quiet Sand, Hairline border, 2px corners, 2px 6px padding. They carry config values and config keys (`hostname`, `pppoe`), never decoration.
-- **Accent:** Denim Wash with Deep Denim words and a leading 12px icon, for what was configured by hand. A green variant marks "you" (this browser, this session). No other chip colours.
-- **Entity chips:** a neutral icon plus label for an interface, zone or port cited inside another row.
+- **Accent:** Denim Wash with Deep Denim words and a leading 14px icon, for what was configured by hand. A green variant marks "you" (this browser, this session).
+- **Entity chips:** an icon plus label for an interface, zone or port cited inside another row. Table chips use the shared semantic palette: network and zone references in denim, healthy DHCP and reservations in green, configured device limits in marigold. Reservation row actions use one icon family: pin to reserve, pin-off to remove a reservation. Each row offers only the action that applies to its state. Reserved devices carry the same pin icon and the short label `reserved`. The words `reserved` and `limits` use the sans face at regular weight. Limits chips say only `limits`; the tooltip is a compact readout: seven weekday cells with scheduled days in marigold, a prominent time window and quiet router-time caption, then paired download/upload values. Keep prose as the accessible text alternative. Keep category labels short and entity names exact. Colored chip icons follow their hue, using its Deep step for green, marigold and crimson.
 - **One box, always a border:** every chip that cites something is the same box: a row's tag ("this browser"), the router at one end of a firewall rule, a rule's action (`accept`, `reject`, `drop`, `mark`; `drop` has no hue and is the neutral chip), the protocol beside IPv4, a panel tab's state, a choice's config value, an interface in a row. That box is 14px/400 words on a 16px line, 2px above and below, 6px sides and a 1px border, 22px tall. The border is its hue's Hairline on its hue's Wash, or Hairline on Quiet Sand for a neutral one. Only the face varies: mono for a string the machine wrote (`accept`, `lan`, `dhcp`), sans for words ("this browser", the router, which names a thing rather than a value). A mono chip is one step heavier, 500, because Inconsolata at 400 reads a size smaller than the Hanken beside it.
 - **One mark or none:** a chip leads with nothing, a 14px Lucide icon, or the 6px packet square in its hue (hollow when the chip has none, the packet absent). Never two; an icon wins. The packet in a chip is still: a chip states a fact, and the only pulse is the page's live mark. A firewall verdict (`accept`, `reject`, `drop`, `mark`) always leads with its packet, and `drop`'s is hollow. On a 20px detail line the chip overhangs by a pixel either side rather than making the line taller. The removable token inside a list control is not a citation and keeps its control-sized box.
 
@@ -448,7 +448,7 @@ Save stages a change; nothing happens on the router until it is applied from the
 
 ### Drawers
 - **Shell:** a panel from the right on Paper, behind a Strong Hairline and cast with the drawer shadow. It slides in over 300ms (ease-out) and out over 200ms (ease-in). Its width follows its content: 640px for a form (the standard edit drawer), 768px for a wide read, 448px for a short one. Header is a 52px Quiet Sand band holding only the title ("New rule", "Edit Allow-Ping") and a 28px close.
-- **Sections:** each drawer starts its own heading hierarchy, independent of the page section that opened it. Full sections use the standard Quiet Sand heading band, edge to edge, with a 16px heading and any lede inside. The band has no border and keeps 12px vertical padding, 24px separation from the preceding section and 20px before its content. Headings, ledes and fields retain their 32px horizontal inset; subsection and list dividers stay inset. The opening section has no leading divider.
+- **Sections:** each drawer starts its own heading hierarchy, independent of the page section that opened it. Full sections use the standard Quiet Sand heading band, edge to edge, with an 18px heading and any lede inside. The band has no border and keeps 16px vertical padding, 24px separation from the preceding section and 20px before its content. Headings, ledes and fields retain their 32px horizontal inset; subsection and list dividers stay inset. The opening section has no leading divider.
 - **Configuration card:** the drawer reads as form name → fields → configuration card → actions. The filename alone labels the card, above the code; it has no section heading, marker, “Written to” prefix or repeated explanation of staging. A full-width hairline separates it from the fields; the filename and code keep the content's 32px horizontal inset. Live previews and copy controls stay part of the card.
 - **Footer:** when a configuration card ends the form, Save follows it with a small gap and no intervening hairline: the card and the act that saves it are one unit. Other drawer footers keep their inset Hairline. Removing an object belongs to its listing’s trash action, which opens a compact confirmation naming the object and its consequences, with the destructive act and Cancel. Edit drawers carry no duplicate removal action.
 

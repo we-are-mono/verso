@@ -53,7 +53,7 @@
        toolbar's family cut wears the same tray — and never the action colour,
        which is for what leads somewhere. Radios underneath, so it posts exactly
        as the box does and needs no JavaScript. */}}
-  <div role="radiogroup"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
+  <div role="radiogroup"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Options}}
     <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
       <input type="radio" name="{{$.Name}}" value="{{.Value}}"{{if eq .Value $.Value}} checked{{end}} class="sr-only">
@@ -77,10 +77,10 @@
        untypeable. */}}
   {{if .Segmented}}
   {{/* segmented: a set short enough to show whole reads better as one strip of
-       chips than as a grid of boxes — seven days fit on a line, and which are on
-       is then a shape rather than a list to scan. Still checkboxes underneath,
+       chips than as a grid of boxes. Wrap when the field is too narrow to fit
+       every option. Still checkboxes underneath,
        so it posts exactly as the grid does and needs no JavaScript. */}}
-  <div role="group"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
+  <div role="group"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Options}}
     <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
       <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}} class="sr-only">

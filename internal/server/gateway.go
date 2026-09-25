@@ -43,6 +43,16 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// An entity-only plugin has no standalone landing page. Old links and
+	// staged-change links lead to the roster that now owns its editor.
+	if len(m.Nav) == 0 && strings.Trim(r.PathValue("path"), "/") == "" && safeMethod(r.Method) {
+		for _, tab := range m.EntityTabs {
+			if tab.Entity == "device" {
+				http.Redirect(w, r, devicesPath, http.StatusSeeOther)
+				return
+			}
+		}
+	}
 	// A plugin's part of Access, and what it keeps under it (a certificate's
 	// acts, drawers over Access), are not pages of their own: asked for as a
 	// page, the address lands on Access, which composes them.

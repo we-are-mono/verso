@@ -655,3 +655,24 @@ document.addEventListener("alpine:init", function () {
     };
   });
 });
+
+// Entity editors stay open after Save. Once closed, read the roster again so
+// its labels, counts and offline rows match the saved policy. If the operator
+// has edited further, preserve that unfinished work in the existing drawer.
+(function () {
+  var saved = false;
+  var edited = false;
+  document.addEventListener("verso-entity-saved", function () { saved = true; edited = false; });
+  function changed(e) {
+    if (saved && e.target.closest && e.target.closest("[data-verso-entity-body]")) edited = true;
+  }
+  document.addEventListener("input", changed);
+  document.addEventListener("change", changed);
+  document.addEventListener("verso-panel-hidden", function () {
+    if (!saved || edited) return;
+    saved = false;
+    setTimeout(function () {
+      window.location.replace(window.location.pathname + window.location.search);
+    }, 250);
+  });
+})();

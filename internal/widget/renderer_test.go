@@ -244,7 +244,7 @@ func TestRenderSegmentedFieldsWearTheOneTray(t *testing.T) {
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
 	for _, got := range []string{pick, days} {
 		for _, want := range []string{
-			`class="inline-flex w-fit gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
+			`class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
 			`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2`,
 		} {
 			if !strings.Contains(got, want) {

@@ -279,6 +279,12 @@ struct DescribeResponseBody {
 pub struct Snapshot(Value);
 
 impl Snapshot {
+    /// Whether the shell successfully supplied this config, including an empty
+    /// one. Missing reads must not be reported as an empty configuration.
+    pub fn has_config(&self, config: &str) -> bool {
+        self.0.get(config).is_some_and(Value::is_object)
+    }
+
     /// from_value wraps an already-decoded read in the shape the shell injects,
     /// so a plugin can exercise its own snapshot mapping against a fixture.
     pub fn from_value(read: Value) -> Snapshot {
@@ -2459,9 +2465,31 @@ pub struct PageAction {
     pub icon: String,
 }
 
+/// A configured subject contributed to the shell roster by an entity tab.
+#[derive(Serialize, Debug)]
+pub struct EntitySummary {
+    pub id: String,
+    pub name: String,
+    /// Configuration label, not a claim about live enforcement.
+    pub state: String,
+    pub details: Vec<EntitySummaryDetail>,
+}
+
+/// A tooltip fact. The shell translates the label and each value separately.
+#[derive(Serialize, Debug)]
+pub struct EntitySummaryDetail {
+    pub kind: String,
+    pub label: String,
+    pub values: Vec<String>,
+}
+
 /// Envelope is the typed top-level reply (ADR-006 §4).
 #[derive(Serialize, Debug)]
 pub struct Envelope {
+    /// Bulk configured subjects for the shell roster. None means unavailable;
+    /// Some(empty) means the configuration was read and contains no subjects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entities: Option<Vec<EntitySummary>>,
     pub schema_version: u32,
     pub title: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -2551,6 +2579,7 @@ impl Envelope {
     /// page wraps a widget as the reply for one page render.
     pub fn page(title: &str, widget: Widget) -> Envelope {
         Envelope {
+            entities: None,
             schema_version: 1,
             title: title.into(),
             subheading: String::new(),

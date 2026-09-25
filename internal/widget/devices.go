@@ -48,8 +48,28 @@ type Device struct {
 	Traffic    string
 	Conns      string
 
-	Leased   bool
-	Reserved bool
+	Leased       bool
+	Reserved     bool
+	Limit        string // configured policy, supplied by the plugin claiming the shape slot
+	LimitDetails string // configured days, times and rates for the limits tooltip
+	LimitTip     *DeviceLimitTip
+}
+
+// DeviceLimitTip is the shell's visual reading of configured device limits.
+// It is table-chip content, outside the plugin widget vocabulary.
+type DeviceLimitTip struct {
+	Title, Hours, From, Until, Qualifier, Clock string
+	Days                                        []DeviceLimitDay
+	Rates                                       []DeviceLimitRate
+}
+
+type DeviceLimitDay struct {
+	Label  string
+	Active bool
+}
+
+type DeviceLimitRate struct {
+	Label, Value, Unit, Icon string
 }
 
 // DeviceAddr is one row of a device's full address list in the drawer: the
@@ -60,15 +80,18 @@ type DeviceAddr struct {
 	State  string
 }
 
-// DeviceActTitles name each action without repeating the row's device name.
-// The shell supplies the glyphs and their order.
-func DeviceActTitles() map[string]string {
-	return map[string]string{
-		"reserve":   "Reserve an address",
-		"unreserve": "Remove reservation",
-		"block":     "Block internet",
-		"shape":     "Edit limits and schedule",
+// DeviceActTitles names the actions available for this device. Reserve and
+// remove reservation are mutually exclusive. The shell supplies glyphs and order.
+func DeviceActTitles(d Device) map[string]string {
+	titles := map[string]string{
+		"shape": "Edit limits",
 	}
+	if d.Reserved {
+		titles["unreserve"] = "Remove reservation"
+	} else {
+		titles["reserve"] = "Reserve an address"
+	}
+	return titles
 }
 
 // DevicesTable is the roster, grouped by the network each device sits on: the
@@ -130,7 +153,7 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 			{Variant: "success", Label: "holding a lease now"},
 			{Label: "known, not present"},
 		},
-		Note:      "Offline devices stay listed until their lease expires.",
+		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}
 }
@@ -146,6 +169,9 @@ func deviceTags(d Device) []string {
 	if d.Reserved {
 		tags = append(tags, "reserved")
 	}
+	if d.Limit != "" {
+		tags = append(tags, "limited")
+	}
 	return tags
 }
 
@@ -153,7 +179,7 @@ func deviceTags(d Device) []string {
 // devices — which are here, which are pinned — the search over what is on
 // screen, the network to look at, and the one act the page offers.
 func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string) string) *ActionBar {
-	online, offline, reserved := 0, 0, 0
+	online, offline, reserved, limited := 0, 0, 0, 0
 	for _, d := range devices {
 		if d.Presence == "online" {
 			online++
@@ -163,6 +189,9 @@ func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string)
 		if d.Reserved {
 			reserved++
 		}
+		if d.Limit != "" {
+			limited++
+		}
 	}
 	bar := &ActionBar{
 		Tabs: []ActionTab{
@@ -170,6 +199,7 @@ func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string)
 			{Label: "Online", Count: online, Match: "online"},
 			{Label: "Offline", Count: offline, Match: "offline"},
 			{Label: "Reserved", Count: reserved, Match: "reserved"},
+			{Label: "With limits", Count: limited, Match: "limited"},
 		},
 		Select: &ActionPick{Key: "network", Options: []ActionOption{{Label: "All networks"}}},
 	}
@@ -222,8 +252,15 @@ func reservableDevice(devices []Device) string {
 // address is pinned, and that this is the browser you are reading on.
 func deviceChips(d Device) []TableChip {
 	var chips []TableChip
+	if d.Limit != "" {
+		detail := d.LimitDetails
+		if detail == "" {
+			detail = d.Limit
+		}
+		chips = append(chips, TableChip{Icon: "sliders-horizontal", Label: "limits", Title: detail, Tone: "warning", LocalizeLabel: true, LimitTip: d.LimitTip})
+	}
 	if d.Reserved {
-		chips = append(chips, TableChip{Icon: "lock", Label: "reserved", Tone: "accent"})
+		chips = append(chips, TableChip{Icon: "pin", Label: "reserved", Tone: "success", LocalizeLabel: true})
 	}
 	if d.ThisBrowser {
 		chips = append(chips, TableChip{Label: "this browser"})

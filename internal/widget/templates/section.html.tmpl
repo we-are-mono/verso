@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* section: a grouped block with an optional heading. Full headings and their
-     descriptions share a Quiet Sand band with 12px vertical padding and 20px
+     descriptions share a Quiet Sand band with 16px vertical padding and 20px
      before the content. Nested sections keep their smaller ledger headings. */}}
 {{/* Hairline is opt-in, and it means one of two things.
 
@@ -55,9 +55,9 @@
   <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
     <div class="flex flex-wrap items-center gap-3">
       {{/* A kicker names the group under it and nothing more, so it is set at the
-           meta size in caps rather than as a heading — a second 16px heading
+           meta size in caps rather than as a heading — a second 18px heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-base leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}

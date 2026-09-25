@@ -4,11 +4,9 @@
   "name": "Device limits",
   "socket": "/var/run/verso/qos.sock",
   "schema_version": 1,
-  "nav": [
-    { "section": "Security", "label": "Device limits", "path": "/" }
-  ],
+  "nav": [],
   "entity_tabs": [
-    { "entity": "device", "slot": "shape", "label": "Limits & schedule" }
+    { "entity": "device", "slot": "shape", "label": "Limits", "summaries": true }
   ],
   "acl": {
     "read": [

@@ -3,7 +3,9 @@
 {{/* Network inventory is still a typed table. The shell owns its tree,
      expansion, copy controls and runtime refresh; plugins supply only data. */}}
 {{define "table.interfaces"}}
-<div data-verso-inventory class="min-w-0 overflow-x-auto">
+{{/* Match the shared table scroller: hidden tooltip overhang must not create
+     a second vertical scroll area around the listing. */}}
+<div data-verso-inventory class="relative min-w-0 overflow-x-auto overflow-y-hidden">
   <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
   <table class="group/inventory w-full min-w-[66rem] table-fixed border-collapse text-left text-sm">
     <colgroup><col><col class="w-30"><col class="w-44"><col class="w-50"><col class="w-32"><col class="w-39"></colgroup>

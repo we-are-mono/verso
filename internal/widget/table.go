@@ -602,9 +602,13 @@ type TableChip struct {
 	Title string `json:"title,omitempty"` // localized explanation, including service status
 	Icon  string `json:"icon"`
 	Label string `json:"label"`
-	// Tone is "" for the neutral chip every cited entity wears, or "accent"
-	// where what the chip states is a decision someone made rather than one more
-	// fact about the row.
+	// LocalizeLabel marks shell-authored words, localized and set in sans.
+	// Entity names and config values remain verbatim in mono; plugins' labels
+	// are data by default.
+	LocalizeLabel bool            `json:"-"`
+	LimitTip      *DeviceLimitTip `json:"-"` // shell-owned device schedule and rate readout
+	// Tone is neutral by default, or accent, success, warning, danger using the
+	// shared chip palette. Configured limits use warning's marigold treatment.
 	Tone string `json:"tone,omitempty"`
 	// Dot leads the chip with the packet square in its tone instead of an
 	// icon; a chip carries one mark or none, and an icon wins.
@@ -835,9 +839,15 @@ type tableCellView struct {
 	// empty when the cell has no reading to draw.
 	Clip template.CSS
 	TableCell
+	Chips     []tableChipView
 	Actions   []tableRowActView
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
+}
+
+type tableChipView struct {
+	TableChip
+	TipID string
 }
 
 // OpensPanel reports whether this cell's link is the row's panel — the case
@@ -1248,6 +1258,13 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
+				for _, chip := range cv.TableCell.Chips {
+					view := tableChipView{TableChip: chip}
+					if chip.Title != "" {
+						view.TipID = fmt.Sprintf("verso-chip-tip-%d", r.seq.tip.Add(1))
+					}
+					cv.Chips = append(cv.Chips, view)
+				}
 				// A muted row mutes every cell in it: the secondary step is a
 				// statement about the row's subject, so no cell in that row can
 				// disagree with the rest.

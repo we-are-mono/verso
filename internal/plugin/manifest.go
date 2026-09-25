@@ -96,6 +96,9 @@ type EntityTab struct {
 	Entity string `json:"entity"` // the kind of subject: "device", "interface", "zone"
 	Slot   string `json:"slot"`   // which of that kind's slots this fills
 	Label  string `json:"label"`
+	// Summaries contributes configured subjects to the shell's roster through
+	// GET /entity/<kind>/, including subjects no longer visible at runtime.
+	Summaries bool `json:"summaries,omitempty"`
 }
 
 // EntityAct is a plugin's act on a subject that opens nothing — removing a
@@ -130,8 +133,8 @@ func (m Manifest) validate() error {
 		// The socket is dialed as-is; require a clean absolute path so a manifest
 		// cannot aim the shell at a relative or traversal path (VS-09).
 		return fmt.Errorf("plugin %q socket must be a clean absolute path", m.ID)
-	case len(m.Nav) == 0:
-		return fmt.Errorf("plugin %q has no nav entries", m.ID)
+	case len(m.Nav) == 0 && len(m.EntityTabs) == 0 && len(m.EntityActs) == 0 && m.SystemAccess == "":
+		return fmt.Errorf("plugin %q has no page or entity contributions", m.ID)
 	}
 	if m.SystemAccess != "" && (!strings.HasPrefix(m.SystemAccess, "/") || strings.HasPrefix(m.SystemAccess, "//") || strings.ContainsAny(m.SystemAccess, "?#\\") || m.SystemAccess != filepath.Clean(m.SystemAccess)) {
 		return fmt.Errorf("plugin %q access path must be a clean local path", m.ID)

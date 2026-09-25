@@ -70,6 +70,19 @@ over a local socket**, exchanging *data*, not markup.
      chrome without touching shell code. An entry may carry `mode`
      (`"basic"` | `"advanced"`, ADR-015): the shell renders it only in that
      reader mode; absent means both.
+   - `entity_tabs` — optional `{entity, slot, label, summaries}` contributions to
+     shell-owned entity drawers. A plugin may omit navigation when it contributes
+     entity tabs, entity actions, or System Access content. A tab with `summaries:
+     true` also answers `GET /entity/<kind>/` with `entities: [{id, name, state}]`.
+     Optional `details: [{kind, label, values}]` carries configured facts for a tooltip;
+     the optional semantic kind lets the shell choose a visual readout independently
+     of translated wording.
+     The shell translates labels and values separately. The shell requests this
+     once per roster, using the same session-scoped reads
+     as the editor. These are configured subjects, including offline devices;
+     `state` describes configuration, not live enforcement. An empty array means
+     no configured subjects; an omitted/null array means the read was unavailable.
+     The shell owns how summaries appear and where their editors open.
    - `manifest_version` — the manifest *format* version, distinct from
      `schema_version`; lets the manifest shape evolve independently of the widget
      vocabulary.

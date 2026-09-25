@@ -151,7 +151,7 @@ html.verso-fonts-loading body {
      joins it to its label, so moving from one to the other never passes
      through nothing and the tip stays up to be read (WCAG 1.4.13). */
   [data-verso-tip]:hover > [role="tooltip"],
-  [data-verso-tip]:focus-visible > [role="tooltip"] {
+  [data-verso-tip]:focus > [role="tooltip"] {
     pointer-events: auto;
   }
   [data-verso-tip] > [role="tooltip"]::before {
@@ -789,7 +789,7 @@ html.verso-fonts-loading body {
     height: auto;
     margin-inline-start: calc(-1 * var(--verso-section-band-inset));
     padding-inline-start: var(--verso-section-band-inset);
-    padding-block: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 4);
     background-color: var(--color-quiet);
     border-bottom-width: 0;
   }

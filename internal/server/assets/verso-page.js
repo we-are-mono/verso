@@ -17,14 +17,21 @@
 (function () {
   var GAP = 8; // the tip's own offset from the label, both ways
 
-  // clipper is the box the tip has to fit inside: the nearest ancestor that
-  // scrolls (a drawer's body, a page's overflow region), else the viewport.
+  // clipper is the box the tip has to fit inside: a drawer's scroll area or
+  // a table's clipped overflow region, otherwise the viewport.
   function clipper(el) {
     for (var node = el.parentElement; node; node = node.parentElement) {
-      var overflow = getComputedStyle(node).overflowY;
-      if (overflow === "auto" || overflow === "scroll") return node.getBoundingClientRect();
+      var style = getComputedStyle(node);
+      var overflow = style.overflowY;
+      if (overflow === "auto" || overflow === "scroll" || overflow === "hidden" || overflow === "clip") {
+        var rect = node.getBoundingClientRect();
+        // The table's scroll hint fades its trailing edge, including anything
+        // painted inside it. Keep explanations in the fully visible region.
+        var fade = parseFloat(style.getPropertyValue("--verso-scroll-edge")) || 0;
+        return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right - fade };
+      }
     }
-    return { top: 0, bottom: window.innerHeight };
+    return { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
   }
 
   function place(label) {
@@ -33,11 +40,20 @@
     // Measure from the default placement, so a tip that has been flipped once
     // can come back down when the panel is scrolled and the room returns.
     label.removeAttribute("data-verso-tip-above");
+    tip.style.left = "0px";
+    tip.style.maxWidth = "";
     var box = clipper(label);
+    // A short chip can sit near either edge of a horizontally scrolling table.
+    // Keep its longer explanation inside the visible part of that table.
+    var left = Math.max(0, box.left);
+    var right = Math.min(window.innerWidth, box.right);
+    if (tip.offsetWidth > right - left) tip.style.maxWidth = Math.max(0, right - left) + "px";
+    var tipRect = tip.getBoundingClientRect();
+    tip.style.left = Math.max(left - tipRect.left, Math.min(0, right - tipRect.right)) + "px";
     var rect = label.getBoundingClientRect();
     var height = tip.offsetHeight + GAP;
-    var below = box.bottom - rect.bottom;
-    var above = rect.top - box.top;
+    var below = Math.min(window.innerHeight, box.bottom) - rect.bottom;
+    var above = rect.top - Math.max(0, box.top);
     if (below < height && above > below) label.setAttribute("data-verso-tip-above", "");
   }
 
@@ -54,7 +70,7 @@
   // comes back the next time its label is pointed at or focused.
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") return;
-    var showing = [].filter.call(document.querySelectorAll("[data-verso-tip]:hover, [data-verso-tip]:focus-visible"), function (label) {
+    var showing = [].filter.call(document.querySelectorAll("[data-verso-tip]:hover, [data-verso-tip]:focus"), function (label) {
       return !label.hasAttribute("data-verso-tip-dismissed");
     });
     if (!showing.length) return;

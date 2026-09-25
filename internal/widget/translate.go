@@ -295,6 +295,9 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			c.ConfirmTitle = t(c.ConfirmTitle)
 			for k := range c.Chips {
 				c.Chips[k].Title = t(c.Chips[k].Title)
+				if c.Chips[k].LocalizeLabel {
+					c.Chips[k].Label = t(c.Chips[k].Label)
+				}
 			}
 			for k := range c.Actions {
 				c.Actions[k].Title = t(c.Actions[k].Title)

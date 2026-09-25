@@ -144,7 +144,7 @@ plugin simply has no limits tab, with no shell change anywhere.
 
 ```json
 "entity_tabs": [
-  { "entity": "device", "slot": "shape", "label": "Limits & schedule" }
+  { "entity": "device", "slot": "shape", "label": "Limits", "summaries": true }
 ],
 "entity_acts": [
   { "entity": "device", "slot": "unreserve", "path": "/config/reservations/{id}/delete" }
@@ -155,6 +155,23 @@ A tab is answered on the reserved path `entity/<kind>/<id>` under your own mount
 GET to render and POST to save — the same request shape as a page, brokered reads
 included. `{id}` in an act's path is the subject's own identity (a MAC, a uci
 section name), substituted by the shell.
+
+A plugin that only contributes entity controls may leave `nav` empty. To keep
+configured subjects visible after they disappear from live discovery, declare
+`summaries: true` on its tab. The shell then requests `GET /entity/<kind>/` once
+for the roster, with the same scoped reads as the editor. Return an `entities`
+array of `{id, name, state, details}` in the envelope. Optional `details` is a list
+of `{kind, label, values}` facts for the tooltip, with each label and value translated
+separately. Optional `kind` identifies the fact independently of its wording:
+`weekdays`, `hours`, `from`, `until`, `block`, `download`, or `upload`. This lets
+the shell compose a visual schedule and rate readout; unrecognized facts retain
+their text alternative. Weekdays carry the actual day tokens, including all
+seven for an everyday schedule.
+State labels describe configuration,
+not live enforcement. Return `[]` for a successful read with no configured
+subjects, or omit `entities` when configuration could not be read. The shell
+merges these records with live devices and owns the labels, filters and drawer
+links. There is no separate Device limits page.
 
 The envelope an entity request answers with is an ordinary one, read a little
 differently:

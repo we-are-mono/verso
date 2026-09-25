@@ -76,6 +76,9 @@ type Ubus map[string]json.RawMessage
 // browser; it is not part of the plugin's JSON.
 type Envelope struct {
 	Commands []ApplyAction `json:"commands,omitempty"`
+	// Entities is a bulk roster contribution. nil means unavailable; an empty
+	// list means the read succeeded and no subjects have configuration.
+	Entities *[]EntitySummary `json:"entities,omitempty"`
 
 	SchemaVersion int         `json:"schema_version"`
 	Title         string      `json:"title"`
@@ -116,6 +119,23 @@ type Envelope struct {
 	Commit []CommitOp    `json:"commit"`
 	Apply  []ApplyAction `json:"apply"`
 	Status int           `json:"-"`
+}
+
+// EntitySummary keeps configured subjects findable in the shell's roster.
+// State names configuration, not live enforcement; the tab owns its details.
+type EntitySummary struct {
+	ID      string                `json:"id"`
+	Name    string                `json:"name,omitempty"`
+	State   string                `json:"state"`
+	Details []EntitySummaryDetail `json:"details,omitempty"`
+}
+
+// EntitySummaryDetail is a configured fact shown in the subject's tooltip.
+// Labels and individual values translate separately; names and units stay exact.
+type EntitySummaryDetail struct {
+	Kind   string   `json:"kind,omitempty"` // semantic fact kind; labels remain presentation text
+	Label  string   `json:"label"`
+	Values []string `json:"values"`
 }
 
 // Banner is a page-level notice rendered by the shell at the navigation seam.

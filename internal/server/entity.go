@@ -56,14 +56,6 @@ type entitySlot struct {
 	// its rows: the doorway that makes a new subject of this kind. It draws as
 	// the action bar's one forward act, never as a row icon.
 	Listing bool
-	// Opens names the slot whose tab this icon leads to, where that is not its
-	// own. Two doorways into one tab is a shortcut rather than a second subject:
-	// blocking a device and shaping it are the one decision, so the ban icon and
-	// the sliders land on the same tab and say different things about what it is
-	// for. The map is the shell's, so a plugin that claims one slot lights the
-	// other without knowing it exists — and a board with no such plugin has
-	// neither lit.
-	Opens string
 }
 
 // entitySlots is the closed vocabulary, by subject kind. A slot no plugin claims
@@ -72,9 +64,8 @@ type entitySlot struct {
 var entitySlots = map[string][]entitySlot{
 	"device": {
 		{Name: "add", Icon: "plus", Act: true, Listing: true},
-		{Name: "reserve", Icon: "bookmark-plus"},
-		{Name: "unreserve", Icon: "trash-2", Act: true},
-		{Name: "block", Icon: "ban", Opens: "shape"},
+		{Name: "reserve", Icon: "pin"},
+		{Name: "unreserve", Icon: "pin-off", Act: true},
 		{Name: "shape", Icon: "sliders-horizontal"},
 	},
 }
@@ -158,7 +149,7 @@ func slotOrder(kind string) map[string]int {
 // the design gives this kind, in order, each either opening the panel (a claimed
 // tab), doing its thing (a claimed act), or standing empty. An unclaimed slot
 // still holds its place — the column must not change width because a plugin is
-// missing.
+// missing. Slots omitted from titles do not apply to this subject and are hidden.
 func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]string) []widget.TableRowAct {
 	tabs := map[string]bool{}
 	for _, t := range s.entityContributors(kind) {
@@ -170,18 +161,16 @@ func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]strin
 		if slot.Listing {
 			continue // the listing's own doorway, not this row's
 		}
-		act := widget.TableRowAct{Icon: slot.Icon, Title: titles[slot.Name]}
-		// A slot that shortcuts to another's tab is lit by that tab's claim, and
-		// opens the panel on it.
-		opens := slot.Opens
-		if opens == "" {
-			opens = slot.Name
+		title, available := titles[slot.Name]
+		if !available {
+			continue
 		}
+		act := widget.TableRowAct{Icon: slot.Icon, Title: title}
 		switch {
 		case slot.Act && acts[slot.Name] != "":
 			act.Href = acts[slot.Name]
-		case !slot.Act && tabs[opens]:
-			act.Opens, act.Tab = true, opens
+		case !slot.Act && tabs[slot.Name]:
+			act.Opens, act.Tab = true, slot.Name
 		}
 		// A slot nothing claims keeps neither Href nor Opens: the icon holds its
 		// place and does nothing, so the column's width is the listing's and not
@@ -354,6 +343,10 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		// A subject that does not exist yet has no facts to pin: the panel is
 		// the tabs that could bring it into being, and nothing else.
 		data.Title = newSubjectTitle(kind, tr)
+	case posted != nil && posted.Title != "":
+		// Removing the last limit can remove an offline device from the roster.
+		// Keep the subject of this successful submission visible until close.
+		data.Title = posted.Title
 	case kind == "device":
 		d, ok := s.deviceByMAC(r, id)
 		if !ok {
@@ -408,8 +401,9 @@ var errNoSuchEntity = errors.New("verso: no such entity")
 // with the submitted values still in the controls — while its neighbours are
 // read fresh. A render that answers no submission carries none.
 type entityPost struct {
-	Slot string
-	Env  *plugin.Envelope
+	Slot  string
+	Env   *plugin.Envelope
+	Title string
 }
 
 // answer is the submitted envelope for one slot, or nil for every other slot and
@@ -482,6 +476,12 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
+	subjectTitle := ""
+	if kind == "device" && id != entityNew {
+		if device, found := s.deviceByMAC(r, id); found {
+			subjectTitle = device.Name
+		}
+	}
 
 	sid := s.sessionSID(r)
 	env, err := s.transport.Fetch(r.Context(), claim.Socket, plugin.Request{
@@ -509,7 +509,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	data, err := s.entityPanel(r, kind, id, claim.Slot, lang, tr, &entityPost{Slot: claim.Slot, Env: env})
+	data, err := s.entityPanel(r, kind, id, claim.Slot, lang, tr, &entityPost{Slot: claim.Slot, Env: env, Title: subjectTitle})
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -525,6 +525,10 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		// The refusal is the plugin's; the status is what says nothing was
 		// written, so the stage and the browser both read it as a failed save.
 		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else if len(env.Commit) > 0 {
+		// The editor stays open; refresh roster labels and filter counts when
+		// it closes, including a policy-only device whose last limit was removed.
+		w.Header().Set("HX-Trigger", "verso-entity-saved")
 	}
 	_, _ = w.Write(buf.Bytes())
 }

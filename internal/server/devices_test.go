@@ -188,15 +188,64 @@ func TestDevicesMarksAReservedDevice(t *testing.T) {
 	}
 }
 
-// TestDeviceActsFollowTheSlotVocabulary: a row draws one icon per slot the
-// design gives a device, in that order, whatever is installed — and a slot no
-// live plugin claims is inert rather than absent, so the column never changes
-// width between boards.
+func TestDevicesReservationActionsFollowConfiguredState(t *testing.T) {
+	for name, macs := range map[string]any{
+		"single MAC":           "06:11:22:33:44:55",
+		"space-separated MACs": "06:11:22:33:44:55 AA:BB:CC:DD:EE:FF",
+		"UCI list":             []any{"06:11:22:33:44:55", "AA:BB:CC:DD:EE:FF"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			backend := rosterBackend()
+			backend.uci["dhcp"]["printer"].(map[string]any)["mac"] = macs
+			m := reservingManifest()
+			m.EntityActs = []plugin.EntityAct{{Entity: "device", Slot: "unreserve", Path: "/config/reservations/{id}/delete"}}
+			s := newServerWith(t, backend, twoTabs(), []plugin.Manifest{m})
+			s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+			s.neighbors = testNeighbors
+
+			body := get(t, s, "/devices").Body.String()
+			for _, mac := range []string{"42:e6:ad:ff:b7:af", "a2:8c:d7:4a:0e:57", "06:11:22:33:44:55"} {
+				marker := `data-verso-entity-url="/entity/device/` + mac + `"`
+				at := strings.Index(body, marker)
+				if at < 0 {
+					t.Fatalf("device %s missing", mac)
+				}
+				row := body[strings.LastIndex(body[:at], "<tr "):]
+				row, _, _ = strings.Cut(row, "</tr>")
+				reserved := mac == "06:11:22:33:44:55"
+				if got := strings.Contains(row, ">reserved</span>"); got != reserved {
+					t.Errorf("device %s: reserved chip = %v, want %v", mac, got, reserved)
+				}
+				if got := strings.Contains(row, "Remove reservation"); got != reserved {
+					t.Errorf("device %s: remove action = %v, want %v", mac, got, reserved)
+				}
+				if got := strings.Contains(row, "Reserve an address"); got == reserved {
+					t.Errorf("device %s: reserve action = %v, want %v", mac, got, !reserved)
+				}
+				if reserved && !strings.Contains(row, "/config/reservations/"+mac+"/delete") {
+					t.Error("reserved row must link to its own reservation removal")
+				}
+			}
+
+			delete(backend.uci["dhcp"], "printer")
+			body = get(t, s, "/devices").Body.String()
+			if strings.Contains(body, ">reserved</span>") || strings.Contains(body, "Remove reservation") {
+				t.Error("after removing the reservation, its chip and remove action must disappear")
+			}
+			if n := strings.Count(body, `data-verso-entity-tab="reserve"`); n != 3 {
+				t.Errorf("after removing the reservation, all three devices should offer Reserve, got %d", n)
+			}
+		})
+	}
+}
+
+// TestDeviceActsFollowTheSlotVocabulary: a row draws its applicable slots in
+// order. A slot no live plugin claims is inert rather than absent.
 func TestDeviceActsFollowTheSlotVocabulary(t *testing.T) {
 	s := rosterServer(t)
-	acts := s.EntityRowActs("device", "42:e6:ad:ff:b7:af", "toms-iphone", widget.DeviceActTitles())
-	if len(acts) != 4 {
-		t.Fatalf("a device row draws %d acts, want the four the design gives it", len(acts))
+	acts := s.EntityRowActs("device", "06:11:22:33:44:55", "old-printer", widget.DeviceActTitles(widget.Device{Reserved: true}))
+	if len(acts) != 2 {
+		t.Fatalf("a reserved device row draws %d acts, want removal and limits", len(acts))
 	}
 	// No plugin answers in this fixture, so nothing is claimed.
 	for _, act := range acts {
@@ -355,14 +404,11 @@ func TestReserveSitsOnTheHeadingLine(t *testing.T) {
 	}
 }
 
-// TestEntityRowShortcutsOpenTheirTab: the design gives a device a ban and a
-// sliders icon, and both lead to the one tab that decides both. The map is the
-// shell's, so the plugin claiming `shape` lights `block` without knowing it
-// exists — and a board with no such plugin has neither lit.
+// TestEntityRowShortcutsOpenTheirTab: one clear action opens the limits tab.
 func TestEntityRowShortcutsOpenTheirTab(t *testing.T) {
 	body := get(t, shapingServer(t, twoTabs()), "/devices").Body.String()
-	if n := strings.Count(body, `data-verso-entity-tab="shape"`); n != 6 {
-		t.Errorf("both shortcuts on all three rows should open the shape tab, got %d", n)
+	if n := strings.Count(body, `data-verso-entity-tab="shape"`); n != 3 {
+		t.Errorf("one limits action on each of three rows should open the shape tab, got %d", n)
 	}
 	// With nothing claiming the slot the icons stay drawn and inert, so the
 	// column's width is the listing's and not the install's.

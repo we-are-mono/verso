@@ -236,3 +236,16 @@ func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
 		t.Errorf("nav[1] should declare neither: %+v", nav[1])
 	}
 }
+
+func TestDiscoverEntityOnlyPlugin(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/qos/manifest.json": `{"manifest_version":1,"id":"qos","name":"Device limits","socket":"/s","schema_version":1,"nav":[],"entity_tabs":[{"entity":"device","slot":"shape","label":"Limits","summaries":true}]}`,
+	})
+	got, problems := Discover(fsys, testGlob)
+	if len(got) != 1 || len(problems) != 0 {
+		t.Fatalf("entity-only plugin: got=%v problems=%v", got, problems)
+	}
+	if !got[0].EntityTabs[0].Summaries {
+		t.Error("bulk summaries capability was lost")
+	}
+}

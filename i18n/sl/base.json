@@ -593,6 +593,7 @@
   "Delete": "Izbriši",
   "Reserve an address": "Rezerviraj naslov",
   "Remove reservation": "Odstrani rezervacijo",
+  "reserved": "rezervirano",
   "Block internet": "Blokiraj internet",
   "Edit limits and schedule": "Uredi omejitve in urnik",
   "Logs": "Dnevniki",
@@ -760,5 +761,11 @@
   "known, not present": "znana, trenutno ni prisotna",
   "Include firewall traffic": "Vključi promet požarnega zidu",
   "Firewall logs unavailable": "Dnevniki požarnega zidu niso na voljo",
-  "Some firewall events were lost.": "Nekateri dogodki požarnega zidu so bili izgubljeni."
+  "Some firewall events were lost.": "Nekateri dogodki požarnega zidu so bili izgubljeni.",
+  "Edit limits": "Uredi omejitve",
+  "With limits": "Z omejitvami",
+  "limits": "omejitve",
+  "Configured limits": "Nastavljene omejitve",
+  "Devices with saved limits stay listed when offline. Open a device to edit its limits.": "Naprave s shranjenimi omejitvami ostanejo na seznamu tudi brez povezave. Za urejanje omejitev odprite napravo.",
+  "Device limits couldn’t be loaded. Some offline devices may be missing. Reload to try again.": "Omejitev naprav ni bilo mogoče naložiti. Nekatere nepovezane naprave morda manjkajo. Osvežite stran in poskusite znova."
 }

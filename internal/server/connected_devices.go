@@ -147,6 +147,11 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 	}
 	// Grouped by network first, because that is how the listing bands them, then
 	// by presence and name inside each band — the devices that are here lead.
+	sortDevices(out)
+	return out
+}
+
+func sortDevices(out []widget.Device) {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Network != out[j].Network {
 			return networkRank(out[i].Network) < networkRank(out[j].Network)
@@ -156,7 +161,6 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 		}
 		return out[i].Name < out[j].Name
 	})
-	return out
 }
 
 // deviceByMAC finds one device in the roster. The panel reads the roster fresh
@@ -166,6 +170,14 @@ func (s *Server) deviceByMAC(r *http.Request, mac string) (widget.Device, bool) 
 	want := strings.ToLower(strings.TrimSpace(mac))
 	for _, d := range s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r)) {
 		if strings.ToLower(d.MAC) == want {
+			return d, true
+		}
+	}
+	// A saved policy outlives leases and neighbor entries. Its drawer must stay
+	// reachable so the operator can edit or remove the remaining limits.
+	configured, _, _ := s.deviceLimits(r)
+	for _, d := range configured {
+		if d.MAC == want {
 			return d, true
 		}
 	}

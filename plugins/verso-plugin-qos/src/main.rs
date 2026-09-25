@@ -3,12 +3,8 @@
 
 //! The Verso device-limits plugin: what a device may reach, when, and how fast.
 //!
-//! It owns no page an operator goes looking for. The question it answers — "keep
-//! this one off the internet after nine" — is asked *at* a device, so its real
-//! surface is one tab of the shell's device panel, which the ban and the sliders
-//! on a device's row both lead to. The page it does publish is the other half of
-//! that: which devices are under a policy at all, which no listing of devices can
-//! show and nobody would otherwise remember.
+//! Limits are edited in the device drawer. A bulk summary supplies configured
+//! devices to the shell's roster, keeping offline policies findable there too.
 //!
 //! The policy is two configs because it is two mechanisms. Refusing a device the
 //! route out is a firewall rule, and fw4 is what enforces it — including the
@@ -25,7 +21,7 @@ mod entity;
 mod form;
 mod leases;
 mod model;
-mod page;
+mod summaries;
 
 #[cfg(test)]
 mod fixture;
@@ -40,7 +36,7 @@ fn main() {
 fn get(request: &Request) -> Envelope {
     let leases = Leases::read(&request.ubus);
     match Route::of(&request.path) {
-        Route::Listing => page::page(&model::every_policy(&request.snapshot), &leases),
+        Route::Summaries => summaries::read(&request.snapshot, &leases),
         Route::EntityDevice(mac) => entity::tab(
             &Policy::read(&request.snapshot, &mac),
             &leases,
@@ -52,19 +48,17 @@ fn get(request: &Request) -> Envelope {
 fn post(request: &Request, form: &Form) -> Envelope {
     let leases = Leases::read(&request.ubus);
     match Route::of(&request.path) {
-        // The listing edits nothing, so a submission to it is answered with
-        // itself rather than refused: nothing was asked for and nothing changed.
-        Route::Listing => page::page(&model::every_policy(&request.snapshot), &leases),
+        // A summary request never changes configuration.
+        Route::Summaries => summaries::read(&request.snapshot, &leases),
         Route::EntityDevice(mac) => {
             entity::save(&Policy::read(&request.snapshot, &mac), &leases, form)
         }
     }
 }
 
-/// Route is what a request asks for: the listing, or this plugin's say about one
-/// device. Anything else is the listing, so a stale link lands somewhere real.
+/// A roster summary or one device’s editor; there is no standalone page.
 enum Route {
-    Listing,
+    Summaries,
     /// This plugin's say about one device, for the shell's device panel. It
     /// answers with a tab, not a page: the panel around it is the shell's, and
     /// the other tabs in it belong to plugins this one knows nothing about.
@@ -75,7 +69,7 @@ impl Route {
     fn of(path: &str) -> Route {
         match path.trim_matches('/').strip_prefix("entity/device/") {
             Some(mac) => Route::EntityDevice(mac.to_string()),
-            None => Route::Listing,
+            None => Route::Summaries,
         }
     }
 }
@@ -83,48 +77,44 @@ impl Route {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
 
-    fn body(env: Envelope) -> Value {
-        serde_json::to_value(&env).expect("serialize")
+    #[test]
+    fn roster_summaries_include_each_configured_device() {
+        let reply = get(&fixture::request("/entity/device/"));
+        let summaries = reply.entities.expect("successful read");
+        assert_eq!(summaries.len(), 3);
+        assert_eq!(summaries[0].name, "kids-ipad");
+        assert_eq!(summaries[0].state, "Internet block");
+        assert_eq!(summaries[1].state, "Schedule & speed limit");
+        assert_eq!(summaries[2].state, "Speed limit");
+        assert!(reply.commit.is_empty());
     }
 
     #[test]
-    fn a_sub_path_this_plugin_does_not_publish_lands_on_the_listing() {
-        for path in ["", "/", "nonsense", "entity/zone/lan"] {
-            assert!(matches!(Route::of(path), Route::Listing), "{path}");
-        }
-        assert!(matches!(
-            Route::of("entity/device/00:11:22:33:44:55"),
-            Route::EntityDevice(mac) if mac == "00:11:22:33:44:55"
-        ));
+    fn offline_policies_remain_in_roster_without_leases() {
+        let mut request = fixture::request("/entity/device/");
+        request.ubus = verso_plugin::Ubus::from_value(serde_json::json!({}));
+        let summaries = get(&request).entities.unwrap();
+        assert_eq!(summaries.len(), 3);
+        assert!(summaries.iter().all(|entry| entry.name == entry.id));
     }
 
     #[test]
-    fn the_listing_states_every_device_under_a_policy_and_nothing_else() {
-        let request = fixture::request("/");
-        let listing = body(get(&request));
-        assert_eq!(listing["title"], "Device limits");
-        let rows = listing["widget"]["children"][0]["rows"]
-            .as_array()
-            .expect("rows");
-        assert_eq!(rows.len(), 3);
-        // The blocked device, the one on a curfew, and the one merely capped.
-        assert_eq!(rows[0]["cells"][0]["text"], "kids-ipad");
-        assert_eq!(rows[0]["cells"][2]["text"], "blocked");
-        assert_eq!(rows[0]["cells"][2]["variant"], "danger");
-        assert_eq!(rows[1]["cells"][2]["text"], "on a schedule");
-        assert_eq!(rows[1]["cells"][3]["text"], "21:00–07:00 · Mon–Fri");
-        assert_eq!(rows[2]["cells"][2]["text"], "allowed");
-        assert_eq!(rows[2]["cells"][4]["text"], "50 Mbit/s");
+    fn unreadable_configuration_is_not_an_empty_roster() {
+        assert!(get(&fixture::empty("/entity/device/")).entities.is_none());
+        let mut request = fixture::empty("/entity/device/");
+        request.snapshot =
+            verso_plugin::Snapshot::from_value(serde_json::json!({"firewall": {}, "qos": {}}));
+        assert!(get(&request).entities.unwrap().is_empty());
+        request.snapshot = verso_plugin::Snapshot::from_value(serde_json::json!({"firewall": {}}));
+        assert!(get(&request).entities.is_none());
     }
 
     #[test]
-    fn an_empty_config_still_answers_every_route() {
-        let request = fixture::empty("/");
-        assert_eq!(body(get(&request))["title"], "Device limits");
-        let tab = body(get(&fixture::empty("entity/device/00:11:22:33:44:55")));
-        assert_eq!(tab["title"], "Limits & schedule");
-        assert_eq!(tab["state"], "no limit");
+    fn a_device_still_opens_its_editor() {
+        let tab = get(&fixture::empty("/entity/device/00:11:22:33:44:55"));
+        assert_eq!(tab.title, "Limits");
+        assert_eq!(tab.state, "no limit");
+        assert!(tab.entities.is_none());
     }
 }

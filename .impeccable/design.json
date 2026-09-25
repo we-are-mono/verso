@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T14:22:49Z",
+  "generatedAt": "2026-09-25T15:26:24Z",
   "title": "Design System: Verso",
   "extensions": {
     "colorMeta": {
@@ -107,9 +107,9 @@
       "name": "Chip",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "A config value or key, verbatim in mono; the accent variant marks what was set by hand.",
-      "html": "<span class=\"ds-chip\">pppoe</span> <span class=\"ds-chip ds-chip-accent\">reserved</span>",
-      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border: 1px solid #e4e0d8; border-radius: 2px; background: #f5f2ec; color: #6f6a60; font: 400 14px/16px 'Inconsolata', Menlo, monospace; white-space: nowrap; } .ds-chip-accent { border-color: #cbd8e6; background: #e8eef5; color: #285184; }"
+      "description": "Short table labels use the shared semantic palette: network and zone references in denim, healthy DHCP in green, device limits in marigold. Config values and entity names stay verbatim; limits details belong in the tooltip.",
+      "html": "<span class=\"ds-chip\">pppoe</span> <span class=\"ds-chip ds-chip-accent\">lan</span> <span class=\"ds-chip ds-chip-success\">dhcp</span> <span class=\"ds-chip ds-chip-warning\">limits</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border: 1px solid #e4e0d8; border-radius: 2px; background: #f5f2ec; color: #6f6a60; font: 400 14px/16px 'Inconsolata', Menlo, monospace; white-space: nowrap; } .ds-chip-accent { border-color: #cbd8e6; background: #e8eef5; color: #285184; } .ds-chip-success { border-color: #b3ddcb; background: #e4f2ec; color: #066b4b; } .ds-chip-warning { border-color: #f5d494; background: #fdf0d4; color: #96590a; }"
     },
     {
       "name": "Control Band",
@@ -138,9 +138,9 @@
     {
       "name": "Section Band",
       "kind": "custom",
-      "description": "Full-section h2s use a 16px semibold heading on Quiet Sand, matching active navigation. The band has no border or decorative marker, keeps 12px vertical padding with or without a lede, and grows with its contents. Its surface reaches the left frame edge while words stay aligned; drawer bands reach both edges with a 32px content inset.",
+      "description": "Full-section h2s use an 18px semibold heading on Quiet Sand, matching active navigation. The band has no border or decorative marker, keeps 16px vertical padding with or without a lede, and grows with its contents. Its surface reaches the left frame edge while words stay aligned; drawer bands reach both edges with a 32px content inset.",
       "html": "<div class=\"ds-section-example\"><div class=\"ds-section-band\"><h2 class=\"ds-section-heading\">Radios</h2></div><div class=\"ds-section-band\"><h2 class=\"ds-section-heading\">Web interface</h2><p class=\"ds-section-lede\">These settings control the router's uhttpd web server.</p></div></div>",
-      "css": ".ds-section-example { padding-inline-start: 40px; background: var(--color-ground, #faf9f7); } .ds-section-band { margin-inline-start: -40px; padding: 12px 0 12px 40px; border: 0; border-radius: 0; background: var(--color-quiet, #f5f2ec); } .ds-section-band + .ds-section-band { margin-block-start: 24px; } .ds-section-heading { margin: 0; color: var(--color-ink, #1b1917); font: 600 16px/1.25 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.025em; } .ds-section-lede { margin: 4px 0 0; max-width: 36rem; color: var(--color-body, #5c574f); font: 400 14px/1.375 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; }",
+      "css": ".ds-section-example { padding-inline-start: 40px; background: var(--color-ground, #faf9f7); } .ds-section-band { margin-inline-start: -40px; padding: 16px 0 16px 40px; border: 0; border-radius: 0; background: var(--color-quiet, #f5f2ec); } .ds-section-band + .ds-section-band { margin-block-start: 24px; } .ds-section-heading { margin: 0; color: var(--color-ink, #1b1917); font: 600 18px/1.25 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.025em; } .ds-section-lede { margin: 4px 0 0; max-width: 36rem; color: var(--color-body, #5c574f); font: 400 14px/1.375 \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif; }",
       "refersTo": "section-band"
     }
   ],
@@ -152,7 +152,7 @@
       "One action colour (denim); four status hues used as marks, never as decoration.",
       "Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.",
       "Flat surfaces, hairline borders, 2px corners, 1px for marks.",
-      "A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 12px vertical padding.",
+      "A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 16px vertical padding.",
       "Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.",
       "A full-width sand control band is the seam between a page's heading and its content."
     ],

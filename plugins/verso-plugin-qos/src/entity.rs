@@ -5,8 +5,7 @@
 //!
 //! It answers with a tab, not a page: the panel around it is the shell's, the
 //! facts above it are the shell's, and the other tabs in it belong to plugins
-//! this one knows nothing about. What it contributes is the one question the ban
-//! and the sliders on a device's row both lead to — may this device reach the
+//! this one knows nothing about. The Edit limits action asks whether a device reaches the
 //! internet, when, and how fast.
 
 use verso_plugin::{Envelope, Form, SelectOption, Tone, Widget};
@@ -15,24 +14,19 @@ use crate::form::{self, Errors};
 use crate::leases::Leases;
 use crate::model::{Policy, DAYS};
 
-/// The tab's own words. The consequence is the truth about this change and not
-/// the shell's general promise: a firewall rule is reloaded rather than applied
-/// behind a rollback window, and the caps are read the next time the shaper runs.
-pub const LABEL: &str = "Limits & schedule";
+/// Saving stages configuration; the shell's review drawer owns Apply.
+pub const LABEL: &str = "Limits";
 const CTA: &str = "Save";
-const NOTE: &str = "Applies on the next firewall reload — about a second.";
+const NOTE: &str = "Apply pending changes to use these settings.";
 
-const BLOCKED_NOTE: &str = "Local traffic still passes. The device keeps talking to everything on \
-its own network — this only blocks the route out.";
+const BLOCKED_NOTE: &str =
+    "Blocks internet access. Access to devices on the local network is unchanged.";
 
-const SCHEDULE_HELP: &str = "Blocks the route out between the two times, on the days you pick. A \
-connection open when the curfew starts is cut.";
+const SCHEDULE_HELP: &str = "Block internet access during these hours on the selected days.";
 
-const HOURS_HELP: &str = "Router time, on the 24-hour clock.";
+const HOURS_HELP: &str = "Times use the router’s time zone.";
 
-const RATE_TIP: &str = "A ceiling on what this device may pull down, in megabits per second, so \
-one device cannot take the whole line. Leave it empty and the device runs at whatever the link \
-offers.";
+const RATE_TIP: &str = "Maximum download speed in megabits per second. Leave blank for no limit.";
 
 /// tab is the whole of this plugin's contribution to a device's panel.
 pub fn tab(policy: &Policy, leases: &Leases, errors: &Errors) -> Envelope {
@@ -82,7 +76,7 @@ fn controls(policy: &Policy, errors: &Errors) -> Vec<Widget> {
             policy.allowed,
             vec![Widget::gate(
                 "scheduled",
-                "Off on a schedule",
+                "Block internet on a schedule",
                 "",
                 SCHEDULE_HELP,
                 policy.scheduled,
@@ -101,7 +95,10 @@ fn controls(policy: &Policy, errors: &Errors) -> Vec<Widget> {
             }],
         ),
         cap("download", "Download limit", &policy.down, errors).explained(RATE_TIP, "qos device"),
-        cap("upload", "Upload limit", &policy.up, errors),
+        cap("upload", "Upload limit", &policy.up, errors).explained(
+            "Maximum upload speed in megabits per second. Leave blank for no limit.",
+            "qos device",
+        ),
     ]
 }
 
@@ -117,11 +114,11 @@ fn days(policy: &Policy, errors: &Errors) -> Widget {
 }
 
 fn from(policy: &Policy, errors: &Errors) -> Widget {
-    clock("start_time", "Off from", &policy.from, HOURS_HELP, errors)
+    clock("start_time", "Block from", &policy.from, HOURS_HELP, errors)
 }
 
 fn to(policy: &Policy, errors: &Errors) -> Widget {
-    clock("stop_time", "Back on at", &policy.to, "", errors)
+    clock("stop_time", "Until", &policy.to, "", errors)
 }
 
 /// clock is one edge of the curfew, in the native time control.
@@ -204,7 +201,7 @@ pub fn save(policy: &Policy, leases: &Leases, form: &Form) -> Envelope {
     }
     let name = leases.subject(&stated.mac);
     tab(&stated, leases, &Errors::default())
-        .with_notice(Tone::Success, "Limits saved.")
+        .with_notice(Tone::Success, "Limits saved to pending changes.")
         .with_commit(form::commits(&stated, &name))
 }
 
