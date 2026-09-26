@@ -53,7 +53,7 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 func TestPageMastheadHasNoDivider(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="pb-5">`) {
+	if !strings.Contains(access, `<div data-verso-masthead class="pb-8">`) {
 		t.Error("the masthead keeps its spacing without a divider")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
@@ -87,7 +87,7 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 // between the preceding band and its first content.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="pb-5">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="pb-8">`) {
 		t.Error("the masthead opens onto the first section without a divider")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {

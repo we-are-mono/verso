@@ -149,7 +149,7 @@ type formView struct {
 	// page: its Save stands under its fields with no rule, because the next
 	// section's rule is the line that closes it.
 	Sectioned bool
-	JoinsCode bool // a drawer's actions finish the configuration card above them
+	JoinsCode bool // actions finish the configuration card above them
 	// ClosesPage is the page's own form, its sections inside it: its Save
 	// commits the whole page, so the rule above it is a section rule of the
 	// page's.
@@ -192,7 +192,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
-		JoinsCode: f.Frame != "" && EndsWithCode(f),
+		JoinsCode: EndsWithCode(f),
 		Submit:    submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T15:26:24Z",
+  "generatedAt": "2026-09-26T00:20:27Z",
   "title": "Design System: Verso",
   "extensions": {
     "colorMeta": {
@@ -162,7 +162,8 @@
       { "name": "The 4.5 Floor", "body": "Nothing below 4.5:1 against Paper carries words. That rules out Faint and Glyph for text, and every bare hue.", "section": "colors" },
       { "name": "The Verbatim Rule", "body": "Mono is for strings the machine wrote and a user might copy: identifiers, addresses, versions, config keys. Never for a count, a duration or a sentence. Counts are sans with tabular figures.", "section": "typography" },
       { "name": "The Even Pitch Rule", "body": "Mono never takes negative tracking, except the 700-weight Figure, whose wide glyphs can carry it.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Nothing on the page casts a shadow. Only a layer that floats above the page (drawer, dialog, tooltip) does, and a pressed button loses even its press shadow.", "section": "elevation" }
+      { "name": "The Flat-By-Default Rule", "body": "Nothing on the page casts a shadow. Only a layer that floats above the page (drawer, dialog, tooltip) does, and a pressed button loses even its press shadow.", "section": "elevation" },
+      {"name": "Configuration cards", "body": "- **Placement:** always the last content inside the form, directly above Save and any companion actions, on pages and in drawers. Keep it out of side rails and above every action row; all editable sections come before it.\n- **Top inset:** on page forms, leave 32px between the leading hairline and filename, matching the other full sections.\n- **Label:** the filename alone, in mono, above the code. Keep live previews and copy controls with the card.\n- **Actions:** Save follows with a 20px gap and no intervening hairline. The card's leading divider separates the fields from the configuration and its actions.", "section": "components"}
     ],
     "dos": [
       "Do keep one denim primary per page, on the heading line, with the plus glyph.",

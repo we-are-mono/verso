@@ -91,13 +91,13 @@ pub struct Defaults {
 pub struct Include {
     pub section: String,
     pub path: String,
-    /// "nftables" for a fw4-native `.nft` snippet, "script" for a shell script
-    /// from the iptables era — which runs only while the compatibility package
-    /// is installed, and is worth saying so.
+    /// "nftables" for a native snippet, "script" for a shell script run after
+    /// the ruleset loads. Scripts must be compatible with fw4.
     pub kind: String,
     /// Where in fw4's own run the snippet is loaded.
     pub hook: String,
     pub enabled: bool,
+    pub fw4_compatible: bool,
 }
 
 /// Zone is one `config zone`: the networks (or raw devices) it claims and the
@@ -527,17 +527,22 @@ impl Include {
     fn read(section: &Section) -> Include {
         let path = section.scalar("path");
         // fw4 reads `type` as nftables or script; an include that states none is
-        // a script, which is the older shape and the one worth naming.
+        // a script. Script includes do not have an nftables insertion position.
         let kind = match section.scalar("type").as_str() {
             "nftables" => "nftables".to_string(),
             _ => "script".to_string(),
         };
         Include {
             section: section.name(),
+            hook: if kind == "nftables" {
+                scalar_or(section, "position", "table-append")
+            } else {
+                String::new()
+            },
+            enabled: flag(section, "enabled", true),
+            fw4_compatible: flag(section, "fw4_compatible", path != "/etc/firewall.user"),
             path,
             kind,
-            hook: scalar_or(section, "position", "chain-pre"),
-            enabled: flag(section, "enabled", true),
         }
     }
 }

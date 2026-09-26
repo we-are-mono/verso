@@ -89,6 +89,18 @@
   --default-mono-font-family: var(--font-mono);
 }
 
+/* Page forms share one measure; dialog content retains the original one. */
+@utility max-w-form {
+  max-width: var(--verso-form-width, 40rem);
+}
+@utility grid-cols-form {
+  grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
+}
+@layer components {
+  main { --verso-form-width: var(--container-3xl); }
+  [role="dialog"] { --verso-form-width: 40rem; }
+}
+
 /* verso-boot.js removes this pre-paint gate as soon as the three UI faces are
    ready. Keep the canvas visible while the content waits. */
 html {
@@ -779,8 +791,8 @@ html.verso-fonts-loading body {
     padding-inline: calc(var(--spacing) * 8);
   }
 
-  /* Section heads share the active navigation's quiet surface.
-     The band reaches the frame edge; its words keep their content alignment. */
+  /* Section heads use the navigation rail's hairline without a filled surface.
+     Their headings sit 2rem below the rule. */
   main { --verso-section-band-inset: calc(var(--spacing) * 10); }
   [data-verso-section-band] {
     display: flex;
@@ -789,13 +801,27 @@ html.verso-fonts-loading body {
     height: auto;
     margin-inline-start: calc(-1 * var(--verso-section-band-inset));
     padding-inline-start: var(--verso-section-band-inset);
-    padding-block: calc(var(--spacing) * 4);
-    background-color: var(--color-quiet);
+    padding-block: calc(var(--spacing) * 8) 0;
+    background-color: transparent;
+    border-top: 1px solid var(--color-rule);
     border-bottom-width: 0;
   }
+  .verso-page-body > .verso-stack > section:has(> [data-verso-section-band]),
   section:has(> [data-verso-section-band]) {
+    margin-top: 0;
     border-top-width: 0;
-    padding-top: 0;
+    padding-block: 0 calc(var(--spacing) * 8);
+  }
+  /* Full sections without a heading keep the same space before the next rule. */
+  section[data-verso-headless][data-verso-section-divider] {
+    padding-bottom: calc(var(--spacing) * 8);
+  }
+  /* A page form that opens directly on fields keeps the same first hairline
+     and 2rem inset as a page opening on a section heading, including forms
+     inside a grid's work column. */
+  :is(.verso-page-body, [data-verso-form-column]) > [data-verso-page-form] > section[data-verso-headless][data-verso-section-divider]:first-of-type {
+    border-top-width: 1px;
+    padding-top: calc(var(--spacing) * 8);
   }
   [data-verso-drawer-body] { --verso-section-band-inset: calc(var(--spacing) * 8); }
   [data-verso-drawer-body] [data-verso-section-band] {
@@ -803,6 +829,23 @@ html.verso-fonts-loading body {
     padding-inline-end: calc(var(--spacing) * 8);
   }
   .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-section-band-inset: 0px; }
+
+  /* Page-form sections keep the same 40px inset at both ends of their rules.
+     Apply the end inset once to the work column, never to each nested row.
+     Full section and configuration rules reach back through it; drawers keep
+     their own frame. */
+  [data-verso-form-column]:not([data-verso-form-column] *, [role="dialog"] *) {
+    padding-inline-end: calc(var(--spacing) * 10);
+  }
+  [data-verso-form-column] :is([data-verso-section-band], [data-verso-section-divider], [data-verso-rule], [data-verso-code-divider]):not([role="dialog"] *) {
+    margin-inline-end: calc(var(--spacing) * -10);
+    padding-inline-end: calc(var(--spacing) * 10);
+  }
+  [data-verso-form-column] [data-verso-code-divider]:not([role="dialog"] *) {
+    margin-inline-start: calc(var(--spacing) * -10);
+    padding-inline-start: calc(var(--spacing) * 10);
+    padding-top: calc(var(--spacing) * 8);
+  }
 
   /* A page's masthead — its title's line and its acts — ends where Log out
      does, whatever measure the column below keeps: the page's gutter in from
@@ -813,11 +856,11 @@ html.verso-fonts-loading body {
     margin-right: calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
   }
 
-  /* A page that opens on a control band keeps 20px between the title and the
+  /* A page that opens on a control band keeps 32px between the title and the
      band's own top edge. The masthead itself draws no divider. */
   main:has([data-verso-actionbar]) [data-verso-masthead] {
     padding-bottom: 0;
-    margin-bottom: calc(var(--spacing) * 5);
+    margin-bottom: calc(var(--spacing) * 8);
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

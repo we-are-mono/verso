@@ -88,7 +88,7 @@ type Envelope struct {
 	Live          bool        `json:"live"`          // optional pulsing dot on the kicker
 	Tone          string      `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Subheading    string      `json:"subheading"`    // optional lede under the heading
-	Width         string      `json:"width"`         // page width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
+	Width         string      `json:"width"`         // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	Pages         []PageTab   `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
 	Action        *PageAction `json:"action"`        // optional primary doorway for the whole page, rendered beside the heading
 	// Back is an edit page's quiet way home: the shell renders it as a "← Cancel"

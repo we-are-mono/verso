@@ -2302,8 +2302,8 @@ func TestPluginActionRendersBesideTheHeading(t *testing.T) {
 }
 
 // TestEveryMastheadHasNoDivider: every page's title, with or without a lede,
-// stands 20px under the page's top edge and has no dividing line. A page that
-// opens on a control band keeps the band's own top edge 20px under the title.
+// stands 32px under the page's top edge and has no dividing line. A page that
+// opens on a control band keeps the band's own top edge 32px under the title.
 func TestEveryMastheadHasNoDivider(t *testing.T) {
 	for _, sub := range []string{"The baseline every zone falls back to.", ""} {
 		tr := &fakeTransport{env: &plugin.Envelope{
@@ -2314,10 +2314,10 @@ func TestEveryMastheadHasNoDivider(t *testing.T) {
 		}}
 		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 		body := get(t, s, "/plugins/demo/").Body.String()
-		if !strings.Contains(body, `<div class="px-10 pt-5 pb-10">`) {
-			t.Errorf("lede %q: the title stands 20px under the page's top edge:\n%s", sub, body)
+		if !strings.Contains(body, `<div class="px-10 pt-8 pb-10">`) {
+			t.Errorf("lede %q: the title stands 32px under the page's top edge:\n%s", sub, body)
 		}
-		if !strings.Contains(body, `<div data-verso-masthead class="pb-5">`) {
+		if !strings.Contains(body, `<div data-verso-masthead class="pb-8">`) {
 			t.Errorf("lede %q: the title keeps its spacing without a divider:\n%s", sub, body)
 		}
 		if strings.Contains(body, `<div class="mb-5">`) {
@@ -2328,8 +2328,8 @@ func TestEveryMastheadHasNoDivider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead] {\n    padding-bottom: 0;\n    margin-bottom: calc(var(--spacing) * 5);") {
-		t.Error("a page opening on a control band keeps the band's edge 20px under the title")
+	if !strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead] {\n    padding-bottom: 0;\n    margin-bottom: calc(var(--spacing) * 8);") {
+		t.Error("a page opening on a control band keeps the band's edge 32px under the title")
 	}
 }
 

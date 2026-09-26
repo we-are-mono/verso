@@ -263,7 +263,6 @@
   "TCP and helpers": "TCP in pomočniki",
   "Kernel-level knobs the firewall sets on the router's own stack. Leave them alone unless you are chasing something specific.": "Nastavitve na ravni jedra, ki jih požarni zid nastavi na skladu samega usmerjevalnika. Pustite jih pri miru, razen če iščete nekaj določenega.",
   "Custom rules": "Pravila po meri",
-  "Snippets fw4 loads alongside the ruleset it generates. Written by hand over SSH — this page only decides whether they load.": "Odlomki, ki jih fw4 naloži ob naboru pravil, ki ga ustvari. Napisani ročno prek SSH — ta stran odloča samo, ali se naložijo.",
   "No custom snippets. The ruleset is entirely what this page and the listings describe.": "Ni odlomkov po meri. Nabor pravil je v celoti to, kar opisujejo ta stran in seznami.",
   "Traffic to this router": "Promet do tega usmerjevalnika",
   "Traffic from this router": "Promet s tega usmerjevalnika",
@@ -296,8 +295,6 @@
   "Rule is active": "Pravilo je dejavno",
   "Download": "Prenesi",
   "On this page": "Na tej strani",
-  "The sections this page writes, as they will be written when you apply.": "Odseki, ki jih ta stran zapiše, tako kot bodo zapisani ob uveljavitvi.",
-  "One of these is a shell script from the iptables era. fw4 runs it only while the `iptables-nft` compatibility package is installed — without it the snippet is enabled and never executes.": "Eden od teh je lupinski skript iz dobe iptables. fw4 ga zažene le, dokler je nameščen paket združljivosti `iptables-nft` — brez njega je izsek omogočen in se nikoli ne izvede.",
   "Coming from": "Prihaja iz",
   "Going to": "Gre v",
   "To port": "Na vrata",
@@ -346,5 +343,13 @@
   "Name zones this router defines, or leave it blank.": "Imenujte območja, ki jih ta usmerjevalnik določa, ali pustite prazno.",
   "Choose one of the sets this config declares.": "Izberite enega od nizov, ki jih te nastavitve razglašajo.",
   "one host or a subnet": "en gostitelj ali podomrežje",
-  "rarely useful": "redko uporabno"
+  "rarely useful": "redko uporabno",
+  "Files fw4 loads alongside its generated ruleset. This page controls whether they load; their contents are managed separately.": "Datoteke, ki jih fw4 naloži poleg ustvarjenega nabora pravil. Ta stran določa, ali se naložijo; njihova vsebina se ureja ločeno.",
+  "Load package rule files": "Naloži datoteke pravil iz paketov",
+  "Loads package-provided nftables snippets from /usr/share/nftables.d/. The files listed below keep their own enabled setting.": "Naloži odlomke nftables iz paketov v /usr/share/nftables.d/. Spodaj navedene datoteke imajo lastno nastavitev za vklop.",
+  "File": "Datoteka",
+  "Load this file": "Naloži to datoteko",
+  "Shell script · runs after the ruleset loads": "Lupinski skript · zažene se po nalaganju nabora pravil",
+  "This script is enabled but is not marked as compatible with fw4. Check its contents before setting `fw4_compatible` to `1` in `/etc/config/firewall`.": "Ta skript je omogočen, vendar ni označen kot združljiv s fw4. Preverite njegovo vsebino, preden v `/etc/config/firewall` nastavite `fw4_compatible` na `1`.",
+  "Anything dropped into `/etc/nftables.d/` is picked up on the next reload.": "Vse, kar dodate v `/etc/nftables.d/`, se naloži ob naslednjem ponovnem nalaganju."
 }

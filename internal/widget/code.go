@@ -97,7 +97,7 @@ func (c *Code) renderInto(r *Renderer, out io.Writer, _ string) error {
 }
 
 // EndsWithCode reports whether a surface ends in a visible configuration card.
-// Drawer actions belong to that card, so they follow it without another rule.
+// Form actions belong to that card, so they follow it without another rule.
 // Hidden form carriers take no space and do not break that relationship.
 func EndsWithCode(w Widget) bool {
 	var children []Widget

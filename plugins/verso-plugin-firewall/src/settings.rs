@@ -15,8 +15,8 @@
 //! knows the config and wants the line.
 
 use verso_plugin::{
-    commit, commit_new, json, CommitOp, Envelope, Form, Map, SelectOption, SettingsItem,
-    SettingsToggle, Tone, Value, Widget,
+    commit, commit_new, json, CommitOp, Envelope, Form, Map, Property, SelectOption, Tone, Value,
+    Widget,
 };
 
 use crate::model;
@@ -41,18 +41,19 @@ const TCP_SUB: &str = "Kernel-level knobs the firewall sets on the router's own 
 them alone unless you are chasing something specific.";
 
 const CUSTOM_TITLE: &str = "Custom rules";
-const CUSTOM_SUB: &str = "Snippets fw4 loads alongside the ruleset it generates. Written by hand \
-over SSH — this page only decides whether they load.";
+const CUSTOM_SUB: &str =
+    "Files fw4 loads alongside its generated ruleset. This page controls whether they load; \
+their contents are managed separately.";
 
 const CUSTOM_NOTE: &str = "Anything dropped into `/etc/nftables.d/` is picked up on the next \
 reload.";
 
-const AUTO_INCLUDES_HELP: &str = "Off, none of the files below are loaded, whatever their own \
-switches say. On is what a router does unless this is turned off.";
+const AUTO_INCLUDES_HELP: &str =
+    "Loads package-provided nftables snippets from /usr/share/nftables.d/. \
+The files listed below keep their own enabled setting.";
 
-const LEGACY_NOTE: &str = "One of these is a shell script from the iptables era. fw4 runs it only \
-while the `iptables-nft` compatibility package is installed — without it the snippet is enabled \
-and never executes.";
+const INCOMPATIBLE_NOTE: &str = "This script is enabled but is not marked as compatible with fw4. \
+Check its contents before setting `fw4_compatible` to `1` in `/etc/config/firewall`.";
 
 const NO_INCLUDES: &str = "No custom snippets. The ruleset is entirely what this page and the \
 listings describe.";
@@ -133,7 +134,19 @@ pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
             Value::Object(values),
         ),
     };
-    (page(model), vec![op])
+    let mut ops = vec![op];
+    for include in &mut model.includes {
+        let enabled = !form.get(&include_field(include)).is_empty();
+        if enabled != include.enabled {
+            include.enabled = enabled;
+            ops.push(commit(
+                model::CONFIG,
+                &include.section,
+                json!({"enabled": if enabled { "1" } else { "0" }}),
+            ));
+        }
+    }
+    (page(model), ops)
 }
 
 /// flag_value states a switch the way firewall4 reads it, and clears it where
@@ -217,6 +230,10 @@ pub fn page(model: &Firewall) -> Envelope {
                                 section.ruled()
                             }
                         })
+                        .chain(std::iter::once(Widget::preview(
+                            CONFIG_PATH,
+                            &written(model),
+                        )))
                         .collect(),
                     note: String::new(),
                     target: String::new(),
@@ -224,40 +241,28 @@ pub fn page(model: &Firewall) -> Envelope {
                 // Everything this form writes is the defaults section's, which
                 // is where the shell looks for what waits on the stage.
                 .at(model::CONFIG, &d.section),
-                rail(model),
+                rail(),
             ],
         },
     )
 }
 
-/// rail is the column beside the form: where you are on a page long enough to
-/// lose your place in, and what the form will actually write. Neither is a
-/// setting, so neither belongs among the controls — but both are what someone
-/// wants while they are using them.
-fn rail(model: &Firewall) -> Widget {
-    Widget::stack(vec![
-        // One column, one hairline down its left, the place you are reading
-        // marked — so the links sit flush against each other rather than standing
-        // off as separate lines the way blocks on a page do.
-        Widget::section(
-            "On this page",
-            "",
-            vec![Widget::stack(
-                SECTIONS
-                    .iter()
-                    .map(|(anchor, title)| Widget::link(title, &format!("#{anchor}"), "rail"))
-                    .collect(),
-            )
-            .flush()],
+/// The side rail only navigates. The configuration preview belongs to the
+/// form, immediately before its Save action.
+fn rail() -> Widget {
+    Widget::stack(vec![Widget::section(
+        "On this page",
+        "",
+        vec![Widget::stack(
+            SECTIONS
+                .iter()
+                .map(|(anchor, title)| Widget::link(title, &format!("#{anchor}"), "rail"))
+                .collect(),
         )
-        .kicker()
-        .flush(),
-        Widget::section(
-            "",
-            "The sections this page writes, as they will be written when you apply.",
-            vec![Widget::preview(CONFIG_PATH, &written(model))],
-        ),
-    ])
+        .flush()],
+    )
+    .kicker()
+    .flush()])
 }
 
 /// SECTIONS pairs each section of the form with the name it is addressed by, so
@@ -274,7 +279,7 @@ const CONFIG_PATH: &str = "/etc/config/firewall";
 
 /// written is the `config defaults` block as this page will write it — the same
 /// options the form sets, in the file's own spelling, so what is about to happen
-/// is readable before it does. The rail declares it a live preview, so the shell
+/// is readable before it does. The form declares it a live preview, so the shell
 /// asks for it again as the form is edited and this answers from the values on
 /// screen rather than from the file.
 fn written(model: &Firewall) -> String {
@@ -296,6 +301,13 @@ fn written(model: &Firewall) -> String {
         if let Some(value) = flag_value(d.state(option), default_on).as_str() {
             out.push_str(&format!("\toption {option} '{value}'\n"));
         }
+    }
+    for include in &model.includes {
+        out.push_str(&format!(
+            "\nconfig include '{}'\n\toption enabled '{}'\n",
+            include.section,
+            if include.enabled { "1" } else { "0" },
+        ));
     }
     out
 }
@@ -565,58 +577,61 @@ them. A few old middleboxes still discard marked packets.";
 /// Verso does not author them, so the listing states what each one is and
 /// whether it loads, and nothing else.
 fn custom(d: &Defaults, includes: &[Include]) -> Widget {
-    // The switch that decides whether any of this runs comes first. The page listed
-    // the files and not the thing that loads them, so a router could show three
-    // snippets, each with its own switch on, and execute none of them.
     let gate = switch(
         "auto_includes",
-        "Load custom rule files",
+        "Load package rule files",
         AUTO_INCLUDES_HELP,
         d.auto_includes,
     );
+    let mut children = vec![gate];
     if includes.is_empty() {
-        return Widget::section(
-            CUSTOM_TITLE,
-            CUSTOM_SUB,
-            vec![gate, Widget::callout(Tone::Neutral, "", NO_INCLUDES)],
+        children.push(Widget::callout(Tone::Neutral, "", NO_INCLUDES));
+    }
+    for include in includes {
+        let detail = if include.kind == "script" {
+            "Shell script · runs after the ruleset loads".to_string()
+        } else {
+            format!("nftables · {}", include.hook)
+        };
+        let mut fields = vec![
+            Widget::Properties {
+                align: "left".into(),
+                items: vec![Property {
+                    label: "File".into(),
+                    value: include.path.clone(),
+                    mono: true,
+                    copy: true,
+                    help: detail,
+                    ..Property::default()
+                }],
+            },
+            Widget::Switch {
+                name: include_field(include),
+                label: "Load this file".into(),
+                key: "enabled".into(),
+                on: include.enabled,
+                off_label: String::new(),
+                help: String::new(),
+                style: String::new(),
+                tip: String::new(),
+                source: String::new(),
+                target: String::new(),
+            },
+        ];
+        if include.enabled && include.kind == "script" && !include.fw4_compatible {
+            fields.push(Widget::callout(Tone::Warning, "", INCOMPATIBLE_NOTE));
+        }
+        children.push(
+            Widget::section("", "", vec![Widget::stack(fields)])
+                .at(model::CONFIG, &include.section),
         );
     }
-    let items = includes
-        .iter()
-        .map(|include| SettingsItem {
-            title: include.path.clone(),
-            desc: format!("{} · loads at {}", include.kind, include.hook),
-            code: include.section.clone(),
-            value: String::new(),
-            name: String::new(),
-            inline: false,
-            datatype: String::new(),
-            pills: Vec::new(),
-            toggle: Some(SettingsToggle {
-                name: include.section.clone(),
-                on: include.enabled,
-            }),
-        })
-        .collect();
-    let mut children = vec![
-        gate,
-        Widget::Settings {
-            style: String::new(),
-            title: String::new(),
-            meta: String::new(),
-            condensed: false,
-            items,
-            seam: None,
-        },
-    ];
-    // A shell include is from the iptables era: fw4 runs it only while the
-    // compatibility package is there, so a snippet that looks enabled may never
-    // execute. That is worth saying beside the switch that appears to control it.
-    if includes.iter().any(|include| include.kind == "script") {
-        children.push(Widget::callout(Tone::Warning, "", LEGACY_NOTE));
-    }
-    children.push(Widget::callout(Tone::Neutral, "", CUSTOM_NOTE));
+    children.push(Widget::text(CUSTOM_NOTE));
     Widget::section(CUSTOM_TITLE, CUSTOM_SUB, children)
+}
+
+fn include_field(include: &Include) -> String {
+    format!("include_enabled_{}", include.section)
 }
 
 /// switch is one on/off row of this page, with the uci option beside its label.
@@ -692,7 +707,11 @@ mod tests {
     #[test]
     fn the_config_preview_states_exactly_what_a_save_would_write() {
         let model = fixture::firewall();
-        let shown = written(&model);
+        let preview = written(&model);
+        let shown = preview
+            .split("\nconfig include")
+            .next()
+            .expect("defaults preview");
 
         // What a save writes, for a submission that asks for the state the page is
         // currently showing.
@@ -704,6 +723,11 @@ mod tests {
         }
         for option in VALUES {
             asked.push(format!("{option}={}", model.defaults.value(option)));
+        }
+        for include in &model.includes {
+            if include.enabled {
+                asked.push(format!("{}=1", include_field(include)));
+            }
         }
         let mut after = fixture::firewall();
         let (_, ops) = save(&mut after, &Form::parse(&asked.join("&")));
@@ -747,8 +771,8 @@ mod tests {
     }
 
     // The page is the form beside a rail, at the canvas's split: the reading
-    // measure for the controls and a narrower column for where you are and what
-    // will be written. The rail is not a settings column — nothing in it is a
+    // measure for the controls and a narrower column for navigation.
+    // The rail is not a settings column — nothing in it is a
     // control — so it sits outside the form entirely.
     #[test]
     fn the_page_is_the_form_beside_its_rail() {
@@ -801,7 +825,10 @@ mod tests {
             );
         }
         // And what will be written, in the file's own spelling.
-        let preview = &rail["children"][1]["children"][0];
+        assert_eq!(rail["children"].as_array().unwrap().len(), 1);
+        let preview = sections
+            .last()
+            .expect("configuration immediately before Save");
         assert_eq!(preview["type"], "code");
         assert_eq!(preview["label"], CONFIG_PATH);
         let value = preview["value"].as_str().expect("preview text");
@@ -895,15 +922,15 @@ mod tests {
     #[test]
     fn an_include_states_what_it_is_and_whether_it_loads() {
         let body = body();
-        let settings = fixture::widget(&body, "settings");
-        let first = &settings["items"][0];
-        assert_eq!(first["title"], "/etc/nftables.d/10-custom.nft");
-        assert_eq!(first["desc"], "nftables · loads at chain-pre");
-        assert_eq!(first["toggle"]["on"], true);
-        assert!(
-            first.get("value").is_none(),
-            "an include has no value to edit"
-        );
+        let first = &fixture::section(&body, CUSTOM_TITLE)["children"][1];
+        assert_eq!(first["target"], "firewall.custom_nft");
+        let file = &first["children"][0]["children"][0]["items"][0];
+        assert_eq!(file["value"], "/etc/nftables.d/10-custom.nft");
+        assert_eq!(file["mono"], true);
+        assert_eq!(file["copy"], true);
+        let control = fixture::control(first, "include_enabled_custom_nft");
+        assert_eq!(control["key"], "enabled");
+        assert_eq!(control["on"], true);
     }
 
     #[test]
@@ -912,9 +939,7 @@ mod tests {
         model.includes.clear();
         let body = serde_json::to_value(page(&model)).expect("serialize");
         let section = fixture::section(&body, CUSTOM_TITLE);
-        // The switch that decides whether any of them load comes first, whether or
-        // not there are any: a router with no snippets can still be the one that
-        // turned loading off.
+        // Automatic package includes are independent of the explicit file list.
         assert_eq!(section["children"][0]["name"], "auto_includes");
         assert_eq!(section["children"][1]["type"], "callout");
         assert_eq!(section["children"][1]["body"], NO_INCLUDES);
@@ -962,5 +987,53 @@ mod tests {
         let (_, ops) = save(&mut model, &Form::parse("drop_invalid=1"));
         assert_eq!(ops[0].values["drop_invalid"], "1");
         assert_eq!(ops[0].config, "firewall");
+    }
+
+    #[test]
+    fn include_toggles_save_only_known_sections_and_update_the_preview() {
+        let mut model = fixture::firewall();
+        let (page, ops) = save(
+            &mut model,
+            &Form::parse("include_enabled_legacy_sh=1&include_enabled_unknown=1"),
+        );
+        assert_eq!(ops.len(), 3);
+        assert_eq!(ops[1].section, "custom_nft");
+        assert_eq!(ops[1].values, json!({"enabled": "0"}));
+        assert_eq!(ops[2].section, "legacy_sh");
+        assert_eq!(ops[2].values, json!({"enabled": "1"}));
+        let body = serde_json::to_value(page).unwrap();
+        assert!(!fixture::control(&body, "include_enabled_custom_nft")["on"]
+            .as_bool()
+            .unwrap_or(false));
+        assert_eq!(
+            fixture::control(&body, "include_enabled_legacy_sh")["on"],
+            true
+        );
+        assert!(written(&model).contains("config include 'custom_nft'\n\toption enabled '0'"));
+        let (_, repeated) = save(&mut model, &Form::parse("include_enabled_legacy_sh=1"));
+        assert_eq!(repeated.len(), 1, "unchanged includes must not stage again");
+    }
+
+    #[test]
+    fn script_warning_follows_fw4_compatibility_not_script_type() {
+        let mut snapshot: Value =
+            serde_json::from_str(include_str!("../testdata/snapshot.json")).unwrap();
+        let section = &mut snapshot["firewall"]["legacy_sh"];
+        section["path"] = json!("/usr/libexec/verso/firewall-logging");
+        section["enabled"] = json!("1");
+        section["fw4_compatible"] = json!("1");
+        let model = Firewall::read(&verso_plugin::Snapshot::from_value(snapshot.clone()));
+        assert!(model.includes[1].fw4_compatible);
+        assert!(model.includes[1].hook.is_empty());
+        assert!(!serde_json::to_value(page(&model))
+            .unwrap()
+            .to_string()
+            .contains(INCOMPATIBLE_NOTE));
+        snapshot["firewall"]["legacy_sh"]["fw4_compatible"] = json!("0");
+        let model = Firewall::read(&verso_plugin::Snapshot::from_value(snapshot));
+        assert!(serde_json::to_value(page(&model))
+            .unwrap()
+            .to_string()
+            .contains(INCOMPATIBLE_NOTE));
     }
 }

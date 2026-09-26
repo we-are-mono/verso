@@ -568,7 +568,7 @@ type pageData struct {
 	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
 	HeadingAct    template.HTML      // a listing's lone act, rendered in the Action's place (pageHeader.HeadingAct)
 	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
-	Width         string             // content-column width preset: "form" (640px) | "narrow" | "normal" (default) | "wide"
+	Width         string             // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
 	Nav           navModel
 	Body          template.HTML

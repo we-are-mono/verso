@@ -8,17 +8,22 @@ import (
 	"testing"
 )
 
-func TestDrawerActionsFinishTheirConfigurationCard(t *testing.T) {
+func TestFormActionsFinishTheirConfigurationCard(t *testing.T) {
 	for name, tail := range map[string][]Widget{
 		"direct":              {&Code{Label: "/etc/config/wireless", Live: true}},
 		"nested with carrier": {&Section{Children: []Widget{&Code{Label: "/etc/config/firewall", Live: true}}}, &Field{Name: "_panel", Kind: "hidden", Value: "1"}},
 		"static cards":        {&Code{Label: "/etc/config/firewall"}, &Code{Label: "/etc/config/qos"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			f := &Form{Frame: FramePanel, Submit: "Save", Fields: tail}
-			got := render(t, newRenderer(t), f)
-			if !strings.Contains(got, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
-				t.Errorf("Save must join the card without another rule:\n%s", got)
+			for _, f := range []*Form{
+				{Frame: FramePanel, Submit: "Save", Fields: tail},
+				{Style: "page", Submit: "Save", Fields: tail},
+				{Style: "settings", Submit: "Save", Fields: tail},
+			} {
+				got := render(t, newRenderer(t), f)
+				if !strings.Contains(got, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
+					t.Errorf("Save must join the card without another rule:\n%s", got)
+				}
 			}
 			if EndsWithCode(&Stack{Children: append(append([]Widget{}, tail...), &Field{Name: "after", Kind: "text"})}) {
 				t.Error("a card followed by another control must not absorb the actions")
@@ -150,7 +155,7 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 // no rule of its own: the next section's rule is the only line between them,
 // and a ruled Save would read as a section of its own. A form that is the
 // page's (its sections inside it) commits the whole page, so its Save stands
-// under a section rule of the page's own — 40px either side, run out to the
+// 32px under a section rule of the page's own, run out to the
 // rail. A form in a panel keeps its own rule inside the panel.
 func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	r := newRenderer(t)
@@ -161,7 +166,7 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	if !strings.Contains(sectioned, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-rule class="flex flex-wrap items-center mt-6 gap-4 border-t border-rule pt-6">`) {
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-rule class="flex flex-wrap items-center mt-6 gap-4 border-t border-rule pt-8">`) {
 		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
 	}
 	framed := form()

@@ -1,16 +1,17 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-<div data-verso-maintenance{{if .Checking}} data-verso-update-busy{{end}} class="flex flex-col items-start gap-11 xl:flex-row">
+<div class="@container">
+<div data-verso-maintenance{{if .Checking}} data-verso-update-busy{{end}} class="grid min-w-0 grid-cols-1 items-start gap-10 @6xl:grid-cols-form">
   {{/* The masthead opens onto the first section without a rule. Later sections start
        with a Quiet Sand heading band, 32px after the preceding content. Bands
        extend through the frame's left gutter while their words stay aligned. */}}
-  <div class="w-full min-w-0 max-w-[40rem] shrink-0">
+  <div data-verso-form-column class="w-full min-w-0 max-w-form shrink-0">
     {{.Notices}}
     <section id="firmware" class="scroll-mt-20">
       {{/* The ledger: the verdict under its state mark, then what this router runs
            part by part, with an Available column only while a build is offered.
            The check stands on the heading line with the time it last ran. */}}
-      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pr-4">
+      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 class="text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
         <form method="post" action="/system/maintenance/updates/check" class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3">
           {{template "verso-csrf" .CSRFToken}}
@@ -107,7 +108,7 @@
       </div>
     </section>
     <section id="reboot" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
-      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pr-4">
+      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 class="text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
         <span class="ml-auto text-right text-sm leading-5 text-meta">{{t "Running for"}} {{.Uptime}}</span>
       </div>
@@ -145,7 +146,7 @@
       </form>
     </section>
   </div>
-  <aside class="hidden min-w-0 flex-1 xl:block">
+  <aside class="hidden min-w-0 @6xl:block">
     <h2 class="mb-3 text-xs font-medium tracking-[.08em] text-meta uppercase">{{t "On this page"}}</h2>
     <nav class="flex flex-col border-l border-rule">
       <a data-verso-rail-link href="#firmware" class="aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)] py-1.5 pl-4 text-sm font-semibold text-ink hover:text-denim-deep">{{t "Firmware"}}</a>
@@ -160,4 +161,5 @@
       <p class="flex items-start gap-2.5"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>{{t "Keep the router connected to power during the upgrade."}}</p>
     </div>
   </aside>
+</div>
 </div>

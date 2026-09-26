@@ -642,6 +642,16 @@ mod tests {
                     .expect("serialize the op")
                     .get("values")
                 {
+                    let kind = if kind == "defaults"
+                        && model
+                            .includes
+                            .iter()
+                            .any(|include| include.section == op.section)
+                    {
+                        "include"
+                    } else {
+                        kind
+                    };
                     out.push((kind, values.clone()));
                 }
             }

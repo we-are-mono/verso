@@ -76,7 +76,7 @@ func TestDecodeGridChildren(t *testing.T) {
 }
 
 // TestGridRail: a rail is the page's work beside a narrower column that comments
-// on it — a fixed reading measure and a fixed rail, not an even split, with the
+// on it — the form measure and the remaining rail, with the
 // page's own side padding as the gutter between them. The two columns are the
 // whole of the wide page, so they are keyed to the grid's own container rather
 // than to the window; narrower than that the rail stacks under the work, where
@@ -88,7 +88,7 @@ func TestGridRail(t *testing.T) {
 	})
 	for _, want := range []string{
 		`<div class="@container">`,
-		"grid grid-cols-1 gap-10 @6xl:grid-cols-[40rem_29.25rem]",
+		"grid grid-cols-1 gap-10 @6xl:grid-cols-form",
 		"the work", "the rail",
 	} {
 		if !strings.Contains(got, want) {

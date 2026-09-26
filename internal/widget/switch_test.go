@@ -21,7 +21,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		// measure, the same label column, the same fixed control column a value
 		// to type gets. A settings page that drew them differently read as two
 		// forms stacked.
-		"flex max-w-[40rem] flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-8",
+		"flex max-w-form flex-col gap-2 py-2 sm:flex-row sm:items-start sm:gap-8",
 		`<label for="enabled" id="enabled-label" class="text-sm font-semibold text-ink`,
 		"flex w-full min-w-0 flex-col justify-center gap-1.5 sm:w-64 sm:min-h-9 sm:flex-none",
 		// The input is screen-reader-only, so the visible box has to be inside

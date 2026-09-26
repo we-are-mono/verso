@@ -10,7 +10,7 @@
      button that names itself, starting where the fields' controls start. An
      act on a thing of its own (a package) opens that thing's drawer over the
      page; the page keeps its address, since the drawer is not a place on it. */}}
-<div class="flex max-w-[40rem] flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-8">
+<div class="{{template "verso-field-row-class"}}">
   <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1 sm:pt-2">
     <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>

@@ -54,9 +54,9 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// and crimson would promise a severity it does not have.
 		`data-verso-condition-remove aria-label="Remove Destination ports"`,
 		"hover:bg-mid/50 hover:text-ink",
-		// The glyph is inside the row's measure, so the form is 40rem wide
+		// The glyph stays inside the shared form measure
 		// whether or not a row ends in one.
-		`data-verso-condition="dest_port" class="flex max-w-[40rem] items-start gap-8"`,
+		`data-verso-condition="dest_port" class="flex max-w-form items-start gap-8"`,
 		"hover:border-sand-5 hover:bg-rule", "border-rule-strong bg-transparent text-meta",
 	} {
 		if !strings.Contains(got, want) {
