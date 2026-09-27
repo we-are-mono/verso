@@ -130,6 +130,7 @@ fn write_widget_fixtures() {
                 tip: String::new(),
                 source: String::new(),
                 verbatim: false,
+                error: String::new(),
                 target: String::new(),
             },
         ),

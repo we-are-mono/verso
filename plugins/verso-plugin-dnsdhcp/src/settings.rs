@@ -365,10 +365,11 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         )]
     };
     if s.resolver {
-        privacy.push(s.flag("dnssec"));
-        if let Some(error) = e.get("dnssec") {
-            privacy.push(Widget::callout(verso_plugin::Tone::Danger, "", error));
+        let mut dnssec = s.flag("dnssec");
+        if let (Widget::Switch { error, .. }, Some(refused)) = (&mut dnssec, e.get("dnssec")) {
+            *error = refused.clone();
         }
+        privacy.push(dnssec);
     }
     sections.push(part(
         "Privacy",
@@ -440,12 +441,9 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                     submit: "Save".into(),
                     note: String::new(),
                     target: String::new(),
-                    error: if e.is_empty() {
-                        ""
-                    } else {
-                        "Check the highlighted fields."
-                    }
-                    .into(),
+                    // Each refusal rides its own field; the shell's
+                    // navigator counts them, so the form says nothing.
+                    error: String::new(),
                     fields: sections,
                 }
                 .at("dhcp", &s.daemon.section),
@@ -913,7 +911,43 @@ mod tests {
             let e = post(&r, &form(&r, &changes));
             assert!(e.commit.is_empty());
             let v = serde_json::to_string(&e).unwrap();
-            assert!(v.contains("Check the highlighted fields."));
+            // The refusal rides the refused field; the form says nothing.
+            assert!(
+                v.contains("\"error\":\"") || v.contains("\"errors\":{"),
+                "{v}"
+            );
+            assert!(!v.contains("Check the highlighted fields."));
+        }
+    }
+    // A refused DNSSEC switch is refused as a field is — on the switch, drawn
+    // under its label — never as a notice pushed in beside it.
+    #[test]
+    fn a_refused_dnssec_switch_carries_its_own_refusal() {
+        let r = request();
+        let e = post(&r, &form(&r, &[("dnssec", &["1"])]));
+        let body = serde_json::to_value(&e).unwrap();
+        let switch =
+            find(&body, &|v| v["type"] == "switch" && v["name"] == "dnssec").expect("switch");
+        assert!(switch["error"]
+            .as_str()
+            .is_some_and(|m| m.starts_with("DNSSEC requires")));
+        assert!(
+            find(&body, &|v| v["type"] == "callout"
+                && v["body"]
+                    .as_str()
+                    .is_some_and(|b| b.starts_with("DNSSEC requires")))
+            .is_none(),
+            "no callout repeats the refusal"
+        );
+    }
+    fn find(v: &Value, wanted: &dyn Fn(&Value) -> bool) -> Option<Value> {
+        if wanted(v) {
+            return Some(v.clone());
+        }
+        match v {
+            Value::Object(m) => m.values().find_map(|c| find(c, wanted)),
+            Value::Array(a) => a.iter().find_map(|c| find(c, wanted)),
+            _ => None,
         }
     }
     #[test]

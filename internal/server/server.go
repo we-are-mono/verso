@@ -717,6 +717,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Couldn’t apply — check the settings and try again",
 		"Couldn’t confirm — the router may have rolled back",
 		"Couldn’t discard — try again",
+		// The refusal navigator: how many settings stand refused, and what it
+		// says once the last is corrected.
+		"1 setting refused", "%d settings refused", "Ready to save",
 		// Inline-field validation, shown beneath the field on blur.
 		"Enter a value.",
 		"Use letters, numbers and hyphens — no spaces.",

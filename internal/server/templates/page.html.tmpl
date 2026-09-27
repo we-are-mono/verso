@@ -225,6 +225,18 @@
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </div>
+{{/* The refusal navigator: while settings on the page stand refused, how many,
+     and the way to the next one. It pins itself under the bar, centred over
+     the content column, and counts down as each refusal is corrected — a
+     refusal clears on its first change — until it says the form is ready to
+     save and folds away (verso-forms.js). The fields themselves are the
+     truth: the shell counts their refusals, so no plugin writes a sentence
+     telling you to look for them. */}}
+<div id="verso-refusals" hidden role="status" class="group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-9 -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-[0_4px_12px_rgba(27,25,23,.14)] md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep">
+  <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson group-data-[ready]/refusals:bg-green"></span>
+  <span data-verso-refusals-count class="inline-block pr-2"></span>
+  <button type="button" data-verso-refusals-next class="flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden">{{ t "Next" }}{{icon "arrow-down" "size-3.5"}}</button>
+</div>
 {{/* The session ending: a minute before this page's session runs out, the
      page stops what it is doing and says so (verso-commit.js). An alert
      dialog, because the time is limited and the answer is one act: staying

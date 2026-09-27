@@ -22,7 +22,7 @@
     {{range $i, $item := .Items}}<div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule py-2">
       <input type="hidden" name="{{$.Name}}" value="{{$item}}"><span data-verso-list-value class="min-w-0 pt-0.5 wrap-anywhere font-mono text-base font-medium text-ink">{{breakable $item}}</span>
       <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button>
-      {{with index $.Errors (printf "%d" $i)}}<span class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
+      {{with index $.Errors (printf "%d" $i)}}<span data-verso-error class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule py-2"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="min-w-0 pt-0.5 wrap-anywhere font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>

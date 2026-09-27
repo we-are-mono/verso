@@ -625,11 +625,9 @@ fn page(
     let form = Widget::Form {
         style: String::new(),
         submit: "Save".into(),
-        error: if error.is_empty() && !e.is_empty() {
-            "Check the highlighted fields.".into()
-        } else {
-            error.into()
-        },
+        // Only a refusal no field owns is the form's; each field refusal rides
+        // its field.
+        error: error.into(),
         note: String::new(),
         target: String::new(),
         fields: sections,

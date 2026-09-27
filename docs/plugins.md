@@ -1221,7 +1221,9 @@ switches omit it.
 ```
 
 `verbatim: true` says the label is a machine string, such as a path: it is set
-in mono and never translated. `style: "locked"` states a state nothing on the
+in mono and never translated. `error` refuses the state the switch was set to,
+drawn exactly as a field's refusal is (the band under the label, the checkbox
+marked invalid and pointing at it); never push a callout beside the switch. `style: "locked"` states a state nothing on the
 page changes; it is drawn set or clear, inert, and posts nothing.
 
 **Switch groups.** Switches alone in a labelled `form` grid are one setting

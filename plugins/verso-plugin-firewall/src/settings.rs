@@ -667,6 +667,7 @@ fn include_switch(include: &Include) -> Widget {
         tip: String::new(),
         source: String::new(),
         verbatim: true,
+        error: String::new(),
         target: String::new(),
     }
     .at(model::CONFIG, &include.section)
@@ -692,6 +693,7 @@ fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
         tip: String::new(),
         source: String::new(),
         verbatim: false,
+        error: String::new(),
         target: String::new(),
     }
 }

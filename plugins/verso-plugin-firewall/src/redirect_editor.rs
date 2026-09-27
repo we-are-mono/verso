@@ -223,6 +223,7 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
             tip: String::new(),
             source: String::new(),
             verbatim: false,
+            error: String::new(),
             target: String::new(),
         })),
         children: vec![fields::row_group(vec![fields::text_field(

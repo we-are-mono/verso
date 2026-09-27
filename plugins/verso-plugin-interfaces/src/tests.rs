@@ -37,7 +37,7 @@ fn new_network_stages_named_section_and_references() {
 }
 #[test]
 fn invalid_posts_never_stage() {
-    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.255.255.0&dhcp=1&start=1&limit=200&leasetime=12h","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("Check the highlighted fields."));}
+    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.255.255.0&dhcp=1&start=1&limit=200&leasetime=12h","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("\"error\":\""),"no refusal for {body}");}
 }
 #[test]
 fn device_kinds_write_device_sections() {
@@ -531,10 +531,12 @@ fn an_object_is_edited_in_a_drawer_over_the_listing() {
         &Form::parse("name=lan&device=br-lan&proto=static&ipaddr=invalid"),
     );
     assert!(refused.commit.is_empty());
-    assert_eq!(
-        open_drawer(&refused)["children"][0]["error"],
-        "Check the highlighted fields."
+    let drawer = open_drawer(&refused).to_string();
+    assert!(
+        drawer.contains("\"error\":\""),
+        "the refused field says why: {drawer}"
     );
+    assert!(!drawer.contains("Check the highlighted fields."));
 }
 #[test]
 fn every_way_into_the_editor_opens_it_in_place() {

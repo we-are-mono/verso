@@ -1398,5 +1398,133 @@ document.addEventListener("mousedown", function (e) {
   input.focus();
 });
 
+// The refusal navigator (#verso-refusals): while settings on the page stand
+// refused, how many, and the way to the next. The fields are the truth — a
+// control marked aria-invalid is a refused setting, one per row however many
+// inputs it holds — so the tally follows them as they change: a refusal
+// clears on its first change (the handler above), the count turns over, and
+// at none the navigator says the form is ready to save and folds away.
+(function () {
+  var nav = document.getElementById("verso-refusals");
+  var main = document.querySelector("main");
+  if (!nav || !main) return;
+  var tally = nav.querySelector("[data-verso-refusals-count]");
+  var next = nav.querySelector("[data-verso-refusals-next]");
+  var shown = 0;
+  var folding = null;
+
+  function still() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // refused is each refused setting on the page, in reading order: its row
+  // and the control a person corrects it in. A refusal shows as a control
+  // marked invalid or as a refusal line still standing (a listed value's has
+  // no box to mark). Parts of a fused box are settings of their own; a radio
+  // group is one.
+  function refused() {
+    var rows = [];
+    [].forEach.call(main.querySelectorAll('[aria-invalid="true"], [data-verso-error]:not([hidden])'), function (mark) {
+      var row = mark.closest(".verso-box-part, [role=radiogroup], .verso-field-row") || mark;
+      if (!row.getClientRects().length) return; // folded away or out of this reading
+      if (rows.some(function (r) { return r.row === row; })) return;
+      var control = row.matches("input, select, textarea") ? row
+        : row.querySelector('[aria-invalid="true"]:is(input, select, textarea)')
+        || row.querySelector("input:not([type=hidden]), select, textarea, button");
+      rows.push({ row: row, control: control || row });
+    });
+    return rows;
+  }
+
+  function words(n) {
+    return n === 1 ? T("1 setting refused") : T("%d settings refused").replace("%d", n);
+  }
+
+  // say turns the tally over: the old words rise out as the new rise in.
+  function say(text) {
+    if (tally.textContent === text) return;
+    if (!tally.textContent || still() || typeof tally.animate !== "function") { tally.textContent = text; return; }
+    tally.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-80%)", opacity: 0 }],
+      { duration: 140, easing: "ease-in" }).finished.then(function () {
+      tally.textContent = text;
+      tally.animate([{ transform: "translateY(80%)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
+        { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+    }, function () { tally.textContent = text; });
+  }
+
+  // place centres the navigator over the form holding the refused settings,
+  // not over the whole content area: a settings form is narrower than the
+  // column it sits in. Unmeasured, the stylesheet's centring stands.
+  function place(rows) {
+    var anchor = (rows[0] && rows[0].row.closest("form")) || main.querySelector("[data-verso-form-column]");
+    if (!anchor) { nav.style.left = ""; return; }
+    var r = anchor.getBoundingClientRect();
+    nav.style.left = (r.left + r.width / 2) + "px";
+  }
+
+  // The motion is in transform, never translate: the navigator's centring
+  // lives on translate, and animating it would throw the box sideways.
+  function reveal(arriving) {
+    if (folding) { clearTimeout(folding); folding = null; }
+    nav.removeAttribute("data-ready");
+    if (!nav.hidden) return;
+    nav.hidden = false;
+    if (arriving && !still() && typeof nav.animate === "function") {
+      nav.animate([{ opacity: 0, transform: "translateY(-0.5rem)" }, { opacity: 1, transform: "translateY(0)" }],
+        { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+    }
+  }
+
+  function fold() {
+    if (nav.hidden) return;
+    var done = function () { nav.hidden = true; nav.removeAttribute("data-ready"); tally.textContent = ""; };
+    if (still() || typeof nav.animate !== "function") { done(); return; }
+    nav.animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(-0.5rem)" }],
+      { duration: 180, easing: "ease-in" }).finished.then(done, done);
+  }
+
+  // A page that arrives refused shows the tally as part of itself, still; a
+  // refusal that appears later (an in-place value's own check) slides it in.
+  function update(landing) {
+    var rows = refused();
+    var n = rows.length;
+    if (n > 0) {
+      place(rows);
+      reveal(!landing);
+      say(words(n));
+    } else if (shown > 0 && !nav.hidden) {
+      // The last refusal corrected: the form is ready to be saved again.
+      nav.setAttribute("data-ready", "");
+      say(T("Ready to save"));
+      folding = setTimeout(fold, 1600);
+    }
+    shown = n;
+  }
+
+  // Next goes to the refused setting after the one in hand — or, with none in
+  // hand, the first below the middle of the view — round to the first again.
+  next.addEventListener("click", function () {
+    var rows = refused();
+    if (!rows.length) return;
+    var here = rows.findIndex(function (r) { return r.row.contains(document.activeElement); });
+    var target = here >= 0 ? rows[(here + 1) % rows.length] : rows.find(function (r) {
+      return r.row.getBoundingClientRect().top > window.innerHeight / 2;
+    }) || rows[0];
+    target.row.scrollIntoView({ block: "center", behavior: still() ? "auto" : "smooth" });
+    target.control.focus({ preventScroll: true });
+  });
+
+  var queued = false;
+  new MutationObserver(function () {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () { queued = false; update(); });
+  }).observe(main, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-invalid", "hidden"] });
+  window.addEventListener("resize", function () {
+    if (!nav.hidden) place(refused());
+  });
+  update(true);
+})();
+
 // Code fields expose their logical line count beside the editor.
 document.addEventListener("input",function(e){if(!e.target.matches("[data-verso-code-editor]"))return;var counter=e.target.parentElement.querySelector("[data-verso-code-lines]");if(counter)counter.textContent=e.target.value?e.target.value.replace(/\n$/,"").split("\n").length:0;});

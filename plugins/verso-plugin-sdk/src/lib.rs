@@ -629,6 +629,8 @@ pub enum Widget {
     /// refusal that belongs to the whole submission rather than to one control —
     /// shown above the fields, and enough on its own to make the answer a 422,
     /// so nothing is written and the shell keeps the operator on the form.
+    /// It never summarises field refusals ("check the highlighted fields"):
+    /// each rides its own control, and the shell's navigator counts them.
     Form {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
@@ -764,6 +766,10 @@ pub enum Widget {
         /// mono and never looked up in a catalog.
         #[serde(skip_serializing_if = "is_false")]
         verbatim: bool,
+        /// The refusal of the state the switch was set to, drawn as a field's
+        /// is: the band under the label, named by the checkbox.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        error: String,
         #[serde(skip_serializing_if = "is_false")]
         on: bool,
     },
@@ -1460,6 +1466,7 @@ impl Widget {
             tip: tip.into(),
             source: String::new(),
             verbatim: false,
+            error: String::new(),
             target: String::new(),
             on,
         }
@@ -3155,6 +3162,7 @@ mod tests {
             tip: String::new(),
             source: String::new(),
             verbatim: false,
+            error: String::new(),
             target: String::new(),
             on: false,
         };

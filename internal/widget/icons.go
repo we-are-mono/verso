@@ -83,6 +83,7 @@ var lucideIcons = map[string]string{
 	"circle-x":       `<circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />`,
 	"activity":       `<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />`,
 	"clock":          `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />`,
+	"arrow-down":     `<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />`,
 	"arrow-left":     `<path d="m12 19-7-7 7-7" /><path d="M19 12H5" />`,
 	"arrow-right":    `<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />`,
 	"plus":           `<path d="M5 12h14" /><path d="M12 5v14" />`,

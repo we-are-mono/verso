@@ -24,8 +24,11 @@
     <span>{{.Success}}</span>
   </div>
   {{end}}
+  {{/* A refusal of the whole submission — one no field owns. A field's own
+       refusal is its band, and the page's navigator counts them; no form says
+       to look for them. The band keeps a dividing line's air below it. */}}
   {{if .Error}}
-  <div class="flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">
+  <div class="mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">
     {{template "verso-message-mark" "danger"}}
     <span>{{.Error}}</span>
   </div>
