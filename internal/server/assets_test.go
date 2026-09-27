@@ -252,7 +252,10 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 // own padding back — an untitled section's first visible row starts where the
 // section does, and every section's last visible row ends where it does.
 // Hidden carriers ahead of the first row are not a block: the first row after
-// them takes no block gap.
+// them takes no block gap. A branch that is hidden (a `when` whose control
+// holds another value) is not a row either, so the row before it can still be
+// the last; and a branch that shows and ends the section ends on its own last
+// row.
 func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -260,8 +263,9 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){padding-top:0}`,
-		`[data-verso-section]>.verso-rhythm>:not(input[type=hidden]):not(:has(~:not(input[type=hidden]))){padding-bottom:0}`,
+		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
+		`[data-verso-section]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden]))),` +
+			`[data-verso-section]>.verso-rhythm>[data-verso-when]:not([hidden]):not(:has(~:not(input[type=hidden],[hidden])))>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden]))){padding-bottom:0}`,
 		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
 	} {
 		if !strings.Contains(css, want) {

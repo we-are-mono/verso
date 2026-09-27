@@ -135,8 +135,12 @@
      where the section does (a titled one keeps it, as the air under its
      heading), and every section's last visible row ends where the section
      does — a table on its last row, its own closing hairline given to the
-     rule under it. Hidden carriers are skipped. */
-  [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { padding-top: 0; }
-  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) { padding-bottom: 0; }
+     rule under it. Hidden carriers are skipped, and so is a hidden branch (a
+     `when` whose control holds another value): it is not a row, so the row
+     before it can still be the last. A branch that shows and ends the
+     section ends on its own last row. */
+  [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
+  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
+  [data-verso-section] > .verso-rhythm > [data-verso-when]:not([hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
   [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
 }
