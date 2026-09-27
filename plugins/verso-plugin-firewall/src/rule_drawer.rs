@@ -95,7 +95,6 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
         title: "New rule".into(),
         tabs: new_tabs(form, model, tab),
         closed: page::rules_href(),
-        size: "wide".into(),
         open: true,
         children: vec![fields::panel_form(
             "Add rule",
@@ -158,7 +157,6 @@ pub fn drawer(
         title: title(&rule.name),
         tabs: tabs(rule, form, model, tab),
         closed: page::rules_href(),
-        size: "wide".into(),
         open: true,
         children: body(model, rule, form, errors, tab),
         ..RowDrawer::default()

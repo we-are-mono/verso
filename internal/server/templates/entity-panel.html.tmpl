@@ -13,7 +13,7 @@
 {{template "verso-drawer-header" .Title}}
 
 {{if gt (len .Tabs) 1}}
-<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8" aria-label="{{ t "Sections" }}">
+<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
   {{range .Tabs}}
   <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"{{if .Active}} aria-current="page"{{end}}
     class="flex shrink-0 items-center gap-2 whitespace-nowrap text-base transition-colors {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}
@@ -29,7 +29,7 @@
 {{/* The tab in force. A subject no plugin claims has nothing here — the facts
      in the body are the whole panel, which is the honest reading of a board where
      nothing is installed that can act on it. */}}
-<div data-verso-drawer-body class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-8 pt-7 pb-8">
+<div data-verso-drawer-body class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto {{template "verso-drawer-inset"}} pt-7 pb-8">
   {{if .Body}}<div>{{.Body}}</div>{{end}}
   {{if .CTA}}
   {{/* The commit row travels with the tab, not with the panel: the verb and the

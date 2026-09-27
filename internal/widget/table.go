@@ -391,8 +391,8 @@ type TableGroup struct {
 // form that edits it, and action buttons guarded by confirm where an act
 // deserves a pause. An object lives in its drawer (ADR-005 §8): making one and
 // editing one are the same panel, and its Save stages. Same shell behaviour as
-// the drawer widget (ADR-005 §7). Size widens the panel ("" reading width | "wide") for
-// detail views that carry tables beside prose. Open renders the panel already
+// the drawer widget (ADR-005 §7). Every panel stands at the one drawer width;
+// Size "choices" lays the body out as a chooser. Open renders the panel already
 // open, which is how a link from elsewhere arrives with the row's panel
 // already in front of the operator.
 type RowDrawer struct {

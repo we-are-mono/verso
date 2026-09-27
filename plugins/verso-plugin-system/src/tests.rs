@@ -638,7 +638,6 @@ fn a_certificate_act_is_a_drawer_that_closes_back_on_access() {
         let drawer = drawer_of(&j["widget"]).unwrap_or_else(|| panic!("a drawer at {path}: {j}"));
         assert_eq!(drawer["open"], true, "{drawer}");
         assert_eq!(drawer["title"], title);
-        assert_eq!(drawer["size"], "form");
         assert_eq!(drawer["closed"], "/system/access");
         // Its act runs at once, so it is named for what it does, not "Save",
         // which stages.

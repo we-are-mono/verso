@@ -556,8 +556,8 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		// the panel is about is still on screen at the bottom of a long form.
 		`absolute inset-y-0 right-0 flex w-full`,
 		"flex-col overflow-hidden border-l border-rule-strong",
-		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`, // the shared drawer panel's header
-		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-8",
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // the shared drawer panel's header
+		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-10",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -582,7 +582,7 @@ func TestRenderTableRowDrawerKeepsLegacyHiddenTitleVisible(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-8", "pt-7", `aria-label="Close"`} {
+	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-10", "pt-7", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
@@ -1159,7 +1159,7 @@ func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
 		"id":"allow_ping","cells":[{"text":"Allow-Ping"}],
 		"drawer":{"title":"Allow-Ping","verbatim":true,"sub":"from the installer",
-			"chain":"input_wan","tag":"guest","size":"wide","open":true,
+			"chain":"input_wan","tag":"guest","open":true,
 			"verdict":{"type":"badge","text":"accept","variant":"success"},
 			"lede":["Rule 1 of 22","0 matches since boot"],
 			"tabs":[{"label":"Match","state":"5 conditions","href":"/x?tab=match","active":true},
@@ -1192,7 +1192,7 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{
-		Title: "Allow-DHCP-Renew", Chain: "input_wan", Size: "wide",
+		Title: "Allow-DHCP-Renew", Chain: "input_wan",
 		Verdict: &Badge{Text: "accept", Variant: "success"},
 		Lede:    []string{"Rule 1 of 22", "0 matches since boot"},
 		Tabs: []DrawerTab{
@@ -1203,17 +1203,17 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	}
 	got := render(t, r, tbl)
 	for _, want := range []string{
-		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`,
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`,
 		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h2>`,
 		// The strip: the tab in force carries the action colour under it and in
 		// its chip; the rest stay quiet.
-		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8"`,
+		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-10"`,
 		`aria-current="page"`,
 		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
 		"border-denim-line bg-denim-soft text-denim-deep\">5 conditions",
 		"border-rule bg-quiet text-meta\">accept",
 		// A tabbed panel's body starts at the canvas's 28px under the strip.
-		"overflow-y-auto px-8 pt-7 pb-8",
+		"overflow-y-auto px-10 pt-7 pb-8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
@@ -1236,7 +1236,7 @@ func TestRenderRowDrawerWithoutTabs(t *testing.T) {
 	if strings.Contains(got, `aria-label="Sections"`) {
 		t.Errorf("a panel with no tabs must draw no strip:\n%s", got)
 	}
-	if !strings.Contains(got, "overflow-y-auto px-8 pt-7 pb-8") {
+	if !strings.Contains(got, "overflow-y-auto px-10 pt-7 pb-8") {
 		t.Errorf("untabbed panel lost its own top:\n%s", got)
 	}
 }

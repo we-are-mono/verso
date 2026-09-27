@@ -2066,11 +2066,12 @@ pub struct TableRow {
 /// RowDrawer is a row's edit surface: a slide-in panel carrying the row's own
 /// form. Removal belongs to a separate confirmed action on its listing. A small
 /// object is edited here — one record, one host; an object with a page's worth of
-/// settings gets a page instead. Size widens the panel ("" reading width |
-/// "wide"), HideTitle drops the heading where the first section already names
-/// the object, and Open renders the panel already open — which is how a
-/// submission the plugin refused comes back with the failed drawer in front of
-/// the operator rather than silently closed.
+/// settings gets a page instead. Every panel stands at the one drawer width;
+/// size "choices" lays the body out as a chooser. HideTitle drops the heading
+/// where the first section already names the object, and Open renders the
+/// panel already open — which is how a submission the plugin refused comes
+/// back with the failed drawer in front of the operator rather than silently
+/// closed.
 #[derive(Serialize, Debug, Default)]
 pub struct RowDrawer {
     pub title: String,
@@ -3363,14 +3364,12 @@ mod tests {
         // A refused submission comes back with its drawer already open.
         let refused = RowDrawer {
             title: "Edit record — nas.lan".into(),
-            size: "wide".into(),
             hide_title: true,
             open: true,
             children: Vec::new(),
             ..RowDrawer::default()
         };
         let json = serde_json::to_value(&refused).unwrap();
-        assert_eq!(json["size"], "wide");
         assert_eq!(json["hide_title"], true);
         assert_eq!(json["open"], true);
 

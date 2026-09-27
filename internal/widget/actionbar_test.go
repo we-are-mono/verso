@@ -37,7 +37,7 @@ func TestActionBarCutsStandTogether(t *testing.T) {
 func TestDecodeActionBarDrawer(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"actionbar","filter":"Find a rule",
 		"action":{"label":"Add rule","href":"/x?open=new"},
-		"drawer":{"title":"New rule","open":true,"size":"wide","closed":"/x","lede":["Added to the end."],
+		"drawer":{"title":"New rule","open":true,"closed":"/x","lede":["Added to the end."],
 			"tabs":[{"label":"Match","state":"0 conditions","active":true}],
 			"children":[{"type":"form","submit":"Add rule","fields":[{"type":"field","name":"n","label":"Name"}]}]}}`))
 	if err != nil {
@@ -61,7 +61,7 @@ func TestDecodeActionBarDrawer(t *testing.T) {
 		// carries where the page goes when nothing is open.
 		`<span x-data="modal" data-open="true" data-closed-href="/x" class="contents">`,
 		`<a href="/x?open=new" @click.prevent="show"`,
-		"x-teleport", "New rule", "bg-quiet px-8", `aria-label="Sections"`,
+		"x-teleport", "New rule", "bg-quiet px-10", `aria-label="Sections"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("action bar panel missing %q:\n%s", want, got)

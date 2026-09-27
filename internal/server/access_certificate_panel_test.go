@@ -22,7 +22,7 @@ func certificatePanelServer(t *testing.T, b *credentialsFake, commands []plugin.
 	m := credentialManifest()
 	m.Socket, m.SystemAccess, m.Name = "/run/system.sock", "/access", "System"
 	m.SchemaVersion = supportedSchemaVersion
-	widget := `{"type":"table","columns":[],"rows":[{"drawer":{"title":"Make a new certificate","open":true,"size":"form","closed":"/system/access",
+	widget := `{"type":"table","columns":[],"rows":[{"drawer":{"title":"Make a new certificate","open":true,"closed":"/system/access",
 	  "children":[{"type":"form","submit":"Make certificate","fields":[{"type":"field","name":"hostname","label":"Router name","value":"router.lan"}]}]}}]}`
 	env := &plugin.Envelope{SchemaVersion: 1, Title: "Make a new certificate", Widget: json.RawMessage(widget),
 		Back: &plugin.PageAction{Label: "Access", Href: "/system/access"}, Commands: commands}

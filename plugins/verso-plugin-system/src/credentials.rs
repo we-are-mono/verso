@@ -318,7 +318,6 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
         title: title.into(),
         open: true,
         closed: "/system/access".into(),
-        size: "form".into(),
         children: vec![Widget::Form {
             style: String::new(),
             submit: submit.into(),

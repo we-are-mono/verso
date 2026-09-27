@@ -543,5 +543,5 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 func (s *Server) entityNotice(w http.ResponseWriter, status int, text string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, `<div class="px-8 py-6"><p class="text-sm leading-snug text-crimson-deep">%s</p></div>`, template.HTMLEscapeString(text))
+	_, _ = fmt.Fprintf(w, `<div class="px-10 py-6"><p class="text-sm leading-snug text-crimson-deep">%s</p></div>`, template.HTMLEscapeString(text))
 }

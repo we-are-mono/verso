@@ -668,7 +668,6 @@ fn listing() -> Widget {
                 tags: vec!["ipv4".into(), "ipv6".into()],
                 drawer: Some(RowDrawer {
                     title: "Edit zone — lan".into(),
-                    size: "wide".into(),
                     hide_title: true,
                     open: true,
                     children: vec![Widget::form(

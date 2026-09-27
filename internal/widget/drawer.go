@@ -22,9 +22,6 @@ type Drawer struct {
 	Title    string   // panel heading
 	Trigger  []Widget // what opens the drawer (e.g. a row)
 	Children []Widget // panel body
-	// Size widens the panel: "" (the reading width) | "wide" — for detail
-	// views that carry tables beside prose.
-	Size string `json:"size,omitempty"`
 	// Style dresses the trigger: "" wraps it as a framed card button; "bare"
 	// leaves it an unstyled block with the row hover tint — for triggers that
 	// live inside a hairline-divided list; "button" wears the primary action
@@ -52,7 +49,6 @@ func (d *Drawer) prune(keep func(Widget) bool) {
 func (d *Drawer) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Title    string            `json:"title"`
-		Size     string            `json:"size"`
 		Style    string            `json:"style"`
 		Dot      string            `json:"dot"`
 		Tag      string            `json:"tag"`
@@ -63,7 +59,6 @@ func (d *Drawer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	d.Title = raw.Title
-	d.Size = raw.Size
 	d.Style = raw.Style
 	d.Dot = raw.Dot
 	d.Tag = raw.Tag
@@ -95,11 +90,9 @@ type Flash struct {
 // (verso-drawer-panel) and cannot drift apart.
 type drawerPanelView struct {
 	Choices bool
-	Form    bool
 	Title   string
 	Closed  string
 	Tabs    []DrawerTab
-	Wide    bool
 	Flash   Flash
 	Body    []template.HTML
 }
@@ -133,9 +126,9 @@ func (r *Renderer) renderPanel(d *RowDrawer, csrf string, flash Flash) (drawerPa
 // deliberately omitted. Tab addresses pass the same URL policy as other links.
 func drawerPanel(d *RowDrawer, body []template.HTML) drawerPanelView {
 	panel := drawerPanelView{
-		Title:  d.Title,
-		Closed: SafeHref(d.Closed),
-		Wide:   d.Size == "wide", Choices: d.Size == "choices", Form: d.Size == "form", Body: body,
+		Title:   d.Title,
+		Closed:  SafeHref(d.Closed),
+		Choices: d.Size == "choices", Body: body,
 	}
 	panel.Tabs = make([]DrawerTab, 0, len(d.Tabs))
 	for _, tab := range d.Tabs {
@@ -170,7 +163,7 @@ func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Bare: d.Style == "bare", Button: d.Style == "button",
 		Trigger: joinHTML(trigger),
 		Panel: drawerPanelView{
-			Title: d.Title, Wide: d.Size == "wide", Body: children,
+			Title: d.Title, Body: children,
 		},
 	})
 }

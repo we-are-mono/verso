@@ -597,7 +597,6 @@ mod tests {
         let drawer = drawer_of(&body);
         assert_eq!(drawer["title"], "Allow-Ping");
         assert_eq!(drawer["open"], true);
-        assert_eq!(drawer["size"], "wide");
         // The header is the rule's name and nothing else. The chain, the verdict,
         // the rule's place in the evaluation and its hit count are all on the row
         // this panel opened from, a few pixels to the left and among the rules
@@ -733,7 +732,6 @@ mod tests {
         let drawer = &bar["drawer"];
         assert_eq!(drawer["title"], "New rule");
         assert_eq!(drawer["open"], true);
-        assert_eq!(drawer["size"], "wide");
         // Closing it leaves the address it opened from, so a reload shows the
         // listing rather than reopening what was just dismissed.
         assert_eq!(drawer["closed"], "/plugins/firewall/");

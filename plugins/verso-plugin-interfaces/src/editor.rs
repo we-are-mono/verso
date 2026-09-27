@@ -642,7 +642,6 @@ fn page(
             title: title.into(),
             open: true,
             closed: ROOT.into(),
-            size: "form".into(),
             children: vec![form],
             ..Default::default()
         },

@@ -162,7 +162,6 @@ pub fn blank(
         title: "New zone".into(),
         tabs: tabs(None, form, reaches, tab),
         closed: page::zones_href(),
-        size: "wide".into(),
         open: true,
         children: vec![fields::panel_form(
             "Add zone",
@@ -186,7 +185,6 @@ pub fn drawer(
         title: title(&zone.name),
         tabs: tabs(Some(zone), form, reaches, tab),
         closed: page::zones_href(),
-        size: "wide".into(),
         open: true,
         children: body(model, zone, form, reaches, errors, tab),
         ..RowDrawer::default()

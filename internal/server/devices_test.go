@@ -146,7 +146,7 @@ func TestEntityPanelLocalizesFormWithoutDeviceDetails(t *testing.T) {
 	}
 	srv.SetBundle(bundle)
 	body := getLang(t, srv, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", "sl")
-	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "192.168.77.102", "bg-quiet px-8"} {
+	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "192.168.77.102", "bg-quiet px-10"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("localized device drawer missing %q", want)
 		}

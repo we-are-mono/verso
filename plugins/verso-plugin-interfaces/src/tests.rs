@@ -507,7 +507,6 @@ fn an_object_is_edited_in_a_drawer_over_the_listing() {
         );
         let drawer = open_drawer(&e);
         assert_eq!(drawer["title"], title);
-        assert_eq!(drawer["size"], "form");
         assert_eq!(drawer["closed"], ROOT);
         let form = &drawer["children"][0];
         assert_eq!(form["type"], "form", "{drawer}");

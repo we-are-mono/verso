@@ -8,31 +8,50 @@ import (
 	"testing"
 )
 
-// TestDrawerDefaults: the reading-width panel and the framed card trigger.
+// TestDrawerDefaults: the drawer's one width and the framed card trigger.
 func TestDrawerDefaults(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Drawer{Title: "Detail", Trigger: []Widget{&Row{Title: "open me"}}})
 	// The framed trigger wears the app's one radius, the same 2px every other
 	// boxed surface takes.
-	for _, want := range []string{"max-w-md", "rounded-xs border border-rule", "open me", "Detail", "verso-drawer-scrollbar"} {
+	for _, want := range []string{"max-w-3xl", "rounded-xs border border-rule", "open me", "Detail", "verso-drawer-scrollbar"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "max-w-3xl") {
-		t.Error("default drawer must not be wide")
+}
+
+// TestDrawerOneWidth: every drawer stands at the same 768px, whatever it
+// holds — a form, a chooser or a reading — so the frame never changes size
+// from one object to the next.
+func TestDrawerOneWidth(t *testing.T) {
+	r := newRenderer(t)
+	for _, size := range []string{"", "choices"} {
+		tbl := &Table{Columns: []TableColumn{{Label: "Name", Kind: "name"}}, Rows: []TableRow{{
+			ID: "r1", Cells: []TableCell{{Text: "lan"}},
+			Drawer: &RowDrawer{Title: "lan", Size: size, Children: []Widget{&Callout{Body: "x"}}},
+		}}}
+		got := render(t, r, tbl)
+		if !strings.Contains(got, "max-w-3xl") {
+			t.Errorf("drawer size %q is not the one width:\n%s", size, got)
+		}
+		for _, other := range []string{"max-w-md", "max-w-[40rem]", "data-verso-panel-size"} {
+			if strings.Contains(got, other) {
+				t.Errorf("drawer size %q carries a second width %q", size, other)
+			}
+		}
 	}
 }
 
-// TestDrawerWideBare: the wide panel for detail views, the bare trigger for
-// rows living in a hairline-divided list — no card frame, the row hover tint.
-func TestDrawerWideBare(t *testing.T) {
+// TestDrawerBare: the bare trigger for rows living in a hairline-divided
+// list — no card frame, the row hover tint.
+func TestDrawerBare(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Drawer{Title: "Device", Size: "wide", Style: "bare",
+	got := render(t, r, &Drawer{Title: "Device", Style: "bare",
 		Trigger: []Widget{&Row{Title: "family-laptop", Chevron: true}}})
-	for _, want := range []string{"max-w-3xl", "hover:bg-quiet", chevronPath} {
+	for _, want := range []string{"hover:bg-quiet", chevronPath} {
 		if !strings.Contains(got, want) {
-			t.Errorf("wide bare drawer missing %q:\n%s", want, got)
+			t.Errorf("bare drawer missing %q:\n%s", want, got)
 		}
 	}
 	if strings.Contains(got, "border border-rule bg-ground px-4") {
@@ -110,7 +129,7 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 		Rows: []TableRow{
 			{ID: "r1", Cells: []TableCell{{Text: "Allow-Ping"}}, Panel: "/x?open=r1"},
 			{ID: "r2", Cells: []TableCell{{Text: "Allow-DHCP"}}, Drawer: &RowDrawer{
-				Title: "Allow-DHCP", Open: true, Size: "wide",
+				Title: "Allow-DHCP", Open: true,
 				Tabs:     []DrawerTab{{Label: "Match", State: "5 conditions", Active: true}},
 				Children: []Widget{&Callout{Body: "the reading"}},
 			}},

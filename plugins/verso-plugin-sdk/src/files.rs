@@ -204,7 +204,6 @@ impl FileSet {
             open: true,
             closed: self.page.into(),
             children: vec![form],
-            size: "form".into(),
             ..Default::default()
         };
         table(

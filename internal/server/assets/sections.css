@@ -19,10 +19,11 @@
  *
  * Where the surface differs is only how far its rules and bands run past the
  * content: the reach. A page runs them 40px into its gutter to the rail, and
- * a form column's 40px back past its end; a drawer runs them to both of its
- * edges, 32px out. The surface sets --verso-reach-start and --verso-reach-end
- * and every rule — a section's, a heading band's, a page Save's, a config
- * preview's — reaches by them and pads back in, so its words do not move.
+ * a form column's 40px back past its end; a drawer, inset 40px as a page is,
+ * runs them to both of its edges. The surface sets --verso-reach-start and
+ * --verso-reach-end and every rule — a section's, a heading band's, a page
+ * Save's, a config preview's — reaches by them and pads back in, so its
+ * words do not move.
  *
  * In utilities: the page stack's rhythm and the rows' own padding are
  * utilities, and only this layer outranks them. */
@@ -30,8 +31,8 @@
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
   [data-verso-form-column]:not([role="dialog"] *) { --verso-reach-end: calc(var(--spacing) * 10); }
   [data-verso-drawer-body] {
-    --verso-reach-start: calc(var(--spacing) * 8);
-    --verso-reach-end: calc(var(--spacing) * 8);
+    --verso-reach-start: calc(var(--spacing) * 10);
+    --verso-reach-end: calc(var(--spacing) * 10);
   }
   .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-reach-start: 0px; --verso-reach-end: 0px; }
 
@@ -98,6 +99,25 @@
     margin-top: 0;
     border-top-width: 0;
     padding-block: 0 calc(var(--spacing) * 8);
+  }
+
+  /* A drawer's chrome ends on a hairline (the header's, or the tab strip's
+     under it), and that hairline is the rule of the section the body opens
+     on: a band with nothing visible before it draws none of its own, and the
+     body gives back its top padding, so the title stands the band's 32px
+     under the chrome as it stands under any rule. A body that opens on
+     anything else keeps its padding. */
+  [data-verso-drawer-body] [data-verso-section-band]:not(
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ * [data-verso-section-band],
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ [data-verso-section-band]
+  ) {
+    border-top-width: 0;
+  }
+  [data-verso-drawer-body]:has([data-verso-section-band]:not(
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ * [data-verso-section-band],
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ [data-verso-section-band]
+  )) {
+    padding-top: 0;
   }
 
   /* A section holds its air itself, so the rows it starts and ends with give

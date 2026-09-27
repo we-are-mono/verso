@@ -64,7 +64,7 @@ func TestPackagesInventory(t *testing.T) {
 		"verso-prose text-sm", // description is plain body prose
 		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link opens safely outside Verso
 		"space-y-0", "border-t border-mid py-2", // facts match the Overview System DL
-		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">`, // shared title band
+		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // shared title band
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("inventory missing %q", want)

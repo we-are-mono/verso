@@ -430,7 +430,7 @@
       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
       x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-      class="absolute inset-y-0 right-0 flex w-full {{if or .Choices .Form}}max-w-[40rem]{{else if .Wide}}max-w-3xl{{else}}max-w-md{{end}} flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      class="absolute inset-y-0 right-0 flex w-full {{template "verso-drawer-width"}} flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
       <div data-verso-panel class="contents">{{template "verso-drawer-contents" .}}</div>
     </aside>
   </div>
@@ -449,7 +449,7 @@
       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
       x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-      class="absolute inset-y-0 right-0 flex w-full max-w-3xl has-[[data-verso-panel-size=form]]:max-w-[40rem] flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
+      class="absolute inset-y-0 right-0 flex w-full {{template "verso-drawer-width"}} flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
       <div data-verso-panel{{if .}} data-verso-panel-url="{{.}}"{{end}} class="contents"><span class="sr-only">{{ t "Loading…" }}</span></div>
     </aside>
   </div>
@@ -457,8 +457,19 @@
 
 {{/* The title band is shared by every drawer, including shell-assembled entity
      panels. Only the title and close control belong here; facts live in the body. */}}
+{{/* verso-drawer-inset: a drawer's side inset — the page's own 40px, so what
+     stands in a drawer starts as far in from its edge as what stands on a page
+     does from the rail. verso-drawer-bleed runs a band edge to edge inside it.
+     sections.css reaches a drawer's rules and bands by the same 40px. */}}
+{{/* verso-drawer-width: the one width every drawer stands at, 768px — a
+     page form's measure, so a form, a chooser and a reading each get the same
+     frame, and nothing changes size between one object and the next. */}}
+{{define "verso-drawer-width"}}max-w-3xl{{end}}
+{{define "verso-drawer-inset"}}px-10{{end}}
+{{define "verso-drawer-bleed"}}-mx-10{{end}}
+
 {{define "verso-drawer-header"}}
-<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-8">
+<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet {{template "verso-drawer-inset"}}">
   <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
   <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </header>
@@ -469,13 +480,12 @@
      answers with exactly this: the frame stays where it is and only what it
      holds is replaced. */}}
 {{define "verso-drawer-contents"}}
-      {{if .Form}}<span hidden data-verso-panel-size="form"></span>{{end}}
       {{template "verso-drawer-header" .Title}}
       {{/* The strip cuts the body into the questions the object answers, each
            carrying where the object stands under it. A panel with one thing to
            say sends no tabs, and a strip that decides nothing is chrome. */}}
       {{if .Tabs}}
-      <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-8" aria-label="{{ t "Sections" }}">
+      <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
         {{range .Tabs}}
         {{/* A reading is swapped into the panel that is already open, never
              navigated to: the frame stays where it is, so it does not slide in
@@ -495,10 +505,13 @@
         {{end}}
       </nav>
       {{end}}
+      {{/* A choice drawer's section bands carry the drawer inset inside an
+           arbitrary variant, where a partial cannot stand: px-10 there is
+           verso-drawer-inset spelled out. */}}
       {{/* A panel that answered its own submission leads with how it went,
            where the page's flash slot would have said it: the page is not
            being drawn around this, so the panel says it itself. */}}
-      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-8 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}px-8 pt-7 pb-8{{end}} [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-10 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-inset"}} pt-7 pb-8{{end}} [&>*+dl]:!mt-12 [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
         {{template "verso-flash" .Flash}}
         {{range .Body}}{{.}}{{end}}
       </div>
