@@ -235,4 +235,90 @@
     width: auto;
     max-width: 100%;
   }
+
+  /* An added condition (conditions.item) stands as one setting's row: 16px
+     above and below, as every row does, so conditions stand 32px apart as
+     rows do. Its name line is a label line — the glyph at its end does not
+     make it taller — and its parts stand 20px apart inside it, the step
+     inside a group, 12px under the name.
+     A condition of one control draws it at a label's 8px under the name, and
+     keeps that control's own label for a screen reader only: seen, it would
+     only repeat the name. A condition of several parts sets each part's
+     label quieter than the name, so the name reads as the setting and the
+     parts as its pieces. */
+  .verso-condition { padding-block: calc(var(--spacing) * 4); }
+  .verso-condition-name { height: calc(var(--spacing) * 5); }
+  .verso-condition > .verso-rhythm > * { padding-block: calc(var(--spacing) * 2.5); }
+  .verso-condition > .verso-rhythm > * + * { margin-top: 0; }
+  .verso-condition > .verso-rhythm > :first-child { padding-top: calc(var(--spacing) * 3); }
+  .verso-condition > .verso-rhythm > :last-child { padding-bottom: 0; }
+  .verso-condition-single > .verso-rhythm > :first-child { padding-top: calc(var(--spacing) * 2); }
+  .verso-condition-single > .verso-rhythm .verso-field-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .verso-condition:not(.verso-condition-single) > .verso-rhythm .verso-field-label > :first-child {
+    font-weight: var(--font-weight-normal);
+    color: var(--color-body);
+  }
+  /* The conditions a rule carries are one block: the list wears the quiet
+     card the Action reading's parameters wear — a hairline frame on Quiet
+     Sand, 20px in — while it holds any, and none at all when it is empty, so
+     the card follows every add and remove with no script. */
+  .verso-condition-list:has(> .verso-condition) {
+    /* The card is the measure its rows stand to, so they fill it and its
+       20px inset is the same on both sides at every width. */
+    --verso-form-width: 100%;
+    margin-bottom: calc(var(--spacing) * 4);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-xs);
+    background: var(--color-quiet);
+    padding-inline: calc(var(--spacing) * 5);
+  }
+  .verso-condition-list > .verso-condition:first-child { padding-top: calc(var(--spacing) * 5); }
+  .verso-condition-list > .verso-condition:last-child { padding-bottom: calc(var(--spacing) * 5); }
+  /* Two conditions meet on a hairline across the card, 24px either side, and
+     the seam says how they join — "and", a kicker on the card's own sand, so
+     the rule breaks around it — which is the whole of the block's logic,
+     read where the eye crosses from one condition to the next. */
+  .verso-condition:has(+ .verso-condition) { padding-bottom: calc(var(--spacing) * 6); }
+  .verso-condition + .verso-condition {
+    position: relative;
+    margin-inline: calc(var(--spacing) * -5);
+    border-top: 1px solid var(--color-rule);
+    padding-inline: calc(var(--spacing) * 5);
+    padding-top: calc(var(--spacing) * 6);
+  }
+  .verso-condition + .verso-condition::before {
+    content: attr(data-verso-and);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding-inline: calc(var(--spacing) * 2);
+    background: var(--color-quiet);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-medium);
+    line-height: calc(var(--spacing) * 4);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--color-meta);
+  }
+  /* The card is the block's edge, so the act that adds to it needs no rule of
+     its own under it. */
+  .verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker] {
+    border-top-width: 0;
+    padding-top: 0;
+  }
+
+  /* A reveal (disclosure style "reveal") is one of its form's rows: folded,
+     its act; open, the rows it folded, the act stepping aside — there is
+     nothing left to reveal. The rows keep their parent's step between them
+     and add no air of their own at the reveal's edges. */
+  .verso-reveal[open] > .verso-reveal-act { display: none; }
+  .verso-reveal > .verso-rhythm > .verso-field-row { padding-block: 0; }
 }

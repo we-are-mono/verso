@@ -787,11 +787,16 @@ pub enum Widget {
         items: Vec<ConditionItem>,
     },
     /// An expand/collapse region: the summary line, and the contents revealed
-    /// beneath it. The home for the advanced-but-rarely-touched.
+    /// beneath it. The home for the advanced-but-rarely-touched. Style
+    /// "reveal" folds optional rows of a form behind one quiet act instead of
+    /// a framed box; Open has it arrive unfolded, which a reveal does whenever
+    /// what it folds already holds something.
     Disclosure {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
         summary: String,
+        #[serde(skip_serializing_if = "is_false")]
+        open: bool,
         children: Vec<Widget>,
     },
     /// A labelled hyperlink, optionally styled as a button. The href is the
@@ -1439,6 +1444,19 @@ impl Widget {
         Widget::Disclosure {
             style: String::new(),
             summary: summary.into(),
+            open: false,
+            children,
+        }
+    }
+
+    /// reveal folds optional rows of a form — a condition's exceptions —
+    /// behind one quiet act ("Exclude some"). It arrives open when what it
+    /// folds already holds something, so nothing the object says is hidden.
+    pub fn reveal(summary: &str, open: bool, children: Vec<Widget>) -> Widget {
+        Widget::Disclosure {
+            style: "reveal".into(),
+            summary: summary.into(),
+            open,
             children,
         }
     }
@@ -2868,6 +2886,20 @@ mod tests {
         assert!(bare.get("label").is_none() && bare.get("help").is_none());
         let text = serde_json::to_value(Widget::text("a").labelled("x", "y")).unwrap();
         assert!(text.get("label").is_none());
+    }
+
+    // A reveal folds optional rows behind a quiet act, and arrives open when
+    // it already holds something; a disclosure starts folded and says nothing
+    // about being open.
+    #[test]
+    fn a_reveal_says_whether_it_arrives_open() {
+        let open = serde_json::to_value(Widget::reveal("Exclude some", true, vec![])).unwrap();
+        assert_eq!(open["style"], "reveal");
+        assert_eq!(open["open"], true);
+        let folded = serde_json::to_value(Widget::reveal("Exclude some", false, vec![])).unwrap();
+        assert!(folded.get("open").is_none());
+        let plain = serde_json::to_value(Widget::disclosure("More", vec![])).unwrap();
+        assert!(plain.get("open").is_none() && plain.get("style").is_none());
     }
 
     // A form group whose parts read as one sentence names the word that joins

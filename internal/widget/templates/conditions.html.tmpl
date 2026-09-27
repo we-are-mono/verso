@@ -3,21 +3,35 @@
 {{/* conditions: optional typed form blocks. Every catalogue entry is rendered
      once into an inert template; the shell's shared JS adds/removes those blocks.
      Plugin code declares data and ordinary child widgets, never DOM behaviour. */}}
-{{/* Added conditions use the shared stacked fields, with an action at the
-     right to remove the whole condition. */}}
+{{/* data-verso-and is the word the seam above a condition draws when another
+     comes before it, in the reader's language. */}}
+{{/* An added condition is one named setting: its name line — the name, the
+     key it is known by, what it is for raised on the name, as every row in the
+     form is labelled — with the glyph that takes the whole condition away at
+     the line's end, on the form measure's edge; then its controls, at the full
+     measure. A condition of one control draws it straight under the name, its
+     own label kept for a screen reader only (forms.css); a condition of
+     several parts keeps each part's label, set quieter than the name. */}}
 {{define "conditions.item"}}
-{{/* The remove action stays inside the form measure, beside the first label. */}}
-<section data-verso-condition="{{.Key}}" class="flex max-w-form items-start gap-3">
-  <div class="verso-rhythm min-w-0 flex-1 [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
-  <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="mt-3 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>
+<section data-verso-condition="{{.Key}}" data-verso-and="{{ t "and" }}" role="group" aria-labelledby="{{.Name.For}}-label" class="verso-condition{{if .Single}} verso-condition-single{{end}}">
+  <div class="verso-condition-name flex max-w-form items-center gap-3">
+    {{template "verso-field-label" .Name}}
+    <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="ml-auto {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>
+  </div>
+  <div class="verso-rhythm max-w-form [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
 </section>
 {{end}}
 <fieldset data-verso-conditions class="space-y-2">
-  <div>
+  {{/* Headed as every section is: the shared band and lede, so the title,
+       its lede and what follows stand as far apart here as anywhere. */}}
+  <div class="{{template "verso-section-band-class"}}">
     <legend class="{{template "verso-section-title-class"}}">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
-    {{if .Help}}<p class="verso-prose mt-2 max-w-[36rem] text-sm leading-snug text-body">{{.Help}}</p>{{end}}
+    {{if .Help}}{{template "verso-section-lede" .Help}}{{end}}
   </div>
-  <div data-verso-condition-list>{{range .Active}}{{.}}{{end}}</div>
+  {{/* The conditions a rule carries are one block: the list wears the quiet
+       card while it holds any, and each condition after the first says on
+       the seam above it how it joins the one before — "and" (forms.css). */}}
+  <div data-verso-condition-list class="verso-condition-list">{{range .Active}}{{.}}{{end}}</div>
   <p data-verso-condition-empty class="max-w-[36rem] rounded-xs bg-quiet px-3 py-2 text-sm leading-snug text-body{{if .Active}} hidden{{end}}">{{ t "No additional conditions. All traffic matching the path and protocol above is included." }}</p>
   {{/* The way in sits under a rule of its own: what is above it is this rule as
        it stands, what is below is the offer to add to it.

@@ -28,6 +28,11 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 	got := render(t, newRenderer(t), c)
 	for _, want := range []string{
 		`data-verso-conditions`, `data-verso-condition="dest_port"`,
+		// The block is headed as every section is: the shared band (4px from
+		// the title to the lede, 20px from the lede to what follows) and the
+		// shared lede, not a heading of its own spacing.
+		`<div class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">`,
+		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,
 		`Combined with and.`,
 		// The picker: one act rather than a closed list beside an Add button. Each
@@ -54,14 +59,113 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// and crimson would promise a severity it does not have.
 		`data-verso-condition-remove aria-label="Remove Destination ports"`,
 		`border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,
-		// The glyph stays inside the shared form measure
-		// whether or not a row ends in one.
-		`data-verso-condition="dest_port" class="flex max-w-form items-start gap-3"`,
+		// The glyph stands on the condition's own name line, at the shared
+		// form measure's edge, so the controls under it keep the full measure;
+		// the condition itself runs the content's width, so the hairline between
+		// two conditions does too.
+		`data-verso-condition="dest_port" data-verso-and="and" role="group" aria-labelledby="condition-dest_port-label" class="verso-condition verso-condition-single"`,
+		`class="verso-condition-name flex max-w-form items-center gap-3"`,
+		`class="verso-rhythm max-w-form`,
 		"hover:border-sand-5 hover:bg-rule", "border-rule-strong bg-transparent text-meta",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditions missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// TestAConditionIsOneNamedSetting: an added condition reads as the setting it
+// is — its name, the key it is known by, what it is for raised on the name, and
+// the glyph that takes it away, all on one line, as every row in the form is
+// labelled. A condition of one control draws that control straight under the
+// name, its own label kept for a screen reader only, and the name wears the
+// control's staged mark. A condition of several parts keeps each part's label,
+// set quieter than the name it sits under.
+func TestAConditionIsOneNamedSetting(t *testing.T) {
+	c := &Conditions{Label: "Conditions", Items: []ConditionItem{
+		{Key: "icmp_type", Label: "ICMP types", Help: "Narrow an ICMP rule.", Active: true, Children: []Widget{
+			&List{Name: "icmp_type", Label: "Types", Style: "tokens", Items: []string{"echo-request"}, Staged: true},
+		}},
+		{Key: "rate", Label: "Rate limit", Active: true, Children: []Widget{
+			&Field{Name: "limit", Label: "Rate", Key: "limit", Value: "1000"},
+			&Field{Name: "limit_burst", Label: "Initial burst", Key: "limit_burst"},
+		}},
+	}}
+	got := render(t, newRenderer(t), c)
+	icmp := got[strings.Index(got, `data-verso-condition="icmp_type"`):strings.Index(got, `data-verso-condition="rate"`)]
+	for _, want := range []string{
+		`role="group" aria-labelledby="condition-icmp_type-label" class="verso-condition verso-condition-single"`,
+		`<span id="condition-icmp_type-label" class="text-sm font-semibold text-ink group/tip relative cursor-help`,
+		`Narrow an ICMP rule.`,
+		`>icmp_type</span>`,
+		`data-verso-condition-remove aria-label="Remove ICMP types"`,
+		"data-verso-staged-row",
+	} {
+		if !strings.Contains(icmp, want) {
+			t.Errorf("single condition missing %q:\n%s", want, icmp)
+		}
+	}
+	// The name line comes first: the glyph stands on it, before any control.
+	if strings.Index(icmp, "data-verso-condition-remove") > strings.Index(icmp, "data-verso-token-list") {
+		t.Errorf("the remove glyph must stand on the name line, above the control:\n%s", icmp)
+	}
+	rate := got[strings.Index(got, `data-verso-condition="rate"`):]
+	for _, want := range []string{
+		`class="verso-condition">`, // several parts: no single-control class
+		`<span id="condition-rate-label"`,
+		`>rate</span>`,
+		`>Initial burst</label>`,
+	} {
+		if !strings.Contains(rate, want) {
+			t.Errorf("several-part condition missing %q:\n%s", want, rate)
+		}
+	}
+}
+
+// TestConditionsStandInOneCardJoinedByAnd: the conditions a rule carries are
+// one block — a card the list wears while it holds any (forms.css) — and
+// each condition after the first says how it joins the one before it, in the
+// reader's language, on the seam between them.
+func TestConditionsStandInOneCardJoinedByAnd(t *testing.T) {
+	c := &Conditions{Label: "Conditions", Items: []ConditionItem{
+		{Key: "icmp_type", Label: "ICMP types", Active: true, Children: []Widget{&List{Name: "icmp_type", Label: "Types", Style: "tokens"}}},
+		{Key: "rate", Label: "Rate limit", Active: true, Children: []Widget{&Field{Name: "limit", Label: "Rate"}}},
+	}}
+	got := render(t, newRenderer(t), c)
+	for want, n := range map[string]int{
+		`<div data-verso-condition-list class="verso-condition-list">`: 1,
+		`data-verso-and="and"`: 4, // every condition carries it, active and in its template alike
+	} {
+		if c := strings.Count(got, want); c != n {
+			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
+		}
+	}
+}
+
+// TestARevealIsAQuietAct: a reveal folds optional rows (a condition's
+// exceptions) behind one quiet act in the link's ink, a plus and the words,
+// with no frame of its own; it arrives open when what it folds already holds
+// something, so nothing a rule says is ever hidden.
+func TestARevealIsAQuietAct(t *testing.T) {
+	folded := render(t, newRenderer(t), &Disclosure{Style: "reveal", Summary: "Exclude some", Children: []Widget{
+		&List{Name: "src_ip_not", Label: "Exclude", Style: "tokens"},
+	}})
+	for _, want := range []string{
+		`<details class="verso-reveal">`,
+		`<summary class="verso-reveal-act`,
+		`Exclude some`,
+		`name="src_ip_not"`,
+	} {
+		if !strings.Contains(folded, want) {
+			t.Errorf("reveal missing %q:\n%s", want, folded)
+		}
+	}
+	if strings.Contains(folded, "verso-disclosure") {
+		t.Errorf("a reveal wears no disclosure frame:\n%s", folded)
+	}
+	opened := render(t, newRenderer(t), &Disclosure{Style: "reveal", Summary: "Exclude some", Open: true})
+	if !strings.Contains(opened, `<details open class="verso-reveal">`) {
+		t.Errorf("a reveal holding something arrives open:\n%s", opened)
 	}
 }
 

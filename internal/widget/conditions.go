@@ -118,9 +118,48 @@ type conditionsView struct {
 	Groups      []conditionGroupView
 }
 
+// conditionItemView is one added condition: its name line, labelled as every
+// row in the form is (Name), whether it is a single control drawn straight
+// under that line (Single), and its controls.
 type conditionItemView struct {
-	Key, Label, Help string
-	Children         []template.HTML
+	Key, Label string
+	Name       fieldLabel
+	Single     bool
+	Children   []template.HTML
+}
+
+// conditionName is a condition's name line: what it is called, the key it is
+// known by in the picker, and what it is for, raised on the name. A condition
+// of one control draws that control's staged mark here, because the control's
+// own label line is not drawn.
+func conditionName(item ConditionItem, single bool) fieldLabel {
+	id := "condition-" + item.Key
+	name := fieldLabel{
+		For: id, Group: true, Label: item.Label, Key: item.Key,
+		Explained: item.Help != "", Tip: TipView{ID: id + "-tip", Tip: item.Help, Footer: item.Key},
+	}
+	if single {
+		switch child := item.Children[0].(type) {
+		case *Field:
+			name.Staged = child.Staged
+		case *List:
+			name.Staged = child.Staged
+		}
+	}
+	return name
+}
+
+// singleControl reports whether a condition is one control — a field or a
+// list — whose own label would only repeat the condition's name.
+func singleControl(children []Widget) bool {
+	if len(children) != 1 {
+		return false
+	}
+	switch children[0].(type) {
+	case *Field, *List:
+		return true
+	}
+	return false
 }
 
 func (c *Conditions) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -130,7 +169,8 @@ func (c *Conditions) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		if err != nil {
 			return err
 		}
-		iv := conditionItemView{Key: item.Key, Label: item.Label, Help: item.Help, Children: children}
+		single := singleControl(item.Children)
+		iv := conditionItemView{Key: item.Key, Label: item.Label, Name: conditionName(item, single), Single: single, Children: children}
 		var b strings.Builder
 		if err := r.execute(&b, "conditions.item", iv); err != nil {
 			return err

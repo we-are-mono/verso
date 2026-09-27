@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
+	"slices"
 	"strings"
 )
 
@@ -154,7 +155,9 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	var frame fieldFrame
 	for _, f := range fields {
 		names = append(names, f.Label)
-		if f.Key != "" {
+		// Parts that write one option between them (a rate's count and its
+		// unit) name it once.
+		if f.Key != "" && !slices.Contains(keys, f.Key) {
 			keys = append(keys, f.Key)
 		}
 		if f.Staged {

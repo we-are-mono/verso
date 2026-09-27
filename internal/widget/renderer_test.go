@@ -823,8 +823,13 @@ func TestRenderDisclosure(t *testing.T) {
 	}
 	condition := render(t, r, &Disclosure{Style: "condition", Summary: "Advanced"})
 	// The condition style sits a step in from the page's ground — on the quiet
-	// band, because what it folds is part of the form around it.
-	for _, want := range []string{"border-rule bg-quiet", "text-sm font-semibold text-ink"} {
+	// band, because what it folds is part of the form around it — and holds
+	// its words 20px in on every side, as the conditions card does.
+	for _, want := range []string{
+		"border-rule bg-quiet", "text-sm font-semibold text-ink",
+		"px-5 py-5 text-sm font-semibold text-ink", // the summary
+		"border-t border-rule px-5 py-5",           // what it folds
+	} {
 		if !strings.Contains(condition, want) {
 			t.Errorf("condition disclosure missing %q: %s", want, condition)
 		}

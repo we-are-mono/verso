@@ -6,8 +6,21 @@
      single hairline on the page's own ground. The condition style sits a step in
      from that — on the quiet band, because what it folds is part of the form
      around it rather than a thing of its own. */}}
+{{if eq .Style "reveal"}}
+{{/* reveal: optional rows folded behind one quiet act — a plus and the words,
+     in the link's ink, with no frame of its own, because what it folds is more
+     of the form it stands in rather than a thing of its own. It arrives open
+     when what it folds already holds something, so nothing is ever hidden that
+     the object says; once open, the act steps aside for the rows (forms.css). */}}
+<details{{if .Open}} open{{end}} class="verso-reveal">
+  <summary class="verso-reveal-act inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden">{{icon "plus" "size-4"}}{{.Summary}}</summary>
+  <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
+</details>
+{{else}}
 <details{{if .Open}} open{{end}} class="verso-disclosure rounded-xs border border-rule {{if eq .Style "condition"}}bg-quiet{{else}}bg-ground{{end}}">
-  <summary class="flex cursor-pointer items-center justify-between gap-2 px-4 select-none {{if eq .Style "condition"}}pt-3.5 pb-3 text-sm font-semibold text-ink{{else}}py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
+  {{/* The condition style holds its words 20px in on every side, as the
+       conditions card does, so the drawer's two cards stand alike. */}}
+  <summary class="flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-5 py-5 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
     {{.Summary}}
     {{icon "chevron-right" "verso-chevron size-4 text-faint"}}
   </summary>
@@ -18,7 +31,8 @@
   {{/* The rhythm is the form's, not the box's: what it folds away is part of the
        form around it, so two rows inside sit as close together as two rows
        outside and only the blocks between them take air. */}}
-  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem]{{else}}[--verso-rhythm:1rem]{{end}} border-t border-rule px-4 py-4 [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
+  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem] [--verso-form-width:100%] border-t border-rule px-5 py-5{{else}}[--verso-rhythm:1rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
     {{range .Children}}{{.}}{{end}}
   </div>
 </details>
+{{end}}

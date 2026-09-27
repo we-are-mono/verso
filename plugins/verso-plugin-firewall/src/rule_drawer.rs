@@ -23,7 +23,7 @@ use crate::conditions;
 use crate::fields;
 use crate::model::{Firewall, Rule};
 use crate::page;
-use crate::rule_form::{Errors, RuleForm, DSCP_CLASSES, HELPERS, WEEKDAYS};
+use crate::rule_form::{Errors, RuleForm, DSCP_CLASSES, HELPERS};
 
 /// MATCH, ACTION and WHEN are the three readings of a rule, as they appear in
 /// the address. MATCH is what a panel opens on: the first question about a rule
@@ -39,8 +39,7 @@ pub const OPEN: &str = "open";
 pub const TAB: &str = "tab";
 
 const MATCH_TITLE: &str = "What this rule matches";
-const MATCH_SUB: &str = "Traffic has to satisfy every condition below. Only the conditions this \
-rule sets are listed — add one to narrow it further.";
+const MATCH_SUB: &str = "Traffic has to satisfy everything below.";
 
 const ACTION_TITLE: &str = "What happens to it";
 const ACTION_SUB: &str =
@@ -601,6 +600,7 @@ fn action_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
         Widget::Disclosure {
             style: "condition".into(),
             summary: "Parameters for the less common actions".into(),
+            open: false,
             children: vec![
                 Widget::callout(Tone::Warning, "", ADVANCED_NOTE),
                 fields::select_field(
@@ -672,68 +672,9 @@ const COUNTER_TIP: &str = "Turning counting off empties this rule's Hits column.
 /// pair is one row rather than two: as two rows a reader is invited to set the
 /// start and forget the end.
 fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
-    vec![
-        Widget::checks(
-            "weekdays",
-            "Days",
-            &form.schedule.weekdays,
-            WEEKDAYS
-                .iter()
-                .map(|day| SelectOption::new(day, day))
-                .collect(),
-        )
-        .writes("weekdays")
-        .segmented(),
-        window(
-            "Between",
-            "timehhmmss",
-            [
-                ("start_time", "Starts at", &form.schedule.start_time),
-                ("stop_time", "Ends at", &form.schedule.stop_time),
-            ],
-            errors,
-        ),
-        window(
-            "Only between dates",
-            "dateyyyymmdd",
-            [
-                ("start_date", "Starts on", &form.schedule.start_date),
-                ("stop_date", "Ends on", &form.schedule.stop_date),
-            ],
-            errors,
-        ),
-        // The clock the window is read against. It is the same control the
-        // schedule condition offers, posting the same field, because it is the
-        // same fact — this reading used to draw a switch named for the uci
-        // option instead, which the form does not read, so turning it on or off
-        // did nothing at all.
-        fields::select_field(
-            "time_basis",
-            "Clock",
-            clock(form),
-            conditions::options(&[("local", "Router local time"), ("utc", "UTC")]),
-            errors,
-        )
-        .writes("utc_time"),
-    ]
-}
-
-/// window is a span the rule keeps, read as the sentence it is — "09:00 to
-/// 17:00": one row under its label, each end its own field posting its own
-/// option in the grammar firewall4 reads, the ends joined by their word.
-fn window(label: &str, grammar: &str, ends: [(&str, &str, &str); 2], errors: &Errors) -> Widget {
-    Widget::form_grid(
-        2,
-        ends.iter()
-            .map(|(name, end, value)| {
-                fields::text_field(name, end, value, "", errors)
-                    .writes(name)
-                    .typed(grammar)
-            })
-            .collect(),
-    )
-    .labelled(label, "")
-    .joined("to")
+    // One set of controls wherever a schedule is asked: the same the schedule
+    // condition offers, posting the same fields, because it is the same fact.
+    conditions::schedule_fields(&form.schedule, errors)
 }
 
 /// uci_block renders the rule as the config file will hold it: the section it
@@ -1145,6 +1086,126 @@ mod tests {
                 {"value": "guest", "label": "guest"}
             ])
         );
+    }
+
+    // An exclusion is the rare half of an include/exclude condition, so it
+    // waits behind a quiet "Exclude some" until it is wanted — and arrives
+    // open whenever the rule already excludes something, so nothing the rule
+    // says is hidden.
+    #[test]
+    fn exclusions_wait_until_wanted() {
+        let reveal_of = |body: &Value, list: &str| {
+            fixture::find_with(body, &|value| {
+                value["type"] == "disclosure"
+                    && value["children"]
+                        .as_array()
+                        .is_some_and(|c| c.iter().any(|w| w["name"] == list))
+            })
+            .unwrap_or_else(|| panic!("a reveal around {list}"))
+        };
+        // The fixture's rule excludes one host from its source network.
+        let body = open("everything");
+        let src = reveal_of(&body, "src_ip_not");
+        assert_eq!(src["style"], "reveal");
+        assert_eq!(src["summary"], "Exclude some");
+        assert_eq!(src["open"], true);
+        // A blank rule excludes nothing, so every exclusion waits folded.
+        let blank = opened_new();
+        for list in [
+            "src_ip_not",
+            "dest_ip_not",
+            "src_port_not",
+            "dest_port_not",
+            "src_mac_not",
+        ] {
+            assert!(reveal_of(&blank, list).get("open").is_none(), "{list}");
+        }
+    }
+
+    // A condition is itself the group its parts belong to, so its parts are
+    // its own rows: a wrapper around them would only hide them from the
+    // condition's rhythm.
+    #[test]
+    fn a_conditions_parts_are_its_own_rows() {
+        let body = open("everything");
+        let catalogue = fixture::find_with(&body, &|value| value["type"] == "conditions")
+            .expect("the conditions");
+        for condition in catalogue["items"].as_array().unwrap() {
+            for part in condition["children"].as_array().into_iter().flatten() {
+                assert_ne!(part["type"], "stack", "{}: {part}", condition["key"]);
+            }
+        }
+    }
+
+    // A schedule is one set of controls wherever it is asked: the condition in
+    // the catalogue (a port forward's only way to it) asks exactly what the
+    // When tab asks — the days as one strip, each window as its two ends
+    // joined by their word, the clock they are read against.
+    #[test]
+    fn a_schedule_is_asked_one_way() {
+        let shape = |widgets: &Value| -> Vec<String> {
+            widgets
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|w| {
+                    format!(
+                        "{}:{}:{}:{}",
+                        w["type"].as_str().unwrap_or_default(),
+                        w["name"]
+                            .as_str()
+                            .unwrap_or(w["label"].as_str().unwrap_or_default()),
+                        w["style"].as_str().unwrap_or_default(),
+                        w["join"].as_str().unwrap_or_default()
+                    )
+                })
+                .collect()
+        };
+        let body = open("everything");
+        let condition = fixture::find_with(&body, &|value| {
+            value["key"] == "schedule" && value.get("children").is_some()
+        })
+        .expect("the schedule condition");
+        let when = fixture::find_with(&opened_on("everything", WHEN), &|value| {
+            value["type"] == "section" && value["children"].is_array()
+        })
+        .expect("the When reading");
+        // The reading's own rows, without the carriers for the other readings.
+        let asked: Vec<String> = shape(&when["children"])
+            .into_iter()
+            .filter(|s| !s.contains("hidden"))
+            .take(shape(&condition["children"]).len())
+            .collect();
+        assert_eq!(shape(&condition["children"]), asked);
+        assert!(shape(&condition["children"]).contains(&"grid:Between:form:to".to_string()));
+        assert!(shape(&condition["children"]).contains(&"field:weekdays:segmented:".to_string()));
+    }
+
+    // A rate limit reads as the sentence it writes, "1000 per second": the
+    // count and its unit one row joined by their word, then which side of the
+    // rate matches, then the burst — each part naming the option it writes, so
+    // the count and the burst stand at a number's width.
+    #[test]
+    fn a_rate_limit_reads_as_a_rate() {
+        let body = open("everything");
+        let rate = fixture::find_with(&body, &|value| {
+            value["key"] == "rate" && value.get("children").is_some()
+        })
+        .expect("the rate condition");
+        let parts = rate["children"].as_array().unwrap();
+        assert_eq!(parts[0]["type"], "grid");
+        assert_eq!(parts[0]["label"], "Rate");
+        assert_eq!(parts[0]["join"], "per");
+        let ends: Vec<(&str, &str)> = parts[0]["children"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|end| (end["name"].as_str().unwrap(), end["key"].as_str().unwrap()))
+            .collect();
+        assert_eq!(ends, [("limit", "limit"), ("limit_unit", "limit")]);
+        assert_eq!(parts[1]["name"], "limit_match");
+        assert_eq!(parts[2]["name"], "limit_burst");
+        assert_eq!(parts[2]["key"], "limit_burst");
     }
 
     // A window is its two ends read as one sentence, "09:00 to 17:00": one row

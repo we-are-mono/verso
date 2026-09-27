@@ -179,6 +179,7 @@ fn write_widget_fixtures() {
             Widget::Disclosure {
                 style: "condition".into(),
                 summary: "Parameters for advanced actions".into(),
+                open: false,
                 children: vec![Widget::text("Only the selected action's parameters apply.")],
             },
         ),

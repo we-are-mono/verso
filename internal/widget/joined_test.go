@@ -148,6 +148,25 @@ func TestJoinedClockTimesStandApart(t *testing.T) {
 	}
 }
 
+// TestAJoinedRowNamesAnOptionOnce: parts that write one option between them
+// (a rate's count and its unit, both `limit`) name it once on the row's
+// chip, and a count keyed as a count stands at a number's width.
+func TestAJoinedRowNamesAnOptionOnce(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{Style: "form", Label: "Rate", Join: "per", Children: []Widget{
+		&Field{Name: "limit", Label: "Packets", Key: "limit", Value: "1000"},
+		&Field{Name: "limit_unit", Label: "Per", Key: "limit", Kind: "select", Options: []Option{{Value: "second", Label: "Second"}, {Value: "minute", Label: "Minute"}}},
+	}})
+	if !strings.Contains(got, `>limit</span>`) || strings.Contains(got, "limit · limit") {
+		t.Errorf("the row names its one option once:\n%s", got)
+	}
+	if !strings.Contains(got, "w-24! max-w-full") {
+		t.Errorf("a count stands at a number's width:\n%s", got)
+	}
+	if (&Field{Key: "limit_burst"}).Measure() != "number" {
+		t.Error("a burst is a count, at a number's width")
+	}
+}
+
 // TestDecodeAJoinedGroup: the joining word travels on the grid and translates
 // with the plugin's catalog.
 func TestDecodeAJoinedGroup(t *testing.T) {

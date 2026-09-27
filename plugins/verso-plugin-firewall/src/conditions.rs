@@ -31,7 +31,7 @@
 
 use verso_plugin::{ConditionItem, SelectOption, Widget};
 
-use crate::fields::{row_group, select_field, text_field, token_list};
+use crate::fields::{select_field, text_field, token_list};
 use crate::model::Firewall;
 use crate::redirect_form::RedirectForm;
 use crate::rule_form::{
@@ -39,8 +39,9 @@ use crate::rule_form::{
     EXCLUDE, HELPERS, INCLUDE, RATE_UNITS, SET_FIELDS, WEEKDAYS,
 };
 
-const HELP: &str =
-    "Conditions are combined with and. Multiple values inside one condition are alternatives.";
+/// HELP says the one thing the block does not show: the seams between
+/// conditions say "and", but the values inside one are alternatives.
+const HELP: &str = "Several values inside one condition are alternatives.";
 
 /// SCHEDULE_FIELDS are the form fields a window is made of. The clock is a
 /// choice between two names here and a truth value in the file, which is why
@@ -330,7 +331,7 @@ fn device(rule: &RuleForm, errors: &Errors, model: &Firewall) -> ConditionItem {
         "Network device",
         "Tie the rule to one incoming or outgoing kernel device.",
         rule.active("device"),
-        vec![row_group(vec![
+        vec![
             select_field(
                 "direction",
                 "Direction",
@@ -339,7 +340,7 @@ fn device(rule: &RuleForm, errors: &Errors, model: &Firewall) -> ConditionItem {
                 errors,
             ),
             select_field("device", "Device", &rule.device.name, named(&names), errors),
-        ])],
+        ],
     )
 }
 
@@ -356,7 +357,7 @@ fn addresses(
         label,
         help,
         active,
-        vec![row_group(vec![
+        vec![
             token_list(
                 key,
                 "Include",
@@ -365,15 +366,18 @@ fn addresses(
                 &tokens.include,
                 errors,
             ),
-            token_list(
-                &format!("{key}_not"),
-                "Exclude",
-                "Address or network",
-                "Everything else in the include list still matches.",
-                &tokens.exclude,
-                errors,
+            exceptions(
+                token_list(
+                    &format!("{key}_not"),
+                    "Exclude",
+                    "Address or network",
+                    "Everything else in the include list still matches.",
+                    &tokens.exclude,
+                    errors,
+                ),
+                tokens,
             ),
-        ])],
+        ],
     )
 }
 
@@ -390,7 +394,7 @@ fn ports(
         label,
         help,
         active,
-        vec![row_group(vec![
+        vec![
             token_list(
                 key,
                 "Include",
@@ -399,15 +403,32 @@ fn ports(
                 &tokens.include,
                 errors,
             ),
-            token_list(
-                &format!("{key}_not"),
-                "Exclude",
-                "Port or range",
-                "",
-                &tokens.exclude,
-                errors,
+            exceptions(
+                token_list(
+                    &format!("{key}_not"),
+                    "Exclude",
+                    "Port or range",
+                    "",
+                    &tokens.exclude,
+                    errors,
+                ),
+                tokens,
             ),
-        ])],
+        ],
+    )
+}
+
+/// exceptions folds a condition's exclude list behind a quiet "Exclude some":
+/// an exception is the rare half of an include/exclude condition, and an empty
+/// second box beside the first reads as a second thing to fill in. It arrives
+/// open whenever the condition already excludes something — or whenever the
+/// last submission refused an exclusion, so the refusal is never folded away.
+fn exceptions(exclude: Widget, tokens: &Tokens) -> Widget {
+    let refused = matches!(&exclude, Widget::List { errors, .. } if !errors.is_empty());
+    Widget::reveal(
+        "Exclude some",
+        !tokens.exclude.is_empty() || refused,
+        vec![exclude],
     )
 }
 
@@ -427,7 +448,7 @@ fn address(
         label,
         help,
         active,
-        vec![row_group(vec![
+        vec![
             comparison(
                 &format!("{key}_match"),
                 value,
@@ -441,7 +462,7 @@ fn address(
                 "One IP address, or a network in CIDR form.",
                 errors,
             ),
-        ])],
+        ],
     )
 }
 
@@ -459,7 +480,7 @@ fn port(
         label,
         help,
         active,
-        vec![row_group(vec![
+        vec![
             comparison(
                 &format!("{key}_match"),
                 value,
@@ -473,7 +494,7 @@ fn port(
                 "For example 53, or 1024-65535.",
                 errors,
             ),
-        ])],
+        ],
     )
 }
 
@@ -483,7 +504,7 @@ fn macs(tokens: &Tokens, active: bool, errors: &Errors) -> ConditionItem {
         "Source MAC addresses",
         "Match link-layer senders visible on the way in.",
         active,
-        vec![row_group(vec![
+        vec![
             token_list(
                 "src_mac",
                 "Include",
@@ -492,15 +513,18 @@ fn macs(tokens: &Tokens, active: bool, errors: &Errors) -> ConditionItem {
                 &tokens.include,
                 errors,
             ),
-            token_list(
-                "src_mac_not",
-                "Exclude",
-                "MAC address",
-                "",
-                &tokens.exclude,
-                errors,
+            exceptions(
+                token_list(
+                    "src_mac_not",
+                    "Exclude",
+                    "MAC address",
+                    "",
+                    &tokens.exclude,
+                    errors,
+                ),
+                tokens,
             ),
-        ])],
+        ],
     )
 }
 
@@ -556,17 +580,11 @@ fn named_set(
         "Match a set declared in this firewall config, and say which packet fields its entries describe.",
         active,
         vec![
-            row_group(vec![
-                    select_field("ipset", "Set", &ipset.set.value, named(&sets), errors),
-                    comparison("ipset_match", &ipset.set, "Is in the set", "Is not in the set"),
-                ],
-            ),
-            row_group(vec![
-                    field(0, "First field", false),
-                    field(1, "Second field", true),
-                    field(2, "Third field", true),
-                ],
-            ),
+            select_field("ipset", "Set", &ipset.set.value, named(&sets), errors),
+            comparison("ipset_match", &ipset.set, "Is in the set", "Is not in the set"),
+            field(0, "First field", false),
+            field(1, "Second field", true),
+            field(2, "Third field", true),
         ],
     ))
 }
@@ -579,7 +597,7 @@ fn helper_match(value: &Inverted, active: bool, errors: &Errors) -> ConditionIte
         "Connection helper",
         "Match traffic a connection helper is already tracking.",
         active,
-        vec![row_group(vec![
+        vec![
             comparison(
                 "helper_match",
                 value,
@@ -593,7 +611,7 @@ fn helper_match(value: &Inverted, active: bool, errors: &Errors) -> ConditionIte
                 named(&HELPERS.map(String::from)),
                 errors,
             ),
-        ])],
+        ],
     )
 }
 
@@ -623,7 +641,7 @@ fn mark(mark: &MarkMatch, active: bool, errors: &Errors) -> ConditionItem {
         "Firewall mark",
         "Match a mark another rule already set on the packet.",
         active,
-        vec![row_group(vec![
+        vec![
             comparison("mark_match", &mark.mark, "Equals", "Does not equal"),
             text_field(
                 "mark_value",
@@ -633,7 +651,7 @@ fn mark(mark: &MarkMatch, active: bool, errors: &Errors) -> ConditionItem {
                 errors,
             ),
             text_field("mark_mask", "Mask", &mark.mask, "Optional.", errors),
-        ])],
+        ],
     )
 }
 
@@ -643,10 +661,10 @@ fn dscp(rule: &RuleForm, errors: &Errors) -> ConditionItem {
         "DSCP value",
         "Match the traffic class another device or rule already marked the packet with.",
         rule.active("dscp"),
-        vec![row_group(vec![
+        vec![
             comparison("dscp_match", &rule.dscp, "Equals", "Does not equal"),
             select_field("dscp", "DSCP", &rule.dscp.value, dscp_options(), errors),
-        ])],
+        ],
     )
 }
 
@@ -655,38 +673,46 @@ fn rate(limit: &RateLimit, active: bool, errors: &Errors) -> ConditionItem {
         true => "over",
         false => "below",
     };
+    // Read as the sentence it writes: the rate first, "1000 per second", then
+    // which side of it matches, then the allowance before it applies. The count
+    // and its unit are one option, `limit`, so both name it.
     item(
         "rate",
         "Rate limit",
         "Match only while the traffic stays under a rate — or only once it goes over.",
         active,
         vec![
-            row_group(vec![
-                select_field(
-                    "limit_match",
-                    "Match",
-                    matching,
-                    options(&[("below", "At or below the rate"), ("over", "Over the rate")]),
-                    errors,
-                ),
-                text_field("limit", "Packets", &limit.count, "", errors),
-            ]),
-            row_group(vec![
-                select_field(
-                    "limit_unit",
-                    "Per",
-                    &limit.unit,
-                    options(&RATE_UNITS),
-                    errors,
-                ),
-                text_field(
-                    "limit_burst",
-                    "Initial burst",
-                    &limit.burst,
-                    "Optional packet allowance before the rate applies.",
-                    errors,
-                ),
-            ]),
+            Widget::form_grid(
+                2,
+                vec![
+                    text_field("limit", "Packets", &limit.count, "", errors).writes("limit"),
+                    select_field(
+                        "limit_unit",
+                        "Per",
+                        &limit.unit,
+                        options(&RATE_UNITS),
+                        errors,
+                    )
+                    .writes("limit"),
+                ],
+            )
+            .labelled("Rate", "")
+            .joined("per"),
+            select_field(
+                "limit_match",
+                "Matches",
+                matching,
+                options(&[("below", "At or below the rate"), ("over", "Over the rate")]),
+                errors,
+            ),
+            text_field(
+                "limit_burst",
+                "Initial burst",
+                &limit.burst,
+                "Optional packet allowance before the rate applies.",
+                errors,
+            )
+            .writes("limit_burst"),
         ],
     )
 }
@@ -713,46 +739,62 @@ pub fn schedule_fields(schedule: &Schedule, errors: &Errors) -> Vec<Widget> {
     vec![
         Widget::checks(
             "weekdays",
-            "Weekdays",
+            "Days",
             &schedule.weekdays,
-            named(&WEEKDAYS.map(String::from)),
+            WEEKDAYS
+                .iter()
+                .map(|day| SelectOption::new(day, day))
+                .collect(),
+        )
+        .writes("weekdays")
+        .segmented(),
+        window(
+            "Between",
+            "timehhmmss",
+            [
+                ("start_time", "Starts at", &schedule.start_time),
+                ("stop_time", "Ends at", &schedule.stop_time),
+            ],
+            errors,
         ),
-        Widget::form_grid(
-            2,
-            vec![
-                text_field(
-                    "start_date",
-                    "Starting date",
-                    &schedule.start_date,
-                    "YYYY-MM-DD; blank means immediately.",
-                    errors,
-                ),
-                text_field(
-                    "stop_date",
-                    "Ending date",
-                    &schedule.stop_date,
-                    "YYYY-MM-DD; blank means indefinitely.",
-                    errors,
-                ),
+        window(
+            "Only between dates",
+            "dateyyyymmdd",
+            [
+                ("start_date", "Starts on", &schedule.start_date),
+                ("stop_date", "Ends on", &schedule.stop_date),
             ],
-        )
-        .labelled("Date range", ""),
-        Widget::form_grid(
-            2,
-            vec![
-                text_field("start_time", "From", &schedule.start_time, "", errors),
-                text_field("stop_time", "Until", &schedule.stop_time, "", errors),
-            ],
-        )
-        .labelled("Time of day", ""),
+            errors,
+        ),
+        // The clock the window is read against: a choice between two names
+        // here, a truth value in the file (`utc_time`).
         select_field(
             "time_basis",
             "Clock",
             basis,
             options(&[("local", "Router local time"), ("utc", "UTC")]),
             errors,
-        ),
+        )
+        .writes("utc_time"),
     ]
+}
+
+/// window is a span the object keeps, read as the sentence it is — "09:00 to
+/// 17:00": one row under its label, each end its own field posting its own
+/// option in the grammar firewall4 reads, the ends joined by their word.
+fn window(label: &str, grammar: &str, ends: [(&str, &str, &str); 2], errors: &Errors) -> Widget {
+    Widget::form_grid(
+        2,
+        ends.iter()
+            .map(|(name, end, value)| {
+                text_field(name, end, value, "", errors)
+                    .writes(name)
+                    .typed(grammar)
+            })
+            .collect(),
+    )
+    .labelled(label, "")
+    .joined("to")
 }
 
 /// comparison is the include/exclude select every negatable condition carries.
