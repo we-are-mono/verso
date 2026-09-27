@@ -292,6 +292,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
     match method {
         "dhcpState" => dhcp::state(),
         "dnsState" => config_files::dns_state(),
+        "firewallFiles" => config_files::firewall_state(),
         "configFiles" => config_files::state(),
         "stageConfigFile" => config_files::stage(
             argument(request, "path")?,
@@ -302,6 +303,13 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             argument(request, "action")?,
             argument(request, "uci")? == "1",
             argument(request, "timeout")?.parse().unwrap_or(30),
+            match argument(request, "family") {
+                Ok(name) => Some(
+                    config_files::Family::named(name)
+                        .ok_or_else(|| Failure::invalid("Unknown file family."))?,
+                ),
+                Err(_) => None,
+            },
         ),
         "accessCredentials" => access::state(),
         "setAuthorizedKeys" => {

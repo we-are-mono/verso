@@ -28,12 +28,146 @@ fn now() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-fn allowed(path: &str) -> bool {
-    if path == "/etc/dnsmasq.conf" {
-        return true;
+/// A family is one daemon's hand-edited files: where they may live, how the
+/// daemon's whole configuration is checked with them in place, and how it is
+/// told to read them again. A path belongs to one family or to none, and
+/// nothing outside a family is ever read, written or restored.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Family {
+    Dnsmasq,
+    Fw4,
+}
+
+impl Family {
+    const ALL: [Family; 2] = [Family::Dnsmasq, Family::Fw4];
+
+    pub fn of(path: &str) -> Option<Family> {
+        if path == "/etc/dnsmasq.conf" || in_dir(path, "/etc/dnsmasq.d/", ".conf") {
+            Some(Family::Dnsmasq)
+        } else if in_dir(path, "/etc/nftables.d/", ".nft") {
+            Some(Family::Fw4)
+        } else {
+            None
+        }
     }
-    path.strip_prefix("/etc/dnsmasq.d/")
-        .and_then(|s| s.strip_suffix(".conf"))
+
+    pub fn named(name: &str) -> Option<Family> {
+        Family::ALL.into_iter().find(|f| f.name() == name)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Family::Dnsmasq => "dnsmasq",
+            Family::Fw4 => "fw4",
+        }
+    }
+
+    /// The files the family always has, and the folder its others live in.
+    fn places(self) -> (&'static [&'static str], &'static str) {
+        match self {
+            Family::Dnsmasq => (&["/etc/dnsmasq.conf"], "/etc/dnsmasq.d"),
+            Family::Fw4 => (&[], "/etc/nftables.d"),
+        }
+    }
+
+    /// check_draft checks one file on its own before it is staged. dnsmasq
+    /// reads a file of options by itself; an nftables snippet names fw4's own
+    /// chains and sets, so it can only be checked inside the ruleset, which
+    /// check_live does when the change is applied.
+    fn check_draft(self, body: &str) -> Result<(), Failure> {
+        match self {
+            Family::Dnsmasq => validate_dnsmasq(body),
+            Family::Fw4 => Ok(()),
+        }
+    }
+
+    /// check_live checks the daemon's whole configuration with the written
+    /// files in place.
+    fn check_live(self) -> Result<(), Failure> {
+        let (mut command, refusal) = match self {
+            Family::Dnsmasq => {
+                let mut command = Command::new("/usr/sbin/dnsmasq");
+                command.args(["--test", "--conf-file=/etc/dnsmasq.conf"]);
+                if Path::new("/etc/dnsmasq.d").is_dir() {
+                    command.arg("--conf-dir=/etc/dnsmasq.d");
+                }
+                (command, "dnsmasq rejected the custom options")
+            }
+            Family::Fw4 => {
+                let mut command = Command::new("/sbin/fw4");
+                command.arg("check");
+                (command, "fw4 rejected the rule files")
+            }
+        };
+        let check = command.stdin(Stdio::null()).output().map_err(failure)?;
+        if !check.status.success() {
+            let said = [check.stderr, check.stdout].concat();
+            return Err(Failure::invalid(format!(
+                "{refusal}: {}",
+                complaint(&String::from_utf8_lossy(&said))
+            )));
+        }
+        Ok(())
+    }
+
+    /// The refusals a family's editor shows, each in the words its files are
+    /// called by, whole so a plugin's catalog can translate them.
+    fn too_large(self) -> &'static str {
+        match self {
+            Family::Dnsmasq => "Custom option files must be at most 32 KiB.",
+            Family::Fw4 => "Rule files must be at most 32 KiB.",
+        }
+    }
+    fn invalid(self) -> &'static str {
+        match self {
+            Family::Dnsmasq => "Invalid custom options file.",
+            Family::Fw4 => "Invalid rule file.",
+        }
+    }
+    fn over_limit(self) -> &'static str {
+        match self {
+            Family::Dnsmasq => "Custom option files exceed the editor size limit.",
+            Family::Fw4 => "Rule files exceed the editor size limit.",
+        }
+    }
+
+    /// reload has the daemon read its files again, so what runs is exactly
+    /// what they say. fw4's own reload only flushes its table, which empties
+    /// chains but keeps them: a chain a file no longer declares — a base chain
+    /// with a drop policy, say, undone by a rollback — would stay hooked in.
+    /// fw4's restart checks the ruleset, then rebuilds the table whole.
+    fn reload(self) {
+        let (program, args): (&str, &[&str]) = match self {
+            Family::Dnsmasq => ("/etc/init.d/dnsmasq", &["reload"]),
+            Family::Fw4 => ("/sbin/fw4", &["-q", "restart"]),
+        };
+        let _ = Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+}
+
+/// complaint is what a check said about the files, without the notices it
+/// prints on every run (fw4's `[!]` lines: a disabled rule, a package's
+/// snippet included), which say nothing about why the check failed.
+fn complaint(said: &str) -> String {
+    said.lines()
+        .filter(|line| !line.trim_start().starts_with("[!]"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+/// in_dir reports whether path is a file directly in dir with the suffix,
+/// named as a person would name one: lowercase letters, digits, dashes and
+/// underscores, starting with a letter or digit.
+fn in_dir(path: &str, dir: &str, suffix: &str) -> bool {
+    path.strip_prefix(dir)
+        .and_then(|s| s.strip_suffix(suffix))
         .is_some_and(|name| {
             !name.is_empty()
                 && name.len() <= 64
@@ -42,6 +176,34 @@ fn allowed(path: &str) -> bool {
                     .bytes()
                     .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
         })
+}
+
+fn allowed(path: &str) -> bool {
+    Family::of(path).is_some()
+}
+
+/// touched is every family a journal's files belong to, once each, in order.
+fn touched(j: &Value) -> Vec<Family> {
+    let mut families: Vec<Family> = j["files"]
+        .as_object()
+        .map(|files| files.keys().filter_map(|p| Family::of(p)).collect())
+        .unwrap_or_default();
+    families.sort();
+    families.dedup();
+    families
+}
+
+/// drop_family unstages one family's files, or every file when none is named.
+fn drop_family(j: &mut Value, family: Option<Family>) {
+    if let Some(files) = j["files"].as_object_mut() {
+        files.retain(|path, _| family.is_some_and(|f| Family::of(path) != Some(f)));
+    }
+}
+
+fn reload_all(families: &[Family]) {
+    for family in families {
+        family.reload();
+    }
 }
 fn check_path(path: &Path) -> Result<(), Failure> {
     for p in path.ancestors() {
@@ -72,9 +234,11 @@ fn read(path: &Path) -> Result<Option<String>, Failure> {
         .read_to_end(&mut bytes)
         .map_err(failure)?;
     if bytes.len() > LIMIT {
-        return Err(Failure::invalid(
-            "Custom option files must be at most 32 KiB.",
-        ));
+        let family = path
+            .to_str()
+            .and_then(Family::of)
+            .unwrap_or(Family::Dnsmasq);
+        return Err(Failure::invalid(family.too_large()));
     }
     String::from_utf8(bytes)
         .map(Some)
@@ -151,28 +315,22 @@ fn restore_file(path: &Path, file: &Value) -> Result<(), Failure> {
         }
     }
 }
-fn reload() {
-    let _ = Command::new("/etc/init.d/dnsmasq")
-        .arg("reload")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-}
-fn recover(j: &mut Value) -> Result<bool, Failure> {
+/// recover rolls back an apply whose confirmation window has passed, and
+/// answers with the families it restored, which the caller reloads.
+fn recover(j: &mut Value) -> Result<Vec<Family>, Failure> {
     if j["active"] == true && j["deadline"].as_u64().unwrap_or(0) <= now() {
         restore(j)?;
         j["active"] = json!(false);
         j["uci_confirmed"] = json!(false);
         save_at(Path::new(JOURNAL), j)?;
-        return Ok(true);
+        return Ok(touched(j));
     }
-    Ok(false)
+    Ok(Vec::new())
 }
 pub fn watchdog() {
     std::thread::spawn(|| loop {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let reload_needed = {
+        let restored = {
             let Ok(_guard) = LOCK.lock() else {
                 continue;
             };
@@ -180,29 +338,31 @@ pub fn watchdog() {
                 .and_then(|mut j| recover(&mut j))
                 .unwrap_or_else(|e| {
                     eprintln!("verso-rpcd: file rollback failed: {}", e.message);
-                    false
+                    Vec::new()
                 })
         };
-        if reload_needed {
-            reload();
-        }
+        reload_all(&restored);
     });
 }
+/// state is every family's files as they will read once staged changes are
+/// applied, each saying which family it belongs to.
 pub fn state() -> Result<Value, Failure> {
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    if recover(&mut j)? {
-        reload();
-    }
-    let mut paths = vec![PathBuf::from("/etc/dnsmasq.conf")];
-    check_path(Path::new("/etc/dnsmasq.d"))?;
-    if let Ok(entries) = fs::read_dir("/etc/dnsmasq.d") {
-        paths.extend(
-            entries
-                .filter_map(Result::ok)
-                .map(|e| e.path())
-                .filter(|p| p.to_str().is_some_and(allowed)),
-        );
+    reload_all(&recover(&mut j)?);
+    let mut paths = vec![];
+    for family in Family::ALL {
+        let (fixed, dir) = family.places();
+        paths.extend(fixed.iter().map(PathBuf::from));
+        check_path(Path::new(dir))?;
+        if let Ok(entries) = fs::read_dir(dir) {
+            paths.extend(
+                entries
+                    .filter_map(Result::ok)
+                    .map(|e| e.path())
+                    .filter(|p| p.to_str().is_some_and(allowed)),
+            );
+        }
     }
     if let Some(files) = j["files"].as_object() {
         paths.extend(files.keys().map(PathBuf::from));
@@ -221,10 +381,13 @@ pub fn state() -> Result<Value, Failure> {
     let mut total = 0;
     for path in paths {
         let key = path.to_string_lossy();
+        let Some(family) = Family::of(&key) else {
+            continue;
+        };
         let active = match read(&path) {
             Ok(body) => body,
             Err(e) if j["files"].get(key.as_ref()).is_none() => {
-                files.push(json!({"path":key,"error":e.message}));
+                files.push(json!({"path":key,"family":family.name(),"error":e.message}));
                 continue;
             }
             Err(_) => None,
@@ -235,18 +398,16 @@ pub fn state() -> Result<Value, Failure> {
             .or(active);
         total += body.as_ref().map(String::len).unwrap_or(0);
         if total > TOTAL {
-            files.push(
-                json!({"path":key,"error":"Custom option files exceed the editor size limit."}),
-            );
+            files.push(json!({"path":key,"family":family.name(),"error":family.over_limit()}));
             continue;
         }
-        files.push(json!({"path":key,"content":body.as_deref().unwrap_or(""),"version":version(body.as_deref()),"pending":j["files"].get(key.as_ref()).is_some(),"exists":body.is_some()}));
+        files.push(json!({"path":key,"family":family.name(),"content":body.as_deref().unwrap_or(""),"version":version(body.as_deref()),"pending":j["files"].get(key.as_ref()).is_some(),"exists":body.is_some()}));
     }
     Ok(
         json!({"files":files,"active":j["active"],"uci":j["uci"],"uci_confirmed":j["uci_confirmed"]}),
     )
 }
-fn validate_text(body: &str) -> Result<(), Failure> {
+fn validate_dnsmasq(body: &str) -> Result<(), Failure> {
     let dir = Path::new(JOURNAL).parent().unwrap();
     check_path(dir)?;
     fs::create_dir_all(dir).map_err(failure)?;
@@ -269,14 +430,15 @@ fn validate_text(body: &str) -> Result<(), Failure> {
     Ok(())
 }
 pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
-    if !allowed(path) || body.len() > LIMIT || body.contains('\0') {
+    let Some(family) = Family::of(path) else {
         return Err(Failure::invalid("Invalid custom options file."));
+    };
+    if body.len() > LIMIT || body.contains('\0') {
+        return Err(Failure::invalid(family.invalid()));
     }
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    if recover(&mut j)? {
-        reload();
-    }
+    reload_all(&recover(&mut j)?);
     if j["active"] == true {
         return Err(Failure::invalid("Wait for the current apply to finish."));
     }
@@ -293,7 +455,7 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("Too many staged files."));
     }
-    validate_text(body)?;
+    family.check_draft(body)?;
     let mode = fs::metadata(path)
         .map(|m| m.permissions().mode() & 0o777)
         .unwrap_or(0o644);
@@ -313,19 +475,29 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
         .map(|f| f["after"].as_str().unwrap_or("").len())
         .sum();
     if total > TOTAL {
-        return Err(Failure::invalid(
-            "Staged custom options exceed the editor size limit.",
-        ));
+        return Err(Failure::invalid(match family {
+            Family::Dnsmasq => "Staged custom options exceed the editor size limit.",
+            Family::Fw4 => family.over_limit(),
+        }));
     }
     save_at(Path::new(JOURNAL), &j)?;
     Ok(json!({"result":true}))
 }
-pub fn lifecycle(action: &str, uci: bool, timeout: u64) -> Result<Value, Failure> {
+/// lifecycle carries staged files through an apply. On apply it writes every
+/// staged file, checks each touched family's whole configuration with them in
+/// place, and has each family read them again; a refusal restores the files
+/// before anything reloads. Abort and the watchdog restore the same way.
+/// A discard names the family whose files it drops — the one whose config was
+/// discarded — or none, to drop every staged file.
+pub fn lifecycle(
+    action: &str,
+    uci: bool,
+    timeout: u64,
+    family: Option<Family>,
+) -> Result<Value, Failure> {
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    if recover(&mut j)? {
-        reload();
-    }
+    reload_all(&recover(&mut j)?);
     match action {
         "apply" => {
             if j["active"] == true {
@@ -354,19 +526,7 @@ pub fn lifecycle(action: &str, uci: bool, timeout: u64) -> Result<Value, Failure
                         file["mode"].as_u64().unwrap_or(0o644) as u32,
                     )?;
                 }
-                let mut command = Command::new("/usr/sbin/dnsmasq");
-                command.args(["--test", "--conf-file=/etc/dnsmasq.conf"]);
-                if Path::new("/etc/dnsmasq.d").is_dir() {
-                    command.arg("--conf-dir=/etc/dnsmasq.d");
-                }
-                let check = command.stdin(Stdio::null()).output().map_err(failure)?;
-                if !check.status.success() {
-                    return Err(Failure::invalid(format!(
-                        "dnsmasq rejected the custom options: {}",
-                        String::from_utf8_lossy(&check.stderr)
-                    )));
-                }
-                Ok(())
+                touched(&j).into_iter().try_for_each(Family::check_live)
             })();
             if let Err(e) = result {
                 restore(&j)?;
@@ -374,9 +534,9 @@ pub fn lifecycle(action: &str, uci: bool, timeout: u64) -> Result<Value, Failure
                 save_at(Path::new(JOURNAL), &j)?;
                 return Err(e);
             }
-            if !uci {
-                reload();
-            }
+            // Every family the change touched reads its files again, whether
+            // or not the uci apply beside it touches that daemon's config.
+            reload_all(&touched(&j));
         }
         "uci-confirmed" => {
             j["uci_confirmed"] = json!(true);
@@ -391,7 +551,7 @@ pub fn lifecycle(action: &str, uci: bool, timeout: u64) -> Result<Value, Failure
         "abort" => {
             if j["active"] == true {
                 restore(&j)?;
-                reload();
+                reload_all(&touched(&j));
             }
             j["active"] = json!(false);
             save_at(Path::new(JOURNAL), &j)?;
@@ -400,7 +560,8 @@ pub fn lifecycle(action: &str, uci: bool, timeout: u64) -> Result<Value, Failure
             if j["active"] == true {
                 return Err(Failure::invalid("An apply is in progress."));
             }
-            save_at(Path::new(JOURNAL), &json!({"files":{},"active":false}))?;
+            drop_family(&mut j, family);
+            save_at(Path::new(JOURNAL), &j)?;
         }
         _ => return Err(Failure::invalid("Invalid file transaction action.")),
     }
@@ -417,16 +578,103 @@ pub fn dns_state() -> Result<Value, Failure> {
             .split_whitespace()
             .any(|w| w == "DNSSEC")
     });
-    let mut result = state()?;
+    let mut result = only(state()?, Family::Dnsmasq);
     result["resolver"] = json!(Path::new("/usr/sbin/dnsmasq").is_file());
     result["dnssec"] = json!(dnssec);
     result["doh"] = json!(Path::new("/usr/sbin/https-dns-proxy").is_file());
     result["adblock"] = json!(Path::new("/etc/init.d/adblock").is_file());
     Ok(result)
 }
+/// firewall_state is the rule files fw4 reads from its own folder, as they
+/// will read once staged changes are applied.
+pub fn firewall_state() -> Result<Value, Failure> {
+    let mut result = only(state()?, Family::Fw4);
+    result["fw4"] = json!(Path::new("/sbin/fw4").is_file());
+    Ok(result)
+}
+
+/// only narrows a state to one family's files, so a page never lists — and
+/// so never offers to edit — another daemon's.
+fn only(mut state: Value, family: Family) -> Value {
+    if let Some(files) = state["files"].as_array_mut() {
+        files.retain(|f| f["family"] == family.name());
+    }
+    state
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_refusal_keeps_the_error_and_drops_the_notices() {
+        let said = "[!] Section @rule[0] (Allow-DHCP-Renew) is disabled, ignoring section\n\
+[!] Automatically including '/usr/share/nftables.d/ruleset-post/x.nft'\n\
+/etc/nftables.d/20-a.nft:1:27-29: Error: syntax error\nchain a { bad }\n";
+        assert_eq!(
+            complaint(said),
+            "/etc/nftables.d/20-a.nft:1:27-29: Error: syntax error\nchain a { bad }"
+        );
+    }
+    #[test]
+    fn discarding_one_family_keeps_the_others_staged() {
+        let mut j = json!({"files":{
+            "/etc/nftables.d/10-a.nft":{"after":"x"},
+            "/etc/dnsmasq.d/x.conf":{"after":"y"}
+        },"active":false});
+        drop_family(&mut j, Some(Family::Fw4));
+        assert_eq!(j["files"], json!({"/etc/dnsmasq.d/x.conf":{"after":"y"}}));
+        drop_family(&mut j, None);
+        assert_eq!(j["files"], json!({}));
+    }
+    #[test]
+    fn a_page_sees_only_its_own_familys_files() {
+        let state = json!({"files":[
+            {"path":"/etc/dnsmasq.conf","family":"dnsmasq"},
+            {"path":"/etc/nftables.d/10-a.nft","family":"fw4"}
+        ],"active":false});
+        assert_eq!(
+            only(state.clone(), Family::Fw4)["files"],
+            json!([{"path":"/etc/nftables.d/10-a.nft","family":"fw4"}])
+        );
+        assert_eq!(
+            only(state, Family::Dnsmasq)["files"],
+            json!([{"path":"/etc/dnsmasq.conf","family":"dnsmasq"}])
+        );
+    }
+    #[test]
+    fn each_family_owns_its_own_paths() {
+        assert_eq!(Family::of("/etc/dnsmasq.conf"), Some(Family::Dnsmasq));
+        assert_eq!(
+            Family::of("/etc/dnsmasq.d/10-local.conf"),
+            Some(Family::Dnsmasq)
+        );
+        assert_eq!(
+            Family::of("/etc/nftables.d/10-custom.nft"),
+            Some(Family::Fw4)
+        );
+        for p in [
+            "/etc/nftables.d/10-custom.conf",
+            "/etc/dnsmasq.d/10-local.nft",
+            "/etc/nftables.d/../passwd.nft",
+            "/etc/nftables.d/a/b.nft",
+            "/etc/nftables.d/.nft",
+            "/etc/nftables.d/Rules.nft",
+            "/etc/firewall.user",
+            "/usr/share/nftables.d/ruleset-post/x.nft",
+        ] {
+            assert_eq!(Family::of(p), None, "{p}");
+        }
+    }
+    #[test]
+    fn a_change_names_every_family_it_touches_once() {
+        let j = json!({"files":{
+            "/etc/nftables.d/10-a.nft":{},
+            "/etc/nftables.d/20-b.nft":{},
+            "/etc/dnsmasq.d/x.conf":{}
+        }});
+        assert_eq!(touched(&j), vec![Family::Dnsmasq, Family::Fw4]);
+        assert!(touched(&json!({"files":{}})).is_empty());
+    }
     #[test]
     fn paths_are_bounded() {
         for p in ["/etc/dnsmasq.conf", "/etc/dnsmasq.d/10-local.conf"] {

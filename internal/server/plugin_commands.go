@@ -10,6 +10,20 @@ import (
 	"strings"
 )
 
+// fileConfig names the uci config whose daemon reads a hand-edited file: the
+// dnsmasq files are dhcp's, the nftables rule files fw4 loads are the
+// firewall's. The helper bounds the paths themselves; this binds each one to
+// the plugin allowed to change what that daemon does.
+func fileConfig(path string) (string, bool) {
+	switch {
+	case path == "/etc/dnsmasq.conf" || strings.HasPrefix(path, "/etc/dnsmasq.d/"):
+		return "dhcp", true
+	case strings.HasPrefix(path, "/etc/nftables.d/"):
+		return "firewall", true
+	}
+	return "", false
+}
+
 // Commands have a closed vocabulary and structured arguments. They run only
 // after validation on a CSRF-protected POST, with the operator's own session.
 func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid string, commands []plugin.ApplyAction) error {
@@ -19,9 +33,12 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 	cmd := commands[0]
 	switch cmd.Name {
 	case "config-file-stage":
+		// A file belongs to the daemon that reads it, and is staged only by a
+		// plugin that may write that daemon's config.
+		config, known := fileConfig(cmd.Args["path"])
 		configAllowed := false
 		for _, a := range m.ACL.Write {
-			if a.Scope == "uci" && a.Object == "dhcp" && a.Function == "write" {
+			if known && a.Scope == "uci" && a.Object == config && a.Function == "write" {
 				configAllowed = true
 			}
 		}

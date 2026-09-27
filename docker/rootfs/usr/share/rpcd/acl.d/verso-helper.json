@@ -9,7 +9,8 @@
           "firewallLog",
           "pkgUpgradable",
           "firmwareCheck",
-          "configFiles"
+          "configFiles",
+          "firewallFiles"
         ]
       }
     },
@@ -36,7 +37,8 @@
           "pkgRemove",
           "pkgUpgrade",
           "firmwareUpgrade",
-          "applyConfigFiles"
+          "applyConfigFiles",
+          "stageConfigFile"
         ]
       }
     }

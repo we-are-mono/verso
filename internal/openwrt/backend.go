@@ -770,20 +770,22 @@ func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string]
 		changes = make(map[string][][]string)
 	}
 	for _, f := range files.Files {
-		if f.Pending {
-			changes["dhcp"] = append(changes["dhcp"], []string{"file", f.Path, f.Content})
+		config, ok := fileFamilies[f.Family]
+		if f.Pending && ok {
+			changes[config] = append(changes[config], []string{"file", f.Path, f.Content})
 		}
 	}
 	return changes, nil
 }
 
-// UCIRevert discards a config's staged changes through rpcd, gated by the sid.
+// UCIRevert discards a config's staged changes through rpcd, gated by the sid,
+// and the staged files of the family that config's daemon reads.
 func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error {
 	if err := b.uciRevert(ctx, sid, config); err != nil {
 		return err
 	}
-	if config == "dhcp" {
-		return b.fileAction(ctx, sid, "discard", false, 30)
+	if family, ok := familyOf(config); ok {
+		return b.discardFiles(ctx, sid, family)
 	}
 	return nil
 }

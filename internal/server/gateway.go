@@ -1183,6 +1183,14 @@ func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (js
 			return result, true, err
 		}
 		return nil, true, fmt.Errorf("DNS state unavailable")
+	case "firewallFiles":
+		if backend, ok := s.backend.(interface {
+			FirewallFiles(context.Context, string) (json.RawMessage, error)
+		}); ok {
+			result, err := backend.FirewallFiles(ctx, sid)
+			return result, true, err
+		}
+		return nil, true, fmt.Errorf("firewall rule files unavailable")
 	case "accessCredentials":
 		result, err := s.readAccessCredentials(ctx, sid)
 		return result, true, err

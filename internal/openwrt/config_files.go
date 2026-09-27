@@ -11,10 +11,27 @@ import (
 
 type ConfigFile struct {
 	Path    string `json:"path"`
+	Family  string `json:"family"`
 	Content string `json:"content"`
 	Version string `json:"version"`
 	Pending bool   `json:"pending"`
 }
+
+// fileFamilies binds each family of hand-edited files to the uci config whose
+// daemon reads them: a staged file waits under that config, and discarding
+// that config discards the family's files with it.
+var fileFamilies = map[string]string{"dnsmasq": "dhcp", "fw4": "firewall"}
+
+// familyOf is the family whose files a config owns, if any.
+func familyOf(config string) (string, bool) {
+	for family, owner := range fileFamilies {
+		if owner == config {
+			return family, true
+		}
+	}
+	return "", false
+}
+
 type configFileState struct {
 	Files        []ConfigFile `json:"files"`
 	Active       bool         `json:"active"`
@@ -29,6 +46,14 @@ func nativeConfigFileCall(ctx context.Context, sid, method string, args map[stri
 func (*NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
 	err := callHelper(ctx, "", "dnsState", sid, nil, &state)
+	return state, err
+}
+
+// FirewallFiles is the rule files fw4 reads from its own folder, as they will
+// read once staged changes are applied.
+func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, "", "firewallFiles", sid, nil, &state)
 	return state, err
 }
 func (b *NativeBackend) configFileState(ctx context.Context, sid string) (configFileState, error) {
@@ -48,6 +73,14 @@ func (b *NativeBackend) fileAction(ctx context.Context, sid, action string, uci 
 		enabled = "1"
 	}
 	return b.configFileCall(ctx, sid, "applyConfigFiles", map[string]string{"action": action, "uci": enabled, "timeout": fmt.Sprint(timeout)}, nil)
+}
+
+// discardFiles drops one family's staged files, leaving the others staged.
+func (b *NativeBackend) discardFiles(ctx context.Context, sid, family string) error {
+	if b.configFileCall == nil {
+		return nil
+	}
+	return b.configFileCall(ctx, sid, "applyConfigFiles", map[string]string{"action": "discard", "family": family, "uci": "0", "timeout": "30"}, nil)
 }
 func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected, content string) error {
 	if b.configFileCall == nil {

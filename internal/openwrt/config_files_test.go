@@ -14,7 +14,7 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 		t.Run(map[bool]string{false: "files only", true: "mixed"}[uci], func(t *testing.T) {
 			ctx := context.Background()
 			var calls []string
-			state := configFileState{Files: []ConfigFile{{Path: "/etc/dnsmasq.conf", Content: "log-queries\n", Pending: true}}}
+			state := configFileState{Files: []ConfigFile{{Path: "/etc/dnsmasq.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true}}}
 			b := &NativeBackend{configFileCall: func(_ context.Context, sid, method string, args map[string]string, result any) error {
 				if sid != "sid" {
 					t.Fatalf("sid lost")
@@ -66,6 +66,54 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 		})
 	}
 }
+
+// TestAFileWaitsUnderItsOwnConfig: a staged file is a change to the config
+// whose daemon reads it — a rule file waits under the firewall, a dnsmasq file
+// under dhcp — and discarding one config leaves the other's files staged.
+func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
+	ctx := context.Background()
+	var discarded []string
+	state := configFileState{Files: []ConfigFile{
+		{Path: "/etc/dnsmasq.d/10-local.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true},
+		{Path: "/etc/nftables.d/10-custom.nft", Family: "fw4", Content: "chain x {}\n", Pending: true},
+	}}
+	b := &NativeBackend{configFileCall: func(_ context.Context, _, method string, args map[string]string, result any) error {
+		if method == "configFiles" {
+			*result.(*configFileState) = state
+			return nil
+		}
+		if args["action"] == "discard" {
+			discarded = append(discarded, args["family"])
+		}
+		return nil
+	}, uciChanges: func(context.Context, string) (map[string][][]string, error) { return nil, nil },
+		uciRevert: func(context.Context, string, string) error { return nil }}
+	changes, err := b.UCIChanges(ctx, "sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][][]string{
+		"dhcp":     {{"file", "/etc/dnsmasq.d/10-local.conf", "log-queries\n"}},
+		"firewall": {{"file", "/etc/nftables.d/10-custom.nft", "chain x {}\n"}},
+	}
+	if !reflect.DeepEqual(changes, want) {
+		t.Fatalf("changes %v want %v", changes, want)
+	}
+	for config, family := range map[string]string{"firewall": "fw4", "dhcp": "dnsmasq"} {
+		discarded = nil
+		if err := b.UCIRevert(ctx, "sid", config); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(discarded, []string{family}) {
+			t.Errorf("discarding %s discarded files of %v", config, discarded)
+		}
+	}
+	discarded = nil
+	if err := b.UCIRevert(ctx, "sid", "network"); err != nil || discarded != nil {
+		t.Errorf("a config no file belongs to discards no files: %v %v", discarded, err)
+	}
+}
+
 func TestFailedUCIApplyRestoresFiles(t *testing.T) {
 	var calls []string
 	b := &NativeBackend{configFileCall: func(_ context.Context, _, method string, args map[string]string, result any) error {
