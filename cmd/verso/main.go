@@ -6,12 +6,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -140,11 +143,30 @@ func serve() {
 		log.Fatalf("verso: %v", err)
 	}
 	info.Printf("verso listening on %s", listener.Addr())
-	err = http.Serve(listener, srv.Handler())
+	// procd stops a service with SIGTERM; answering it is what lets Close run —
+	// the background work stopped, and a dev shell's sessions left for the next.
+	stopping, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+	err = serveUntil(stopping, listener, srv.Handler())
 	srv.Close()
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+}
+
+// serveUntil serves until ctx ends, then closes every connection at once: a
+// held-open stream would otherwise keep a graceful shutdown waiting past
+// procd's patience. A stop asked for is not an error.
+func serveUntil(ctx context.Context, listener net.Listener, handler http.Handler) error {
+	server := &http.Server{Handler: handler}
+	go func() {
+		<-ctx.Done()
+		_ = server.Close()
+	}()
+	if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 // allowedHosts is the DNS-rebinding Host allowlist. It is OPT-IN: unset means an
