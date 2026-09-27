@@ -732,7 +732,6 @@
   "Revoke session": "Prekliči sejo",
   "That browser is signed out at once and has to sign in again.": "Ta brskalnik se takoj odjavi in se mora znova prijaviti.",
   "This browser is signed out at once, the same as Log out.": "Ta brskalnik se takoj odjavi, enako kot z gumbom Odjava.",
-  "Takes effect immediately — other sessions stay signed in.": "Začne veljati takoj — druge seje ostanejo prijavljene.",
   "Last seen": "Zadnjič opaženo",
   "Enter a valid hostname or IP address.": "Vnesite veljavno ime gostitelja ali naslov IP.",
   "Enter a valid IP address.": "Vnesite veljaven naslov IP.",

@@ -482,17 +482,13 @@ fn validate(host: &Host) -> Errors {
     errors
 }
 
-/// The words the reservation tab's commit row carries in a device's panel. A
-/// reservation is reloaded rather than applied through the rollback window, so
-/// the tab says exactly that instead of leaving the shell's general promise
-/// standing. It names the role and not the daemon: `/etc/config/dhcp` is read by
-/// dnsmasq and odhcpd together on a stock OpenWrt, and by neither on a board
-/// resolving through something else — so the one thing this plugin can honestly
-/// promise is that whatever serves DHCP here picks the change up at once.
+/// The words the reservation tab carries in a device's panel: its label, and the
+/// verb its commit row says — reserving an address the first time, saving the
+/// reservation after. A save stages like any other, so the act needs nothing
+/// said beside it.
 const TAB_LABEL: &str = "Reserved address";
 const TAB_CTA_NEW: &str = "Reserve address";
 const TAB_CTA_EDIT: &str = "Save reservation";
-const TAB_NOTE: &str = "Applies immediately — the DHCP server reloads, no rollback needed.";
 
 /// entity_section is the reservation a device already holds, if any — the handle
 /// a submitted tab saves into, so the same form creates or edits without the
@@ -562,7 +558,7 @@ fn tab(section: Option<&str>, host: &Host, subject: Subject, cta: &str) -> Envel
         footnote(section, host),
     ]);
     Envelope::page(TAB_LABEL, body)
-        .with_commit_row(cta, TAB_NOTE)
+        .with_commit_row(cta)
         .with_tab_state(&tab_state(section, host))
 }
 

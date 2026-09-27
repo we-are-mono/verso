@@ -32,9 +32,9 @@
 <div data-verso-drawer-body class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto {{template "verso-drawer-inset"}} pt-7 pb-8">
   {{if .Body}}<div>{{.Body}}</div>{{end}}
   {{if .CTA}}
-  {{/* The commit row travels with the tab, not with the panel: the verb and the
-       consequence are the contributing plugin's, because only it knows what
-       applying its own change costs. */}}
+  {{/* The commit row travels with the tab, not with the panel: the verb is the
+       contributing plugin's, because only it knows what its tab saves. The
+       acts carry no explanation beside them. */}}
   <div class="{{if .JoinsCode}}mt-5{{else}}mt-7 border-t border-rule pt-5{{end}} flex flex-wrap items-center gap-4">
     <div class="flex flex-none gap-2">
       {{/* The commit row sits outside the tab's form — the form is the plugin's
@@ -47,7 +47,6 @@
         class="flex h-9 cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep">{{.CTA}}</button>
       <button type="button" @click="hide" class="flex h-9 cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}">{{ t "Cancel" }}</button>
     </div>
-    {{if .Note}}<span class="ml-auto min-w-0 text-sm leading-snug text-meta">{{.Note}}</span>{{end}}
   </div>
   {{end}}
 </div>

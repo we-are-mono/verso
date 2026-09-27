@@ -102,14 +102,13 @@ type Envelope struct {
 	Banner *Banner         `json:"banner"` // optional full-width semantic notice beneath the subpage bar
 	Notice *Notice         `json:"notice"` // optional outcome flash for this render, shown in the shell's flash slot
 	Widget json.RawMessage `json:"widget"`
-	// CTA and Consequence are the commit row's words when this envelope is one
-	// tab of a shell-owned entity panel: the verb for applying it ("Reserve
-	// address"), and what applying it costs ("Applies immediately — dnsmasq
-	// reloads, no rollback needed"). They belong to the plugin because only the
-	// plugin knows; a tab that stages nothing sets neither and no commit row is
-	// drawn. Ignored on an ordinary page render, where the form carries its own.
-	CTA         string `json:"cta,omitempty"`
-	Consequence string `json:"consequence,omitempty"`
+	// CTA is the commit row's verb when this envelope is one tab of a
+	// shell-owned entity panel ("Reserve address"). It belongs to the plugin
+	// because only the plugin knows what its tab saves; the act carries no
+	// explanation beside it. A tab that stages nothing sets none and no commit
+	// row is drawn. Ignored on an ordinary page render, where the form carries
+	// its own.
+	CTA string `json:"cta,omitempty"`
 	// State is where this tab's subject stands in one or two words — "blocked",
 	// "no limit", an address. It rides as a small chip beside the tab's label so
 	// the strip answers the question the panel was opened to ask before anything

@@ -645,9 +645,9 @@ pub enum Widget {
         submit: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         error: String,
-        /// What pressing the submit costs, set beside it on the commit row. It
-        /// is the consequence, not an instruction: "applies with a 30 s
-        /// rollback", not "click here to save".
+        /// A line beside the submit, for the rare fact someone must know before
+        /// pressing it and cannot learn anywhere else. An act says what it does
+        /// and carries no explanation otherwise; leave this empty.
         #[serde(skip_serializing_if = "String::is_empty")]
         note: String,
         /// Where the options this form's controls write live,
@@ -2595,16 +2595,13 @@ pub struct Envelope {
     pub back: Option<PageAction>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<Notice>,
-    /// The commit row's words when this envelope is one tab of a shell-owned
-    /// entity panel: the verb for applying it ("Reserve address"), and what
-    /// applying it costs ("Applies immediately — dnsmasq reloads, no rollback
-    /// needed"). They belong to the plugin because only the plugin knows what
-    /// its own change costs. A tab that stages nothing sets neither and the
-    /// shell draws no commit row. Ignored on an ordinary page render.
+    /// The commit row's verb when this envelope is one tab of a shell-owned
+    /// entity panel ("Reserve address"). It belongs to the plugin because only
+    /// the plugin knows what its tab saves. The act says what it does and
+    /// carries no explanation beside it. A tab that stages nothing sets none and
+    /// the shell draws no commit row. Ignored on an ordinary page render.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub cta: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub consequence: String,
     /// Where this tab's subject stands, in a word or two — "blocked", "no
     /// limit", an address. The shell wears it as a chip beside the tab's label,
     /// so a panel with several tabs answers what it was opened to ask before a
@@ -2643,12 +2640,11 @@ impl Envelope {
         self
     }
 
-    /// with_commit_row states the words this envelope's commit row carries when
-    /// the shell frames it as one tab of an entity panel: the verb, and what
-    /// applying it costs. An envelope that sets neither gets no commit row.
-    pub fn with_commit_row(mut self, cta: &str, consequence: &str) -> Envelope {
+    /// with_commit_row states the verb this envelope's commit row carries when
+    /// the shell frames it as one tab of an entity panel. An envelope that sets
+    /// none gets no commit row.
+    pub fn with_commit_row(mut self, cta: &str) -> Envelope {
         self.cta = cta.into();
-        self.consequence = consequence.into();
         self
     }
 
@@ -2674,7 +2670,6 @@ impl Envelope {
             back: None,
             notice: None,
             cta: String::new(),
-            consequence: String::new(),
             state: String::new(),
             immediate: false,
             tone: String::new(),

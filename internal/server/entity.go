@@ -79,11 +79,10 @@ type entityTab struct {
 	Active   bool
 	Href     string
 	Body     widget.Widget
-	// CTA and Note are the commit row's words for this tab — the verb, and what
-	// applying it costs. They are the plugin's because only the plugin knows;
-	// a tab that stages nothing supplies neither and the row is not drawn.
-	CTA  string
-	Note string
+	// CTA is the commit row's verb for this tab. It is the plugin's because
+	// only the plugin knows what its tab saves; a tab that stages nothing
+	// supplies none and the row is not drawn.
+	CTA string
 	// State is where this tab's subject stands, in a word or two, worn as a chip
 	// beside the label — so the strip answers what the panel was opened to ask
 	// before a tab is chosen.
@@ -246,7 +245,7 @@ func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, acti
 		out = append(out, entityTab{
 			Slot: claim.Slot, Label: tr(label), PluginID: claim.PluginID, Body: body,
 			Href: entityPath + kind + "/" + url.PathEscape(id) + "?tab=" + url.QueryEscape(claim.Slot),
-			CTA:  tr(env.CTA), Note: tr(env.Consequence), State: tr(env.State),
+			CTA:  tr(env.CTA), State: tr(env.State),
 		})
 	}
 	// The tab in force is the one asked for, else the first the design orders.
@@ -271,7 +270,6 @@ type entityPanelData struct {
 	Tabs      []entityTabView
 	Body      template.HTML
 	CTA       string
-	Note      string
 	// Post is where the commit row's verb submits: the tab in force, on the
 	// panel's own route. The row is the panel's frame rather than part of the
 	// plugin's form, so it carries the route itself.
@@ -379,7 +377,7 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		if err := s.widgets.RenderWithToken(&body, s.reading(r, tab.Body), s.sessionCSRF(r), lang, s.pluginTranslators(r)(tab.PluginID)); err != nil {
 			continue
 		}
-		data.Body, data.CTA, data.Note, data.Post = template.HTML(body.String()), tab.CTA, tab.Note, tab.Href
+		data.Body, data.CTA, data.Post = template.HTML(body.String()), tab.CTA, tab.Href
 		data.JoinsCode = widget.EndsWithCode(tab.Body)
 	}
 	return data, nil

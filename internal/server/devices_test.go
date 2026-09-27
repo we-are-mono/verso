@@ -351,7 +351,7 @@ func twoTabs() *tabTransport {
 		},
 		"/run/verso/qos.sock": {
 			SchemaVersion: 1, Title: "Limits & schedule", State: "blocked", Status: http.StatusOK,
-			CTA: "Save", Consequence: "Applies on the next firewall reload.", Widget: body,
+			CTA: "Save limits", Widget: body,
 		},
 	}}
 }
@@ -368,11 +368,15 @@ func TestEntityPanelWearsEachTabsState(t *testing.T) {
 	for _, want := range []string{
 		"Reserved address", ">192.168.77.102<", // the other tab, and where it stands
 		"Limits &amp; schedule", ">blocked<", // the tab in force, and where it stands
-		"Save", "Applies on the next firewall reload.", // its commit row, its words
+		">Save limits<", // its commit row's verb
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("entity panel missing %q:\n%s", want, body)
 		}
+	}
+	// The act says what it does and carries no explanation beside it.
+	if strings.Contains(body, "ml-auto min-w-0 text-sm leading-snug text-meta") {
+		t.Errorf("the commit row carries a note beside its acts:\n%s", body)
 	}
 	// The tab's form posts back into the panel, so the drawer stays open over
 	// the listing rather than navigating to a fragment.

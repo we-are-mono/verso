@@ -17,7 +17,6 @@ use crate::model::{Policy, DAYS};
 /// Saving stages configuration; the shell's review drawer owns Apply.
 pub const LABEL: &str = "Limits";
 const CTA: &str = "Save limits";
-const NOTE: &str = "Apply pending changes to use these settings.";
 
 const BLOCKED_NOTE: &str =
     "Blocks internet access. Access to devices on the local network is unchanged.";
@@ -47,7 +46,7 @@ pub fn tab(policy: &Policy, leases: &Leases, errors: &Errors) -> Envelope {
         Widget::config("/etc/config/qos", &form::caps_preview(policy, &name)),
     ]);
     Envelope::page(LABEL, body)
-        .with_commit_row(CTA, NOTE)
+        .with_commit_row(CTA)
         .with_tab_state(state(policy))
 }
 

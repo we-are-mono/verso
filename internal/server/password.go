@@ -44,7 +44,7 @@ func accessForm(hasPassword bool, username string, fieldErrs map[string]string, 
 	if hasPassword {
 		label = "Change password"
 	}
-	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields, Note: "Takes effect immediately — other sessions stay signed in."}
+	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields}
 }
 func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
 	return &widget.Stack{Children: []widget.Widget{
