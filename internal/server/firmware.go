@@ -41,18 +41,29 @@ type firmwareState struct {
 	installError  string
 }
 
-func (s *Server) firmwareModal(state firmwareState, board openwrt.Board) *widget.Modal {
-	model := board.Model
+// boardSentence words a sentence about the board in the reader's language. With
+// no model known it is a whole sentence of its own, because a language may
+// inflect "this device" differently in each; with one, the model's name — which
+// does not inflect — goes into the translated sentence. Either way it arrives
+// localized, so the walk must leave it (…Verbatim).
+func boardSentence(tr func(string) string, unknown, known, model string) string {
 	if model == "" {
-		model = "this device"
+		return tr(unknown)
 	}
+	return fmt.Sprintf(tr(known), model)
+}
+
+func (s *Server) firmwareModal(tr func(string) string, state firmwareState, board openwrt.Board) *widget.Modal {
 	// The dialog says the words its trigger says, and where it is: an image is
 	// chosen, then verified by OpenWrt, then installed.
 	m := &widget.Modal{
 		Trigger: "Choose firmware…", TriggerIcon: "upload",
 		Open: state.open, Title: "Upload a custom image", BusyTitle: "Verifying firmware",
-		BusyBody: fmt.Sprintf("Checking the image and confirming that it matches %s.", model),
-		Steps:    []string{"Choose", "Verify", "Install"},
+		BusyBody: boardSentence(tr,
+			"Checking the image and confirming that it matches this device.",
+			"Checking the image and confirming that it matches %s.", board.Model),
+		BusyBodyVerbatim: true,
+		Steps:            []string{"Choose", "Verify", "Install"},
 	}
 	if state.verified {
 		m.Step = 2
@@ -94,7 +105,10 @@ func (s *Server) firmwareModal(state firmwareState, board openwrt.Board) *widget
 		Fields: []widget.Widget{&widget.Field{
 			Name: "firmware_image", Kind: "file", Accept: ".bin,application/octet-stream",
 			Prompt: "Drop a sysupgrade image here", Required: true,
-			Help: fmt.Sprintf("A sysupgrade image built for %s · .bin, up to 128 MiB", model),
+			Help: boardSentence(tr,
+				"A sysupgrade image built for this device · .bin, up to 128 MiB",
+				"A sysupgrade image built for %s · .bin, up to 128 MiB", board.Model),
+			HelpVerbatim: true,
 		}},
 	})
 	m.Children = children

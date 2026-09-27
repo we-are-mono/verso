@@ -537,6 +537,7 @@ type TableCell struct {
 	Muted        bool            `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
 	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
 	Detail       string          `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
+	Verbatim     bool            `json:"-"`                       // Text and Sub were composed and localized where they were made (a relative time); the walk leaves them
 	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
 	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
 	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)

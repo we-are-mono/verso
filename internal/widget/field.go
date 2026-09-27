@@ -40,6 +40,7 @@ type Field struct {
 	Options      []Option `json:"options"`  // choices when kind is "select" or "checks"
 	Error        string   `json:"error"`    // inline validation error (set on 422)
 	Help         string   `json:"help"`     // the sentence explaining the field; raised onto the label, see Tip
+	HelpVerbatim bool     `json:"-"`        // shell-composed help already localized (a sentence filled with data)
 	// Key is the option this field writes, verbatim — "ipaddr", "leasetime".
 	// It rides beside the label as a mono chip so someone who knows the config
 	// can see which line they are editing without leaving the form, and someone

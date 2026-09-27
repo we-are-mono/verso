@@ -188,6 +188,48 @@ func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
 	if got := table.Rows[1].Drawer.Title; got != "Povezano" {
 		t.Errorf("prose drawer title = %q, want translated", got)
 	}
+
+	// A cell composed and localized where it was made (a relative time) is
+	// not looked up again: its words are already the reader's.
+	cells := &Table{
+		Columns: []TableColumn{{Kind: "text"}},
+		Rows: []TableRow{
+			{Cells: []TableCell{{Text: "Online", Sub: "Online", Verbatim: true}}},
+			{Cells: []TableCell{{Text: "Online", Sub: "Online"}}},
+		},
+	}
+	translateSchema(cells, tr)
+	if got := cells.Rows[0].Cells[0]; got.Text != "Online" || got.Sub != "Online" {
+		t.Errorf("verbatim cell = %q / %q, must stay verbatim", got.Text, got.Sub)
+	}
+	if got := cells.Rows[1].Cells[0].Text; got != "Povezano" {
+		t.Errorf("prose cell = %q, want translated", got)
+	}
+
+	// Likewise a field's help the shell composed around data after
+	// translating it (a board's model in a sentence).
+	filled := &Field{Label: "Devices", Help: "Online", HelpVerbatim: true}
+	plain := &Field{Label: "Devices", Help: "Online"}
+	translateSchema(filled, tr)
+	translateSchema(plain, tr)
+	if filled.Help != "Online" {
+		t.Errorf("verbatim field help = %q, must stay verbatim", filled.Help)
+	}
+	if plain.Help != "Povezano" {
+		t.Errorf("prose field help = %q, want translated", plain.Help)
+	}
+
+	// And a dialog's busy line composed the same way.
+	busy := &Modal{BusyBody: "Online", BusyBodyVerbatim: true}
+	idle := &Modal{BusyBody: "Online"}
+	translateSchema(busy, tr)
+	translateSchema(idle, tr)
+	if busy.BusyBody != "Online" {
+		t.Errorf("verbatim busy body = %q, must stay verbatim", busy.BusyBody)
+	}
+	if idle.BusyBody != "Povezano" {
+		t.Errorf("prose busy body = %q, want translated", idle.BusyBody)
+	}
 }
 
 // TestTranslateSchemaFallsBackToSource pins the guarantee that an untranslated key

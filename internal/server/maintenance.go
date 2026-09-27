@@ -88,7 +88,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	// alone, on the step it reached: the page around it is already on screen,
 	// and the dialog swaps what it holds (verso-forms.js).
 	if r.Header.Get("X-Verso-Upload") == "dialog" {
-		dialog := s.firmwareModal(firmware, board)
+		dialog := s.firmwareModal(tr, firmware, board)
 		if restore.open {
 			dialog = s.restoreModal(restore)
 		}
@@ -116,7 +116,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	// The custom image is the floor under every verdict: the way in when no
 	// server can build for this router. Beside an offered build it recedes to a
 	// quiet link; on every other verdict it is the act, and stands as a button.
-	manual := s.firmwareModal(firmware, board)
+	manual := s.firmwareModal(tr, firmware, board)
 	manual.Trigger, manual.TriggerStyle, manual.TriggerIcon = "Upload a custom image…", "secondary", "upload"
 	var install, owut template.HTML
 	if ledger.Offer {

@@ -67,17 +67,21 @@ func accessSessionsTable(sessions []accessSession, tr func(string) string) *widg
 	rows := make([]widget.TableRow, 0, len(sessions))
 	for _, session := range sessions {
 		source := widget.TableCell{Text: session.Address, Detail: session.Browser}
+		// The act's words are the walk's to translate, like any table act's.
 		action := widget.TableCell{
-			Actions:      []widget.TableRowAct{{Icon: "log-out", Title: tr("Revoke session"), Name: "_action", Value: "end-session:" + session.ID}},
-			ConfirmTitle: tr("Revoke this session?"),
-			Confirm:      tr("That browser is signed out at once and has to sign in again."),
+			Actions:      []widget.TableRowAct{{Icon: "log-out", Title: "Revoke session", Name: "_action", Value: "end-session:" + session.ID}},
+			ConfirmTitle: "Revoke this session?",
+			Confirm:      "That browser is signed out at once and has to sign in again.",
 		}
 		if session.Current {
 			source.Tag = tr("this browser")
 			source.TagVariant = "success"
-			action.Confirm = tr("This browser is signed out at once, the same as Log out.")
+			action.Confirm = "This browser is signed out at once, the same as Log out."
 		}
-		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, {Text: session.LastActive, Detail: session.Since}, action}})
+		// The times were worded in the reader's language as they were composed
+		// (accessSessions), so the walk leaves them.
+		seen := widget.TableCell{Text: session.LastActive, Detail: session.Since, Verbatim: true}
+		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, seen, action}})
 	}
 	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen", Kind: "text"}, {Kind: "actions"}}, Rows: rows}
 }

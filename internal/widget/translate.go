@@ -89,7 +89,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 		n.Prompt = t(n.Prompt)
 		n.Placeholder = t(n.Placeholder)
-		n.Help = t(n.Help)
+		if !n.HelpVerbatim {
+			n.Help = t(n.Help)
+		}
 		// Key and Source are the config as it is written — machine strings, not
 		// words — so they travel verbatim and only the sentence is looked up.
 		n.Tip = t(n.Tip)
@@ -134,7 +136,9 @@ func translateFields(w Widget, t func(string) string) {
 	case *Modal:
 		n.Trigger = t(n.Trigger)
 		n.BusyTitle = t(n.BusyTitle)
-		n.BusyBody = t(n.BusyBody)
+		if !n.BusyBodyVerbatim {
+			n.BusyBody = t(n.BusyBody)
+		}
 		n.Title = t(n.Title)
 		for i := range n.Steps {
 			n.Steps[i] = t(n.Steps[i])
@@ -293,7 +297,7 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			// Sub follow the column's declared kind. A row wider than its
 			// columns keeps its overflow verbatim — shape errors must not turn
 			// data into prose.
-			if j < len(columns) && !machineCellKinds[columns[j].Kind] {
+			if j < len(columns) && !machineCellKinds[columns[j].Kind] && !c.Verbatim {
 				c.Text = t(c.Text)
 				c.Sub = t(c.Sub)
 			}

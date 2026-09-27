@@ -21,8 +21,11 @@ type Modal struct {
 	Open         bool   // open immediately (server-rendered verified/error state)
 	BusyTitle    string // optional submit-time progress state
 	BusyBody     string
-	Title        string   // dialog heading
-	Children     []Widget // dialog body
+	// BusyBodyVerbatim marks a busy line the shell composed around data after
+	// translating it (a board's model in a sentence); the walk leaves it.
+	BusyBodyVerbatim bool
+	Title            string   // dialog heading
+	Children         []Widget // dialog body
 	// Steps names the steps a dialog walks through ("Choose", "Verify",
 	// "Install"), and Step is the one in hand (0-based). The dialog says where
 	// it is under its title; the page's script moves it on as an upload goes.
