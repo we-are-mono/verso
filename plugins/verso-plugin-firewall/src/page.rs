@@ -22,8 +22,6 @@ pub const ZONES: &str = "zones";
 pub const SETTINGS: &str = "settings";
 pub const ACTIVITY: &str = "activity";
 
-pub const NEW: &str = "new";
-
 /// MOUNT is where the shell serves this plugin. A widget's href is a route
 /// through the shell, not a plugin sub-path, so the plugin builds it in full —
 /// unlike the subpage bar, whose paths the shell resolves against the mount.
@@ -51,20 +49,10 @@ pub fn zones_href() -> String {
     format!("{MOUNT}/{ZONES}")
 }
 
-/// redirect_href is the address of one port forward's editor.
-pub fn redirect_href(section: &str) -> String {
-    format!("{MOUNT}/{PORT_FORWARDS}/{section}")
-}
-
-/// new_redirect_href is the address of the blank port-forward editor.
-pub fn new_redirect_href() -> String {
-    format!("{MOUNT}/{PORT_FORWARDS}/{NEW}")
-}
-
-// A zone has no address of its own: it is read and edited in the panel beside the
-// listing, so its door is a query on the listing's own address (zone_drawer::href)
-// rather than a path below it. The two functions that built those paths are gone
-// with the page they led to.
+// A port forward and a zone have no address of their own: each is read and
+// edited in the panel beside its listing, so its door is a query on the
+// listing's own address (redirect_drawer::href, zone_drawer::href) rather than a
+// path below it.
 
 /// tabs is the subpage bar. Every page declares the same list, so the bar stays
 /// put as the visitor moves between them.

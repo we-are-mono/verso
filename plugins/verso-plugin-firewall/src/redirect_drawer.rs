@@ -1,46 +1,49 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The port-forward editor: one redirect, on a page of its own.
+//! The port-forward panel: one redirect, beside the listing.
 //!
 //! A port forward is a short thought — catch this arriving traffic, send it
 //! there — but it is still three separate decisions, and it is the one firewall
-//! object that deliberately opens a way in from the internet. It gets the same
-//! page treatment as a rule so the whole of it is visible while it is written.
-//!
-//! The form is the page's, not its own: the shell's staged-changes bar submits it
-//! and applies the result, so the editor answers a submission the way it answers
-//! a visit — with itself, re-rendered from what was submitted. Deleting is a
-//! second, small form below it, behind a confirmation.
+//! object that deliberately opens a way in from the internet. It lives where the
+//! other firewall objects do, in the panel its row opens, and a new one is the
+//! same panel opened blank: making one and editing one are the same job. It is
+//! one reading rather than tabs, because the parts are one thought read in
+//! order — what arrives, where it goes, who else reaches it — and the whole of
+//! it should be visible while it is written.
 //!
 //! Only the dnat direction is edited here. firewall4's redirect spec covers both
 //! directions with one section type, but a snat redirect answers a different
-//! question and is not what this listing shows, so a sub-path naming one is a
-//! sub-path naming nothing.
+//! question and is not what the listing shows, so an address naming one opens
+//! nothing.
 //!
-//! The page used to ask four questions and stop, and a `redirect` carries nearly
-//! a rule's whole matching vocabulary besides — twenty-two options with nowhere
-//! to go, two of which firewall4 acts on in their absence. They are here now, and
-//! the shape is the rule editor's rather than twenty-two more rows: the ones a
-//! forward can narrow itself by are an open catalogue the shell renders only
-//! where the object carries them (`conditions::for_redirect`), and the few that
-//! say what happens rather than what matches sit beside the thing they govern.
+//! A `redirect` carries nearly a rule's whole matching vocabulary — twenty-two
+//! options, two of which firewall4 acts on in their absence. The shape is the
+//! rule panel's rather than twenty-two rows: the ones a forward can narrow
+//! itself by are an open catalogue the shell renders only where the object
+//! carries them (`conditions::for_redirect`), and the few that say what happens
+//! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{
-    commit, commit_delete, commit_new, Envelope, Form, SelectOption, Snapshot, Tone, Value, Widget,
-};
+use verso_plugin::{RowDrawer, SelectOption, Value, Widget};
 
 use crate::conditions;
-use crate::counters::Counters;
-use crate::fields::{self, DELETE_FIELD};
-use crate::model::{Firewall, CONFIG};
+use crate::fields;
+use crate::model::{Firewall, Redirect};
 use crate::page;
 use crate::redirect_form::{RedirectForm, PROTOCOLS};
-use crate::redirects;
 use crate::rule_form::Errors;
 
-const NEW_SUBHEADING: &str =
-    "Say which arriving traffic to catch, and where the router should send it.";
+/// OPEN names the forward whose panel is open in the listing's query, and NEW
+/// stands in for one that does not exist yet.
+pub const OPEN: &str = "open";
+pub const NEW: &str = "new";
+
+/// The row's trash act asks before it removes a forward, in these words; the
+/// shell puts the forward's name where the question says %s.
+pub const DELETE_TRIGGER: &str = "Delete port forward";
+pub const DELETE_QUESTION: &str = "Delete port forward “%s”?";
+pub const DELETE_MESSAGE: &str = "Traffic arriving on that port stops being forwarded, and the \
+device behind it is no longer reachable from outside.";
 
 const INCOMING_SUB: &str = "The traffic the router picks up before it decides where it goes.";
 
@@ -54,145 +57,66 @@ const REFLECTION_HELP: &str = "On, a device at home that asks for your public ad
 reaches this forward. Off, it has to use the local address instead — the forward then works \
 only from the internet.";
 
-const REFUSED: &str =
-    "Some values aren’t ones the firewall accepts, so nothing was saved. They’re marked below.";
-
-/// edit answers a visit to one port forward's editor, or nothing when the
-/// sub-path names no forward this config holds.
-pub fn edit(snapshot: &Snapshot, model: &Firewall, section: &str) -> Option<Envelope> {
-    let redirect = model
-        .redirects
-        .iter()
-        .find(|redirect| redirect.section == section && redirect.is_port_forward())?;
-    let uci = snapshot.section(CONFIG, section)?;
-    let form = RedirectForm::read(&uci);
-    Some(
-        page(model, Some(section), &form, &Errors::default())
-            .with_subheading(&heading(&redirect.name)),
-    )
+/// href opens one forward's panel on the listing; new_href opens it blank.
+pub fn href(section: &str) -> String {
+    format!("{}?{OPEN}={section}", page::port_forwards_href())
 }
 
-/// blank answers a visit to the new-forward editor: firewall4's own defaults, so
-/// what the operator starts from is what the packet filter would assume.
-pub fn blank(model: &Firewall) -> Envelope {
-    page(model, None, &RedirectForm::default(), &Errors::default()).with_subheading(NEW_SUBHEADING)
+pub fn new_href() -> String {
+    format!("{}?{OPEN}={NEW}", page::port_forwards_href())
 }
 
-/// create answers the new-forward editor's submission.
-pub fn create(model: &Firewall, form: &Form) -> Envelope {
-    let redirect = RedirectForm::submitted(form);
-    let errors = redirect.validate(&model.zone_names(), &model.ipsets);
-    let answer = page(model, None, &redirect, &errors).with_subheading(NEW_SUBHEADING);
-    if !errors.is_empty() {
-        return answer.with_notice(Tone::Danger, REFUSED);
+/// drawer is the panel for an existing forward (`redirect`), or a blank one for
+/// a forward that does not exist yet, stated from `form` — the config's values
+/// on a visit, what was typed on a refused submission.
+pub fn drawer(
+    model: &Firewall,
+    redirect: Option<&Redirect>,
+    form: &RedirectForm,
+    errors: &Errors,
+) -> RowDrawer {
+    let (title, submit, section) = match redirect {
+        Some(redirect) => (
+            title(&redirect.name),
+            "Save port forward",
+            redirect.section.as_str(),
+        ),
+        None => (
+            "New port forward".to_string(),
+            "Add port forward",
+            NEW_SECTION,
+        ),
+    };
+    // The parts read in order under one another: the first heads the panel under
+    // its title bar, and a rule sets off each of the rest.
+    let fields = vec![
+        identity(form, errors),
+        incoming(model, form, errors).ruled(),
+        destination(model, form, errors).ruled(),
+        reach(model, form, errors).ruled(),
+        handling(form, errors).ruled(),
+        // What the panel will write, as the file spells it — the same footnote
+        // the rule and zone panels carry, and the same reason: the form asks its
+        // questions in plain words, and someone who knows the config reads this
+        // to check the plain words said what they meant.
+        Widget::config_preview(CONFIG_PATH, &uci_block(section, form)),
+    ];
+    RowDrawer {
+        title,
+        closed: page::port_forwards_href(),
+        open: true,
+        children: vec![fields::panel_form(submit, fields)],
+        ..RowDrawer::default()
     }
-    answer
-        .with_notice(Tone::Success, "Port forward added.")
-        .with_commit(vec![commit_new(CONFIG, "redirect", redirect.values(false))])
 }
 
-/// save answers one port forward's editor. A body carrying the delete marker is
-/// the second form below the editor, and answers with the listing the forward is
-/// leaving; anything else is the editor's own submission.
-pub fn save(
-    model: &mut Firewall,
-    counters: &Counters,
-    section: &str,
-    form: &Form,
-) -> Option<Envelope> {
-    let index = model
-        .redirects
-        .iter()
-        .position(|redirect| redirect.section == section && redirect.is_port_forward())?;
-    if form.get(DELETE_FIELD) == "1" {
-        let removed = model.redirects.remove(index);
-        return Some(
-            redirects::page(model, counters)
-                .with_notice(Tone::Success, "Port forward deleted.")
-                .with_commit(vec![commit_delete(CONFIG, &removed.section)]),
-        );
-    }
-
-    let redirect = RedirectForm::submitted(form);
-    let errors = redirect.validate(&model.zone_names(), &model.ipsets);
-    let answer =
-        page(model, Some(section), &redirect, &errors).with_subheading(&heading(&redirect.name));
-    if !errors.is_empty() {
-        return Some(answer.with_notice(Tone::Danger, REFUSED));
-    }
-    Some(
-        answer
-            .with_notice(Tone::Success, "Port forward saved.")
-            .with_commit(vec![commit(CONFIG, section, redirect.values(true))]),
-    )
-}
-
-/// missing states that the sub-path names no port forward — a stale link, or one
-/// someone else removed — and answers with the listing, which is somewhere real.
-pub fn missing(model: &Firewall, counters: &Counters) -> Envelope {
-    redirects::page(model, counters).with_notice(
-        Tone::Danger,
-        "That port forward isn’t here any more, so here are the forwards instead.",
-    )
-}
-
-/// heading names the forward the page is about, falling back to its own words
-/// when the section carries no comment.
-fn heading(name: &str) -> String {
+/// title names the forward, or says plainly that it has no name: a redirect's
+/// comment is optional, and one without it still has to open.
+fn title(name: &str) -> String {
     match name.is_empty() {
-        true => "An unnamed port forward.".to_string(),
+        true => "An unnamed port forward".to_string(),
         false => name.to_string(),
     }
-}
-
-/// page composes the editor. `section` is the forward being edited, or None for
-/// a new one — which is also what decides whether the delete form is there.
-fn page(
-    model: &Firewall,
-    section: Option<&str>,
-    redirect: &RedirectForm,
-    errors: &Errors,
-) -> Envelope {
-    let (title, submit) = match section {
-        Some(_) => ("Edit port forward", "Save changes"),
-        None => ("New port forward", "Add port forward"),
-    };
-    let mut children = vec![Widget::Form {
-        style: "page".into(),
-        submit: submit.into(),
-        error: String::new(),
-        fields: vec![
-            identity(redirect, errors),
-            incoming(model, redirect, errors),
-            destination(model, redirect, errors),
-            reach(model, redirect, errors),
-            handling(redirect, errors),
-            // What the page will write, as the file spells it — the same footnote
-            // the rule and zone panels carry, and the same reason: the form asks
-            // its questions in plain words, and someone who knows the config
-            // reads this to check the plain words said what they meant.
-            Widget::config_preview(
-                CONFIG_PATH,
-                &uci_block(section.unwrap_or(NEW_SECTION), redirect),
-            ),
-        ],
-        note: String::new(),
-        target: String::new(),
-    }];
-    if section.is_some() {
-        children.push(fields::delete_form(
-            "Delete port forward",
-            &format!(
-                "Delete {}? Traffic arriving on that port stops being forwarded, and the device \
-                 behind it is no longer reachable from outside.",
-                fields::subject(&redirect.name, "this port forward")
-            ),
-        ));
-    }
-    Envelope::page(title, Widget::stack(children))
-        .with_width("normal")
-        .with_pages(page::tabs())
-        .with_back("Cancel", &page::port_forwards_href())
 }
 
 /// identity is what the forward is called and whether it is live at all. The
@@ -489,26 +413,55 @@ busy forward fills the 64 KB ring in minutes.";
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::counters::Counters;
     use crate::fixture;
+    use crate::redirects;
     use serde_json::Value;
+    use verso_plugin::{Form, Snapshot};
 
-    fn open(section: &str) -> Value {
-        let snapshot = fixture::snapshot();
-        let model = fixture::firewall();
-        let envelope = edit(&snapshot, &model, section).expect("the fixture holds this forward");
+    /// visit is the listing at an address that names a panel.
+    fn visit(snapshot: &Snapshot, model: &Firewall, query: &str) -> Value {
+        let envelope =
+            redirects::page_open(snapshot, model, &Counters::default(), &Form::parse(query));
         serde_json::to_value(&envelope).expect("serialize")
     }
 
+    fn open(section: &str) -> Value {
+        visit(
+            &fixture::snapshot(),
+            &fixture::firewall(),
+            &format!("{OPEN}={section}"),
+        )
+    }
+
+    fn blank() -> Value {
+        open(NEW)
+    }
+
+    /// submit posts the panel open on `section` the way its form posts: the
+    /// fields, and the marker that says the body is the panel's own.
     fn submit(section: &str, fields: &[(&str, &str)]) -> Value {
         let mut model = fixture::firewall();
-        let envelope = save(
+        let body = format!("{}&{}=1", encode(fields), fields::PANEL_FIELD);
+        let envelope = redirects::save(
             &mut model,
             &Counters::default(),
-            section,
-            &Form::parse(&encode(fields)),
-        )
-        .expect("the fixture holds this forward");
+            &Form::parse(&format!("{OPEN}={section}")),
+            &Form::parse(&body),
+        );
         serde_json::to_value(&envelope).expect("serialize")
+    }
+
+    fn create(fields: &[(&str, &str)]) -> Value {
+        submit(NEW, fields)
+    }
+
+    /// panel is the drawer the answer holds open: a row's, or the bar's for a
+    /// forward that does not exist yet.
+    fn panel(body: &Value) -> Value {
+        fixture::find_with(body, &|v| v.get("drawer").is_some_and(|d| d.is_object()))
+            .map(|holder| holder["drawer"].clone())
+            .expect("a panel is open")
     }
 
     fn encode(fields: &[(&str, &str)]) -> String {
@@ -538,21 +491,49 @@ mod tests {
         body["commit"][0]["values"].clone()
     }
 
+    /// A forward opens in its row's panel on the listing, not on a page of its
+    /// own: the listing stays behind it, and the panel saves the forward by name.
     #[test]
-    fn the_editor_is_a_page_form_that_stages_and_returns() {
+    fn a_forward_opens_in_its_rows_panel() {
         let body = open("https_to_nas");
-        assert_eq!(body["title"], "Edit port forward");
-        assert_eq!(body["subheading"], "HTTPS-to-NAS");
-        assert_eq!(body["width"], "normal");
-        assert_eq!(body["pages"][1]["label"], "Port forwards");
-        let form = &body["widget"]["children"][0];
-        assert_eq!(form["type"], "form");
-        assert_eq!(form["style"], "page");
         assert_eq!(
-            form["submit"], "Save changes",
-            "the editor carries its own submit"
+            body["title"],
+            redirects::HEADING,
+            "the listing stays the page"
         );
-        assert_eq!(body["back"]["href"], "/plugins/firewall/port-forwards");
+        let row = fixture::listing(&body)["rows"]
+            .as_array()
+            .expect("rows")
+            .iter()
+            .find(|row| row["id"] == "https_to_nas")
+            .expect("the forward's row")
+            .clone();
+        let drawer = &row["drawer"];
+        assert_eq!(drawer["title"], "HTTPS-to-NAS");
+        assert_eq!(drawer["open"], true);
+        assert_eq!(drawer["closed"], "/plugins/firewall/port-forwards");
+        let form = &drawer["children"][0];
+        assert_eq!(form["type"], "form");
+        assert_eq!(form["submit"], "Save port forward");
+        assert!(
+            fixture::find_with(form, &|v| v["name"] == fields::PANEL_FIELD).is_some(),
+            "the form says it is the panel's own"
+        );
+        // The parts read in order: the first heads the panel, a rule sets off the
+        // rest, and the preview closes it.
+        let parts: Vec<Value> = form["fields"]
+            .as_array()
+            .expect("fields")
+            .iter()
+            .filter(|w| w["type"] == "section")
+            .cloned()
+            .collect();
+        assert_eq!(parts.len(), 5);
+        assert_eq!(parts[0]["flush"], true);
+        assert!(parts[1..].iter().all(|part| part["hairline"] == true));
+        // Its row's doors both lead here.
+        assert_eq!(row["panel"], href("https_to_nas"));
+        assert_eq!(row["cells"][0]["href"], href("https_to_nas"));
     }
 
     #[test]
@@ -600,44 +581,40 @@ mod tests {
         );
     }
 
+    /// Add opens the same panel blank, from the listing's bar, at firewall4's own
+    /// defaults — what the operator starts from is what the packet filter would
+    /// assume.
     #[test]
     fn a_new_forward_starts_where_firewall4s_own_defaults_are() {
-        let body = serde_json::to_value(blank(&fixture::firewall())).expect("serialize");
-        assert_eq!(body["title"], "New port forward");
-        assert_eq!(body["subheading"], NEW_SUBHEADING);
-        assert_eq!(control(&body, "enabled")["on"], true);
-        assert_eq!(control(&body, "proto")["value"], "tcp udp");
-        assert_eq!(control(&body, "src")["value"], "");
-        assert!(
-            body["widget"]["children"]
-                .as_array()
-                .expect("children")
-                .len()
-                == 1,
-            "a forward that does not exist yet cannot be deleted"
+        let body = blank();
+        let drawer = fixture::widget(&body, "actionbar")["drawer"].clone();
+        assert_eq!(drawer["title"], "New port forward");
+        assert_eq!(drawer["children"][0]["submit"], "Add port forward");
+        assert_eq!(control(&drawer, "enabled")["on"], true);
+        assert_eq!(control(&drawer, "proto")["value"], "tcp udp");
+        assert_eq!(control(&drawer, "src")["value"], "");
+        assert_eq!(
+            fixture::widget(&body, "actionbar")["action"]["href"],
+            new_href(),
+            "the bar's Add opens this panel"
         );
     }
 
     #[test]
     fn creating_a_forward_states_its_direction_and_only_the_options_it_sets() {
-        let model = fixture::firewall();
-        let body = serde_json::to_value(create(
-            &model,
-            &Form::parse(&encode(&[
-                ("name", "Minecraft"),
-                ("enabled", "1"),
-                ("src", "wan"),
-                ("src_dport", "25565"),
-                ("proto", "tcp"),
-                ("dest_ip", "10.0.0.44"),
-                ("dest_port", "25565"),
-                // The blank form offers these on, as firewall4 behaves, so the
-                // browser posts them.
-                ("reflection", "1"),
-                ("counter", "1"),
-            ])),
-        ))
-        .expect("serialize");
+        let body = create(&[
+            ("name", "Minecraft"),
+            ("enabled", "1"),
+            ("src", "wan"),
+            ("src_dport", "25565"),
+            ("proto", "tcp"),
+            ("dest_ip", "10.0.0.44"),
+            ("dest_port", "25565"),
+            // The blank form offers these on, as firewall4 behaves, so the
+            // browser posts them.
+            ("reflection", "1"),
+            ("counter", "1"),
+        ]);
 
         assert_eq!(body["notice"]["level"], "success");
         assert_eq!(body["commit"][0]["config"], "firewall");
@@ -745,8 +722,7 @@ mod tests {
         assert_eq!(source["value"], "internal");
 
         // The blank form agrees: a new forward starts reachable from inside.
-        let blank = serde_json::to_value(blank(&fixture::firewall())).expect("serialize");
-        assert_eq!(control(&blank, "reflection")["checked"], true);
+        assert_eq!(control(&blank(), "reflection")["checked"], true);
     }
 
     /// The source only rides along while reflection is on: firewall4 ignores it
@@ -845,9 +821,7 @@ mod tests {
     #[test]
     fn a_forward_that_names_no_arrival_zone_is_refused() {
         for src in ["", "*"] {
-            let model = fixture::firewall();
-            let body = serde_json::to_value(create(&model, &Form::parse(&encode(&[("src", src)]))))
-                .expect("serialize");
+            let body = create(&[("src", src)]);
             assert!(body.get("commit").is_none(), "{src:?}");
             assert_eq!(
                 control(&body, "src")["error"],
@@ -863,35 +837,33 @@ mod tests {
     // last honest gate.
     #[test]
     fn a_forward_that_rewrites_nothing_is_refused() {
-        let model = fixture::firewall();
-        let body = serde_json::to_value(create(&model, &Form::parse("src=wan&proto=tcp")))
-            .expect("serialize");
+        let body = create(&[("src", "wan"), ("proto", "tcp")]);
         assert!(body.get("commit").is_none());
         assert_eq!(
             control(&body, "src_dport")["error"],
             "Give the forward something to rewrite: an incoming port, a destination address, or a destination port."
         );
         for accepted in [
-            "src=wan&src_dport=8443",
-            "src=wan&dest_ip=10.0.0.30",
-            "src=wan&dest_port=443",
+            ("src_dport", "8443"),
+            ("dest_ip", "10.0.0.30"),
+            ("dest_port", "443"),
         ] {
-            let body =
-                serde_json::to_value(create(&model, &Form::parse(accepted))).expect("serialize");
-            assert!(body.get("commit").is_some(), "{accepted}");
+            let body = create(&[("src", "wan"), accepted]);
+            assert!(body.get("commit").is_some(), "{accepted:?}");
         }
     }
 
+    /// A forward is removed from its row, behind the row's own question, and the
+    /// answer is the listing it is leaving.
     #[test]
     fn deleting_a_forward_answers_with_the_listing_it_is_leaving() {
         let mut model = fixture::firewall();
-        let envelope = save(
+        let envelope = redirects::save(
             &mut model,
             &Counters::default(),
-            "https_to_nas",
-            &Form::parse("_delete=1"),
-        )
-        .expect("the fixture holds this forward");
+            &Form::parse(""),
+            &Form::parse(&format!("{}=https_to_nas", fields::REMOVE_FIELD)),
+        );
         let body = serde_json::to_value(&envelope).expect("serialize");
 
         assert_eq!(body["title"], crate::redirects::HEADING);
@@ -940,12 +912,11 @@ mod tests {
     /// shell and what the operator needs to see without hunting.
     #[test]
     fn a_forward_that_carries_conditions_opens_with_them_showing() {
-        let snapshot = fixture::editor_snapshot();
-        let model = fixture::editor_firewall();
-        let body = serde_json::to_value(
-            edit(&snapshot, &model, "everything_forward").expect("the fixture's forward"),
-        )
-        .expect("serialize");
+        let body = visit(
+            &fixture::editor_snapshot(),
+            &fixture::editor_firewall(),
+            &format!("{OPEN}=everything_forward"),
+        );
 
         let items = fixture::widget(&body, "conditions")["items"]
             .as_array()
@@ -1033,37 +1004,50 @@ mod tests {
         assert_eq!(values["log_limit"], "10/minute");
     }
 
+    /// Removal is the row's act, asked about on the row: the panel is for
+    /// reading and changing a forward, and holds no delete form of its own.
     #[test]
-    fn only_an_existing_forward_offers_to_delete_itself() {
+    fn a_forward_is_deleted_from_its_row() {
         let body = open("https_to_nas");
-        let delete = &body["widget"]["children"][1];
-        assert_eq!(delete["type"], "form");
-        assert_eq!(delete["fields"][0]["name"], DELETE_FIELD);
-        assert_eq!(delete["fields"][1]["type"], "confirm");
-        assert_eq!(delete["fields"][1]["trigger"], "Delete port forward");
+        let row = fixture::listing(&body)["rows"]
+            .as_array()
+            .expect("rows")
+            .iter()
+            .find(|row| row["id"] == "https_to_nas")
+            .expect("the forward's row")
+            .clone();
+        let trash = fixture::find_with(&row["cells"], &|v| v["icon"] == "trash-2")
+            .expect("the row's trash act");
+        assert_eq!(trash["name"], fields::REMOVE_FIELD);
+        assert_eq!(trash["value"], "https_to_nas");
+        assert_eq!(trash["title"], DELETE_TRIGGER);
+        assert_eq!(trash["confirm_title"], DELETE_QUESTION);
+        assert_eq!(trash["confirm"], DELETE_MESSAGE);
+        assert!(
+            fixture::find_with(&panel(&body), &|v| v["name"] == fields::DELETE_FIELD).is_none(),
+            "the panel carries no delete form"
+        );
     }
 
+    /// An address naming no port forward opens nothing: a stale link lands on the
+    /// listing rather than on an error about a forward that is gone. A source
+    /// rewrite is a redirect section but not a port forward, and a rule is
+    /// neither.
     #[test]
-    fn a_sub_path_naming_no_port_forward_answers_with_the_listing() {
-        let snapshot = fixture::snapshot();
-        let model = fixture::firewall();
-        assert!(edit(&snapshot, &model, "no_such_forward").is_none());
-        // A source rewrite is a redirect section, but it is not a port forward.
-        assert!(edit(&snapshot, &model, "nas_snat").is_none());
-        // Neither is a rule.
-        assert!(edit(&snapshot, &model, "allow_ping").is_none());
-
-        let mut model = fixture::firewall();
-        assert!(save(
-            &mut model,
-            &Counters::default(),
-            "nas_snat",
-            &Form::parse("src=wan")
-        )
-        .is_none());
-
-        let body = serde_json::to_value(missing(&model, &Counters::default())).expect("serialize");
+    fn an_address_naming_no_port_forward_opens_nothing() {
+        for section in ["no_such_forward", "nas_snat", "allow_ping"] {
+            let body = open(section);
+            assert_eq!(body["title"], redirects::HEADING, "{section}");
+            assert!(
+                fixture::find_with(&body, &|v| v.get("drawer").is_some_and(|d| d.is_object()))
+                    .is_none(),
+                "{section} opened a panel"
+            );
+        }
+        // And a save addressed to one writes nothing and says why.
+        let body = submit("nas_snat", &[("src", "wan"), ("src_dport", "80")]);
+        assert!(body.get("commit").is_none());
         assert_eq!(body["notice"]["level"], "danger");
-        assert_eq!(body["title"], crate::redirects::HEADING);
+        assert_eq!(body["title"], redirects::HEADING);
     }
 }

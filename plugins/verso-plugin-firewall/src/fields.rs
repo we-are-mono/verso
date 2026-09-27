@@ -69,38 +69,6 @@ pub fn name_field(rule: &RuleForm, errors: &Errors) -> Widget {
     )
 }
 
-/// delete_form is an editor's one irreversible action, kept in a form of its own
-/// so the page form above it can never carry it by accident. The confirm holds
-/// the submit, so this form draws no Save of its own.
-pub fn delete_form(action: &str, message: &str) -> Widget {
-    Widget::Form {
-        style: String::new(),
-        submit: String::new(),
-        error: String::new(),
-        fields: vec![
-            Widget::hidden(DELETE_FIELD, "1"),
-            Widget::Confirm {
-                trigger: action.into(),
-                title: String::new(),
-                message: message.into(),
-                confirm: action.into(),
-                cancel: String::new(),
-            },
-        ],
-        note: String::new(),
-        target: String::new(),
-    }
-}
-
-/// subject names the thing an editor is about to delete: what its operator
-/// called it, or what kind of thing it is when nobody named it.
-pub fn subject(name: &str, unnamed: &str) -> String {
-    match name.is_empty() {
-        true => unnamed.to_string(),
-        false => format!("“{name}”"),
-    }
-}
-
 // ---- the controls the editor and its conditions share ----
 
 /// row_group is a run of rows that belong together — a range's two ends, a

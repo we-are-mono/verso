@@ -231,7 +231,7 @@ mod tests {
     use crate::rule_form::{Errors, RuleForm};
     use crate::vocabulary::FIREWALL;
     use crate::zone_form::ZoneForm;
-    use crate::{crossings, fixture, redirect_editor, rules, settings, zone_drawer, zones};
+    use crate::{crossings, fixture, redirects, rules, settings, zone_drawer, zones};
     use verso_plugin::vocabulary::{
         reckon, stale_compositions, stale_omissions, Cardinality, Provenance,
     };
@@ -311,17 +311,15 @@ mod tests {
             ))
             .expect("serialize the crossings editor"),
         ));
-        let redirect = redirect_editor::edit(&snapshot, &model, "https_to_nas")
-            .expect("the fixture's port forward");
-        out.push((
-            "redirect",
-            serde_json::to_value(&redirect).expect("serialize the redirect editor"),
-        ));
-        out.push((
-            "redirect",
-            serde_json::to_value(redirect_editor::blank(&model))
-                .expect("serialize the new port forward"),
-        ));
+        // The port-forward panel, open on a forward and blank.
+        for open in ["https_to_nas", "new"] {
+            let query = Form::parse(&format!("open={open}"));
+            out.push((
+                "redirect",
+                serde_json::to_value(redirects::page_open(&snapshot, &model, &counters, &query))
+                    .expect("serialize the port-forward panel"),
+            ));
+        }
         out
     }
 

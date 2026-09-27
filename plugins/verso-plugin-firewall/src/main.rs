@@ -29,7 +29,7 @@ mod fields;
 mod format;
 mod model;
 mod page;
-mod redirect_editor;
+mod redirect_drawer;
 mod redirect_form;
 mod redirects;
 mod rename;
@@ -67,19 +67,19 @@ fn get(request: &Request) -> Envelope {
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
         Route::RuleFile(name) => settings::open_file(&model, &name),
-        // Rules and zones read their own query: each carries which of its objects
-        // is open beside it, and on which reading. Every other listing is the same
-        // page whatever the query says.
+        // Rules, port forwards and zones read their own query: each carries which
+        // of its objects is open beside it (and, for rules and zones, on which
+        // reading). Every other listing is the same page whatever the query says.
         Route::Listing(Listing::Rules) => {
             rules::page_open(&request.snapshot, &model, &counters, &request.query)
+        }
+        Route::Listing(Listing::PortForwards) => {
+            redirects::page_open(&request.snapshot, &model, &counters, &request.query)
         }
         Route::Listing(Listing::Zones) => {
             zones::page_open(&request.snapshot, &model, &request.query)
         }
         Route::Listing(listing) => render(listing, &request.snapshot, &model, &counters),
-        Route::NewRedirect => redirect_editor::blank(&model),
-        Route::EditRedirect(section) => redirect_editor::edit(&request.snapshot, &model, &section)
-            .unwrap_or_else(|| redirect_editor::missing(&model, &counters)),
     }
 }
 
@@ -88,11 +88,6 @@ fn post(request: &Request, form: &Form) -> Envelope {
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
         Route::RuleFile(name) => settings::save_file(&model, &name, form),
-        Route::NewRedirect => redirect_editor::create(&model, form),
-        Route::EditRedirect(section) => {
-            redirect_editor::save(&mut model, &counters, &section, form)
-                .unwrap_or_else(|| redirect_editor::missing(&model, &counters))
-        }
         // The settings are one form, submitted whole, so they are saved whole
         // rather than read as a single flip.
         Route::Listing(Listing::Settings) => {
@@ -112,6 +107,11 @@ fn post(request: &Request, form: &Form) -> Envelope {
                 &request.query,
                 form,
             )
+        }
+        Route::Listing(Listing::PortForwards)
+            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+        {
+            redirects::save(&mut model, &counters, &request.query, form)
         }
         Route::Listing(Listing::Zones)
             if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
@@ -147,8 +147,6 @@ fn flip(
 /// that editor's to answer, because only it knows what it can edit.
 enum Route {
     Listing(Listing),
-    NewRedirect,
-    EditRedirect(String),
     /// A rule file's editor, open over the settings: the name after
     /// `settings/files/`, "new" for one not yet made.
     RuleFile(String),
@@ -168,17 +166,13 @@ enum Listing {
 impl Route {
     fn of(path: &str) -> Route {
         let path = path.trim_matches('/');
-        if let Some(rest) = path.strip_prefix(page::PORT_FORWARDS) {
-            match rest.trim_start_matches('/') {
-                "" => return Route::Listing(Listing::PortForwards),
-                page::NEW => return Route::NewRedirect,
-                section => return Route::EditRedirect(section.to_string()),
-            }
+        // A port forward and a zone are read and edited in the panel beside their
+        // listing, at the listing's own address, so there is nothing below either
+        // prefix: a path that names a section there is a stale link from when there
+        // was a page, and the listing is where it should land.
+        if path.starts_with(page::PORT_FORWARDS) {
+            return Route::Listing(Listing::PortForwards);
         }
-        // A zone is read and edited in the panel beside the listing, at the
-        // listing's own address, so there is nothing below this prefix: a path that
-        // names a section there is a stale link from when there was a page, and the
-        // listing is where it should land.
         if path.starts_with(page::ZONES) {
             return Route::Listing(Listing::Zones);
         }
@@ -712,45 +706,69 @@ mod tests {
         assert_eq!(answer["notice"]["level"], "danger");
     }
 
+    /// A port forward opens in the panel its listing's address names, and a new
+    /// one in the same panel, blank.
     #[test]
-    fn a_port_forward_sub_path_opens_that_forwards_editor() {
-        let body =
-            serde_json::to_value(get(&request("/port-forwards/https_to_nas"))).expect("serialize");
-        assert_eq!(body["title"], "Edit port forward");
-        assert_eq!(body["subheading"], "HTTPS-to-NAS");
+    fn a_port_forward_opens_in_the_panel_its_address_names() {
+        let mut open = request("/port-forwards");
+        open.query = Form::parse("open=https_to_nas");
+        let body = serde_json::to_value(get(&open)).expect("serialize");
+        assert_eq!(body["title"], crate::redirects::HEADING);
+        let drawer = fixture::find_with(&body, &|v| v["title"] == "HTTPS-to-NAS")
+            .expect("the forward's panel");
+        assert_eq!(drawer["open"], true);
 
-        let body = serde_json::to_value(get(&request("/port-forwards/new"))).expect("serialize");
-        assert_eq!(body["title"], "New port forward");
+        open.query = Form::parse("open=new");
+        let body = serde_json::to_value(get(&open)).expect("serialize");
+        assert_eq!(
+            fixture::widget(&body, "actionbar")["drawer"]["title"],
+            "New port forward"
+        );
+    }
 
-        // The editor's own sub-path root is still the listing it belongs to.
-        for path in ["/port-forwards", "/port-forwards/"] {
+    /// There is nothing below the listing's address any more: a path that names a
+    /// forward is a link from when a forward had a page, and lands on the listing.
+    #[test]
+    fn a_path_below_the_port_forwards_lands_on_the_listing() {
+        for path in [
+            "/port-forwards",
+            "/port-forwards/",
+            "/port-forwards/new",
+            "/port-forwards/https_to_nas",
+            "/port-forwards/no_such_forward",
+        ] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], crate::redirects::HEADING, "{path}");
             assert_eq!(body["subheading"], crate::redirects::SUBHEADING, "{path}");
+            assert!(
+                fixture::find_with(&body, &|v| v.get("drawer").is_some_and(|d| d.is_object()))
+                    .is_none(),
+                "{path} opened a panel"
+            );
         }
+        // A body posted there that is neither the panel's nor a row's act is a
+        // switch the listing did not draw, and changes nothing.
+        let body = answer("/port-forwards/https_to_nas", "src=wan");
+        assert!(body.get("commit").is_none());
+        assert_eq!(body["notice"]["level"], "danger");
     }
 
+    /// The listing's address takes the panel's form, a row's removal and a row's
+    /// switch alike, so a body is the panel's only when it says so — and a
+    /// removal is a removal, never read as a switch.
     #[test]
-    fn a_port_forward_sub_path_naming_no_forward_answers_with_the_listing() {
-        for path in [
-            "/port-forwards/no_such_forward",
-            "/port-forwards/nas_snat",
-            "/port-forwards/allow_ping",
-        ] {
-            for body in [
-                serde_json::to_value(get(&request(path))).expect("serialize"),
-                answer(path, "src=wan"),
-            ] {
-                assert_eq!(body["title"], crate::redirects::HEADING, "{path}");
-                assert_eq!(body["notice"]["level"], "danger", "{path}");
-                assert!(body.get("commit").is_none(), "{path}");
-            }
-        }
-    }
+    fn a_port_forward_panel_submission_is_the_panels_and_not_a_switchs() {
+        let mut saving = request("/port-forwards");
+        saving.query = Form::parse("open=https_to_nas");
+        let body = serde_json::to_value(post(
+            &saving,
+            &Form::parse("_panel=1&enabled=1&src=wan&src_dport=8443&proto=tcp"),
+        ))
+        .expect("serialize");
+        assert_eq!(body["commit"][0]["section"], "https_to_nas");
+        assert_eq!(body["commit"][0]["values"]["src_dport"], "8443");
 
-    #[test]
-    fn a_port_forward_editor_submission_is_the_editors_and_not_a_switchs() {
-        let body = answer("/port-forwards/https_to_nas", "_delete=1");
+        let body = answer("/port-forwards", "_remove=https_to_nas");
         assert_eq!(
             body["commit"],
             serde_json::json!([{
