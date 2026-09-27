@@ -184,8 +184,9 @@ pub struct Redirect {
 /// Nat is one `config nat` — firewall4's source rewrite, which decides how
 /// traffic leaving a zone appears to the other side. This plugin does not edit
 /// them, but each one names its zone by name, so they belong to what a zone's
-/// blast radius counts.
+/// blast radius counts — and a rename rewrites them with the rest.
 pub struct Nat {
+    pub section: String,
     pub src: String,
 }
 
@@ -634,6 +635,7 @@ impl Redirect {
 impl Nat {
     fn read(section: &Section) -> Nat {
         Nat {
+            section: section.name(),
             src: section.scalar("src"),
         }
     }
@@ -709,14 +711,14 @@ fn mangle_chain(src: &str, dest: &str) -> String {
 /// redirect_chain is the nat chain a redirect evaluates in. Both directions are
 /// named for the zone the traffic is seen on; a redirect naming no zone there is
 /// one firewall4 skips, and has no chain.
-fn redirect_chain(target: &str, src: &str) -> String {
+pub fn redirect_chain(target: &str, src: &str) -> String {
     if target == "dnat" && named_zone(src) {
         return format!("dstnat_{src}");
     }
     String::new()
 }
 
-fn named_zone(zone: &str) -> bool {
+pub fn named_zone(zone: &str) -> bool {
     !zone.is_empty() && zone != "*"
 }
 

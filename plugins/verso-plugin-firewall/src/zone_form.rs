@@ -15,11 +15,10 @@
 //! editor offers are the same list, and the reckoning beside it fails if they ever
 //! come apart again.
 //!
-//! The `name` option is deliberately outside that set. A zone's name is the
-//! handle every rule, forward and forwarding points at, and packages beyond the
-//! firewall config point at it too; this plugin may write only the firewall
-//! config, so a rename here could not keep every reference honest. The name is
-//! written once, when the zone is created, and read-only afterwards.
+//! The `name` option is outside that set. A zone's name is the handle every rule,
+//! forward and forwarding points at, so it is written only when it changes — when
+//! the zone is created, or renamed — and a rename carries every one of those
+//! references with it ([`crate::rename`]).
 //!
 //! A policy is the other deliberate absence. firewall4 falls a zone's input,
 //! output and forward back to the `config defaults` section, so a zone that
@@ -116,6 +115,9 @@ const NAME_TOO_LONG: &str =
 #[derive(Clone)]
 pub struct ZoneForm {
     pub name: String,
+    /// The name the section carries, which is what every reference to the zone
+    /// points at. A blank zone has none; a name that differs from it is a rename.
+    pub named: String,
     pub networks: Vec<String>,
     /// A zone covers what its networks cover, and may also claim a kernel device
     /// directly or a subnet of its own. Both are how a zone covers something the
@@ -167,6 +169,7 @@ impl Default for ZoneForm {
     fn default() -> ZoneForm {
         ZoneForm {
             name: String::new(),
+            named: String::new(),
             networks: Vec::new(),
             devices: Vec::new(),
             subnets: Vec::new(),
@@ -200,6 +203,7 @@ impl ZoneForm {
         let log = log_bits(&section.scalar("log"));
         ZoneForm {
             name: section.scalar("name"),
+            named: section.scalar("name"),
             networks: model::values(section, "network"),
             devices: model::values(section, "device"),
             subnets: model::values(section, "subnet"),
@@ -230,6 +234,7 @@ impl ZoneForm {
     pub fn submitted(form: &Form) -> ZoneForm {
         ZoneForm {
             name: form.get("name").trim().to_string(),
+            named: String::new(),
             networks: cleaned(form.all("network")),
             devices: cleaned(form.all("device")),
             subnets: cleaned(form.all("subnet")),
@@ -253,14 +258,23 @@ impl ZoneForm {
         }
     }
 
-    /// carrying takes back the parts of a zone the form does not draw. Both are
-    /// the `log` option the switch shares: the MSS-clamp bit, which a submission
-    /// that dropped it would turn off on a zone nobody asked about, and a value
-    /// firewall4 cannot read at all, which is not this editor's to discard.
+    /// carrying takes back the parts of a zone the form does not draw: the name
+    /// the section carries, which is what tells a rename from a save, and the two
+    /// halves of the `log` option the switch does not own — the MSS-clamp bit,
+    /// which a submission that dropped it would turn off on a zone nobody asked
+    /// about, and a value firewall4 cannot read at all, which is not this editor's
+    /// to discard.
     pub fn carrying(mut self, stated: &ZoneForm) -> ZoneForm {
+        self.named = stated.named.clone();
         self.log_mss = stated.log_mss;
         self.log_unreadable = stated.log_unreadable.clone();
         self
+    }
+
+    /// renamed reports whether the name typed is not the one the section
+    /// carries — a zone being created is not a rename, it has nothing to follow.
+    pub fn renamed(&self) -> bool {
+        !self.named.is_empty() && self.name != self.named
     }
 
     // at_defaults used to live here: it reported whether the rarely-touched
@@ -273,15 +287,15 @@ impl ZoneForm {
 
     /// values is what the save writes: every option the zone states, plus — when
     /// editing an existing section — a null for each owned option it no longer
-    /// states. A new section states its name as well, because that is the one
-    /// moment a zone's name is this editor's to write.
+    /// states. The name is written when it is not the one the section carries:
+    /// a new zone's, or a renamed one's.
     pub fn values(&self, existing: bool) -> Value {
         let mut values = Map::new();
         let mut set = |option: &str, value: Value| {
             values.insert(option.to_string(), value);
         };
 
-        if !existing && !self.name.is_empty() {
+        if !self.name.is_empty() && self.name != self.named {
             set("name", json!(self.name.clone()));
         }
         for (option, values_of) in [
@@ -404,12 +418,15 @@ impl ZoneForm {
         errors
     }
 
-    /// validate_new adds what only a zone being created has to answer for: it
-    /// needs a name, that name has to be one firewall4 can parse, and it has to
-    /// be free — two zones with one name are two zones every reference is
-    /// ambiguous between.
-    pub fn validate_new(&self, networks: &[String], taken: &[String]) -> Errors {
+    /// validate_named adds what a name being written has to answer for, on a zone
+    /// being created or renamed: it needs one, firewall4 has to be able to parse
+    /// it, and it has to be free — two zones with one name are two zones every
+    /// reference is ambiguous between. A zone keeping its name asks none of it.
+    pub fn validate_named(&self, networks: &[String], taken: &[String]) -> Errors {
         let mut errors = self.validate(networks);
+        if !self.name.is_empty() && self.name == self.named {
+            return errors;
+        }
         if self.name.is_empty() {
             errors.field("name", "Give the zone a name.");
         } else if !valid_identifier(&self.name) {
@@ -626,7 +643,7 @@ mod tests {
             })
         );
         assert!(wan.validate(&networks()).is_empty());
-        // The name is not this editor's to rewrite on a zone that already has one.
+        // The name is the one the section carries, so there is nothing to write.
         assert!(written.get("name").is_none());
     }
 
@@ -752,18 +769,20 @@ mod tests {
             ..ZoneForm::default()
         };
         assert_eq!(
-            named("").validate_new(&networks(), &taken).get("name"),
+            named("").validate_named(&networks(), &taken).get("name"),
             "Give the zone a name."
         );
         assert_eq!(
-            named("2fast").validate_new(&networks(), &taken).get("name"),
+            named("2fast")
+                .validate_named(&networks(), &taken)
+                .get("name"),
             NAME_HELP
         );
         assert_eq!(
-            named("lan").validate_new(&networks(), &taken).get("name"),
+            named("lan").validate_named(&networks(), &taken).get("name"),
             "A zone with this name already exists."
         );
-        assert!(named("iot").validate_new(&networks(), &taken).is_empty());
+        assert!(named("iot").validate_named(&networks(), &taken).is_empty());
     }
 
     #[test]
@@ -930,15 +949,63 @@ mod tests {
             ..ZoneForm::default()
         };
         assert!(long(NAME_LIMIT)
-            .validate_new(&networks(), &taken)
+            .validate_named(&networks(), &taken)
             .is_empty());
         assert_eq!(
             long(NAME_LIMIT + 1)
-                .validate_new(&networks(), &taken)
+                .validate_named(&networks(), &taken)
                 .get("name"),
             NAME_TOO_LONG
         );
         assert!(NAME_TOO_LONG.contains(&NAME_LIMIT.to_string()));
+    }
+
+    /// A zone keeps the name its section carries until the operator types another,
+    /// and only then is `name` written: an untouched save states nothing about it.
+    #[test]
+    fn a_renamed_zone_writes_its_new_name_and_an_untouched_one_does_not() {
+        let lan = read("cfg02dc81");
+        assert_eq!(lan.named, "lan");
+        assert!(lan.values(true).get("name").is_none());
+
+        let renamed = ZoneForm::submitted(&Form::parse("name=home")).carrying(&lan);
+        assert_eq!(renamed.named, "lan");
+        assert_eq!(renamed.values(true)["name"], "home");
+        assert!(renamed.renamed());
+        assert!(!lan.renamed());
+    }
+
+    /// A new name answers the same questions a new zone's does, against every
+    /// other zone; keeping the name asks none of them, so a zone is never refused
+    /// for being called what it is already called.
+    #[test]
+    fn a_new_name_has_to_be_free_and_one_firewall4_can_parse() {
+        let taken = fixture::firewall().zone_names();
+        let lan = read("cfg02dc81");
+        let named =
+            |name: &str| ZoneForm::submitted(&Form::parse(&format!("name={name}"))).carrying(&lan);
+        assert!(named("lan").validate_named(&networks(), &taken).is_empty());
+        assert!(named("home").validate_named(&networks(), &taken).is_empty());
+        assert_eq!(
+            named("wan").validate_named(&networks(), &taken).get("name"),
+            "A zone with this name already exists."
+        );
+        assert_eq!(
+            named("").validate_named(&networks(), &taken).get("name"),
+            "Give the zone a name."
+        );
+        assert_eq!(
+            named("2fast")
+                .validate_named(&networks(), &taken)
+                .get("name"),
+            NAME_HELP
+        );
+        assert_eq!(
+            named(&"z".repeat(NAME_LIMIT + 1))
+                .validate_named(&networks(), &taken)
+                .get("name"),
+            NAME_TOO_LONG
+        );
     }
 
     /// A new zone starts where firewall4's own defaults are, and three of them are

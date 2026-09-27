@@ -30,6 +30,7 @@ use crate::fields;
 use crate::format;
 use crate::model::{Firewall, Zone, CONFIG};
 use crate::page;
+use crate::rename;
 use crate::rule_form::Errors;
 use crate::zone_drawer;
 use crate::zone_form::ZoneForm;
@@ -164,7 +165,7 @@ pub fn save(snapshot: &Snapshot, model: &mut Firewall, query: &Form, form: &Form
 
     if section == zone_drawer::NEW && removal.is_empty() {
         let stated = ZoneForm::submitted(form);
-        let mut errors = stated.validate_new(&model.network_names(), &model.zone_names());
+        let mut errors = stated.validate_named(&model.network_names(), &model.zone_names());
         errors.merge(reaches.validate(&model.zone_names()));
         let answer = opened_blank(model, &stated, &reaches, &errors, &tab);
         if !errors.is_empty() {
@@ -200,18 +201,24 @@ pub fn save(snapshot: &Snapshot, model: &mut Firewall, query: &Form, form: &Form
         .map(|uci| ZoneForm::read(&uci))
         .unwrap_or_default();
     let zone = ZoneForm::submitted(form).carrying(&stated);
-    let mut errors = zone.validate(&zone_drawer::allowed_networks(model, &model.zones[index]));
+    let mut errors = zone.validate_named(
+        &zone_drawer::allowed_networks(model, &model.zones[index]),
+        &model.zone_names(),
+    );
     errors.merge(reaches.validate(&model.zone_names()));
-    let answer = opened(model, &section, &zone, &reaches, &errors, &tab);
     if !errors.is_empty() {
-        return answer.with_notice(Tone::Danger, REFUSED);
+        return opened(model, &section, &zone, &reaches, &errors, &tab)
+            .with_notice(Tone::Danger, REFUSED);
     }
-    // A zone is renamed nowhere in this plugin, so the crossings are matched
-    // against the name the section already carries rather than the one the form
-    // posted back.
+    // A new name is carried to every section that names the zone before the
+    // crossings are worked out, so they are matched — and any new one written —
+    // under the name the zone is about to have.
     let mut ops = vec![commit(CONFIG, &section, zone.values(true))];
-    ops.extend(reaches.commits(model, &model.zones[index].name));
-    answer
+    if zone.renamed() {
+        ops.extend(rename::rename(model, &zone.named, &zone.name));
+    }
+    ops.extend(reaches.commits(model, &zone.name));
+    opened(model, &section, &zone, &reaches, &errors, &tab)
         .with_notice(Tone::Success, "Zone saved.")
         .with_commit(ops)
 }
@@ -476,6 +483,117 @@ mod tests {
             .find(|row| row["id"] == section)
             .expect("the row")["drawer"]
             .clone()
+    }
+
+    /// reading is the rows of one of the zone's readings, as its section holds
+    /// them.
+    fn reading(tab: &str) -> Vec<Value> {
+        let panel = panel_of(&opened("cfg02dc81", tab), "cfg02dc81");
+        let section = fixture::find_with(&panel, &|v| v["type"] == "section").expect("the reading");
+        section["children"].as_array().unwrap().clone()
+    }
+
+    /// A zone's name is a field like any other, and its help says what a new
+    /// name carries to and what it cannot reach.
+    #[test]
+    fn a_zones_name_is_a_field_that_says_what_follows_it() {
+        let rows = reading(zone_drawer::TRAFFIC);
+        let at = rows
+            .iter()
+            .position(|w| w["name"] == "name")
+            .expect("the name row");
+        assert_eq!(rows[at]["type"], "field");
+        assert_ne!(rows[at]["style"], "locked");
+        assert_eq!(rows[at]["value"], "lan");
+        assert_eq!(rows[at]["key"], "name");
+        let help = rows[at]["help"].as_str().unwrap_or_default();
+        assert!(help.contains("nftables"), "{help}");
+        // The interface is not the actor: the help says what holds, never what
+        // "Verso" does.
+        assert!(!help.contains("Verso"), "{help}");
+        assert_ne!(rows[at + 1]["type"], "callout", "no band under the name");
+        let stray = |w: &Value| w["type"] == "properties" || w["type"] == "callout";
+        assert!(!rows.iter().any(stray), "no fact rows or bands in a form");
+    }
+
+    /// Renaming a zone stages its new name and every section that names it, as
+    /// one change — and the crossings the panel posts are matched under the new
+    /// name, so the crossing it already has is left alone rather than replaced.
+    #[test]
+    fn renaming_a_zone_stages_every_reference_with_it() {
+        let body = saved(
+            "cfg02dc81",
+            zone_drawer::TRAFFIC,
+            &format!("{}&dest=wan", LAN_TRAFFIC.replace("name=lan", "name=home")),
+        );
+        assert_eq!(body["notice"]["level"], "success");
+        let commit = body["commit"].as_array().expect("commit");
+        assert_eq!(commit[0]["section"], "cfg02dc81");
+        assert_eq!(commit[0]["values"]["name"], "home");
+        let followed: Vec<&str> = commit[1..]
+            .iter()
+            .map(|op| op["section"].as_str().unwrap_or_default())
+            .collect();
+        assert_eq!(
+            followed,
+            vec![
+                "allow_isakmp",
+                "family_to_printer",
+                "nas_snat",
+                "https_to_nas",
+                "cfg05ad58"
+            ],
+            "every reference, and no crossing added or removed"
+        );
+        let panel = panel_of(&body, "cfg02dc81");
+        assert_eq!(
+            panel["title"], "home",
+            "the panel answers under the new name"
+        );
+    }
+
+    /// A new name answers the questions a new zone's does, and a refused one
+    /// writes nothing at all — not the zone, and none of its references.
+    #[test]
+    fn a_rename_to_a_name_already_taken_is_refused() {
+        let body = saved(
+            "cfg02dc81",
+            zone_drawer::TRAFFIC,
+            &LAN_TRAFFIC.replace("name=lan", "name=wan"),
+        );
+        assert!(body.get("commit").is_none(), "nothing may be written");
+        assert_eq!(body["notice"]["level"], "danger");
+        let panel = panel_of(&body, "cfg02dc81");
+        assert_eq!(
+            fixture::control(&panel, "name")["error"],
+            "A zone with this name already exists."
+        );
+    }
+
+    // Reaches reads as two fields and what else names the zone: the crossings
+    // it makes, the crossings into it (read-only, the same anatomy, the reason
+    // raised on its label), and a titled part saying what would stop matching
+    // without it.
+    #[test]
+    fn reaches_reads_as_fields_and_a_titled_part() {
+        let rows = reading(zone_drawer::REACHES);
+        let reached = rows
+            .iter()
+            .find(|w| w["label"] == "Reached by")
+            .expect("reached by");
+        assert_eq!(reached["type"], "field");
+        assert_eq!(reached["style"], "locked");
+        assert!(!reached["help"].as_str().unwrap_or_default().is_empty());
+        assert!(
+            !rows.iter().any(|w| w["type"] == "text"),
+            "no loose sentences"
+        );
+        let named = rows
+            .iter()
+            .find(|w| w["type"] == "section")
+            .expect("the named-elsewhere part");
+        assert_eq!(named["title"], "Named elsewhere");
+        assert!(!named["sub"].as_str().unwrap_or_default().is_empty());
     }
 
     #[test]
@@ -767,7 +885,11 @@ mod tests {
     /// section added for a zone newly named, one removed for a zone taken out.
     #[test]
     fn saving_the_reaches_reading_adds_and_removes_whole_sections() {
-        let body = saved("cfg02dc81", zone_drawer::REACHES, "dest=guest");
+        let body = saved(
+            "cfg02dc81",
+            zone_drawer::REACHES,
+            &format!("{LAN_TRAFFIC}&dest=guest"),
+        );
         assert_eq!(body["notice"]["level"], "success");
         let commit = body["commit"].as_array().expect("commit");
         assert_eq!(commit[0]["section"], "cfg02dc81", "the zone's own save");

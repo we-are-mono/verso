@@ -21,9 +21,7 @@
 //! naming that zone again switches the section back on rather than writing a
 //! second one beside it.
 
-use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Form, Property, SelectOption, Widget,
-};
+use verso_plugin::{commit, commit_delete, commit_new, json, CommitOp, Form, SelectOption, Widget};
 
 use crate::fields;
 use crate::model::{Firewall, Zone, CONFIG};
@@ -194,13 +192,19 @@ pub fn fields(
         out.push(Widget::text(NEW_NOTE));
         return out;
     }
-    out.push(Widget::properties(vec![Property {
-        label: REACHED_BY.into(),
-        value: list_or_none(&model.forwards_into(name)),
-        mono: true,
-        ..Property::default()
-    }]));
-    out.push(Widget::text(REACHED_BY_NOTE));
+    // The crossings into this zone, read-only: the same row as the crossings
+    // out of it, locked, because they are set on the zones they leave. Why is
+    // raised on its label rather than left as a loose sentence under it.
+    out.push(
+        fields::text_field(
+            "reached_by",
+            REACHED_BY,
+            &list_or_none(&model.forwards_into(name)),
+            "",
+            errors,
+        )
+        .locked(REACHED_BY_NOTE),
+    );
     out
 }
 

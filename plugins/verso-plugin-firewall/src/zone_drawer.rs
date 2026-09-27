@@ -19,7 +19,7 @@
 //! the list it belongs to is worth more than a page of its own. A zone is the
 //! stronger case of the two, since it reads against the zones it can reach.
 
-use verso_plugin::{DrawerTab, Property, RowDrawer, SelectOption, Tone, Value, Widget};
+use verso_plugin::{DrawerTab, Property, RowDrawer, SelectOption, Value, Widget};
 
 use crate::crossings::{self, Crossings};
 use crate::fields;
@@ -62,12 +62,19 @@ const ADVANCED_SUB: &str = "Leave these unless something specific asks for them.
 /// it.
 const CONFIG_PATH: &str = "/etc/config/firewall";
 
-const NEW_NAME_HELP: &str = "Rules, forwards and forwardings will point at this zone by name, and \
-Verso cannot change it afterwards.";
+const NEW_NAME_HELP: &str = "Rules, forwards and crossings will point at the zone by this name.";
 
-const RENAME_NOTE: &str = "Verso does not rename a zone: rules, forwards and forwardings point at \
-it by name, and packages outside the firewall config may too. To rename one, create a zone with \
-the new name and move its networks across.";
+/// RENAME_HELP says what a new name reaches and what it cannot: everything in
+/// the firewall config follows it, while an nftables include naming a chain
+/// firewall4 built from the old name, or another package's settings naming the
+/// zone, are outside what a save here writes.
+const RENAME_HELP: &str = "Rules, forwards, crossings and source NAT that name this zone follow \
+a new name. Custom nftables includes and other packages' settings keep the old one.";
+
+const NAMED_ELSEWHERE: &str = "Named elsewhere";
+
+const NAMED_ELSEWHERE_SUB: &str = "What else in the firewall config names this zone. A new name \
+carries to each of them; deleting the zone leaves them matching nothing.";
 
 const ENABLED_HELP: &str = "Off, firewall4 skips this zone entirely — every rule that names it \
 stops applying, and the traffic it covered falls through to the global defaults. The section stays \
@@ -142,9 +149,7 @@ pub fn reading(asked: &str) -> &str {
 }
 
 /// blank builds the panel for a zone that does not exist yet: the same three
-/// readings, the same rows, and a commit that adds rather than saves. It opens
-/// with the one fact a new zone has that an existing one does not — its name,
-/// which is written once and is read-only afterwards.
+/// readings, the same rows, and a commit that adds rather than saves.
 pub fn blank(
     model: &Firewall,
     form: &ZoneForm,
@@ -315,9 +320,9 @@ fn tab_body(
 /// it claims, the three verdicts firewall4 evaluates separately, and the two
 /// things a zone does to traffic rather than with it.
 ///
-/// The name is a control only on a zone that does not exist yet. Afterwards it is
-/// a fact, because every rule, forward and forwarding points at it by that name
-/// and Verso will not move them.
+/// The name's help differs by whether the zone exists: a new zone's name is one
+/// things will point at, and an existing zone's is one things already point at —
+/// and a new name follows to them, as far as the firewall config reaches.
 fn traffic_fields(
     model: &Firewall,
     zone: Option<&Zone>,
@@ -340,12 +345,11 @@ fn traffic_fields(
         ENABLED_HELP,
         form.enabled,
     ));
-    match zone {
-        None => out.push(
-            fields::text_field("name", "Name", &form.name, NEW_NAME_HELP, errors).writes("name"),
-        ),
-        Some(zone) => out.push(Widget::properties(vec![machine("Name", &zone.name)])),
-    }
+    let name_help = match zone {
+        None => NEW_NAME_HELP,
+        Some(_) => RENAME_HELP,
+    };
+    out.push(fields::text_field("name", "Name", &form.name, name_help, errors).writes("name"));
     out.push(Widget::Field {
         name: "network".into(),
         label: "Networks".into(),
@@ -459,13 +463,6 @@ fn traffic_fields(
         ),
         Widget::switch_keyed("mtu_fix", MTU_LABEL, "mtu_fix", MTU_HELP, form.mtu_fix),
     ]);
-    if zone.is_some() {
-        // Marigold, not the quiet ground: this is a limit somebody is going to
-        // hit while they are looking at the name they cannot change, and a note
-        // on sand reads as background rather than as the answer to what they are
-        // about to try.
-        out.push(Widget::callout(Tone::Warning, "", RENAME_NOTE));
-    }
     out
 }
 
@@ -489,12 +486,18 @@ pub fn reaches_fields(
     // What else names this zone. The crossings above are the answer to "where
     // may it go"; these are what goes with it if the zone is renamed or removed,
     // which is the other thing a reader comes to this tab for.
+    // A titled part of its own, so the counts say what they count: the
+    // objects that name this zone and would stop matching without it.
     let references = model.references(&zone.name);
-    out.push(Widget::properties(vec![
-        count("Traffic rules", references.rules),
-        count("Port forwards and redirects", references.redirects),
-        count("Source NAT rules", references.nats),
-    ]));
+    out.push(Widget::section(
+        NAMED_ELSEWHERE,
+        NAMED_ELSEWHERE_SUB,
+        vec![Widget::properties(vec![
+            count("Traffic rules", references.rules),
+            count("Port forwards and redirects", references.redirects),
+            count("Source NAT rules", references.nats),
+        ])],
+    ));
     out
 }
 
@@ -778,18 +781,6 @@ fn policy_field(
         style: String::new(),
         remove: String::new(),
         target: String::new(),
-    }
-}
-
-/// machine is a fact whose value is a verbatim config string.
-fn machine(label: &str, value: &str) -> Property {
-    Property {
-        label: label.into(),
-        value: value.into(),
-        mono: true,
-        verbatim: false,
-        copy: false,
-        ..Property::default()
     }
 }
 

@@ -32,6 +32,7 @@ mod page;
 mod redirect_editor;
 mod redirect_form;
 mod redirects;
+mod rename;
 mod rule_drawer;
 mod rule_form;
 mod rules;
