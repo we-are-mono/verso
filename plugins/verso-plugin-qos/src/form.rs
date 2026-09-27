@@ -233,21 +233,16 @@ const RULE_OPTIONS: [&str; 8] = [
 
 const CAP_OPTIONS: [&str; 3] = ["mac", "download", "upload"];
 
-/// preview is a config as it will be written, for the footnote under the form.
-/// An option the policy states nothing for is left out, because a blank is a
+/// preview is a section as it will be written, for the card under the form.
+/// The card's header names the file, so the text opens on the section. An
+/// option the policy states nothing for is left out, because a blank is a
 /// removal and the file simply will not carry that line.
-fn preview(
-    config: &str,
-    section: &str,
-    section_type: &str,
-    order: &[&str],
-    values: &Value,
-) -> String {
+fn preview(section: &str, section_type: &str, order: &[&str], values: &Value) -> String {
     let handle = match section.is_empty() {
         true => String::new(),
         false => format!(" '{section}'"),
     };
-    let mut out = format!("# /etc/config/{config}\nconfig {section_type}{handle}");
+    let mut out = format!("config {section_type}{handle}");
     for option in order {
         if let Some(text) = values.get(option).and_then(Value::as_str) {
             out.push_str(&format!("\n\toption {option} '{text}'"));
@@ -261,7 +256,6 @@ fn preview(
 pub fn rule_preview(policy: &Policy, name: &str) -> String {
     match policy.refuses() {
         true => preview(
-            FIREWALL,
             &policy.rule,
             RULE,
             &RULE_OPTIONS,
@@ -273,13 +267,7 @@ pub fn rule_preview(policy: &Policy, name: &str) -> String {
 
 pub fn caps_preview(policy: &Policy, name: &str) -> String {
     match policy.capped() {
-        true => preview(
-            CAPS,
-            &policy.caps,
-            DEVICE,
-            &CAP_OPTIONS,
-            &caps_values(policy),
-        ),
+        true => preview(&policy.caps, DEVICE, &CAP_OPTIONS, &caps_values(policy)),
         false => format!("# no limit: {name} runs at whatever the link offers"),
     }
 }
@@ -318,6 +306,18 @@ mod tests {
         let policies = every_policy(&fixture::snapshot());
         assert_eq!(policies.len(), 3);
         assert!(policies.iter().all(|p| !p.mac.is_empty()));
+    }
+
+    /// A card's header names the file it goes into, so the text under it opens
+    /// on the section itself rather than repeating the path as a comment.
+    #[test]
+    fn a_preview_opens_on_its_section_not_on_its_path() {
+        let curfew = held("e4:5e:1b:9a:2c:63");
+        let rule = rule_preview(&curfew, "laptop");
+        let caps = caps_preview(&curfew, "laptop");
+        assert!(rule.starts_with("config rule 'cfg"), "{rule}");
+        assert!(caps.starts_with("config device"), "{caps}");
+        assert!(!rule.contains("/etc/config") && !caps.contains("/etc/config"));
     }
 
     #[test]
