@@ -9,6 +9,7 @@
 //! checked through native ubus `session.access` before any action runs.
 
 mod access;
+mod arrival;
 mod config_files;
 mod dhcp;
 mod firewall;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
+use crate::arrival;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -262,8 +263,15 @@ fn parse_upgrade_line(line: &str) -> Option<Value> {
     }))
 }
 
+// install adds a package and turns off what it would switch on by itself, for
+// every package that landed with it (a dependency counts).
 pub fn install(name: &str) -> Result<String, String> {
-    command_ok("apk add", Command::new("apk").args(["add", name]))
+    let absent = arrival::absent(arrival::installed);
+    let output = command_ok("apk add", Command::new("apk").args(["add", name]))?;
+    for due in arrival::due(&absent, arrival::installed) {
+        arrival::settle(due, arrival::run, arrival::pause)?;
+    }
+    Ok(output)
 }
 
 pub fn remove(name: &str) -> Result<String, String> {
