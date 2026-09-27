@@ -23,6 +23,9 @@ type Switch struct {
 	// than words: it is set in mono and never looked up in a catalog.
 	Verbatim bool `json:"verbatim,omitempty"`
 	On       bool `json:"on,omitempty"`
+	// Error is the plugin's refusal of the state the switch was set to, drawn
+	// as a field's is: the band under the label, named by the checkbox.
+	Error string `json:"error,omitempty"`
 	// Key is the option this switch writes, verbatim — "drop_invalid",
 	// "flow_offloading". It rides beside the label as a mono chip, exactly as a
 	// field's does: a state to flip is as much a line of the config as a value
@@ -78,6 +81,8 @@ type switchControl struct {
 	Described string
 	// Disabled draws the state inert: it is shown, never changed, never posted.
 	Disabled bool
+	// Invalid says the state was refused.
+	Invalid bool
 }
 
 // Control is this switch's checkbox. Every style labels it (the form row's label
@@ -88,7 +93,18 @@ func (s *Switch) Control() switchControl {
 	if s.Explained() {
 		c.Described = s.Name + "-tip"
 	}
+	c.refused(s)
 	return c
+}
+
+// refused marks a refused switch's checkbox invalid and points it at the
+// refusal, so a screen reader reads why, and its first change clears it.
+func (c *switchControl) refused(s *Switch) {
+	if s.Error == "" {
+		return
+	}
+	c.Invalid = true
+	c.Described = strings.TrimSpace(c.Described + " " + s.Name + "-error")
 }
 
 func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -101,11 +117,15 @@ func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
 // frame is this switch's row: the checkbox before its label. A locked switch
 // posts nothing, so it tracks no change.
 func (s *Switch) frame() fieldFrame {
-	return fieldFrame{
+	frame := fieldFrame{
 		Label:  s.LabelView(),
 		Change: fieldChange{Track: !s.locked() && (s.Name != "" || s.Style == "checkbox"), Name: s.Name, Label: s.Label, Kind: "toggle"},
 		Toggle: true,
 	}
+	if s.Error != "" {
+		frame.Errors = []fieldError{{ID: s.Name + "-error", Text: s.Error}}
+	}
+	return frame
 }
 
 // grouped is this switch as one row of a labelled group (a switch group):
@@ -124,5 +144,6 @@ func (s *Switch) grouped() (switchControl, fieldFrame) {
 		frame.Desc = s.Help
 		control.Described = strings.TrimSpace(control.Described + " " + frame.DescID())
 	}
+	control.refused(s)
 	return control, frame
 }

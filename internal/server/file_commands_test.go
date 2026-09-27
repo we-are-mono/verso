@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 type ruleFilesBackend struct {
@@ -33,6 +34,19 @@ func TestFirewallRuleFilesAreBrokeredToTheirPlugin(t *testing.T) {
 	}
 	if got := tr.lastReq.Ubus["firewallFiles"]; string(got) != string(files) {
 		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
+	}
+}
+
+// TestARefusedSwitchRefusesTheSave: a switch the plugin refused refuses the
+// whole submission as a refused field does, with no form-wide sentence needed
+// to say so.
+func TestARefusedSwitchRefusesTheSave(t *testing.T) {
+	refused := &widget.Switch{Name: "dnssec", Label: "Verify answers are signed", Error: "Needs dnsmasq-full."}
+	if !validateSchema(&widget.Form{Fields: []widget.Widget{refused}}) {
+		t.Error("a refused switch must refuse the save")
+	}
+	if validateSchema(&widget.Form{Fields: []widget.Widget{&widget.Switch{Name: "dnssec", Label: "Verify answers are signed"}}}) {
+		t.Error("a switch nobody refused refuses nothing")
 	}
 }
 

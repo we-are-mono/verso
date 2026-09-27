@@ -87,6 +87,9 @@
     grid-column: 2;
     margin-top: calc(var(--spacing) * -1.5);
   }
+  /* A refused checkbox's band stands under its label, as a field's stands
+     under its box. */
+  .verso-field-toggle > [data-verso-error] { grid-column: 2; }
 
   /* verso-box: one frame holding typed values — a value and its unit, or
      related values fused into one control. The frame wears the field's

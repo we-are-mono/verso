@@ -175,6 +175,7 @@
   <div data-verso-control class="{{template "verso-field-control-class"}}">{{.Control}}</div>
   {{template "verso-field-label" .Label}}
   {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
+  {{range .Errors}}<span id="{{.ID}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Text}}</span>{{end}}
 {{else}}
   {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
   <div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} relative">

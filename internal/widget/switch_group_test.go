@@ -76,6 +76,28 @@ func TestALockedSwitchStatesAFixedState(t *testing.T) {
 	}
 }
 
+// TestASwitchIsRefusedLikeAField: a switch the plugin refuses wears the same
+// refusal a field does — the crimson band, under the label it refuses, named
+// by the checkbox — not a notice of its own beside the row.
+func TestASwitchIsRefusedLikeAField(t *testing.T) {
+	s := &Switch{Name: "dnssec", Label: "Verify answers are signed", Key: "dnssec", Style: "checkbox", On: true,
+		Error: "DNSSEC requires a dnsmasq build with DNSSEC support."}
+	got := render(t, newRenderer(t), s)
+	for _, want := range []string{
+		`<span id="dnssec-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">`,
+		`aria-describedby="dnssec-error"`,
+		`aria-invalid="true"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("refused switch missing %q:\n%s", want, got)
+		}
+	}
+	translateSchema(s, func(w string) string { return "«" + w + "»" })
+	if s.Error != "«DNSSEC requires a dnsmasq build with DNSSEC support.»" {
+		t.Errorf("a switch's refusal is prose and translates: %q", s.Error)
+	}
+}
+
 // TestAVerbatimLabelStaysAsWritten: a label that is a machine string is never
 // looked up in a catalog.
 func TestAVerbatimLabelStaysAsWritten(t *testing.T) {

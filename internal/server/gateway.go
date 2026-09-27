@@ -580,6 +580,11 @@ func validateSchema(w widget.Widget) bool {
 			if n.Error != "" {
 				found = true
 			}
+		case *widget.Switch:
+			// a refused state blocks the write as a refused value does
+			if n.Error != "" {
+				found = true
+			}
 		case *widget.Collection:
 			// a refused addition blocks the write as a form's error does
 			if n.Add != nil && n.Add.Error != "" {

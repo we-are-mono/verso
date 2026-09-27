@@ -205,6 +205,7 @@ func translateFields(w Widget, t func(string) string) {
 		}
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
+		n.Error = t(n.Error)
 	case *ActionBar:
 		translateDrawer(n.Drawer, t)
 		n.Filter = t(n.Filter)
