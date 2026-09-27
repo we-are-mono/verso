@@ -395,6 +395,13 @@ The anatomy is the same in both:
 - **The answer pair:** the act (36px, named with the verb: "Reboot", "Install firmware"), then the way back as bare words in the Deep step ("Not now", "Not yet"): no border, no fill, 12px side padding, washing to the Hairline at half strength on hover. Danger's act is white on full Crimson. Caution's act is white on Deep Marigold, because white on full Marigold fails the 4.5 floor. The pair starts 24px below the message and indents 24px, so it lines up with the words, not the icon; 8px between the two. Never "OK" and "Cancel".
 - **With a password:** when the act needs re-authorizing, the password field leads the answer row with a Crimson Hairline border.
 
+### Inline warnings
+A warning (marigold) or an error (crimson) said in place, on the tone's Wash, every word in its Deep step. It is the only thing on a surface that explains itself: when nothing is wrong, nothing is said.
+- **One size:** the title and the text under it are both 14px/1.45; the title is bold (600), the text regular. The title never steps up a size and the text is never a lede.
+- **Mark:** the tone's 6px square on the title's first line.
+- **The machine's words:** what a tool reported rides inside, under a Hairline of the tone, verbatim in mono.
+- A confirmation's question is not an inline warning: it asks, at 16px, over its 14px consequence (Confirmation).
+
 ### Chips
 - **Style:** lowercase Inconsolata 14px in Meta on Quiet Sand, Hairline border, 2px corners, 2px 6px padding. They carry config values and config keys (`hostname`, `pppoe`), never decoration.
 - **Accent:** Denim Wash with Deep Denim words and a leading 14px icon, for what was configured by hand. A green variant marks "you" (this browser, this session).

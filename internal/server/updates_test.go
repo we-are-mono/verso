@@ -123,7 +123,7 @@ func TestUpdateCheckSurvivesAShellRestart(t *testing.T) {
 	restarted := newServer(t, fakeBackend{access: true})
 	restarted.stateDir = first.stateDir
 	body := get(t, restarted, "/system/maintenance").Body.String()
-	for _, want := range []string{"Checked", "3 h ago", "Verso 0.0.23 is available"} {
+	for _, want := range []string{"Checked ", "Verso 0.0.23 is available"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a restarted shell should read the recorded answer, missing %q:\n%s", want, body)
 		}
@@ -183,7 +183,6 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	for _, want := range []string{
 		"Firmware", "Not checked yet",
 		"Check again", `action="/system/maintenance/updates/check"`,
-		"is not known until it checks",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the never-checked Updates section is missing %q:\n%s", want, body)
@@ -191,6 +190,11 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	}
 	if strings.Contains(body, "Update now") {
 		t.Error("a router that has not checked has nothing to offer installing")
+	}
+	// Nothing is wrong, so nothing is explained: the heading line says it has
+	// not checked, and that is the whole of it.
+	if strings.Contains(body, "is not known until it checks") {
+		t.Error("a router that has not checked explains nothing beyond saying so")
 	}
 }
 
@@ -291,10 +295,9 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
-		"Up to date",
 		"Check again",
-		"Checked", "1 h ago",
-		"This router runs the newest build its update server offers.",
+		// When it last checked, beside the act that checks again.
+		"Checked ",
 		// The ledger splits the build into its version and its revision, and
 		// names the server it was checked against.
 		">Current<", ">25.12.4<", "r32933-4ccb782af7",
@@ -305,9 +308,14 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 		}
 	}
 	// Nothing is offered, so the ledger has no Available column; nothing is
-	// wrong, so the verdict stands plain, not in the warning band.
+	// wrong, so nothing is explained — no verdict, no warning band.
 	if strings.Contains(body, ">Available<") || strings.Contains(body, "data-verso-ledger-warning") {
 		t.Errorf("a current router's ledger should have no Available column and no warning band:\n%s", body)
+	}
+	for _, gone := range []string{"Up to date", "This router runs the newest build its update server offers."} {
+		if strings.Contains(body, gone) {
+			t.Errorf("a current router explains nothing, but says %q", gone)
+		}
 	}
 	if strings.Contains(body, "Every installed package is the newest version") {
 		t.Error("the resting package lane should not render beside the verdict box")
@@ -345,10 +353,9 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			name:     "an available build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051", Server: "https://sysupgrade.openwrt.org", Packages: 78},
 			want: []string{
-				// The verdict names the build on offer…
-				"25.12.5 is available", "The update server is offering a newer build for this router.",
-				// …and the ledger sets it beside what runs, the new value marked
-				// by the packet rather than by a tinted cell.
+				// The ledger sets the build on offer beside what runs, the new
+				// value marked by the packet rather than by a tinted cell; no
+				// sentence restates it.
 				">Current<", ">Available<", ">25.12.4<", "r32933", ">25.12.5<", "r33051",
 				`data-verso-ledger-changed`,
 				"Built by", "https://sysupgrade.openwrt.org", "78 packages change",
@@ -406,6 +413,14 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				}
 				if strings.Contains(body, "Error, given by the update server") {
 					t.Errorf("the %s rung should not label the tool's words separately", tc.name)
+				}
+			}
+			// An inline warning sets its title and its sentence at one size,
+			// the title bold: the sentence is the band's own 14px, not a lede.
+			if strings.Contains(body, "data-verso-ledger-warning") {
+				band := section(t, body, "data-verso-ledger-warning", "<table")
+				if strings.Contains(band, "verso-lede") || !strings.Contains(band, `<p class="font-semibold">`) {
+					t.Errorf("the %s rung's warning sets its sentence apart from its title:\n%s", tc.name, band)
 				}
 			}
 			// The manual image upload is the permanent floor under every rung —

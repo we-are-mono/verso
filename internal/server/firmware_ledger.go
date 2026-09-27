@@ -7,15 +7,18 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/updatecheck"
 )
 
-// The firmware ledger is Maintenance's firmware section: a verdict under its
-// state mark, then a small table of what this router runs, part by part, with an
-// Available column beside it whenever the update server offers a newer build.
-// The answer to "is there an update" is a diff, so the section draws one.
+// The firmware ledger is Maintenance's firmware section: a small table of what
+// this router runs, part by part, with an Available column beside it whenever
+// the update server offers a newer build. The answer to "is there an update" is
+// a diff, so the section draws one, and says nothing more in words — when it
+// last checked stands beside Check again (checkedAt). Only a warning is
+// explained: a check that could not answer says why, in the marigold band.
 
 // ledgerChange is what the Available column can honestly say about one part.
 type ledgerChange string
@@ -33,7 +36,8 @@ type ledgerRow struct {
 
 // firmwareLedger is the section's model. Every string is already localized.
 type firmwareLedger struct {
-	Mark      string // "green" | "denim" | "marigold" | "hollow"
+	// Title and Lede explain a warning — a check that could not answer — and
+	// are empty otherwise: a section with nothing wrong explains nothing.
 	Title     string
 	Lede      string
 	Complaint string // the update tool's own words, verbatim
@@ -69,16 +73,12 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 	}}
 
 	if !known {
-		l.Mark, l.Title = "hollow", tr("Not checked yet")
-		l.Lede = tr("Whether a newer OpenWrt build exists for this router is not known until it checks.")
 		return l
 	}
 
 	switch firmware.State {
 	case openwrt.FirmwareUpdateAvailable:
 		next, nextRev := splitBuild(firmware.To)
-		l.Mark, l.Title = "denim", fmt.Sprintf(tr("%s is available"), next)
-		l.Lede = tr("The update server is offering a newer build for this router.")
 		l.Offer = true
 		l.Rows[0].Next, l.Rows[0].NextRev, l.Rows[0].Change = next, nextRev, ledgerChanged
 		l.Rows[1].Change, l.Rows[2].Change, l.Rows[3].Change = ledgerUnreported, ledgerUnreported, ledgerSame
@@ -89,28 +89,42 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 			l.Changes = counted(tr, int64(firmware.Packages), "1 package changes", "%d packages change")
 		}
 	case openwrt.FirmwareCurrent:
-		l.Mark, l.Title = "green", tr("Up to date")
-		l.Lede = tr("This router runs the newest build its update server offers.")
 		if firmware.Server != "" {
 			l.Server = verbatimIn(tr("Checked against %s"), firmware.Server)
 		}
 	case openwrt.FirmwareNoOwut:
-		l.Mark, l.Title = "marigold", tr("Firmware checks need owut")
+		l.Title = tr("Firmware checks need owut")
 		l.Lede = tr("The upgrade tool this router needs to check for firmware builds, owut, is not installed.")
 		l.NeedsOwut = true
 	case openwrt.FirmwareNoServer:
-		l.Mark, l.Title = "marigold", tr("The update server didn't answer")
+		l.Title = tr("The update server didn't answer")
 		l.Lede = tr("No update server answered, so this router could not find out whether a newer build exists.")
 		l.Complaint = firmwareComplaint(firmware)
 	case openwrt.FirmwareUnsupported:
-		l.Mark, l.Title = "marigold", tr("No firmware updates for this router")
+		l.Title = tr("No firmware updates for this router")
 		l.Lede = tr("The update server cannot build an image for this router, so there is no firmware update to offer.")
 		l.Complaint = firmwareComplaint(firmware)
 	default:
-		l.Mark, l.Title = "marigold", tr("The firmware check could not run")
+		l.Title = tr("The firmware check could not run")
 		l.Lede = tr("Check again in a moment, or upload an image yourself.")
 	}
 	return l
+}
+
+// checkedAt says when the firmware was last checked, for the heading line beside
+// Check again: the clock alone on the same day, the date with it on an earlier
+// one, in the router's own time — or that it has not checked yet.
+func checkedAt(tr func(string) string, at time.Time, known bool, now time.Time) string {
+	if !known {
+		return tr("Not checked yet")
+	}
+	at = at.In(now.Location())
+	ay, am, ad := at.Date()
+	ny, nm, nd := now.Date()
+	if ay == ny && am == nm && ad == nd {
+		return fmt.Sprintf(tr("Checked at %s"), at.Format("15:04"))
+	}
+	return fmt.Sprintf(tr("Checked %s"), at.Format("2 Jan, 15:04"))
 }
 
 // splitBuild parts an OpenWrt build string into its version and its revision:

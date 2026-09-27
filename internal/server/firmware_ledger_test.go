@@ -6,6 +6,7 @@ package server
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/updatecheck"
@@ -32,35 +33,57 @@ func TestFirmwareLedgerStatesOnlyWhatTheServerReported(t *testing.T) {
 	if !reflect.DeepEqual(l.Rows, want) {
 		t.Errorf("ledger rows:\n got %+v\nwant %+v", l.Rows, want)
 	}
-	if !l.Offer || l.Mark != "denim" || l.Title != "25.12.5 is available" {
-		t.Errorf("an offered build: offer=%v mark=%q title=%q", l.Offer, l.Mark, l.Title)
+	if !l.Offer || l.Title != "" {
+		t.Errorf("an offered build opens the Available column and explains nothing: offer=%v title=%q", l.Offer, l.Title)
 	}
 	if l.Changes != "1 package changes" {
 		t.Errorf("changes = %q, want the singular", l.Changes)
 	}
 }
 
-// TestFirmwareLedgerVerdicts: every rung says its own title under its own mark,
-// and only the offered build opens the Available column. A running check is not
-// a verdict: the Check again button carries it, and the verdict keeps saying
-// what the last check found.
-func TestFirmwareLedgerVerdicts(t *testing.T) {
+// TestFirmwareLedgerExplainsOnlyAWarning: the section explains itself only when
+// something is wrong — the marigold band, with its title and sentence. A router
+// not yet checked, one up to date, and one with a build on offer say nothing in
+// words: the heading line says when it last checked, and the ledger's Available
+// column says what is on offer.
+func TestFirmwareLedgerExplainsOnlyAWarning(t *testing.T) {
 	for _, tc := range []struct {
-		name        string
-		truth       updatecheck.Truth
-		known       bool
-		mark, title string
+		name  string
+		truth updatecheck.Truth
+		known bool
+		title string // empty: no explanation
 	}{
-		{"never checked", updatecheck.Truth{}, false, "hollow", "Not checked yet"},
-		{"current", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareCurrent}}, true, "green", "Up to date"},
-		{"no owut", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoOwut}}, true, "marigold", "Firmware checks need owut"},
-		{"no server", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer}}, true, "marigold", "The update server didn't answer"},
-		{"unsupported", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported}}, true, "marigold", "No firmware updates for this router"},
-		{"could not run", updatecheck.Truth{}, true, "marigold", "The firmware check could not run"},
+		{"never checked", updatecheck.Truth{}, false, ""},
+		{"current", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareCurrent}}, true, ""},
+		{"no owut", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoOwut}}, true, "Firmware checks need owut"},
+		{"no server", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer}}, true, "The update server didn't answer"},
+		{"unsupported", updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported}}, true, "No firmware updates for this router"},
+		{"could not run", updatecheck.Truth{}, true, "The firmware check could not run"},
 	} {
 		l := firmwareLedgerView(identity, tc.truth, tc.known, openwrt.Board{}, "0.0.36")
-		if l.Mark != tc.mark || l.Title != tc.title || l.Offer {
-			t.Errorf("%s: mark=%q title=%q offer=%v; want %q %q and no offer", tc.name, l.Mark, l.Title, l.Offer, tc.mark, tc.title)
+		if l.Title != tc.title || (tc.title == "") != (l.Lede == "") || l.Offer {
+			t.Errorf("%s: title=%q lede=%q offer=%v; want title %q and no offer", tc.name, l.Title, l.Lede, l.Offer, tc.title)
+		}
+	}
+}
+
+// TestCheckedSaysWhen: beside Check again, the section says when it last
+// checked — the clock alone the same day, the date with it otherwise — or that
+// it has not checked yet.
+func TestCheckedSaysWhen(t *testing.T) {
+	now := time.Date(2026, 9, 27, 18, 5, 0, 0, time.Local)
+	for _, tc := range []struct {
+		name  string
+		at    time.Time
+		known bool
+		want  string
+	}{
+		{"never", time.Time{}, false, "Not checked yet"},
+		{"today", time.Date(2026, 9, 27, 14, 32, 0, 0, time.Local), true, "Checked at 14:32"},
+		{"earlier", time.Date(2026, 9, 26, 9, 7, 0, 0, time.Local), true, "Checked 26 Sep, 09:07"},
+	} {
+		if got := checkedAt(identity, tc.at, tc.known, now); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }

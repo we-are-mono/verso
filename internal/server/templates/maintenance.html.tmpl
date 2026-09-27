@@ -8,28 +8,29 @@
   <div data-verso-form-column class="w-full min-w-0 max-w-form shrink-0">
     {{.Notices}}
     <section data-verso-section="ruled" id="firmware">
-      {{/* The ledger: the verdict under its state mark, then what this router runs
-           part by part, with an Available column only while a build is offered.
-           The check stands on the heading line with the time it last ran. */}}
+      {{/* The ledger: what this router runs part by part, with an Available
+           column only while a build is offered. The check stands on the heading
+           line with when it last ran, or that it has not; only a warning is
+           explained, in the marigold band above the ledger. */}}
       <div data-verso-section-band class="{{template "verso-section-band-class"}}">
         <h2 class="{{template "verso-section-title-class"}}">{{t "Firmware"}}</h2>
         <form method="post" action="/system/maintenance/updates/check" class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3">
           {{template "verso-csrf" .CSRFToken}}
-          {{if .Checked}}<span class="{{template "verso-section-meta-class"}}"><span class="{{template "verso-section-meta-label-class"}}">{{t "Checked"}}</span><span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Checked}}</span></span>{{end}}
+          {{if .Checked}}<span data-verso-section-meta class="{{template "verso-section-meta-class"}} {{template "verso-section-meta-label-class"}} tabular-nums">{{.Checked}}</span>{{end}}
           <button type="submit" data-busy-label="{{t "Checking…"}}"{{if .Checking}} disabled aria-disabled="true" aria-busy="true"{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
       {{/* Handwritten content keeps the first field row's 12px top inset, as
            Access does, in addition to the heading band's 20px content gap. */}}
       <div class="flex flex-col gap-5 pt-3">
+        {{/* A warning, not an error: it stands in the marigold band, words in
+             the deep step. With nothing wrong there is nothing here at all. */}}
+        {{if .Ledger.Title}}
         <div>
-          {{/* A marigold verdict is a warning, not an error: it stands in the
-               marigold band, words in the deep step. Every other verdict is plain
-               words beside its mark. */}}
-          {{if eq .Ledger.Mark "marigold"}}
           {{/* 16px all round, the mark on the title's line, the sentence 4px
-               under it. The title is 14px semibold, a step under the section's
-               18px heading, so the two never compete. The update tool's own
+               under it. Title and sentence are one size, 14px, the title bold
+               (DESIGN: inline warnings) — a step under the section's 18px
+               heading, so the two never compete. The update tool's own
                words ride inside, under a marigold hairline, in mono, which is
                label enough: this is what the machine wrote. They wrap rather than scroll, because a one-line
                message cut off at the edge is a message withheld. */}}
@@ -37,7 +38,7 @@
             <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
             <div class="min-w-0 flex-1">
               <p class="font-semibold">{{.Ledger.Title}}</p>
-              <p class="verso-lede mt-1 text-marigold-deep">{{.Ledger.Lede}}</p>
+              <p class="mt-1">{{.Ledger.Lede}}</p>
               {{if .Ledger.Complaint}}
               {{/* The copy control stands on the message's own first line, beside
                    the words it copies; its 28px box is pulled up 2px so it
@@ -54,16 +55,8 @@
               {{end}}
             </div>
           </div>
-          {{else}}
-          <div class="flex items-start gap-3 text-sm leading-[1.45]">
-            <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] {{if eq .Ledger.Mark "green"}}bg-green{{else if eq .Ledger.Mark "denim"}}bg-denim{{else}}border border-faint{{end}}"></span>
-            <div class="min-w-0">
-              <p class="font-semibold text-ink">{{.Ledger.Title}}</p>
-              <p class="verso-lede mt-1 text-body">{{.Ledger.Lede}}</p>
-            </div>
-          </div>
-          {{end}}
         </div>
+        {{end}}
         <div class="overflow-x-auto">
           <table class="w-full border-collapse text-sm">
             <thead>

@@ -141,10 +141,10 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	if systemErr == nil {
 		uptime = maintenanceUptime(tr, si.Uptime)
 	}
+	// While a check runs, Check again says so itself; the line beside it waits.
 	checked := ""
-	if known && !checking {
-		// The value alone: the heading's meta states its own label.
-		checked = localizedAgo(time.Since(truth.CheckedAt), tr)
+	if !checking {
+		checked = checkedAt(tr, truth.CheckedAt, known, time.Now())
 	}
 	stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
 	// A reboot drops every device on the network, so the plain one asks first.
