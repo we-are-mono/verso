@@ -73,6 +73,25 @@
      it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
      ink. Every label set this way wears exactly this, so a reader who learns
      it once reads it everywhere. */}}
+{{/* A section's heading, stated once for every page that heads a section —
+     the section widget and the pages the shell draws by hand alike. The band
+     (data-verso-section-band, its rule and inset in input.css) lays out the
+     title with whatever stands on its line (a count, an act) and wraps the
+     lede to a line of its own under them. The title is the 18px heading; the
+     lede is the section's one or two sentences in the reading style. */}}
+{{define "verso-section-band-class"}}mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1{{end}}
+{{define "verso-section-title-class"}}text-lg leading-tight font-semibold tracking-[-0.025em] text-ink{{end}}
+{{define "verso-section-lede-class"}}verso-prose text-body{{end}}
+{{define "verso-section-lede"}}<div class="w-full"><div data-verso-section-lede class="{{template "verso-section-lede-class"}}">{{.}}</div></div>{{end}}
+{{/* A section meta: a fact standing on the heading's line — how long the
+     router has run, when the firmware was last checked — its label in the
+     meta ink and its value in the body ink at 600, so the value is what the
+     eye lands on. data-verso-section-meta is the value's hook for a page that
+     rewrites it live. */}}
+{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm{{end}}
+{{define "verso-section-meta-label-class"}}text-meta{{end}}
+{{define "verso-section-meta-value-class"}}font-semibold text-body{{end}}
+
 {{define "verso-kicker-class"}}text-xs font-medium tracking-[.08em] text-meta uppercase{{end}}
 
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for

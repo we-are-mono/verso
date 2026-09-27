@@ -641,7 +641,7 @@
   "A backup made by OpenWrt · .tar.gz, up to 32 MiB": "Varnostna kopija, ki jo je naredil OpenWrt · .tar.gz, do 32 MiB",
   "Update check failed: %v": "Preverjanje posodobitev ni uspelo: %v",
   "Package update failed: %v": "Posodobitev paketov ni uspela: %v",
-  "Checked %s": "Preverjeno %s",
+  "Checked": "Preverjeno",
   "Check again": "Preveri znova",
   "Back up and restore": "Varnostno kopiranje in obnovitev",
   "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router.": "Varnostna kopija vsebuje sistemske nastavitve in nastavitve vtičnikov, registrirane pri OpenWrt. Obnovitev zamenja shranjene datoteke in znova zažene usmerjevalnik.",

@@ -52,25 +52,25 @@
     {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
   </div>
   {{else if or .Title .Meta .Control}}
-  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}mb-2{{else}}mb-5{{end}} flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}mb-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1{{else}}{{template "verso-section-band-class"}}{{end}}">
     <div class="flex flex-wrap items-center gap-3">
       {{/* A kicker names the group under it and nothing more, so it is set at the
            meta size in caps rather than as a heading — a second 18px heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="{{template "verso-section-title-class"}}">{{.Title}}</h2>{{end}}{{end}}
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}
       {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
     </div>
-    {{if and .Meta (not .MetaInline)}}<span class="inline-flex items-center gap-1.5 text-sm">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="text-meta">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-semibold text-body">{{.Meta}}</span></span>{{end}}
+    {{if and .Meta (not .MetaInline)}}<span class="{{template "verso-section-meta-class"}}">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="{{template "verso-section-meta-label-class"}}">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Meta}}</span></span>{{end}}
     {{/* Heading actions finish at the content's right edge, including when
          they wrap below the title. They keep a field's 36px height. */}}
     {{if .Control}}<span class="ml-auto flex w-full items-center justify-end sm:w-auto [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
-    {{if and .Sub $band}}<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">{{.Sub}}</div></div>{{end}}
+    {{if and .Sub $band}}{{template "verso-section-lede" .Sub}}{{end}}
   </div>
   {{end}}
-  {{if and .Sub (not $band)}}<div data-verso-section-lede class="verso-prose mb-5 text-body">{{.Sub}}</div>{{end}}
+  {{if and .Sub (not $band)}}<div data-verso-section-lede class="{{template "verso-section-lede-class"}} mb-5">{{.Sub}}</div>{{end}}
   {{/* Blocks stand off from each other; form rows sit flush. The rule is named
        in input.css, where the two declarations can be ordered deliberately. */}}
   <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>

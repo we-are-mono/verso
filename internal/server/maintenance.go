@@ -143,7 +143,8 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	}
 	checked := ""
 	if known && !checking {
-		checked = fmt.Sprintf(tr("Checked %s"), localizedAgo(time.Since(truth.CheckedAt), tr))
+		// The value alone: the heading's meta states its own label.
+		checked = localizedAgo(time.Since(truth.CheckedAt), tr)
 	}
 	stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
 	// A reboot drops every device on the network, so the plain one asks first.

@@ -101,6 +101,30 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	}
 }
 
+// TestMaintenanceHeadingsAreSectionHeadings: the page drawn by hand heads its
+// sections exactly as the section widget does — one band, one title, one
+// lede — so the two cannot drift apart.
+func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
+	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
+	band := `<div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">`
+	title := `<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">`
+	lede := `<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">`
+	for want, n := range map[string]int{band: 4, title: 4, lede: 2} {
+		if got := strings.Count(body, want); got < n {
+			t.Errorf("want at least %d of %q, got %d", n, want, got)
+		}
+	}
+	if strings.Contains(body, `data-verso-section-band class="mb-5 flex-col gap-1"`) || strings.Contains(body, `<p data-verso-section-lede`) {
+		t.Error("no heading is drawn by hand any more")
+	}
+	// What stands on a heading's line is a section meta: its label in the
+	// meta ink, its value set in the body ink at 600.
+	meta := `<span class="text-meta">Running for</span><span data-verso-section-meta class="font-semibold text-body">`
+	if !strings.Contains(body, meta) {
+		t.Errorf("the reboot heading's uptime is a section meta, want %q", meta)
+	}
+}
+
 func TestAccessPageIsTitledAccess(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/access").Body.String()
 	if !strings.Contains(body, "<title>Access · Verso</title>") {

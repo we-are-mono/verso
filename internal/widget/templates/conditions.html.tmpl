@@ -14,7 +14,7 @@
 {{end}}
 <fieldset data-verso-conditions class="space-y-2">
   <div>
-    <legend class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
+    <legend class="{{template "verso-section-title-class"}}">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
     {{if .Help}}<p class="verso-prose mt-2 max-w-[36rem] text-sm leading-snug text-body">{{.Help}}</p>{{end}}
   </div>
   <div data-verso-condition-list>{{range .Active}}{{.}}{{end}}</div>

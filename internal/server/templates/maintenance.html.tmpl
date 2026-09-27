@@ -11,11 +11,11 @@
       {{/* The ledger: the verdict under its state mark, then what this router runs
            part by part, with an Available column only while a build is offered.
            The check stands on the heading line with the time it last ran. */}}
-      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 class="text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Firmware"}}</h2>
+      <div data-verso-section-band class="{{template "verso-section-band-class"}}">
+        <h2 class="{{template "verso-section-title-class"}}">{{t "Firmware"}}</h2>
         <form method="post" action="/system/maintenance/updates/check" class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3">
           {{template "verso-csrf" .CSRFToken}}
-          {{if .Checked}}<span class="text-sm text-meta">{{.Checked}}</span>{{end}}
+          {{if .Checked}}<span class="{{template "verso-section-meta-class"}}"><span class="{{template "verso-section-meta-label-class"}}">{{t "Checked"}}</span><span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Checked}}</span></span>{{end}}
           <button type="submit" data-busy-label="{{t "Checking…"}}"{{if .Checking}} disabled aria-disabled="true" aria-busy="true"{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
@@ -98,9 +98,9 @@
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 mt-8 [&>section>.verso-rhythm]:pt-3">{{.Packages}}</div>{{end}}
     <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
-      <div data-verso-section-band class="mb-5 flex-col gap-1">
-        <h2 class="w-full text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
-        <div class="w-full"><p data-verso-section-lede class="text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p></div>
+      <div data-verso-section-band class="{{template "verso-section-band-class"}}">
+        <h2 class="{{template "verso-section-title-class"}}">{{t "Back up and restore"}}</h2>
+        {{template "verso-section-lede" (t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router.")}}
       </div>
       <div class="flex flex-wrap items-center gap-3 pt-3">
         <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
@@ -108,9 +108,9 @@
       </div>
     </section>
     <section id="reboot" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
-      <div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 class="text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Reboot"}}</h2>
-        <span class="ml-auto text-right text-sm leading-5 text-meta">{{t "Running for"}} {{.Uptime}}</span>
+      <div data-verso-section-band class="{{template "verso-section-band-class"}}">
+        <h2 class="{{template "verso-section-title-class"}}">{{t "Reboot"}}</h2>
+        <span class="{{template "verso-section-meta-class"}} ml-auto"><span class="{{template "verso-section-meta-label-class"}}">{{t "Running for"}}</span><span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Uptime}}</span></span>
       </div>
       <div class="pt-3">
         {{if .Staged}}<div class="mb-5 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.StageLabel}} · {{t "Apply or discard these before rebooting."}}</span></div>{{end}}
@@ -125,9 +125,9 @@
       </div>
     </section>
     <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
-      <div data-verso-section-band class="mb-5 flex-col gap-1">
-        <h2 class="w-full text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
-        <div class="w-full"><p data-verso-section-lede class="text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p></div>
+      <div data-verso-section-band class="{{template "verso-section-band-class"}}">
+        <h2 class="{{template "verso-section-title-class"}}">{{t "Factory reset"}}</h2>
+        {{template "verso-section-lede" (t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you.")}}
       </div>
       {{/* One field, one act, on one row a small step apart — the pattern a
            list's add row keeps: each control whole, its own corners and
