@@ -469,14 +469,14 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	switch allowed, err := s.authorizePluginWrite(r.Context(), m, s.sessionSID(r)); {
 	case err != nil:
 		log.Printf("verso: plugin %q permission check failed: %v", m.ID, err)
-		s.entityNotice(w, http.StatusServiceUnavailable, ptr("Verso couldn’t verify your permissions just now. Try again in a moment."))
+		s.entityNotice(w, http.StatusServiceUnavailable, ptr("Your permissions couldn’t be checked just now. Try again in a moment."))
 		return
 	case !allowed:
 		s.entityNotice(w, http.StatusForbidden, fmt.Sprintf(ptr("Your account isn’t permitted to change %s."), m.Name))
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.entityNotice(w, http.StatusBadRequest, ptr("Verso couldn’t read that form, so nothing was saved."))
+		s.entityNotice(w, http.StatusBadRequest, ptr("That form couldn’t be read, so nothing was saved."))
 		return
 	}
 	r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business

@@ -134,7 +134,7 @@ fn flip(
     let Some(switch) = Switch::read(model, listing, form) else {
         return render(listing, snapshot, model, counters).with_notice(
             Tone::Danger,
-            "Verso couldn’t tell what that change was, so nothing was saved.",
+            "That change wasn’t recognized, so nothing was saved.",
         );
     };
     let operation = switch.apply(model);
@@ -698,7 +698,7 @@ mod tests {
                 answer["notice"],
                 serde_json::json!({
                     "level": "danger",
-                    "text": "Verso couldn’t tell what that change was, so nothing was saved."
+                    "text": "That change wasn’t recognized, so nothing was saved."
                 }),
                 "{path} {body}"
             );

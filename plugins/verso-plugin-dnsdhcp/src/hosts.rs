@@ -33,7 +33,7 @@ const EMPTY: &str = "No reserved addresses yet — reserve one from a device on 
 const NEW_SUB: &str = "Keep an address with a device, so it always answers at the same place.";
 
 const MISSING: &str =
-    "That reservation isn’t here any more, so Verso showed you the configuration instead.";
+    "That reservation isn’t here any more, so here is the configuration instead.";
 
 /// OWNED is every option this page writes. A save states all of them, so an
 /// option the operator cleared is cleared on disk rather than left behind, and

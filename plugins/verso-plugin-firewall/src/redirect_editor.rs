@@ -132,7 +132,7 @@ pub fn save(
 pub fn missing(model: &Firewall, counters: &Counters) -> Envelope {
     redirects::page(model, counters).with_notice(
         Tone::Danger,
-        "That port forward isn’t here any more, so Verso showed you the forwards instead.",
+        "That port forward isn’t here any more, so here are the forwards instead.",
     )
 }
 

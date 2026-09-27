@@ -48,7 +48,7 @@ pub fn post(model: &Dnsdhcp, leases: &Leases) -> Envelope {
 /// NONE_YET and UNREAD are the listing's two silences, told apart: a router
 /// handing out nothing, and a router this plugin could not ask.
 const NONE_YET: &str = "No device holds an address yet — devices appear here as they join.";
-const UNREAD: &str = "Verso could not read the lease table. The networks and reservations \
+const UNREAD: &str = "The lease table couldn’t be read. The networks and reservations \
 under Configuration are unaffected.";
 
 fn listing(model: &Dnsdhcp, leases: &Leases) -> Widget {

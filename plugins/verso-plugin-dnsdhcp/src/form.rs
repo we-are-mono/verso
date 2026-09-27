@@ -62,7 +62,7 @@ pub const REFUSED: &str =
     "Some values aren’t ones the daemon accepts, so nothing was saved. They’re marked below.";
 
 /// UNKNOWN is what a page says about a submission it did not draw.
-pub const UNKNOWN: &str = "Verso couldn’t tell what that change was, so nothing was saved.";
+pub const UNKNOWN: &str = "That change wasn’t recognized, so nothing was saved.";
 
 /// text_field is one typed value, carrying whatever the last submission got
 /// wrong about it.

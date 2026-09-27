@@ -299,7 +299,7 @@ func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors
 			sec.MetaVerbatim = true
 		}
 	} else {
-		sec.Sub = "No profile exists for this board, so Verso reads whatever the kernel exposes and keeps the kernel's own names."
+		sec.Sub = "No profile exists for this board, so this page shows whatever the kernel exposes, under the kernel's own names."
 		sec.Meta = "bars drawn only where the hardware reports sane limits"
 	}
 	return sec

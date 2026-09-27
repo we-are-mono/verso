@@ -22,7 +22,7 @@ A domain-limited entry routes only that domain.";
 
 const NEW_SUB: &str = "Add a resolver this router asks when it cannot answer a name itself.";
 
-const MISSING: &str = "That server isn’t here any more, so Verso showed you the DNS page instead.";
+const MISSING: &str = "That server isn’t here any more, so here is the DNS page instead.";
 
 /// What an empty list means depends on one other option: with `noresolv` off,
 /// dnsmasq falls back to the resolvers the internet connection handed this

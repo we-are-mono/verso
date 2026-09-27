@@ -2,7 +2,6 @@
   "General": "Splošno",
   "The name, place, and clock shared by everything on this router.": "Ime, kraj in ura, ki jih deli vse na tem usmerjevalniku.",
   "Device identity": "Identiteta naprave",
-  "The name this router uses on your network and in Verso.": "Ime, ki ga ta usmerjevalnik uporablja v vašem omrežju in v Versu.",
   "Hostname": "Ime gostitelja",
   "Use letters, numbers, and hyphens. Devices may find it using the local network suffix.": "Uporabite črke, številke in vezaje. Naprave ga lahko najdejo prek lokalne omrežne pripone.",
   "Time and region": "Čas in regija",

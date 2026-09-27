@@ -33,7 +33,7 @@ const EMPTY: &str = "No extra names yet — reserved devices already answer by n
 
 const NEW_SUB: &str = "Add a name this router answers, and what it answers with.";
 
-const MISSING: &str = "That record isn’t here any more, so Verso showed you the DNS page instead.";
+const MISSING: &str = "That record isn’t here any more, so here is the DNS page instead.";
 
 /// section renders the records listing that leads the DNS page, plus the block of
 /// options that govern how local names are answered. Each row opens the record's

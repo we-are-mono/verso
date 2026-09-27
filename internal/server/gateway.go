@@ -234,7 +234,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		case err != nil:
 			log.Printf("verso: plugin %q permission check failed: %v", m.ID, err)
 			return s.notice(tr("Permission check unavailable"),
-				tr("Verso couldn’t verify your permissions just now. Try again in a moment.")), http.StatusServiceUnavailable
+				tr("Your permissions couldn’t be checked just now. Try again in a moment.")), http.StatusServiceUnavailable
 		case !allowed:
 			return s.notice(tr("Not permitted"),
 				fmt.Sprintf(tr("Your account isn’t permitted to change %s."), m.Name)), http.StatusForbidden
@@ -731,7 +731,7 @@ func (s *Server) unavailable(m plugin.Manifest, tr func(string) string) template
 	return s.noticeWith(noticeData{
 		Title: tr("Plugin unavailable"),
 		Message: fmt.Sprintf(
-			tr("%s isn’t responding right now — it may be turned off. The rest of Verso is unaffected."), m.Name),
+			tr("%s isn’t responding right now — it may be turned off. Everything else keeps working."), m.Name),
 		ActionLabel: tr("Open Packages"),
 		ActionHref:  "/system/packages",
 	})
@@ -919,7 +919,7 @@ func (s *Server) stageFailed(tr func(string) string) (template.HTML, int, bool) 
 // operator's, so it is a plain notice.
 func (s *Server) malformedOperation(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
 	return s.notice(tr("Couldn’t apply that change"), fmt.Sprintf(
-		tr("Verso couldn’t apply that change to %s."), m.Name)), http.StatusBadRequest, false
+		tr("That change couldn’t be applied to %s."), m.Name)), http.StatusBadRequest, false
 }
 
 // structuralOp is one shell-realized change to a plugin's uci sections — the
