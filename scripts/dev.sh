@@ -228,12 +228,11 @@ push_css() {
 deploy_shell() {
 	log "building shell…"
 	compile_css || true # embedded CSS stays last-good; the failure is already logged
-	# The dev binary states its lineage and its nature at once: "<ver>-dev" —
-	# a packaged build wears the bare version, an unstamped one plain "dev".
-	local dev_version="dev"
-	if [ -f VERSION ]; then
-		dev_version="$(tr -d '[:space:]' <VERSION)-dev"
-	fi
+	# The dev binary states its lineage and its nature at once: "<ver>-dev",
+	# the version this commit builds (scripts/version.sh) — a packaged build
+	# wears the bare version, an unstamped one plain "dev".
+	local dev_version
+	dev_version="$(scripts/version.sh)-dev"
 	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/we-are-mono/verso/internal/version.Version=$dev_version" -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0

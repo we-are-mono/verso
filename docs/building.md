@@ -128,9 +128,12 @@ One command. What it does, and why each part matters:
   deploy matching firmware and modules together. Docker tests use the host's
   kernel and cannot verify that the router's module feed is complete.
 
-- **Versions from the `VERSION` file** + a revision. `VER = <VERSION>-r<REVISION>`
-  (default `REVISION=1`). Bump `VERSION` in a commit for a new version so `apk`
-  sees an upgrade; pass `REVISION=2` to repackage the same version.
+- **Versions from the release tag.** A build is `<X.Y.Z>-r<N>`: the latest
+  `vX.Y.Z` tag and how many commits stand on it (`scripts/version.sh`; `make
+  version` prints it). The tagged commit builds `0.1.0-r0`, the third commit
+  after it `0.1.0-r3`, so every commit is an upgrade `apk` sees. A new version
+  is a new annotated tag (`git tag -a v0.2.0 -m "Verso 0.2.0"`). The binary,
+  the login page, the colophon and every package state the same string.
 
 Sanity-check the result (arch, version, and that ownership is `root`). The apk
 tool lives under your OpenWrt buildroot — the same one `make apk` uses:
@@ -191,8 +194,8 @@ Verso listens on **`:8080`** (coexists with LuCI on 80). Browse
 
 ## 5. The fast iteration loop (re-deploy)
 
-On the dev box, `make apk-publish REVISION=<n>` (bump `REVISION`, or `VERSION`, so
-`apk` sees an upgrade). Then on the router:
+On the dev box, commit, then `make apk-publish` (each commit builds a higher
+revision, so `apk` sees an upgrade). Then on the router:
 
 ```sh
 apk upgrade verso -U

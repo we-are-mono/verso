@@ -29,17 +29,18 @@ ARCHES ?= amd64 arm64
 rust_target_amd64 := x86_64-unknown-linux-musl
 rust_target_arm64 := aarch64-unknown-linux-musl
 
-# The release string, from the committed VERSION file, stamped into the binary
-# at link time (below) and shown on the login page. An un-stamped build (go run,
-# make dev) falls back to "dev". Defined here so LDFLAGS can reference it; the
-# apk section adds the -r<REVISION> suffix for the package name.
-VERSION  := $(file < VERSION)
+# The build's version, <X.Y.Z>-r<N>: the latest vX.Y.Z tag and how many commits
+# stand on it (scripts/version.sh), so every commit builds its own version, in
+# order, and a new version is a new tag. Stamped into the binary at link time
+# (below), where the login page and the colophon state it, and into every
+# package's version. An un-stamped build (go run, go test) reports "dev".
+VER      := $(shell scripts/version.sh)
 VERSION_PKG := github.com/we-are-mono/verso/internal/version.Version
 
 # Strip the symbol table (-s) and DWARF debug info (-w): a shipped runtime binary
 # needs neither, and dropping them cuts ~25-30% off its size. -X stamps the
 # version into the binary without a source edit.
-LDFLAGS  := -s -w -X $(VERSION_PKG)=$(VERSION)
+LDFLAGS  := -s -w -X $(VERSION_PKG)=$(VER)
 
 # Tailwind v4 standalone CLI (no Node); runs on the build host, pinned + cached.
 TAILWIND         := $(BUILDDIR)/tools/tailwindcss
@@ -78,11 +79,6 @@ apk_arch_amd64 := x86_64
 APK_GOARCH ?= arm64
 APK_ARCH   := $(apk_arch_$(APK_GOARCH))
 
-# VERSION (defined up top, stamped into the binary) + a rebuild revision. Bump
-# VERSION in a commit for a new version; override REVISION=2 to repackage the same.
-REVISION ?= 1
-VER      := $(VERSION)-r$(REVISION)
-
 APK_DIR     := $(BUILDDIR)/apk
 APK_PAYLOAD := $(APK_DIR)/pkg
 APK_OUT     := $(APK_DIR)/verso-$(VER).apk
@@ -94,9 +90,14 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit
+.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit version
 
 all: lint test build
+
+# version prints what this tree builds as, the string every binary and package
+# is stamped with.
+version:
+	@echo $(VER)
 
 $(TAILWIND):
 	@mkdir -p $(dir $@)
