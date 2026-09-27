@@ -1130,6 +1130,42 @@ pub enum Widget {
 }
 
 impl Widget {
+    /// refusal is a form's `error` from a submission's refusals keyed by
+    /// control name: the first one no control among `fields` draws, however
+    /// deep it stands. A refusal a field or switch already carries is never
+    /// said again above the form; one no control draws is the form's, so it
+    /// is never lost.
+    pub fn refusal(
+        fields: &[Widget],
+        errors: &std::collections::BTreeMap<String, String>,
+    ) -> String {
+        errors
+            .iter()
+            .find(|(name, _)| !fields.iter().any(|w| w.draws_refusal(name)))
+            .map(|(_, e)| e.clone())
+            .unwrap_or_default()
+    }
+    fn draws_refusal(&self, key: &str) -> bool {
+        match self {
+            Widget::Field { name, error, .. } | Widget::Switch { name, error, .. } => {
+                name == key && !error.is_empty()
+            }
+            // A list's refusals ride its rows, keyed by row, so it draws the
+            // refusal named for the list when any row carries one.
+            Widget::List { name, errors, .. } => name == key && !errors.is_empty(),
+            Widget::Conditional {
+                fields, otherwise, ..
+            } => fields.iter().chain(otherwise).any(|w| w.draws_refusal(key)),
+            Widget::When { children, .. }
+            | Widget::Card { children, .. }
+            | Widget::Section { children, .. }
+            | Widget::Stack { children, .. }
+            | Widget::Grid { children, .. }
+            | Widget::Disclosure { children, .. }
+            | Widget::Empty { children, .. } => children.iter().any(|w| w.draws_refusal(key)),
+            _ => false,
+        }
+    }
     /// card is a container of child widgets, optionally titled.
     pub fn card(title: &str, children: Vec<Widget>) -> Widget {
         Widget::Card {
@@ -2879,6 +2915,57 @@ mod tests {
         PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
         TableCell, TableRow, Tone, Ubus, Widget, MODE_ADVANCED, MODE_BASIC,
     };
+
+    // A form's refusal is only what no control of it says: a field's refusal
+    // rides the field, however deep in the form it stands, and is never said
+    // twice. One no control draws is the form's, so it is never lost.
+    #[test]
+    fn a_form_refuses_only_what_no_control_says() {
+        let mut port = Widget::field("https_port", "HTTPS port", "99999", "", "");
+        if let Widget::Field { error, .. } = &mut port {
+            *error = "Enter a port from 1 to 65535.".into();
+        }
+        let mut redirect = Widget::switch_keyed("redirect", "Redirect", "redirect", "", true);
+        if let Widget::Switch { error, .. } = &mut redirect {
+            *error = "Add an HTTPS listener first.".into();
+        }
+        let fields = vec![
+            Widget::section("", "", vec![Widget::stack(vec![port])]),
+            redirect,
+        ];
+        let only_fields: std::collections::BTreeMap<String, String> = [
+            (
+                "https_port".to_string(),
+                "Enter a port from 1 to 65535.".to_string(),
+            ),
+            (
+                "redirect".to_string(),
+                "Add an HTTPS listener first.".to_string(),
+            ),
+        ]
+        .into();
+        assert_eq!(Widget::refusal(&fields, &only_fields), "");
+        let mut with_whole = only_fields.clone();
+        with_whole.insert("listeners".into(), "Keep at least one listener.".into());
+        assert_eq!(
+            Widget::refusal(&fields, &with_whole),
+            "Keep at least one listener."
+        );
+        // A control that names the key but draws no refusal leaves it the form's.
+        let bare = vec![Widget::field("https_port", "HTTPS port", "99999", "", "")];
+        assert_eq!(
+            Widget::refusal(&bare, &only_fields),
+            "Enter a port from 1 to 65535."
+        );
+        // A list carries its refusal on a row, under the list's own name.
+        let mut servers = Widget::list("server", "Time servers", "host", &["x!".into()], "");
+        if let Widget::List { errors, .. } = &mut servers {
+            errors.insert("0".into(), "Enter valid hostnames.".into());
+        }
+        let listed: std::collections::BTreeMap<String, String> =
+            [("server".to_string(), "Enter valid hostnames.".to_string())].into();
+        assert_eq!(Widget::refusal(&[servers], &listed), "");
+    }
 
     // A form group names itself for the control the shell fuses it into; the
     // words ride the grid, and nothing else takes them.

@@ -18,10 +18,11 @@ fn value(s: &Section<'_>, f: Option<&Form>, key: &str, default: &str) -> String 
         }
     })
 }
-fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
+fn switch(name: &str, label: &str, help: &str, on: bool, e: &Errors) -> Widget {
     let mut w = Widget::switch_keyed(name, label, name, "", on);
-    if let Widget::Switch { help: h, .. } = &mut w {
+    if let Widget::Switch { help: h, error, .. } = &mut w {
         *h = help.into();
+        *error = e.get(name).cloned().unwrap_or_default();
     }
     w
 }
@@ -39,7 +40,7 @@ fn form(kind: &str, section: &str, fields: Vec<Widget>, e: &Errors) -> Widget {
     Widget::Form {
         style: "settings".into(),
         submit: submit.into(),
-        error: e.values().next().cloned().unwrap_or_default(),
+        error: Widget::refusal(&fields, e),
         note: String::new(),
         target: String::new(),
         fields,
@@ -82,12 +83,14 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 "Allow password login",
                 "",
                 value(s, f, "PasswordAuth", "on") == if f.is_some() { "1" } else { "on" },
+                e,
             ),
             switch(
                 "RootPasswordAuth",
                 "Allow root to log in with a password",
                 "",
                 value(s, f, "RootPasswordAuth", "on") == if f.is_some() { "1" } else { "on" },
+                e,
             ),
         ];
         // A section commits its settings first, then holds what it keeps:
@@ -136,12 +139,14 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 "Redirect to HTTPS",
                 "",
                 value(s, f, "redirect_https", "0") == "1",
+                e,
             ),
             switch(
                 "rfc1918_filter",
                 "Block DNS rebinding",
                 "Refuses requests from private addresses sent to the router's public address.",
                 value(s, f, "rfc1918_filter", "0") == "1",
+                e,
             ),
         ];
         let mut listeners = vec![];

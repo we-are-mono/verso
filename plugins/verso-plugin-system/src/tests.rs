@@ -232,6 +232,36 @@ fn access_writes_only_its_selected_service() {
     assert_eq!(e.commit[0].values["RootPasswordAuth"], "off");
 }
 
+// A refusal is said once, where it belongs: a port's under its field, a
+// switch's under the switch, and only one no control owns above the form.
+#[test]
+fn a_refusal_is_said_once() {
+    let mut r = request();
+    r.path = "/access".into();
+    let times = |body: &str, said: &str| {
+        let e = post(&r, &Form::parse(body));
+        serde_json::to_string(&e).unwrap().matches(said).count()
+    };
+    let web = "_access_config=web&section=main&listen_http_port=80";
+    let port = "Enter a port from 1 to 65535.";
+    assert_eq!(times(&format!("{web}&listen_https_port=99999"), port), 1);
+    assert_eq!(times("_access_config=ssh&section=ssh&Port=99999", port), 1);
+    let redirect = "Add an HTTPS listener before enabling redirection.";
+    let unsecured = format!("{web}&redirect_https=1");
+    assert_eq!(times(&unsecured, redirect), 1);
+    let j = serde_json::to_value(post(&r, &Form::parse(&unsecured)))
+        .unwrap()
+        .to_string();
+    let on_switch = format!(r#""error":"{redirect}","key":"redirect_https""#);
+    assert!(j.contains(&on_switch), "the switch carries it: {j}");
+    let hostname = "Use 1–63 letters, numbers or hyphens, without a leading or trailing hyphen.";
+    let bad = GENERAL_AS_IS.replace("hostname=router", "hostname=-bad");
+    let e = post(&request(), &Form::parse(&bad));
+    assert_eq!(
+        serde_json::to_string(&e).unwrap().matches(hostname).count(),
+        1
+    );
+}
 #[test]
 fn web_ports_preserve_all_bind_addresses() {
     let mut r = request();

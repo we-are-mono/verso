@@ -316,16 +316,12 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
         *meta_position = "inline".into();
         *control = Some(Box::new(clock_button));
     }
-    let form = Widget::Form {
+    let mut form = Widget::Form {
         style: "page".into(),
         submit: "Save settings".into(),
         note: String::new(),
         target: String::new(),
-        error: if e.is_empty() {
-            String::new()
-        } else {
-            e.values().next().cloned().unwrap_or_default()
-        },
+        error: String::new(),
         fields: vec![
             Widget::section(
                 "",
@@ -353,6 +349,9 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
             time,
         ],
     };
+    if let Widget::Form { error, fields, .. } = &mut form {
+        *error = Widget::refusal(fields, e);
+    }
     Envelope::page("General", form)
         .with_width("form")
         .with_tone("neutral")
