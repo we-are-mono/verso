@@ -19,7 +19,7 @@ type Confirm struct {
 	// message explains it. Absent, the message stands alone as it always has.
 	Title           string `json:"title"`
 	Message         string `json:"message"`          // the confirmation prompt
-	Confirm         string `json:"confirm"`          // confirm-button label (default "Confirm")
+	Confirm         string `json:"confirm"`          // confirm-button label (default: the Trigger's own name)
 	Cancel          string `json:"cancel"`           // cancel label (default "Cancel")
 	RequirePassword bool   `json:"require_password"` // ask for the current administrator password
 	// Tone is what the act costs. "caution" is disruptive but wanted — installing
@@ -56,7 +56,14 @@ type confirmView struct {
 }
 
 func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
+	// Unset, the answer repeats the act it confirms — the question and the
+	// button name the same act ("Delete rule"), never a bare "Confirm". The
+	// trigger has been through the catalog already, so it reads in the
+	// reader's language.
 	confirm := c.Confirm
+	if confirm == "" {
+		confirm = c.Trigger
+	}
 	if confirm == "" {
 		confirm = r.tr("Confirm")
 	}

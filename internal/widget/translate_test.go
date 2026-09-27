@@ -23,14 +23,16 @@ func fakeCatalog(m map[string]string) func(string) string {
 // keys plus the renderer's injected defaults, so both walk-translation and
 // default-translation can be asserted.
 var slLoud = map[string]string{
-	"Devices":  "Naprave",
-	"Hostname": "Ime gostitelja",
-	"Save":     "Shrani",
-	"Confirm":  "Potrdi",
-	"Cancel":   "Prekliči",
-	"Details":  "Podrobnosti",
-	"Online":   "Povezano",
-	"Copy":     "Kopiraj", // a {{ t }} template literal (properties.html.tmpl)
+	"Devices":      "Naprave",
+	"Hostname":     "Ime gostitelja",
+	"Save":         "Shrani",
+	"Save changes": "Shrani spremembe",
+	"Delete rule":  "Izbriši pravilo",
+	"Confirm":      "Potrdi",
+	"Cancel":       "Prekliči",
+	"Details":      "Podrobnosti",
+	"Online":       "Povezano",
+	"Copy":         "Kopiraj", // a {{ t }} template literal (properties.html.tmpl)
 }
 
 // TestTranslateSchemaWalksEveryTextField mirrors the validateSchema walk tests: a
@@ -211,15 +213,17 @@ func TestRenderTranslatesInjectedDefaults(t *testing.T) {
 	if err := r.RenderWithToken(&form, &Form{Fields: []Widget{&Field{Name: "h", Label: "Hostname"}}}, "", "", tr); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
-	if !strings.Contains(form.String(), ">Shrani<") {
+	if !strings.Contains(form.String(), ">Shrani spremembe<") {
 		t.Errorf("form default submit not localized: %s", form.String())
 	}
 
+	// The confirm's default is its act's own name, so it reads in the
+	// reader's language as the act does.
 	var confirm strings.Builder
-	if err := r.RenderWithToken(&confirm, &Confirm{Trigger: "x", Message: "y"}, "", "", tr); err != nil {
+	if err := r.RenderWithToken(&confirm, &Confirm{Trigger: "Delete rule", Message: "y"}, "", "", tr); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
-	for _, want := range []string{">Potrdi<", ">Prekliči<"} {
+	for _, want := range []string{">Izbriši pravilo<", ">Prekliči<"} {
 		if !strings.Contains(confirm.String(), want) {
 			t.Errorf("confirm default label not localized (%q): %s", want, confirm.String())
 		}
@@ -235,7 +239,7 @@ func TestRenderEnglishWhenNoTranslator(t *testing.T) {
 		t.Fatalf("RenderWithToken: %v", err)
 	}
 	got := b.String()
-	if !strings.Contains(got, ">Save<") || strings.Contains(got, "Shrani") {
+	if !strings.Contains(got, ">Save changes<") || strings.Contains(got, "Shrani") {
 		t.Errorf("English render must keep English defaults: %s", got)
 	}
 }

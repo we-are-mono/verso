@@ -225,7 +225,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		if buffer == "0" {
 			buffer = "64"
 		}
-		children = append(children, &widget.Form{Action: "/system/logs/settings", Submit: "Save", Fields: []widget.Widget{
+		children = append(children, &widget.Form{Action: "/system/logs/settings", Submit: "Save log settings", Fields: []widget.Widget{
 			&widget.Switch{Name: "log_remote", Label: "Send logs to a remote server", On: value("log_remote", "1") == "1"},
 			&widget.Field{Name: "log_ip", Label: "Remote log server", Value: value("log_ip", ""), Placeholder: "Optional", Help: "Leave empty to keep logs on this router."},
 			&widget.Field{Name: "log_port", Label: "Port", Value: value("log_port", "514"), Datatype: "port", Required: true},

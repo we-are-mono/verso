@@ -38,7 +38,7 @@ type Form struct {
 	// "config.section", when the form writes one uci section — said once here
 	// rather than on each control (MarkStaged).
 	Target  string       `json:"target,omitempty"`
-	Submit  string       // submit button label (default "Save")
+	Submit  string       // submit button label: the act and its object, "Save rule" (default "Save changes")
 	Success string       // optional message shown after a successful save
 	Error   string       // optional error not tied to a single field, shown above the fields
 	Actions []FormAction // secondary submit buttons besides Save (below)
@@ -175,9 +175,11 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	// A page form's submit is what stages what it holds. A plugin names it in
 	// the object's own verb ("Add rule"); a page form with no label is left
 	// buttonless here, because the label is the gateway's to supply — one
-	// default, stated once. A non-page form defaults to "Save".
+	// default, stated once. A non-page form that names no act defaults to
+	// what its button does, "Save changes" — never a bare "Save"; a plugin
+	// names the object ("Save rule") wherever it knows it.
 	if submit == "" && f.Style != "page" && !f.NoSubmit && !f.AutoSubmit && !f.ConfirmDriven() {
-		submit = r.tr("Save")
+		submit = r.tr("Save changes")
 	}
 	var note template.HTML
 	if f.Note != "" {

@@ -125,11 +125,15 @@ func TestPageCarriesTheSessionWarning(t *testing.T) {
 		"data-verso-session-stay", "Stay signed in",
 		`action="/logout"`, "Sign out",
 		"Staged changes are kept. Anything typed but not saved will be lost.",
-		// The cap's variant: nothing to extend, only to acknowledge.
-		"data-verso-session-capped", "Sessions last at most 12 hours.",
+		// The cap's variant: nothing to extend, only to acknowledge — and the
+		// acknowledgement says what it lets you do, not a bare "OK".
+		"data-verso-session-capped", "Sessions last at most 12 hours.", "Keep working",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page missing the session warning's %q", want)
 		}
+	}
+	if strings.Contains(body, ">OK</button>") {
+		t.Error("no button says a bare OK")
 	}
 }

@@ -112,6 +112,16 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 	}
 }
 
+// TestLogSettingsSayWhatTheySave: the settings form's button names what it
+// saves, never a bare "Save".
+func TestLogSettingsSayWhatTheySave(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true, uci: map[string]map[string]any{"system": {"main": map[string]any{".type": "system", "hostname": "router"}}}})
+	body := get(t, s, "/system/logs/settings").Body.String()
+	if !strings.Contains(body, ">Save log settings<") || strings.Contains(body, ">Save<") {
+		t.Errorf("log settings must name what they save:\n%s", body)
+	}
+}
+
 func TestLogSettingsValidateBeforeStaging(t *testing.T) {
 	var writes []uciWrite
 	s := newServer(t, fakeBackend{access: true, writes: &writes, uci: map[string]map[string]any{"system": {"main": map[string]any{".type": "system", "hostname": "router"}}}})

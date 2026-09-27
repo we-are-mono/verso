@@ -584,10 +584,12 @@ func TestRenderConfirm(t *testing.T) {
 	if strings.Contains(got, `@click="cancel" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs border`) {
 		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
 	}
-	// Labels default when unset.
-	def := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"})
-	if !strings.Contains(def, ">Confirm<") || !strings.Contains(def, ">Cancel<") {
-		t.Errorf("confirm should default its labels: %s", def)
+	// Unset, the confirm button repeats the act it confirms — the question
+	// and its answer name the same act, never a bare "Confirm" — and the way
+	// back is Cancel.
+	def := render(t, r, &Confirm{Trigger: "Delete rule", Message: "Sure?"})
+	if strings.Count(def, ">Delete rule<") < 2 || strings.Contains(def, ">Confirm<") || !strings.Contains(def, ">Cancel<") {
+		t.Errorf("confirm should default to its act's own name: %s", def)
 	}
 	// Two confirms on a page get distinct panel ids, the trigger's controls.
 	if !strings.Contains(got, `aria-controls="verso-confirm-1"`) || !strings.Contains(def, `id="verso-confirm-2"`) {
@@ -1251,8 +1253,10 @@ func TestRenderFormDefaultsSubmitLabel(t *testing.T) {
 	if !strings.Contains(got, `<form method="post"`) {
 		t.Errorf("no post form: %s", got)
 	}
-	if !strings.Contains(got, ">Save<") {
-		t.Errorf("default submit label 'Save' missing: %s", got)
+	// A form that names no act still says what its button does: it saves the
+	// changes typed into it. No button says a bare "Save".
+	if !strings.Contains(got, ">Save changes<") || strings.Contains(got, ">Save<") {
+		t.Errorf("default submit label 'Save changes' missing: %s", got)
 	}
 	if !strings.Contains(got, `name="h"`) {
 		t.Errorf("nested field not rendered inside form: %s", got)
