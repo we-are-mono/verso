@@ -642,12 +642,13 @@ mod tests {
     }
 
     #[test]
-    fn the_edit_page_carries_the_reservation_and_keeps_the_dhcp_tabs() {
+    fn the_edit_page_carries_the_reservation_and_names_no_subpages() {
         let model = fixture::dnsdhcp();
         let nas = body(edit(&model, "host_nas").expect("reservation"));
         assert_eq!(nas["title"], "Edit reservation");
         assert_eq!(nas["subheading"], "nas");
-        assert_eq!(nas["pages"][1]["path"], "config", "the DHCP tabs stay put");
+        // DNS & DHCP is one settings page; there are no subpages to name.
+        assert!(nas.get("pages").is_none(), "{}", nas["pages"]);
         assert_eq!(control(&nas, "mac")["value"], "30:9C:23:5E:88:01");
         assert_eq!(control(&nas, "hostid")["value"], "::30");
         assert_eq!(nas["widget"]["children"][0]["style"], "page");

@@ -13,13 +13,12 @@
 //! on every listing; a page that spelled one of them differently would read as a
 //! different kind of thing.
 
-use verso_plugin::{Envelope, PageTab, TableCell, TableColumn, TableRow, Widget};
+use verso_plugin::{Envelope, TableCell, TableColumn, TableRow, Widget};
 
 use crate::format::EM_DASH;
 
-/// LEASES, CONFIG and DNS are the sub-paths below this plugin's mount that name a
-/// page; the three editors live below two of them.
-pub const LEASES: &str = "";
+/// CONFIG and DNS are the sub-paths below this plugin's mount the three editors
+/// live under.
 pub const CONFIG: &str = "config";
 pub const DNS: &str = "dns";
 
@@ -76,17 +75,6 @@ hold right now. Changes rewrite /etc/config/dhcp.";
 const DNS_SUB: &str = "How names are answered on your network — the ones you add, where the \
 rest go, and what filters them. Changes rewrite /etc/config/dhcp.";
 
-/// tabs is the DHCP top bar. Both DHCP pages declare the same list.
-pub fn tabs() -> Vec<PageTab> {
-    [("Leases", LEASES), ("Configuration", CONFIG), ("DNS", DNS)]
-        .into_iter()
-        .map(|(label, path)| PageTab {
-            label: label.into(),
-            path: path.into(),
-        })
-        .collect()
-}
-
 /// dhcp wraps one DHCP page's content. The listings are wide: a lease carries
 /// two address families, a MAC and an expiry, and none of that reads better in a
 /// reading column.
@@ -94,7 +82,6 @@ pub fn dhcp(widget: Widget) -> Envelope {
     Envelope::page("DHCP", widget)
         .with_subheading(DHCP_SUB)
         .with_width("wide")
-        .with_pages(tabs())
 }
 
 /// dns wraps the DNS page's content. It declares no subpages: DNS has no live
@@ -120,14 +107,12 @@ pub fn dns_editor(title: &str, subheading: &str, widget: Widget) -> Envelope {
         .with_back("Cancel", &format!("{MOUNT}/{DNS}"))
 }
 
-/// dhcp_editor frames one DHCP object's page. Like dns_editor, the form's
-/// measure, but it keeps the DHCP top bar so the Leases/Configuration tabs stay
-/// put underneath an operator editing a reservation.
+/// dhcp_editor frames one DHCP object's page: like dns_editor, the form's
+/// measure, and no subpages, since DNS & DHCP is one settings page.
 pub fn dhcp_editor(title: &str, subheading: &str, widget: Widget) -> Envelope {
     Envelope::page(title, widget)
         .with_subheading(subheading)
         .with_width("form")
-        .with_pages(tabs())
         // The reservation lives on the DHCP configuration page; that is where
         // Cancel and a completed save return.
         .with_back("Cancel", &format!("{MOUNT}/{CONFIG}"))

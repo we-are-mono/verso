@@ -346,7 +346,7 @@ guest.ignore=1&guest.leasetime=2h&guest.ra_slaac=1&authoritative=1&readethers=1"
     fn the_page_is_one_form_over_every_card() {
         let body = body();
         assert_eq!(body["title"], "DHCP");
-        assert_eq!(body["pages"][1]["path"], "config");
+        assert!(body.get("pages").is_none(), "DNS & DHCP has no subpages");
         let form = &body["widget"]["children"][1];
         assert_eq!(form["style"], "page");
         assert!(form.get("submit").is_none());

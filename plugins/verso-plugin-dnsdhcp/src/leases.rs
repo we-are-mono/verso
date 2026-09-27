@@ -140,14 +140,7 @@ mod tests {
     fn the_page_watches_rather_than_edits() {
         let body = body(&fixture::leases());
         assert_eq!(body["title"], "DHCP");
-        assert_eq!(
-            body["pages"],
-            serde_json::json!([
-                {"label": "Leases", "path": ""},
-                {"label": "Configuration", "path": "config"},
-                {"label": "DNS", "path": "dns"}
-            ])
-        );
+        assert!(body.get("pages").is_none(), "DNS & DHCP has no subpages");
         assert_eq!(body["widget"]["children"][0]["type"], "filter");
         assert_eq!(body["widget"]["children"][1]["title"], "Active leases");
         // No form anywhere: there is nothing on this page to stage.

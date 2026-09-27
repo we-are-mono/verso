@@ -107,7 +107,6 @@ fn post(request: &Request, form: &Form) -> Envelope {
 // Existing deep links remain usable; every completed edit returns to the new
 // settings page, while reservations return to the Devices page that owns them.
 fn current_page(request: &Request, mut answer: Envelope) -> Envelope {
-    answer.pages.clear();
     if matches!(answer.title.as_str(), "DNS" | "DHCP") {
         let mut current = settings::page(request);
         current.commit = answer.commit;
