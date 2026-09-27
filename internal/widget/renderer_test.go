@@ -249,6 +249,19 @@ func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 	}
 }
 
+// TestACompactNoteKeepsItsControlsMeasure: a compact note explains the
+// control it sits under, so it stands at that control's measure — the form's
+// — rather than running past it; it leads with its tone's small square.
+func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
+	got := render(t, newRenderer(t), &Callout{Variant: "warning", Compact: true, Body: "Named once."})
+	if !strings.Contains(got, `class="flex w-full max-w-form items-start gap-2 rounded-xs`) {
+		t.Errorf("a compact note keeps the form's measure:\n%s", got)
+	}
+	if !strings.Contains(got, "size-1.5 flex-none") || !strings.Contains(got, "bg-marigold") {
+		t.Errorf("a compact note leads with its tone's square:\n%s", got)
+	}
+}
+
 // Multi-select chips retain their checkbox semantics and selected treatment.
 func TestRenderMultipleChoiceChips(t *testing.T) {
 	r := newRenderer(t)

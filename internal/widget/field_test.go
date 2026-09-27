@@ -123,6 +123,15 @@ func TestRenderFieldChecks(t *testing.T) {
 			t.Errorf("checks field missing %q:\n%s", want, got)
 		}
 	}
+	// A set of boxes is read down, one option a row, as a set of radios is:
+	// options of any length start at the same edge rather than scattering
+	// across a grid's columns.
+	if strings.Contains(got, "grid-cols") {
+		t.Errorf("a set of boxes is one column, not a grid:\n%s", got)
+	}
+	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-8 max-w-full cursor-pointer items-center gap-2 py-1`) {
+		t.Errorf("a set of boxes takes the radio set's rows:\n%s", got)
+	}
 }
 
 func TestRenderFieldDateTimeLocal(t *testing.T) {

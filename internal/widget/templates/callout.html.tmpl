@@ -13,7 +13,9 @@
      it just did; the full form is the standing block a page leads with, where
      the tone's hairline frames it instead of a mark. */}}
 {{if .Compact}}
-<div class="flex w-full items-start gap-2 rounded-xs px-3 py-2 text-left text-sm leading-[1.45]
+{{/* It explains the control it sits under, so it keeps that control's
+     measure — the form's — rather than running past it. */}}
+<div class="flex w-full max-w-form items-start gap-2 rounded-xs px-3 py-2 text-left text-sm leading-[1.45]
   {{if eq .Variant "success"}}bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}bg-crimson-soft text-crimson-deep
