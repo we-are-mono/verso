@@ -37,7 +37,7 @@
    */
   --color-ground: #faf9f7; /* the page, and every card */
   --color-quiet: #f5f2ec; /* every quiet surface — bands, the commit bar, drop zones, chips, row hover */
-  --color-mid: #ece8e0; /* the only mid ground: the gateway card, and every icon-button hover */
+  --color-mid: #ece8e0; /* the only mid ground: the gateway card, a value chip inside a field, and every icon-button hover */
   --color-rule: #e4e0d8; /* hairlines inside a card */
   --color-rule-strong: #d2ccc2; /* hairlines between sections, and every input border */
   --color-inert: #c9c3b8; /* a switch track when off, an empty port */

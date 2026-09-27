@@ -53,7 +53,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// rule changes nothing on the device until the whole change is applied,
 		// and crimson would promise a severity it does not have.
 		`data-verso-condition-remove aria-label="Remove Destination ports"`,
-		"hover:bg-mid/50 hover:text-ink",
+		`border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,
 		// The glyph stays inside the shared form measure
 		// whether or not a row ends in one.
 		`data-verso-condition="dest_port" class="flex max-w-form items-start gap-3"`,

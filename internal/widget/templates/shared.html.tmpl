@@ -43,8 +43,12 @@
      remove, a list's remove, a copy beside a value or on a code box. A 28px
      square in Glyph on no border, taking the parked border, the hairline wash
      and Ink under the pointer, as a subsection act does. The call site sets
-     the display (grid, or inline-grid inside a line of text) and position. */}}
-{{define "verso-btn-icon"}}size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
+     the display (grid, or inline-grid inside a line of text) and position.
+     verso-btn-icon-look is that look without the size, for a glyph act that
+     is smaller by its place — the 20px glyph that takes a value out of a
+     field — so every glyph act answers the pointer the same way. */}}
+{{define "verso-btn-icon"}}size-7 {{template "verso-btn-icon-look"}}{{end}}
+{{define "verso-btn-icon-look"}}shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
 {{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink {{template "verso-press"}}{{end}}
 
@@ -111,7 +115,12 @@
 {{/* verso-input-box: one control, one box — the height a button beside it
      shares, white, the inset shadow, and a placeholder in the meta ink at the
      regular weight (it is text, and must read as such). */}}
-{{define "verso-input-box"}}h-9 w-full rounded-xs border bg-white px-3 text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
+{{define "verso-input-box"}}h-9 w-full rounded-xs border {{template "verso-input-fill"}} px-3 text-ink transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
+
+{{/* verso-input-fill: what anything typed into stands on — white, pressed in
+     by the inset shadow — so a plain box and a box of tokens read as the same
+     kind of field. */}}
+{{define "verso-input-fill"}}bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)]{{end}}
 
 {{/* verso-input-class: the box for a machine string — an address, a port, a
      name a daemon will answer to — set in mono at the reading size, at the
@@ -151,7 +160,7 @@
      it is — taking a condition off a rule changes nothing on the device until the
      whole change is applied, so dressing it in crimson would promise a severity
      it does not have. The red is reserved for acts that cannot be taken back. */}}
-{{define "verso-remove-glyph-class"}}grid size-7 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{define "verso-remove-glyph-class"}}grid flex-none {{template "verso-btn-icon"}}{{end}}
 {{define "verso-row-remove"}}<button type="button" data-verso-remove-field="{{.Name}}" aria-label="{{ t "Remove" }} {{.Label}}"
   class="group/act relative mt-1 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>{{end}}
 
@@ -294,20 +303,25 @@
 {{/* verso-token-chip: the one chip that is not a citation. Every chip above
      states a fact somewhere in the page's prose and is sized to the words around
      it; this one is a value a person put inside a control and can take back out,
-     so it is sized to the control instead — 30px inside a 36px box, 2px of the
+     so it is sized to the control instead — 26px inside a 36px box, 4px of the
      box's own ground showing all round it. At citation size it read as a label
      that had wandered into a field, and left its remove glyph too small to wear
      the hover every other icon act wears.
 
      The value is set at the box's own reading size and weight, because what is in
-     the chip is exactly what was typed into the box beside it. */}}
-{{define "verso-token-chip"}}inline-flex h-7.5 items-center gap-1.5 rounded-xs border border-rule bg-quiet px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
+     the chip is exactly what was typed into the box beside it. It stands a step
+     darker than a citation — Mid Sand behind a Strong Hairline — because it sits
+     on a field's white rather than on the page, and a quiet chip there all but
+     disappears into it. */}}
+{{define "verso-token-chip"}}inline-flex h-6.5 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
 
-{{/* The glyph that takes one value out. Twenty pixels, so the quiet fill it
-     takes on hover is a target rather than an outline of the glyph — the same act
-     a table's row icons are, at the same size, with the same hover. It pulls 4px
-     into the chip's right padding so the fill sits inside the chip's edge. */}}
-{{define "verso-token-chip-remove"}}grid size-5 -mr-1 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{/* The glyph that takes one value out. Twenty pixels, so what it takes on
+     hover is a target rather than an outline of the glyph, and it answers the
+     pointer as every glyph act does (verso-btn-icon-look): the parked border,
+     the hairline wash, a step darker than the chip so it shows on it, and Ink.
+     It pulls 4px into the chip's right padding so it sits inside the chip's
+     edge. */}}
+{{define "verso-token-chip-remove"}}grid size-5 -mr-1 flex-none {{template "verso-btn-icon-look"}}{{end}}
 
 {{/* verso-entity-drawer: the same sliding frame as a row's own drawer, with
      nothing in it. A row whose subject several plugins have a say about does not

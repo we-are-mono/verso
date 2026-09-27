@@ -18,7 +18,7 @@
      and a click opens the system's picker. A file dragged over it answers in
      denim (data-dragging, set by verso-forms.js). */}}
 <div class="space-y-2">
-  <label for="{{.Name}}" data-verso-drop class="group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-10 text-center transition-colors">
+  <label for="{{.Name}}" data-verso-drop class="group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:not-focus-within:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-10 text-center transition-colors">
     <input id="{{.Name}}" name="{{.Name}}" type="file"{{if .Accept}} accept="{{.Accept}}"{{end}}{{if .Required}} required{{end}}{{if or .Help .Error}} aria-describedby="{{if .Help}}{{.Name}}-help{{end}}{{if and .Help .Error}} {{end}}{{if .Error}}{{.Name}}-error{{end}}"{{end}}{{if .Error}} aria-invalid="true"{{end}} class="absolute inset-0 size-full cursor-pointer opacity-0">
     <span aria-hidden="true" class="mb-2 text-glyph transition-colors group-data-dragging/drop:text-denim">{{icon "upload" "size-8"}}</span>
     <span class="text-sm font-semibold text-ink">{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Drop a file here" }}{{end}}</span>

@@ -231,6 +231,24 @@ func TestRenderBadge(t *testing.T) {
 	}
 }
 
+// TestAFocusedBoxStaysFocusedUnderThePointer: a box whose focus is inside
+// it (a field of value chips, the page filter, a file's drop area) turns
+// denim while focused whether or not the pointer is over it — its hover
+// colour applies only while it is not focused, as a plain field's does.
+func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
+	r := newRenderer(t)
+	for name, w := range map[string]Widget{
+		"tokens": &List{Name: "proto", Label: "Protocol", Style: "tokens"},
+		"filter": &Filter{},
+		"file":   &Field{Name: "backup", Kind: "file"},
+	} {
+		got := render(t, r, w)
+		if !strings.Contains(got, "hover:not-focus-within:border-") || !strings.Contains(got, "focus-within:border-denim") {
+			t.Errorf("%s: hover must not outrank focus:\n%s", name, got)
+		}
+	}
+}
+
 // Multi-select chips retain their checkbox semantics and selected treatment.
 func TestRenderMultipleChoiceChips(t *testing.T) {
 	r := newRenderer(t)
@@ -1140,11 +1158,19 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// The chip the script clones is the chip the server draws, to the class:
 		// one source for a token's shape, not one here and one in the script.
 		`<template data-verso-token-chip>`, `data-verso-token-label`,
-		// 30px inside a 36px box, with 2px of the box showing all round — and a
-		// 20px remove glyph wearing the hover every icon act wears.
-		`class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-ground p-0.5`,
-		`inline-flex h-7.5 items-center gap-1.5 rounded-xs border border-rule bg-quiet px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
-		`grid size-5 -mr-1 flex-none cursor-pointer place-items-center rounded-xs text-glyph transition-colors hover:bg-mid/50 hover:text-ink`,
+		// 26px inside a 36px box, with 4px of the box showing all round and
+		// between chips — and a 20px remove glyph wearing the hover every icon
+		// act wears. The box is a field, so it wears a field's fill: white, with
+		// the inset shadow, and a field's 36px height.
+		`class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-1`,
+		`h-6.5 min-w-18 flex-1`, // the value being typed stands at the chips' height
+		// A value in the box is a step darker than the quiet ground a chip
+		// wears elsewhere, so it stands off the white box it sits in; its
+		// remove glyph's hover is a step darker again, so it shows on the chip.
+		`inline-flex h-6.5 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
+		// Its remove glyph takes the hover every icon act takes: the parked
+		// border, the hairline wash and Ink.
+		`grid size-5 -mr-1 flex-none shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("token list missing %q:\n%s", want, got)
