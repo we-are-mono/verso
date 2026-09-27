@@ -704,6 +704,7 @@
   "All": "Vse",
   "procd could not be read (%v).": "Podatkov procd ni bilo mogoče prebrati (%v).",
   "Installed files": "Nameščene datoteke",
+  "(opens in a new tab)": "(odpre se v novem zavihku)",
   "No files recorded for this package.": "Za ta paket ni zabeleženih datotek.",
   "Package pages": "Strani paketov",
   "%d matches": "%d zadetkov",

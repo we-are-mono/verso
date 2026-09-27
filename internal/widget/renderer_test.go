@@ -755,6 +755,18 @@ func TestRenderLink(t *testing.T) {
 	if !strings.Contains(external, `target="_blank" rel="noopener noreferrer"`) {
 		t.Errorf("new-tab links must isolate the opener: %s", external)
 	}
+	// A link that leaves the router says so before its words, to the eye and to
+	// a screen reader alike.
+	glyph := strings.Index(external, `<path d="M15 3h6v6" />`)
+	if glyph < 0 || glyph > strings.Index(external, "Project website") {
+		t.Errorf("new-tab link must lead with the external-link glyph: %s", external)
+	}
+	if !strings.Contains(external, `<span class="sr-only">(opens in a new tab)</span>`) {
+		t.Errorf("new-tab link must tell a screen reader where it goes: %s", external)
+	}
+	if strings.Contains(plain, `M15 3h6v6`) || strings.Contains(plain, "new tab") {
+		t.Errorf("a link that stays must not claim to leave: %s", plain)
+	}
 }
 
 func TestRenderButton(t *testing.T) {

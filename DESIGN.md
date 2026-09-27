@@ -369,6 +369,7 @@ Plain and exact.
 - **Shape:** gently squared (2px), 36px tall, 16px side padding, 14px/600 text.
 - **Primary:** Denim fill, white words, and always a leading 16px plus glyph, unless the act leads elsewhere and names its own (download, upload, open-out). It lives on the heading line, one per page.
 - **Secondary:** the subsection act's colours at any size: transparent, Meta words, Strong Hairline border; on hover the border turns Parked, the fill Hairline, the words Ink. Every quiet button answers the pointer alike (a list's Add, Cancel, a log's Live · Download · Settings, a row button). Words only; no decorative icons.
+- **Links out:** a link that opens in a new tab leaves the router, and says so: the Lucide external-link glyph, 16px, leads its words ("Project website"), and a screen reader hears "(opens in a new tab)" after them. A link that names its own glyph keeps it; the words still tell a screen reader.
 - **Danger:** Crimson fill, white words, for the confirmation step only, and always beside its way back (see Confirmation).
 - **Subsection acts:** the acts on a part of a section: "+ Add a key", and a certificate's Install · Make a new one · Download. One dress for all of them:
   - 28px tall, 14px/500 words in Meta, a Strong Hairline border on no fill.
