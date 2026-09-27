@@ -16,7 +16,7 @@
      the address bar already names, since an open panel is a place. Without
      script the form is simply submitted, and the page answers with the panel
      open on the outcome. */}}
-<form method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="{{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}space-y-6{{end}}">
+<form{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.5rem]{{end}}">
   {{template "verso-csrf" .CSRFToken}}
   {{if .Success}}
   <div class="flex items-start gap-2 rounded-xs border border-green-line bg-green-soft px-3 py-2 text-sm leading-5 text-green-deep">
@@ -61,7 +61,7 @@
        a section rule of the page's, run out to the rail. A
        panel's form closes on its own rule, inside the panel, except when its
        actions finish the configuration card immediately above them. */}}
-  <div{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if or .Sectioned .JoinsCode}}mt-5 gap-4{{else if .ClosesPage}}mt-6 gap-4 border-t border-rule pt-8{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
+  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4{{else if .Sectioned}}mt-8 gap-4{{else if .ClosesPage}}mt-6 gap-4 border-t border-rule pt-8{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's

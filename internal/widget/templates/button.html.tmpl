@@ -23,7 +23,7 @@
        when the press lands. */}}
   class="inline-flex h-9 items-center justify-center gap-2 rounded-xs border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2
   {{if .Loading}}pointer-events-none border-rule-strong bg-quiet text-glyph
-  {{else}}{{if .Disabled}}cursor-not-allowed opacity-70{{else}}cursor-pointer active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0{{end}}
+  {{else}}{{if .Disabled}}cursor-not-allowed opacity-70{{else}}cursor-pointer {{template "verso-press"}}{{end}}
   {{if eq .Style "secondary"}}border-rule-strong bg-transparent text-meta {{if not .Disabled}}hover:border-sand-5 hover:bg-rule hover:text-ink{{end}} focus-visible:outline-denim
   {{else if eq .Style "ghost"}}border-transparent text-body {{if not .Disabled}}hover:bg-mid/50 hover:text-ink{{end}} focus-visible:outline-denim
   {{else if eq .Style "danger"}}border-crimson bg-crimson text-white {{if not .Disabled}}hover:border-crimson-deep hover:bg-crimson-deep{{end}} focus-visible:outline-crimson-deep

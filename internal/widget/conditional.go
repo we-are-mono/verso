@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
+	"strings"
 )
 
 // Conditional is a behavioural widget: one field-set shown when its controlling
@@ -27,6 +28,9 @@ type Conditional struct {
 	// Help is the line under the toggle: what turning it on means, in the place
 	// a field's helper line sits.
 	Help string
+	// Staged is the shell's word that the toggle's option waits to be applied.
+	// The gate names only its key; the form or section around it says where.
+	Staged bool
 }
 
 func (*Conditional) isWidget() {}
@@ -38,7 +42,7 @@ func (c *Conditional) LabelView() fieldLabel {
 	tip := (&Field{Name: c.Name, Key: c.Key, Help: c.Help}).TipView()
 	return fieldLabel{
 		For: c.Name, Label: c.Label, Key: c.Key,
-		Explained: c.Help != "", Tip: tip,
+		Explained: c.Help != "", Tip: tip, Staged: c.Staged,
 	}
 }
 
@@ -81,31 +85,36 @@ func (c *Conditional) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// conditionalView is the conditional template's model: the toggle plus the gated
-// fields, already rendered to trusted HTML.
+// conditionalView is the conditional template's model: the gate's row and the
+// gated fields, already rendered to trusted HTML.
 type conditionalView struct {
 	Name, Label string
-	Key, Help   string
-	On          bool
-	LabelView   fieldLabel
+	Gate        template.HTML
 	Fields      []template.HTML
 	Otherwise   []template.HTML
 }
 
-// Control is the gate's checkbox. The gate's label points at it by id, so it
+// control is the gate's checkbox. The gate's label points at it by id, so it
 // carries no name of its own; an explained gate is described by its tip.
-func (v conditionalView) Control() switchControl {
-	c := switchControl{Name: v.Name, On: v.On}
-	if v.Help != "" {
-		c.Described = v.Name + "-tip"
+func (c *Conditional) control() switchControl {
+	ctl := switchControl{Name: c.Name, On: c.Checked}
+	if c.Help != "" {
+		ctl.Described = c.Name + "-tip"
 	}
-	return c
+	return ctl
 }
 
-// renderInto renders the gated field-set through the renderer, then hands the
-// template the controlling toggle. Visibility is pure CSS (ADR-005 §7): the shell
-// owns the toggle and the show/hide, the plugin only declared the intent.
+// renderInto renders the gate as a setting's row and the gated field-set through
+// the renderer, then hands the template both. Visibility is pure CSS (ADR-005
+// §7): the shell owns the toggle and the show/hide, the plugin only declared the
+// intent. The block around the gate tracks the change, so the gate's row does not.
 func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	var gate strings.Builder
+	if err := r.renderFrame(&gate, "switch.row", c.control(), fieldFrame{
+		Label: c.LabelView(), Toggle: true, Class: "verso-conditional-gate py-0",
+	}); err != nil {
+		return err
+	}
 	fields, err := r.renderChildren(c.Fields, csrf)
 	if err != nil {
 		return err
@@ -115,7 +124,7 @@ func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error 
 		return err
 	}
 	return r.execute(out, "conditional.html.tmpl", conditionalView{
-		Name: c.Name, Label: c.Label, Key: c.Key, Help: c.Help, On: c.Checked,
-		LabelView: c.LabelView(), Fields: fields, Otherwise: otherwise,
+		Name: c.Name, Label: c.Label, Gate: template.HTML(gate.String()),
+		Fields: fields, Otherwise: otherwise,
 	})
 }

@@ -717,33 +717,41 @@ pub fn schedule_fields(schedule: &Schedule, errors: &Errors) -> Vec<Widget> {
             &schedule.weekdays,
             named(&WEEKDAYS.map(String::from)),
         ),
-        row_group(vec![
-            text_field(
-                "start_date",
-                "Starting date",
-                &schedule.start_date,
-                "YYYY-MM-DD; blank means immediately.",
-                errors,
-            ),
-            text_field(
-                "stop_date",
-                "Ending date",
-                &schedule.stop_date,
-                "YYYY-MM-DD; blank means indefinitely.",
-                errors,
-            ),
-        ]),
-        row_group(vec![
-            text_field("start_time", "From", &schedule.start_time, "", errors),
-            text_field("stop_time", "Until", &schedule.stop_time, "", errors),
-            select_field(
-                "time_basis",
-                "Clock",
-                basis,
-                options(&[("local", "Router local time"), ("utc", "UTC")]),
-                errors,
-            ),
-        ]),
+        Widget::form_grid(
+            2,
+            vec![
+                text_field(
+                    "start_date",
+                    "Starting date",
+                    &schedule.start_date,
+                    "YYYY-MM-DD; blank means immediately.",
+                    errors,
+                ),
+                text_field(
+                    "stop_date",
+                    "Ending date",
+                    &schedule.stop_date,
+                    "YYYY-MM-DD; blank means indefinitely.",
+                    errors,
+                ),
+            ],
+        )
+        .labelled("Date range", ""),
+        Widget::form_grid(
+            2,
+            vec![
+                text_field("start_time", "From", &schedule.start_time, "", errors),
+                text_field("stop_time", "Until", &schedule.stop_time, "", errors),
+            ],
+        )
+        .labelled("Time of day", ""),
+        select_field(
+            "time_basis",
+            "Clock",
+            basis,
+            options(&[("local", "Router local time"), ("utc", "UTC")]),
+            errors,
+        ),
     ]
 }
 

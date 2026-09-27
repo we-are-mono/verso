@@ -3,18 +3,12 @@
 {{/* conditions: optional typed form blocks. Every catalogue entry is rendered
      once into an inert template; the shell's shared JS adds/removes those blocks.
      Plugin code declares data and ordinary child widgets, never DOM behaviour. */}}
-{{/* A condition someone has added is a field of this form like any other, so it
-     is drawn like any other: the label and its uci key on the left, the control
-     on the right, and at the row's trailing edge the one thing that is different
-     about it — it can be taken away again. The boxed card it used to wear said
-     "this is a different kind of thing", which it is not. */}}
+{{/* Added conditions use the shared stacked fields, with an action at the
+     right to remove the whole condition. */}}
 {{define "conditions.item"}}
-{{/* The glyph sits inside the row's measure, not beyond it: a condition is one
-     row of this form, and every row shares the form measure whatever ends it. The
-     control column therefore starts 60px later here than on a row that ends in
-     nothing, which is how the canvas draws it. */}}
-<section data-verso-condition="{{.Key}}" class="flex max-w-form items-start gap-8">
-  <div class="min-w-0 flex-1 [&>div]:border-0 [&>div]:py-2">{{range .Children}}{{.}}{{end}}</div>
+{{/* The remove action stays inside the form measure, beside the first label. */}}
+<section data-verso-condition="{{.Key}}" class="flex max-w-form items-start gap-3">
+  <div class="verso-rhythm min-w-0 flex-1 [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
   <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="mt-3 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>
 </section>
 {{end}}

@@ -381,6 +381,30 @@ func TestEntityPanelWearsEachTabsState(t *testing.T) {
 	}
 }
 
+// TestEntityPanelMarksWhatWaits: a tab in a subject's panel is a form like a
+// page's, so a field whose option waits on the stage wears the mark there
+// too, on every opening, until the change is applied or discarded.
+func TestEntityPanelMarksWhatWaits(t *testing.T) {
+	tabs := twoTabs()
+	tabs.bySocket["/run/verso/qos.sock"].Widget = json.RawMessage(`{"type":"form","style":"page","target":"firewall.shape_42e6","fields":[
+	  {"type":"field","name":"rate","label":"Download limit","key":"rate","value":"10"},
+	  {"type":"field","name":"burst","label":"Burst","key":"burst","value":"5"}]}`)
+	backend := rosterBackend()
+	backend.access = true
+	backend.changes = map[string][][]string{"firewall": {{"set", "shape_42e6", "rate", "10"}}}
+	s := newServerWith(t, backend, tabs, []plugin.Manifest{reservingManifest(), shapingManifest()})
+	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	s.neighbors = testNeighbors
+	body := get(t, s, "/entity/device/42:e6:ad:ff:b7:af?tab=shape").Body.String()
+	if n := strings.Count(body, "data-verso-staged-row"); n != 1 {
+		t.Fatalf("want the one waiting option marked, got %d marks:\n%s", n, body)
+	}
+	at := strings.Index(body, "data-verso-staged-row")
+	if !strings.Contains(body[max(0, at-600):at], "Download limit") {
+		t.Errorf("the mark stands on the download limit's row:\n%s", body)
+	}
+}
+
 // TestReserveSitsOnTheHeadingLine: the roster's forward act leaves its
 // control band for the heading line, as every listing's does, while the band
 // keeps the cuts it narrows by.

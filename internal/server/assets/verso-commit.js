@@ -329,29 +329,23 @@
     dot.className = "mt-1.75 size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
   }
 
-  // The acts wait together: Apply goes to its waiting state and Discard fades,
-  // because a stage that is being applied is not one to throw away.
-  function waiting(on) {
+  // Lock both acts, with the waiting mark on the one that was requested.
+  function waiting(on, activeID) {
     var apply = document.getElementById("verso-staged-apply");
     var discard = document.getElementById("verso-staged-discard");
-    if (apply) {
+    [apply, discard].forEach(function (button) {
+      if (!button) return;
       if (on) {
-        apply.dataset.label = apply.textContent;
-        apply.textContent = apply.getAttribute("data-applying") || "";
-        // A disabled button lets go of focus, which would drop it behind the
-        // drawer; the drawer itself holds it while the apply runs.
-        if (document.activeElement === apply) {
-          var dialog = apply.closest('[role="dialog"]');
+        // Keep focus in the drawer when its active button becomes disabled.
+        if (document.activeElement === button) {
+          var dialog = button.closest('[role="dialog"]');
           if (dialog) dialog.focus();
         }
-        versoAnnounce(apply.textContent);
-      } else if (apply.dataset.label) {
-        apply.textContent = apply.dataset.label;
-      }
-      apply.disabled = on;
-      apply.setAttribute("aria-disabled", on ? "true" : "false");
-    }
-    if (discard) discard.disabled = on;
+        var label = button.id === activeID ? button.getAttribute("data-busy-label") : "";
+        versoButtons.start(button, label);
+        if (label) versoAnnounce(label);
+      } else versoButtons.finish(button);
+    });
   }
 
   function close() {
@@ -406,7 +400,7 @@
 
   function apply() {
     var n = count();
-    waiting(true);
+    waiting(true, "verso-staged-apply");
     var deadline = Date.now() + 28000;
 
     function applied() {
@@ -476,7 +470,7 @@
   var stale = false;
 
   function discard() {
-    waiting(true);
+    waiting(true, "verso-staged-discard");
     post("/uci/discard")
       .then(function (res) {
         if (!res.ok) throw new Error("discard failed");
@@ -564,11 +558,14 @@
   // beside the row's name. The server draws it wherever a control says where
   // its option lives (verso-staged-row); a row that does not say is marked
   // here, the same way. It returns the square, which the flight leaves from.
+  // A part of a fused box is a change of its own inside a row that holds
+  // several; the row's one label line carries the one mark for them all.
   function mark(row) {
+    row = row.closest(".verso-field-row") || row;
     var drawn = row.querySelector("[data-verso-staged-row] [aria-hidden]");
     if (drawn) return drawn;
     var label = row.querySelector("label");
-    var host = label ? label.parentElement : row.firstElementChild || row;
+    var host = row.querySelector(".verso-field-label") || (label ? label.parentElement : row.firstElementChild || row);
     var tag = document.createElement("span");
     tag.setAttribute("data-verso-staged-row", "");
     tag.className = "inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep";

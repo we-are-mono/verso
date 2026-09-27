@@ -113,6 +113,8 @@ fn write_widget_fixtures() {
                 style: "form".into(),
                 columns: 2,
                 children: vec![Widget::text("a"), Widget::text("b")],
+                label: String::new(),
+                help: String::new(),
             },
         ),
         (

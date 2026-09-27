@@ -50,6 +50,15 @@ type List struct {
 func (l *List) Removable() bool { return l.Remove == "yes" }
 func (l *List) Lane() bool      { return l.Remove != "" }
 
+// ControlMeasure gives network lists the same editing measure as a single
+// value, including their values, remove buttons and add control.
+func (l *List) ControlMeasure() string {
+	if l.Key == "listen_http" || l.Key == "listen_https" {
+		return "endpoint"
+	}
+	return networkControlMeasure(l.Datatype)
+}
+
 // Explained reports whether the label carries an explanation to raise.
 func (l *List) Explained() bool { return l.Tip != "" || l.Help != "" }
 
@@ -67,5 +76,9 @@ func (*List) isWidget() {}
 func (*List) children() []Widget { return nil }
 
 func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
-	return r.execute(out, "list.html.tmpl", l)
+	return r.renderFrame(out, "list.control", l, fieldFrame{
+		Label:   l.LabelView(),
+		Change:  fieldChange{Track: true, Name: l.Name, Label: l.Label, Kind: "list"},
+		Measure: l.ControlMeasure(), Lane: l.Lane(), Removable: l.Removable(),
+	})
 }

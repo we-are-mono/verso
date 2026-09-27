@@ -4,19 +4,17 @@
 {{/* a link wearing a button's clothes is the same button: one height, one radius,
      one border — stated in the same place the form's own buttons take theirs. */}}
 {{if eq .Style "status"}}
-{{/* A status among settings is a settings row: the packet and the fact where
-     a setting's name stands, a sentence under it if it has one, and the act
-     that changes it where a setting's control stands — a field-height quiet
-     button that names itself, starting where the fields' controls start. An
+{{/* A status among settings follows the shared row: fact and explanation,
+     then the field-height quiet action directly below them. An
      act on a thing of its own (a package) opens that thing's drawer over the
      page; the page keeps its address, since the drawer is not a place on it. */}}
 <div class="{{template "verso-field-row-class"}}">
-  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1 sm:pt-2">
+  <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
     <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>
     {{if .Desc}}<p class="basis-full text-sm leading-[1.45] text-body">{{.Desc}}</p>{{end}}
   </div>
-  <div class="flex w-full min-w-0 flex-col items-start sm:w-64 sm:flex-none">
+  <div class="{{template "verso-field-control-class"}} items-start">
     {{if .Panel}}<span x-data="modal" class="contents">{{end}}
     <a href="{{.Href}}"{{if .Panel}} @click.prevent="showPanel" data-verso-panel-chrome{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{.Act}}</a>
     {{if .Panel}}{{template "verso-drawer-fetched" ""}}</span>{{end}}

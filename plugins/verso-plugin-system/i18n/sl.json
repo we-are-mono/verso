@@ -57,6 +57,7 @@
   "HTTP listeners": "Naslovi za poslušanje HTTP",
   "HTTPS listeners": "Naslovi za poslušanje HTTPS",
   "HTTP port": "Vrata HTTP",
+  "Web ports": "Spletna vrata",
   "HTTPS port": "Vrata HTTPS",
   "Install a certificate": "Namesti potrdilo",
   "Install packages": "Namesti pakete",

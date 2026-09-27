@@ -127,7 +127,7 @@ func TestSubsectionActsWearOneDress(t *testing.T) {
 			t.Errorf("%s does not wear the subsection act's dress:\n%s", name, got)
 		}
 	}
-	if !strings.Contains(add, dress+" focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim pl-2 pr-2.5") ||
+	if !strings.Contains(add, dress+" focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5") ||
 		!strings.Contains(withIcon, "pl-2 pr-2.5") || !strings.Contains(plain, " px-2.5") {
 		t.Errorf("a leading glyph takes the tighter inset, words alone an even one:\n%s\n%s\n%s", add, withIcon, plain)
 	}

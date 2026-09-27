@@ -2,33 +2,21 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* form switch: the labelled form companion to the compact switch shared by
      table and settings rows. On/off state is always a switch; membership in a
-     set remains a checkbox field. Every style declares the change hooks on its
-     wrapper, so a page-form submission that flips only a switch still counts as
-     a change. */}}
-{{if eq .Style "checkbox"}}
-<div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
-{{template "verso-field-label" .LabelView}}
-<div data-verso-control class="{{template "verso-field-control-class"}}"><label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .Control}}</label></div></div>
-{{else if eq .Style "inline"}}
+     set remains a checkbox field. The labelled styles are one setting's row
+     (verso-field) holding switch.row; the inline style sits beside a section
+     heading and draws its own words. */}}
+{{if eq .Style "inline"}}
 <label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
   <span aria-hidden="true" class="size-1 rounded-full bg-inert"></span>
   <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .Control}}</span>
   <span class="verso-inline-switch-on ml-2 translate-y-px text-ink">{{.Label}}</span>
   <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{if .OffLabel}}{{.OffLabel}}{{else}}{{ t "Disabled" }}{{end}}</span>
 </label>
-{{else}}
-{{/* A state to flip is one setting, so it is the form's one row — the same
-     measure, the same label column with the option it writes beside it, the
-     same fixed control column. The switch simply is what ends this one, where
-     another row ends in a box to type in. */}}
-<div class="{{template "verso-field-row-class"}}"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
-  {{template "verso-field-label" .LabelView}}
-  <div data-verso-control class="{{template "verso-field-control-class"}}">
-    {{/* The input the switch is made of is screen-reader-only: the drawn box and
-         its check are what a person sees, so the control has to sit inside a label or
-         pressing the thing itself does nothing. The label in the left column
-         points at the same input by id, which is what makes the setting's name
-         clickable too. */}}
-    <label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .Control}}</label>
-  </div>
-</div>{{end}}
+{{end}}
+
+{{/* switch.row: a row's checkbox. The input the switch is made of is
+     screen-reader-only: the drawn box and its check are what a person sees, so
+     the control has to sit inside a label or pressing the thing itself does
+     nothing. The row's text label points at the same input by id, which is what
+     makes the setting's name clickable too. */}}
+{{define "switch.row"}}<label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label>{{end}}

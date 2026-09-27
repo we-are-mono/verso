@@ -628,6 +628,61 @@
     row.addEventListener("animationend", function () { row.classList.remove("verso-landed"); }, { once: true });
   }
 
+  // settingsOf are the rows a section of settings holds, each known by what it
+  // says, so the same section read again tells which of its rows are new.
+  function settingsOf(section) {
+    var rhythm = section && section.querySelector(".verso-rhythm");
+    return rhythm ? [].slice.call(rhythm.children) : [];
+  }
+  function said(row) {
+    return row.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  // reread puts the page body the router answers now in place of this one. It
+  // asks as the page itself does, without htmx's headers: an htmx request is a
+  // panel's, and a panel's form posts into a panel this page doesn't have.
+  function reread() {
+    return fetch(window.location.pathname + window.location.search, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+      .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
+      .then(function (html) {
+        var fresh = html && new DOMParser().parseFromString(html, "text/html").querySelector(".verso-page-body");
+        var current = document.querySelector(".verso-page-body");
+        if (!fresh || !current) return false;
+        fresh = document.importNode(fresh, true);
+        // Teleported drawers go with their owners before the body is replaced.
+        if (window.Alpine) window.Alpine.mutateDom(function () {
+          window.Alpine.destroyTree(current);
+          current.replaceWith(fresh);
+          window.Alpine.initTree(fresh);
+        });
+        else current.replaceWith(fresh);
+        if (window.htmx) window.htmx.process(fresh);
+        return true;
+      });
+  }
+
+  // arrived shows what an install added to the page that offered it: the rows
+  // of the offering section that weren't there before come into view, wash
+  // green once, and the first one's control takes the focus the drawer would
+  // have returned to an act that is gone.
+  function arrived(id, before) {
+    var fresh = settingsOf(document.getElementById(id)).filter(function (row) {
+      return row.offsetParent !== null && before.indexOf(said(row)) === -1;
+    });
+    if (!fresh.length) return;
+    var first = fresh[0].getBoundingClientRect();
+    if (first.top < 0 || first.bottom > window.innerHeight) {
+      var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      fresh[0].scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    }
+    var control = fresh[0].querySelector("input:not([type=hidden]), select, textarea, button, a[href]");
+    if (control) control.focus({ preventScroll: true });
+    fresh.forEach(function (row) {
+      row.classList.add("verso-arrived");
+      row.addEventListener("animationend", function () { row.classList.remove("verso-arrived"); }, { once: true });
+    });
+  }
+
   // The panel's submission is done: the server said so by swapping nothing and
   // handing back the outcome alone. The panel is told to finish, the outcome is
   // said where the panel was, and the page behind it is read once more for the
@@ -650,11 +705,18 @@
       document.dispatchEvent(new CustomEvent("verso-packages-changed", { detail: { navigation: response.querySelector("[data-package-navigation]") } }));
       // Installed from another page (DNS & DHCP's encryption): what that page
       // offers turns on what is installed, so its body is read again once the
-      // drawer has closed. Packages redraws its own listing.
-      if (!document.querySelector("[data-verso-packages]") && window.htmx) {
+      // drawer has closed, and what the install added there is shown.
+      // Packages redraws its own listing.
+      if (!document.querySelector("[data-verso-packages]")) {
+        var opener = openerOf(frame);
+        var section = opener && opener.closest("section[id]");
+        var before = settingsOf(section).map(said);
         setTimeout(function () {
-          window.htmx.ajax("GET", window.location.pathname + window.location.search,
-            { target: ".verso-page-body", select: ".verso-page-body", swap: "outerHTML" });
+          reread()
+            .then(function (read) { if (read && section) arrived(section.id, before); })
+            .catch(function () {
+              // The outcome has been said; the next page shows what it added.
+            });
         }, 280);
       }
       return;
@@ -1293,7 +1355,10 @@ document.addEventListener("click", function(event) {
     if (!refused) return;
     window.requestAnimationFrame(function () {
       refused.scrollIntoView({ block: "center" });
-      refused.focus({ preventScroll: true });
+      var control = refused.matches('[role="radiogroup"]')
+        ? refused.querySelector('input:checked') || refused.querySelector('input')
+        : refused;
+      if (control) control.focus({ preventScroll: true });
     });
   }
   if (window.Alpine) answer();
@@ -1308,11 +1373,29 @@ document.addEventListener("click", function(event) {
 document.addEventListener("input", function (e) {
   var box = e.target;
   if (!box.matches || !box.matches('[aria-invalid="true"]') || box.closest("[data-verso-inline-field]")) return;
-  box.removeAttribute("aria-invalid");
+  var group = box.closest('[role="radiogroup"]');
+  if (group) {
+    group.removeAttribute("aria-invalid");
+    group.querySelectorAll('[aria-invalid="true"]').forEach(function (radio) {
+      radio.removeAttribute("aria-invalid");
+    });
+  } else box.removeAttribute("aria-invalid");
   (box.getAttribute("aria-describedby") || "").split(/\s+/).forEach(function (id) {
     var said = id && document.getElementById(id);
     if (said && said.hasAttribute("data-verso-error")) said.hidden = true;
   });
+});
+
+// A box's part is its input and the unit after it (verso-box): pressing
+// anywhere on the part, the unit included, puts the caret in its input, as
+// pressing inside a plain box does.
+document.addEventListener("mousedown", function (e) {
+  var part = e.target.closest && e.target.closest(".verso-box-part");
+  if (!part || e.target.matches("input")) return;
+  var input = part.querySelector("input");
+  if (!input) return;
+  e.preventDefault();
+  input.focus();
 });
 
 // Code fields expose their logical line count beside the editor.

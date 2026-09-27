@@ -29,8 +29,7 @@ func TestPortsSayTheirState(t *testing.T) {
 
 // TestPanelFacesSwitchWithoutExpressions: the Front/Rear control runs under the
 // CSP build of Alpine, which evaluates no expressions in bindings, so it binds
-// to a component's properties. The face shown is filled in the body ink, as
-// every selected segment is, never the action colour.
+// to a component's properties. The hardware face selector uses body ink.
 func TestPanelFacesSwitchWithoutExpressions(t *testing.T) {
 	got := render(t, newRenderer(t), &Ports{Back: `<svg></svg>`, Front: `<svg></svg>`})
 	for _, want := range []string{

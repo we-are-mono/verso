@@ -1,0 +1,194 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/* Shared form geometry for pages, drawers and nested settings. The shell
+ * assigns content measures; plugins never declare presentation widths. */
+@layer components {
+  /* Opt-in groups of related fields, in the same DOM and keyboard order at
+     every size. The group owns the row padding; wrapped rows keep 32px of air. */
+  .verso-form-grid {
+    container: verso-form-grid / inline-size;
+    min-width: 0;
+    padding-block: calc(var(--spacing) * 4);
+  }
+  .verso-form-grid-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    column-gap: calc(var(--spacing) * 6);
+    row-gap: calc(var(--spacing) * 8);
+  }
+  .verso-form-grid-fields > * { min-width: 0; }
+  .verso-form-grid-fields > .verso-field-row { padding-block: 0; }
+  @container verso-form-grid (min-width: 36rem) {
+    .verso-form-grid-fields:is([data-verso-columns="2"], [data-verso-columns="3"]) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container verso-form-grid (min-width: 48rem) {
+    .verso-form-grid-fields[data-verso-columns="3"] {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .verso-field-row {
+    --verso-field-width-host: 50%;
+    --verso-field-width-secret: calc(var(--spacing) * 96);
+    --verso-field-width-prefix: calc(var(--spacing) * 56);
+    --verso-field-width-endpoint: calc(var(--spacing) * 128);
+    container: verso-field / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+    padding-block: calc(var(--spacing) * 4);
+  }
+
+  .verso-field-control {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: calc(var(--spacing) * 1.5);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* Each half needs at least 20rem. Narrow drawers and zoomed pages retain
+     the full measure, independently of the viewport's width. */
+  @container verso-field (min-width: 40rem) {
+    [data-verso-control-measure="host"] { width: var(--verso-field-width-host); }
+  }
+  [data-verso-control-measure="secret"] { width: var(--verso-field-width-secret); }
+  [data-verso-control-measure="prefix"] { width: var(--verso-field-width-prefix); }
+  /* Domain/address pairs, resolver URLs and listeners need a longer measure.
+     The shared control's max-width caps it to the available space. */
+  [data-verso-control-measure="endpoint"] { width: var(--verso-field-width-endpoint); }
+
+  /* Native selects measure their longest option. Keep the chevron with the
+     select and keep error messages from determining that intrinsic width. */
+  [data-verso-control-measure="choice"] > :has(> select) {
+    width: fit-content;
+    max-width: 100%;
+  }
+  /* Checkbox first in both DOM and visual order; align with the label's first
+     line when its words or technical key wrap. */
+  .verso-field-toggle {
+    display: grid;
+    grid-template-columns: calc(var(--spacing) * 4.5) minmax(0, 1fr);
+    align-items: start;
+  }
+  .verso-field-toggle > [data-verso-control] {
+    width: auto;
+    padding-top: calc(var(--spacing) * 0.5);
+  }
+  /* A description kept in view hangs under the label it explains, 2px below
+     it rather than a row gap away. */
+  .verso-field-toggle > [data-verso-field-desc] {
+    grid-column: 2;
+    margin-top: calc(var(--spacing) * -1.5);
+  }
+
+  /* verso-box: one frame holding typed values — a value and its unit, or
+     related values fused into one control. The frame wears the field's
+     states (verso-input-box, verso-input-border); its parts are bare inputs
+     split by hairlines, each as wide as its measure plus its unit's words. */
+  .verso-box {
+    display: inline-flex;
+    align-self: flex-start;
+    max-width: 100%;
+    height: calc(var(--spacing) * 9);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-xs);
+    background: var(--color-white);
+    box-shadow: inset 0 1px 2px rgba(27, 25, 23, .06);
+    transition-property: border-color, box-shadow;
+    transition-duration: 150ms;
+    transition-timing-function: var(--default-transition-timing-function);
+  }
+  .verso-box:hover { border-color: var(--color-faint); }
+  .verso-box:focus-within { border-color: var(--color-denim); }
+  .verso-box:has([aria-invalid="true"]) { border-color: var(--color-crimson); }
+  .verso-box:has([aria-invalid="true"]):hover { border-color: var(--color-crimson-deep); }
+  .verso-box:has([aria-invalid="true"]):focus-within {
+    border-color: var(--color-crimson-deep);
+    box-shadow: inset 0 0 0 1px var(--color-crimson-deep), inset 0 1px 2px rgba(27, 25, 23, .06);
+  }
+  /* What stands under a box — its refusals, its description — is as wide as
+     the box, never the column: the words wrap inside the box's own measure
+     (contain keeps them from widening it), with 20rem as the floor so a
+     one-number box still gives its refusal a readable line. */
+  [data-verso-control]:has(> .verso-box) {
+    width: fit-content;
+    min-width: min(100%, 20rem);
+    max-width: 100%;
+  }
+  [data-verso-control]:has(> .verso-box) > :not(.verso-box) { contain: inline-size; }
+  .verso-box-part {
+    --verso-part-width: calc(var(--spacing) * 44);
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    min-width: 0;
+    cursor: text;
+  }
+  .verso-box-part[data-verso-measure="number"] { --verso-part-width: calc(var(--spacing) * 24); }
+  .verso-box-part[data-verso-measure="secret"] { --verso-part-width: calc(var(--spacing) * 64); }
+  .verso-box-part + .verso-box-part { border-left: 1px solid var(--color-rule); }
+  .verso-box-input {
+    width: var(--verso-part-width);
+    min-width: 0;
+    height: 100%;
+    padding-inline: calc(var(--spacing) * 3);
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    outline: none;
+  }
+  .verso-box-input::placeholder { color: var(--color-meta); font-weight: var(--font-weight-normal); }
+  .verso-box-part:has(.verso-box-unit) .verso-box-input { padding-right: calc(var(--spacing) * 1.5); }
+  .verso-box-unit {
+    padding-right: calc(var(--spacing) * 3);
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-meta);
+    white-space: nowrap;
+  }
+
+  /* A removable row still reads label → input → remove. Reserve the same
+     trailing lane on fixed rows belonging to that editable set. */
+  .verso-field-with-remove {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(var(--spacing) * 7);
+    align-items: start;
+  }
+  .verso-field-with-remove > .verso-field-label { grid-column: 1 / -1; }
+  .verso-field-with-remove > [data-verso-control] { grid-column: 1; }
+  .verso-field-with-remove > :is([data-verso-remove-field], [data-verso-remove-lane]) { grid-column: 2; }
+
+  /* Compound searches and inline actions already own their outer spacing. */
+  [data-verso-compact-form] .verso-field-row { padding-block: 0; }
+  .verso-form > :is(.verso-field-row, .verso-form-grid):first-of-type { padding-top: 0; }
+  .verso-form > :is(.verso-field-row, .verso-form-grid):has(+ [data-verso-form-actions]) { padding-bottom: 0; }
+  :is(.verso-conditional-body, .verso-conditional-otherwise) > :is(.verso-field-row, .verso-form-grid):first-child { padding-top: 0; }
+  :is(.verso-conditional-body, .verso-conditional-otherwise) > :is(.verso-field-row, .verso-form-grid):last-child { padding-bottom: 0; }
+}
+
+/* Override the shared input box's w-full utility for native selects. */
+@layer utilities {
+  /* System → General: inset time-server rows beneath the standard field label.
+     Quieter values and the input's 12px inset establish the hierarchy; these
+     rules also cover rows added in the browser. */
+  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row] {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-value] {
+    color: var(--color-meta);
+    font-weight: var(--font-weight-normal);
+  }
+
+  [data-verso-control-measure="choice"] > :has(> select) > select {
+    width: auto;
+    max-width: 100%;
+  }
+}

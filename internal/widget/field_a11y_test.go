@@ -53,15 +53,17 @@ func TestFieldRequiredIsStated(t *testing.T) {
 	}
 }
 
-// TestOptionSetsAreNamedGroups: segmented radios and check sets have no single
-// control a label can point at, so the set is a group named by the row's label.
+// Radio and checkbox sets have named groups; larger single-choice sets have a
+// directly associated label. Both single-choice presentations keep help/errors.
 func TestOptionSetsAreNamedGroups(t *testing.T) {
 	opts := []Option{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-	radios := render(t, newRenderer(t), &Field{Name: "family", Label: "Family", Kind: "select", Style: "segmented", Options: opts})
+	choice := render(t, newRenderer(t), &Field{Name: "family", Label: "Family", Kind: "select", Style: "segmented", Options: choiceOptions(RadioOptionLimit),
+		Help: "Choose a family.", Error: "Choose an available family.", Required: true})
+	dropdown := render(t, newRenderer(t), &Field{Name: "family", Label: "Family", Kind: "select", Options: choiceOptions(RadioOptionLimit + 1),
+		Help: "Choose a family.", Error: "Choose an available family."})
 	checks := render(t, newRenderer(t), &Field{Name: "days", Label: "Days", Kind: "checks", Options: opts})
 	strip := render(t, newRenderer(t), &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Options: opts})
 	for name, c := range map[string]struct{ got, role, label string }{
-		"radios": {radios, `role="radiogroup"`, `aria-labelledby="family-label"`},
 		"checks": {checks, `role="group"`, `aria-labelledby="days-label"`},
 		"strip":  {strip, `role="group"`, `aria-labelledby="days-label"`},
 	} {
@@ -69,12 +71,25 @@ func TestOptionSetsAreNamedGroups(t *testing.T) {
 			t.Errorf("%s: option set must be a group named by its label (%s %s):\n%s", name, c.role, c.label, c.got)
 		}
 	}
-	if !strings.Contains(radios, `id="family-label"`) {
-		t.Errorf("the row label must carry the id the group points at:\n%s", radios)
+	for _, want := range []string{`for="family"`, `<select id="family" name="family"`, `aria-invalid="true"`, `aria-describedby="family-tip family-error"`} {
+		if !strings.Contains(dropdown, want) {
+			t.Errorf("dropdown must keep its label, help and error association (%s):\n%s", want, dropdown)
+		}
+	}
+	if RadioOptionLimit > 0 {
+		for _, want := range []string{`<span id="family-label"`, `role="radiogroup" aria-labelledby="family-label"`,
+			`aria-required="true"`, `aria-describedby="family-tip family-error"`, `aria-invalid="true"`, "focus-visible:outline-2"} {
+			if !strings.Contains(choice, want) {
+				t.Errorf("radios must keep group naming, validation and visible focus (%s):\n%s", want, choice)
+			}
+		}
+		if strings.Count(choice, `aria-invalid="true"`) != RadioOptionLimit+1 || strings.Count(choice, "<label ") != RadioOptionLimit {
+			t.Errorf("each radio needs its own option label and validation state:\n%s", choice)
+		}
 	}
 	// A segment's input is screen-reader-only, so the segment shows focus.
-	if !strings.Contains(radios, "has-focus-visible:outline-2") {
-		t.Errorf("a segment must show keyboard focus:\n%s", radios)
+	if !strings.Contains(strip, "has-focus-visible:outline-2") {
+		t.Errorf("a segment must show keyboard focus:\n%s", strip)
 	}
 }
 

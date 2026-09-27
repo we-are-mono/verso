@@ -256,6 +256,7 @@
 {{/* Strings the shell's client script writes into the page (verso.js T),
      localized at render — client JS has no translator (ADR-012). */}}
 <script type="application/json" id="verso-i18n">{{.JSStrings}}</script>
+<template data-verso-button-waiting>{{template "verso-waiting" ""}}</template>
 {{/* Shell client-side JS (ADR-004), served first-party under the strict CSP. One
      file per concern, each explaining itself at its top; verso.js is the
      translator and the Alpine components the others stand on, so it comes first,
@@ -263,6 +264,7 @@
      before it boots. Deferred scripts run in the order they appear here, which is
      the whole of the ordering this needs: no file calls into another at load. */}}
 <script src="/assets/verso.js" defer></script>
+<script src="/assets/verso-buttons.js" defer></script>
 <script src="/assets/verso-forms.js" defer></script>
 <script src="/assets/verso-tables.js" defer></script>
 <script src="/assets/verso-commit.js" defer></script>

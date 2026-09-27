@@ -36,7 +36,10 @@ func accessForm(hasPassword bool, username string, fieldErrs map[string]string, 
 	if hasPassword {
 		fields = append(fields, &widget.Field{Name: "current_password", Label: "Current password", Kind: "password", Autocomplete: "current-password", Error: fieldErrs["current_password"]})
 	}
-	fields = append(fields, &widget.Field{Name: "password", Label: "New password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["password"]}, &widget.Field{Name: "confirm", Label: "Repeat new password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["confirm"]})
+	fields = append(fields, &widget.Grid{Style: "form", Columns: 2, Label: "New password", Children: []widget.Widget{
+		&widget.Field{Name: "password", Label: "New password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["password"]},
+		&widget.Field{Name: "confirm", Label: "Repeat new password", Kind: "password", Autocomplete: "new-password", Error: fieldErrs["confirm"]},
+	}})
 	label := "Set password"
 	if hasPassword {
 		label = "Change password"

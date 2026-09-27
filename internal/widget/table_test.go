@@ -830,7 +830,7 @@ func TestRenderTableDisabledRowButton(t *testing.T) {
 	}
 	for _, absent := range []string{
 		"<form", `@click="show"`, `name="_action"`, `x-data="modal"`,
-		"hover:border-denim", "active:translate-y-px", // an action nobody can take offers no feedback
+		"hover:border-denim", "verso-press", // an action nobody can take offers no feedback
 	} {
 		if strings.Contains(got, absent) {
 			t.Errorf("disabled row button must not contain %q:\n%s", absent, got)
@@ -929,7 +929,7 @@ func TestRenderTableDirectAction(t *testing.T) {
 		"size-1.5 shrink-0 rounded-[1px] bg-crimson", `>End session<`, `>Cancel<`, // the alarm's mark: the square at full chroma
 		"border-crimson bg-crimson text-white",        // the destructive act
 		"border-rule-strong bg-transparent text-meta", // Cancel is the ordinary quiet button
-		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
+		"verso-press",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("direct table action missing %q:\n%s", want, got)

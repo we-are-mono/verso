@@ -81,5 +81,12 @@ func (s *Switch) Control() switchControl {
 }
 
 func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
-	return r.execute(out, "form_switch.html.tmpl", s)
+	if s.Style == "inline" {
+		return r.execute(out, "form_switch.html.tmpl", s)
+	}
+	return r.renderFrame(out, "switch.row", s.Control(), fieldFrame{
+		Label:  s.LabelView(),
+		Change: fieldChange{Track: s.Name != "" || s.Style == "checkbox", Name: s.Name, Label: s.Label, Kind: "toggle"},
+		Toggle: true,
+	})
 }

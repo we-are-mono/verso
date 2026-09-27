@@ -63,6 +63,7 @@
     }
     button.disabled = true;
     button.setAttribute("aria-disabled", "true");
+    button.setAttribute("aria-busy", "true");
     form.setAttribute("aria-busy", "true");
     startWaiting();
   });
@@ -71,6 +72,7 @@
   window.addEventListener("pageshow", function () {
     button.disabled = false;
     button.setAttribute("aria-disabled", "false");
+    button.removeAttribute("aria-busy");
     form.removeAttribute("aria-busy");
     stopWaiting();
   });

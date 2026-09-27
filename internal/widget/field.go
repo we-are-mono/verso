@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+// RadioOptionLimit is the largest single-choice option set shown as radios.
+// Larger sets use a native dropdown. This policy applies to pages and drawers;
+// set it to zero to use dropdowns for every single-choice field.
+const RadioOptionLimit = 3
+
 // Field is one labelled form control. Its props are semantic (ADR-005): kind and
 // datatype express intent, never presentation. Value/Error carry the round-trip
 // state — a plugin re-renders the field with the submitted Value and an Error on
@@ -88,10 +93,30 @@ type Field struct {
 	Style string `json:"style,omitempty"`
 }
 
-// Segmented reports whether a field draws as one compact strip rather than as
-// its ordinary control: a checks field as togglable chips, a select as the whole
-// choice laid out. Either way the set has to be short enough to show whole.
-func (f *Field) Segmented() bool { return f.Style == "segmented" }
+// UseRadios applies the shell's option-count policy, regardless of style hints
+// in older plugin schemas. An empty option set stays an empty dropdown.
+func (f *Field) UseRadios() bool {
+	return f.Kind == "select" && len(f.Options) > 0 && len(f.Options) <= RadioOptionLimit
+}
+
+// SelectedIndex preserves native single-select behavior: use the current value
+// when present, otherwise select the first option. Changing the presentation
+// must not change which value the form submits before someone edits it.
+func (f *Field) SelectedIndex() int {
+	for i, option := range f.Options {
+		if option.Value == f.Value {
+			return i
+		}
+	}
+	if len(f.Options) == 0 {
+		return -1
+	}
+	return 0
+}
+
+// Segmented is a compact multi-select checkbox set. Single-choice presentation
+// follows UseRadios, including schemas that still request the old strip.
+func (f *Field) Segmented() bool { return f.Kind == "checks" && f.Style == "segmented" }
 
 // Removable reports whether this row draws the glyph that clears it, and Lane
 // whether it reserves that glyph's width either way. A removable row reserves it
@@ -118,6 +143,9 @@ func (f *Field) DescribedBy() string {
 	if f.Error != "" {
 		ids = append(ids, f.Name+"-error")
 	}
+	if f.Unit != "" {
+		ids = append(ids, f.Name+"-unit")
+	}
 	return strings.Join(ids, " ")
 }
 
@@ -138,6 +166,7 @@ func (f *Field) explanation() string {
 // forms stacked.
 type fieldLabel struct {
 	For       string
+	Group     bool
 	Label     string
 	Key       string
 	Explained bool
@@ -150,7 +179,7 @@ type fieldLabel struct {
 // LabelView is this field's left column.
 func (f *Field) LabelView() fieldLabel {
 	return fieldLabel{
-		For: f.Name, Label: f.Label, Key: f.Key,
+		For: f.Name, Group: f.UseRadios() && f.Style != "locked", Label: f.Label, Key: f.Key,
 		Explained: f.Explained(), Tip: f.TipView(), Staged: f.Staged,
 	}
 }
@@ -161,6 +190,14 @@ type TipView struct {
 	ID     string
 	Tip    string
 	Footer string
+	// Parts explain a fused control one part at a time, each under its name,
+	// where the group has no one sentence of its own.
+	Parts []TipPart
+}
+
+// TipPart is one part's explanation in a fused control's tip.
+type TipPart struct {
+	Label, Tip string
 }
 
 // TipView is the label's explanation as the shared tooltip renders it. The
@@ -209,13 +246,90 @@ func (f *Field) Checked(v string) bool {
 }
 
 func (f *Field) renderInto(r *Renderer, out io.Writer, _ string) error {
-	return r.execute(out, "field.html.tmpl", f)
+	if !f.framed() {
+		return r.execute(out, "field.html.tmpl", f)
+	}
+	return r.renderFrame(out, "field.control", f, f.frame())
+}
+
+// framed reports whether this field is one setting's row. A hidden carrier is
+// never drawn, and a file's drop area is its dialog's whole subject rather than
+// a row among others.
+func (f *Field) framed() bool {
+	return f.Style == "code" || (f.Kind != "hidden" && f.Kind != "file")
+}
+
+// frame is this field's row. A locked value posts nothing, so it tracks no
+// change; the code editor's value is a whole file, which no preview patches
+// line by line.
+func (f *Field) frame() fieldFrame {
+	change := fieldChange{Track: f.Style != "locked", Name: f.Name, Label: f.Label, Kind: f.Kind, Writes: f.Key}
+	switch {
+	case f.Style == "code":
+		change.Kind, change.Writes = "textarea", ""
+	case change.Kind == "":
+		change.Kind = "text"
+	}
+	frame := fieldFrame{
+		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
+		Lane: f.Lane(), Removable: f.Removable(),
+	}
+	if f.Error != "" {
+		frame.Errors = []fieldError{{ID: f.Name + "-error", Text: f.Error}}
+	}
+	return frame
+}
+
+// Box is this field as a box of one part: the value, and the unit it is
+// counted in inside the same frame. The row around it tracks the change.
+func (f *Field) Box() boxView {
+	return boxView{Parts: []boxPart{{Field: f}}}
+}
+
+// ControlMeasure names a reusable control width from the field's semantics.
+// It does not change the plugin schema or the input typography selected by
+// Measure and Words. The same measures apply on pages and in drawers.
+func (f *Field) ControlMeasure() string {
+	if f.Kind == "select" && !f.UseRadios() {
+		return "choice"
+	}
+	if f.Kind == "password" && f.Style != "locked" {
+		return "secret"
+	}
+	if (f.Kind != "" && f.Kind != "text") || f.Pair != nil || f.Style == "locked" || f.Style == "code" {
+		return ""
+	}
+	switch f.Key {
+	case "ula_prefix":
+		return "prefix"
+	case "hostname", "domain":
+		return "host"
+	case "resolver_url":
+		return "endpoint"
+	}
+	return networkControlMeasure(f.Datatype)
+}
+
+// networkControlMeasure keeps fields and lists at the same editing width.
+// Compound DNS rules need room for both a domain and an address, or a URL path.
+func networkControlMeasure(datatype string) string {
+	switch datatype {
+	case "host", "hostname", "fqdn", "dnsserver":
+		return "host"
+	case "dnsaddress", "dnsforward":
+		return "endpoint"
+	}
+	return ""
 }
 
 // Measure keeps short machine values at the measure their grammar needs.
 func (f *Field) Measure() string {
 	if f.Kind == "select" || f.Kind == "checks" || f.Kind == "password" || f.Kind == "textarea" {
 		return "full"
+	}
+	// A value counted in a unit is a quantity, whatever its key is called.
+	if f.Unit != "" {
+		return "number"
 	}
 	switch f.Datatype {
 	case "ip4addr", "ip6addr", "ipaddr":
@@ -224,7 +338,7 @@ func (f *Field) Measure() string {
 		return "number"
 	}
 	switch f.Key {
-	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc":
+	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize":
 		return "number"
 	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime":
 		return "address"

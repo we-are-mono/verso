@@ -358,7 +358,11 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             },
         ]
     } else {
-        vec![missing("Queries leave in plain text", "", "https-dns-proxy")]
+        vec![missing(
+            "Queries leave in plain text",
+            "Your internet provider can read every name your devices look up. Installing adds encryption here, off until you turn it on.",
+            "https-dns-proxy",
+        )]
     };
     if s.resolver {
         privacy.push(s.flag("dnssec"));
@@ -381,7 +385,11 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             if s.blocking {
                 vec![s.check("adblock", "Block ads and trackers", "adblock")]
             } else {
-                vec![missing("No blocklist", "", "adblock")]
+                vec![missing(
+                    "Nothing is blocked",
+                    "Installing adds a blocklist of ads and trackers here, off until you turn it on. Once on, the router downloads the lists and keeps them in memory.",
+                    "adblock",
+                )]
             },
         ));
         sections.push(part(
@@ -421,6 +429,8 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         Widget::Grid {
             style: "settings".into(),
             columns: 2,
+            label: String::new(),
+            help: String::new(),
             children: vec![
                 // Most of what this form writes is the daemon's own section, so
                 // that is where its controls' options live unless they say
@@ -785,7 +795,9 @@ mod tests {
     // Every status row the page draws, wherever it sits in the tree.
     fn statuses(v: &Value) -> Vec<Value> {
         match v {
-            Value::Object(m) if m.get("style").and_then(Value::as_str) == Some("status") => vec![v.clone()],
+            Value::Object(m) if m.get("style").and_then(Value::as_str) == Some("status") => {
+                vec![v.clone()]
+            }
             Value::Object(m) => m.values().flat_map(statuses).collect(),
             Value::Array(a) => a.iter().flat_map(statuses).collect(),
             _ => vec![],
@@ -794,16 +806,31 @@ mod tests {
 
     // A capability this page needs a package for is a settings row whose act
     // installs the package in its own drawer over the page — never a link that
-    // leaves for Packages and lands on an empty Installed list.
+    // leaves for Packages and lands on an empty Installed list. It says what
+    // installing adds, and that it arrives off: installing changes nothing.
     #[test]
     fn a_missing_package_installs_in_its_own_drawer_over_the_page() {
         let mut r = request();
-        r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false}}));
+        r.ubus =
+            Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false}}));
         let rows = statuses(&serde_json::to_value(page(&r)).expect("serialize"));
-        for (label, package) in [("Queries leave in plain text", "https-dns-proxy"), ("No blocklist", "adblock")] {
-            let row = rows.iter().find(|w| w["label"] == label).unwrap_or_else(|| panic!("no row for {label}"));
+        for (label, package) in [
+            ("Queries leave in plain text", "https-dns-proxy"),
+            ("Nothing is blocked", "adblock"),
+        ] {
+            let row = rows
+                .iter()
+                .find(|w| w["label"] == label)
+                .unwrap_or_else(|| panic!("no row for {label}"));
+            let desc = row["desc"].as_str().unwrap_or_default();
+            assert!(desc.contains("Installing adds"), "{label}: {desc}");
+            assert!(desc.contains("off until you turn it on"), "{label}: {desc}");
             assert_eq!(row["act"], format!("Install {package}"), "{label}");
-            assert_eq!(row["href"], format!("/system/packages/package?name={package}"), "{label}");
+            assert_eq!(
+                row["href"],
+                format!("/system/packages/package?name={package}"),
+                "{label}"
+            );
             assert_eq!(row["icon"], "download", "{label}");
             assert_eq!(row["panel"], true, "{label}");
         }

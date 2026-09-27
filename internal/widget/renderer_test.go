@@ -192,16 +192,16 @@ func TestRenderFieldSelectMarksSelected(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Field{
-		Name: "tz", Label: "Timezone", Kind: "select", Value: "CET",
-		Options: []Option{{Value: "UTC", Label: "UTC"}, {Value: "CET", Label: "Central"}},
+		Name: "tz", Label: "Timezone", Kind: "select", Value: "0",
+		Options: choiceOptions(RadioOptionLimit + 1),
 	})
 	if !strings.Contains(got, "<select") {
 		t.Errorf("no <select>: %s", got)
 	}
-	if !strings.Contains(got, `value="CET" selected`) {
+	if !strings.Contains(got, `value="0" selected`) {
 		t.Errorf("selected option not marked: %s", got)
 	}
-	if strings.Contains(got, `value="UTC" selected`) {
+	if strings.Count(got, " selected") != 1 {
 		t.Errorf("wrong option marked selected: %s", got)
 	}
 }
@@ -231,32 +231,21 @@ func TestRenderBadge(t *testing.T) {
 	}
 }
 
-// TestRenderSegmentedFieldsWearTheOneTray: a segmented pick — one of three
-// verdicts, or the days of a schedule — wears the tray every switch in the app
-// wears: the segment in force filled in the body ink, the rest plain words,
-// never the action colour. Radios and checkboxes underneath, so it posts as
-// the box it replaces.
-func TestRenderSegmentedFieldsWearTheOneTray(t *testing.T) {
+// Multi-select chips retain their checkbox semantics and selected treatment.
+func TestRenderMultipleChoiceChips(t *testing.T) {
 	r := newRenderer(t)
-	pick := render(t, r, &Field{Name: "input", Label: "Traffic to this router", Kind: "select", Style: "segmented", Value: "reject",
-		Options: []Option{{Value: "accept", Label: "accept"}, {Value: "reject", Label: "reject"}, {Value: "drop", Label: "drop"}}})
 	days := render(t, r, &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Values: []string{"mon"},
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
-	for _, got := range []string{pick, days} {
-		for _, want := range []string{
-			`class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
-			`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-body has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2`,
-		} {
-			if !strings.Contains(got, want) {
-				t.Errorf("segmented field missing %q:\n%s", want, got)
-			}
-		}
-		if strings.Contains(got, "bg-denim") {
-			t.Errorf("a selected segment is never the action colour:\n%s", got)
+	for _, want := range []string{
+		`class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
+		`<label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2`,
+	} {
+		if !strings.Contains(days, want) {
+			t.Errorf("segmented field missing %q:\n%s", want, days)
 		}
 	}
-	if !strings.Contains(pick, `type="radio" name="input" value="reject" checked`) {
-		t.Errorf("the verdict in force is the checked radio:\n%s", pick)
+	if strings.Contains(days, "has-checked:bg-body") {
+		t.Errorf("a selected chip must use the shared choice colour:\n%s", days)
 	}
 	if !strings.Contains(days, `type="checkbox" name="days" value="mon" checked`) {
 		t.Errorf("a day in the set is a checked box:\n%s", days)
@@ -550,7 +539,7 @@ func TestRenderConfirm(t *testing.T) {
 		"mt-6 ml-4 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
 		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
 		"border-crimson bg-crimson text-white",
-		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
+		"verso-press",
 		// The trigger is a 36px control like every other button: h-9 holds the
 		// border inside the height, where a line plus padding would add 2px.
 		"flex h-9 w-full cursor-pointer items-center justify-center rounded-xs border px-4",
@@ -648,18 +637,18 @@ func TestRenderLink(t *testing.T) {
 	if !strings.Contains(dl, "border border-rule-strong bg-transparent text-meta") || !strings.Contains(dl, "hover:border-sand-5 hover:bg-rule") {
 		t.Errorf("ghost link missing the secondary-button treatment: %s", dl)
 	}
-	if !strings.Contains(dl, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
+	if !strings.Contains(dl, "verso-press") {
 		t.Errorf("button-styled link missing tactile pressed state: %s", dl)
 	}
 	primary := render(t, r, &Link{Label: "Download backup", Href: "/backup", Style: "button"})
-	if !strings.Contains(primary, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
+	if !strings.Contains(primary, "verso-press") {
 		t.Errorf("primary button link missing tactile pressed state: %s", primary)
 	}
 	secondary := render(t, r, &Link{Label: "Restart router", Href: "/restart", Style: "secondary"})
 	for _, want := range []string{
 		"hover:border-sand-5 hover:bg-rule",
 		"border-rule-strong bg-transparent text-meta",
-		"active:translate-y-px",
+		"verso-press",
 	} {
 		if !strings.Contains(secondary, want) {
 			t.Errorf("secondary link missing %q: %s", want, secondary)
@@ -714,7 +703,7 @@ func TestRenderLink(t *testing.T) {
 func TestRenderButton(t *testing.T) {
 	r := newRenderer(t)
 	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
-	for _, want := range []string{`type="button"`, "border-denim bg-denim text-white", "hover:border-denim-deep hover:bg-denim-deep", "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0", "size-4", "Choose firmware…"} {
+	for _, want := range []string{`type="button"`, "border-denim bg-denim text-white", "hover:border-denim-deep hover:bg-denim-deep", "verso-press", "size-4", "Choose firmware…"} {
 		if !strings.Contains(inert, want) {
 			t.Errorf("inert button missing %q: %s", want, inert)
 		}
@@ -778,9 +767,9 @@ func TestRenderLiveButton(t *testing.T) {
 		"data-verso-live",
 		`data-verso-wait`, "size-1.5 rounded-[1px] bg-sand-5",
 		"<span data-verso-live-label>Pause</span>",
-		"hover:border-sand-5",   // hover intact
-		"cursor-pointer",        // the pointer says "press me"
-		"active:translate-y-px", // and it presses
+		"hover:border-sand-5", // hover intact
+		"cursor-pointer",      // the pointer says "press me"
+		"verso-press",         // and it presses
 	} {
 		if !strings.Contains(live, want) {
 			t.Errorf("live button missing %q: %s", want, live)
@@ -1202,7 +1191,7 @@ func TestRenderFormSuccess(t *testing.T) {
 		t.Errorf("form submit missing the primary-button treatment: %s", got)
 	}
 	if !strings.Contains(got, "hover:border-denim-deep hover:bg-denim-deep") ||
-		!strings.Contains(got, "active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0") {
+		!strings.Contains(got, "verso-press") {
 		t.Errorf("form submit missing tactile pressed state: %s", got)
 	}
 }

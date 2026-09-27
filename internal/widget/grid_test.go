@@ -42,13 +42,40 @@ func TestGridColumnsResponsive(t *testing.T) {
 
 func TestRenderFormGrid(t *testing.T) {
 	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 3, Children: []Widget{
-		&Field{Name: "password", Label: "New password", Kind: "password"},
-		&Field{Name: "confirm", Label: "Repeat password", Kind: "password"},
+		&Field{Name: "port", Label: "Port"},
+		&List{Name: "servers", Label: "Servers"},
 	}})
-	for _, want := range []string{"grid-cols-1 md:grid-cols-3", "gap-6", "New password", "Repeat password"} {
+	for _, want := range []string{`class="verso-form-grid"`, `data-verso-columns="3"`, "Port", "Servers"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("form grid missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// TestASecretAndItsRepeatAreOneControl: a new password and its repeat are one
+// answer typed twice, so they fuse like any related values — as secrets: never
+// reflected, told to the password manager as new, set in words, each part at
+// the fused secret's measure.
+func TestASecretAndItsRepeatAreOneControl(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 2, Label: "New password", Children: []Widget{
+		&Field{Name: "password", Label: "New password", Kind: "password", Autocomplete: "new-password", Value: "hunter22"},
+		&Field{Name: "confirm", Label: "Repeat new password", Kind: "password", Value: "hunter22", Error: "The passwords differ."},
+	}})
+	for _, want := range []string{
+		`role="group" aria-labelledby="password-group-label"`,
+		`class="verso-box-part" data-verso-measure="secret"`,
+		`id="password" name="password" type="password" autocomplete="new-password" aria-label="New password"`,
+		`id="confirm" name="confirm" type="password" autocomplete="new-password" aria-label="Repeat new password"`,
+		`data-verso-change-kind="password"`,
+		"font-sans text-sm",
+		"Repeat new password: The passwords differ.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("fused secret missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "hunter22") {
+		t.Errorf("a secret is never reflected into the page:\n%s", got)
 	}
 }
 

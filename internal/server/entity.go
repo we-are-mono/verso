@@ -359,6 +359,9 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 	}
 
 	tabs := s.entityTabs(r.Context(), r, kind, id, active, posted)
+	// A tab is a form like a page's: each control whose option waits on the
+	// stage is marked on every opening, as it is on the plugin's own page.
+	waits := s.waitingOptions(r.Context(), s.sessionSID(r))
 	for _, tab := range tabs {
 		data.Tabs = append(data.Tabs, entityTabView{Label: tab.Label, State: tab.State, Href: tab.Href, Active: tab.Active})
 		if !tab.Active {
@@ -369,6 +372,7 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		// posts to is the shell's to know — the plugin answered on its own mount
 		// and has never heard of /entity.
 		widget.PostIntoFrame(tab.Body, widget.FrameEntity, tab.Href)
+		widget.MarkStaged(tab.Body, waits)
 		// The tab's widgets are the plugin's prose too, so they translate from
 		// that plugin's catalog exactly as its page would.
 		var body strings.Builder

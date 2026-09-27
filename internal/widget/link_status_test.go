@@ -16,7 +16,7 @@ func TestStatusLinkIsASettingsRow(t *testing.T) {
 	got := render(t, newRenderer(t), &Link{Style: "status", Label: "Queries leave in plain text",
 		Act: "Install https-dns-proxy", Icon: "download", Href: "/system/packages/package?name=https-dns-proxy"})
 	for _, want := range []string{
-		`class="flex max-w-form flex-col gap-2 py-2 sm:flex-row sm:items-start sm:gap-8"`,
+		`class="verso-field-row max-w-form"`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
 		`<span class="text-sm font-semibold text-ink">Queries leave in plain text</span>`,
 		`href="/system/packages/package?name=https-dns-proxy"`,

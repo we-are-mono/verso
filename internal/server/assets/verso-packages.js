@@ -7,6 +7,25 @@
   var pageURL = new URL(window.location.href);
   var request, sequence = 0, timer, pollTimer, refreshing = false;
   var submissions = new WeakMap();
+  var pendingForms = new WeakSet();
+
+  function actionLabel(form, submitter) {
+    var primary = form.querySelector('[name="_primary"]');
+    var verb = submitter && submitter.name === "_action" ? submitter.value : primary && primary.value;
+    var labels = { search: "Searching…", install: "Installing…", remove: "Removing…", upgrade: "Upgrading…", refresh: "Refreshing index…" };
+    return labels[verb] ? T(labels[verb]) : "";
+  }
+
+  // Catch repeated Enter submissions before htmx can queue another request
+  // on the form. Disabling its button alone does not cover that path.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!/^\/system\/packages(?:\/discover)?$/.test(new URL(form.action).pathname)) return;
+    if (pendingForms.has(form) || Array.from(form.querySelectorAll('button[type="submit"]')).some(versoButtons.has)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
 
   function failure(message) {
     var error = root && root.querySelector("[data-package-error]");
@@ -71,9 +90,7 @@
     if (request) request.abort();
     if (root) {
       var button = root.querySelector("[data-package-refresh] button");
-      button.disabled = true; button.setAttribute("aria-disabled", "true");
-      button.className = "pointer-events-none flex h-9 items-center gap-2.5 rounded-xs border border-rule-strong bg-quiet px-4 text-sm font-semibold text-glyph";
-      button.replaceChildren(root.querySelector("[data-package-waiting]").content.cloneNode(true), document.createTextNode(T("Refreshing index…")));
+      versoButtons.start(button, T("Refreshing index…"));
       root.querySelector("[data-package-note]").textContent = T("Refreshing index…");
     }
     pollTimer = setTimeout(poll, 500);
@@ -82,7 +99,9 @@
     refreshing = false;
     if (!root) return;
     var button = root.querySelector("[data-package-refresh] button");
+    versoButtons.finish(button);
     button.disabled = false; button.removeAttribute("aria-disabled");
+    button.removeAttribute("aria-busy");
     button.className = "flex h-9 items-center rounded-xs border border-rule-strong px-4 text-sm font-semibold text-body hover:bg-quiet";
     button.textContent = T("Refresh index");
   }
@@ -171,7 +190,14 @@
     timer = setTimeout(function () { listing(url, true); }, 300);
   });
   document.addEventListener("submit", async function (event) {
-    if (!event.target.matches("[data-package-refresh]")) return;
+    var form = event.target;
+    if (!form.matches("[data-package-refresh]")) {
+      if (!form.hasAttribute("hx-post") && /^\/system\/packages(?:\/discover)?$/.test(new URL(form.action).pathname)) {
+        var label = actionLabel(form, event.submitter);
+        if (label) versoButtons.submit(event, label);
+      }
+      return;
+    }
     event.preventDefault();
     if (refreshing) return;
     var data = new URLSearchParams(new FormData(event.target)); data.set("_action", "refresh");
@@ -185,13 +211,10 @@
   });
   document.addEventListener("htmx:afterRequest", function (event) {
     var xhr = event.detail.xhr;
-    var buttons = xhr && submissions.get(xhr);
-    if (buttons) {
-      buttons.forEach(function (saved) {
-        if (!saved.button.isConnected) return;
-        saved.button.innerHTML = saved.html; saved.button.className = saved.classes;
-        saved.button.disabled = saved.disabled; saved.button.removeAttribute("aria-disabled");
-      });
+    var submission = xhr && submissions.get(xhr);
+    if (submission) {
+      submission.buttons.forEach(versoButtons.finish);
+      pendingForms.delete(submission.form);
       submissions.delete(xhr);
     }
     if (xhr && xhr.getResponseHeader("X-Verso-Packages") === "refreshing") refreshStarted();
@@ -199,25 +222,17 @@
   document.addEventListener("htmx:beforeRequest", function (event) {
     var elt = event.detail.elt, form = elt && elt.closest("form");
     if (!form || !/^\/system\/packages(?:\/discover)?$/.test(new URL(form.action).pathname)) return;
-    var verb = form.querySelector('[name="_primary"]');
-    var labels = { search: "Searching…", install: "Installing…", remove: "Removing…", upgrade: "Upgrading…" };
-    var label = verb && labels[verb.value];
+    if (pendingForms.has(form)) { event.preventDefault(); return; }
+    var trigger = event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
+    var active = trigger && trigger.submitter || form.querySelector('button[type="submit"]');
+    var label = actionLabel(form, active);
     if (!label) return;
     var controls = form.closest("[data-verso-panel]") || form;
-    var saved = Array.from(controls.querySelectorAll('button[type="submit"]')).map(function (button) {
-      var state = { button: button, html: button.innerHTML, classes: button.className, disabled: button.disabled };
-      button.disabled = true; button.setAttribute("aria-disabled", "true");
-      return state;
-    });
-    submissions.set(event.detail.xhr, saved);
-    var button = form.querySelector('button[type="submit"]');
-    if (button) {
-      button.classList.add("pointer-events-none", "bg-quiet", "text-glyph", "gap-2.5");
-      button.classList.remove("bg-denim", "text-white", "border-denim");
-      button.textContent = T(label);
-      var mark = root && root.querySelector("[data-package-waiting]");
-      if (mark) button.prepend(mark.content.cloneNode(true));
-    }
+    var buttons = Array.from(controls.querySelectorAll('button[type="submit"]'));
+    if (buttons.some(versoButtons.has)) { event.preventDefault(); return; }
+    buttons.forEach(function (button) { versoButtons.start(button, button === active ? label : ""); });
+    pendingForms.add(form);
+    submissions.set(event.detail.xhr, { form: form, buttons: buttons });
   });
   document.addEventListener("verso-packages-changed", function (event) {
     var template = event.detail && event.detail.navigation;

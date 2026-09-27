@@ -50,15 +50,16 @@ func TestInlineValueField(t *testing.T) {
 	got := render(t, newRenderer(t), s)
 	for _, want := range []string{
 		"data-verso-inline-field",
-		`for="hostname" class="block text-sm font-semibold text-ink"`, // matches ordinary field labels
+		`<label for="hostname" id="hostname-label" class="text-sm font-semibold text-ink">`, // the ordinary field label
 		`id="hostname" type="text" name="hostname" value="mono-gateway"`,
+		`aria-describedby="hostname-desc hostname-error"`, // read with its description and its refusal
 		"data-verso-inline-input",
-		`data-verso-datatype="hostname"`, // the client validates by this on blur
-		"data-verso-inline-error",        // the error slot lives beneath the field
-		"aria-invalid:border-crimson",    // the error treatment is ready on the input
-		"mt-2 max-w-md",                  // compact width, on its own line below the label
-		"font-mono text-base",            // same size as an ordinary field input
-		`<p class="mt-1.5 text-sm leading-snug text-body">Used on the network.</p>`, // help follows the field
+		`data-verso-datatype="hostname"`,    // the client validates by this on blur
+		"data-verso-inline-error",           // the error slot lives beneath the field
+		"aria-invalid:border-crimson",       // the error treatment is ready on the input
+		`data-verso-control-measure="host"`, // same host measure as form fields
+		"font-mono text-base",               // same size as an ordinary field input
+		`<p id="hostname-desc" class="text-sm leading-snug text-pretty text-body">Used on the network.</p>`, // help follows the field
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("inline field missing %q\n%s", want, got)
@@ -128,7 +129,7 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 	})
 	for _, want := range []string{
 		">lan</span>", "font-mono",
-		`name="cachesize" value="1000"`, "w-28", // a named value is a fixed-width in-place input
+		`name="cachesize" value="1000"`, "verso-field-control", // a named value uses shared field geometry
 		"<span>Resolution</span>", "uppercase", // the group label renders inside the card
 		"<details", "3 more options", "nohosts", "verso-chevron",
 	} {

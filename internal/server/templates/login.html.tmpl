@@ -70,20 +70,17 @@
           <h1 id="login-heading" class="mb-1 text-2xl leading-[1.1] font-semibold tracking-tight">{{ t "Sign in" }}</h1>
           <form method="post" action="/login" data-login-form class="flex flex-col gap-5">
             <div class="flex flex-col gap-2">
-              <label for="username" class="text-sm font-semibold">{{ t "Username" }}</label>
+              <label for="username" class="{{template "verso-field-label-class"}}">{{ t "Username" }}</label>
               <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
-                class="h-9 w-full rounded-xs border border-rule-strong bg-white px-3 font-mono text-base font-normal shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors duration-150 hover:border-faint focus:border-denim focus:outline-none">
+                class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
             </div>
             <div class="flex flex-col gap-2">
-              <label for="password" class="text-sm font-semibold">{{ t "Password" }}</label>
+              <label for="password" class="{{template "verso-field-label-class"}}">{{ t "Password" }}</label>
               <input id="password" name="password" type="password" autocomplete="current-password" autofocus
                 {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
-                class="h-9 w-full rounded-xs border {{if .Error}}border-crimson hover:border-crimson-deep{{else}}border-rule-strong hover:border-faint{{end}} bg-white px-3 font-sans text-sm font-normal shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors duration-150 focus:border-denim focus:outline-none">
+                class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
               {{if .Error}}
-              <p id="login-error" role="alert" class="flex items-start gap-2 text-sm text-crimson-deep">
-                <span class="mt-1.5 size-1.5 shrink-0 rounded-[1px] bg-crimson" aria-hidden="true"></span>
-                <span>{{ .Error }}</span>
-              </p>
+              <p id="login-error" role="alert" class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>
               {{end}}
             </div>
             <button type="submit" data-login-submit aria-disabled="false"

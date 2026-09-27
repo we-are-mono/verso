@@ -25,7 +25,7 @@
     <label class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-body">
       <span class="relative inline-flex size-4.5 shrink-0 items-center justify-center">
         <input type="checkbox" data-log-include-firewall class="peer sr-only"{{if .IncludeFirewall}} checked{{end}}>
-        <span class="absolute inset-0 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] peer-checked:border-body peer-checked:bg-body peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim"></span>
+        <span class="absolute inset-0 rounded-xs border border-choice-border bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep"></span>
         <span class="relative text-white opacity-0 peer-checked:opacity-100">{{icon "check" "size-3.5 [stroke-width:3]"}}</span>
       </span>
       {{t "Include firewall traffic"}}

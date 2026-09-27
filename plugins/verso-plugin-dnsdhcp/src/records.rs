@@ -221,7 +221,8 @@ fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
                         ),
                         form::text_field("weight", "Weight", &record.weight, "SRV only.", errors),
                     ],
-                )],
+                )
+                .labelled("Port and ranking", "")],
             ),
         ],
         note: String::new(),

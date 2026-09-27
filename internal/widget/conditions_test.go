@@ -56,7 +56,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		"hover:bg-mid/50 hover:text-ink",
 		// The glyph stays inside the shared form measure
 		// whether or not a row ends in one.
-		`data-verso-condition="dest_port" class="flex max-w-form items-start gap-8"`,
+		`data-verso-condition="dest_port" class="flex max-w-form items-start gap-3"`,
 		"hover:border-sand-5 hover:bg-rule", "border-rule-strong bg-transparent text-meta",
 	} {
 		if !strings.Contains(got, want) {

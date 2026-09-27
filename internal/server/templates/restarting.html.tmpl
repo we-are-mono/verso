@@ -30,7 +30,7 @@
           <span class="mt-1.75">{{template "verso-waiting" ""}}</span>
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{.Title}}</h1>
-            <p class="text-body text-pretty">{{.Lede}}</p>
+            <p class="verso-lede mt-0 text-body text-pretty">{{.Lede}}</p>
           </div>
         </div>
         <div class="mt-7 flex items-baseline gap-4">
@@ -47,7 +47,7 @@
           <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="absolute top-1 left-1 size-1.5 rounded-[1px] bg-green"></span></span>
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "Back online" }}</h1>
-            <p class="text-body text-pretty">{{ t "It answered. Sign in again to carry on." }}</p>
+            <p class="verso-lede mt-0 text-body text-pretty">{{ t "It answered. Sign in again to carry on." }}</p>
           </div>
         </div>
         <a href="/login" class="mt-9 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Sign in" }}</a>
@@ -58,7 +58,7 @@
           <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="absolute top-1 left-1 size-1.5 rounded-[1px] bg-marigold"></span></span>
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "This is taking longer than expected" }}</h1>
-            <p class="text-body text-pretty">{{ t "The router hasn't answered here yet. It may still be starting." }}</p>
+            <p class="verso-lede mt-0 text-body text-pretty">{{ t "The router hasn't answered here yet. It may still be starting." }}</p>
           </div>
         </div>
         {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.Address}}</span></div>{{end}}

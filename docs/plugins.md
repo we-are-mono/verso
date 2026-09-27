@@ -589,13 +589,30 @@ Nests other widgets. This is how you lay out a page.
 ### grid — responsive columns
 
 Use `grid` to place related widgets beside one another. `columns` is the desktop
-target; the shell owns responsive collapse and spacing. `style:"form"` makes a
-field grid stack to one column on narrow screens and uses the form rhythm. A
-three-column form grid gives each field roughly 30% of the available width.
+target; the shell owns responsive collapse and spacing. `style:"form"` groups
+related fields with labels above their controls and uses the form rhythm. It
+stacks below 36rem of available container width, uses two columns from 36rem,
+and reaches three from 48rem when requested. This works inside drawers as well
+as pages. Values retain their content-based widths within each cell. Use
+`Widget::form_grid(columns, children)` in Rust. Group meaningful pairs such as
+a new password and its confirmation, rather than filling rows arbitrarily.
+
+**Fused values.** When every child is a plain typed value (a `field` of kind
+`text` or `password` with no `style`, `pair` or `remove`), the shell draws the group as one
+control: one box split by hairlines, each part as wide as its value and its
+`unit`. The row has one `label` covering every part ("Connection rate" over a
+rate and a burst), one key chip naming every option (`synflood_rate ·
+synflood_burst`), and one `staged` mark. Each field's own `label` becomes its
+part's name for a screen reader and for its refusal ("Burst: Enter a whole
+number."). `help` is what the group is; without it the label's tip explains
+each part under its name. Without a `label`, the parts' labels joined by `·`
+name the row. A new password and its repeat fuse as two secret parts. A group
+holding a choice, a list or a revealable secret keeps its columns.
+In Rust: `Widget::form_grid(2, fields).labelled("Connection rate", "")`.
 
 ```json
-{ "type": "grid", "style": "form", "columns": 3,
-  "children": [ /* one to three fields */ ] }
+{ "type": "grid", "style": "form", "columns": 2, "label": "Connection rate",
+  "children": [ /* plain typed fields */ ] }
 ```
 
 ### stack — vertical or inline rhythm
@@ -1051,6 +1068,14 @@ the right — a `toggle` (an on/off checkbox) for an on/off option, or `pills`
   ] }
 ```
 
+**Editing rows are field rows.** A row with a `toggle`, or a `value` posted
+under a `name`, is drawn as the same row a `field` or `switch` is: the `title`
+is its label, the `code` is its key chip, and the `desc` stays in view under
+it. The `code` is the option's key, so the shell marks the row `staged` while
+that option waits in the form or section's `target`, exactly as it marks a
+field. A row that only reads (pills, or a `value` with no `name`) keeps the
+compact listing row and is never marked.
+
 **Seam.** A block may fold its long tail of rare options behind a collapsed line
 inside the same block, so the everyday rows carry it:
 
@@ -1138,12 +1163,12 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
 - `style: "segmented"`: draws a `checks` field as one strip of togglable chips
   rather than a grid of boxes — for a set short enough to show whole (the days of
   the week), where which members are on is a shape rather than a list to read. A
-  set long enough to wrap belongs in the grid. On a `select` it draws the pick as
-  one strip of radios — only for a policy triplet (accept | reject | drop), where
-  every answer is one short word and showing all three costs less than hiding
-  two. Anything else — a protocol, a family, ECN, a list that can grow — stays a
-  box. The segment in force fills in the body ink, as every selected segment in
-  the shell does; the action colour is never a "selected" colour.
+  set long enough to wrap belongs in the grid. Single-choice `select` fields
+  use radios up to the shell's `RadioOptionLimit` (currently three choices),
+  and native dropdowns above it, including when an older schema supplies this
+  style. Plugins declare the option set; the shared shell chooses its control.
+  Selected multi-select chips share the shell's Denim choice colour and white
+  labels with the other selected form controls.
 - `tip` and `source`: what the field *is*, raised from the label on hover or
   focus, closed by a mono line pairing `key` with what reads it. Use it where
   the label is a term of art the operator did not choose — a DUID, an interface

@@ -66,6 +66,15 @@ type SettingsItem struct {
 	Datatype string          `json:"datatype,omitempty"`
 	Toggle   *SettingsToggle `json:"toggle,omitempty"`
 	Pills    []Badge         `json:"pills,omitempty"`
+	// Staged is the shell's word that this row's option (Code, in the form or
+	// section around the block) waits to be applied.
+	Staged bool `json:"-"`
+}
+
+// edits reports whether the row is a setting someone changes here — a value
+// posted under a name, or a switch — rather than a fact that only reads.
+func (it *SettingsItem) edits() bool {
+	return it.Name != "" || it.Toggle != nil
 }
 
 // SettingsToggle is the row's switch: its current state and the form name it
@@ -106,25 +115,78 @@ type settingsView struct {
 	SeamItems   []settingsItemView
 }
 
+// settingsItemView is one row as the template draws it: an editing row is a
+// setting's row (Frame, drawn by verso-field); a row that reads keeps the
+// listing's compact geometry and its pills.
 type settingsItemView struct {
 	SettingsItem
+	Frame     template.HTML
 	PillsHTML []template.HTML
 	Condensed bool
 }
 
-// Control is the row's checkbox. Nothing labels it (the title is a heading of
-// the row, not a label), so it takes the title as its name.
-func (v settingsItemView) Control() switchControl {
-	if v.Toggle == nil {
-		return switchControl{}
+// control is the row's checkbox. A switch with no posted name has no id for
+// the row's label to point at, so it carries the row's title itself.
+func (it *SettingsItem) control() switchControl {
+	c := switchControl{Name: it.Toggle.Name, On: it.Toggle.On}
+	if c.Name == "" {
+		c.Label = it.Title
+	} else if it.Desc != "" {
+		c.Described = c.Name + "-desc"
 	}
-	return switchControl{Name: v.Toggle.Name, On: v.Toggle.On, Label: v.Title}
+	return c
+}
+
+// DescribedBy is what an in-place value is described by: the description kept
+// under it, then the refusal slot its own check writes into.
+func (it *SettingsItem) DescribedBy() string {
+	ids := make([]string, 0, 2)
+	if it.Desc != "" {
+		ids = append(ids, it.Name+"-desc")
+	}
+	if it.Inline {
+		ids = append(ids, it.Name+"-error")
+	}
+	return strings.Join(ids, " ")
+}
+
+// frame is an editing row as one setting's row: its title is the label, its
+// option the key chip, and its description stays in view under it. A value
+// that stages itself tracks no form change; its own commit does the staging.
+func (it *SettingsItem) frame() fieldFrame {
+	f := fieldFrame{
+		Label: fieldLabel{For: it.Name, Label: it.Title, Key: it.Code, Staged: it.Staged},
+		Desc:  it.Desc, Class: "last:pb-0",
+	}
+	if it.Name != "" {
+		f.Change = fieldChange{Track: !it.Inline, Name: it.Name, Label: it.Title, Kind: "text"}
+		f.Measure = (&Field{Key: it.Code, Datatype: it.Datatype}).ControlMeasure()
+		f.Inline = it.Inline
+		return f
+	}
+	f.Label.For, f.Label.Group = it.Toggle.Name, it.Toggle.Name == ""
+	f.Change = fieldChange{Track: it.Toggle.Name != "", Name: it.Toggle.Name, Label: it.Title, Kind: "toggle"}
+	f.Toggle = true
+	return f
 }
 
 func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
 	out := make([]settingsItemView, 0, len(items))
 	for _, it := range items {
 		iv := settingsItemView{SettingsItem: it, Condensed: s.Condensed}
+		if it.edits() {
+			var b strings.Builder
+			var err error
+			if it.Name != "" {
+				err = r.renderFrame(&b, "settings.value", &it, it.frame())
+			} else {
+				err = r.renderFrame(&b, "switch.row", it.control(), it.frame())
+			}
+			if err != nil {
+				return nil, err
+			}
+			iv.Frame = template.HTML(b.String())
+		}
 		for p := range it.Pills {
 			var b strings.Builder
 			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[p]); err != nil {

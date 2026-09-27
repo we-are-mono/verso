@@ -64,18 +64,13 @@
       {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
     </div>
     {{if and .Meta (not .MetaInline)}}<span class="inline-flex items-center gap-1.5 text-sm">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="text-meta">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-semibold text-body">{{.Meta}}</span></span>{{end}}
-    {{/* the control on a heading line acts on what the section holds, so it
-         stands in the column its fields' controls do — their width, hard
-         right — and starts where they start. On a phone, where a field's
-         control takes the row, it takes the row under the title. A button
-         there stands where a field would, so it takes a field's height and a
-         primary's footprint while keeping its own dress: the one place a
-         section's act is not the smaller subsection act. */}}
-    {{if .Control}}<span class="flex w-full items-center sm:w-64 [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
-    {{if and .Sub $band}}<div class="w-full"><div data-verso-section-lede class="verso-prose max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div></div>{{end}}
+    {{/* Heading actions finish at the content's right edge, including when
+         they wrap below the title. They keep a field's 36px height. */}}
+    {{if .Control}}<span class="ml-auto flex w-full items-center justify-end sm:w-auto [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
+    {{if and .Sub $band}}<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">{{.Sub}}</div></div>{{end}}
   </div>
   {{end}}
-  {{if and .Sub (not $band)}}<div class="verso-prose mb-5 max-w-[36rem] text-sm leading-snug text-body">{{.Sub}}</div>{{end}}
+  {{if and .Sub (not $band)}}<div data-verso-section-lede class="verso-prose mb-5 text-body">{{.Sub}}</div>{{end}}
   {{/* Blocks stand off from each other; form rows sit flush. The rule is named
        in input.css, where the two declarations can be ordered deliberately. */}}
   <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>

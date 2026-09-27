@@ -604,12 +604,23 @@ pub enum Widget {
         children: Vec<Widget>,
     },
     /// Side-by-side columns; the shell owns the responsive collapse. Style
-    /// "form" tightens the gutter for a row of form controls.
+    /// "form" groups related controls with labels above them, collapsing by
+    /// available container width on both pages and drawers.
+    ///
+    /// A "form" group of plain typed values is fused by the shell into one
+    /// control: one box split by hairlines, one label, one chip naming every
+    /// option. Label is the words covering every part ("Connection rate" over
+    /// a rate and a burst); each part keeps its own label as its name. Help
+    /// is what the group is; without it the label explains each part.
     Grid {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
         columns: u32,
         children: Vec<Widget>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        label: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        help: String,
     },
     /// A submittable set of fields; the shell threads CSRF and posts back here.
     /// Style "page" stages its submission through the shell. Error is a
@@ -705,9 +716,10 @@ pub enum Widget {
         remove: String,
         /// The control's compact face where its option set is short enough to
         /// show whole: "segmented" draws a `checks` field as one strip of
-        /// togglable chips rather than a grid of boxes, and a `select` as the
-        /// whole choice laid out with the one in force filled. A set long enough
-        /// to wrap belongs in the grid, or in the box.
+        /// togglable chips rather than a grid of boxes. A set long enough to
+        /// wrap belongs in the grid. For single-choice `select` fields the
+        /// shell chooses radios or a native dropdown by option count,
+        /// including when this style is supplied.
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
     },
@@ -1260,6 +1272,17 @@ impl Widget {
         self
     }
 
+    /// labelled names a form group whose values the shell fuses into one
+    /// control: the words covering every part, and optionally what the group
+    /// is. Each field keeps its own label as its part's name.
+    pub fn labelled(mut self, label: &str, help: &str) -> Widget {
+        if let Widget::Grid { label: l, help: h, .. } = &mut self {
+            *l = label.into();
+            *h = help.into();
+        }
+        self
+    }
+
     /// at says where the options written here live — the uci config and the
     /// section, by the name the snapshot gives it — so the shell can mark a
     /// control whose change waits on the stage, on every visit until it is
@@ -1364,6 +1387,20 @@ impl Widget {
             style: String::new(),
             columns,
             children,
+            label: String::new(),
+            help: String::new(),
+        }
+    }
+
+    /// form_grid groups related fields in reading order. The shell owns their
+    /// spacing and collapses the columns when the containing form is narrow.
+    pub fn form_grid(columns: u32, children: Vec<Widget>) -> Widget {
+        Widget::Grid {
+            style: "form".into(),
+            columns,
+            children,
+            label: String::new(),
+            help: String::new(),
         }
     }
 
@@ -2799,6 +2836,20 @@ mod tests {
         PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
         TableCell, TableRow, Tone, Ubus, Widget, MODE_ADVANCED, MODE_BASIC,
     };
+
+    // A form group names itself for the control the shell fuses it into; the
+    // words ride the grid, and nothing else takes them.
+    #[test]
+    fn a_form_group_is_labelled_on_the_wire() {
+        let group = Widget::form_grid(2, vec![]).labelled("Connection rate", "How fast.");
+        let wire = serde_json::to_value(&group).unwrap();
+        assert_eq!(wire["label"], "Connection rate");
+        assert_eq!(wire["help"], "How fast.");
+        let bare = serde_json::to_value(Widget::form_grid(2, vec![])).unwrap();
+        assert!(bare.get("label").is_none() && bare.get("help").is_none());
+        let text = serde_json::to_value(Widget::text("a").labelled("x", "y")).unwrap();
+        assert!(text.get("label").is_none());
+    }
 
     // A describe request the shell POSTs decodes to the normalized change vocabulary,
     // and the descriptions we answer with serialize to the shape the shell decodes.

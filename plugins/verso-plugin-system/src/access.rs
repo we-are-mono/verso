@@ -140,6 +140,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                 value(s, f, "rfc1918_filter", "0") == "1",
             ),
         ];
+        let mut listeners = vec![];
         for (key, label, port_label) in [
             ("listen_http", "HTTP listeners", "HTTP port"),
             ("listen_https", "HTTPS listeners", "HTTPS port"),
@@ -147,7 +148,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
             if let Some(port) = shared_port(s, key) {
                 let name = format!("{key}_port");
                 let current = f.map(|f| f.get(&name)).unwrap_or(port);
-                fields.push(field(&name, port_label, key, &current, e));
+                listeners.push(field(&name, port_label, key, &current, e));
             } else {
                 let items = f
                     .map(|f| {
@@ -162,8 +163,14 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                     *style = "rows".into();
                     *prompt = "Address:port".into();
                 }
-                fields.push(list);
+                listeners.push(list);
             }
+        }
+        // Scalar ports are one short pair; listener lists need their own rows.
+        if listeners.iter().all(|w| matches!(w, Widget::Field { .. })) {
+            fields.push(Widget::form_grid(2, listeners).labelled("Web ports", ""));
+        } else {
+            fields.extend(listeners);
         }
         let mut children = vec![form("web", &s.name(), fields, e)];
         if index == 0 {

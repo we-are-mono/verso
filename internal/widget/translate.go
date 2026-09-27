@@ -162,6 +162,9 @@ func translateFields(w Widget, t func(string) string) {
 				n.Items[i].Value = t(n.Items[i].Value)
 			}
 		}
+	case *Grid:
+		n.Label = t(n.Label)
+		n.Help = t(n.Help)
 	case *Raw:
 		n.Markdown = t(n.Markdown)
 	case *Repeater:
@@ -219,7 +222,7 @@ func translateFields(w Widget, t func(string) string) {
 	case *Text:
 		n.Markdown = t(n.Markdown)
 	}
-	// Any other widget (pure containers like Stack/Grid, or Overview, which is
+	// Any other widget (pure containers like Stack, or Overview, which is
 	// shell page content that never reaches Decode) carries no prose of its own.
 }
 

@@ -162,11 +162,7 @@ pub fn page_form(refusal: &str, fields: Vec<Widget>) -> Widget {
 /// form_grid lays a run of controls across columns at the tighter gutter a form
 /// takes.
 pub fn form_grid(columns: u32, children: Vec<Widget>) -> Widget {
-    Widget::Grid {
-        style: "form".into(),
-        columns,
-        children,
-    }
+    Widget::form_grid(columns, children)
 }
 
 /// columns builds a column set from label/kind pairs.

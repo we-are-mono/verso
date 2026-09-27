@@ -74,6 +74,9 @@ func TestStoppedSystemPluginWithdrawsGeneralRegistration(t *testing.T) {
 		t.Fatalf("redirect with stopped plugin = %d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	body := get(t, s, "/system/access").Body.String()
+	// Route names can appear in the inlined stylesheet's selectors too; only
+	// the rendered markup can leave a stopped plugin in the navigation.
+	body = body[strings.LastIndex(body, "</style>")+len("</style>"):]
 	if strings.Contains(body, `href="/plugins/system/"`) || strings.Contains(body, `>General</a>`) {
 		t.Error("stopped System plugin must not leave its General registration in navigation")
 	}

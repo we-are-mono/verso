@@ -202,6 +202,8 @@ pub fn page(model: &Firewall) -> Envelope {
         Widget::Grid {
             style: "rail".into(),
             columns: 2,
+            label: String::new(),
+            help: String::new(),
             children: vec![
                 Widget::Form {
                     style: "page".into(),
@@ -402,14 +404,13 @@ fn choice(name: &str, label: &str, help: &str, value: &str, options: &[(&str, &s
     }
 }
 
-/// policy is one verdict row: the three choices as a segmented strip, because
-/// they are one closed pick and showing all three costs less than hiding two.
+/// policy is one verdict choice; the shell chooses its control by option count.
 fn policy(name: &str, label: &str, help: &str, value: &str) -> Widget {
     Widget::Field {
         name: name.into(),
         label: label.into(),
         kind: "select".into(),
-        style: "segmented".into(),
+        style: String::new(),
         advanced: false,
         value: value.into(),
         values: Vec::new(),
@@ -442,20 +443,26 @@ fn protection(d: &Defaults) -> Widget {
                 SYN_HELP,
                 d.synflood_protect,
             ),
-            field(
-                "synflood_rate",
-                "Connections per second",
-                RATE_HELP,
-                &d.synflood_rate,
-                "/s",
-            ),
-            field(
-                "synflood_burst",
-                "Burst",
-                BURST_HELP,
-                &d.synflood_burst,
-                "packets",
-            ),
+            Widget::form_grid(
+                2,
+                vec![
+                    field(
+                        "synflood_rate",
+                        "Connections per second",
+                        RATE_HELP,
+                        &d.synflood_rate,
+                        "/s",
+                    ),
+                    field(
+                        "synflood_burst",
+                        "Burst",
+                        BURST_HELP,
+                        &d.synflood_burst,
+                        "packets",
+                    ),
+                ],
+            )
+            .labelled("Connection rate", ""),
             switch(
                 "drop_invalid",
                 "Drop packets that belong to no connection",
@@ -887,7 +894,8 @@ mod tests {
         ] {
             let field = fixture::control(&body, name);
             assert_eq!(field["type"], "field");
-            assert_eq!(field["style"], "segmented");
+            assert_eq!(field["kind"], "select");
+            assert!(field.get("style").is_none());
             assert_eq!(field["key"], name);
             assert_eq!(field["value"], value);
             let options: Vec<String> = field["options"]

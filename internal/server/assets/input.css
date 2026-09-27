@@ -20,6 +20,7 @@
    looking for it). What is scanned is now exactly what renders. */
 @import "tailwindcss" source(none);
 @import "./palette.css";
+@import "./forms.css";
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
@@ -96,6 +97,21 @@
 @utility grid-cols-form {
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
 }
+
+/* Native buttons inherit the press treatment, including controls inserted by
+   the client. Button-styled links opt in through the shared verso-press class.
+   Moving a visual child preserves an enlarged hit area on table name buttons. */
+@layer utilities {
+  :is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .verso-press):not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {
+    box-shadow: none;
+    @media (prefers-reduced-motion: no-preference) {
+      &:not(:has(> .verso-press-content)), & > .verso-press-content {
+        translate: 0 1px;
+      }
+    }
+  }
+}
+
 @layer components {
   main { --verso-form-width: var(--container-3xl); }
   [role="dialog"] { --verso-form-width: 40rem; }
@@ -350,6 +366,15 @@ html.verso-fonts-loading body {
 
   @keyframes verso-landed { from, 50% { background-color: var(--color-marigold-soft); } to { background-color: transparent; } }
   tr.verso-landed { animation: verso-landed 1.4s ease-out; }
+  /* A setting an install just added to the page that offered it: nothing
+     waits on the stage, the package is in, so it washes in the success green.
+     The wash reaches 0.75rem past the row's words either side, without moving
+     them. */
+  @keyframes verso-arrived {
+    from, 50% { background-color: var(--color-green-soft); box-shadow: -0.75rem 0 0 var(--color-green-soft), 0.75rem 0 0 var(--color-green-soft); }
+    to { background-color: transparent; box-shadow: -0.75rem 0 0 transparent, 0.75rem 0 0 transparent; }
+  }
+  .verso-arrived { animation: verso-arrived 2s ease-out; }
   @media (prefers-reduced-motion: reduce) {
     .verso-outcome { transform: none; transition: opacity 0.2s ease-out; }
   }
@@ -376,7 +401,7 @@ html.verso-fonts-loading body {
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
 
   /* A container of form contents: blocks stand off from each other, form rows do
-     not. A row already carries its own air — 12px above and below — so two of
+     not. A row already carries its own air — 16px above and below — so two of
      them sitting flush is what gives a form its rhythm. The 40px that rightly
      separates a table from a callout would separate every control from the next
      and turn eight settings into eight islands.
@@ -390,7 +415,7 @@ html.verso-fonts-loading body {
      how much air the blocks between them take; the rows themselves take none
      wherever they are. */
   .verso-rhythm > * + * { margin-top: var(--verso-rhythm, calc(var(--spacing) * 10)); }
-  .verso-rhythm > [data-verso-change-field] + [data-verso-change-field] { margin-top: 0; }
+  .verso-rhythm > :is(.verso-field-row, .verso-form-grid, [data-verso-change-field]) + :is(.verso-field-row, .verso-form-grid, [data-verso-change-field]) { margin-top: 0; }
   /* Hidden carriers are not blocks: the first row after them — the first a
      reader sees — takes no gap above it. */
   .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { margin-top: 0; }
@@ -490,7 +515,7 @@ html.verso-fonts-loading body {
      a kicker leads nowhere. */
   .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
   .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
-  .verso-lede { margin-top: 0.5rem; max-width: 60ch; color: var(--color-body); }
+  .verso-lede { margin-top: 0.5rem; color: var(--color-body); }
 
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
      chassis is a physical object — deliberately dark in both themes. Display-only;
@@ -724,6 +749,16 @@ html.verso-fonts-loading body {
    at the end: the stack's space-y utility writes margin-block-start on every
    non-last child, and only a later utilities-layer rule outranks it. */
 @layer utilities {
+  /* An in-flight action keeps its size but gives up its hover and press states. */
+  button.verso-button-waiting:disabled {
+    pointer-events: none;
+    cursor: default;
+    opacity: 1;
+    border-color: var(--color-rule-strong);
+    background-color: var(--color-quiet);
+    color: var(--color-glyph);
+    gap: calc(var(--spacing) * 2.5);
+  }
   /* One page rhythm: the page's blocks stand apart by the body's own inset,
      2.5rem — the gap the page keeps from the window's top and left edge. The
      page's root stack carries it; a section on it takes its standoff from the
@@ -829,6 +864,17 @@ html.verso-fonts-loading body {
     padding-inline-end: calc(var(--spacing) * 8);
   }
   .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-section-band-inset: 0px; }
+
+  /* Page and section ledes share one reading role, including inside drawers.
+     Relative type and unitless leading let enlarged text and spacing overrides
+     grow the content naturally. */
+  .verso-lede,
+  [data-verso-section-lede] {
+    max-width: 60ch;
+    font-size: var(--text-base);
+    font-weight: 300;
+    line-height: 1.5;
+  }
 
   /* Page-form sections keep the same 40px inset at both ends of their rules.
      Apply the end inset once to the work column, never to each nested row.

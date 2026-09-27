@@ -83,6 +83,12 @@ func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
 	if alpine < 0 {
 		t.Fatal("the page does not load Alpine")
 	}
+	buttons := at("/assets/verso-buttons.js")
+	for _, consumer := range []string{"/assets/verso-commit.js", "/assets/verso-system.js", "/assets/verso-packages.js"} {
+		if buttons < 0 || buttons > at(consumer) {
+			t.Errorf("the shared button state must load before %s", consumer)
+		}
+	}
 	behaviour := func(src string) bool {
 		return strings.HasPrefix(src, "/assets/verso-") &&
 			src != "/assets/verso-boot.js" && src != "/assets/verso-dev.js"
@@ -104,6 +110,23 @@ func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
 	}
 	if count < 5 {
 		t.Errorf("the page loads %d behaviour files beside verso.js; the concerns are more separate than that", count)
+	}
+}
+
+// A package install can open over any page. Its waiting mark must belong to
+// the shell, even when the Packages listing has never been rendered.
+func TestWaitingMarkAvailableOutsidePackages(t *testing.T) {
+	s := passwordServer(t, fakeBackend{})
+	for _, route := range []string{"/", "/system/access", "/system/maintenance"} {
+		body := get(t, s, route).Body.String()
+		_, mark, found := strings.Cut(body, `<template data-verso-button-waiting>`)
+		if !found {
+			t.Fatalf("%s is missing the shared waiting template", route)
+		}
+		mark, _, _ = strings.Cut(mark, `</template>`)
+		if !strings.Contains(mark, `data-verso-wait aria-hidden="true"`) || strings.Count(mark, "size-1.5") != 4 {
+			t.Errorf("%s must supply the four-square waiting mark", route)
+		}
 	}
 }
 

@@ -21,7 +21,7 @@ func TestFormActionsFinishTheirConfigurationCard(t *testing.T) {
 				{Style: "settings", Submit: "Save", Fields: tail},
 			} {
 				got := render(t, newRenderer(t), f)
-				if !strings.Contains(got, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
+				if !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4">`) {
 					t.Errorf("Save must join the card without another rule:\n%s", got)
 				}
 			}
@@ -101,7 +101,7 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 	for _, want := range []string{
 		">Save</button>",
 		`name="_action" value="generate-keypair"`, ">Generate keypair</button>",
-		"active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0",
+		"verso-press",
 		"hover:border-sand-5 hover:bg-rule",
 	} {
 		if !strings.Contains(got, want) {
@@ -163,15 +163,15 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 		return &Form{Style: "settings", Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}
 	}
 	sectioned := render(t, r, &Section{Title: "SSH", Hairline: true, Children: []Widget{form()}})
-	if !strings.Contains(sectioned, `<div class="flex flex-wrap items-center mt-5 gap-4">`) {
+	if !strings.Contains(sectioned, `<div data-verso-form-actions class="flex flex-wrap items-center mt-8 gap-4">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-rule class="flex flex-wrap items-center mt-6 gap-4 border-t border-rule pt-8">`) {
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-6 gap-4 border-t border-rule pt-8">`) {
 		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
 	}
 	framed := form()
 	framed.Frame = "panel"
-	if got := render(t, r, framed); !strings.Contains(got, `<div class="flex flex-wrap items-center mt-7 gap-4 border-t border-rule pt-5">`) {
+	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-7 gap-4 border-t border-rule pt-5">`) {
 		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
 }

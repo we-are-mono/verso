@@ -4,6 +4,14 @@
 // System pages use the shell's authenticated routes, table filters and drawers.
 (function () {
   "use strict";
+  // These native forms navigate after starting background work. Lock them for
+  // the initial request too, before the server can render its busy state.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form.matches('form[action^="/system/maintenance/updates/"]')) return;
+    var button = event.submitter || form.querySelector('button[type="submit"]');
+    versoButtons.submit(event, button && button.getAttribute("data-busy-label") || T("Installing…"));
+  });
   var log = document.querySelector("[data-verso-system-log]");
   if (log && window.EventSource) {
     var body = log.querySelector("[data-verso-console-rows]");

@@ -458,8 +458,14 @@ fn page(
             v,
             "static",
             vec![
-                field(v, e, "ipaddr", "Address", "ip4addr"),
-                field(v, e, "netmask", "Netmask", "ip4addr"),
+                Widget::form_grid(
+                    2,
+                    vec![
+                        field(v, e, "ipaddr", "Address", "ip4addr"),
+                        field(v, e, "netmask", "Netmask", "ip4addr"),
+                    ],
+                )
+                .labelled("IPv4 address", ""),
                 field(v, e, "gateway", "Gateway", "ip4addr"),
                 list(v, e, "dns", "DNS servers", "ipaddr"),
             ],
@@ -555,8 +561,14 @@ fn page(
                     value: "1".into(),
                     active: v.get("dhcp") == "1",
                     children: vec![
-                        field(v, e, "start", "First address", ""),
-                        field(v, e, "limit", "How many", ""),
+                        Widget::form_grid(
+                            2,
+                            vec![
+                                field(v, e, "start", "First address", ""),
+                                field(v, e, "limit", "How many", ""),
+                            ],
+                        )
+                        .labelled("Address pool", ""),
                         field(v, e, "leasetime", "Lease time", ""),
                         field(v, e, "announced_gateway", "Announced gateway", "")
                             .writes("dhcp_option"),

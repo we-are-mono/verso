@@ -8,26 +8,23 @@ import (
 	"testing"
 )
 
-// TestSectionControlStandsInTheFieldColumn: the control on a section's heading
-// line acts on what the section holds, so it stands in the column its fields'
-// controls do — the same width, hard right — rather than trailing the title.
-// A button there stands where a field would, so it takes a field's size (a
-// primary's footprint) while keeping its own dress.
-func TestSectionControlStandsInTheFieldColumn(t *testing.T) {
+// Heading actions align to the section's right content edge, including when
+// wrapped below the title. They keep their field-height footprint.
+func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{
 		Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline",
 		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
 		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
 	})
-	column := `<span class="flex w-full items-center sm:w-64 [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">`
+	column := `<span class="ml-auto flex w-full items-center justify-end sm:w-auto [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">`
 	at := strings.Index(got, column)
 	if at < 0 {
-		t.Fatalf("the heading's control is not in the field column:\n%s", got)
+		t.Fatalf("the heading's control must align to the content edge:\n%s", got)
 	}
 	title := strings.Index(got, "</h2>")
 	meta := strings.Index(got, "data-verso-section-meta")
 	if !(title < meta && meta < at) || !strings.Contains(got[at:], "Use my computer") {
-		t.Errorf("title and meta lead, the control stands in the field column after them:\n%s", got)
+		t.Errorf("title and meta lead, followed by the heading action:\n%s", got)
 	}
 }
 
@@ -64,15 +61,13 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 
 // TestListRowsTakeTheirHeightFromPadding: a list's values are rows, and a row's
 // height is its line plus its padding, never a fixed floor — the 28px remove
-// and 8px either side, 44px, as a table's row with a control in it. The first
-// gives back 4px above, so its value centres on the label's 36px line, as a
-// group's first row gives up its air. The add box stands 16px under the last
+// and 8px either side, 44px, plus a hairline above every row. The add box stands 16px under the last
 // remove (the last row's 8px and the set's own 8px), and a set with nothing in
-// it keeps no gap, so its box stays level with the label.
+// it keeps no gap, so its box follows the label directly.
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-start justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"`
+	const row = `class="flex items-start justify-between gap-3 border-t border-rule py-2"`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}

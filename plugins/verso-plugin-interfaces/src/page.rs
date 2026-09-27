@@ -56,6 +56,8 @@ fn facts(mut facts: Vec<Property>) -> Widget {
     Widget::Grid {
         columns: 2,
         style: "facts".into(),
+        label: String::new(),
+        help: String::new(),
         children: vec![Widget::properties(facts), Widget::properties(right)],
     }
 }

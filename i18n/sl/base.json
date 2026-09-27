@@ -261,6 +261,7 @@
   "Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within %d seconds, the changes are rolled back.": "Običajno traja nekaj sekund, dlje, če je prizadetih več storitev. Če usmerjevalnik v %d sekundah neha odgovarjati, se spremembe razveljavijo.",
   "Apply %d": "Uveljavi %d",
   "Applying…": "Uveljavljanje…",
+  "Discarding…": "Zavračanje…",
   "Discard all": "Zavrzi vse",
   "1 change applied": "1 sprememba uveljavljena",
   "%d changes applied": "%d sprememb uveljavljenih",

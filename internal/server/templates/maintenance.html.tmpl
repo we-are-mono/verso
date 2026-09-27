@@ -16,7 +16,7 @@
         <form method="post" action="/system/maintenance/updates/check" class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3">
           {{template "verso-csrf" .CSRFToken}}
           {{if .Checked}}<span class="text-sm text-meta">{{.Checked}}</span>{{end}}
-          <button type="submit"{{if .Checking}} disabled{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
+          <button type="submit" data-busy-label="{{t "Checking…"}}"{{if .Checking}} disabled aria-disabled="true" aria-busy="true"{{end}} class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border px-3 text-sm font-medium {{template "verso-btn-secondary"}} disabled:cursor-default disabled:border-rule disabled:bg-quiet disabled:text-sand-5">{{if .Checking}}{{template "verso-waiting" ""}}{{t "Checking…"}}{{else}}{{t "Check again"}}{{end}}</button>
         </form>
       </div>
       {{/* Handwritten content keeps the first field row's 12px top inset, as
@@ -37,7 +37,7 @@
             <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
             <div class="min-w-0 flex-1">
               <p class="font-semibold">{{.Ledger.Title}}</p>
-              <p class="mt-1 max-w-[60ch]">{{.Ledger.Lede}}</p>
+              <p class="verso-lede mt-1 text-marigold-deep">{{.Ledger.Lede}}</p>
               {{if .Ledger.Complaint}}
               {{/* The copy control stands on the message's own first line, beside
                    the words it copies; its 28px box is pulled up 2px so it
@@ -59,7 +59,7 @@
             <span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] {{if eq .Ledger.Mark "green"}}bg-green{{else if eq .Ledger.Mark "denim"}}bg-denim{{else}}border border-faint{{end}}"></span>
             <div class="min-w-0">
               <p class="font-semibold text-ink">{{.Ledger.Title}}</p>
-              <p class="mt-1 max-w-[60ch] text-body">{{.Ledger.Lede}}</p>
+              <p class="verso-lede mt-1 text-body">{{.Ledger.Lede}}</p>
             </div>
           </div>
           {{end}}
@@ -100,10 +100,10 @@
     <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
       <div data-verso-section-band class="mb-5 flex-col gap-1">
         <h2 class="w-full text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Back up and restore"}}</h2>
-        <div class="w-full"><p data-verso-section-lede class="max-w-[36rem] text-sm leading-snug text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p></div>
+        <div class="w-full"><p data-verso-section-lede class="text-body">{{t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router."}}</p></div>
       </div>
       <div class="flex flex-wrap items-center gap-3 pt-3">
-        <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
+        <a href="/system/maintenance/backup" download="openwrt-backup.tar.gz" class="flex h-9 items-center gap-2 rounded-xs border border-denim bg-denim px-4 font-semibold text-white hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}">{{icon "download" "size-4"}}{{t "Download backup"}}</a>
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
     </section>
@@ -127,7 +127,7 @@
     <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
       <div data-verso-section-band class="mb-5 flex-col gap-1">
         <h2 class="w-full text-lg leading-tight font-semibold tracking-tight text-ink">{{t "Factory reset"}}</h2>
-        <div class="w-full"><p data-verso-section-lede class="max-w-[36rem] text-sm leading-snug text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p></div>
+        <div class="w-full"><p data-verso-section-lede class="text-body">{{t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you."}}</p></div>
       </div>
       {{/* One field, one act, on one row a small step apart — the pattern a
            list's add row keeps: each control whole, its own corners and
@@ -137,7 +137,7 @@
         {{if .Hostname}}
         <label for="reset-host" class="text-sm text-body">{{t "Type the hostname to confirm"}} · <span class="font-mono font-medium text-ink">{{.Hostname}}</span></label>
         <div data-verso-reset-row class="flex max-w-full items-center gap-2">
-          <input id="reset-host" name="hostname" required autocomplete="off" class="h-9 w-56 min-w-0 rounded-xs border border-rule-strong bg-white px-3 font-mono text-base shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] hover:border-faint focus:border-denim focus:outline-none">
+          <input id="reset-host" name="hostname" required autocomplete="off" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} w-56! min-w-0">
           <button type="submit" class="h-9 shrink-0 cursor-pointer rounded-xs border border-crimson bg-crimson px-4 text-sm font-semibold text-white enabled:hover:border-crimson-deep enabled:hover:bg-crimson-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{t "Erase and start over"}}</button>
         </div>
         {{else}}

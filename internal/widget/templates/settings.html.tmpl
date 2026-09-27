@@ -5,69 +5,23 @@
      switch, value pills, or a mono read-out value). Bare hairline rows by
      default; the "card" style adds the quiet boxed frame (the same card as the
      table widget). A seam folds the long tail of options inside the same block. */}}
+{{/* settings.value: an editing row's value. It is one setting's row like any
+     form field's (verso-field, built in settingsItem.frame), with the
+     description kept in view under it. An in-place value stages itself on
+     blur or Enter and says its own refusal in the frame's band. */}}
+{{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums">{{end}}
 {{define "settings.row"}}
-  {{/* has(+details): the row before the seam drops its inset border — the seam's
-       full-bleed border-t is the one divider there. */}}
-  {{/* single-line row: name, its code chip beside it (the option's machine name
-       is the name's metadata), the description filling the middle, and every
-       control — switch, in-place field, or read-out — on the right edge. Rows
-       divide with hairlines — bare rows flush to the edge, card rows inside the
-       box's padding. */}}
-  {{/* A row that carries a control is a field like any other: it declares its
-       change-tracking hooks, so it is counted as a change of the page form it
-       sits in and staged when that form is submitted. A row that only reads
-       declares none — there is nothing about it to change. */}}
-  {{/* items-start: the control belongs to the row's first line — the name it
-       switches — not to the middle of however tall the description made the
-       row; each control nudges itself to sit optically centred on that line. */}}
-  {{if and .Name .Inline}}
-  {{/* Inline-field variant (manage-page): the label and its option chip share
-       one line, the field sits beneath them, and its help follows the field.
-       The field itself is unchanged — the SAME element in both states, only its
-       border and background changing, so it never jumps when it opens
-       (inline-settings-commit-model); ✎ becomes ✓✗ in a fixed-width slot so the
-       value's left edge never moves. verso.js drives the read↔edit toggle and
-       stages the change on commit, the counterpart of a row switch. The field
-       takes the same compact width as ordinary inputs, with its actions inset
-       into the right edge. */}}
-  <div class="{{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
-    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <label for="{{.Name}}" class="block text-sm font-semibold text-ink">{{.Title}}</label>
-
-    </div>
-    {{/* A plain input that stages on blur/Enter — the "done" a person expects, no
-         edit/confirm icons (inline-settings-commit-model). verso.js validates on
-         blur: an invalid value gets aria-invalid + the error slot below, does not
-         stage, and the page scrolls to the topmost error. */}}
-    <div data-verso-inline-field class="mt-2 max-w-md">
-      <input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}" aria-describedby="{{.Name}}-error" data-verso-inline-input{{if .Datatype}} data-verso-datatype="{{.Datatype}}"{{end}}
-        class="{{template "verso-input-class"}} box-border border-rule-strong tabular-nums hover:border-faint focus:border-denim aria-invalid:border-crimson">
-      <p id="{{.Name}}-error" data-verso-inline-error hidden class="mt-1.5 {{template "verso-error-line"}}"></p>
-    </div>
-    {{if .Desc}}<p class="mt-1.5 text-sm leading-snug text-body">{{.Desc}}</p>{{end}}
-  </div>
-  {{else}}
-  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0"{{if and .Toggle .Toggle.Name}} data-verso-change-field data-verso-change-name="{{.Toggle.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="toggle"{{else if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Title}}" data-verso-change-kind="text"{{end}}>
-    {{/* The name and its chip share the first line; the description sits below
-         them at the row's full reading width, wrapping as it needs — a sentence
-         cut by an ellipsis is a sentence withheld. The control keeps the hard
-         right edge, centred against however tall the words made the row. */}}
+  {{if .Frame}}{{.Frame}}{{else}}
+  {{/* Read-only facts and policy pills retain their compact listing geometry. */}}
+  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div class="text-base font-semibold text-ink">{{.Title}}</div>
-
       </div>
       {{if .Desc}}<div class="mt-0.5 text-sm leading-snug text-pretty text-body">{{.Desc}}</div>{{end}}
     </div>
     {{range .PillsHTML}}{{.}}{{end}}
-    {{/* the checkbox sits centred on the name's own 24px line. */}}
-    {{if .Toggle}}<span class="flex h-6 shrink-0 items-center">{{template "switch.html.tmpl" .Control}}</span>{{end}}
-    {{if .Name}}<label class="-mt-0.5 flex h-7 w-28 shrink-0 items-center gap-1.5 rounded-xs border border-rule-strong bg-ground px-2 transition-colors hover:border-faint focus-within:border-denim">
-      <input type="text" name="{{.Name}}" value="{{.Value}}" aria-label="{{.Title}}"
-        class="w-full min-w-0 border-0 bg-transparent p-0 font-mono text-sm tabular-nums text-ink focus:outline-none">
-      {{icon "square-pen" "size-3.5 shrink-0 text-faint"}}
-    </label>
-    {{else if .Value}}<span class="mt-0.5 shrink-0 font-mono text-base font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
+    {{if .Value}}<span class="mt-0.5 shrink-0 font-mono text-base font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
   </div>
   {{end}}
 {{end}}

@@ -3,34 +3,29 @@
 {{/* list: repeating inputs sharing one name (multi-value) + one blank add-slot.
      The token style carries the same POST shape in a compact editor for lists
      such as ports, CIDRs and ICMP types. */}}
-{{/* A list of values is one setting, so it is the form's one row: the same
-     measure, the same label column with the option it writes beside it, the same
-     fixed control column. It used to draw its own fieldset and legend, which put
-     its label above the box while every other row put it beside — one row in a
-     form that did not line up with the rest of the form. */}}
-<div class="{{template "verso-field-row-class"}}" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="list">
-  {{template "verso-field-label" .LabelView}}
-  <div data-verso-control class="{{template "verso-field-control-class"}} relative">
+{{/* A list is one setting: its label sits above the whole measured editor,
+     including its values, removals and Add control. The frame (verso-field)
+     draws the row; list.control is the editor inside it. */}}
+{{define "list.control"}}
   {{if eq .Style "rows"}}
   {{/* Each value is a row, and a row's height is its line and its padding: the
-       28px remove with 8px either side, 44px, a hairline between. The first
-       gives back 4px above so its value centres on the label's 36px line, as a
-       group's first row gives up its air. The set holds the 8px that, with the
+       28px remove with 8px either side, 44px, a hairline above each value.
+       The set holds the 8px that, with the
        last row's own, stands the add box 16px under the last remove — and holds
-       none while it is empty, so the box then stays level with the label.
+       none while it is empty, so the add box sits directly below the label.
        A value that has to wrap wraps after its own separators (Breakable),
        and anywhere only where one part alone outgrows the column; its remove
        hangs from its first line (2px above the value centres that 24px line
        on the 28px remove). */}}
   <div data-verso-list>
     <div data-verso-list-items class="has-[>*]:pb-2">
-    {{range $i, $item := .Items}}<div data-verso-list-row class="flex items-start justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0">
+    {{range $i, $item := .Items}}<div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule py-2">
       <input type="hidden" name="{{$.Name}}" value="{{$item}}"><span data-verso-list-value class="min-w-0 pt-0.5 wrap-anywhere font-mono text-base font-medium text-ink">{{breakable $item}}</span>
       <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button>
       {{with index $.Errors (printf "%d" $i)}}<span class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
     </div>{{end}}
     </div>
-    <template><div data-verso-list-row class="flex items-start justify-between gap-3 border-b border-rule py-2 first:pt-1 last:border-b-0"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="min-w-0 pt-0.5 wrap-anywhere font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
+    <template><div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule py-2"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="min-w-0 pt-0.5 wrap-anywhere font-mono text-base font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
     <div class="flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
@@ -89,10 +84,4 @@
   </div>
   {{end}}
   {{/* The explanation is raised onto the label, as every other row's is. */}}
-  </div>
-  {{/* The remove lane, matching a field's exactly so a set of rows mixing the
-       two still begins and ends its controls in the same places. */}}
-  {{if .Lane}}
-  {{if .Removable}}{{template "verso-row-remove" .}}{{else}}<span class="size-7 flex-none" aria-hidden="true"></span>{{end}}
-  {{end}}
-</div>
+{{end}}

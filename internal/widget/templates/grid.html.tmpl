@@ -27,7 +27,7 @@
 <div class="@container"><div class="grid min-w-0 grid-cols-1 gap-10 @6xl:grid-cols-form [&>div:first-child]:max-w-form [&>div:last-child]:self-start @6xl:[&>div:last-child]:sticky @6xl:[&>div:last-child]:top-8 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div></div>
 {{else if eq .Style "editor"}}
 <div class="@container">
-  <div class="grid min-w-0 grid-cols-1 gap-10 @6xl:grid-cols-form sm:[&_[data-verso-control]]:w-[23rem] [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0 first:max-w-form">{{$child}}</div>{{end}}</div>
+  <div class="grid min-w-0 grid-cols-1 gap-10 @6xl:grid-cols-form [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0 first:max-w-form">{{$child}}</div>{{end}}</div>
 </div>
 {{else if eq .Style "rail"}}
 {{/* The work keeps the shared form measure; the rail takes the remaining
@@ -38,8 +38,9 @@
   <div class="grid grid-cols-1 gap-10 @6xl:grid-cols-form [&>:first-child]:max-w-form">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div>
 </div>
 {{else if eq .Style "form"}}
-{{/* Fields side by side from the tablet width up, and never on a phone. */}}
-<div class="grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-1 md:grid-cols-2{{else}}grid-cols-1 md:grid-cols-3{{end}} gap-6">{{range .Children}}{{.}}{{end}}</div>
+{{/* Related fields share a row only when their own container has room. The
+     group owns the outer field padding, so stacking keeps the same rhythm. */}}
+<div class="verso-form-grid"><div class="verso-form-grid-fields" data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else}}3{{end}}">{{range .Children}}{{.}}{{end}}</div></div>
 {{else}}
 {{/* Small tile and card grids go two-up on phones — never a lonely full-width
      column — and widen on larger screens. */}}

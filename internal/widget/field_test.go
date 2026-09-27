@@ -4,9 +4,71 @@
 package widget
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func choiceOptions(count int) []Option {
+	options := make([]Option, count)
+	for i := range options {
+		options[i] = Option{Value: strconv.Itoa(i), Label: "Choice " + strconv.Itoa(i)}
+	}
+	return options
+}
+
+func TestSingleChoiceCutoff(t *testing.T) {
+	r := newRenderer(t)
+	for _, count := range []int{0, 1, RadioOptionLimit, RadioOptionLimit + 1} {
+		for _, style := range []string{"", "segmented"} {
+			t.Run(strconv.Itoa(count)+"/"+style, func(t *testing.T) {
+				got := render(t, r, &Field{Name: "policy", Label: "Policy", Kind: "select", Style: style,
+					Value: "0", Options: choiceOptions(count)})
+				radios := count > 0 && count <= RadioOptionLimit
+				if strings.Contains(got, `role="radiogroup"`) != radios || strings.Contains(got, "<select") == radios {
+					t.Fatalf("wrong control for %d choices (limit %d):\n%s", count, RadioOptionLimit, got)
+				}
+				if radios {
+					if strings.Count(got, `type="radio" name="policy"`) != count || strings.Count(got, " checked") != 1 {
+						t.Errorf("each radio must share the field name, with exactly one selected:\n%s", got)
+					}
+					if strings.Contains(got, `class="sr-only"`) || strings.Contains(got, `data-verso-control-measure="choice"`) {
+						t.Errorf("radios must remain visible and free of dropdown sizing:\n%s", got)
+					}
+				} else if strings.Count(got, "<option ") != count || !strings.Contains(got, `data-verso-control-measure="choice"`) {
+					t.Errorf("dropdown must retain its full option set and intrinsic width:\n%s", got)
+				}
+			})
+		}
+	}
+}
+
+func TestRadiosPreserveSingleSelectDefaults(t *testing.T) {
+	if RadioOptionLimit == 0 {
+		t.Skip("radios disabled by the shared policy")
+	}
+	r := newRenderer(t)
+	options := choiceOptions(RadioOptionLimit)
+	// Include an explicit empty choice; it must win over the first option when
+	// Value is empty. Otherwise native selects fall back to their first option.
+	options[len(options)-1].Value = ""
+	for _, tc := range []struct{ name, value, want string }{
+		{"current value", "0", options[0].Value},
+		{"empty choice", "", ""},
+		{"unavailable value", "removed", options[0].Value},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := render(t, r, &Field{Name: "policy", Label: "Policy", Kind: "select", Value: tc.value, Options: options})
+			if strings.Count(got, " checked") != 1 || !strings.Contains(got, `value="`+tc.want+`" checked`) {
+				t.Errorf("radio selection must match a native single select:\n%s", got)
+			}
+		})
+	}
+	got := render(t, r, &Field{Name: "policy", Kind: "select", Options: choiceOptions(RadioOptionLimit)})
+	if !strings.Contains(got, `value="0" checked`) {
+		t.Errorf("an unset value must keep the first-option default:\n%s", got)
+	}
+}
 
 // A hidden field that names an autocomplete purpose is an account a password
 // form belongs to: present for the password manager, never drawn. A plain
@@ -28,7 +90,7 @@ func TestHiddenFieldWithAutocompleteNamesTheAccount(t *testing.T) {
 // digit pad; any other field keeps the full keyboard.
 func TestNumberFieldsAskForTheDigitPad(t *testing.T) {
 	r := newRenderer(t)
-	for _, f := range []*Field{{Name: "p", Key: "Port"}, {Name: "q", Datatype: "port"}, {Name: "m", Key: "mtu"}} {
+	for _, f := range []*Field{{Name: "p", Key: "Port"}, {Name: "q", Datatype: "port"}, {Name: "m", Key: "mtu"}, {Name: "cache", Key: "cachesize"}} {
 		if got := render(t, r, f); !strings.Contains(got, `inputmode="numeric"`) {
 			t.Errorf("%s: want the digit pad:\n%s", f.Name, got)
 		}

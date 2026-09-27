@@ -10,8 +10,7 @@
  *
  *   Sand      the ground. Hairlines, surfaces and ink. Carries no meaning, so
  *             nothing on the page reads into it.
- *   Denim     the action colour. It means act on this, or this changed.
- *             Nothing else is denim.
+ *   Denim     actions, focus and selected form choices.
  *   Green     up, healthy, accept.
  *   Marigold  worth a look — a real trade-off, not an alarm.
  *   Crimson   down, invalid, rejected.
@@ -47,13 +46,19 @@
   --color-glyph: #8b857a; /* action icons, tree lines, resting dots — 3.5 : 1, never text */
   --color-meta: #6f6a60; /* kickers, meta, units — 5.2 : 1, and 4.4 on mid */
   --color-body: #5c574f; /* body copy, and every label on a card — 6.8 : 1, and 5.7 on mid */
-  --color-ink: #1b1917; /* headings, values, a switch when on — 16.1 : 1 */
+  --color-ink: #1b1917; /* headings and values — 16.1 : 1 */
 
   /* Denim — L 50, C .11, H 254°, sand's near-complement. */
   --color-denim: #3568a8; /* primary fill, links and focus — 5.0 : 1 */
   --color-denim-deep: #285184; /* the same one step darker, for hover and for focus rings — 7.3 : 1 */
   --color-denim-line: #cbd8e6; /* chip hairlines, link underlines, a progress track */
   --color-denim-soft: #e8eef5; /* selected rows, chip fill, secondary button hover */
+
+  /* Form choices: shared by radios, checkbox boxes and multi-select chips.
+     The empty box's edge clears 3:1 on Paper and Quiet Sand; the selected
+     fill clears 4.5:1 against both, and with white checks or chip labels. */
+  --color-choice: var(--color-denim);
+  --color-choice-border: var(--color-glyph);
 
   /* Green — L 58, C .13, H 164°. */
   --color-green: #0e9b6e; /* state dots, the accept chip's mark — 3.1 : 1, marks only */

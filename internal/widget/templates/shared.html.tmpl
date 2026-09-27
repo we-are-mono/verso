@@ -7,9 +7,9 @@
      drift apart; a widget's own template keeps only its layout. The class
      strings stay in template files (not Go) so Tailwind's scanner keeps them. */}}
 
-{{/* verso-press: the shared press affordance — the control dips a pixel while
-     active, unless the person prefers reduced motion. */}}
-{{define "verso-press"}}active:translate-y-px active:shadow-none motion-reduce:active:translate-y-0{{end}}
+{{/* Native buttons get their press affordance from input.css automatically.
+     This marker includes button-styled links in the same rule. */}}
+{{define "verso-press"}}verso-press{{end}}
 
 {{/* verso-btn-box: the shape every button and button-shaped link takes — one
      height for the whole app, the app's radius, and the padding that goes with
@@ -25,7 +25,7 @@
 {{/* verso-btn-waiting: a primary that has nothing to act on yet — a settings
      form's Save before anything in it changed. It rests in sand, as a control
      that is there but not yet spoken for, and takes denim the moment it is. */}}
-{{define "verso-btn-waiting"}}disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta disabled:active:translate-y-0{{end}}
+{{define "verso-btn-waiting"}}disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta{{end}}
 
 {{/* verso-btn-secondary: the quiet bordered action, in the colours of the
      subsection act: meta words on the strong hairline at rest, the hairline
@@ -37,14 +37,14 @@
      secondary control at rest, warming to the hairline wash under the pointer.
      The call site adds the inset: pl-2 pr-2.5 before a leading glyph, px-2.5
      for words alone. */}}
-{{define "verso-btn-act"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{define "verso-btn-act"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
      remove, a list's remove, a copy beside a value or on a code box. A 28px
      square in Glyph on no border, taking the parked border, the hairline wash
      and Ink under the pointer, as a subsection act does. The call site sets
      the display (grid, or inline-grid inside a line of text) and position. */}}
-{{define "verso-btn-icon"}}size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim{{end}}
+{{define "verso-btn-icon"}}size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
 {{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink {{template "verso-press"}}{{end}}
 
@@ -120,26 +120,12 @@
      is what holds every chip to one height whatever size its words are. */}}
 {{define "verso-chip-shape"}}inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap{{end}}
 
-{{/* The one form row, whatever control ends it. What the setting is on the left,
-     growing; the control on the right at a fixed width, because a column of
-     controls that all begin and end in the same place is what makes a form
-     scannable — the labels are words and may be any length.
-
-     A value to type and a state to flip are the same question asked of the same
-     object, so they are the same row: every widget that is one setting renders
-     through these three, and none of them may spell its own geometry. That is
-     the whole reason a settings page reads as one page rather than as a pile of
-     controls that each brought their own layout.
-
-     Nothing rules between rows: fields inside a section already belong together,
-     and a hairline every 40px turns a form into a table. Rules separate
-     sections; space separates rows. */}}
-{{define "verso-field-row-class"}}flex max-w-form flex-col gap-2 py-2 sm:flex-row sm:items-start sm:gap-8{{end}}
-{{/* The control column holds a control's own height as its floor, so a row that
-     ends in a 20px switch is exactly as tall as one that ends in a 36px box. A
-     column of rows that changed height with the kind of control in it would read
-     as a list of different things. */}}
-{{define "verso-field-control-class"}}flex w-full min-w-0 flex-col justify-center gap-1.5 sm:w-64 sm:min-h-9 sm:flex-none{{end}}
+{{/* One form geometry on pages and in drawers: labels above controls, with
+     checkboxes beside their labels. forms.css owns spacing, content measures
+     and removable lanes. Layout hooks also cover locked fields and status
+     rows, which intentionally have no change-tracking attributes. */}}
+{{define "verso-field-row-class"}}verso-field-row max-w-form{{end}}
+{{define "verso-field-control-class"}}verso-field-control{{end}}
 
 {{/* verso-row-remove: the glyph that takes one row out of a set. It wears the
      same quiet treatment every icon act in a table wears, because that is what
@@ -150,17 +136,24 @@
 {{define "verso-row-remove"}}<button type="button" data-verso-remove-field="{{.Name}}" aria-label="{{ t "Remove" }} {{.Label}}"
   class="group/act relative mt-1 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>{{end}}
 
-{{/* The row's left column: what the setting is called, the option it writes, and
+{{/* The field's label: what the setting is called, the option it writes, and
      — on a label that carries an explanation — the help cursor and tab stop that
      say the label is the thing to hover. Without one the label is inert, as
      every label was. */}}
+{{/* A fused control's label is the one name covering every part, and its
+     chip names every option, joined by a middot. */}}
 {{define "verso-field-label"}}
-<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:pt-2">
-  {{if .Label}}<label for="{{.For}}"{{with .For}} id="{{.}}-label"{{end}} class="text-sm font-semibold text-ink{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}>{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}</label>{{end}}
+<div class="verso-field-label flex min-w-0 flex-wrap items-center gap-2">
+  {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
   {{if .Key}}<span class="{{template "verso-chip-class"}}">{{.Key}}</span>{{end}}
   {{if .Staged}}{{template "verso-staged-row"}}{{end}}
 </div>
 {{end}}
+{{/* verso-field-label-class: a setting's name, wherever a box is labelled —
+     a form row, and the sign-in form that stands outside any row. */}}
+{{define "verso-field-label-class"}}text-sm font-semibold text-ink{{end}}
+{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{template "verso-field-label-class"}}{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
+{{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — the chip's
      own square and word beside the setting's name. The shell marks it on every
@@ -168,6 +161,45 @@
      script flies the square from it to the chip once, after a save
      (verso-commit.js), and draws the same markup when it marks a row itself. */}}
 {{define "verso-staged-row"}}<span data-verso-staged-row class="inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>{{t "staged"}}</span>{{end}}
+
+{{/* verso-field: one setting's row, the same on a page, in a drawer and in a
+     settings block (fieldFrame). In reading order: the label (name, key chip,
+     staged mark, raised explanation); the control, drawn by the widget that
+     owns it; the refusal band, which an in-place value's own check also writes
+     into; a description kept in view; the remove lane. A checkbox leads its
+     label instead of standing under it, and its description hangs under the
+     label (forms.css). The row carries the change hooks the stage reads unless
+     it posts nothing. No widget draws this row by hand. */}}
+{{define "verso-field"}}<div class="{{template "verso-field-row-class"}}{{if .Toggle}} verso-field-toggle{{end}}{{if .Lane}} verso-field-with-remove{{end}}{{with .Class}} {{.}}{{end}}"{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
+{{if .Toggle}}
+  <div data-verso-control class="{{template "verso-field-control-class"}}">{{.Control}}</div>
+  {{template "verso-field-label" .Label}}
+  {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
+{{else}}
+  {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
+  <div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} relative">
+    {{.Control}}
+    {{range .Errors}}<span id="{{.ID}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="{{template "verso-refusal-band"}}"></span>{{end}}{{end}}
+    {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
+  </div>
+  {{/* A row that cannot be taken out of the set still reserves the glyph's
+       width, so every control in the group begins and ends in one place. */}}
+  {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="size-7 flex-none" aria-hidden="true"></span>{{end}}{{end}}
+{{end}}
+</div>{{end}}
+{{define "verso-field-desc-class"}}text-sm leading-snug text-pretty text-body{{end}}
+
+{{/* verso-box: one frame holding typed values (boxView). A value counted in
+     a unit is a box of one part, its unit words inside the frame after it, so
+     the box is as wide as the value's measure and the unit, whatever the unit
+     is called in the reader's language. Values entered together are one box of
+     several parts split by hairlines: they are one answer, and a reader sees
+     one control rather than boxes that happen to stand near each other. The
+     frame takes the field's states (forms.css). The row's label names the
+     group; each part stays its own input under its own name, which a screen
+     reader says as the caret enters it and a refusal band repeats. */}}
+{{define "verso-box"}}<span class="verso-box"{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-box-part" .}}{{end}}</span>{{end}}
+{{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}><input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{end}}</span>{{end}}
 {{/* A chip's word is set at the regular weight. The box already separates it
      from the prose around it, so weight on top of a border and a fill is one
      emphasis too many — and a page of bolded chips reads as a page of shouting.
@@ -273,7 +305,10 @@
      and Escape puts it away (verso-page.js). */}}
 {{define "verso-tip-wide"}}
 <span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus-visible/tip:opacity-100">
-  <span class="text-sm leading-[1.45] text-ink">{{.Tip}}</span>
+  {{with .Tip}}<span class="text-sm leading-[1.45] text-ink">{{.}}</span>{{end}}
+  {{/* A fused control with no one sentence of its own explains each part
+       under that part's name. */}}
+  {{range .Parts}}<span class="flex flex-col text-sm leading-[1.45] text-ink"><span class="font-semibold">{{.Label}}</span><span>{{.Tip}}</span></span>{{end}}
   {{if .Footer}}<span class="flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta">{{.Footer}}</span>{{end}}
 </span>
 {{end}}

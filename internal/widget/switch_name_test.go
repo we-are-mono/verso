@@ -28,9 +28,13 @@ func TestRowSwitchesCarryTheRowName(t *testing.T) {
 		t.Errorf("the name column wins over the order number and the comment:\n%s", named)
 	}
 
-	settings := render(t, newRenderer(t), firewallDefaults())
-	if !strings.Contains(settings, `name="synflood_protect" aria-label="SYN-flood protection"`) {
-		t.Errorf("a settings switch takes the row's title as its name:\n%s", settings)
+	// A settings switch with no posted name has no id for its row's label to
+	// point at, so it carries the row's title itself.
+	bare := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
+		{Title: "SYN-flood protection", Toggle: &SettingsToggle{On: true}},
+	}})
+	if !strings.Contains(bare, `data-verso-switch aria-label="SYN-flood protection"`) {
+		t.Errorf("a nameless settings switch takes the row's title as its name:\n%s", bare)
 	}
 }
 
@@ -45,16 +49,20 @@ func TestLabelledSwitchesKeepTheirLabel(t *testing.T) {
 			t.Errorf("style %q: a labelled switch must not carry an aria-label:\n%s", style, got)
 		}
 	}
+	// A settings row's title is a real label for its switch, as a form row's is.
+	settings := render(t, newRenderer(t), firewallDefaults())
+	if !strings.Contains(settings, `<label for="synflood_protect" id="synflood_protect-label"`) ||
+		strings.Contains(settings, `name="synflood_protect" aria-label`) {
+		t.Errorf("a settings switch is named by its row's label, not an aria-label:\n%s", settings)
+	}
 }
 
-// TestSettingsValueInputIsNamed: the always-open value box on a settings row
-// sits in a label that holds only the input and a pencil, so the input takes
-// the row's title as its name.
+// An editable settings value uses its visible title as the input's label.
 func TestSettingsValueInputIsNamed(t *testing.T) {
 	got := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
 		{Title: "Cache size", Code: "cachesize", Value: "1000", Name: "cachesize"},
 	}})
-	if !strings.Contains(got, `name="cachesize" value="1000" aria-label="Cache size"`) {
+	if !strings.Contains(got, `for="cachesize"`) || !strings.Contains(got, `id="cachesize" type="text" name="cachesize" value="1000"`) {
 		t.Errorf("the in-place value input must carry the row title:\n%s", got)
 	}
 }
