@@ -20,6 +20,7 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -672,8 +673,9 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	for _, want := range []string{
 		`href="/plugins/demo/dnsdhcp"`,
 		`href="/plugins/demo/dnsdhcp/config"`,
-		"border-l border-rule",      // the hairline the subpages hang from
-		`<path d="m6 9 6 6 6-6" />`, // the open row's chevron, turned down
+		"border-l border-rule",              // the hairline the subpages hang from
+		`text-meta rotate-90 ml-auto"><svg`, // the open row's chevron, turned down
+		`<path d="m9 18 6-6-6-6" />`,        // the one chevron every row that opens wears
 	} {
 		if !strings.Contains(nav, want) {
 			t.Errorf("rail missing %q:\n%s", want, nav)
@@ -711,6 +713,66 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 		if !strings.Contains(nav, want) {
 			t.Errorf("rail missing %q:\n%s", want, nav)
 		}
+	}
+}
+
+// What waits on a rail row is said at its end in the action colour, led by the
+// rail's square, with the whole sentence on the row for a pointer to rest on
+// and a screen reader to read.
+func TestARailRowSaysWhatWaitsThere(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	waiting := updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable}, CheckedAt: time.Now()}
+	if err := updatecheck.Write(s.stateDir, waiting); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, s, "/").Body.String()
+	nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+	row := nav[strings.Index(nav, `title="New firmware is ready to install."`):]
+	row = row[:strings.Index(row, "</a>")]
+	// The row's name never gives way to what waits there: the words do, and
+	// the whole sentence stays on the row.
+	for _, want := range []string{
+		`<span class="min-w-0 shrink-0 truncate">System</span>`,
+		`<span class="ml-auto flex min-w-0 items-center gap-2 text-sm font-medium tabular-nums text-denim">`,
+		`<span aria-hidden="true" class="size-1.25 shrink-0 rounded-[1px] bg-denim"></span><span class="min-w-0 truncate">New firmware</span></span>`,
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("System row missing %q:\n%s", want, row)
+		}
+	}
+}
+
+// A closed row that opens into subpages points the way it opens; the open one
+// turns down over its branch. It is one chevron, turned, and named for its row,
+// so a page change turns it rather than swapping one picture for another.
+func TestARowThatOpensPointsTheWay(t *testing.T) {
+	m := demoManifest()
+	for i := range m.Nav {
+		m.Nav[i].Pages = true
+	}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "DNS & DHCP", Status: http.StatusOK,
+		Pages:  []plugin.PageTab{{Label: "Leases", Path: "dnsdhcp"}},
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{m})
+	right := `<path d="m9 18 6-6-6-6" />`
+	chevron := `style="--verso-vt: verso-nav-chevron-plugins-demo" class="verso-vt flex shrink-0 text-meta`
+	rowOf := func(body, href string) string {
+		nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+		row := nav[strings.Index(nav, `href="`+href+`"`):]
+		return row[:strings.Index(row, "</a>")]
+	}
+	closed := rowOf(get(t, s, "/").Body.String(), "/plugins/demo/")
+	if !strings.Contains(closed, chevron+` ml-auto">`) || !strings.Contains(closed, right) {
+		t.Errorf("a closed row with subpages must point right, unturned:\n%s", closed)
+	}
+	open := rowOf(get(t, s, "/plugins/demo/dnsdhcp").Body.String(), "/plugins/demo/")
+	if !strings.Contains(open, chevron+` rotate-90 ml-auto">`) || !strings.Contains(open, right) {
+		t.Errorf("the open row must turn the same chevron down over its branch:\n%s", open)
+	}
+	if home := rowOf(get(t, s, "/").Body.String(), "/"); strings.Contains(home, right) || strings.Contains(home, "verso-nav-chevron") {
+		t.Errorf("a row with no subpages carries no chevron:\n%s", home)
 	}
 }
 

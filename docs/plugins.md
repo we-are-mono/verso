@@ -103,6 +103,17 @@ does not hardcode General. A registration appears while the plugin socket is liv
 stopping the service withdraws it on the next page render, while its direct
 `/plugins/<id>/…` URL remains available to show the contained unavailable state.
 
+A destination that opens into subpages (the envelope's `pages`) says so with
+`"pages": true` on its entry, so its menu row points the way it opens on every
+page, not only once someone is in it. Which subpages they are stays the
+envelope's to say:
+
+```json
+"nav": [
+  { "section": "Security", "label": "Firewall", "path": "/", "pages": true }
+]
+```
+
 Manifest v2 may declare `nav`, `contributions`, or both, but must declare at least
 one. A contribution-only plugin creates no sidebar entry.
 

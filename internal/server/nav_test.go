@@ -5,13 +5,17 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -212,6 +216,26 @@ func TestARailRowIsTheSamePlaceOnEveryPage(t *testing.T) {
 	}
 }
 
+// A row that opens into subpages says so on every page, not only once you are
+// in it: System, whose pages the shell holds, and a plugin's destination that
+// declares its pages in its manifest. A row with none says nothing.
+func TestARowThatOpensSaysSoEverywhere(t *testing.T) {
+	firewall := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: true})
+	firewall.Socket = "/firewall.sock"
+	interfaces := manifest("net", nav("Network", "Interfaces", "/"))
+	interfaces.Socket = "/net.sock"
+	s := navServer(firewall, interfaces)
+
+	for _, at := range []string{"/", "/plugins/net/"} {
+		model := sidebar(s, at)
+		for label, opens := range map[string]bool{"Firewall": true, "System": true, "Interfaces": false, "Overview": false} {
+			if got := railRow(t, model, label).Opens; got != opens {
+				t.Errorf("at %s, %s row Opens = %v, want %v", at, label, got, opens)
+			}
+		}
+	}
+}
+
 // A plugin is its own row, at the label the design gives it: no "Security"
 // domain row stands in front of the firewall.
 func TestBuildSidebarPluginIsItsOwnRow(t *testing.T) {
@@ -279,25 +303,69 @@ func TestBuildSidebarKeepsUnnamedDestinationsLast(t *testing.T) {
 	}
 }
 
-// The Devices row leads to the roster page and lights up there, carrying the
-// live count of devices on the network as its trailing detail.
+// The Devices row leads to the roster page and lights up there. It says nothing
+// more: how many devices are about is a reading the homepage and the roster
+// give, and a rail word that moves without asking anything teaches the eye to
+// pass over the place a word that matters would stand.
 func TestBuildSidebarDevicesRowLeadsToTheRoster(t *testing.T) {
 	s := navServer()
 	s.neighbors = testNeighbors
 	row := railRow(t, sidebar(s, devicesPath), "Devices")
-	if row.Href != devicesPath || !row.Active || row.Detail != "2" {
-		t.Fatalf("Devices row = %+v, want the active roster row counting both kernel-vouched devices", row)
+	if row.Href != devicesPath || !row.Active {
+		t.Fatalf("Devices row = %+v, want the active roster row", row)
+	}
+	if row.Detail != "" || row.Dot || row.Hint != "" {
+		t.Errorf("Devices row = %+v, want no reading in the rail", row)
 	}
 	if elsewhere := railRow(t, sidebar(s, "/"), "Devices"); elsewhere.Active {
 		t.Errorf("Devices row = %+v, want inactive away from the roster", elsewhere)
 	}
 }
 
-// A box that cannot count its devices shows the row without a number rather
-// than an invented or stale one.
-func TestBuildSidebarDevicesRowDegradesWithoutACount(t *testing.T) {
-	if row := railRow(t, sidebar(navServer(), "/"), "Devices"); row.Detail != "" {
-		t.Fatalf("Devices row = %+v, want no detail when the count is unavailable", row)
+// A rail row speaks only of what waits for you there. System says what is
+// ready to install, in words short enough for the rail and whole in its hint:
+// new firmware before any package, since a firmware upgrade brings its own
+// package versions; nothing at all when nothing waits, or when no check has
+// answered.
+func TestSystemRowSaysWhatWaitsToInstall(t *testing.T) {
+	upgrades := func(n int) []openwrt.PackageUpgrade {
+		out := make([]openwrt.PackageUpgrade, n)
+		for i := range out {
+			out[i] = openwrt.PackageUpgrade{Name: fmt.Sprintf("pkg%d", i), Installed: "1", Available: "2"}
+		}
+		return out
+	}
+	firmware := openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable}
+	for name, tc := range map[string]struct {
+		truth        *updatecheck.Truth
+		detail, hint string
+	}{
+		"never checked": {nil, "", ""},
+		"up to date":    {&updatecheck.Truth{}, "", ""},
+		"one package":   {&updatecheck.Truth{Packages: upgrades(1)}, "1 update", "1 package update is ready to install."},
+		"packages":      {&updatecheck.Truth{Packages: upgrades(15)}, "15 updates", "15 package updates are ready to install."},
+		"firmware":      {&updatecheck.Truth{Firmware: firmware}, "New firmware", "New firmware is ready to install."},
+		"both":          {&updatecheck.Truth{Packages: upgrades(15), Firmware: firmware}, "New firmware", "New firmware is ready to install."},
+	} {
+		t.Run(name, func(t *testing.T) {
+			system := manifest("system", nav("System", "General", "/"))
+			system.Socket = "/system.sock"
+			s := navServer(system)
+			s.stateDir = t.TempDir()
+			if tc.truth != nil {
+				tc.truth.CheckedAt = time.Now()
+				if err := updatecheck.Write(s.stateDir, *tc.truth); err != nil {
+					t.Fatal(err)
+				}
+			}
+			row := railRow(t, sidebar(s, "/"), "System")
+			if row.Detail != tc.detail || row.Hint != tc.hint {
+				t.Fatalf("System row says %q (%q), want %q (%q)", row.Detail, row.Hint, tc.detail, tc.hint)
+			}
+			if waiting := tc.detail != ""; row.Dot != waiting || (waiting && row.Variant != "info") {
+				t.Errorf("System row mark = %v %q; update news wears the info square", row.Dot, row.Variant)
+			}
+		})
 	}
 }
 

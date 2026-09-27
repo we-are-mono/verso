@@ -220,7 +220,7 @@ func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
 	fsys := mapFS(map[string]string{
 		"plugins/n/manifest.json": `{"manifest_version":1,"id":"n","name":"N","socket":"/run/verso/n.sock",` +
 			`"schema_version":1,"nav":[` +
-			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","mode":"advanced"},` +
+			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","mode":"advanced","pages":true},` +
 			`{"section":"Network","label":"DHCP","path":"/"}]}`,
 	})
 
@@ -229,11 +229,11 @@ func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
 		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
 	}
 	nav := got[0].Nav
-	if nav[0].Icon != "globe" || nav[0].Mode != "advanced" {
-		t.Errorf("nav[0] icon/mode not parsed: %+v", nav[0])
+	if nav[0].Icon != "globe" || nav[0].Mode != "advanced" || !nav[0].Pages {
+		t.Errorf("nav[0] icon/mode/pages not parsed: %+v", nav[0])
 	}
-	if nav[1].Icon != "" || nav[1].Mode != "" {
-		t.Errorf("nav[1] should declare neither: %+v", nav[1])
+	if nav[1].Icon != "" || nav[1].Mode != "" || nav[1].Pages {
+		t.Errorf("nav[1] should declare none of them: %+v", nav[1])
 	}
 }
 

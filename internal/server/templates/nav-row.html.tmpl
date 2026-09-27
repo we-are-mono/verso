@@ -18,16 +18,24 @@
 {{/* verso-nav-marker: where you are — one in the rail, laid behind the words of
      the place it marks. */}}
 {{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker" class="verso-vt pointer-events-none absolute inset-0 bg-quiet shadow-[inset_-0.125rem_0_0_var(--color-ink)]"></span>{{end}}
+{{/* verso-nav-square: the rail's 5px state square, in a tone's hue. */}}
+{{define "verso-nav-square"}}<span aria-hidden="true" class="size-1.25 shrink-0 rounded-[1px] {{if eq . "success"}}verso-live-dot bg-green{{else if eq . "danger"}}bg-crimson{{else if eq . "info"}}bg-denim{{else}}bg-glyph{{end}}"></span>{{end}}
 {{define "verso-nav-row"}}
 <li>
-  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="relative flex items-center py-2 pr-6 pl-6.5 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink{{if .Children}} hover:bg-quiet/50{{end}}{{else}}text-body hover:bg-mid/50 hover:pl-7.5 hover:text-ink{{end}}">
+  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}{{if .Hint}} title="{{.Hint}}"{{end}} class="relative flex items-center py-2 pr-6 pl-6.5 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink{{if .Children}} hover:bg-quiet/50{{end}}{{else}}text-body hover:bg-mid/50 hover:pl-7.5 hover:text-ink{{end}}">
     {{if and .Active (not .Children)}}{{template "verso-nav-marker"}}{{end}}
     <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-row" class="verso-vt relative flex min-w-0 flex-1 items-center gap-3">
       {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
-      <span class="min-w-0 truncate">{{.Label}}</span>
-      {{if .Dot}}<span class="size-1.25 shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
-      {{if .Detail}}<span class="ml-auto shrink-0 text-sm font-medium tabular-nums text-meta">{{.Detail}}</span>{{end}}
-      {{if and .Active .Children}}<span class="ml-auto flex shrink-0 text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
+      <span class="min-w-0{{if .Detail}} shrink-0{{end}} truncate">{{.Label}}</span>
+      {{/* What waits there, at the row's end: a word or two, led by the rail's
+           square and tinted with it. The row's name never gives way to it; the
+           words do, and the row's title keeps the whole sentence. */}}
+      {{if .Detail}}<span class="ml-auto flex min-w-0 items-center gap-2 text-sm font-medium tabular-nums {{if eq .Variant "info"}}text-denim{{else}}text-meta{{end}}">{{if .Dot}}{{template "verso-nav-square" .Variant}}{{end}}<span class="min-w-0 truncate">{{.Detail}}</span></span>
+      {{else if .Dot}}{{template "verso-nav-square" .Variant}}{{end}}
+      {{/* A row that opens into subpages says so on every page: one chevron,
+           pointing the way it opens while closed and turned down over its open
+           branch. It is named for its row, so a page change turns it. */}}
+      {{if or (and .Active .Children) .Opens}}<span style="--verso-vt: {{.ChevronTransition}}" class="verso-vt flex shrink-0 text-meta{{if and .Active .Children}} rotate-90{{end}}{{if not .Detail}} ml-auto{{end}}">{{icon "chevron-right" "size-4"}}</span>{{end}}
     </span>
   </a>
   {{if and .Active .Children}}

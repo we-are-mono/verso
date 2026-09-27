@@ -5,7 +5,6 @@ package server
 
 import (
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -55,6 +54,8 @@ type navLink struct {
 	Detail  string
 	Dot     bool
 	Variant string
+	// Pages says the destination opens into subpages (its manifest's word).
+	Pages bool
 }
 
 // railTransition names a rail part for the browser's page-change transition
@@ -92,6 +93,10 @@ func (r navRow) Transition() string { return railTransition("row", r.Href) }
 // rather than carrying the first across.
 func (r navRow) BranchTransition() string { return railTransition("branch", r.Href) }
 
+// ChevronTransition names the row's chevron on its own, so a page change turns
+// it from pointing the way the row opens to pointing down over its branch.
+func (r navRow) ChevronTransition() string { return railTransition("chevron", r.Href) }
+
 // Transition is a subpage's page-change name, kept apart from the rows' since
 // a row may lead where its first subpage does.
 func (p pageTab) Transition() string { return railTransition("sub", p.Href) }
@@ -114,11 +119,19 @@ type navRow struct {
 	// row has them: a plugin declares its pages in the envelope it answers with,
 	// so the shell knows them for the page in hand and for no other.
 	Children []pageTab
-	// Detail rides hard right — a count, a rate. Dot marks a state beside the
-	// label instead, tinted by Variant ("success", "danger").
+	// Opens says the row leads into subpages at all, known on every page, so a
+	// closed row can say it opens: System's are the shell's own, and a plugin's
+	// destination declares it in its manifest.
+	Opens bool
+	// Detail rides hard right: what waits for you there, in a word or two
+	// ("15 updates"), never a reading of how things are. Dot leads it with the
+	// rail's square, and Variant tints both (the tone vocabulary; update news
+	// is "info"). Without a Detail, Dot marks a state beside the label. Hint is
+	// the whole sentence behind the words, on the row as its title.
 	Detail  string
 	Dot     bool
 	Variant string
+	Hint    string
 	// PluginID names the plugin that authored this row's label ("" for a
 	// shell-owned row), so the label is localized from that plugin's catalog
 	// rather than the shell's base (ADR-012 §5).
@@ -200,14 +213,9 @@ func navIcon(label, section string) string {
 func (s *Server) buildSidebar(active, mode string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
 	rows := []navRow{{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")}}
 
-	// Devices is a live row: its detail is how many are on the network right now,
-	// counted from the kernel's neighbour table. A box that cannot answer shows
-	// the row without a number rather than a stale or invented one.
-	devices := navRow{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)}
-	if online, ok := s.onlineDevices(); ok {
-		devices.Detail = strconv.Itoa(online)
-	}
-	rows = append(rows, devices)
+	// A row says nothing of how things are — the homepage does — so Devices
+	// is its name alone.
+	rows = append(rows, navRow{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)})
 
 	// Every section the manifests register becomes rows here — no titles between
 	// them, because the rail is a list of places and not a taxonomy. Status is
@@ -220,13 +228,19 @@ func (s *Server) buildSidebar(active, mode string, tr func(string) string, plugi
 		if sec.Title == "System" {
 			system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
 			if sysPages := s.systemPages(active, mode); len(sysPages) > 0 {
-				system.Href = sysPages[0].Href
+				system.Href, system.Opens = sysPages[0].Href, true
+			}
+			// What System has waiting for you is what it has to install.
+			if truth, ok := s.updateTruth(); ok {
+				if system.Detail, system.Hint = waitingToInstall(truth, tr); system.Detail != "" {
+					system.Dot, system.Variant = true, "info"
+				}
 			}
 			rows = append(rows, system)
 			continue
 		}
 		for _, l := range sec.Links {
-			rows = append(rows, navRow{Label: l.Label, Href: l.Href, Icon: l.Icon, Active: l.Active, PluginID: l.PluginID})
+			rows = append(rows, navRow{Label: l.Label, Href: l.Href, Icon: l.Icon, Active: l.Active, PluginID: l.PluginID, Opens: l.Pages})
 		}
 	}
 
@@ -315,6 +329,7 @@ func (s *Server) buildNav(active string) []navSection {
 				Icon:     entry.Icon,
 				Mode:     entry.Mode,
 				PluginID: m.ID,
+				Pages:    entry.Pages,
 			})
 		}
 	}

@@ -286,6 +286,22 @@ func softwareLead(truth updatecheck.Truth) string {
 	return lead + "."
 }
 
+// waitingToInstall says what the router has ready to install, in words short
+// enough for a rail row's end and in the sentence behind them. New firmware
+// speaks for everything, since a firmware upgrade brings its own package
+// versions; otherwise the packages are counted. Nothing waiting says nothing.
+func waitingToInstall(truth updatecheck.Truth, tr func(string) string) (words, sentence string) {
+	switch n := len(truth.Packages); {
+	case truth.Firmware.State == openwrt.FirmwareUpdateAvailable:
+		return tr("New firmware"), tr("New firmware is ready to install.")
+	case n == 1:
+		return tr("1 update"), tr("1 package update is ready to install.")
+	case n > 1:
+		return fmt.Sprintf(tr("%d updates"), n), fmt.Sprintf(tr("%d package updates are ready to install."), n)
+	}
+	return "", ""
+}
+
 func newerVersions(n int) string {
 	if n == 1 {
 		return "1 package has a newer version"
