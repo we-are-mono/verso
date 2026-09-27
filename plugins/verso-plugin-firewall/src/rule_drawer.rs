@@ -670,7 +670,7 @@ fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
             &form.schedule.weekdays,
             WEEKDAYS
                 .iter()
-                .map(|day| SelectOption::new(day, &day[..2]))
+                .map(|day| SelectOption::new(day, day))
                 .collect(),
         )
         .writes("weekdays")
@@ -987,6 +987,19 @@ mod tests {
             control(&body, "weekdays")["values"],
             serde_json::json!(["Mon", "Tue"])
         );
+        // Each day wears the three letters uci writes it in, as QoS's strip
+        // does: the drawer has the width, so no day is cut to two.
+        let days = fixture::find_with(&opened_on("everything", WHEN), &|value| {
+            value["name"] == "weekdays" && value["style"] == "segmented"
+        })
+        .expect("the days strip");
+        let labels: Vec<&str> = days["options"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|option| option["label"].as_str().unwrap())
+            .collect();
+        assert_eq!(labels, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
         assert_eq!(control(&body, "start_date")["value"], "2026-01-01");
         assert_eq!(control(&body, "stop_time")["value"], "18:00:00");
         assert_eq!(control(&body, "time_basis")["value"], "utc");

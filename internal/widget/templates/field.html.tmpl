@@ -76,7 +76,10 @@
     {{range .Options}}
     <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
       <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}} class="sr-only">
-      {{.Label}}
+      {{/* A checked chip's word goes semibold, which is wider; its hidden
+           semibold twin in the same cell holds that width from the start, so
+           checking one never nudges the chips after it. */}}
+      <span class="grid"><span class="col-start-1 row-start-1">{{.Label}}</span><span aria-hidden="true" class="invisible col-start-1 row-start-1 font-semibold">{{.Label}}</span></span>
     </label>
     {{end}}
   </div>

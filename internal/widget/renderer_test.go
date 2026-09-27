@@ -250,6 +250,16 @@ func TestRenderMultipleChoiceChips(t *testing.T) {
 	if !strings.Contains(days, `type="checkbox" name="days" value="mon" checked`) {
 		t.Errorf("a day in the set is a checked box:\n%s", days)
 	}
+	// Checking a chip thickens its word, and a thicker word is a wider one:
+	// every chip holds its semibold width from the start, a hidden twin in the
+	// same cell, so checking one never nudges the rest along the strip.
+	for _, want := range []string{
+		`<span class="grid"><span class="col-start-1 row-start-1">Tue</span><span aria-hidden="true" class="invisible col-start-1 row-start-1 font-semibold">Tue</span></span>`,
+	} {
+		if !strings.Contains(days, want) {
+			t.Errorf("segmented chip does not hold its checked width %q:\n%s", want, days)
+		}
+	}
 }
 
 func TestRenderDrawer(t *testing.T) {
