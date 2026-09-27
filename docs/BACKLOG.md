@@ -68,6 +68,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **`verso` uci config.** A uci config for durable shell preferences (e.g. a
   reorderable set of dashboard cards).
 
+## Tooling
+
+- **Router pull-watcher.** A small procd service on a dev router that polls a
+  version stamp on the apk repo and runs the upgrade line in
+  `docs/building.md` §5 when it changes, so publishing from the dev box is the
+  whole loop and the router updates itself, with no SSH into it. Dev-only;
+  ships disabled.
+
 ## Research
 
 - **Behavioural pages — the remaining edge.** Three realizations landed in the
