@@ -63,8 +63,8 @@ func TestPackagesInventory(t *testing.T) {
 		">Remove</button>",    // removal is the row's act, asked on the row
 		"max-w-6xl",           // package management uses the focused content width
 		"verso-prose text-sm", // the description is plain body prose, no heading over it
-		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link opens safely outside Verso
-		"space-y-0 border-b border-mid", "border-t border-mid py-2",         // facts are hairline rows, closed by a rule as a table's are
+		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`,        // project link opens safely outside Verso
+		"space-y-0 border-b border-mid not-first:pt-2", "border-t border-mid py-2", // facts are hairline rows 32px under the prose, closed by a rule as a table's are
 		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // shared title band
 	} {
 		if !strings.Contains(body, want) {

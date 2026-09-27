@@ -582,7 +582,7 @@ func TestRenderTableRowDrawerKeepsLegacyHiddenTitleVisible(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-10", "pt-7", `aria-label="Close"`} {
+	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-10", "pt-8", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
@@ -1212,8 +1212,9 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
 		"border-denim-line bg-denim-soft text-denim-deep\">5 conditions",
 		"border-rule bg-quiet text-meta\">accept",
-		// A tabbed panel's body starts at the canvas's 28px under the strip.
-		"overflow-y-auto px-10 pt-7 pb-8",
+		// A tabbed panel's body starts 32px under the strip, as a band's title
+		// stands under its rule.
+		"overflow-y-auto px-10 pt-8 pb-8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
@@ -1236,7 +1237,7 @@ func TestRenderRowDrawerWithoutTabs(t *testing.T) {
 	if strings.Contains(got, `aria-label="Sections"`) {
 		t.Errorf("a panel with no tabs must draw no strip:\n%s", got)
 	}
-	if !strings.Contains(got, "overflow-y-auto px-10 pt-7 pb-8") {
+	if !strings.Contains(got, "overflow-y-auto px-10 pt-8 pb-8") {
 		t.Errorf("untabbed panel lost its own top:\n%s", got)
 	}
 }
