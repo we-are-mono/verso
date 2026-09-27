@@ -11,10 +11,12 @@
     "read": [
       { "scope": "uci", "object": "firewall", "function": "read" },
       { "scope": "uci", "object": "network", "function": "read" },
-      { "scope": "ubus", "object": "verso", "function": "firewallCounters" }
+      { "scope": "ubus", "object": "verso", "function": "firewallCounters" },
+      { "scope": "ubus", "object": "verso", "function": "firewallFiles" }
     ],
     "write": [
-      { "scope": "uci", "object": "firewall", "function": "write" }
+      { "scope": "uci", "object": "firewall", "function": "write" },
+      { "scope": "ubus", "object": "verso", "function": "stageConfigFile" }
     ]
   }
 }

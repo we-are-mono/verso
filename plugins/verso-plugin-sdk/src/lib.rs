@@ -35,6 +35,8 @@ use std::{env, fs, thread};
 pub use serde_json::{json, Map, Value};
 
 pub mod dhcp;
+/// Hand-edited files a page lists and edits in place. See [`files`].
+pub mod files;
 /// What a config can hold, as the daemon that reads it defines — and the guard
 /// that every option is either rendered, deliberately left out, or unsupported
 /// upstream. See [`vocabulary`].
@@ -725,8 +727,13 @@ pub enum Widget {
     },
     /// One persistent on/off setting, sharing its control with table toggle
     /// cells so a thing's enabled state looks the same in a listing and in its
-    /// editor. Style "inline" sits it beside a section heading. A switch inside
-    /// a form posts only when it is on.
+    /// editor. Style "inline" sits it beside a section heading; style "locked"
+    /// states a state nothing here changes — drawn set or clear, inert,
+    /// posting nothing. A switch inside a form posts only when it is on.
+    ///
+    /// Switches alone in a labelled form grid are one setting asked of several
+    /// things: the shell draws the grid's label once, with the options named
+    /// once, and a checkbox row per switch, its `help` kept in view.
     Switch {
         name: String,
         label: String,
@@ -753,6 +760,10 @@ pub enum Widget {
         /// tip's footer, placing the option in the config it belongs to.
         #[serde(skip_serializing_if = "String::is_empty")]
         source: String,
+        /// The label is a machine string — a path — rather than words: set in
+        /// mono and never looked up in a catalog.
+        #[serde(skip_serializing_if = "is_false")]
+        verbatim: bool,
         #[serde(skip_serializing_if = "is_false")]
         on: bool,
     },
@@ -1276,7 +1287,10 @@ impl Widget {
     /// control: the words covering every part, and optionally what the group
     /// is. Each field keeps its own label as its part's name.
     pub fn labelled(mut self, label: &str, help: &str) -> Widget {
-        if let Widget::Grid { label: l, help: h, .. } = &mut self {
+        if let Widget::Grid {
+            label: l, help: h, ..
+        } = &mut self
+        {
             *l = label.into();
             *h = help.into();
         }
@@ -1445,6 +1459,7 @@ impl Widget {
             key: key.into(),
             tip: tip.into(),
             source: String::new(),
+            verbatim: false,
             target: String::new(),
             on,
         }
@@ -3139,6 +3154,7 @@ mod tests {
             key: String::new(),
             tip: String::new(),
             source: String::new(),
+            verbatim: false,
             target: String::new(),
             on: false,
         };

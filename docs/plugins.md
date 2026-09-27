@@ -1220,6 +1220,17 @@ switches omit it.
   "help": "Disabled rules remain configured but are not evaluated." }
 ```
 
+`verbatim: true` says the label is a machine string, such as a path: it is set
+in mono and never translated. `style: "locked"` states a state nothing on the
+page changes; it is drawn set or clear, inert, and posts nothing.
+
+**Switch groups.** Switches alone in a labelled `form` grid are one setting
+asked of several things, such as which included files load. The shell draws the
+grid's `label` once, with the options the switches write named once in its
+chip, then one checkbox row per switch, its `help` kept in view under it and its
+own `staged` mark. In Rust:
+`Widget::form_grid(1, switches).labelled("Files the config includes", "")`.
+
 For object-level state, a section may place an inline switch in its heading with
 `control`; set the switch's `style` to `"inline"` and provide `off_label`. The
 state label follows the switch and changes with it. This keeps identity and state
@@ -1545,6 +1556,30 @@ the matching `network.interface` write grant and are checked against the
 operator's concrete netifd object permissions. They affect runtime only; UCI
 `auto` stays in the staged editor. The shell refreshes the inventory without
 resetting its filter, expanded row, or the session's inactivity deadline.
+
+### Hand-edited files
+
+Some daemons read files no config section describes: dnsmasq's option files and
+fw4's rule files. The helper stages them in families, each binding its files to
+the config whose daemon reads them:
+
+| Family | Files | Staged by a plugin with | Checked at Apply by | Read again by |
+|---|---|---|---|---|
+| dnsmasq | `/etc/dnsmasq.conf`, `/etc/dnsmasq.d/*.conf` | `dhcp` write | `dnsmasq --test` (also on save) | `dnsmasq reload` |
+| fw4 | `/etc/nftables.d/*.nft` | `firewall` write | `fw4 check` of the whole ruleset | `fw4 restart` |
+
+A staged file waits in the review under its family's config (`dhcp`,
+`firewall`), and discarding that config discards that family's files alone.
+fw4 is rebuilt with `restart`, not `reload`: its reload flushes the table, which
+keeps chains a file no longer declares, so a rolled-back base chain would stay
+hooked in. `verso.firewallFiles` brokers fw4's files as `verso.dnsState` does
+dnsmasq's; each lists only its own family.
+
+A page lists and edits its family with the SDK's `verso_plugin::files::FileSet`:
+the Files band with its count and New file, a row per file (folder, name, lines
+that set something, the pen that opens its editor), and an editor drawer whose
+save is the `config-file-stage` command. DNS & DHCP and Firewall declare only
+their folder, suffix and words, so the two listings cannot drift apart.
 
 ### DNS settings and custom option files
 

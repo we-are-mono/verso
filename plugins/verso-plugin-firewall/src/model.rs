@@ -18,7 +18,8 @@
 //! an absent `target` on a redirect is dnat, and an absent zone or global policy
 //! is drop.
 
-use verso_plugin::{Section, Snapshot};
+use verso_plugin::files;
+use verso_plugin::{Section, Snapshot, Ubus, Value};
 
 /// CONFIG is the uci config this plugin reads and writes.
 pub const CONFIG: &str = "firewall";
@@ -43,6 +44,10 @@ pub struct Firewall {
     /// The network config's own `config device` sections — bridges and the like,
     /// which no interface names as its device but a rule may still match on.
     declared_devices: Vec<String>,
+    /// The rule files fw4 reads from `/etc/nftables.d/`, as the helper reports
+    /// them — not config, so the snapshot never carries them; the request's
+    /// brokered read does (see [`Firewall::with_rule_files`]).
+    pub rule_files: Vec<Value>,
 }
 
 /// Defaults is `config defaults` — the policy baseline applied before any zone
@@ -258,7 +263,14 @@ impl Firewall {
                 .map(|section| section.scalar("name"))
                 .collect(),
             defaults,
+            rule_files: Vec::new(),
         }
+    }
+
+    /// with_rule_files adds the rule files the request's brokered read carries.
+    pub fn with_rule_files(mut self, ubus: &Ubus) -> Firewall {
+        self.rule_files = files::files(ubus.get("firewallFiles"));
+        self
     }
 
     /// zone_names lists the zones a rule may name, in config order.

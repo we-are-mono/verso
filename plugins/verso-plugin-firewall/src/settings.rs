@@ -15,9 +15,10 @@
 //! knows the config and wants the line.
 
 use verso_plugin::{
-    commit, commit_new, json, CommitOp, Envelope, Form, Map, Property, SelectOption, Tone, Value,
-    Widget,
+    commit, commit_new, json, CommitOp, Envelope, Form, Map, SelectOption, Tone, Value, Widget,
 };
+
+use verso_plugin::files::FileSet;
 
 use crate::model;
 use crate::model::{Defaults, Firewall, Include};
@@ -41,22 +42,31 @@ const TCP_SUB: &str = "Kernel-level knobs the firewall sets on the router's own 
 them alone unless you are chasing something specific.";
 
 const CUSTOM_TITLE: &str = "Custom rules";
-const CUSTOM_SUB: &str =
-    "Files fw4 loads alongside its generated ruleset. This page controls whether they load; \
-their contents are managed separately.";
+const CUSTOM_SUB: &str = "Rule files fw4 loads alongside the ruleset this page writes. Every \
+file in /etc/nftables.d/ loads; a change to one is checked with the whole ruleset when you \
+apply it.";
 
-const CUSTOM_NOTE: &str = "Anything dropped into `/etc/nftables.d/` is picked up on the next \
-reload.";
+const INCLUDES_LABEL: &str = "Files the config includes";
 
-const AUTO_INCLUDES_HELP: &str =
-    "Loads package-provided nftables snippets from /usr/share/nftables.d/. \
-The files listed below keep their own enabled setting.";
+const PACKAGE_FILES_LABEL: &str = "Load rule files that packages install";
+const PACKAGE_FILES_HELP: &str = "Packages put them in /usr/share/nftables.d/.";
 
 const INCOMPATIBLE_NOTE: &str = "This script is enabled but is not marked as compatible with fw4. \
 Check its contents before setting `fw4_compatible` to `1` in `/etc/config/firewall`.";
 
-const NO_INCLUDES: &str = "No custom snippets. The ruleset is entirely what this page and the \
-listings describe.";
+/// RULE_FILES is fw4's own folder of rule files, listed and edited exactly as
+/// DNS & DHCP lists and edits dnsmasq's option files.
+pub const RULE_FILES: FileSet = FileSet {
+    page: "/plugins/firewall/settings",
+    editors: "/plugins/firewall/settings/files/",
+    dir: "/etc/nftables.d/",
+    suffix: ".nft",
+    main: None,
+    line: ("line", "lines"),
+    empty: "No rule files",
+    too_large: "Rule files must be at most 32 KiB of text.",
+    placeholder: "10-custom",
+};
 
 /// POLICIES is the verdict a policy row offers, in the order the canvas states
 /// them: what a zone lets through, what it answers, what it swallows.
@@ -216,13 +226,7 @@ pub fn page(model: &Firewall) -> Envelope {
                     // apart — which is exactly what they had done.
                     fields: SECTIONS
                         .iter()
-                        .zip([
-                            baseline(d),
-                            protection(d),
-                            speed(d),
-                            tcp(d),
-                            custom(d, &model.includes),
-                        ])
+                        .zip([baseline(d), protection(d), speed(d), tcp(d), custom(model)])
                         .enumerate()
                         .map(|(index, ((anchor, _), section))| {
                             let section = section.addressed_as(anchor);
@@ -580,61 +584,92 @@ middlebox on the path.";
 const ECN_HELP: &str = "Lets routers signal congestion by marking packets instead of dropping \
 them. A few old middleboxes still discard marked packets.";
 
-/// custom is the includes: what fw4 loads besides what this interface writes.
-/// Verso does not author them, so the listing states what each one is and
-/// whether it loads, and nothing else.
-fn custom(d: &Defaults, includes: &[Include]) -> Widget {
-    let gate = switch(
-        "auto_includes",
-        "Load package rule files",
-        AUTO_INCLUDES_HELP,
-        d.auto_includes,
-    );
-    let mut children = vec![gate];
-    if includes.is_empty() {
-        children.push(Widget::callout(Tone::Neutral, "", NO_INCLUDES));
-    }
-    for include in includes {
-        let detail = if include.kind == "script" {
-            "Shell script · runs after the ruleset loads".to_string()
-        } else {
-            format!("nftables · {}", include.hook)
-        };
-        let mut fields = vec![
-            Widget::Properties {
-                align: "left".into(),
-                items: vec![Property {
-                    label: "File".into(),
-                    value: include.path.clone(),
-                    mono: true,
-                    copy: true,
-                    help: detail,
-                    ..Property::default()
-                }],
-            },
-            Widget::Switch {
-                name: include_field(include),
-                label: "Load this file".into(),
-                key: "enabled".into(),
-                on: include.enabled,
-                off_label: String::new(),
-                help: String::new(),
-                style: String::new(),
-                tip: String::new(),
-                source: String::new(),
-                target: String::new(),
-            },
-        ];
-        if include.enabled && include.kind == "script" && !include.fw4_compatible {
-            fields.push(Widget::callout(Tone::Warning, "", INCOMPATIBLE_NOTE));
-        }
+/// custom is what fw4 loads besides what this interface writes, by where it
+/// comes from. Each source is one setting — which of these load — asked of
+/// each thing in turn: a label, then a checkbox row per file or folder, its
+/// path verbatim and what it holds under it. First the files the config's
+/// include sections name, then the folders fw4 reads on its own. Verso does
+/// not author either, so nothing here offers a new file or an editor.
+fn custom(model: &Firewall) -> Widget {
+    let mut children = vec![
+        RULE_FILES.listing(&model.rule_files),
+        switch(
+            "auto_includes",
+            PACKAGE_FILES_LABEL,
+            PACKAGE_FILES_HELP,
+            model.defaults.auto_includes,
+        ),
+    ];
+    let includes = &model.includes;
+    if !includes.is_empty() {
         children.push(
-            Widget::section("", "", vec![Widget::stack(fields)])
-                .at(model::CONFIG, &include.section),
+            Widget::form_grid(1, includes.iter().map(include_switch).collect())
+                .labelled(INCLUDES_LABEL, ""),
         );
     }
-    children.push(Widget::text(CUSTOM_NOTE));
+    for include in includes {
+        if include.enabled && include.kind == "script" && !include.fw4_compatible {
+            children.push(Widget::callout(
+                Tone::Warning,
+                &include.path,
+                INCOMPATIBLE_NOTE,
+            ));
+        }
+    }
     Widget::section(CUSTOM_TITLE, CUSTOM_SUB, children)
+}
+
+/// open_file is the settings page with a rule file's editor open over it, or
+/// with the reason there is none.
+pub fn open_file(model: &Firewall, name: &str) -> Envelope {
+    match RULE_FILES.open(&model.rule_files, name) {
+        Ok(editor) => with_editor(page(model), editor),
+        Err(why) => page(model).with_notice(Tone::Danger, &why),
+    }
+}
+
+/// save_file answers a rule file's editor: the editor again, with the command
+/// that stages the file or the reason it cannot be one.
+pub fn save_file(model: &Firewall, name: &str, form: &Form) -> Envelope {
+    let Some((editor, command)) = RULE_FILES.save(&model.rule_files, name, form) else {
+        return page(model);
+    };
+    let mut result = with_editor(page(model), editor);
+    result.commands.extend(command);
+    result
+}
+
+/// with_editor opens an editor's drawer over the page, outside its form.
+fn with_editor(mut envelope: Envelope, editor: Widget) -> Envelope {
+    if let Widget::Grid { children, .. } = &mut envelope.widget {
+        children.push(editor);
+    }
+    envelope.with_back("Cancel", RULE_FILES.page)
+}
+
+/// include_switch is one file an include section names: whether it loads,
+/// its path, and what it holds. It writes the section's own `enabled`.
+fn include_switch(include: &Include) -> Widget {
+    let detail = if include.kind == "script" {
+        "Shell script · runs after the ruleset loads".to_string()
+    } else {
+        format!("nftables · {}", include.hook)
+    };
+    // The label is the file's path, set verbatim.
+    Widget::Switch {
+        name: include_field(include),
+        label: include.path.clone(),
+        off_label: String::new(),
+        help: detail,
+        style: String::new(),
+        on: include.enabled,
+        key: "enabled".into(),
+        tip: String::new(),
+        source: String::new(),
+        verbatim: true,
+        target: String::new(),
+    }
+    .at(model::CONFIG, &include.section)
 }
 
 fn include_field(include: &Include) -> String {
@@ -656,6 +691,7 @@ fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
         key: name.into(),
         tip: String::new(),
         source: String::new(),
+        verbatim: false,
         target: String::new(),
     }
 }
@@ -925,32 +961,161 @@ mod tests {
         assert_eq!(fixture::control(&body, "synflood_burst")["unit"], "packets");
     }
 
-    // Verso does not author an include, so the row says what it is and whether
-    // it loads — and never offers to edit its contents.
+    // Which included files load is one setting asked of each file: a label,
+    // then a checkbox per file, its path verbatim and what it holds under it.
+    // Each writes its own section's `enabled`, so each is marked on its own
+    // while its change waits. Verso does not author an include, so nothing
+    // offers a new file or an editor.
     #[test]
-    fn an_include_states_what_it_is_and_whether_it_loads() {
+    fn the_included_files_are_one_labelled_set_of_checkboxes() {
         let body = body();
-        let first = &fixture::section(&body, CUSTOM_TITLE)["children"][1];
+        let section = fixture::section(&body, CUSTOM_TITLE);
+        let group = &section["children"][2];
+        assert_eq!(group["type"], "grid");
+        assert_eq!(group["style"], "form");
+        assert_eq!(group["label"], INCLUDES_LABEL);
+        let files = group["children"].as_array().unwrap();
+        assert_eq!(files.len(), 2);
+
+        let first = &files[0];
+        assert_eq!(first["type"], "switch");
+        assert_eq!(first["name"], "include_enabled_custom_nft");
+        assert_eq!(first["label"], "/etc/nftables.d/10-custom.nft");
+        assert_eq!(first["verbatim"], true);
+        assert_eq!(first["key"], "enabled");
         assert_eq!(first["target"], "firewall.custom_nft");
-        let file = &first["children"][0]["children"][0]["items"][0];
-        assert_eq!(file["value"], "/etc/nftables.d/10-custom.nft");
-        assert_eq!(file["mono"], true);
-        assert_eq!(file["copy"], true);
-        let control = fixture::control(first, "include_enabled_custom_nft");
-        assert_eq!(control["key"], "enabled");
-        assert_eq!(control["on"], true);
+        assert_eq!(first["help"], "nftables · chain-pre");
+        assert_eq!(first["on"], true);
+
+        let script = &files[1];
+        assert_ne!(script["on"], true);
+        assert_eq!(script["label"], "/etc/firewall.user");
+        assert_eq!(
+            script["help"],
+            "Shell script · runs after the ruleset loads"
+        );
     }
 
+    fn with_rule_files() -> Firewall {
+        let mut model = fixture::firewall();
+        model.rule_files = vec![json!({
+            "path": "/etc/nftables.d/10-custom.nft", "family": "fw4",
+            "content": "# the office\nchain x {}\n", "version": "v1"
+        })];
+        model
+    }
+
+    // fw4's own folder of rule files is listed and edited exactly as DNS &
+    // DHCP lists dnsmasq's option files: one band, New file, a row per file
+    // opening its editor — the SDK draws both.
     #[test]
-    fn a_config_with_no_includes_says_so_rather_than_showing_an_empty_list() {
+    fn the_rule_files_are_the_same_listing_as_dnsmasqs() {
+        let body = serde_json::to_value(page(&with_rule_files())).expect("serialize");
+        let section = fixture::section(&body, CUSTOM_TITLE);
+        let listing = &section["children"][0];
+        assert_eq!(
+            listing,
+            &serde_json::to_value(RULE_FILES.listing(&with_rule_files().rule_files)).unwrap()
+        );
+        let row = &listing["rows"][0];
+        assert_eq!(row["group"]["label"], "Files");
+        assert_eq!(
+            row["group"]["add_href"],
+            "/plugins/firewall/settings/files/new"
+        );
+        assert_eq!(
+            row["panel"],
+            "/plugins/firewall/settings/files/10-custom.nft"
+        );
+        assert_eq!(row["cells"][1]["text"], "1");
+        assert_eq!(row["cells"][1]["sub"], "line");
+    }
+
+    // The packages' folder is one setting, said in words, under the files.
+    #[test]
+    fn loading_package_rule_files_is_one_setting() {
+        let mut model = fixture::firewall();
+        model.defaults.auto_includes = true;
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        let section = fixture::section(&body, CUSTOM_TITLE);
+        let packages = &section["children"][1];
+        assert_eq!(packages["type"], "switch");
+        assert_eq!(packages["name"], "auto_includes");
+        assert_eq!(packages["key"], "auto_includes");
+        assert_eq!(packages["label"], PACKAGE_FILES_LABEL);
+        assert_eq!(packages["on"], true);
+    }
+
+    // With no include sections there is no group of them.
+    #[test]
+    fn a_config_with_no_includes_draws_no_group() {
         let mut model = fixture::firewall();
         model.includes.clear();
         let body = serde_json::to_value(page(&model)).expect("serialize");
         let section = fixture::section(&body, CUSTOM_TITLE);
-        // Automatic package includes are independent of the explicit file list.
-        assert_eq!(section["children"][0]["name"], "auto_includes");
-        assert_eq!(section["children"][1]["type"], "callout");
-        assert_eq!(section["children"][1]["body"], NO_INCLUDES);
+        assert_eq!(section["children"].as_array().unwrap().len(), 2);
+    }
+
+    // A rule file's address opens its editor over the page, outside the
+    // settings form, closing back to the page.
+    #[test]
+    fn a_rule_files_address_opens_its_editor() {
+        let body = serde_json::to_value(open_file(&with_rule_files(), "10-custom.nft")).unwrap();
+        let editor = body["widget"]["children"]
+            .as_array()
+            .unwrap()
+            .last()
+            .unwrap()
+            .clone();
+        let drawer = &editor["rows"][0]["drawer"];
+        assert_eq!(drawer["title"], "Edit file");
+        assert_eq!(drawer["open"], true);
+        assert_eq!(drawer["closed"], "/plugins/firewall/settings");
+        let text = drawer.to_string();
+        assert!(text.contains("chain x {}"), "{text}");
+        let gone = serde_json::to_value(open_file(&with_rule_files(), "20-gone.nft")).unwrap();
+        assert_eq!(gone["notice"]["text"], "The file is no longer available.");
+    }
+
+    // Saving a rule file stages it through the shell's file journal, under
+    // fw4's folder; nothing is written to the firewall config.
+    #[test]
+    fn saving_a_rule_file_stages_it() {
+        let saved = save_file(
+            &with_rule_files(),
+            "new",
+            &Form::parse("filename=20-guest&content=chain+y+%7B%7D&expected=af63bd4c8601b7df"),
+        );
+        let body = serde_json::to_value(&saved).unwrap();
+        assert_eq!(body["commands"][0]["name"], "config-file-stage");
+        assert_eq!(
+            body["commands"][0]["args"]["path"],
+            "/etc/nftables.d/20-guest.nft"
+        );
+        assert_eq!(body["commands"][0]["args"]["content"], "chain y {}");
+        assert!(body
+            .get("commit")
+            .is_none_or(|c| c.as_array().is_none_or(Vec::is_empty)));
+    }
+
+    // A script that loads without being marked for fw4 is named right under
+    // the includes listing, with what to check before marking it.
+    #[test]
+    fn an_enabled_script_not_marked_for_fw4_is_named_under_the_listing() {
+        let mut model = fixture::firewall();
+        let script = model
+            .includes
+            .iter_mut()
+            .find(|i| i.section == "legacy_sh")
+            .unwrap();
+        script.enabled = true;
+        script.fw4_compatible = false;
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        let section = fixture::section(&body, CUSTOM_TITLE);
+        let warning = &section["children"][3];
+        assert_eq!(warning["type"], "callout");
+        assert_eq!(warning["title"], "/etc/firewall.user");
+        assert_eq!(warning["body"], INCOMPATIBLE_NOTE);
     }
 
     // Every control the page draws is one the save writes, and nothing the save
@@ -963,11 +1128,17 @@ mod tests {
         // handled it apart from the rest for that reason. It is in SWITCHES now,
         // beside what firewall4 assumes about it, so there is nothing left outside
         // the two lists.
+        // A switch may be a listing row's toggle cell, which is named but is
+        // not a widget of its own.
+        let named = |name: &str| {
+            fixture::find_with(&body, &|v| v["name"] == name)
+                .unwrap_or_else(|| panic!("no control named {name}"))
+        };
         for (name, _) in SWITCHES {
-            fixture::control(&body, name);
+            named(name);
         }
         for name in VALUES {
-            fixture::control(&body, name);
+            named(name);
         }
     }
 
@@ -1010,13 +1181,13 @@ mod tests {
         assert_eq!(ops[2].section, "legacy_sh");
         assert_eq!(ops[2].values, json!({"enabled": "1"}));
         let body = serde_json::to_value(page).unwrap();
-        assert!(!fixture::control(&body, "include_enabled_custom_nft")["on"]
-            .as_bool()
-            .unwrap_or(false));
-        assert_eq!(
-            fixture::control(&body, "include_enabled_legacy_sh")["on"],
-            true
-        );
+        // An include's switch is its row's toggle cell in the files listing.
+        let toggle = |name: &str| {
+            fixture::find_with(&body, &|v| v["name"] == name)
+                .unwrap_or_else(|| panic!("no toggle named {name}"))
+        };
+        assert_ne!(toggle("include_enabled_custom_nft")["on"], true);
+        assert_eq!(toggle("include_enabled_legacy_sh")["on"], true);
         assert!(written(&model).contains("config include 'custom_nft'\n\toption enabled '0'"));
         let (_, repeated) = save(&mut model, &Form::parse("include_enabled_legacy_sh=1"));
         assert_eq!(repeated.len(), 1, "unchanged includes must not stage again");

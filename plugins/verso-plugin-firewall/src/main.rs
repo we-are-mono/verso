@@ -62,9 +62,10 @@ fn main() {
 }
 
 fn get(request: &Request) -> Envelope {
-    let model = Firewall::read(&request.snapshot);
+    let model = Firewall::read(&request.snapshot).with_rule_files(&request.ubus);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
+        Route::RuleFile(name) => settings::open_file(&model, &name),
         // Rules and zones read their own query: each carries which of its objects
         // is open beside it, and on which reading. Every other listing is the same
         // page whatever the query says.
@@ -82,9 +83,10 @@ fn get(request: &Request) -> Envelope {
 }
 
 fn post(request: &Request, form: &Form) -> Envelope {
-    let mut model = Firewall::read(&request.snapshot);
+    let mut model = Firewall::read(&request.snapshot).with_rule_files(&request.ubus);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
+        Route::RuleFile(name) => settings::save_file(&model, &name, form),
         Route::NewRedirect => redirect_editor::create(&model, form),
         Route::EditRedirect(section) => {
             redirect_editor::save(&mut model, &counters, &section, form)
@@ -146,6 +148,9 @@ enum Route {
     Listing(Listing),
     NewRedirect,
     EditRedirect(String),
+    /// A rule file's editor, open over the settings: the name after
+    /// `settings/files/`, "new" for one not yet made.
+    RuleFile(String),
 }
 
 /// Listing is which of this plugin's pages a request is for. Three are the
@@ -182,7 +187,10 @@ impl Route {
         // Settings and Activity have nothing below them: the settings are one
         // form, and a verdict's only useful door is the rule that decided it,
         // which is a rule editor's address.
-        if path.starts_with(page::SETTINGS) {
+        if let Some(rest) = path.strip_prefix(page::SETTINGS) {
+            if let Some(name) = rest.trim_start_matches('/').strip_prefix("files/") {
+                return Route::RuleFile(name.to_string());
+            }
             return Route::Listing(Listing::Settings);
         }
         if path.starts_with(page::ACTIVITY) {
@@ -330,6 +338,25 @@ mod tests {
     fn answer(path: &str, body: &str) -> Value {
         let envelope = post(&request(path), &Form::parse(body));
         serde_json::to_value(&envelope).expect("serialize")
+    }
+
+    // A rule file's editor lives under the settings; saving one there stages
+    // the file and nothing else, from the files the request carried.
+    #[test]
+    fn a_rule_file_is_edited_under_the_settings() {
+        let mut saving = request("/settings/files/new");
+        saving.ubus = Ubus::from_value(serde_json::json!({"firewallFiles": {"files": []}}));
+        let body = serde_json::to_value(post(
+            &saving,
+            &Form::parse("filename=20-x&content=chain+x+%7B%7D&expected=af63bd4c8601b7df"),
+        ))
+        .unwrap();
+        assert_eq!(
+            body["commands"][0]["args"]["path"],
+            "/etc/nftables.d/20-x.nft"
+        );
+        let opened = serde_json::to_value(get(&request("/settings/files/new"))).unwrap();
+        assert!(opened.to_string().contains("\"title\":\"New file\""));
     }
 
     /// asking is a request carrying a query, for the two listings that read one:
