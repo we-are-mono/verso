@@ -104,7 +104,7 @@ func TestFirewallLogStreamCarriesResolvedRows(t *testing.T) {
 	if first.ID != 4201 || first.At != 1788294051 {
 		t.Errorf("cursor and stamp not carried: %+v", first)
 	}
-	if first.Verdict != "drop" || first.Rule != "Log-WAN-probes" || first.RuleHref != "/plugins/firewall/rules/cfg11dc81" {
+	if first.Verdict != "drop" || first.Rule != "Log-WAN-probes" || first.RuleHref != "/plugins/firewall/?open=cfg11dc81" {
 		t.Errorf("rule not resolved: %+v", first)
 	}
 	if first.From != "wan" || first.Src != "203.0.113.9" || first.ToKind != "router" || first.Port != "445" {

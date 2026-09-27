@@ -35,12 +35,13 @@ import (
 // writes it as text.
 
 // fwLogRuleEditor and fwLogRedirectEditor are where a logged verdict's rule
-// opens. The stream is named for the firewall and so is the door it opens: a
-// row states which rule decided it, and the only useful thing to do with that
-// is to go and read it.
+// opens: its panel on the listing that holds it, addressed by the section. The
+// stream is named for the firewall and so is the door it opens: a row states
+// which rule decided it, and the only useful thing to do with that is to go and
+// read it.
 const (
-	fwLogRuleEditor     = "/plugins/firewall/rules/"
-	fwLogRedirectEditor = "/plugins/firewall/port-forwards/"
+	fwLogRuleEditor     = "/plugins/firewall/?open="
+	fwLogRedirectEditor = "/plugins/firewall/port-forwards?open="
 )
 
 // fwEvent is one firewall verdict as the activity stream carries it. Every

@@ -158,7 +158,7 @@ func TestFWResolverNamesTheDecision(t *testing.T) {
 	if e.Verdict != "drop" || e.Rule != "Log-WAN-probes" {
 		t.Errorf("rule verdict wrong: %+v", e)
 	}
-	if e.RuleHref != "/plugins/firewall/rules/cfg11dc81" {
+	if e.RuleHref != "/plugins/firewall/?open=cfg11dc81" {
 		t.Errorf("rule href = %q, want its editor", e.RuleHref)
 	}
 	if e.From != "wan" {
@@ -176,7 +176,7 @@ func TestFWResolverNamesTheDecision(t *testing.T) {
 
 	fwd, _ := parseFWLogLine(fwLineForward)
 	if e := r.event(1, 1, fwd); e.Verdict != "accept" || e.ToKind != "device" || e.To != "10.0.0.30" ||
-		e.RuleHref != "/plugins/firewall/port-forwards/cfg21dc81" {
+		e.RuleHref != "/plugins/firewall/port-forwards?open=cfg21dc81" {
 		t.Errorf("a logged port forward is a permission granted to a device: %+v", e)
 	}
 
@@ -205,7 +205,7 @@ func TestFWResolverNamesAnonymousSectionsThePositionalWayFW4Does(t *testing.T) {
 	if e.Rule != "@rule[2]" || e.Verdict != "reject" {
 		t.Errorf("an anonymous rule logs under its positional name: %+v", e)
 	}
-	if e.RuleHref != "/plugins/firewall/rules/cfg13dc81" {
+	if e.RuleHref != "/plugins/firewall/?open=cfg13dc81" {
 		t.Errorf("href = %q, want the editor of the section that sits third", e.RuleHref)
 	}
 
@@ -218,14 +218,14 @@ func TestFWResolverNamesAnonymousSectionsThePositionalWayFW4Does(t *testing.T) {
 	// The counter walks every section of the type, so the anonymous rule after a
 	// named one is @rule[5] — not @rule[4].
 	after, _ := parseFWLogLine(`[ 1.0] @rule[5]: IN=br-lan OUT= SRC=10.0.0.5 DST=10.0.0.1`)
-	if e := r.event(1, 1, after); e.Verdict != "accept" || e.RuleHref != "/plugins/firewall/rules/cfg15dc81" {
+	if e := r.event(1, 1, after); e.Verdict != "accept" || e.RuleHref != "/plugins/firewall/?open=cfg15dc81" {
 		t.Errorf("a named section still advances fw4's counter: %+v", e)
 	}
 
 	// A section written with a name of its own logs under it.
 	named, _ := parseFWLogLine(`[ 1.0] block_telnet: IN=wan0 OUT= SRC=1.2.3.4 DST=5.6.7.8 PROTO=TCP DPT=23`)
 	if e := r.event(1, 1, named); e.Rule != "block_telnet" || e.Verdict != "drop" ||
-		e.RuleHref != "/plugins/firewall/rules/block_telnet" {
+		e.RuleHref != "/plugins/firewall/?open=block_telnet" {
 		t.Errorf("a named section logs under its name: %+v", e)
 	}
 
@@ -238,7 +238,7 @@ func TestFWResolverNamesAnonymousSectionsThePositionalWayFW4Does(t *testing.T) {
 	// Redirects are counted in their own type's sequence.
 	redirect, _ := parseFWLogLine(`[ 1.0] @redirect[1]: IN=wan0 OUT=br-lan SRC=1.2.3.4 DST=10.0.0.30`)
 	if e := r.event(1, 1, redirect); e.Verdict != "accept" ||
-		e.RuleHref != "/plugins/firewall/port-forwards/cfg22dc81" {
+		e.RuleHref != "/plugins/firewall/port-forwards?open=cfg22dc81" {
 		t.Errorf("an anonymous redirect logs as @redirect[N]: %+v", e)
 	}
 }
