@@ -83,10 +83,13 @@ type boxView struct {
 
 // boxPart is one value in a box. Track puts the change hooks on the part
 // itself, because in a fused box the row holds several changes; Named gives
-// the part its own name, because the row's label names the group.
+// the part its own name, because the row's label names the group. In a
+// joined row every part after the first stands after the group's word (Join,
+// under JoinID).
 type boxPart struct {
 	*Field
 	Track, Named bool
+	Join, JoinID string
 }
 
 // Measure is the part's width: a secret's is its own, narrower than a lone

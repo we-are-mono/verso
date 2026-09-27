@@ -614,6 +614,11 @@ pub enum Widget {
     /// option. Label is the words covering every part ("Connection rate" over
     /// a rate and a burst); each part keeps its own label as its name. Help
     /// is what the group is; without it the label explains each part.
+    ///
+    /// Join is the word that joins the parts where a hairline would split
+    /// them ("to"), for parts that read as one sentence: typed values stay one
+    /// box with the word in its frame, dropdowns stand side by side with the
+    /// word between them.
     Grid {
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
@@ -623,6 +628,8 @@ pub enum Widget {
         label: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         help: String,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        join: String,
     },
     /// A submittable set of fields; the shell threads CSRF and posts back here.
     /// Style "page" stages its submission through the shell. Error is a
@@ -705,11 +712,6 @@ pub enum Widget {
         /// it means read as one thing.
         #[serde(skip_serializing_if = "String::is_empty")]
         unit: String,
-        /// The second half of a paired row: the value that closes the range this
-        /// field's own value opens, and the word that joins them. They are one
-        /// setting asked once, so they are one row.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pair: Option<FieldPair>,
         /// The row's trailing remove affordance, for a form whose rows are a set
         /// someone adds to and takes from rather than a fixed list of settings:
         /// "yes" draws the glyph that clears this row, "lane" reserves its width
@@ -1264,16 +1266,13 @@ impl Widget {
         self
     }
 
-    /// paired_with closes the range this field opens: a second value beside it
-    /// with a word between them. Key should then name both options, because the
-    /// row is one setting.
-    pub fn paired_with(mut self, name: &str, value: &str, join: &str) -> Widget {
-        if let Widget::Field { pair, .. } = &mut self {
-            *pair = Some(FieldPair {
-                name: name.into(),
-                value: value.into(),
-                join: join.into(),
-            });
+    /// typed declares the grammar of a field's value by a shell datatype
+    /// ("timehhmmss", "dateyyyymmdd", "ipaddr"): the shell sets it as the
+    /// machine string it is, at the measure it needs, and refuses a value
+    /// that does not read as one.
+    pub fn typed(mut self, grammar: &str) -> Widget {
+        if let Widget::Field { datatype, .. } = &mut self {
+            *datatype = grammar.into();
         }
         self
     }
@@ -1299,6 +1298,15 @@ impl Widget {
         {
             *l = label.into();
             *h = help.into();
+        }
+        self
+    }
+
+    /// joined names the word that joins a form group's parts ("to"), for
+    /// parts that read as one sentence — a path from one zone to another.
+    pub fn joined(mut self, word: &str) -> Widget {
+        if let Widget::Grid { join, .. } = &mut self {
+            *join = word.into();
         }
         self
     }
@@ -1409,6 +1417,7 @@ impl Widget {
             children,
             label: String::new(),
             help: String::new(),
+            join: String::new(),
         }
     }
 
@@ -1421,6 +1430,7 @@ impl Widget {
             children,
             label: String::new(),
             help: String::new(),
+            join: String::new(),
         }
     }
 
@@ -1504,7 +1514,6 @@ impl Widget {
             unit: String::new(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         }
     }
@@ -1535,7 +1544,6 @@ impl Widget {
             unit: String::new(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         }
     }
@@ -1566,7 +1574,6 @@ impl Widget {
             unit: String::new(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         }
     }
@@ -1591,7 +1598,6 @@ impl Widget {
             unit: String::new(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         }
     }
@@ -1758,16 +1764,6 @@ impl Widget {
         }
         self
     }
-}
-
-/// FieldPair is the second half of a paired row: the value closing the range the
-/// field's own value opens, and the word between them ("to"). The row's key chip
-/// names both options, because the row is one setting.
-#[derive(Serialize, Debug, Default)]
-pub struct FieldPair {
-    pub name: String,
-    pub value: String,
-    pub join: String,
 }
 
 /// SelectOption is one choice of a select or checks field.
@@ -2872,6 +2868,20 @@ mod tests {
         assert!(bare.get("label").is_none() && bare.get("help").is_none());
         let text = serde_json::to_value(Widget::text("a").labelled("x", "y")).unwrap();
         assert!(text.get("label").is_none());
+    }
+
+    // A form group whose parts read as one sentence names the word that joins
+    // them; a group without one says nothing about joining.
+    #[test]
+    fn a_form_group_is_joined_on_the_wire() {
+        let path = Widget::form_grid(2, vec![])
+            .labelled("Path", "")
+            .joined("to");
+        assert_eq!(serde_json::to_value(&path).unwrap()["join"], "to");
+        let bare = serde_json::to_value(Widget::form_grid(2, vec![])).unwrap();
+        assert!(bare.get("join").is_none());
+        let text = serde_json::to_value(Widget::text("a").joined("to")).unwrap();
+        assert!(text.get("join").is_none());
     }
 
     // A describe request the shell POSTs decodes to the normalized change vocabulary,

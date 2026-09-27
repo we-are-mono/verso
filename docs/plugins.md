@@ -598,7 +598,7 @@ as pages. Values retain their content-based widths within each cell. Use
 a new password and its confirmation, rather than filling rows arbitrarily.
 
 **Fused values.** When every child is a plain typed value (a `field` of kind
-`text` or `password` with no `style`, `pair` or `remove`), the shell draws the group as one
+`text` or `password` with no `style` or `remove`) and the group has no `join`, the shell draws the group as one
 control: one box split by hairlines, each part as wide as its value and its
 `unit`. The row has one `label` covering every part ("Connection rate" over a
 rate and a burst), one key chip naming every option (`synflood_rate ·
@@ -613,6 +613,25 @@ In Rust: `Widget::form_grid(2, fields).labelled("Connection rate", "")`.
 ```json
 { "type": "grid", "style": "form", "columns": 2, "label": "Connection rate",
   "children": [ /* plain typed fields */ ] }
+```
+
+**Joined parts.** A group whose parts read as one sentence names the word
+between them in `join` ("to"): a path from one zone to another, a window from
+one time to the next. A word between parts always splits them. Each part (a
+`field` of kind `text` or `select` with no `style` or `remove`) stands as its
+own control, side by side with the word between: a dropdown measures its
+longest option and stays a dropdown however few options it holds, and a typed
+value keeps its own measure. The row keeps one `label`, one key chip and one
+mark, and each part its own name, option and refusal. Declare a typed end's
+grammar so the shell sets it in mono at its measure and checks it:
+`timehhmmss` and `dateyyyymmdd` accept what firewall4 reads (`09:30`,
+`2026-03-01`). In Rust:
+`Widget::form_grid(2, picks).labelled("Path", "").joined("to")`, and
+`.typed("timehhmmss")` on a field.
+
+```json
+{ "type": "grid", "style": "form", "columns": 2, "label": "Path", "join": "to",
+  "children": [ /* a select for src, a select for dest */ ] }
 ```
 
 ### stack — vertical or inline rhythm

@@ -664,9 +664,15 @@ mod tests {
         let section = &drawer["children"][0]["fields"][0];
         let rows = section["children"].as_array().expect("rows");
         // The carriers for the readings this one does not show are fields too,
-        // and invisible by design; the rows are the fields someone can see.
+        // and invisible by design; the rows are the fields someone can see. The
+        // path's two zones stand in one row, joined by their word, and are read
+        // through it.
         let shapes: Vec<(&str, &str, &str)> = rows
             .iter()
+            .flat_map(|w| match w["type"].as_str() {
+                Some("grid") => w["children"].as_array().unwrap().iter().collect(),
+                _ => vec![w],
+            })
             .filter(|w| w["type"] == "field" && w["kind"] != "hidden")
             .map(|w| {
                 (
@@ -763,12 +769,8 @@ mod tests {
         ))
         .expect("serialize");
         let fields = &body["widget"]["children"][0]["drawer"]["children"][0]["fields"][0];
-        let src = fields["children"]
-            .as_array()
-            .expect("rows")
-            .iter()
-            .find(|w| w["name"] == "src")
-            .expect("the source row");
+        let src = fixture::find_with(fields, &|w| w["type"] == "field" && w["name"] == "src")
+            .expect("the source pick");
         assert_eq!(src["value"], "wan");
     }
 

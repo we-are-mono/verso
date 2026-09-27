@@ -224,6 +224,45 @@
      group; each part stays its own input under its own name, which a screen
      reader says as the caret enters it and a refusal band repeats. */}}
 {{define "verso-box"}}<span class="verso-box"{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-box-part" .}}{{end}}</span>{{end}}
+{{/* verso-select: one dropdown (a boxPart) — appearance-none and our own
+     chevron, inset right-3 to mirror the text's pl-3, because the native arrow
+     hugs the border and can't follow the theme. A part of a joined row is
+     named on its own; a lone field is named by its row's label. */}}
+{{define "verso-select"}}<div class="relative">
+    <select id="{{.Name}}" name="{{.Name}}"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
+      {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+  </div>{{end}}
+
+{{/* verso-text-input: one typed value (a boxPart) in its own box — words in
+     the sans, a machine string in mono, as wide as its grammar needs: an
+     address, a number, a clock time or a date its own measure, anything else
+     the column. A part of a joined row is named on its own; a lone field is
+     named by its row's label. */}}
+{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{else if eq .Measure "short"}}w-32! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
+
+{{/* verso-time-input: a clock time (a boxPart) — a curfew's edge. The native
+     control keeps the platform's own 12/24-hour habit and its picker; the box
+     is sized to what it holds rather than to the column, because a time is
+     four characters and a full-width field would say it might not be. It
+     wears the app's clock where the platform's glyph would stand, in the
+     quiet ink and inset right-3 as a dropdown's chevron is; the platform's own
+     stays under it, invisible (forms.css), so a press on the glyph still opens
+     the picker. */}}
+{{define "verso-time-input"}}<div class="relative w-32 max-w-full">
+    <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="time"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-time-input {{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "clock" "size-4"}}</span>
+  </div>{{end}}
+
+{{/* verso-joined: a sentence of related fields as one row (boxView) — a path
+     from one zone to another, a window from one time to the next. A word
+     between parts always splits them: each stands as its own control, side
+     by side, its own change under its own name, with the group's word between
+     them as the sentence says it ("lan to wan", "09:00 to 17:00"). The word
+     is read by sight; each part's own name says it to a screen reader. */}}
+{{define "verso-joined"}}<div class="verso-joined" role="group" aria-labelledby="{{.Group}}"{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-joined-part" .}}{{end}}</div>{{end}}
+{{define "verso-joined-part"}}{{with .Join}}<span id="{{$.JoinID}}" aria-hidden="true" class="verso-joined-word">{{.}}</span>{{end}}<div class="verso-joined-part"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}{{template "verso-select" .}}{{else if eq .Kind "time"}}{{template "verso-time-input" .}}{{else}}{{template "verso-text-input" .}}{{end}}</div>{{end}}
 {{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}><input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{end}}</span>{{end}}
 {{/* A chip's word is set at the regular weight. The box already separates it
      from the prose around it, so weight on top of a border and a fill is one

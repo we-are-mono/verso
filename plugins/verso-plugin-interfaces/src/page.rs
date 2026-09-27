@@ -58,6 +58,7 @@ fn facts(mut facts: Vec<Property>) -> Widget {
         style: "facts".into(),
         label: String::new(),
         help: String::new(),
+        join: String::new(),
         children: vec![Widget::properties(facts), Widget::properties(right)],
     }
 }

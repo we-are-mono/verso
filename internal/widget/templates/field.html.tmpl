@@ -54,14 +54,7 @@
     {{end}}
   </div>
   {{else if eq .Kind "select"}}
-  {{/* appearance-none + our own chevron, inset right-3 to mirror the text's pl-3 —
-       the native arrow hugs the border and can't follow the theme. */}}
-  <div class="relative">
-    <select id="{{.Name}}" name="{{.Name}}"{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
-      {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
-    </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
-  </div>
+  {{template "verso-select" .Part}}
   {{else if eq .Kind "checks"}}
   {{/* checks: membership in a known set — all boxes share the field's name and
        post as a multi-value field (name=a&name=b), the list-widget contract.
@@ -113,26 +106,13 @@
   {{else if eq .Kind "datetime-local"}}
   <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
   {{else if eq .Kind "time"}}
-  {{/* A clock time on its own — a curfew's edge. The native control keeps the
-       platform's own 12/24-hour habit and its picker; the box is sized to what
-       it holds rather than to the column, because a time is four characters and
-       a full-width field would say it might not be. */}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="time"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-32">
-  {{else if .Pair}}
-  {{/* Two values that are one setting: the range's ends side by side with the
-       word that joins them, so it reads as the sentence it is rather than as two
-       unrelated boxes that happen to sit near each other. */}}
-  <span class="flex flex-wrap items-center gap-4">
-    <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-26">
-    <span id="{{.Name}}-join" class="shrink-0 text-sm text-body">{{.Pair.Join}}</span>
-    <input id="{{.Pair.Name}}" name="{{.Pair.Name}}" value="{{.Pair.Value}}" type="text" aria-labelledby="{{.Name}}-label {{.Name}}-join"{{template "verso-field-aria" .}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}} w-26">
-  </span>
+  {{template "verso-time-input" .Part}}
   {{else if .Unit}}
   {{/* A unit rides inside the frame after the value: the value and what it
        counts read as one thing (verso-box). */}}
   {{template "verso-box" .Box}}
   {{else}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{end}} {{template "verso-input-border" .Error}}">
+  {{template "verso-text-input" .Part}}
   {{end}}
   {{/* Help is not a line under the control: it is what the label explains, and
        it is raised from there. Only a refusal takes space in the row, and the

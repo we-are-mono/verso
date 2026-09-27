@@ -263,12 +263,3 @@ func TestRefusedFieldStaysCrimsonWhileFocused(t *testing.T) {
 		}
 	}
 }
-
-// TestPairSecondHalfIsNamed: the range's closing box has no label of its own;
-// it is named by the row's label and the word that joins the two.
-func TestPairSecondHalfIsNamed(t *testing.T) {
-	got := render(t, newRenderer(t), &Field{Name: "from", Label: "Ports", Value: "1000", Pair: &FieldPair{Name: "to", Value: "2000", Join: "to"}})
-	if !strings.Contains(got, `id="to" name="to"`) || !strings.Contains(got, `aria-labelledby="from-label from-join"`) || !strings.Contains(got, `id="from-join"`) {
-		t.Errorf("the pair's second input must be named by the label and the joining word:\n%s", got)
-	}
-}

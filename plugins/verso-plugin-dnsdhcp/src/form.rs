@@ -87,7 +87,6 @@ pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Err
         unit: String::new(),
         style: String::new(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     }
 }

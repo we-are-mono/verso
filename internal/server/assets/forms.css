@@ -137,6 +137,37 @@
   .verso-box-part[data-verso-measure="number"] { --verso-part-width: calc(var(--spacing) * 24); }
   .verso-box-part[data-verso-measure="secret"] { --verso-part-width: calc(var(--spacing) * 64); }
   .verso-box-part + .verso-box-part { border-left: 1px solid var(--color-rule); }
+  /* A clock time's own picker glyph gives way to the app's clock
+     (verso-time-input): it keeps its place at the end of the box, exactly
+     under the drawn glyph, a 16px square with no air of its own, so a press
+     there still opens the platform's picker — it is only no longer seen. */
+  .verso-time-input::-webkit-calendar-picker-indicator {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* verso-joined: a sentence of fields side by side, the group's word
+     between them. A dropdown measures its own longest option and a typed
+     value its own measure, as they do alone; the row wraps under a phone's
+     width rather than squeezing them. */
+  .verso-joined {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  }
+  .verso-joined-part { width: fit-content; max-width: 100%; }
+  .verso-joined-part select { width: auto; max-width: 100%; }
+  .verso-joined-word {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--color-body);
+    white-space: nowrap;
+  }
   .verso-box-input {
     width: var(--verso-part-width);
     min-width: 0;

@@ -80,11 +80,7 @@ fn controls(policy: &Policy, errors: &Errors) -> Vec<Widget> {
                 "",
                 SCHEDULE_HELP,
                 policy.scheduled,
-                vec![
-                    days(policy, errors),
-                    from(policy, errors),
-                    to(policy, errors),
-                ],
+                vec![days(policy, errors), hours(policy, errors)],
                 Vec::new(),
             )],
             vec![Widget::Callout {
@@ -113,16 +109,22 @@ fn days(policy: &Policy, errors: &Errors) -> Widget {
     )
 }
 
-fn from(policy: &Policy, errors: &Errors) -> Widget {
-    clock("start_time", "Block from", &policy.from, HOURS_HELP, errors)
-}
-
-fn to(policy: &Policy, errors: &Errors) -> Widget {
-    clock("stop_time", "Until", &policy.to, "", errors)
+/// hours is the curfew's window, read as the sentence it is — "21:00 to
+/// 07:00": one row, each edge its own clock posting its own option.
+fn hours(policy: &Policy, errors: &Errors) -> Widget {
+    Widget::form_grid(
+        2,
+        vec![
+            clock("start_time", "Block from", &policy.from, errors),
+            clock("stop_time", "Until", &policy.to, errors),
+        ],
+    )
+    .labelled("Hours", HOURS_HELP)
+    .joined("to")
 }
 
 /// clock is one edge of the curfew, in the native time control.
-fn clock(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
+fn clock(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
     field(
         Widget::Field {
             name: name.into(),
@@ -135,14 +137,13 @@ fn clock(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> W
             datatype: String::new(),
             options: Vec::new(),
             error: String::new(),
-            help: help.into(),
+            help: String::new(),
             key: name.into(),
             tip: String::new(),
             source: String::new(),
             unit: String::new(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         },
         name,
@@ -172,7 +173,6 @@ fn cap(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
             unit: "Mbit/s".into(),
             style: String::new(),
             remove: String::new(),
-            pair: None,
             target: String::new(),
         },
         name,
@@ -218,20 +218,28 @@ mod tests {
 
     /// control digs one named control out of the tab, wherever the gates put it.
     fn control(env: &Json, name: &str) -> Json {
-        fn walk(node: &Json, name: &str) -> Option<Json> {
-            if node["name"] == name && node["type"] == "field" {
-                return Some(node.clone());
-            }
-            for key in ["fields", "otherwise", "children"] {
-                for child in node[key].as_array().into_iter().flatten() {
-                    if let Some(found) = walk(child, name) {
-                        return Some(found);
-                    }
-                }
-            }
-            None
+        find(&env["widget"], &|node| {
+            node["name"] == name && node["type"] == "field"
+        })
+        .unwrap_or_else(|| panic!("no control {name}"))
+    }
+
+    /// grid digs one labelled row of related fields out of the tab.
+    fn grid(env: &Json, label: &str) -> Json {
+        find(&env["widget"], &|node| {
+            node["label"] == label && node["type"] == "grid"
+        })
+        .unwrap_or_else(|| panic!("no row {label}"))
+    }
+
+    fn find(node: &Json, wanted: &dyn Fn(&Json) -> bool) -> Option<Json> {
+        if wanted(node) {
+            return Some(node.clone());
         }
-        walk(&env["widget"], name).unwrap_or_else(|| panic!("no control {name}"))
+        ["fields", "otherwise", "children"]
+            .iter()
+            .flat_map(|key| node[*key].as_array().into_iter().flatten())
+            .find_map(|child| find(child, wanted))
     }
 
     fn policy(mac: &str) -> Policy {
@@ -264,6 +272,19 @@ mod tests {
         assert_eq!(gate(&curfew, "scheduled")["checked"], true);
         assert_eq!(control(&curfew, "start_time")["value"], "21:00");
         assert_eq!(control(&curfew, "stop_time")["value"], "07:00");
+        // The curfew's edges are one window read as a sentence, "21:00 to
+        // 07:00": one row, each edge its own clock posting its own option.
+        let hours = grid(&curfew, "Hours");
+        assert_eq!(hours["style"], "form");
+        assert_eq!(hours["join"], "to");
+        assert_eq!(hours["help"], HOURS_HELP);
+        let ends: Vec<(&str, &str)> = hours["children"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|end| (end["name"].as_str().unwrap(), end["kind"].as_str().unwrap()))
+            .collect();
+        assert_eq!(ends, [("start_time", "time"), ("stop_time", "time")]);
         assert_eq!(
             control(&curfew, "weekdays")["values"],
             serde_json::json!(["Mon", "Tue", "Wed", "Thu", "Fri"])

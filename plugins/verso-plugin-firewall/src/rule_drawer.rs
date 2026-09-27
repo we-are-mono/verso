@@ -267,22 +267,31 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
         // condition it was given, and the catalogue below ends each of those with
         // the X that removes it.
         fields::name_field(form, errors).writes("name"),
-        fields::select_field(
-            "src",
-            "Coming from",
-            &form.src,
-            zones(&form.src, "The router itself"),
-            errors,
+        // Where traffic comes from and where it goes are one answer, read as
+        // the sentence it is: "lan to wan". Each pick keeps its own name.
+        Widget::form_grid(
+            2,
+            vec![
+                fields::select_field(
+                    "src",
+                    "Coming from",
+                    &form.src,
+                    zones(&form.src, "The router itself"),
+                    errors,
+                )
+                .writes("src"),
+                fields::select_field(
+                    "dest",
+                    "Going to",
+                    &form.dest,
+                    zones(&form.dest, "The router itself"),
+                    errors,
+                )
+                .writes("dest"),
+            ],
         )
-        .writes("src"),
-        fields::select_field(
-            "dest",
-            "Going to",
-            &form.dest,
-            zones(&form.dest, "The router itself"),
-            errors,
-        )
-        .writes("dest"),
+        .labelled("Path", "")
+        .joined("to"),
         // A list rather than a pick: fw4 reads protocol names and IP protocol
         // numbers alike, and a closed choice would make everything it does not
         // happen to list unwritable. The canvas draws a select over the common
@@ -675,24 +684,24 @@ fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
         )
         .writes("weekdays")
         .segmented(),
-        fields::text_field(
-            "start_time",
+        window(
             "Between",
-            &form.schedule.start_time,
-            "",
+            "timehhmmss",
+            [
+                ("start_time", "Starts at", &form.schedule.start_time),
+                ("stop_time", "Ends at", &form.schedule.stop_time),
+            ],
             errors,
-        )
-        .writes("start_time · stop_time")
-        .paired_with("stop_time", &form.schedule.stop_time, "to"),
-        fields::text_field(
-            "start_date",
+        ),
+        window(
             "Only between dates",
-            &form.schedule.start_date,
-            "",
+            "dateyyyymmdd",
+            [
+                ("start_date", "Starts on", &form.schedule.start_date),
+                ("stop_date", "Ends on", &form.schedule.stop_date),
+            ],
             errors,
-        )
-        .writes("start_date · stop_date")
-        .paired_with("stop_date", &form.schedule.stop_date, "to"),
+        ),
         // The clock the window is read against. It is the same control the
         // schedule condition offers, posting the same field, because it is the
         // same fact — this reading used to draw a switch named for the uci
@@ -707,6 +716,24 @@ fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
         )
         .writes("utc_time"),
     ]
+}
+
+/// window is a span the rule keeps, read as the sentence it is — "09:00 to
+/// 17:00": one row under its label, each end its own field posting its own
+/// option in the grammar firewall4 reads, the ends joined by their word.
+fn window(label: &str, grammar: &str, ends: [(&str, &str, &str); 2], errors: &Errors) -> Widget {
+    Widget::form_grid(
+        2,
+        ends.iter()
+            .map(|(name, end, value)| {
+                fields::text_field(name, end, value, "", errors)
+                    .writes(name)
+                    .typed(grammar)
+            })
+            .collect(),
+    )
+    .labelled(label, "")
+    .joined("to")
 }
 
 /// uci_block renders the rule as the config file will hold it: the section it
@@ -1118,6 +1145,64 @@ mod tests {
                 {"value": "guest", "label": "guest"}
             ])
         );
+    }
+
+    // A window is its two ends read as one sentence, "09:00 to 17:00": one row
+    // each for the clock and the calendar, the ends joined by their word, each
+    // end its own field posting its own option under the grammar fw4 reads.
+    #[test]
+    fn a_window_is_one_row_from_an_end_to_an_end() {
+        let body = opened_on("everything", WHEN);
+        for (label, ends, grammar) in [
+            ("Between", ["start_time", "stop_time"], "timehhmmss"),
+            (
+                "Only between dates",
+                ["start_date", "stop_date"],
+                "dateyyyymmdd",
+            ),
+        ] {
+            let window = fixture::find_with(&body, &|value| {
+                value["type"] == "grid" && value["label"] == label
+            })
+            .unwrap_or_else(|| panic!("the {label} row"));
+            assert_eq!(window["style"], "form");
+            assert_eq!(window["join"], "to");
+            let children = window["children"].as_array().unwrap();
+            let names: Vec<&str> = children
+                .iter()
+                .map(|c| c["name"].as_str().unwrap())
+                .collect();
+            assert_eq!(names, ends, "{label}");
+            for end in children {
+                assert_eq!(end["datatype"], grammar, "{label}");
+                assert_eq!(end["key"], end["name"], "{label}");
+            }
+        }
+        assert!(
+            fixture::find_with(&body, &|value| value.get("pair").is_some()).is_none(),
+            "no field carries a second value of its own"
+        );
+    }
+
+    // Where traffic comes from and where it goes are one answer, read as the
+    // sentence "lan to wan": one row named Path, the two zone picks joined by
+    // their word, each still posting its own option.
+    #[test]
+    fn the_path_is_one_row_from_a_zone_to_a_zone() {
+        let body = open("everything");
+        let path = fixture::find_with(&body, &|value| {
+            value["type"] == "grid" && value["join"] == "to"
+        })
+        .expect("the path row");
+        assert_eq!(path["style"], "form");
+        assert_eq!(path["label"], "Path");
+        let names: Vec<&str> = path["children"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|child| child["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["src", "dest"]);
     }
 
     #[test]

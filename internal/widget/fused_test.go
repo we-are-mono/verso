@@ -142,15 +142,14 @@ func TestAFusedControlNamesTheRefusedPart(t *testing.T) {
 	}
 }
 
-// TestOnlyTypedValuesFuse: a choice, a list, a range or a secret with its own
-// reveal is not a value typed into a bare box, so a group holding one keeps
-// its columns.
+// TestOnlyTypedValuesFuse: a choice, a list or a secret with its own reveal
+// is not a value typed into a bare box, so a group holding one keeps its
+// columns.
 func TestOnlyTypedValuesFuse(t *testing.T) {
 	for name, other := range map[string]Widget{
 		"select": &Field{Name: "b", Label: "B", Kind: "select", Options: []Option{{Value: "x"}, {Value: "y"}, {Value: "z"}, {Value: "w"}}},
 		"reveal": &Field{Name: "b", Label: "B", Kind: "password", Style: "reveal"},
 		"list":   &List{Name: "b", Label: "B"},
-		"pair":   &Field{Name: "b", Label: "B", Pair: &FieldPair{Name: "c", Join: "to"}},
 	} {
 		got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 2, Children: []Widget{&Field{Name: "a", Label: "A"}, other}})
 		if !strings.Contains(got, "verso-form-grid") || strings.Contains(got, `role="group"`) {

@@ -432,6 +432,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             columns: 2,
             label: String::new(),
             help: String::new(),
+            join: String::new(),
             children: vec![
                 // Most of what this form writes is the daemon's own section, so
                 // that is where its controls' options live unless they say

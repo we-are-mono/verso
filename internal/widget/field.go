@@ -68,11 +68,6 @@ type Field struct {
 	// and what it means read as one thing and the label above is left to say
 	// what the setting is rather than how it is spelled.
 	Unit string `json:"unit,omitempty"`
-	// Pair makes this row two values with a word between them — a window
-	// ("09:00 to 17:00"), a date range. They are one setting asked once, so they
-	// are one row: as two rows a reader is invited to set the start and forget
-	// the end, which is a rule that does the opposite of what they meant.
-	Pair *FieldPair `json:"pair,omitempty"`
 	// Remove is the row's trailing remove affordance, for a form whose rows are
 	// a set someone adds to and takes from rather than a fixed list of settings:
 	// "yes" draws the glyph that clears this row, "lane" reserves its width on a
@@ -217,15 +212,6 @@ func (f *Field) TipView() TipView {
 	return TipView{ID: f.Name + "-tip", Tip: f.explanation(), Footer: strings.Join(parts, " · ")}
 }
 
-// FieldPair is the second half of a paired row: the value that closes the range
-// the field's own value opens, and the word that joins them. Key states both
-// options on the row's one chip, because the row is one setting.
-type FieldPair struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	Join  string `json:"join"`
-}
-
 // Option is one choice in a select or checks field.
 type Option struct {
 	Value string `json:"value"`
@@ -283,6 +269,12 @@ func (f *Field) frame() fieldFrame {
 	return frame
 }
 
+// Part is this field as the one part of its own row — named by the row's
+// label, its change tracked by the row — for the controls a lone field and a
+// group's part draw through the same partials (verso-select,
+// verso-text-input).
+func (f *Field) Part() boxPart { return boxPart{Field: f} }
+
 // Box is this field as a box of one part: the value, and the unit it is
 // counted in inside the same frame. The row around it tracks the change.
 func (f *Field) Box() boxView {
@@ -299,7 +291,7 @@ func (f *Field) ControlMeasure() string {
 	if f.Kind == "password" && f.Style != "locked" {
 		return "secret"
 	}
-	if (f.Kind != "" && f.Kind != "text") || f.Pair != nil || f.Style == "locked" || f.Style == "code" {
+	if (f.Kind != "" && f.Kind != "text") || f.Style == "locked" || f.Style == "code" {
 		return ""
 	}
 	switch f.Key {
@@ -335,6 +327,8 @@ func (f *Field) Measure() string {
 		return "address"
 	case "port":
 		return "number"
+	case "timehhmmss", "dateyyyymmdd":
+		return "short"
 	}
 	switch f.Key {
 	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "synflood_rate", "synflood_burst":
@@ -356,7 +350,7 @@ func (f *Field) Words() bool {
 	case "password", "textarea":
 		return true
 	case "", "text":
-		return f.Datatype == "" && f.Unit == "" && f.Pair == nil && f.Measure() == "full"
+		return f.Datatype == "" && f.Unit == "" && f.Measure() == "full"
 	case "select":
 		// A select is an enumerated choice, and a choice is words (a timezone,
 		// a policy, a protocol), however its labels are spelled. Only a field

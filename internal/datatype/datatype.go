@@ -20,16 +20,18 @@ import (
 type Validator func(value string) error
 
 var registry = map[string]Validator{
-	"dnsserver":  dnsserver,
-	"dnsforward": dnsforward,
-	"dnsaddress": dnsaddress,
-	"hostname":   hostname,
-	"fqdn":       fqdn,
-	"ip4addr":    ip4addr,
-	"ip6addr":    ip6addr,
-	"ipaddr":     ipaddr,
-	"host":       host,
-	"port":       port,
+	"dnsserver":    dnsserver,
+	"dnsforward":   dnsforward,
+	"dnsaddress":   dnsaddress,
+	"hostname":     hostname,
+	"fqdn":         fqdn,
+	"ip4addr":      ip4addr,
+	"ip6addr":      ip6addr,
+	"ipaddr":       ipaddr,
+	"host":         host,
+	"port":         port,
+	"timehhmmss":   timehhmmss,
+	"dateyyyymmdd": dateyyyymmdd,
 }
 
 // Validate checks value against the named datatype. An unknown name is an error
@@ -119,6 +121,46 @@ func port(v string) error {
 		return fmt.Errorf("must be a port number (1–65535)")
 	}
 	return nil
+}
+
+// timehhmmss is a time of day as firewall4 reads it (start_time, stop_time):
+// the hour, then optionally the minute and the second, each one or two digits.
+// LuCI's name, with firewall4's leniency, so a value the plugin keeps is never
+// refused here.
+func timehhmmss(v string) error {
+	parts := strings.Split(v, ":")
+	limits := []int{23, 59, 59}
+	if len(parts) > len(limits) {
+		return fmt.Errorf("must be a time of day as HH:MM or HH:MM:SS")
+	}
+	for i, part := range parts {
+		if !bounded(part, 0, limits[i]) {
+			return fmt.Errorf("must be a time of day as HH:MM or HH:MM:SS")
+		}
+	}
+	return nil
+}
+
+// dateyyyymmdd is a date as firewall4 reads it (start_date, stop_date): the
+// four-digit year inside its 1970–2038 clock, then optionally the month and
+// the day.
+func dateyyyymmdd(v string) error {
+	parts := strings.Split(v, "-")
+	if len(parts) > 3 || len(parts[0]) != 4 || !bounded(parts[0], 1970, 2038) ||
+		(len(parts) > 1 && !bounded(parts[1], 1, 12)) || (len(parts) > 2 && !bounded(parts[2], 1, 31)) {
+		return fmt.Errorf("must be a date as YYYY-MM-DD")
+	}
+	return nil
+}
+
+// bounded reports whether part is a number of at most four digits within
+// [low, high] — one or two for a clock's or a calendar's fields.
+func bounded(part string, low, high int) bool {
+	if part == "" || len(part) > 4 || (high < 100 && len(part) > 2) {
+		return false
+	}
+	n, err := strconv.Atoi(part)
+	return err == nil && n >= low && n <= high
 }
 
 // DNS list entries retain dnsmasq's scoped forwarding notation. The plugin

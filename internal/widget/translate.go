@@ -165,6 +165,7 @@ func translateFields(w Widget, t func(string) string) {
 	case *Grid:
 		n.Label = t(n.Label)
 		n.Help = t(n.Help)
+		n.Join = t(n.Join)
 	case *Raw:
 		n.Markdown = t(n.Markdown)
 	case *Repeater:

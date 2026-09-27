@@ -364,7 +364,6 @@ fn traffic_fields(
         unit: String::new(),
         style: String::new(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     });
     // The two other ways a zone covers something. A network is what the rest of the
@@ -778,7 +777,6 @@ fn policy_field(
         unit: String::new(),
         style: String::new(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     }
 }

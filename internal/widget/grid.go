@@ -26,12 +26,18 @@ import (
 // worn on the row's one label line beside the one chip naming every option.
 // Help is what the group is, raised onto that label; without it the label
 // raises each part's own explanation under the part's name.
+//
+// Join is the word between a "form" group's parts ("to"), for parts that
+// read as one sentence — a path from one zone to another, a window from one
+// time to the next. The word always splits them: each part stands as its own
+// control, dropdowns and typed values alike, with the word between.
 type Grid struct {
 	Style    string
 	Columns  int
 	Children []Widget
 	Label    string
 	Help     string
+	Join     string
 }
 
 func (*Grid) isWidget() {}
@@ -47,6 +53,7 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 		Children []json.RawMessage `json:"children"`
 		Label    string            `json:"label"`
 		Help     string            `json:"help"`
+		Join     string            `json:"join"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -55,6 +62,7 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 	g.Columns = raw.Columns
 	g.Label = raw.Label
 	g.Help = raw.Help
+	g.Join = raw.Join
 	children, err := decodeChildren(raw.Children, "grid child")
 	if err != nil {
 		return err
@@ -65,17 +73,41 @@ func (g *Grid) UnmarshalJSON(data []byte) error {
 
 // fusable reports whether a group of related fields is values typed into
 // boxes, which the shell joins into one control (verso-box) — a secret and
-// its repeat among them. A choice, a list, a range, a secret with its own
-// reveal or a removable row is not one bare box, so a group holding one
-// keeps its columns.
+// its repeat among them. A group joined by a word is never fused: the word
+// splits it. A choice, a list, a secret with its own reveal or a removable
+// row is not one bare box, so a group holding one keeps its columns.
 func (g *Grid) fusable() ([]*Field, bool) {
+	if g.Join != "" {
+		return nil, false
+	}
+	return g.bareFields(func(f *Field) bool { return f.Kind == "" || f.Kind == "text" || f.Kind == "password" })
+}
+
+// joined reports whether a group of related fields reads as one sentence
+// with a word between its parts — a path from one zone to another, a window
+// from one time to the next. The word always splits them: each part stands
+// as its own control, dropdowns and typed values alike, and a choice short
+// enough for radios still stays a dropdown here, because a sentence is read
+// across, not down.
+func (g *Grid) joined() ([]*Field, bool) {
+	if g.Join == "" {
+		return nil, false
+	}
+	return g.bareFields(func(f *Field) bool {
+		return f.Kind == "" || f.Kind == "text" || f.Kind == "select" || f.Kind == "time"
+	})
+}
+
+// bareFields reports whether a "form" group of two or more is fields only,
+// each of a kind the caller accepts, with no style or remove of its own.
+func (g *Grid) bareFields(kind func(*Field) bool) ([]*Field, bool) {
 	if g.Style != "form" || len(g.Children) < 2 {
 		return nil, false
 	}
 	fields := make([]*Field, 0, len(g.Children))
 	for _, child := range g.Children {
 		f, ok := child.(*Field)
-		if !ok || (f.Kind != "" && f.Kind != "text" && f.Kind != "password") || f.Style != "" || f.Pair != nil || f.Remove != "" {
+		if !ok || !kind(f) || f.Style != "" || f.Remove != "" {
 			return nil, false
 		}
 		fields = append(fields, f)
@@ -83,19 +115,44 @@ func (g *Grid) fusable() ([]*Field, bool) {
 	return fields, true
 }
 
-// renderFused draws related values as one row holding one box. The row is
-// one setting: one label covering every part, one chip naming every option,
-// one mark however many parts wait. Each part is still its own input, named
-// by its own label for a screen reader, and a refused part's band says which
-// part it is about.
+// groupParts is a group's parts as one row's: every part tracked and named on
+// its own, the group's word standing before every part after the first.
+func groupParts(g *Grid, fields []*Field) boxView {
+	var parts boxView
+	for i, f := range fields {
+		part := boxPart{Field: f, Track: true, Named: true}
+		if i > 0 && g.Join != "" {
+			part.Join, part.JoinID = g.Join, f.Name+"-join"
+		}
+		parts.Parts = append(parts.Parts, part)
+	}
+	return parts
+}
+
+// renderFused draws related values as one row holding one box.
 func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
+	box, frame := groupRow(g, fields, groupParts(g, fields))
+	return r.renderFrame(out, "verso-box", box, frame)
+}
+
+// renderJoined draws a sentence of related fields as one row: each part its
+// own control, side by side, the group's word between them.
+func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
+	parts, frame := groupRow(g, fields, groupParts(g, fields))
+	return r.renderFrame(out, "verso-joined", parts, frame)
+}
+
+// groupRow is the row a group of related fields stands in. The row is one
+// setting: one label covering every part, one chip naming every option, one
+// mark however many parts wait. Each part is still its own control, named by
+// its own label for a screen reader, and a refused part's band says which
+// part it is about.
+func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	id := fields[0].Name + "-group"
 	label := fieldLabel{For: id, Group: true, Label: g.Label}
 	var names, keys []string
-	var box boxView
 	var frame fieldFrame
 	for _, f := range fields {
-		box.Parts = append(box.Parts, boxPart{Field: f, Track: true, Named: true})
 		names = append(names, f.Label)
 		if f.Key != "" {
 			keys = append(keys, f.Key)
@@ -116,12 +173,12 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 	label.Key = strings.Join(keys, " · ")
 	label.Tip.ID, label.Tip.Tip, label.Tip.Footer = id+"-tip", g.Help, label.Key
 	label.Explained = g.Help != "" || len(label.Tip.Parts) > 0
-	box.Group = id + "-label"
+	parts.Group = id + "-label"
 	if label.Explained {
-		box.Described = label.Tip.ID
+		parts.Described = label.Tip.ID
 	}
 	frame.Label = label
-	return r.renderFrame(out, "verso-box", box, frame)
+	return parts, frame
 }
 
 // switchGroup reports whether a labelled group of related fields is switches
@@ -191,6 +248,9 @@ type gridView struct {
 func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if fields, ok := g.fusable(); ok {
 		return r.renderFused(out, g, fields)
+	}
+	if fields, ok := g.joined(); ok {
+		return r.renderJoined(out, g, fields)
 	}
 	if switches, ok := g.switchGroup(); ok {
 		return r.renderSwitchGroup(out, g, switches)

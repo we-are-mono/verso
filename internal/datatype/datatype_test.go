@@ -11,6 +11,27 @@ func TestValidate(t *testing.T) {
 		value string
 		ok    bool
 	}{
+		// timehhmmss — a time of day as firewall4 reads it: the hour, then
+		// optionally the minute and the second
+		{"timehhmmss", "18:00:00", true},
+		{"timehhmmss", "09:30", true},
+		{"timehhmmss", "9", true},
+		{"timehhmmss", "23:59:59", true},
+		{"timehhmmss", "24:00", false},
+		{"timehhmmss", "12:60", false},
+		{"timehhmmss", "12:00:00:00", false},
+		{"timehhmmss", "noon", false},
+		{"timehhmmss", "", false},
+		// dateyyyymmdd — a date as firewall4 reads it: the year, then
+		// optionally the month and the day, within its 1970–2038 clock
+		{"dateyyyymmdd", "2026-01-01", true},
+		{"dateyyyymmdd", "2026-3", true},
+		{"dateyyyymmdd", "2026", true},
+		{"dateyyyymmdd", "2026-13-01", false},
+		{"dateyyyymmdd", "2026-02-32", false},
+		{"dateyyyymmdd", "1969-01-01", false},
+		{"dateyyyymmdd", "26-01-01", false},
+		{"dateyyyymmdd", "", false},
 		// hostname
 		{"hostname", "router", true},
 		{"hostname", "my-router", true},

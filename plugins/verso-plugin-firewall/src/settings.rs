@@ -214,6 +214,7 @@ pub fn page(model: &Firewall) -> Envelope {
             columns: 2,
             label: String::new(),
             help: String::new(),
+            join: String::new(),
             children: vec![
                 Widget::Form {
                     style: "page".into(),
@@ -403,7 +404,6 @@ fn choice(name: &str, label: &str, help: &str, value: &str, options: &[(&str, &s
         source: String::new(),
         unit: String::new(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     }
 }
@@ -431,7 +431,6 @@ fn policy(name: &str, label: &str, help: &str, value: &str) -> Widget {
         source: String::new(),
         unit: String::new(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     }
 }
@@ -719,7 +718,6 @@ fn field(name: &str, label: &str, help: &str, value: &str, unit: &str) -> Widget
         source: String::new(),
         unit: unit.into(),
         remove: String::new(),
-        pair: None,
         target: String::new(),
     }
 }

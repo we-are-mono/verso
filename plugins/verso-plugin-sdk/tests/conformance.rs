@@ -115,6 +115,7 @@ fn write_widget_fixtures() {
                 children: vec![Widget::text("a"), Widget::text("b")],
                 label: String::new(),
                 help: String::new(),
+                join: String::new(),
             },
         ),
         (
@@ -231,7 +232,6 @@ fn write_widget_fixtures() {
                 unit: String::new(),
                 style: "segmented".into(),
                 remove: String::new(),
-                pair: None,
                 target: String::new(),
             },
         ),
