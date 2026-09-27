@@ -764,15 +764,17 @@ html.verso-fonts-loading body {
      2.5rem — the gap the page keeps from the window's top and left edge. The
      page's root stack carries it; a section on it takes its standoff from the
      rhythm instead of adding its own padding on top (a ruled one keeps its
-     2.5rem under the rule). A control band is not a block of its own but the
-     surface its listing is narrowed from, so the listing sits flush on it —
-     its column heads are a full row, their own air above the words; the
-     pinned lens holds to its listing with its own
-     padding. In utilities because the stack's space-y utility sets every
-     child's margins and only a utilities-layer rule outranks it; before the
-     dock's rules, which must still win their pull-up. */
+     2.5rem under the rule). A control band is the seam between the page's
+     heading and its listing, so the listing stands the same 2rem under it
+     that the band stands under the heading: the band sits evenly between the
+     two, not as a block of its own at the page's 2.5rem. A log stays flush on
+     its bar; the pinned lens holds to its listing with its own padding. In
+     utilities because the stack's space-y utility sets every child's margins
+     and only a utilities-layer rule outranks it; before the dock's rules,
+     which must still win their pull-up. */
   .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
-  .verso-page-body > .verso-stack > [data-verso-actionbar] + * { margin-top: 0; }
+  .verso-page-body > .verso-stack > [data-verso-actionbar] + *,
+  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] + * { margin-top: calc(var(--spacing) * 8); }
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }

@@ -208,8 +208,9 @@ func TestStylesheetTypeSystem(t *testing.T) {
 
 // TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
 // own inset, 2.5rem — the gap the page keeps from the window's top and left
-// edge — and a control band's listing sits flush on it, its column heads 1rem
-// under the band. A section on the page takes its standoff from that
+// edge — and a control band's listing stands 2rem under it, the same air the
+// band keeps under the page's heading, so the band sits evenly between the
+// two. A log stays flush on its bar. A section on the page takes its standoff from that
 // rhythm rather than adding its own on top, and blocks inside a section keep
 // the same 2.5rem.
 func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
@@ -219,8 +220,10 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	}
 	for _, want := range []string{
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
-		// the listing sits flush on its band, and a log (and its notice) on its bar
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
+		// the listing stands 32px under its band, as the band does under the heading
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>[data-verso-packages]>[data-verso-actionbar]+*{margin-top:calc(var(--spacing) * 8)}",
+		// a log (and its notice) sits flush on its bar
+		".verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
 		// a page's control band spans the page, its controls in the column
 		".verso-page-body>.verso-stack>[data-verso-actionbar],.verso-page-body>[data-verso-packages]>[data-verso-actionbar]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10)}",

@@ -403,9 +403,9 @@ The anatomy is the same in both:
 
 ### Control Band
 The signature seam of every list and log page.
-- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 20px under the title. These borders belong to the control band; the masthead has no divider.
+- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 32px under the title. These borders belong to the control band; the masthead has no divider.
 - **Contents:** only what narrows the content, side by side from the left, 16px apart — search first (the app's field treatment), then counted dropdowns ("IPv4 · 14", "All families · 22"), then the dimension the listing is sliced along ("All networks"); never segmented switches, and no dropdown strays to the band's far end. Everything that acts (primary add, Live, Download, Settings) goes on the heading line instead.
-- **Below it:** the table sits flush under the band with its 44px column-head row; a log sits flush on Paper.
+- **Below it:** the table stands 32px under the band, its 44px column-head row first, so the band sits evenly between the heading and the listing; a log sits flush on Paper.
 
 ### Tables
 - **Rows:** 44px, Paper, one Hairline between rows, no stripes. Rows are inert: only the identity cell opens the row's drawer. A table closes on a Hairline under its last row, except when it ends its section: then it ends on its last row, and the section's rule (or the page's end) is the only line under it.
