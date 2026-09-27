@@ -591,7 +591,9 @@ func validateSchema(w widget.Widget) bool {
 				found = true
 			}
 		case *widget.Field:
-			if n.Error == "" && n.Datatype != "" {
+			// A datatype says what a value must look like, not that there must
+			// be one: an optional field left empty is an option left unset.
+			if n.Error == "" && n.Datatype != "" && (n.Value != "" || n.Required) {
 				if err := datatype.Validate(n.Datatype, n.Value); err != nil {
 					n.Error = err.Error()
 				}

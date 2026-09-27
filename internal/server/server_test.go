@@ -2236,6 +2236,22 @@ func TestPluginListDatatypeErrorBlocksCommit(t *testing.T) {
 	}
 }
 
+// TestAnEmptyOptionalFieldIsUnsetNotMalformed: a datatype says what a value
+// must look like, not that there must be one. An optional field left empty is
+// an option left unset — a schedule nobody gave a port forward — and blocking
+// the write over it refuses every save of a form that offers the option. A
+// required field left empty is still refused.
+func TestAnEmptyOptionalFieldIsUnsetNotMalformed(t *testing.T) {
+	optional := &widget.Field{Name: "start_time", Datatype: "timehhmmss"}
+	if validateSchema(&widget.Form{Fields: []widget.Widget{optional}}) || optional.Error != "" {
+		t.Errorf("an empty optional field blocked the write: %q", optional.Error)
+	}
+	required := &widget.Field{Name: "hostname", Datatype: "hostname", Required: true}
+	if !validateSchema(&widget.Form{Fields: []widget.Widget{required}}) {
+		t.Error("an empty required field must still be refused")
+	}
+}
+
 // TestValidateSchemaAnnotatesAndPreservesPluginErrors covers the walk directly:
 // the shell flags an invalid value, leaves a plugin's own error alone, and keys a
 // bad list item by its index.
