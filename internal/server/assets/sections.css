@@ -1,0 +1,112 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/* Sections: a page's and a drawer's subjects, their air and the hairlines
+ * that divide them, stated once. A section says what it is
+ * (data-verso-section) and this sheet says how it stands:
+ *
+ *   ruled      one of the surface's subjects, set off from the last by a rule
+ *              with 24px on either side; the one a surface opens with draws
+ *              neither. With a heading, the heading band carries the rule
+ *              instead: 32px from rule to title, 20px to the content, 32px
+ *              from the content to the next rule.
+ *   part       a section inside a section, ruled the same way but kept to
+ *              the content's inset, never reaching the surface's edges.
+ *   continued  not a new subject but more of the rows above (the act that adds
+ *              another): its rule always draws, 16px over what follows.
+ *   plain      an unruled block, 24px off the one before.
+ *   bare       a nested or flush block that adds no air of its own.
+ *
+ * Where the surface differs is only how far its rules and bands run past the
+ * content: the reach. A page runs them 40px into its gutter to the rail, and
+ * a form column's 40px back past its end; a drawer runs them to both of its
+ * edges, 32px out. The surface sets --verso-reach-start and --verso-reach-end
+ * and every rule — a section's, a heading band's, a page Save's, a config
+ * preview's — reaches by them and pads back in, so its words do not move.
+ *
+ * In utilities: the page stack's rhythm and the rows' own padding are
+ * utilities, and only this layer outranks them. */
+@layer utilities {
+  main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
+  [data-verso-form-column]:not([role="dialog"] *) { --verso-reach-end: calc(var(--spacing) * 10); }
+  [data-verso-drawer-body] {
+    --verso-reach-start: calc(var(--spacing) * 8);
+    --verso-reach-end: calc(var(--spacing) * 8);
+  }
+  .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-reach-start: 0px; --verso-reach-end: 0px; }
+
+  [data-verso-section-band],
+  [data-verso-section="ruled"],
+  [data-verso-rule],
+  :is([data-verso-form-column], [data-verso-drawer-body]) [data-verso-code-divider] {
+    margin-inline: calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));
+    padding-inline: var(--verso-reach-start) var(--verso-reach-end);
+  }
+
+  /* A section someone can be sent to stops short of the viewport's top edge,
+     clear of a phone's bar; on a wider screen the air it keeps is enough. */
+  [data-verso-section][id] { scroll-margin-top: calc(var(--spacing) * 16); }
+  @media (width >= 48rem) { [data-verso-section][id] { scroll-margin-top: 0; } }
+
+  /* Qualified by the element, so a section's own air outranks the block
+     rhythms around it (.verso-rhythm, the page stack) whatever their order. */
+  section[data-verso-section="ruled"],
+  section[data-verso-section="part"] {
+    margin-top: calc(var(--spacing) * 6);
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 6);
+  }
+  section[data-verso-section="ruled"]:first-of-type,
+  section[data-verso-section="part"]:first-of-type {
+    margin-top: 0;
+    border-top-width: 0;
+    padding-top: 0;
+  }
+  section[data-verso-section="continued"] {
+    margin-top: 0 !important;
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 4);
+  }
+  section[data-verso-section="plain"] { padding-top: calc(var(--spacing) * 6); }
+
+  /* On a page's own stack a section takes its standoff from the stack's
+     40px rhythm rather than adding its own; a ruled one stands 24px off. */
+  .verso-page-body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"]) { padding-top: 0; }
+  .verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 6); }
+
+  /* A headless subject keeps the heading band's 32px before the next rule;
+     a page form that opens on one keeps the first rule and its 32px too. */
+  [data-verso-section="ruled"][data-verso-headless] { padding-bottom: calc(var(--spacing) * 8); }
+  :is(.verso-page-body, [data-verso-form-column]) > [data-verso-page-form] > [data-verso-section="ruled"][data-verso-headless]:first-of-type {
+    border-top-width: 1px;
+    padding-top: calc(var(--spacing) * 8);
+  }
+
+  /* The heading band carries its section's rule: the rule, 32px, the title. */
+  [data-verso-section-band] {
+    display: flex;
+    align-items: center;
+    min-height: 0;
+    height: auto;
+    padding-block: calc(var(--spacing) * 8) 0;
+    background-color: transparent;
+    border-top: 1px solid var(--color-rule);
+    border-bottom-width: 0;
+  }
+  section[data-verso-section]:has(> [data-verso-section-band]),
+  .verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
+    margin-top: 0;
+    border-top-width: 0;
+    padding-block: 0 calc(var(--spacing) * 8);
+  }
+
+  /* A section holds its air itself, so the rows it starts and ends with give
+     their own padding back: an untitled section's first visible row starts
+     where the section does (a titled one keeps it, as the air under its
+     heading), and every section's last visible row ends where the section
+     does — a table on its last row, its own closing hairline given to the
+     rule under it. Hidden carriers are skipped. */
+  [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { padding-top: 0; }
+  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) { padding-bottom: 0; }
+  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
+}

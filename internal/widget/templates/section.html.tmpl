@@ -27,8 +27,11 @@
 {{/* A section with no heading has nothing for its first row's top padding to
      stand off from: it is marked headless, and the stylesheet takes that
      padding back so its first box starts where the section does. */}}
+{{/* The section says what it is and sections.css says how it stands — its
+     air, its rule, how far the rule reaches on this surface — so a page and a
+     drawer draw it by one definition. */}}
 {{$band := and .Title (not .Nested) (not .Kicker)}}
-<section{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}} class="{{if .Anchor}}scroll-mt-16 md:scroll-mt-0 {{end}}{{if and .Hairline .Flush}}!mt-0 border-t border-rule pt-4{{else if .Hairline}}mt-6 border-t border-rule pt-6 first-of-type:mt-0 first-of-type:border-t-0 first-of-type:pt-0{{else if not (or .Flush .Nested)}}pt-6{{end}}">
+<section data-verso-section="{{.Kind}}"{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}}>
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
        a ledger line: its name at the label's size, how many things it holds,

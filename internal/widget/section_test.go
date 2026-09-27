@@ -36,7 +36,7 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 func TestHeadlessSectionStartsAtItsFirstBox(t *testing.T) {
 	r := newRenderer(t)
 	row := func() []Widget { return []Widget{&Field{Name: "hostname", Label: "Router name"}} }
-	if got := render(t, r, &Section{Children: row()}); !strings.Contains(got, "<section data-verso-headless") {
+	if got := render(t, r, &Section{Children: row()}); !strings.Contains(got, `<section data-verso-section="plain" data-verso-headless`) {
 		t.Errorf("an untitled section is marked headless:\n%s", got)
 	}
 	if got := render(t, r, &Section{Title: "Time", Children: row()}); strings.Contains(got, "data-verso-headless") {
@@ -158,7 +158,7 @@ func TestRenderSectionControl(t *testing.T) {
 
 func TestRenderSectionFlush(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Rule", Flush: true})
-	if strings.Contains(got, `class="pt-6`) {
+	if !strings.Contains(got, `data-verso-section="bare"`) {
 		t.Errorf("flush section must rely on its parent's inset: %s", got)
 	}
 }
@@ -173,13 +173,13 @@ func TestRenderSectionAnchor(t *testing.T) {
 	// the section holds, and a section and its field sharing an id leave the
 	// field's label pointing at the section.
 	got := render(t, r, &Section{Title: "Speed", Anchor: "speed"})
-	for _, want := range []string{`id="section-speed"`, "scroll-mt-16 md:scroll-mt-0"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("anchored section missing %q:\n%s", want, got)
-		}
+	// Its stop short of the viewport's edge is the stylesheet's, for every
+	// section with an id (sections.css).
+	if !strings.Contains(got, `data-verso-section="plain" id="section-speed"`) {
+		t.Errorf("anchored section missing its id:\n%s", got)
 	}
 	plain := render(t, r, &Section{Title: "Speed"})
-	if strings.Contains(plain, "id=") || strings.Contains(plain, "scroll-mt") {
+	if strings.Contains(plain, "id=") {
 		t.Errorf("a section nobody points at takes no address:\n%s", plain)
 	}
 }
@@ -209,7 +209,7 @@ func TestRenderSectionHairline(t *testing.T) {
 		Hairline: true,
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
-	if !strings.Contains(divided, "border-rule") {
+	if !strings.Contains(divided, `data-verso-section="ruled"`) {
 		t.Errorf("section with hairline=true should include divider styling:\n%s", divided)
 	}
 }

@@ -813,7 +813,7 @@ func TestRenderDisclosure(t *testing.T) {
 func TestRenderSection(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "Devices", Children: []Widget{&Badge{Variant: "success", Text: "x"}}})
-	for _, want := range []string{"<section", "Devices", "pt-6", "x"} {
+	for _, want := range []string{"<section", "Devices", `data-verso-section="plain"`, "x"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section missing %q in: %s", want, got)
 		}

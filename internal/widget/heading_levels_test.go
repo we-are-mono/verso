@@ -108,8 +108,8 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 	}
 	// the part stands off by its parent's block rhythm alone, not by a
 	// section's own lead-in on top of it
-	if n := strings.Count(got, "pt-6"); n != 1 {
-		t.Errorf("only the outer section takes the lead-in, got %d:\n%s", n, got)
+	if n := strings.Count(got, `data-verso-section="bare"`); n != 1 || strings.Count(got, `data-verso-section="plain"`) != 1 {
+		t.Errorf("only the outer section takes the lead-in; the part is bare:\n%s", got)
 	}
 	// a part without a set to count still stands on its ledger line
 	if !strings.Contains(got, `<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`) || strings.Contains(got, "data-verso-count") {

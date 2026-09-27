@@ -305,7 +305,19 @@ Smaller subsection headings retain their ledger lines; square marks carry state.
 
 The page is left-aligned against a 288px rail, never centred. The frame keeps 40px of air on every side, and inside it the page declares a measure: wide pages cap at 1152px, page forms at 768px (`max-w-3xl`). Form rows and the main columns of settings, editor and rail layouts share that 768px measure; supporting columns take the remaining space and stack when it is too narrow. Form drawers retain their 640px shell and use the same stacked fields and content measures as page forms. The top bar's right group ends on the same column edge, so a page's primary act sits exactly under Log out.
 
-**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A full section that used a leading divider keeps its 24px separation from the preceding content, but its heading band replaces the divider and the space below that divider. The complete band keeps 20px before the content; its heading and optional lede share 16px of padding above and below, with a 4px gap between them. Height follows the contents, with no fixed or minimum band height.
+**The rhythm is 40, 24 and 20.** Blocks on a page stand 40px apart, the same as the body inset. A full section that used a leading divider keeps its 24px separation from the preceding content, but its heading band replaces the divider and the space below that divider. The band is the hairline, 32px to the title, and 20px from the title (or its lede, 4px under it) to the content; the section keeps 32px from its content to the next rule. Height follows the contents, with no fixed or minimum band height.
+
+**Sections are one component** (`sections.css`), the same on a page and in a drawer. A section states its kind and the stylesheet gives it its air and its rule:
+
+| Kind | What it is | Air and rule |
+|---|---|---|
+| ruled | one of the surface's subjects | 24px, hairline, 24px (32px under the first rule of a page form); with a heading the band carries the rule (above); 32px before the next rule when headless; the surface's first draws no rule |
+| part | a ruled section inside a section | 24px, hairline, 24px, kept to the content's inset |
+| continued | more of the rows above (the add act) | hairline always, 16px under it, nothing above |
+| plain | an unruled block | 24px above (none on a page's own stack, which spaces its blocks 40px) |
+| bare | a nested or flush block | none of its own |
+
+A surface differs only in its reach, how far its rules and bands run past the content: a page 40px left to the rail and, in a form column, 40px back past its end; a drawer 32px to both edges. Every hairline divider (a section's, a band's, a page Save's, a config preview's) reaches by the same two measures and pads back in, so its words never move. Hand-drawn pages (Maintenance) use the same kinds.
 
 Untitled sections, the page Save's rule and plugin seams retain their hairlines and 24px of air on either side. A plugin contribution that opens with a section band, as SSH does on Access, needs only the 24px gap before that band, with no extra hairline or padding. Section separation is measured from the field row's box. Stacked fields grow with their label, control and errors; checkbox rows follow their label's natural height. Sections give back their first and last rows' unnecessary padding; a titled section keeps its first row's padding under the band. A rule runs out by 40px to the rail on the left and stops where the column ends on the right, clear of a sidebar beside it. On page forms, section content keeps 40px of inset from both ends of these rules. Apply the right inset once inside the 768px form column; full-section headings, configuration dividers and Save rules reach through it, while nested content shares the same alignment. Heading bands follow the same horizontal reach, keeping their words aligned with the content. A drawer's section bands and configuration dividers span its full width; subsection and list rules keep the content inset.
 
@@ -345,11 +357,11 @@ Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no verti
 ## Components
 
 ### Section headings
-- **Surface:** full-section h2s sit in Quiet Sand, the same surface as the active main-navigation row, with square corners, no decorative marker and no border. The band replaces the section's leading hairline.
+- **Surface:** no fill. The band is the section's leading hairline with the heading under it; no decorative marker.
 - **Contents:** the heading is 18px/600. Its metadata and controls share the heading row; a lede belongs inside the same band, on the next row with a 4px gap, in 16px/300 Body ink, with 1.5 line height and at most 60ch wide. Markdown and links retain their normal prose styling. Maintenance's Reboot uptime and Firmware check controls align right with a 16px inset, matching the tables' outer cell padding; they wrap within the band when needed.
-- **Padding:** 16px above and below the complete contents, with or without a lede. Do not impose a fixed or minimum height; wrapping and controls determine the height. The content below starts after the band's 20px gap.
+- **Padding:** 32px from the hairline to the title, with or without a lede. Do not impose a fixed or minimum height; wrapping and controls determine the height. The content below starts after the band's 20px gap.
 - **Content inset:** the first field row contributes another 12px above its contents, so its controls begin 32px below the band. Handwritten section bodies, such as Maintenance's action groups, supply that same 12px top inset themselves. Count it once; a body containing padded field rows already has it.
-- **Content bottom spacing:** Maintenance keeps 32px from the end of each section's content to the next heading band, matching the 32px above the content. This applies to action groups and the optional software-updates section; it is separate from the band's own 16px padding.
+- **Content bottom spacing:** every headed section keeps 32px from the end of its content to the next rule, matching the 32px from its rule to its title.
 - **Reach:** the page band extends through the left gutter to meet the menu, or the screen edge on mobile, and ends at the content column's right edge. Words keep their existing horizontal alignment. In a drawer the band reaches both edges while its contents keep the body's 32px inset.
 - **Scope:** page h1s, drawer and dialog titles, navigation kickers and smaller subsection headings keep their own treatments. The overview's traffic h2 is a graph title: 18px in Body ink, inside the chart's own header with 16px horizontal padding and no section band extending into the gutter. Subsections retain their inset ledger lines.
 

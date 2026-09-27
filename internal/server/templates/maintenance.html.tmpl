@@ -7,7 +7,7 @@
        extend through the frame's left gutter while their words stay aligned. */}}
   <div data-verso-form-column class="w-full min-w-0 max-w-form shrink-0">
     {{.Notices}}
-    <section id="firmware" class="scroll-mt-20">
+    <section data-verso-section="ruled" id="firmware">
       {{/* The ledger: the verdict under its state mark, then what this router runs
            part by part, with an Available column only while a build is offered.
            The check stands on the heading line with the time it last ran. */}}
@@ -97,7 +97,7 @@
       </div>
     </section>
     {{if .Packages}}<div id="package-updates" class="scroll-mt-20 mt-8 [&>section>.verso-rhythm]:pt-3">{{.Packages}}</div>{{end}}
-    <section id="back-up-and-restore" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+    <section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="back-up-and-restore">
       <div data-verso-section-band class="{{template "verso-section-band-class"}}">
         <h2 class="{{template "verso-section-title-class"}}">{{t "Back up and restore"}}</h2>
         {{template "verso-section-lede" (t "The backup contains system and plugin settings registered with OpenWrt. Restoring replaces the saved files and reboots the router.")}}
@@ -107,7 +107,7 @@
         <span class="text-meta">{{t "or"}}</span>{{.Restore}}
       </div>
     </section>
-    <section id="reboot" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+    <section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="reboot">
       <div data-verso-section-band class="{{template "verso-section-band-class"}}">
         <h2 class="{{template "verso-section-title-class"}}">{{t "Reboot"}}</h2>
         <span class="{{template "verso-section-meta-class"}} ml-auto"><span class="{{template "verso-section-meta-label-class"}}">{{t "Running for"}}</span><span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Uptime}}</span></span>
@@ -124,7 +124,7 @@
         </form>
       </div>
     </section>
-    <section id="factory-reset" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">
+    <section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="factory-reset">
       <div data-verso-section-band class="{{template "verso-section-band-class"}}">
         <h2 class="{{template "verso-section-title-class"}}">{{t "Factory reset"}}</h2>
         {{template "verso-section-lede" (t "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you.")}}

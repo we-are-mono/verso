@@ -200,7 +200,7 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
 		// the listing sits flush on its band, and a log (and its notice) on its bar
 		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
-		".verso-page-body>.verso-stack>section:not([data-verso-ruled]){padding-top:0}",
+		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
 		// a page's control band spans the page, its controls in the column
 		".verso-page-body>.verso-stack>[data-verso-actionbar],.verso-page-body>[data-verso-packages]>[data-verso-actionbar]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10)}",
 		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
@@ -220,18 +220,17 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	rule := string(css)
-	at := strings.Index(rule, "main [data-verso-rule]:not(")
-	if at < 0 {
-		t.Fatal("stylesheet no longer marks the page's rules")
-	}
-	rule = rule[at:]
-	rule = rule[:strings.Index(rule, "}")]
-	if !strings.Contains(rule, "margin-left:calc(var(--spacing) * -10);padding-left:calc(var(--spacing) * 10)") {
-		t.Errorf("a page's rule runs out to the rail: %s", rule)
-	}
-	if strings.Contains(rule, "margin-inline") || strings.Contains(rule, "padding-inline") {
-		t.Errorf("a page's rule stops at the column's end on the right: %s", rule)
+	// Every rule reaches by its surface's two measures (sections.css): a page
+	// runs 40px out to the rail and none past the column's end; only a form
+	// column, which pads its own end, reaches back through it.
+	for _, want := range []string{
+		"main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px}",
+		"[data-verso-form-column]:not([role=dialog] *){--verso-reach-end:calc(var(--spacing) * 10)}",
+		"margin-inline:calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));padding-inline:var(--verso-reach-start) var(--verso-reach-end)",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("stylesheet is missing %q", want)
+		}
 	}
 }
 
@@ -243,7 +242,7 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	if !strings.Contains(string(css), ".verso-page-body>.verso-stack>section[data-verso-ruled]{margin-top:calc(var(--spacing) * 6)}") {
+	if !strings.Contains(string(css), ".verso-page-body>.verso-stack>section:is([data-verso-section=ruled],[data-verso-section=part]){margin-top:calc(var(--spacing) * 6)}") {
 		t.Error("a ruled section on the page's stack keeps the 40px block gap")
 	}
 }
@@ -261,8 +260,8 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		`section[data-verso-headless]>.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){padding-top:0}`,
-		`section>.verso-rhythm>:not(input[type=hidden]):not(:has(~:not(input[type=hidden]))){padding-bottom:0}`,
+		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){padding-top:0}`,
+		`[data-verso-section]>.verso-rhythm>:not(input[type=hidden]):not(:has(~:not(input[type=hidden]))){padding-bottom:0}`,
 		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
 	} {
 		if !strings.Contains(css, want) {

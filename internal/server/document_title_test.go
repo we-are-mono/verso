@@ -91,7 +91,8 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 		t.Error("the masthead opens onto the first section without a divider")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
-		want := `<section id="` + id + `" data-verso-rule class="scroll-mt-20 mt-8 border-t border-rule pt-6">`
+		// The same ruled section the widget draws; its air is sections.css's.
+		want := `<section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="` + id + `">`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
 		}

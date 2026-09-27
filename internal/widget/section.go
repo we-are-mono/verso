@@ -176,6 +176,25 @@ type sectionView struct {
 	Children []template.HTML
 }
 
+// Kind is what the section is to the surface it stands on, which is all the
+// markup says; sections.css turns it into air and a rule. A ruled section is
+// one of the surface's subjects, a part is a ruled section inside another, a
+// continued one is more of the rows above (its rule always drawn), a plain one
+// is an unruled block, and a bare one — nested or flush — adds no air.
+func (v sectionView) Kind() string {
+	switch {
+	case v.Hairline && v.Flush:
+		return "continued"
+	case v.Hairline && v.Nested:
+		return "part"
+	case v.Hairline:
+		return "ruled"
+	case v.Flush || v.Nested:
+		return "bare"
+	}
+	return "plain"
+}
+
 // tallied is a widget that holds a set of things and knows how many.
 type tallied interface{ tally() int }
 

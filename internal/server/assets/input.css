@@ -21,6 +21,7 @@
 @import "tailwindcss" source(none);
 @import "./palette.css";
 @import "./forms.css";
+@import "./sections.css";
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
@@ -775,25 +776,7 @@ html.verso-fonts-loading body {
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
-  .verso-page-body > .verso-stack > section:not([data-verso-ruled]) { padding-top: 0; }
-  /* A rule keeps the title's own air on both sides of it — 24px, the 20px
-     under the title's 36px heading line plus the half of that line the title
-     leaves — so a ruled section stands 24px after the block before it, not
-     the 40px between unruled blocks. */
-  .verso-page-body > .verso-stack > section[data-verso-ruled] { margin-top: calc(var(--spacing) * 6); }
-  /* A section holds the masthead's 20px inside its rule itself, so the rows
-     it starts and ends with give their own padding back: an untitled
-     section's first visible row starts where the section does (a titled one
-     keeps it, as the air under its heading), and every section's last visible
-     row ends where the section does. In utilities, because a row's padding is
-     a utility and only this layer outranks it. */
-  section[data-verso-headless] > .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { padding-top: 0; }
-  section > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) { padding-bottom: 0; }
-  /* A table that ends its section ends on its last row, as a list does: the
-     section's rule (or the page's end) is the line under it, and the table's
-     own closing hairline would stand 24px above that rule as a second line
-     with nothing between. */
-  section > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
+  /* Sections, their air and their rules: sections.css. */
 
   /* A page's control band spans the page, from the rail to the window's edge,
      while its controls keep to the page's column, level with the heading. The
@@ -805,65 +788,6 @@ html.verso-fonts-loading body {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
   }
-
-  /* A page's rules between its sections — a plugin's seam and every ruled
-     section — run out by the frame's 2.5rem to the rail on the
-     left, and stop where the column ends on the right, clear of a sidebar
-     beside it. Each pads back in by the same, so what it rules off does not
-     move. Drawer section rules use their own frame below. */
-  main [data-verso-rule]:not(.verso-drawer-scrollbar [data-verso-rule]),
-  .verso-page-body section[data-verso-ruled]:not(.verso-drawer-scrollbar section) {
-    margin-left: calc(var(--spacing) * -10);
-    padding-left: calc(var(--spacing) * 10);
-  }
-
-  /* Full sections and configuration cards divide the drawer edge to edge;
-     their content keeps the body's 32px inset. Subsections and lists keep
-     inset rules. Choice drawers already have an unpadded body. */
-  [data-verso-drawer-body] [data-verso-section-divider],
-  [data-verso-drawer-body] [data-verso-code-divider] {
-    margin-inline: calc(var(--spacing) * -8);
-    padding-inline: calc(var(--spacing) * 8);
-  }
-
-  /* Section heads use the navigation rail's hairline without a filled surface.
-     Their headings sit 2rem below the rule. */
-  main { --verso-section-band-inset: calc(var(--spacing) * 10); }
-  [data-verso-section-band] {
-    display: flex;
-    align-items: center;
-    min-height: 0;
-    height: auto;
-    margin-inline-start: calc(-1 * var(--verso-section-band-inset));
-    padding-inline-start: var(--verso-section-band-inset);
-    padding-block: calc(var(--spacing) * 8) 0;
-    background-color: transparent;
-    border-top: 1px solid var(--color-rule);
-    border-bottom-width: 0;
-  }
-  .verso-page-body > .verso-stack > section:has(> [data-verso-section-band]),
-  section:has(> [data-verso-section-band]) {
-    margin-top: 0;
-    border-top-width: 0;
-    padding-block: 0 calc(var(--spacing) * 8);
-  }
-  /* Full sections without a heading keep the same space before the next rule. */
-  section[data-verso-headless][data-verso-section-divider] {
-    padding-bottom: calc(var(--spacing) * 8);
-  }
-  /* A page form that opens directly on fields keeps the same first hairline
-     and 2rem inset as a page opening on a section heading, including forms
-     inside a grid's work column. */
-  :is(.verso-page-body, [data-verso-form-column]) > [data-verso-page-form] > section[data-verso-headless][data-verso-section-divider]:first-of-type {
-    border-top-width: 1px;
-    padding-top: calc(var(--spacing) * 8);
-  }
-  [data-verso-drawer-body] { --verso-section-band-inset: calc(var(--spacing) * 8); }
-  [data-verso-drawer-body] [data-verso-section-band] {
-    margin-inline-end: calc(var(--spacing) * -8);
-    padding-inline-end: calc(var(--spacing) * 8);
-  }
-  .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-section-band-inset: 0px; }
 
   /* Page and section ledes share one reading role, including inside drawers.
      Relative type and unitless leading let enlarged text and spacing overrides
@@ -877,19 +801,12 @@ html.verso-fonts-loading body {
   }
 
   /* Page-form sections keep the same 40px inset at both ends of their rules.
-     Apply the end inset once to the work column, never to each nested row.
-     Full section and configuration rules reach back through it; drawers keep
-     their own frame. */
+     Apply the end inset once to the work column, never to each nested row;
+     its rules reach back through it (sections.css). */
   [data-verso-form-column]:not([data-verso-form-column] *, [role="dialog"] *) {
     padding-inline-end: calc(var(--spacing) * 10);
   }
-  [data-verso-form-column] :is([data-verso-section-band], [data-verso-section-divider], [data-verso-rule], [data-verso-code-divider]):not([role="dialog"] *) {
-    margin-inline-end: calc(var(--spacing) * -10);
-    padding-inline-end: calc(var(--spacing) * 10);
-  }
   [data-verso-form-column] [data-verso-code-divider]:not([role="dialog"] *) {
-    margin-inline-start: calc(var(--spacing) * -10);
-    padding-inline-start: calc(var(--spacing) * 10);
     padding-top: calc(var(--spacing) * 8);
   }
 
