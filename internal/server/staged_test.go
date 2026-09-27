@@ -142,6 +142,30 @@ func TestStagedChipRendersPendingCount(t *testing.T) {
 	}
 }
 
+// TestTheStageStandsWithTheRouter: what waits on the stage is the router's,
+// not the session's — the chip stands beside the router's nameplate, apart
+// from the way out, and on a phone says only its count.
+func TestTheStageStandsWithTheRouter(t *testing.T) {
+	s := newServerWith(t, fakeBackend{
+		access:  true,
+		changes: map[string][][]string{"system": {{"set", "@system[0]", "hostname", "verso-lab"}}},
+	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
+	body := get(t, s, "/").Body.String()
+	nameplate := strings.Index(body, `data-verso-nameplate`)
+	chip := strings.Index(body, `id="verso-staged"`)
+	session := strings.Index(body, `data-verso-session`)
+	logout := strings.Index(body, `action="/logout"`)
+	if nameplate < 0 || chip < 0 || session < 0 || logout < 0 {
+		t.Fatalf("top bar is missing its parts (nameplate %d, chip %d, session %d, logout %d)", nameplate, chip, session, logout)
+	}
+	if !(nameplate < chip && chip < session && session < logout) {
+		t.Errorf("the chip stands after the nameplate and before the session's group (nameplate %d, chip %d, session %d)", nameplate, chip, session)
+	}
+	if !strings.Contains(body, `<span id="verso-staged-count" class="inline-block tabular-nums sm:hidden">1</span>`) {
+		t.Error("on a phone the chip says its count")
+	}
+}
+
 // TestReviewDrawerPlainOverRaw: the owning plugin describes its changes in
 // plain words and the drawer renders each sentence as a row that opens on the
 // raw uci line(s) it covers; a change no sentence covers keeps its raw line as

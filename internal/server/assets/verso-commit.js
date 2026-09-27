@@ -184,6 +184,8 @@
   var label = document.getElementById("verso-staged-label");
   var mark = document.getElementById("verso-staged-mark");
   var word = document.getElementById("verso-staged-word");
+  // A phone's bar says the count alone; the words say it from sm.
+  var tally = document.getElementById("verso-staged-count");
   var csrfMeta = document.querySelector('meta[name="verso-csrf"]');
   var csrf = csrfMeta ? csrfMeta.content : "";
   var resting = chip.className;
@@ -197,14 +199,34 @@
     return n === 1 ? T("1 staged change") : T("%d staged changes").replace("%d", n);
   }
 
+  // say puts a count on the chip, in words and as the bare figure. Rolled, the
+  // old count rises out of the chip's line as the new one rises into it — a
+  // tally turning over, not a label swapped — clipped by the chip itself.
+  function say(n, rolled) {
+    var text = stagedLabel(n);
+    [[label, text], [tally, String(n)]].forEach(function (pair) {
+      var el = pair[0], next = pair[1];
+      if (!el || el.textContent === next) return;
+      if (!rolled || still() || typeof el.animate !== "function") { el.textContent = next; return; }
+      el.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-80%)", opacity: 0 }],
+        { duration: 140, easing: "ease-in" }).finished.then(function () {
+        el.textContent = next;
+        el.animate([{ transform: "translateY(80%)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
+          { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+      }, function () { el.textContent = next; });
+    });
+  }
+
   // The chip in its resting state: the caveat colour, the count, the way in.
-  function rest(n) {
+  function rest(n, rolled) {
     if (settle) clearTimeout(settle);
     settle = null;
     chip.className = resting;
     chip.setAttribute("data-count", String(n));
     chip.hidden = n === 0;
-    if (label) label.textContent = stagedLabel(n);
+    if (label) label.classList.add("hidden");
+    if (tally) tally.hidden = false;
+    say(n, rolled && !chip.hidden);
     if (mark) mark.className = "size-1.5 shrink-0 rounded-[1px] bg-marigold";
     if (word) word.hidden = false;
   }
@@ -219,7 +241,9 @@
       .replace("text-marigold-deep", tone === "green" ? "text-green-deep" : "text-crimson-deep")
       .replace("hover:border-marigold hover:bg-marigold-line", tone === "green" ? "pointer-events-none" : "hover:border-crimson hover:bg-crimson-soft");
     if (mark) mark.className = "size-1.5 shrink-0 rounded-[1px] " + (tone === "green" ? "bg-green" : "bg-crimson");
-    if (label) label.textContent = text;
+    // A verdict is words on every screen: a bare figure would say nothing.
+    if (label) { label.textContent = text; label.classList.remove("hidden"); }
+    if (tally) tally.hidden = true;
     if (word) word.hidden = !opensDrawer;
     // The chip changes out of sight of anyone not looking at it; how an apply
     // went is said as well as shown.
@@ -261,7 +285,7 @@
   window.versoStaged = {
     sync: function (doc) {
       var fresh = doc && doc.getElementById("verso-staged");
-      rest(fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0);
+      rest(fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0, true);
     },
     count: count,
     fly: function (from, before) {
@@ -285,7 +309,7 @@
       document.body.appendChild(square);
       // Until the square lands the chip says what it said before the save: the
       // old count, or nothing at all.
-      if (before > 0) { if (label) label.textContent = stagedLabel(before); }
+      if (before > 0) say(before, false);
       else chip.style.opacity = "0";
       release();
       // The arc: the square lifts off the row first, then crosses to the chip.
@@ -297,7 +321,8 @@
       ], { duration: 680, easing: "cubic-bezier(0.45, 0, 0.2, 1)" }).finished.then(land, land);
       function land() {
         square.remove();
-        if (label) label.textContent = stagedLabel(now);
+        // The square lands and the tally turns over to take it.
+        say(now, before > 0);
         if (before <= 0) {
           chip.style.opacity = "";
           chip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });

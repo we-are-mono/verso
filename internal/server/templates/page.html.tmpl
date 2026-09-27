@@ -24,7 +24,8 @@
 <body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
 {{/* The top bar: the device's nameplate on the left — the hostname in mono,
      then who built the board and what they call it; a fresh box with no
-     readable name says what it is instead — and, on the right, the way out.
+     readable name says what it is instead — with what waits on its stage
+     beside it, and, on the right, the way out.
      The right-hand group is aligned to the content column rather than to the
      bar's own edge, so what sits there lines up with a page's primary action
      below it. White, a step above the paper the page sits on, and it stays at
@@ -35,10 +36,17 @@
   <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
   {{/* One line whatever the name's length; where the bar has to cut it, the
        whole name is a hover away. */}}
-  <a href="/"{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
+  <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
   {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
   <span class="hidden min-w-0 truncate text-sm font-light text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
-  <div class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
+  {{/* The stage's chip: how many changes wait on the router and that nothing
+       is live yet, opening the review drawer — the one place the stage is
+       applied or let go from (ADR-010). The stage is the router's, held and
+       rolled back on the device, so it stands with the router's nameplate
+       rather than with the session's way out; it never gives way, the name
+       does. It shows for as long as the stage holds something. */}}
+  {{template "verso-staged-chip" .Staged}}
+  <div data-verso-session class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
     <div class="mx-4 flex min-w-0 max-w-6xl flex-1 items-center justify-end gap-2 sm:mx-6 md:ml-10 md:mr-10 md:gap-4">
       {{if and .Overview .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm font-semibold text-crimson-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span class="sr-only xl:not-sr-only xl:truncate">{{ t "No administrator password" }}</span></a>
       {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-denim"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
@@ -46,11 +54,6 @@
            account is a decided constant (ADR-007: one root credential, the shell
            its authority), so the button states the name and the verb — no
            avatar, no presence, nothing an account system would imply. */}}
-      {{/* The stage's chip: how many changes wait and that nothing is live
-           yet, opening the review drawer — the one place the stage is applied
-           or let go from (ADR-010). Left of Log out on every page, for as long
-           as the stage holds something. */}}
-      {{template "verso-staged-chip" .Staged}}
       <form method="post" action="/logout" class="pointer-events-auto">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
         <button type="submit" title="{{ t "End this session" }}" class="flex h-8 cursor-pointer items-center gap-2 rounded-xs border border-transparent px-3 text-sm font-medium text-body transition-colors hover:border-rule-strong hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">

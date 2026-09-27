@@ -13,9 +13,11 @@
      something and never has to build one (verso-commit.js). */}}
 {{define "verso-staged-chip"}}<span x-data="modal" class="contents">
   <a id="verso-staged" href="/uci/review" @click.prevent="showPanel" data-count="{{.Count}}" title="{{ t "Nothing is live yet — review, then apply" }}"{{if not .Count}} hidden{{end}}
-    class="pointer-events-auto flex h-8 items-center gap-2 rounded-xs border border-transparent bg-marigold-soft px-3 text-sm font-semibold whitespace-nowrap text-marigold-deep transition-colors hover:border-marigold hover:bg-marigold-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold-deep">
+    class="pointer-events-auto flex h-8 shrink-0 items-center gap-2 overflow-hidden rounded-xs border border-transparent bg-marigold-soft px-3 text-sm font-semibold whitespace-nowrap text-marigold-deep transition-colors hover:border-marigold hover:bg-marigold-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold-deep">
     <span id="verso-staged-mark" aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
-    <span id="verso-staged-label">{{.Label}}</span><span id="verso-staged-word" class="font-normal">· {{ t "review" }}</span>
+    {{/* A phone's bar has room for the count alone; the words say it from sm. */}}
+    <span id="verso-staged-count" class="inline-block tabular-nums sm:hidden">{{.Count}}</span>
+    <span id="verso-staged-label" class="hidden sm:inline-block">{{.Label}}</span><span id="verso-staged-word" class="hidden font-normal sm:inline">· {{ t "review" }}</span>
   </a>
   {{template "verso-drawer-review"}}
 </span>{{end}}
