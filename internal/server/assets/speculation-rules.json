@@ -1,0 +1,8 @@
+{
+  "prefetch": [
+    {
+      "where": { "selector_matches": "[data-verso-nav-rows] a[href]" },
+      "eagerness": "conservative"
+    }
+  ]
+}

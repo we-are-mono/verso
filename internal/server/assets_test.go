@@ -350,6 +350,34 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 // whatever holds keyboard focus is outlined in the system's own colour. And a
 // reader who asked for less motion gets dialogs and drawers that appear rather
 // than slide or scale in.
+// The rail's page change is the stylesheet's alone: the browser carries the
+// named rail parts from one page to the next, nothing else on the page moves,
+// the carried parts never catch a press, and a reader who asks for stillness,
+// or a phone whose rail is a closed drawer, gets the plain page load.
+func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	s := string(css)
+	gate := "@media (min-width:48rem) and (prefers-reduced-motion:no-preference){@view-transition{navigation:auto}"
+	if !strings.Contains(s, gate) {
+		t.Fatalf("stylesheet must opt into page-change transitions only at rail width and without reduced motion (%q)", gate)
+	}
+	for _, want := range []string{
+		"view-transition-name:var(--verso-vt)",
+		"view-transition-class:var(--verso-vt-class,none)",
+		":root{view-transition-name:none}",
+		"::view-transition{pointer-events:none}",
+		"::view-transition-new(.verso-nav-branch):only-child",
+		"::view-transition-new(.verso-nav-sub):only-child",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("stylesheet is missing %q", want)
+		}
+	}
+}
+
 func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {

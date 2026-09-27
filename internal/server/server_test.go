@@ -690,6 +690,61 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	if !strings.Contains(nav, "shadow-[inset_-0.125rem_0_0_var(--color-ink)]") {
 		t.Error("the active subpage should wear the rail's marker, on the rail's content edge")
 	}
+	// The marker is one thing of its own, behind the words, so it can travel
+	// from the page you leave to the one you open: once in the rail, inside the
+	// place you are on.
+	if n := strings.Count(nav, "data-verso-nav-marker"); n != 1 {
+		t.Fatalf("rail draws %d markers, want exactly one", n)
+	}
+	here := nav[strings.Index(nav, `href="/plugins/demo/dnsdhcp" aria-current="page"`):]
+	if !strings.Contains(here[:strings.Index(here, "</a>")], `data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker"`) {
+		t.Errorf("the marker must sit in the subpage you are on:\n%s", nav)
+	}
+	// The branch and each subpage's words are named for the page change: the
+	// branch unfolds, and its subpages arrive one after another, in order.
+	for _, want := range []string{
+		// A branch is its parent's: one branch never turns into another's.
+		`style="--verso-vt: verso-nav-branch-plugins-demo; --verso-vt-class: verso-nav-branch"`,
+		`style="--verso-vt: verso-nav-sub-plugins-demo-dnsdhcp; --verso-vt-class: verso-nav-sub verso-nav-sub-0"`,
+		`style="--verso-vt: verso-nav-sub-plugins-demo-dnsdhcp-config; --verso-vt-class: verso-nav-sub verso-nav-sub-1"`,
+	} {
+		if !strings.Contains(nav, want) {
+			t.Errorf("rail missing %q:\n%s", want, nav)
+		}
+	}
+}
+
+// A page served over HTTPS names the rules that fetch the next page the moment
+// a rail row is pressed, so it is on its way before the press ends. The rules
+// come from a file of the shell's own: the page's policy runs no script written
+// inline. Over plain HTTP a browser prefetches nothing, so the page names no
+// rules there and the router is never asked for a file no one can use.
+func TestARailRowIsFetchedAsItIsPressed(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, nil)
+	if got := get(t, s, "/").Header().Get("Speculation-Rules"); got != "" {
+		t.Fatalf("a page over plain HTTP names rules %q no browser will act on", got)
+	}
+	page := get(t, s, "https://example.com/")
+	if got := page.Header().Get("Speculation-Rules"); got != `"/assets/speculation-rules.json"` {
+		t.Fatalf("Speculation-Rules = %q, want the shell's rules file", got)
+	}
+	rules := get(t, s, "/assets/speculation-rules.json")
+	if ct := rules.Header().Get("Content-Type"); ct != "application/speculationrules+json" {
+		t.Fatalf("rules served as %q; a browser takes speculation rules only as application/speculationrules+json", ct)
+	}
+	var doc struct {
+		Prefetch []struct {
+			Where     map[string]string `json:"where"`
+			Eagerness string            `json:"eagerness"`
+		} `json:"prefetch"`
+	}
+	if err := json.Unmarshal(rules.Body.Bytes(), &doc); err != nil {
+		t.Fatalf("rules are not JSON: %v\n%s", err, rules.Body.String())
+	}
+	if len(doc.Prefetch) != 1 || doc.Prefetch[0].Eagerness != "conservative" ||
+		doc.Prefetch[0].Where["selector_matches"] != "[data-verso-nav-rows] a[href]" {
+		t.Fatalf("rules = %+v, want one press-time prefetch of the rail's links", doc)
+	}
 }
 
 // TestPluginKickerStatus: a page may mark a reference state beside its kicker

@@ -57,6 +57,45 @@ type navLink struct {
 	Variant string
 }
 
+// railTransition names a rail part for the browser's page-change transition
+// (the stylesheet's ::view-transition rules): kind, then where the part leads,
+// folded to an ident. The name comes from the destination, never the position,
+// so a place carries one name on every page and the browser can carry it from
+// the page you leave to the page you open.
+func railTransition(kind, href string) string {
+	var b strings.Builder
+	b.WriteString("verso-nav-" + kind)
+	gap := true
+	for _, r := range strings.ToLower(href) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			if gap {
+				b.WriteByte('-')
+			}
+			b.WriteRune(r)
+			gap = false
+			continue
+		}
+		gap = true
+	}
+	if b.Len() == len("verso-nav-"+kind) {
+		b.WriteString("-root")
+	}
+	return b.String()
+}
+
+// Transition is the row's page-change name: the row stays the same place
+// whichever page draws it.
+func (r navRow) Transition() string { return railTransition("row", r.Href) }
+
+// BranchTransition names the subpages' branch the row opens. It is the row's
+// own, so leaving one branch for another's closes the one and opens the other
+// rather than carrying the first across.
+func (r navRow) BranchTransition() string { return railTransition("branch", r.Href) }
+
+// Transition is a subpage's page-change name, kept apart from the rows' since
+// a row may lead where its first subpage does.
+func (p pageTab) Transition() string { return railTransition("sub", p.Href) }
+
 // navModel is the rail: one flat list of destinations, with subpages under
 // the active row.
 type navModel struct {

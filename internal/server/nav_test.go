@@ -5,6 +5,7 @@ package server
 
 import (
 	"errors"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -173,6 +174,41 @@ func TestBuildSidebarSystemIsOneRow(t *testing.T) {
 		if label == "General" {
 			t.Fatal("a System page belongs under the System row, not beside it")
 		}
+	}
+}
+
+// A row is the same place on every page: its transition name comes from where
+// it leads, never from where it stands, so the browser carries the row from the
+// page you leave to the page you open (the marker's glide, a branch pushing the
+// rows under it down). Names are unique in a rail — one clash and the browser
+// drops the whole transition — and plain idents CSS can name.
+func TestARailRowIsTheSamePlaceOnEveryPage(t *testing.T) {
+	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall.Socket = "/firewall.sock"
+	system := manifest("system", nav("System", "General", "/"))
+	system.Socket = "/system.sock"
+	s := navServer(firewall, system)
+
+	home, zones := sidebar(s, "/"), sidebar(s, "/plugins/firewall/zones")
+	if a, b := railRow(t, home, "Firewall").Transition(), railRow(t, zones, "Firewall").Transition(); a != b || a == "" {
+		t.Fatalf("Firewall is %q on one page and %q on another; a place keeps its name", a, b)
+	}
+	ident := regexp.MustCompile(`^verso-nav-row-[a-z0-9]+(-[a-z0-9]+)*$`)
+	seen := map[string]bool{}
+	for _, row := range zones.Rows {
+		name := row.Transition()
+		if !ident.MatchString(name) {
+			t.Errorf("%s names itself %q, not a rail ident", row.Label, name)
+		}
+		if seen[name] {
+			t.Errorf("two rows share %q", name)
+		}
+		seen[name] = true
+	}
+	// A subpage is named apart from any row: System leads to its first page,
+	// and the row and that page must not share a name.
+	if sub := (pageTab{Href: railRow(t, home, "System").Href}).Transition(); seen[sub] || !strings.HasPrefix(sub, "verso-nav-sub-") {
+		t.Errorf("subpage name %q collides with a row or is not a subpage name", sub)
 	}
 }
 

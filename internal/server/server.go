@@ -39,6 +39,17 @@ var templateFS embed.FS
 //go:embed assets/verso.css
 var cssText string
 
+// speculationRules has the browser fetch a rail destination the moment its
+// row is pressed, so the page is on its way before the press ends. A page
+// served over HTTPS names it in a Speculation-Rules header: the page's policy
+// runs no inline script, speculation rules included.
+//
+//go:embed assets/speculation-rules.json
+var speculationRules []byte
+
+// speculationRulesPath is where speculationRules is served.
+const speculationRulesPath = "/assets/speculation-rules.json"
+
 // scriptFS holds the shell's client-side JS and self-hosted fonts, served under
 // /assets. The page chrome loads the scripts (ADR-004); CSS loads the embedded
 // font subsets without a third-party request.
@@ -884,8 +895,20 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// A browser prefetches only over HTTPS; over plain HTTP the rules would
+	// be one more request for nothing.
+	if r.TLS != nil {
+		w.Header().Set("Speculation-Rules", `"`+speculationRulesPath+`"`)
+	}
 	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
+}
+
+// handleSpeculationRules serves the rail's press-time fetch rules, typed as the
+// browser requires before it will take them.
+func (s *Server) handleSpeculationRules(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/speculationrules+json")
+	_, _ = w.Write(speculationRules)
 }
 
 // handleIndex renders the system-status page from live backend data. Unlike a

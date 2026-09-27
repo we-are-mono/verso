@@ -1027,3 +1027,66 @@ html.verso-fonts-loading body {
     [data-verso-expanded-row][data-verso-unfolding] [data-verso-rise] { animation: none; }
   }
 }
+
+/* The rail across a page change. The rail's rows, the open branch, each
+   subpage's words and the marker are named for where they lead (--verso-vt,
+   nav-row.html.tmpl), so the browser carries each from the page you leave to
+   the page you open: the marker glides from where you were to where you are
+   going, the rows under a branch that opens slide down to make room while its
+   hairline draws down and its subpages drop in one after another, and a branch
+   you leave is simply gone as the rows under it close up. Nothing else is
+   carried: the root is unnamed, so the page itself appears at once, and the
+   carried parts let every press through to it. Only where the rail stands
+   beside the page (on a phone it is a closed drawer by then), and only for a
+   reader who has not asked for stillness; anywhere else the page simply loads. */
+@media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  .verso-vt {
+    view-transition-name: var(--verso-vt);
+    view-transition-class: var(--verso-vt-class, none);
+  }
+  :root { view-transition-name: none; }
+  ::view-transition { pointer-events: none; }
+  /* The rail's one easing, the unfold's: a quick start, a long settle. */
+  ::view-transition-group(*) {
+    animation-duration: 0.36s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 1;
+  }
+  /* The marker travels under the words it passes, and keeps its edge rule
+     whole whatever width it is between a row and a subpage. */
+  ::view-transition-group(verso-nav-marker) { z-index: 0; }
+  ::view-transition-old(verso-nav-marker),
+  ::view-transition-new(verso-nav-marker) { block-size: 100%; object-fit: fill; }
+  /* A row that gains or gives up the weight swaps it quickly, so the words
+     never read doubled while they move. */
+  ::view-transition-old(.verso-nav-row),
+  ::view-transition-new(.verso-nav-row) { animation-duration: 0.14s; }
+  /* A branch that opens draws its hairline down from its parent. */
+  ::view-transition-new(.verso-nav-branch):only-child {
+    animation: verso-nav-unfold 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* Its subpages drop in after the rows have begun to make room, one after
+     another in reading order. */
+  ::view-transition-new(.verso-nav-sub):only-child {
+    animation: verso-nav-arrive 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.08s;
+  }
+  ::view-transition-new(.verso-nav-sub-1):only-child { animation-delay: 0.11s; }
+  ::view-transition-new(.verso-nav-sub-2):only-child { animation-delay: 0.14s; }
+  ::view-transition-new(.verso-nav-sub-3):only-child { animation-delay: 0.17s; }
+  ::view-transition-new(.verso-nav-sub-4):only-child { animation-delay: 0.2s; }
+  ::view-transition-new(.verso-nav-sub-5):only-child { animation-delay: 0.23s; }
+  ::view-transition-new(.verso-nav-sub-6):only-child { animation-delay: 0.26s; }
+  ::view-transition-new(.verso-nav-sub-7):only-child { animation-delay: 0.29s; }
+  ::view-transition-new(.verso-nav-sub-8):only-child,
+  ::view-transition-new(.verso-nav-sub-9):only-child,
+  ::view-transition-new(.verso-nav-sub-10):only-child,
+  ::view-transition-new(.verso-nav-sub-11):only-child { animation-delay: 0.32s; }
+  /* A branch you leave is gone at once: the rows under it close over the space
+     it held, and nothing of it lingers under them. */
+  ::view-transition-old(.verso-nav-branch):only-child,
+  ::view-transition-old(.verso-nav-sub):only-child { animation: none; opacity: 0; }
+}
+@keyframes verso-nav-unfold { from { clip-path: inset(0 0 100% 0); } }
+@keyframes verso-nav-arrive { from { opacity: 0; transform: translateY(-0.375rem); } }

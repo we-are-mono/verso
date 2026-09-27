@@ -5,26 +5,40 @@
      the subpages share that identity and carry only their labels.
 
      Where the marker sits depends on whether the row opened anything. A row with
-     no subpages wears it itself — a 2px ink rule at the rail's content edge,
-     against the page it opens, and the quiet surface. A row that did open subpages hands the marker down to whichever of
-     them you are on, and keeps only the weight and the ink, so the rail never
-     marks two places at once. Inactive rows slide 4px inward on hover. */}}
+     no subpages wears it itself — the quiet surface with a 2px ink rule at the
+     rail's content edge, against the page it opens. A row that did open subpages
+     hands the marker down to whichever of them you are on, and keeps only the
+     weight and the ink, so the rail never marks two places at once. Inactive
+     rows slide 4px inward on hover.
+
+     The marker is a thing of its own, behind the row's words, and the words, the
+     branch and each subpage carry a name for the page change (--verso-vt; the
+     stylesheet's view transitions): the browser carries each from the page you
+     leave to the one you open, so the marker glides to where you are going. */}}
+{{/* verso-nav-marker: where you are — one in the rail, laid behind the words of
+     the place it marks. */}}
+{{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker" class="verso-vt pointer-events-none absolute inset-0 bg-quiet shadow-[inset_-0.125rem_0_0_var(--color-ink)]"></span>{{end}}
 {{define "verso-nav-row"}}
 <li>
-  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-3 border-r-2 py-2 pr-5.5 pl-6.5 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink {{if .Children}}border-transparent hover:bg-quiet/50{{else}}border-ink bg-quiet{{end}}{{else}}border-transparent text-body hover:bg-mid/50 hover:pl-7.5 hover:text-ink{{end}}">
-    {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
-    <span class="min-w-0 truncate">{{.Label}}</span>
-    {{if .Dot}}<span class="size-1.25 shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
-    {{if .Detail}}<span class="ml-auto shrink-0 text-sm font-medium tabular-nums text-meta">{{.Detail}}</span>{{end}}
-    {{if and .Active .Children}}<span class="ml-auto flex shrink-0 text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
+  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="relative flex items-center py-2 pr-6 pl-6.5 transition-[padding,color,background-color] duration-150 {{if .Active}}font-semibold text-ink{{if .Children}} hover:bg-quiet/50{{end}}{{else}}text-body hover:bg-mid/50 hover:pl-7.5 hover:text-ink{{end}}">
+    {{if and .Active (not .Children)}}{{template "verso-nav-marker"}}{{end}}
+    <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-row" class="verso-vt relative flex min-w-0 flex-1 items-center gap-3">
+      {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
+      <span class="min-w-0 truncate">{{.Label}}</span>
+      {{if .Dot}}<span class="size-1.25 shrink-0 rounded-[1px] {{if eq .Variant "success"}}verso-live-dot bg-green{{else if eq .Variant "danger"}}bg-crimson{{else}}bg-glyph{{end}}"></span>{{end}}
+      {{if .Detail}}<span class="ml-auto shrink-0 text-sm font-medium tabular-nums text-meta">{{.Detail}}</span>{{end}}
+      {{if and .Active .Children}}<span class="ml-auto flex shrink-0 text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
+    </span>
   </a>
   {{if and .Active .Children}}
   {{/* The branch hangs beneath the parent's icon; its labels align with the
-       parent's label, leaving the icon column to the first tier. */}}
-  <ul class="mt-1 mb-2 ml-8 flex flex-col border-l border-rule">
-    {{range .Children}}
-    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex items-center gap-2.5 py-2 pr-6 pl-5 transition-[padding,color] duration-150 {{if .Active}}bg-quiet font-semibold text-ink shadow-[inset_-0.125rem_0_0_var(--color-ink)]{{else}}text-body hover:pl-6 hover:text-ink{{end}}">
-      <span class="min-w-0 truncate">{{.Label}}</span>
+       parent's label, leaving the icon column to the first tier. Each subpage
+       is numbered in its class so the page change can bring them in in order. */}}
+  <ul style="--verso-vt: {{.BranchTransition}}; --verso-vt-class: verso-nav-branch" class="verso-vt mt-1 mb-2 ml-8 flex flex-col border-l border-rule">
+    {{range $i, $sub := .Children}}
+    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="relative flex items-center py-2 pr-6 pl-5 transition-[padding,color] duration-150 {{if .Active}}font-semibold text-ink{{else}}text-body hover:pl-6 hover:text-ink{{end}}">
+      {{if .Active}}{{template "verso-nav-marker"}}{{end}}
+      <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-sub verso-nav-sub-{{$i}}" class="verso-vt relative flex min-w-0 flex-1 items-center"><span class="min-w-0 truncate">{{.Label}}</span></span>
     </a></li>
     {{end}}
   </ul>
