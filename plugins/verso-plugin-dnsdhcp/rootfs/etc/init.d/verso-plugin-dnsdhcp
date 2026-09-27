@@ -23,3 +23,9 @@ start_service() {
 	procd_set_param stderr 1
 	procd_close_instance
 }
+
+# The page's blocklist switch writes adblock's config, and adblock sets no
+# trigger of its own, so an applied change would wait for a reboot.
+service_triggers() {
+	procd_add_config_trigger "config.change" "adblock" /etc/init.d/adblock reload
+}
