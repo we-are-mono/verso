@@ -47,7 +47,5 @@
 /.agents/
 /.codex/
 
-# Impeccable's per-machine state; its design.json sidecar is shared
-/.impeccable/config.local.json
-/.impeccable/hook.cache.json
-/.impeccable/critique/
+# Impeccable's state, all of it local
+/.impeccable/
