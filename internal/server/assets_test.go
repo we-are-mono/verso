@@ -148,6 +148,27 @@ func TestEveryBehaviourFileIsEmbedded(t *testing.T) {
 	}
 }
 
+// TestADevRedeployWaitsForUnsavedWork: the dev reload that follows a redeploy
+// asks the page's unsaved-work guard first and holds while it answers yes, so a
+// redeploy never throws the browser's leave prompt over a half-made edit; the
+// guard answers without changing anything.
+func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
+	forms, err := scriptFS.ReadFile("assets/verso-forms.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(forms), "dirty: function () {") {
+		t.Error("versoDirtyState has no read-only dirty() for the dev reload to ask")
+	}
+	dev, err := scriptFS.ReadFile("assets/verso-dev.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(dev), "window.versoDirtyState.dirty()") {
+		t.Error("the dev reload does not ask whether the page holds unsaved work")
+	}
+}
+
 // TestStylesheetTypeSystem: the two faces are the only faces, and each is
 // declared across the weights its file actually carries (both are variable),
 // so a weight the design asks for (the top bar's light maker line) is drawn

@@ -71,6 +71,12 @@
   }).observe(document.body, { childList: true, subtree: true });
 
   window.versoDirtyState = {
+    // dirty answers whether leaving now would lose unsaved work, changing
+    // nothing — the question the dev reload asks before it reloads.
+    dirty: function () {
+      refreshForms();
+      return Object.keys(sources).some(function (key) { return sources[key]; });
+    },
     set: function (source, dirty) {
       sources[source] = !!dirty;
     },

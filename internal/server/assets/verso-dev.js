@@ -9,6 +9,11 @@
 // also carries the shell's per-process id (X-Verso-Boot), and a change there means the
 // shell was redeployed: reload the whole page. CSP-safe: a same-origin fetch and an
 // inline <style> edit, no eval, no new script.
+//
+// A redeploy that lands while a form holds unsaved work waits for it: the reload is
+// held until the work is saved or undone, so a redeploy never throws the browser's
+// leave prompt over a half-made edit. The dev shell hands its sessions to the next
+// (Server.Close), so the save still goes through on the new build.
 (function () {
   var url = "/assets/verso.css";
   var style = document.getElementById("verso-css");
@@ -17,8 +22,17 @@
   // the first paint itself is the exact baseline — no first-fetch race.
   var last = style.textContent;
   var boot = null;
+  var redeployed = false;
+
+  function unsaved() {
+    return !!(window.versoDirtyState && window.versoDirtyState.dirty());
+  }
 
   function poll() {
+    if (redeployed) {
+      if (!unsaved()) location.reload();
+      return;
+    }
     fetch(url, { cache: "no-store" })
       .then(function (r) {
         if (!r.ok) return null;
@@ -26,7 +40,8 @@
         if (boot === null) {
           boot = id;
         } else if (id !== null && id !== boot) {
-          location.reload();
+          redeployed = true;
+          if (!unsaved()) location.reload();
           return null;
         }
         return r.text();
