@@ -4,10 +4,9 @@ How we package Verso as an OpenWrt **apk**, serve it from a tiny signed repo on
 the dev box, and install/upgrade it on the production router — with **no SSH into
 the router** (it pulls).
 
-The build-and-publish half is now `make apk` / `make apk-publish` (§2–3); this
+The build-and-publish half is `make apk` / `make apk-publish` (§2–3); this
 runbook explains what those do and why, plus the one-time server setup (§1) and
-the router-side install (§4–5), which stay manual. The router pull-watcher is
-still TODO (see the end).
+the install and upgrade, which are run on the router's console (§4–5).
 
 ---
 
@@ -234,18 +233,6 @@ binary hot-swap.
 5. **Auth null-byte decoy bug** (code, now fixed): the passwordless-login guard
    probed with `password + "\x00decoy-…"`; rpcd/crypt truncates at the NUL, so the
    decoy collapsed onto the real password and every real login was rejected. The
-   decoy is now a fresh random string with no NUL. Reproduce locally by setting a
+   decoy is a fresh random string with no NUL. Reproduce locally by setting a
    root password in the dev container (`passwd root`) — it's passwordless by
    default, which is why this hid.
-
----
-
-## TODO — automation (not built yet)
-
-The dev-box half — cross-build → `mkpkg` (versioned, `fakeroot`-owned, signed) →
-`mkndx` → publish — is now `make apk` / `make apk-publish`. What's left:
-
-- **Pull-watcher on the router** (no SSH): a tiny procd service that polls a
-  version stamp on the repo and runs the §5 upgrade line when it changes — so the
-  loop is one command on the dev box and the router self-updates. Dev-only; ship
-  disabled.
