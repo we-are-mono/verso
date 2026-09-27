@@ -1282,6 +1282,17 @@ impl Widget {
         self
     }
 
+    /// locked fixes a field's value where it stands: the shell draws it in the
+    /// field's own row, a quiet box with a padlock, the reason it cannot
+    /// change raised on its label, and posts nothing.
+    pub fn locked(mut self, reason: &str) -> Widget {
+        if let Widget::Field { style, help, .. } = &mut self {
+            *style = "locked".into();
+            *help = reason.into();
+        }
+        self
+    }
+
     /// writes names the option this field sets, verbatim, for the mono chip the
     /// shell puts beside the label. Reach for it where the config's own name for
     /// the setting is worth showing to someone who already knows it.
@@ -2886,6 +2897,21 @@ mod tests {
         assert!(bare.get("label").is_none() && bare.get("help").is_none());
         let text = serde_json::to_value(Widget::text("a").labelled("x", "y")).unwrap();
         assert!(text.get("label").is_none());
+    }
+
+    // A locked field is a value fixed where it stands, drawn in the field's
+    // own row with the reason it cannot change.
+    #[test]
+    fn a_fixed_value_is_locked_where_it_stands() {
+        let name = serde_json::to_value(
+            Widget::field("name", "Name", "lan", "", "").locked("Named once."),
+        )
+        .unwrap();
+        assert_eq!(name["style"], "locked");
+        assert_eq!(name["help"], "Named once.");
+        assert_eq!(name["value"], "lan");
+        let text = serde_json::to_value(Widget::text("a").locked("x")).unwrap();
+        assert!(text.get("style").is_none());
     }
 
     // A reveal folds optional rows behind a quiet act, and arrives open when
