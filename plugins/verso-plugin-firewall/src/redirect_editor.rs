@@ -171,7 +171,7 @@ fn page(
             // the rule and zone panels carry, and the same reason: the form asks
             // its questions in plain words, and someone who knows the config
             // reads this to check the plain words said what they meant.
-            Widget::preview(
+            Widget::config_preview(
                 CONFIG_PATH,
                 &uci_block(section.unwrap_or(NEW_SECTION), redirect),
             ),

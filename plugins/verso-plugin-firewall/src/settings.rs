@@ -237,7 +237,7 @@ pub fn page(model: &Firewall) -> Envelope {
                                 section.ruled()
                             }
                         })
-                        .chain(std::iter::once(Widget::preview(
+                        .chain(std::iter::once(Widget::config_preview(
                             CONFIG_PATH,
                             &written(model),
                         )))

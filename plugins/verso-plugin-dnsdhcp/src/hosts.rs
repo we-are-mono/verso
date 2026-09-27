@@ -370,7 +370,7 @@ fn controls(host: &Host, errors: &Errors, subject: Subject) -> Vec<Widget> {
 fn footnote(section: Option<&str>, host: &Host) -> Widget {
     // Not a live preview: this page's block is built where it is rendered, and
     // making it follow the form is a decision for this plugin's own pass.
-    Widget::code(
+    Widget::config(
         &format!("/etc/config/{CONFIG}"),
         &uci_preview(section, host),
     )

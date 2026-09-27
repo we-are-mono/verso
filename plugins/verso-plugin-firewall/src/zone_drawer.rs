@@ -154,7 +154,7 @@ pub fn blank(
 ) -> RowDrawer {
     let (title, sub, mut fields) = tab_body(model, None, form, reaches, errors, tab);
     fields.extend(carried(form, reaches, tab));
-    fields.push(Widget::preview(
+    fields.push(Widget::config_preview(
         CONFIG_PATH,
         &uci_block(NEW, form, reaches, false),
     ));
@@ -278,7 +278,7 @@ fn body(
 ) -> Vec<Widget> {
     let (title, sub, mut fields) = tab_body(model, Some(zone), form, reaches, errors, tab);
     fields.extend(carried(form, reaches, tab));
-    fields.push(Widget::preview(
+    fields.push(Widget::config_preview(
         CONFIG_PATH,
         &uci_block(&zone.section, form, reaches, true),
     ));

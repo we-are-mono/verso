@@ -43,8 +43,8 @@ pub fn tab(policy: &Policy, leases: &Leases, errors: &Errors) -> Envelope {
         // Two files, two blocks — so neither is declared live: only one preview
         // per form can be kept current, and choosing between these two is this
         // plugin's call rather than a side effect of the firewall's.
-        Widget::code("/etc/config/firewall", &form::rule_preview(policy, &name)),
-        Widget::code("/etc/config/qos", &form::caps_preview(policy, &name)),
+        Widget::config("/etc/config/firewall", &form::rule_preview(policy, &name)),
+        Widget::config("/etc/config/qos", &form::caps_preview(policy, &name)),
     ]);
     Envelope::page(LABEL, body)
         .with_commit_row(CTA, NOTE)

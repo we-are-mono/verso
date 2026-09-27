@@ -89,7 +89,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
     // A rule that does not exist yet has no config to preview and no hits to
     // count: the panel states what it will be, not what it is.
     fields.extend(carried(form, tab));
-    fields.push(Widget::preview(CONFIG_PATH, &uci_block(NEW, form)));
+    fields.push(Widget::config_preview(CONFIG_PATH, &uci_block(NEW, form)));
     RowDrawer {
         title: "New rule".into(),
         tabs: new_tabs(form, model, tab),
@@ -222,7 +222,7 @@ fn schedule_state(form: &RuleForm) -> String {
 fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &str) -> Vec<Widget> {
     let (title, sub, mut fields) = tab_body(model, form, errors, tab);
     fields.extend(carried(form, tab));
-    fields.push(Widget::preview(
+    fields.push(Widget::config_preview(
         CONFIG_PATH,
         &uci_block(&rule.section, form),
     ));
@@ -1086,6 +1086,22 @@ mod tests {
                 {"value": "guest", "label": "guest"}
             ])
         );
+    }
+
+    // The card at the foot of every reading is the file the rule is written
+    // into, declared in its grammar so the shell reads it as an editor would.
+    #[test]
+    fn the_rule_is_written_in_the_uci_grammar() {
+        for body in [
+            open("everything"),
+            opened_new(),
+            opened_on("everything", WHEN),
+        ] {
+            let card = fixture::find_with(&body, &|value| value["type"] == "code")
+                .expect("the configuration card");
+            assert_eq!(card["grammar"], "uci");
+            assert_eq!(card["live"], true);
+        }
     }
 
     // An exclusion is the rare half of an include/exclude condition, so it
