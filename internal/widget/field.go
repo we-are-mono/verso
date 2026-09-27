@@ -165,10 +165,13 @@ func (f *Field) explanation() string {
 // asked of the same object, and a form that draws them differently reads as two
 // forms stacked.
 type fieldLabel struct {
-	For       string
-	Group     bool
-	Label     string
-	Key       string
+	For   string
+	Group bool
+	Label string
+	Key   string
+	// Mono sets a label that is a machine string (a path) in mono, as the
+	// typography contract sets every verbatim string.
+	Mono      bool
 	Explained bool
 	Tip       TipView
 	// Staged draws the stage's mark beside the key: this setting's change
@@ -327,10 +330,6 @@ func (f *Field) Measure() string {
 	if f.Kind == "select" || f.Kind == "checks" || f.Kind == "password" || f.Kind == "textarea" {
 		return "full"
 	}
-	// A value counted in a unit is a quantity, whatever its key is called.
-	if f.Unit != "" {
-		return "number"
-	}
 	switch f.Datatype {
 	case "ip4addr", "ip6addr", "ipaddr":
 		return "address"
@@ -338,7 +337,7 @@ func (f *Field) Measure() string {
 		return "number"
 	}
 	switch f.Key {
-	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize":
+	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "synflood_rate", "synflood_burst":
 		return "number"
 	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime":
 		return "address"

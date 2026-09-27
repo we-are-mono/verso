@@ -152,7 +152,7 @@
 {{/* verso-field-label-class: a setting's name, wherever a box is labelled —
      a form row, and the sign-in form that stands outside any row. */}}
 {{define "verso-field-label-class"}}text-sm font-semibold text-ink{{end}}
-{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{template "verso-field-label-class"}}{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
+{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — the chip's
@@ -188,6 +188,11 @@
 {{end}}
 </div>{{end}}
 {{define "verso-field-desc-class"}}text-sm leading-snug text-pretty text-body{{end}}
+
+{{/* verso-switch-group: the checkbox rows of one setting asked of several
+     things (switchGroupView) — which files load — under the row's one label,
+     which names the group for a screen reader too. */}}
+{{define "verso-switch-group"}}<div role="group" aria-labelledby="{{.Group}}" class="verso-switch-group">{{range .Rows}}{{.}}{{end}}</div>{{end}}
 
 {{/* verso-box: one frame holding typed values (boxView). A value counted in
      a unit is a box of one part, its unit words inside the frame after it, so

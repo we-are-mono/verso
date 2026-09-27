@@ -159,11 +159,26 @@ func TestOnlyTypedValuesFuse(t *testing.T) {
 	}
 }
 
-// TestAUnitMakesANumberBox: a value counted in a unit is a quantity, so it
-// takes the number measure, and its unit is words inside the box's frame —
-// the box as wide as the value and the unit, however long the unit's word.
+// TestAUnitIsNotANumber: a unit is words after the value, and a suffix such
+// as a file's extension is one too — the box keeps the value's own measure
+// and asks for no number pad.
+func TestAUnitIsNotANumber(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "filename", Label: "File name", Value: "10-local", Unit: ".conf"})
+	for _, want := range []string{`class="verso-box"`, `data-verso-measure="full"`, `<span id="filename-unit" class="verso-box-unit">.conf</span>`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("suffix field missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, `inputmode="numeric"`) {
+		t.Errorf("a suffix does not make a number:\n%s", got)
+	}
+}
+
+// TestAUnitMakesANumberBox: a number counted in a unit sits in a box of one
+// part, its unit words inside the frame — the box as wide as the value and
+// the unit, however long the unit's word.
 func TestAUnitMakesANumberBox(t *testing.T) {
-	got := render(t, newRenderer(t), &Field{Name: "rate", Label: "Rate", Key: "rate", Value: "25", Unit: "Mbit/s"})
+	got := render(t, newRenderer(t), &Field{Name: "rate", Label: "Rate", Key: "synflood_rate", Value: "25", Unit: "Mbit/s"})
 	for _, want := range []string{
 		`class="verso-box"`, `class="verso-box-part" data-verso-measure="number"`,
 		`inputmode="numeric"`, `<span id="rate-unit" class="verso-box-unit">Mbit/s</span>`,

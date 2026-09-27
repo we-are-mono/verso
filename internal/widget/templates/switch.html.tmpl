@@ -16,8 +16,10 @@
 {{/* An 18px white box with a contrasting outline. Checked, it uses the shared
      choice colour with a white check; keyboard focus has a separate outline. */}}
 {{define "switch.control"}}<span class="relative inline-flex size-4.5 shrink-0 cursor-pointer items-center justify-center">
-  <input type="checkbox" data-verso-switch{{if .Name}} id="{{.Name}}" name="{{.Name}}"{{end}}{{with .Label}} aria-label="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}} class="peer sr-only" value="1"{{if .On}} checked{{end}}>
-  <span class="absolute inset-0 rounded-xs border border-choice-border bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep"></span>
+  <input type="checkbox" data-verso-switch{{if .Name}} id="{{.Name}}"{{if not .Disabled}} name="{{.Name}}"{{end}}{{end}}{{with .Label}} aria-label="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}} class="peer sr-only" value="1"{{if .On}} checked{{end}}{{if .Disabled}} disabled{{end}}>
+  {{/* A fixed state (disabled) keeps its shape and its check in the inert
+       sand, so it reads as stated rather than as a choice not yet made. */}}
+  <span class="absolute inset-0 rounded-xs border border-choice-border bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert"></span>
   <span class="relative text-white opacity-0 peer-checked:opacity-100">{{icon "check" "size-3.5 [stroke-width:3]"}}</span>
 </span>{{end}}
 <label class="inline-flex cursor-pointer items-center">{{template "switch.control" .}}</label>

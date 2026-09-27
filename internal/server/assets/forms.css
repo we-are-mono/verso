@@ -155,6 +155,16 @@
     white-space: nowrap;
   }
 
+  /* A switch group's rows stand under the group's label as its control: each
+     is a checkbox row of its own, spaced as a list's rows are rather than as
+     the settings around them. */
+  .verso-switch-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 3);
+  }
+  .verso-switch-group > .verso-field-row { padding-block: 0; }
+
   /* A removable row still reads label → input → remove. Reserve the same
      trailing lane on fixed rows belonging to that editable set. */
   .verso-field-with-remove {

@@ -124,6 +124,60 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 	return r.renderFrame(out, "verso-box", box, frame)
 }
 
+// switchGroup reports whether a labelled group of related fields is switches
+// only — one setting asked of several things, which files load — which the
+// shell draws as one row: the label, then a checkbox row per switch.
+func (g *Grid) switchGroup() ([]*Switch, bool) {
+	if g.Style != "form" || g.Label == "" || len(g.Children) == 0 {
+		return nil, false
+	}
+	switches := make([]*Switch, 0, len(g.Children))
+	for _, child := range g.Children {
+		s, ok := child.(*Switch)
+		if !ok || s.Style == "inline" {
+			return nil, false
+		}
+		switches = append(switches, s)
+	}
+	return switches, true
+}
+
+// switchGroupView is a switch group's checkbox rows and the id of the label
+// that names them.
+type switchGroupView struct {
+	Group string
+	Rows  []template.HTML
+}
+
+// renderSwitchGroup draws a labelled group of switches as one setting's row:
+// the group's label on top with the options its switches write named once,
+// and under it one checkbox row per switch, each with its own words, its own
+// change and its own mark.
+func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch) error {
+	id := switches[0].Name + "-group"
+	view := switchGroupView{Group: id + "-label"}
+	var keys []string
+	seen := map[string]bool{}
+	for _, s := range switches {
+		if s.Key != "" && !seen[s.Key] {
+			seen[s.Key] = true
+			keys = append(keys, s.Key)
+		}
+		control, frame := s.grouped()
+		var row strings.Builder
+		if err := r.renderFrame(&row, "switch.row", control, frame); err != nil {
+			return err
+		}
+		view.Rows = append(view.Rows, template.HTML(row.String()))
+	}
+	key := strings.Join(keys, " · ")
+	label := fieldLabel{
+		For: id, Group: true, Label: g.Label, Key: key, Explained: g.Help != "",
+		Tip: TipView{ID: id + "-tip", Tip: g.Help, Footer: key},
+	}
+	return r.renderFrame(out, "verso-switch-group", view, fieldFrame{Label: label})
+}
+
 // gridView is the template model: the style and the declared count, which the
 // template turns into column classes, plus the pre-rendered children. The classes
 // are the template's to state, not this file's — the stylesheet is built from the
@@ -137,6 +191,9 @@ type gridView struct {
 func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if fields, ok := g.fusable(); ok {
 		return r.renderFused(out, g, fields)
+	}
+	if switches, ok := g.switchGroup(); ok {
+		return r.renderSwitchGroup(out, g, switches)
 	}
 	children, err := r.renderChildren(g.Children, csrf)
 	if err != nil {

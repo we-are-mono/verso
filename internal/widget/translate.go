@@ -200,7 +200,9 @@ func translateFields(w Widget, t func(string) string) {
 			n.Sub = t(n.Sub)
 		}
 	case *Switch:
-		n.Label = t(n.Label)
+		if !n.Verbatim {
+			n.Label = t(n.Label)
+		}
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
 	case *ActionBar:
