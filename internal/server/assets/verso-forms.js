@@ -1149,7 +1149,10 @@
         if (!live || !html.trim()) return;
         var parsed = new DOMParser().parseFromString(html, "text/html");
         var fresh = parsed.querySelector("[data-verso-preview]");
-        if (fresh) live.replaceWith(fresh);
+        if (fresh) {
+          live.replaceWith(fresh);
+          markChanges(form);
+        }
       });
     }).catch(function () {
       // A preview that could not be fetched leaves the last good one on screen:
@@ -1219,20 +1222,35 @@
     if (kind === "checkbox" || kind === "radio") return false;
     var option = row.getAttribute("data-verso-writes");
     if (!option) return false;
-    var line = new RegExp("^(\toption " + option.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " ')(.*)(')$", "m");
-    var was = body.textContent;
-    if (!line.test(was)) return false;
+    var name = option.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     var value = el.value;
     // Emptying a control is not writing an empty value: absence is how this
     // config says "no condition", and a plugin that drops the option entirely is
     // the common case. Whether the line goes or stays is its answer to give, so
     // an emptied control patches nothing and simply asks.
     if (value === "") return false;
-    // A function replacement, so a value carrying $ is the value and not a
-    // capture-group reference.
-    var now = was.replace(line, function (_, head, __, tail) { return head + value + tail; });
-    if (now === was) return false;
-    body.textContent = now;
+    var now;
+    var lines = body.querySelectorAll("[data-verso-line]");
+    if (lines.length) {
+      // A block read in its grammar holds each line as an element and each
+      // value as its own token, so only the value changes and every token
+      // keeps its ink while the plugin's answer is on its way.
+      var own = new RegExp("^\toption " + name + " '.*'$");
+      var line = [].find.call(lines, function (l) { return own.test(l.textContent); });
+      var token = line && line.querySelector("[data-verso-value]");
+      if (!token || token.textContent === value) return false;
+      token.textContent = value;
+      now = body.textContent;
+    } else {
+      var whole = new RegExp("^(\toption " + name + " ')(.*)(')$", "m");
+      var was = body.textContent;
+      if (!whole.test(was)) return false;
+      // A function replacement, so a value carrying $ is the value and not a
+      // capture-group reference.
+      now = was.replace(whole, function (_, head, __, tail) { return head + value + tail; });
+      if (now === was) return false;
+      body.textContent = now;
+    }
     // The copy control holds its own copy of the value, and copying a stale one
     // is worse than not offering it.
     var src = preview.querySelector('[x-ref="src"]');
@@ -1240,14 +1258,53 @@
     return true;
   }
 
+  // What the preview said before this form was first touched: the reading the
+  // gutter holds every later one against, so a line the form has changed, or
+  // added, is marked where the eye already looks for a line — its number.
+  var before = new WeakMap();
+
+  function linesOf(preview) {
+    var body = preview && preview.querySelector("[data-verso-preview-body]");
+    return body ? body.textContent.split("\n") : [];
+  }
+
+  // A line is the same line while it says the same thing before its value:
+  // `option limit` whatever the limit, a section by its type and name. A list
+  // writes one line a value, so a list line is only ever itself.
+  function lineKey(line) {
+    var text = line.trim();
+    return /^list /.test(text) ? text : text.replace(/\s*'[^']*'$/, "");
+  }
+
+  function markChanges(form) {
+    var preview = previewOf(form);
+    var was = before.get(form);
+    var gutter = preview && preview.querySelector("[data-verso-preview-gutter]");
+    if (!gutter || !was) return;
+    var had = new Map();
+    was.forEach(function (line) { had.set(lineKey(line), line); });
+    var numbers = gutter.querySelectorAll("[data-verso-gutter-line]");
+    linesOf(preview).forEach(function (line, i) {
+      var number = numbers[i];
+      if (!number) return;
+      var key = lineKey(line);
+      var change = !had.has(key) ? "added" : had.get(key) !== line ? "changed" : "";
+      if (change) number.setAttribute("data-verso-change", change);
+      else number.removeAttribute("data-verso-change");
+    });
+  }
+
   function watch(event) {
     var el = event.target;
     if (!el || !el.closest) return;
     var form = el.closest("form");
     if (!form || !previewOf(form)) return;
+    if (!before.has(form)) before.set(form, linesOf(previewOf(form)));
+    var patched = patch(form, el);
+    if (patched) markChanges(form);
     // Zero, not immediate: a burst that lands in one tick — a control that
     // rewrites several fields at once — still asks once.
-    schedule(form, settled(event) ? 0 : QUIET, patch(form, el));
+    schedule(form, settled(event) ? 0 : QUIET, patched);
   }
 
   document.addEventListener("input", watch);

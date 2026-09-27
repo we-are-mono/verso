@@ -308,6 +308,19 @@
     text-transform: uppercase;
     color: var(--color-meta);
   }
+  /* A configuration card's gutter marks what the form has done to the file
+     since it was opened (verso-forms.js): a line changed wears the stage's
+     marigold, a line added green — a bar at the gutter's edge and the number
+     in the same hue's deep ink, where the eye already looks for a line. */
+  [data-verso-gutter-line][data-verso-change="changed"] {
+    box-shadow: inset 3px 0 0 var(--color-marigold);
+    color: var(--color-marigold-deep);
+  }
+  [data-verso-gutter-line][data-verso-change="added"] {
+    box-shadow: inset 3px 0 0 var(--color-green);
+    color: var(--color-green-deep);
+  }
+
   /* The card is the block's edge, so the act that adds to it needs no rule of
      its own under it. */
   .verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker] {

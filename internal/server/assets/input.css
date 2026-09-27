@@ -806,9 +806,6 @@ html.verso-fonts-loading body {
   [data-verso-form-column]:not([data-verso-form-column] *, [role="dialog"] *) {
     padding-inline-end: calc(var(--spacing) * 10);
   }
-  [data-verso-form-column] [data-verso-code-divider]:not([role="dialog"] *) {
-    padding-top: calc(var(--spacing) * 8);
-  }
 
   /* A page's masthead — its title's line and its acts — ends where Log out
      does, whatever measure the column below keeps: the page's gutter in from

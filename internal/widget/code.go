@@ -37,7 +37,8 @@ type Code struct {
 // CodeLine is one line of a Code block read in its grammar: the indent it
 // keeps, the keyword that opens it (config, option, list), the key after the
 // keyword, and the quoted value, held apart so each can be set in its own
-// ink. A line the grammar does not read keeps its whole text in Raw.
+// ink. A comment is set whole in its own ink; any other line the grammar does
+// not read keeps its whole text in Raw.
 type CodeLine struct {
 	Indent  string
 	Keyword string
@@ -45,8 +46,14 @@ type CodeLine struct {
 	Value   string // the text between the quotes; Quoted says there were any
 	Quoted  bool
 	Rest    string // what follows an unquoted key (a bare value, or nothing)
+	Comment bool
 	Raw     string
+	Number  int // the line's place in the block, from 1, for the gutter
 }
+
+// Section reports whether the line opens a section, whose key is the
+// section's type (`config rule`) rather than an option's name.
+func (l CodeLine) Section() bool { return l.Keyword == "config" }
 
 // Lines reads the value in its grammar, one CodeLine a line, or nothing for
 // an opaque value, which the template shows whole.
@@ -55,8 +62,12 @@ func (c *Code) Lines() []CodeLine {
 		return nil
 	}
 	var lines []CodeLine
-	for _, raw := range strings.Split(c.Value, "\n") {
-		lines = append(lines, uciLine(raw))
+	// A file ends in a newline, and the line that closes is not a line of its
+	// own: numbered, it would read as an empty last line the file does not have.
+	for i, raw := range strings.Split(strings.TrimSuffix(c.Value, "\n"), "\n") {
+		line := uciLine(raw)
+		line.Number = i + 1
+		lines = append(lines, line)
 	}
 	return lines
 }
@@ -67,6 +78,9 @@ func (c *Code) Lines() []CodeLine {
 func uciLine(raw string) CodeLine {
 	body := strings.TrimLeft(raw, " \t")
 	indent := raw[:len(raw)-len(body)]
+	if strings.HasPrefix(body, "#") {
+		return CodeLine{Comment: true, Raw: raw}
+	}
 	keyword, rest, _ := strings.Cut(body, " ")
 	switch keyword {
 	case "config", "option", "list":

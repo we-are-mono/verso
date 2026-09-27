@@ -893,19 +893,59 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	}
 	got := raw.String()
 	for _, want := range []string{
-		"<span class=\"text-meta\">config</span> interface <span class=\"text-meta\">'</span>lan<span class=\"text-meta\">'</span>\n\t<span class=\"text-meta\">option</span> device <span class=\"text-meta\">'</span>br-lan<span class=\"text-meta\">'</span>\n\t<span class=\"text-meta\">list</span> dns",
+		// Read as an editor reads a file: the keyword in denim, a section's
+		// type in amethyst, an option's name in Ink, its value in green, the
+		// quotes in Meta; each line its own element, the whitespace its own.
+		`<span data-verso-line><span class="text-denim-deep">config</span> <span class="text-amethyst-deep">interface</span> <span class="text-meta">'</span><span data-verso-value class="text-green-deep">lan</span><span class="text-meta">'</span></span>` + "\n" +
+			`<span data-verso-line>` + "\t" + `<span class="text-denim-deep">option</span> device <span class="text-meta">'</span><span data-verso-value class="text-green-deep">br-lan</span><span class="text-meta">'</span></span>`,
+		"\n" + `<span data-verso-line>` + "\t" + `<span class="text-denim-deep">list</span> dns `,
+		// The file it goes into heads it, as an editor's tab does, with the
+		// copy control on that line and the whole text behind it.
+		`data-verso-code-head`,
+		`<span class="min-w-0 truncate font-mono text-sm font-medium text-meta">/etc/config/network · interface</span>`,
 		`<span x-ref="src" class="hidden">config interface &#39;lan&#39;`,
+		// A gutter numbers the lines, apart from the text, so selecting and
+		// copying the text takes none of it.
+		`data-verso-preview-gutter aria-hidden="true"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("uci code block missing %q in: %s", want, got)
 		}
 	}
-	if strings.Count(got, "text-meta\">option") != 2 || strings.Count(got, "text-meta\">list") != 1 {
+	if n := strings.Count(got, "data-verso-gutter-line"); n != 4 {
+		t.Errorf("one number a line, got %d: %s", n, got)
+	}
+	// A file ends in a newline; the line it closes is not a line of its own.
+	ended := &Code{Value: text + "\n", Grammar: "uci"}
+	if n := len(ended.Lines()); n != 4 {
+		t.Errorf("a trailing newline is not a line, got %d lines", n)
+	}
+	// The copy control's tip hangs above the head, outside the card, so the
+	// card must not clip what stands outside it; its pieces round their own
+	// corners instead.
+	frame := got[strings.Index(got, "data-verso-code-editor"):]
+	frame = frame[:strings.Index(frame, ">")]
+	if strings.Contains(frame, "overflow-hidden") {
+		t.Errorf("the card must not clip its copy control's tip: %s", frame)
+	}
+	if !strings.Contains(got, `data-verso-code-head class="flex h-9 items-center gap-2 rounded-t-xs`) {
+		t.Errorf("the head rounds its own corners: %s", got)
+	}
+	// The card stands 32px under the rule that sets it off, as a section's
+	// title stands under its rule — on a page and in a drawer alike.
+	if !strings.Contains(got, `class="flex flex-col gap-2 mt-7 border-t border-rule pt-8" data-verso-code-divider`) {
+		t.Errorf("the card stands 32px under its rule: %s", got)
+	}
+	// The path alone names the file: no glyph before it.
+	if head := got[strings.Index(got, "data-verso-code-head"):strings.Index(got, "/etc/config/network")]; strings.Contains(head, "<svg") {
+		t.Errorf("the head names the file by its path alone: %s", head)
+	}
+	if strings.Count(got, `text-denim-deep">option`) != 2 || strings.Count(got, `text-denim-deep">list`) != 1 {
 		t.Errorf("every keyword is set apart: %s", got)
 	}
-	// An opaque value is shown whole, as before.
+	// An opaque value is shown whole, as before: no editor, no gutter.
 	plain := render(t, r, &Code{Value: "config interface 'lan'"})
-	if strings.Contains(plain, "text-meta\">config") {
+	if strings.Contains(plain, "text-denim-deep") || strings.Contains(plain, "data-verso-preview-gutter") {
 		t.Errorf("a block without a grammar is one string: %s", plain)
 	}
 }
@@ -921,7 +961,8 @@ func TestUciLine(t *testing.T) {
 		{"config device", CodeLine{Keyword: "config", Key: "device", Raw: "config device"}},
 		{"\tlist ports 'lan 0'", CodeLine{Indent: "\t", Keyword: "list", Key: "ports", Value: "lan 0", Quoted: true, Raw: "\tlist ports 'lan 0'"}},
 		{"\toption mtu 1500", CodeLine{Indent: "\t", Keyword: "option", Key: "mtu", Rest: "1500", Raw: "\toption mtu 1500"}},
-		{"# a comment", CodeLine{Raw: "# a comment"}},
+		{"# a comment", CodeLine{Comment: true, Raw: "# a comment"}},
+		{"\t# an indented comment", CodeLine{Comment: true, Raw: "\t# an indented comment"}},
 		{"", CodeLine{Raw: ""}},
 		{"option", CodeLine{Raw: "option"}},
 	} {

@@ -120,6 +120,16 @@
     padding-top: 0;
   }
 
+  /* A section that ends on its configuration card ends there: the card is
+     what the form's Save follows, 20px under it (DESIGN: Configuration
+     cards), so the section's own closing air would only push Save away from
+     the card it belongs to. Hidden carriers after the card are skipped
+     (nth-last-child's "of", since a :has cannot stand inside a :has). */
+  section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"]))),
+  .verso-page-body > .verso-stack > section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"]))) {
+    padding-bottom: 0;
+  }
+
   /* A section holds its air itself, so the rows it starts and ends with give
      their own padding back: an untitled section's first visible row starts
      where the section does (a titled one keeps it, as the air under its
