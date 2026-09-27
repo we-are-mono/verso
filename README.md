@@ -12,9 +12,10 @@ that register with the shell and look native — **without writing HTML or CSS**
 > **Status:** exploratory prototype, built to production quality (test-first). It serves a
 > multi-page admin UI over live `ubus`/`uci` from a booted OpenWrt — login/session, staged
 > config changes with device-side rollback, package/service management — styled with a
-> design-token system and privilege-gated through rpcd (ADR-007). The plugin transport and
-> a broad widget set are in place; the open question is still whether a *third-party* plugin
-> renders native through the schema alone.
+> design-token system and privilege-gated through rpcd (ADR-007). The plugin transport, a
+> broad widget set and a Rust plugin SDK are in place, and the bundled pages (interfaces,
+> firewall, DNS and DHCP, device limits, system) are plugins built on it; the open question
+> is still whether a *third-party* plugin renders native through the schema alone.
 
 **Minimum target: 128 MB flash** (NAND-class). Flash is the binding constraint, not RAM:
 the shell is a single, deliberately unconstrained Go binary, and it plus its plugins fit
@@ -49,12 +50,16 @@ See `docs/ADR/005-ui-consistency-contract.md` for the full model.
 
 ## Architecture
 
-- **Language/runtime:** the shell is Go, a single statically-linked binary (~11 MB arm64),
+- **Language/runtime:** the shell is Go, a single statically-linked binary (~13 MB arm64),
   assets via `embed.FS`, **no CGo, no runtime dependencies.** Its privileged companion,
   `verso-rpcd`, is a small static Rust daemon (ADR-007).
+- **Plugins:** the bundled plugins are static Rust binaries built on the plugin SDK
+  (`plugins/verso-plugin-sdk`), each serving its pages on its own unix socket. The
+  contract itself is language-agnostic JSON (`docs/plugins.md`).
 - **Web layer:** stdlib `net/http` + `ServeMux` (routing table in `routes.go`, no
   framework), `html/template` (contextual auto-escaping — the safety net for
-  plugin-supplied data), and **HTMX** for interactivity (no SPA, no npm/Node build).
+  plugin-supplied data), **HTMX** for server round-trips and **Alpine** (its CSP build) for
+  in-page behaviour — no SPA, no npm/Node build, no inline script.
 - **Styling:** **Tailwind v4** standalone CLI (no Node) compiles `@theme` design tokens +
   component classes to an embedded stylesheet. Tokens are the consistency substrate; the
   generated CSS is committed so a bare `go build` stays self-contained.
@@ -83,15 +88,26 @@ internal/
   ubus/               pure-Go ubus blob/blobmsg client
   datatype/           declarative datatype validation (ADR-008)
   plugin/             plugin transport: unix-socket schema gateway (ADR-006)
+  i18n/               localization, the English source as the key (ADR-012)
+  updatecheck/        unattended package and firmware update checks (ADR-014)
   sysstat/ sensors/ telemetry/   host stat, sensor, and metric sources
   deviceicon/ version/   device-type icon by MAC OUI/hostname · build version stamp
+plugins/
+  verso-plugin-sdk/   the Rust plugin SDK: envelope, widgets, forms, serving
+  verso-plugin-*/     bundled plugins: interfaces, system, firewall, dnsdhcp, qos
 verso-rpcd/           persistent privileged Rust companion (ADR-007): src/ + Cargo
+i18n/                 the shell's translation catalogs (sl)
+profiles/             hardware profiles: sensors and board art per device
+packaging/apk/        package install and removal scripts
 docs/
-  ADR/                architecture decision records (001–011)
+  ADR/                architecture decision records (001–016)
+  building.md         building, packaging, versions, and installing on a router
+  plugins.md          the plugin contract for plugin authors
   ubus-protocol.md    reverse-engineered ubus wire-format reference
+DESIGN.md, PRODUCT.md the design system and the product it serves
 docker/rootfs/        OpenWrt overlay: verso + verso-rpcd services, netfix, ACLs, config
 Dockerfile, docker-compose.yml
-scripts/dev.sh        hot-reload dev loop
+scripts/              dev.sh (hot-reload dev loop), version.sh (the build's version)
 sources/              reference clones (openwrt, luci, libubox, ubus) — gitignored
 ```
 
@@ -104,9 +120,17 @@ the Tailwind CLI is auto-fetched (pinned) on first `make css`/`build`.
 ```sh
 make test           # go test ./... + cargo test (unit-tested with fakes; no device needed)
 make build          # cross-compiles both arches (compiles CSS first) ->
-                    #   build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64}
+                    #   build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64},
+                    #   build/verso-plugin-{interfaces,system,firewall,dnsdhcp,qos}-{amd64,arm64}
 make build-arm64    # just the device target (amd64 is the docker testbed's arch)
+make apk            # the signed router package, build/apk/verso-<version>.apk
+make version        # what this commit builds as
 ```
+
+A build's version is the latest `vX.Y.Z` tag and how many commits stand on it:
+the tagged commit builds `0.1.0-r0`, the third commit after it `0.1.0-r3`. A new
+version is a new tag. Packaging, publishing, and installing on a router are in
+[docs/building.md](docs/building.md).
 
 Run it against a real, booted OpenWrt in a container:
 
@@ -160,17 +184,11 @@ independent firewall4 upgrades and custom nft include considerations.
 | 009 | Core navigation and the shell/plugin ownership boundary |
 | 010 | Coordinated changes: prepare every owner, stage once, apply once |
 | 011 | Plugin management: the shell's trust surface |
+| 012 | Localization: the English source is the key |
+| 013 | Verso's own settings live in uci |
+| 014 | Unattended update checks |
+| 015 | Basic and Advanced: an app-wide reader mode |
 | 016 | Firewall packet logs: NFLOG isolation from kernel/system diagnostics |
-
-## Roadmap
-
-Done: the ADRs through 011 · native rpcd-authorized ubus/uci backend · login/session ·
-staged changes with device-side rollback · package/service management · privilege gating
-and the `verso-rpcd` companion · the closed widget set and the plugin transport · Tailwind ·
-OpenWrt-in-Docker router harness · hot-reload.
-
-Open: the load-bearing bet — a *third-party* plugin rendering native through the schema
-alone — and the widgets that bet still needs (e.g. live chart rendering).
 
 ## Caveats
 
