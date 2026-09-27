@@ -148,6 +148,22 @@ func TestEveryBehaviourFileIsEmbedded(t *testing.T) {
 	}
 }
 
+// TestAPackageDrawerShowsItsFilesAsItOpens: the files a package installed are
+// always visible in its drawer — read in when the drawer opens (the link comes
+// into view), not on a click, and never for every row at page load. The link
+// stays as the way in without script.
+func TestAPackageDrawerShowsItsFilesAsItOpens(t *testing.T) {
+	src, err := scriptFS.ReadFile("assets/verso-packages.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"IntersectionObserver", `a[href^="/system/packages/files?"]`, "loadFiles("} {
+		if !strings.Contains(string(src), want) {
+			t.Errorf("verso-packages.js should read a drawer's files in as it opens; missing %q", want)
+		}
+	}
+}
+
 // TestADevRedeployWaitsForUnsavedWork: the dev reload that follows a redeploy
 // asks the page's unsaved-work guard first and holds while it answers yes, so a
 // redeploy never throws the browser's leave prompt over a half-made edit; the

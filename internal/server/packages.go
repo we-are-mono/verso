@@ -68,6 +68,11 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	if errMsg != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Title: "Action failed", Body: errMsg})
 	}
+	// An update of every package is started here, so what became of it is said
+	// here, once.
+	if err := packageUpgrade.takeFailure(); err != nil {
+		children = append(children, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Package update failed: %v"), err)})
+	}
 	if feedRefresh.running() {
 		children = append(children, refreshingInstead(
 			"The list returns as soon as the refresh finishes — reload the page in a moment."))
@@ -101,9 +106,14 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 			row := &table.Rows[i]
 			if version := upgrades[row.ID]; version != "" && (!all || pkgs[i].Installed) {
 				row.Tags = []string{"upgradable"}
-				row.Cells[1].Dot, row.Cells[1].Variant = true, "warning"
-				row.Cells[4].Actions = append([]widget.TableRowAct{{Icon: "upload", Title: "Upgrade", Opens: true}}, row.Cells[4].Actions...)
-				packageUpgradeDrawer(row.Drawer, row.ID, version)
+				// What it becomes, under what it is: the installed version
+				// recedes and the available one is led by an arrow in the action's
+				// colour — an update on offer is news, not a warning.
+				row.Cells[1].Sub, row.Cells[1].Variant = version, "info"
+				row.Cells[4].Actions = append([]widget.TableRowAct{{Icon: "upload", Title: "Update", Opens: true}}, row.Cells[4].Actions...)
+				p := pkgs[i]
+				p.Installed = true
+				row.Drawer = packageDrawer(p, version)
 			}
 		}
 		children = append(children, table)
@@ -154,9 +164,18 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		return
 	}
 	// Install is the page's forward act, so it sits on the heading line where
-	// every listing keeps its primary, and opens the search panel in place.
+	// every listing keeps its primary, and opens the search panel in place. While
+	// anything installed has a newer version, the act that updates them all
+	// stands beside it: this is where the upgradable list is.
 	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
-	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: s.headingAct(r, install, lang, t)}
+	acts := s.headingAct(r, install, lang, t)
+	if n := len(truth.Packages); n > 0 || packageUpgrade.running() {
+		var update strings.Builder
+		if err := s.widgets.RenderWithToken(&update, packagesUpdateAct(n), s.sessionCSRF(r), lang, t); err == nil {
+			acts = template.HTML(`<div class="flex flex-wrap items-center gap-3">`) + template.HTML(update.String()) + acts + template.HTML(`</div>`) //nolint:gosec // rendered by the shell's own templates
+		}
+	}
+	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: acts}
 	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(page.String()))
 }
 
@@ -187,14 +206,46 @@ func packageListingTable(pkgs []openwrt.Package) *widget.Table {
 }
 
 // packageRow keeps the row terse; the drawer is where the package tells its
-// story — description, license, size, homepage — and offers the Remove.
+// story. A package that can go is removed from the row, never from the drawer:
+// its trash act asks first, then posts the one pair (remove=<name>).
 func packageRow(p openwrt.Package) widget.TableRow {
-	desc := p.Description
-	if desc == "" {
-		desc = "No description in the package."
+	size := "—"
+	if p.Size > 0 {
+		size = humanSize(p.Size)
+	}
+	acts := []widget.TableRowAct{{Icon: "lock", Title: "Required package"}}
+	if !p.Installed {
+		acts = []widget.TableRowAct{{Icon: "download", Title: "Install", Opens: true}}
+	} else if p.Removable {
+		acts = []widget.TableRowAct{{Icon: "trash-2", Title: "Remove", Name: "remove", Value: p.Name,
+			ConfirmTitle: "Remove %s?",
+			Confirm:      "Everything it installed is taken off the router, and whatever needs it may stop working."}}
+	}
+	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
+		{Text: p.Name, Opens: true}, {Text: p.Version}, {Text: packageDescription(p)}, {Text: size}, {Actions: acts},
+	}, Drawer: packageDrawer(p, "")}
+}
+
+func packageDescription(p openwrt.Package) string {
+	if p.Description == "" {
+		return "No description in the package."
+	}
+	return p.Description
+}
+
+// packageDrawer is one package in one flow, nothing to navigate: what it is,
+// its project's site, its facts — the version stating what it becomes when an
+// update is on offer (available) — the files it installed, which the drawer
+// reads in as it opens (verso-packages.js), and last its one act, named for
+// what it does to what: installing a package not yet here, or updating one
+// that has a newer version. Removing is the row's act, not the drawer's.
+func packageDrawer(p openwrt.Package, available string) *widget.RowDrawer {
+	children := []widget.Widget{&widget.Text{Markdown: packageDescription(p)}}
+	if website := packageWebsite(p.Webpage); website != nil {
+		children = append(children, website)
 	}
 	props := []widget.Property{
-		{Label: "Version", Value: p.Version, Mono: true},
+		{Label: "Version", Value: p.Version, Next: available, Mono: true},
 		{Label: "Feed", Value: p.Feed, Mono: true},
 	}
 	if p.License != "" {
@@ -208,37 +259,17 @@ func packageRow(p openwrt.Package) widget.TableRow {
 	} else if p.Installed && !p.Removable {
 		props = append(props, widget.Property{Label: "Removal", Value: "Protected system package"})
 	}
-	drawer := []widget.Widget{
-		&widget.Text{Markdown: desc},
-	}
-	if website := packageWebsite(p.Webpage); website != nil {
-		drawer = append(drawer, website)
-	}
-	drawer = append(drawer,
-		&widget.Properties{Style: "system", Items: props},
-	)
+	children = append(children, &widget.Properties{Style: "system", Items: props})
 	if p.Installed {
-		drawer = append(drawer, &widget.Link{Label: "Files it installed", Href: "/system/packages/files?package=" + url.QueryEscape(p.Name)})
+		children = append(children, &widget.Link{Label: "Installed files", Href: "/system/packages/files?package=" + url.QueryEscape(p.Name)})
 	}
-	if !p.Installed {
-		drawer = append(drawer, packageActionForm(p.Name, "install", "Install"))
-	} else if p.Removable {
-		drawer = append(drawer, packageActionForm(p.Name, "remove", "Remove"))
+	switch {
+	case !p.Installed:
+		children = append(children, packageActionForm(p.Name, "install", "Install "+p.Name))
+	case available != "":
+		children = append(children, packageActionForm(p.Name, "upgrade", "Update "+p.Name))
 	}
-
-	size := "—"
-	if p.Size > 0 {
-		size = humanSize(p.Size)
-	}
-	acts := []widget.TableRowAct{{Icon: "lock", Title: "Required package"}}
-	if !p.Installed {
-		acts = []widget.TableRowAct{{Icon: "download", Title: "Install", Opens: true}}
-	} else if p.Removable {
-		acts = []widget.TableRowAct{{Icon: "trash-2", Title: "Remove", Opens: true}}
-	}
-	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
-		{Text: p.Name, Opens: true}, {Text: p.Version}, {Text: desc}, {Text: size}, {Actions: acts},
-	}, Drawer: &widget.RowDrawer{Title: p.Name, Verbatim: true, Children: drawer}}
+	return &widget.RowDrawer{Title: p.Name, Verbatim: true, Children: children}
 }
 
 func packageWebsite(href string) *widget.Link {
@@ -289,10 +320,15 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	if r.PostForm.Get("return_to") == "/system/packages" {
 		back = "/system/packages"
 	}
-	// A secondary button's _action (Refresh) outranks the form's primary.
+	// A secondary button's _action (Refresh) outranks the form's primary. A
+	// row's trash act posts its one pair, remove=<name>: removal is the row's
+	// act, asked about on the row.
 	verb := r.PostForm.Get("_action")
 	if verb == "" {
 		verb = r.PostForm.Get("_primary")
+	}
+	if verb == "" && r.PostForm.Get("remove") != "" {
+		verb = "remove"
 	}
 	switch verb {
 	case "search":
@@ -322,6 +358,9 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "install", "remove", "upgrade":
 		name := r.PostForm.Get("package")
+		if name == "" {
+			name = r.PostForm.Get("remove")
+		}
 		if !pkgNameOK(name) {
 			http.Error(w, "bad package name", http.StatusBadRequest)
 			return
@@ -592,7 +631,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 			}
 			for _, upgrade := range truth.Packages {
 				if upgrade.Name == table.Rows[i].ID {
-					packageUpgradeDrawer(table.Rows[i].Drawer, upgrade.Name, upgrade.Available)
+					table.Rows[i].Drawer = packageDrawer(pkgs[i], upgrade.Available)
 					break
 				}
 			}
@@ -668,12 +707,6 @@ func packageActionForm(name, verb, label string) *widget.Form {
 		&widget.Field{Kind: "hidden", Name: "package", Value: name},
 		&widget.Field{Kind: "hidden", Name: "_primary", Value: verb},
 	}}
-}
-
-func packageUpgradeDrawer(drawer *widget.RowDrawer, name, version string) {
-	drawer.Children = append(drawer.Children,
-		&widget.Properties{Items: []widget.Property{{Label: "Available version", Value: version, Mono: true}}},
-		packageActionForm(name, "upgrade", "Upgrade"))
 }
 
 // handlePackagePanel answers one package's own panel — the drawer Packages

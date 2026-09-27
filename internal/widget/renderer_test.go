@@ -262,6 +262,20 @@ func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	}
 }
 
+// TestACompactNoteKeepsItsLinkOnItsLine: a compact note is one line of words,
+// and its door is part of that line — the sentence, then where to go about it —
+// not a second line under it.
+func TestACompactNoteKeepsItsLinkOnItsLine(t *testing.T) {
+	got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: true, Body: "15 packages have newer versions.",
+		Link: &Link{Label: "Review in Packages", Href: "/system/packages?tab=upgradable"}})
+	sentence := strings.Index(got, "15 packages have newer versions.")
+	link := strings.Index(got, "Review in Packages")
+	closes := strings.Index(got[sentence:], "</p>")
+	if sentence < 0 || link < 0 || closes < 0 || link > sentence+closes {
+		t.Errorf("the link should close the note's own line:\n%s", got)
+	}
+}
+
 // Multi-select chips retain their checkbox semantics and selected treatment.
 func TestRenderMultipleChoiceChips(t *testing.T) {
 	r := newRenderer(t)

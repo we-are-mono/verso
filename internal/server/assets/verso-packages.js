@@ -155,10 +155,20 @@
       listing(url, true);
       return;
     }
-    var files = event.target.closest('a[href^="/system/packages/files?"]');
+    var files = event.target.closest(FILES);
     if (!files || !files.closest("[data-verso-panel]")) return;
     event.preventDefault();
-    if (files.dataset.loading) return;
+    loadFiles(files);
+  });
+
+  // A package's installed files are always visible in its drawer: the drawer
+  // reads them in as it opens — the link coming into view is the drawer
+  // opening, since a closed drawer shows nothing — so no row pays for them at
+  // page load. The link stays as the way in without script, and a click after
+  // a failed read tries again.
+  var FILES = 'a[href^="/system/packages/files?"]';
+  function loadFiles(files) {
+    if (files.dataset.loading || !files.isConnected) return;
     var previousError = files.parentNode.querySelector("[data-package-files-error]");
     if (previousError) previousError.remove();
     files.dataset.loading = "true"; files.setAttribute("aria-busy", "true");
@@ -173,7 +183,31 @@
       if (!note) { note = versoErrorLine(null, ""); note.dataset.packageFilesError = ""; note.setAttribute("role", "alert"); files.after(note); }
       versoErrorLine(note, error.message);
     }).finally(function () { delete files.dataset.loading; files.removeAttribute("aria-busy"); });
-  });
+  }
+  if ("IntersectionObserver" in window) {
+    var seen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        seen.unobserve(entry.target);
+        loadFiles(entry.target);
+      });
+    });
+    var watch = function (scope) {
+      [].forEach.call(scope.querySelectorAll(FILES), function (link) {
+        if (link.closest("[data-verso-panel]")) seen.observe(link);
+      });
+    };
+    watch(document);
+    // A listing read in place, or a drawer fetched when it opens, brings links
+    // of its own.
+    new MutationObserver(function (records) {
+      records.forEach(function (record) {
+        [].forEach.call(record.addedNodes, function (node) {
+          if (node.nodeType === 1) watch(node.matches && node.matches(FILES) ? node.parentNode : node);
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
   document.addEventListener("input", function (event) {
     if (!event.target.matches("[data-package-query]") || !root) return;
     if (root.dataset.packageAll !== "true") {

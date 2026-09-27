@@ -368,7 +368,12 @@
              cannot push the row taller than the text it sits beside. */}}
         {{/* nothing to state is the faint dash, a step below a muted value: it
              is the absence of a fact, not a quiet one. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center"><span>{{.Text}}</span>{{if .Dot}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
+        {{/* A second line (Sub) is what the value becomes — a package's
+             available version under the installed one. Which is which reads
+             without colour: the value it was recedes to Meta, and what it
+             becomes stands in Ink, led by an arrow turning down into it in the
+             cell's tone (the action colour for info). */}}
+        <td class="border-b border-rule {{template "table.cellpad" .}} align-top font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if or .Muted .Sub}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds

@@ -198,8 +198,10 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	}
 }
 
-// TestMaintenanceUpdatesSoftwareLane: Verso's own package leads by name, the rest
-// fold behind the seam, and one act installs them all.
+// TestMaintenanceUpdatesSoftwareLane: the software half is one line — Verso's own
+// package by name, the rest as a count — and the door to Packages, where the list
+// has the width its versions need and the act that updates them lives. Nothing is
+// listed or installed from here.
 func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true})
@@ -216,20 +218,25 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
 		"Verso 0.0.23 is available", "this router runs 0.0.22",
-		"Updating also brings 4 other packages", "Checked", "just now",
-		// The manifest states each transition as three aligned columns: the
-		// installed version, a header-less arrow, and the available one.
-		">2.91-r3<", ">→<", ">2.93-r1<", ">Installed<", ">Available<",
-		"What changes — 5 packages", // the manifest folds until asked
-		"Update now", `action="/system/maintenance/updates/install"`,
+		"4 other packages have newer versions",
+		`href="/system/packages?tab=upgradable"`, "Review in Packages",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the software lane is missing %q:\n%s", want, body)
 		}
 	}
-	// Verso rides the manifest as a row like any other — no card leads it.
-	if strings.Contains(body, "This router runs 0.0.22") {
-		t.Errorf("the verso version card should be gone:\n%s", body)
+	for _, gone := range []string{"What changes", "Update now", "/updates/install", ">2.93-r1<", ">Software<"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the list and its act live on Packages, but Maintenance carries %q", gone)
+		}
+	}
+	// It is an info band at the foot of the firmware section, not a section of
+	// its own: the router's being current is one question.
+	// It stands with the answer — the ledger and its acts — above the standing
+	// arrangement, which closes the section.
+	firmware, band, setting, next := strings.Index(body, `id="firmware"`), strings.Index(body, "Review in Packages"), strings.Index(body, "Check for updates automatically"), strings.Index(body, `id="back-up-and-restore"`)
+	if !(firmware < band && band < setting && setting < next) {
+		t.Errorf("the packages band should sit in the firmware section above the auto-check setting (firmware %d, band %d, setting %d, next %d)", firmware, band, setting, next)
 	}
 	// The masthead is the announcement: a waiting update retitles the page in the
 	// action colour, and the navigation suffix steps aside — a message, not a
@@ -257,13 +264,13 @@ func TestMaintenanceUpdatesVersoAlone(t *testing.T) {
 	if !strings.Contains(body, "Verso 0.0.23 is available") {
 		t.Errorf("Verso's own update should lead by name:\n%s", body)
 	}
-	if strings.Contains(body, "Updating also brings") || strings.Contains(body, "What changes") {
-		t.Error("a lead that is the whole story needs no manifest behind it")
+	if strings.Contains(body, "other packages") || !strings.Contains(body, `href="/system/packages?tab=upgradable"`) {
+		t.Error("Verso alone claims no company, and still leads to Packages")
 	}
 }
 
 // TestMaintenanceUpdatesSoftwareLaneWithoutVerso: with Verso itself current, the
-// set speaks as a count and the manifest table carries the detail.
+// set speaks as a count, and Packages carries the detail.
 func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true})
@@ -272,13 +279,11 @@ func TestMaintenanceUpdatesSoftwareLaneWithoutVerso(t *testing.T) {
 		Packages:  []openwrt.PackageUpgrade{{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"}},
 	})
 	body := get(t, s, "/system/maintenance").Body.String()
-	if !strings.Contains(body, "1 package is newer in your feeds") {
+	if !strings.Contains(body, "1 package has a newer version") {
 		t.Errorf("a single upgradable package should read as one:\n%s", body)
 	}
-	for _, want := range []string{">2.91-r3<", ">→<", ">2.93-r1<"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the manifest should state the one transition, missing %q:\n%s", want, body)
-		}
+	if strings.Contains(body, ">2.93-r1<") {
+		t.Error("the versions are Packages' to show")
 	}
 }
 
@@ -446,14 +451,15 @@ func TestUpdateInstallRunsOnceInTheBackground(t *testing.T) {
 	s := newServer(t, backend)
 	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "verso", Installed: "0.0.22", Available: "0.0.23"}}})
 
-	if rec := postPlugin(t, s, "/system/maintenance/updates/install", url.Values{}); rec.Code != 303 {
-		t.Fatalf("install POST = %d, want an immediate redirect", rec.Code)
+	rec := postPlugin(t, s, "/system/packages/upgrade", url.Values{})
+	if rec.Code != 303 || rec.Header().Get("Location") != "/system/packages?tab=upgradable" {
+		t.Fatalf("upgrade POST = %d → %q, want an immediate redirect back to the upgradable list", rec.Code, rec.Header().Get("Location"))
 	}
-	body := get(t, s, "/system/maintenance").Body.String()
+	body := get(t, s, "/system/packages").Body.String()
 	if !strings.Contains(body, "Installing…") {
-		t.Errorf("a running install should say so on the button:\n%s", body)
+		t.Errorf("a running upgrade should say so on its act:\n%s", body)
 	}
-	postPlugin(t, s, "/system/maintenance/updates/install", url.Values{})
+	postPlugin(t, s, "/system/packages/upgrade", url.Values{})
 	close(blocked)
 	waitForCheck(t)
 	if upgrades != 1 {
@@ -466,14 +472,15 @@ func TestUpdateInstallRunsOnceInTheBackground(t *testing.T) {
 func TestUpdateInstallStatesItsFailureOnce(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true, pkgUpgradeErr: errors.New("apk refused")})
-	postPlugin(t, s, "/system/maintenance/updates/install", url.Values{})
+	postPlugin(t, s, "/system/packages/upgrade", url.Values{})
 	waitForCheck(t)
 
-	body := get(t, s, "/system/maintenance").Body.String()
+	// Said where the act was pressed.
+	body := get(t, s, "/system/packages").Body.String()
 	if !strings.Contains(body, "Package update failed") || !strings.Contains(body, "apk refused") {
-		t.Errorf("a failed install should be stated once:\n%s", body)
+		t.Errorf("a failed upgrade should be stated once:\n%s", body)
 	}
-	if strings.Contains(get(t, s, "/system/maintenance").Body.String(), "Package update failed") {
+	if strings.Contains(get(t, s, "/system/packages").Body.String(), "Package update failed") {
 		t.Error("a failure already seen should not be repeated")
 	}
 }

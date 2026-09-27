@@ -31,7 +31,7 @@
      filled in the state's hue up to where now is. The ends are written under
      the track's ends; a screen reader hears them as one range. */}}
 {{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-6"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
-<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-mid{{end}}">
+<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0 border-b border-mid{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-mid{{end}}">
   {{range .Items}}
   {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
   {{/* 44px, never stated: a 24px line — the mono value's own, the sans label
@@ -54,10 +54,10 @@
   {{else if eq $.Style "system"}}
   {{/* the same 44px row as the overview's: the value's 24px line, inset 10px,
        everything in it a flex item so no glyph's box can lift the line. */}}
-  <div class="flex items-center justify-between gap-6 border-t border-mid py-2.5">
+  <div class="flex {{if .Next}}items-start{{else}}items-center{{end}} justify-between gap-6 border-t border-mid py-2.5">
     <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
     <dd class="flex items-center text-sm font-medium text-ink">
-      {{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
     </dd>
   </div>
   {{else}}
@@ -77,7 +77,12 @@
     <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
       {{if .Dot}}<span class="absolute -left-3.75 top-2.25 size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}" aria-hidden="true"></span>{{end}}
-      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else}}<span class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
+      {{/* What the value becomes, under what it is — as a table's cell says
+           it: the value it was recedes to Meta, and what it becomes stands in
+           Ink, led by the arrow turning down into it in the action colour. */}}
+      <span class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
+      {{else}}<span class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}

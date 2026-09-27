@@ -73,7 +73,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/maintenance/firmware", s.handleFirmwareInspect)
 	s.mux.HandleFunc("POST /system/maintenance/firmware/apply", s.handleFirmwareApply)
 	s.mux.HandleFunc("POST /system/maintenance/updates/check", s.handleUpdatesCheck)
-	s.mux.HandleFunc("POST /system/maintenance/updates/install", s.handleUpdatesInstall)
+	s.mux.HandleFunc("POST /system/packages/upgrade", s.handlePackagesUpgrade)
 	s.mux.HandleFunc("POST /system/maintenance/updates/firmware", s.handleUpdatesFirmware)
 	// The firmware-upgrade takeover's own two endpoints: the small state its
 	// client polls, and the release that acknowledges a failure and returns to

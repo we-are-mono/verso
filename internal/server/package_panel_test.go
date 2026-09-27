@@ -24,7 +24,7 @@ func TestPackagePanelIsThePackagesOwnDrawer(t *testing.T) {
 	if res.Code != http.StatusOK || strings.Contains(body, "<main") {
 		t.Fatalf("want the panel alone, got %d:\n%s", res.Code, body)
 	}
-	for _, want := range []string{"https-dns-proxy", "DNS over HTTPS proxy", "2025.1", `name="package" value="https-dns-proxy"`, `value="install"`, ">Install<"} {
+	for _, want := range []string{"https-dns-proxy", "DNS over HTTPS proxy", "2025.1", `name="package" value="https-dns-proxy"`, `value="install"`, ">Install https-dns-proxy<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("panel missing %q:\n%s", want, body)
 		}

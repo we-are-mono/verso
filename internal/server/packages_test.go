@@ -58,12 +58,13 @@ func TestPackagesInventory(t *testing.T) {
 		`<option value="all" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
 		`data-verso-actionbar class="flex flex-wrap items-center gap-4 border-y border-rule bg-quiet p-4"`,
 		"htop", "3.5.1-r1", "packages", // the row
-		"font-mono text-base font-medium",               // package versions use the fixed 16px/500 mono treatment
-		"Process viewer", "GPL-2.0", ">Remove</button>", // the drawer's story and act
+		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
+		"Process viewer", "GPL-2.0",       // the drawer's story
+		">Remove</button>",    // removal is the row's act, asked on the row
 		"max-w-6xl",           // package management uses the focused content width
-		"verso-prose text-sm", // description is plain body prose
+		"verso-prose text-sm", // the description is plain body prose, no heading over it
 		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`, // project link opens safely outside Verso
-		"space-y-0", "border-t border-mid py-2", // facts match the Overview System DL
+		"space-y-0 border-b border-mid", "border-t border-mid py-2",         // facts are hairline rows, closed by a rule as a table's are
 		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // shared title band
 	} {
 		if !strings.Contains(body, want) {
@@ -104,6 +105,96 @@ func TestPackageSearchStaysInItsPanel(t *testing.T) {
 		if !strings.Contains(res.Body.String(), want) {
 			t.Errorf("panel missing %q", want)
 		}
+	}
+}
+
+// TestPackagesIsWhereUpdatesAre: Packages holds the upgradable list — each row
+// its available version under the installed one, in the action's colour (news,
+// not a warning) — and the act that updates them all, on the heading line beside
+// Install. Maintenance only leads here.
+func TestPackagesIsWhereUpdatesAre(t *testing.T) {
+	idleUpdates(t)
+	s := pluginsServer(t, fakeBackend{access: true, pkgInstalledList: []openwrt.Package{
+		{Name: "dnsmasq", Version: "2.91-r3", Installed: true},
+		{Name: "htop", Version: "3.4.1", Installed: true},
+	}}, true)
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"}}})
+	body := get(t, s, "/system/packages").Body.String()
+	installed := strings.Index(body, ">2.91-r3<")
+	next := strings.Index(body, ">2.93-r1<")
+	if installed < 0 || next < installed {
+		t.Fatalf("an upgradable row states its next version under the installed one:\n%s", body)
+	}
+	if strings.Contains(body[installed:next], "marigold") || !strings.Contains(body[installed:next], "text-denim") {
+		t.Errorf("an available version is news, led in the action's colour, not a warning:\n%s", body[installed:next])
+	}
+	for _, want := range []string{`action="/system/packages/upgrade"`, "Update 1 package"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the heading line should carry the update act, missing %q", want)
+		}
+	}
+}
+
+// TestAPackageIsRemovedFromItsRow: removal is never a drawer's act. A package
+// that can go is removed from its row's trash act, which asks first and then
+// posts the one pair; the drawer holds no remove at all.
+func TestAPackageIsRemovedFromItsRow(t *testing.T) {
+	idleUpdates(t)
+	var removed []string
+	s := pluginsServer(t, fakeBackend{access: true, pkgRemoves: &removed, pkgInstalledList: []openwrt.Package{
+		{Name: "htop", Version: "3.4.1", Installed: true, Removable: true},
+	}}, true)
+	body := get(t, s, "/system/packages").Body.String()
+	for _, want := range []string{`name="remove" value="htop"`, "Remove htop?"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the row's trash act should remove, asking first; missing %q", want)
+		}
+	}
+	if strings.Contains(body, `name="_primary" value="remove"`) {
+		t.Error("the drawer holds no remove")
+	}
+	postPlugin(t, s, "/system/packages", url.Values{"remove": {"htop"}})
+	if len(removed) != 1 || removed[0] != "htop" {
+		t.Errorf("the row's removal should remove htop, removed %v", removed)
+	}
+}
+
+// TestAPackageDrawerReadsAsTodaysDrawers: a package is one flow, no headings
+// and no rule — what it is, its site, its facts with the version reading as the
+// table does (installed, then what it becomes), the files it installed, and its
+// one act, named for what it does to what.
+func TestAPackageDrawerReadsAsTodaysDrawers(t *testing.T) {
+	idleUpdates(t)
+	s := pluginsServer(t, fakeBackend{access: true, pkgInstalledList: []openwrt.Package{
+		{Name: "htop", Version: "3.4.1", Installed: true, Removable: true, Description: "Process viewer"},
+	}}, true)
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "htop", Installed: "3.4.1", Available: "3.5.0"}}})
+	body := get(t, s, "/system/packages").Body.String()
+	// Headings, not the table's "What it is" column label.
+	for _, gone := range []string{">What it is</h", ">Details</h"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the drawer is one flow, but carries the heading %q", gone)
+		}
+	}
+	at := strings.Index(body, `data-verso-prop-next`)
+	if at < 0 {
+		t.Fatalf("the drawer's version fact should state what it becomes:\n%s", body)
+	}
+	drawer := body[strings.LastIndex(body[:at], "Process viewer"):]
+	for _, want := range []string{"Update htop", `value="upgrade"`, `href="/system/packages/files?package=htop"`, ">Installed files<"} {
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the drawer is missing %q", want)
+		}
+	}
+	if strings.Contains(drawer, ">Upgrade<") || strings.Contains(drawer, `name="_primary" value="remove"`) {
+		t.Error("the drawer names its act for what it does, and holds no remove")
+	}
+	// The version fact reads as the table's cell: installed, then the arrow
+	// into what it becomes.
+	block := drawer[strings.Index(drawer, "data-verso-prop-next"):]
+	installed, next := strings.Index(block, ">3.4.1<"), strings.Index(block, ">3.5.0<")
+	if installed < 0 || next < installed || !strings.Contains(block[installed:next], "m15 10 5 5-5 5") {
+		t.Errorf("the version fact should lead its next value with the arrow:\n%s", block[:min(len(block), 900)])
 	}
 }
 

@@ -85,11 +85,15 @@
         </div>
         {{if or .Ledger.Server .Ledger.Changes}}<p class="text-sm text-meta">{{.Ledger.Server}}{{if and .Ledger.Server .Ledger.Changes}} · {{end}}{{if .Ledger.Changes}}<span class="tabular-nums">{{.Ledger.Changes}}</span>{{end}}</p>{{end}}
         <div class="flex flex-wrap items-center gap-x-5 gap-y-3">{{.Install}}{{.Owut}}{{.Manual}}</div>
-        {{/* The standing arrangement is its own group, 40px off the acts. */}}
+        {{/* The software half of "is this router current", while anything
+             installed has a newer version: an info band with the answer above
+             it, its door leading to Packages, where the list and its act live. */}}
+        {{if .Packages}}<div id="package-updates">{{.Packages}}</div>{{end}}
+        {{/* The standing arrangement is its own group, 40px off what is above
+             it, and closes the section. */}}
         <div class="mt-5">{{.Autocheck}}</div>
       </div>
     </section>
-    {{if .Packages}}<div id="package-updates" class="scroll-mt-20 mt-8 [&>section>.verso-rhythm]:pt-3">{{.Packages}}</div>{{end}}
     <section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="back-up-and-restore">
       <div data-verso-section-band class="{{template "verso-section-band-class"}}">
         <h2 class="{{template "verso-section-title-class"}}">{{t "Back up and restore"}}</h2>

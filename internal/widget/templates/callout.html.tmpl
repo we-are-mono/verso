@@ -30,8 +30,9 @@
     {{else}}bg-denim{{end}}"></span>
   <div class="min-w-0">
     {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
-    {{if .Body}}<p{{if .Title}} class="mt-0.5"{{end}}>{{.Body}}</p>{{end}}
-    {{if .RenderedLink}}<div class="mt-1.5">{{.RenderedLink}}</div>{{end}}
+    {{/* One line of words, and its door closes that line — the sentence, then
+         where to go about it — rather than standing on a line of its own. */}}
+    {{if .Body}}<p{{if .Title}} class="mt-0.5"{{end}}>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
   </div>
 </div>
 {{else}}

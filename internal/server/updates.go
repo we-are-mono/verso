@@ -129,9 +129,10 @@ func (s *Server) handleUpdatesCheck(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 }
 
-// handleUpdatesInstall starts the package upgrade and answers at once. A second
-// request while one runs changes nothing and says so.
-func (s *Server) handleUpdatesInstall(w http.ResponseWriter, r *http.Request) {
+// handlePackagesUpgrade starts updating every upgradable package and answers at
+// once, back on the upgradable list it was pressed from. A second request while
+// one runs changes nothing and says so.
+func (s *Server) handlePackagesUpgrade(w http.ResponseWriter, r *http.Request) {
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	switch {
@@ -142,7 +143,26 @@ func (s *Server) handleUpdatesInstall(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.flash(r, "info", tr("Installing updates — reload in a moment to see the result."))
 	}
-	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
+	http.Redirect(w, r, packagesPath+"?tab=upgradable", http.StatusSeeOther)
+}
+
+// packagesUpdateAct is the act that updates every upgradable package, on the
+// Packages heading line beside Install, named for how many it updates. While it
+// runs it says so; while the feeds, a check or a firmware install hold the
+// package guard there is nothing to start.
+func packagesUpdateAct(n int) widget.Widget {
+	label := "Update 1 package"
+	if n != 1 {
+		label = "Update " + strconv.Itoa(n) + " packages"
+	}
+	button := &widget.Button{Label: label, Style: "secondary", Name: "action", Value: "upgrade"}
+	switch {
+	case packageUpgrade.running():
+		button.Label, button.Loading = "Installing…", true
+	case feedRefresh.running() || updateChecks.running() || firmwareUpgrade.running():
+		button.Disabled = true
+	}
+	return &widget.Form{Action: packagesPath + "/upgrade", Style: "inline", NoSubmit: true, Fields: []widget.Widget{button}}
 }
 
 // handleUpdatesFirmware starts the firmware upgrade and answers at once, sending
@@ -238,27 +258,18 @@ func (s *Server) handleUpdatesAutocheck(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 }
 
-// softwareLane is the package half: what the feeds hold newer copies of, Verso's
-// own package leading, and the one act that installs them all.
-func softwareLane(truth updatecheck.Truth, known, checking bool) widget.Widget {
-	section := &widget.Section{Title: "Software", Hairline: true}
-	switch {
-	case !known:
-		section.Sub = "Which packages have newer versions in your feeds is not known until this router checks."
-		return section
-	case len(truth.Packages) == 0:
-		section.Sub = "Every installed package is the newest version your feeds offer."
-		return section
+// packagesBand is the software half of "is this router current": an info band at
+// the foot of the firmware section, saying what the feeds hold newer copies of —
+// Verso's own package by name — with the door to Packages, where the list has the
+// width its versions need and the act that updates them lives. Nothing is listed
+// or installed from here.
+func packagesBand(truth updatecheck.Truth) widget.Widget {
+	lead := softwareLead(truth)
+	if packageUpgrade.running() {
+		lead = "Updating packages…"
 	}
-	section.Sub = softwareLead(truth)
-	if manifest := upgradableList(truth); manifest != nil {
-		section.Children = append(section.Children, manifest)
-	}
-	section.Children = append(section.Children,
-		&widget.Form{Action: maintenancePath + "/updates/install", NoSubmit: true, Fields: []widget.Widget{
-			updatesInstallButton(checking),
-		}})
-	return section
+	return &widget.Callout{Variant: "info", Compact: true, Body: lead,
+		Link: &widget.Link{Label: "Review in Packages", Href: packagesPath + "?tab=upgradable"}}
 }
 
 // softwareLead names the update a person came for. Verso's own package is that one
@@ -266,82 +277,27 @@ func softwareLane(truth updatecheck.Truth, known, checking bool) widget.Widget {
 func softwareLead(truth updatecheck.Truth) string {
 	verso, ok := truth.Verso()
 	if !ok {
-		return packagesAre(len(truth.Packages)) + " newer in your feeds than what this router runs."
+		return newerVersions(len(truth.Packages)) + "."
 	}
-	lead := fmt.Sprintf("**Verso %s is available** — this router runs %s.", verso.Available, verso.Installed)
+	lead := fmt.Sprintf("Verso %s is available — this router runs %s", verso.Available, verso.Installed)
 	if others := len(truth.Packages) - 1; others > 0 {
-		return lead + " Updating also brings " + otherPackages(others) + "."
+		return lead + " — and " + otherNewer(others) + "."
 	}
-	return lead
+	return lead + "."
 }
 
-func packagesAre(n int) string {
+func newerVersions(n int) string {
 	if n == 1 {
-		return "1 package is"
+		return "1 package has a newer version"
 	}
-	return strconv.Itoa(n) + " packages are"
+	return strconv.Itoa(n) + " packages have newer versions"
 }
 
-func otherPackages(n int) string {
+func otherNewer(n int) string {
 	if n == 1 {
-		return "1 other package"
+		return "1 other package has a newer version"
 	}
-	return strconv.Itoa(n) + " other packages"
-}
-
-// upgradableList is the manifest of what the update would change, wearing the
-// conditions-card surface and folded until asked — the lane's sentence carries
-// the news, the summary line carries the count, and the table answers the
-// person who wants the detail. Verso's own package is a row in it like any
-// other, and the version change reads as three fit columns (installed, a
-// header-less arrow, available) huddled at the right edge, so the befores, the
-// arrows, and the afters each align. Verso alone needs no manifest: the lane's
-// lead sentence is the whole story.
-func upgradableList(truth updatecheck.Truth) widget.Widget {
-	if _, ok := truth.Verso(); ok && len(truth.Packages) == 1 {
-		return nil
-	}
-	rows := make([]widget.TableRow, 0, len(truth.Packages))
-	for _, p := range truth.Packages {
-		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
-			{Text: p.Name},
-			{Text: p.Installed},
-			{Text: "→"},
-			{Text: p.Available},
-		}})
-	}
-	return &widget.Disclosure{
-		Style:   "condition",
-		Summary: changesSummary(len(truth.Packages)),
-		Children: []widget.Widget{&widget.Table{
-			Dense: true,
-			Columns: []widget.TableColumn{
-				{Label: "Package", Kind: "name"},
-				{Label: "Installed", Kind: "mono", Fit: true},
-				{Kind: "keyword", Fit: true},
-				{Label: "Available", Kind: "mono", Fit: true},
-			},
-			Rows: rows,
-		}},
-	}
-}
-
-func changesSummary(n int) string {
-	if n == 1 {
-		return "What changes — 1 package"
-	}
-	return "What changes — " + strconv.Itoa(n) + " packages"
-}
-
-func updatesInstallButton(checking bool) *widget.Button {
-	button := &widget.Button{Label: "Update now", Style: "primary", Icon: "download", Name: "action", Value: "install"}
-	switch {
-	case packageUpgrade.running():
-		button.Label, button.Loading = "Installing…", true
-	case feedRefresh.running() || checking || firmwareUpgrade.running():
-		button.Disabled = true
-	}
-	return button
+	return strconv.Itoa(n) + " other packages have newer versions"
 }
 
 // firmwareInstallAct is the act an offered build leads to. It is caution, not

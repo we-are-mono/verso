@@ -130,12 +130,11 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	if err := updateChecks.takeFailure(); err != nil {
 		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
 	}
-	if err := packageUpgrade.takeFailure(); err != nil {
-		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Package update failed: %v"), err)})
-	}
+	// Packages are a band here only while there is something newer: the list and
+	// the act that updates it are Packages', and so is what became of an update.
 	packages := template.HTML("")
 	if len(truth.Packages) > 0 || packageUpgrade.running() {
-		packages = render(softwareLane(truth, known, checking))
+		packages = render(packagesBand(truth))
 	}
 	uptime := tr("Unavailable")
 	if systemErr == nil {

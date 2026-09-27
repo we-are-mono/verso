@@ -36,8 +36,12 @@ type Property struct {
 	HelpVerbatim bool   `json:"-"` // shell-composed sensor status already localized for the live stream
 	Label        string `json:"label"`
 	Value        string `json:"value"`
-	Help         string `json:"help,omitempty"` // optional explanation immediately beneath this fact
-	Mono         bool   `json:"mono"`
+	// Next is what the value becomes — a package's available version — drawn
+	// under it as a table's cell draws it: the value recedes, the next leads
+	// with the arrow. Machine data, so it is never translated.
+	Next string `json:"next,omitempty"`
+	Help string `json:"help,omitempty"` // optional explanation immediately beneath this fact
+	Mono bool   `json:"mono"`
 	// Verbatim declares the value a machine string without the mono type
 	// treatment — a size, a rate, an identity set in sans. The localization
 	// walk leaves it exactly as authored (as it does Mono and Chip values);

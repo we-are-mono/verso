@@ -1463,3 +1463,37 @@ func TestRowWithItsOwnDoorDrawsNoDetailsLink(t *testing.T) {
 		t.Errorf("a row with no door of its own still needs one:\n%s", bare)
 	}
 }
+
+// TestAMonoCellCanStateWhatComesNext: a machine value with a second line holds
+// what it will become under what it is — a package's available version under
+// the installed one. Which is which reads without colour: the value it was
+// recedes to Meta, and what it becomes stands in Ink led by an arrow that
+// turns down into it, in the cell's tone — the change reads where the value
+// is rather than in a column of its own.
+func TestAMonoCellCanStateWhatComesNext(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "Version", Kind: "mono"}},
+		Rows:    []TableRow{{ID: "luci", Cells: []TableCell{{Text: "26.263.44884", Sub: "26.270.51002", Variant: "info"}}}},
+	})
+	installed := strings.Index(got, ">26.263.44884<")
+	arrow := strings.Index(got, `aria-label="Available version"`)
+	next := strings.Index(got, ">26.270.51002<")
+	if installed < 0 || arrow < 0 || next < 0 || !(installed < arrow && arrow < next) {
+		t.Fatalf("want the value, then the arrow leading the next value:\n%s", got)
+	}
+	if !strings.Contains(got[installed-80:installed], "text-meta") {
+		t.Errorf("the value it was recedes:\n%s", got)
+	}
+	if !strings.Contains(got[arrow-300:next], "text-denim") || !strings.Contains(got[arrow-300:next], "<svg") {
+		t.Errorf("an arrow in the cell's tone leads what it becomes:\n%s", got[arrow-300:next])
+	}
+	// Without a second line the cell is the one line it always was.
+	plain := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "Version", Kind: "mono"}},
+		Rows:    []TableRow{{ID: "x", Cells: []TableCell{{Text: "1.0"}}}},
+	})
+	if strings.Contains(plain, "Available version") {
+		t.Errorf("a plain value has no second line:\n%s", plain)
+	}
+}
