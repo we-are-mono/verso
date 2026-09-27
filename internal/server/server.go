@@ -60,6 +60,12 @@ var scriptFS embed.FS
 // which `docker cp` cannot write into.)
 const devCSSPath = "/usr/share/verso/verso-dev.css"
 
+// devSessionsPath is where a dev shell leaves its sessions for the one that
+// replaces it, so a redeploy under scripts/dev.sh does not sign anyone out
+// mid-edit. The shell's own runtime directory: RAM, private to the verso user,
+// gone at reboot. A real deployment never writes it.
+const devSessionsPath = "/var/run/verso/dev-sessions.json"
+
 // The production authenticator must satisfy sidKeeper, or the runtime assertion
 // in New silently skips sid renewal and the 300 s-vs-session mismatch returns
 // (ADR-007 §7). This guards that wiring at compile time.
@@ -115,6 +121,9 @@ type Server struct {
 	css    template.CSS
 	devCSS string // dev hot-reload stylesheet path, "" in a normal build
 	bootID string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
+	// keptSessions is where Close leaves the sessions and New takes them back,
+	// "" outside a dev session (devSessionsPath).
+	keptSessions string
 	// probe reports whether a plugin's unix socket accepts a connection — the
 	// liveness half of the management surface (ADR-011); a seam so tests need
 	// no real sockets.
@@ -202,6 +211,8 @@ func New(
 	if _, err := os.Stat(devCSSPath); err == nil {
 		s.devCSS = devCSSPath
 		s.bootID = fmt.Sprintf("%x", time.Now().UnixNano())
+		s.keptSessions = devSessionsPath
+		s.restoreKeptSessions()
 	}
 	// Keep each session's rpcd sid alive for the session's lifetime and tear it
 	// down when the session ends (ADR-007 §7). Only the native authenticator
@@ -419,9 +430,15 @@ func (s *Server) pluginTranslators(r *http.Request) func(pluginID string) func(s
 	}
 }
 
-// Close stops background services owned by the shell.
+// Close stops background services owned by the shell. A dev shell leaves its
+// sessions for the next one (keptSessions).
 func (s *Server) Close() {
 	s.sessions.stopRenewer()
+	if s.keptSessions != "" {
+		if err := s.sessions.keep(s.keptSessions); err != nil {
+			log.Printf("verso: keep sessions: %v", err)
+		}
+	}
 	if s.telemetryStop != nil {
 		s.telemetryStop()
 	}
