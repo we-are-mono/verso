@@ -39,6 +39,17 @@
      for words alone. */}}
 {{define "verso-btn-act"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
+{{/* verso-empty-slot-class and verso-empty-slot-body: where the first of a
+     set's things would stand while there is none — a place, not a sentence.
+     Quiet Sand inside a dashed Strong Hairline, the one line in the app that
+     marks a place rather than a thing, holding the hollow packet (absent) and
+     the set's empty words in Meta. Every set draws its empty state this way (a
+     collection's keys, a rule's conditions); the element and its attributes
+     stay at the call site, and the add stands 16px under it (pt-4). */}}
+{{define "verso-empty-slot-class"}}flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5{{end}}
+{{define "verso-empty-slot-body"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
+    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
+
 {{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
      remove, a list's remove, a copy beside a value or on a code box. A 28px
      square in Glyph on no border, taking the parked border, the hairline wash

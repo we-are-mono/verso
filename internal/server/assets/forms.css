@@ -321,10 +321,9 @@
     color: var(--color-green-deep);
   }
 
-  /* The card is the block's edge, so the act that adds to it needs no rule of
-     its own under it. */
+  /* The card is the block's edge, so the act that adds to it stands on the
+     card's own air rather than the empty slot's 16px. */
   .verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker] {
-    border-top-width: 0;
     padding-top: 0;
   }
 

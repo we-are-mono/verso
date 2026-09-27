@@ -26,16 +26,13 @@
     </li>
     {{end}}
   </ul>
-  {{/* Where the first item would stand, while there is none: a place, not a
-       sentence. Quiet Sand inside a dashed Strong Hairline, the one line in the
-       app that marks a place rather than a thing, holding the hollow packet
-       (absent) and the set's empty words in Meta. It is inert: the add stays
-       at the foot, where it stands under the items once there are some. The
-       slot keeps no air above it: the subheading's is the gap. */}}
+  {{/* Where the first item would stand, while there is none: the empty slot
+       every set draws (verso-empty-slot-class). It is inert: the add stays at
+       the foot, where it stands under the items once there are some. The slot
+       keeps no air above it: the subheading's is the gap. */}}
   {{else if .Empty}}
-  <div data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5">
-    <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
-    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.Empty}}</p>
+  <div data-verso-slot class="{{template "verso-empty-slot-class"}}">
+    {{template "verso-empty-slot-body" .Empty}}
   </div>
   {{end}}
   {{with .Add}}

@@ -32,17 +32,25 @@
        card while it holds any, and each condition after the first says on
        the seam above it how it joins the one before — "and" (forms.css). */}}
   <div data-verso-condition-list class="verso-condition-list">{{range .Active}}{{.}}{{end}}</div>
-  <p data-verso-condition-empty class="max-w-[36rem] rounded-xs bg-quiet px-3 py-2 text-sm leading-snug text-body{{if .Active}} hidden{{end}}">{{ t "No additional conditions. All traffic matching the path and protocol above is included." }}</p>
-  {{/* The way in sits under a rule of its own: what is above it is this rule as
-       it stands, what is below is the offer to add to it.
+  {{/* No condition yet is an empty set, drawn as every set draws one — the
+       slot where the first would stand, at the form's measure. The script
+       brings it back when the last condition goes, so it is hidden by the
+       attribute rather than a class a display utility could outrank. It keeps
+       no margin of the block's step under it: the act stands 16px under the
+       slot, the add's own pt-4, as it does under every set's. */}}
+  <div data-verso-condition-empty data-verso-slot{{if .Active}} hidden{{end}} class="{{template "verso-empty-slot-class"}} max-w-form mb-0">
+    {{template "verso-empty-slot-body" (t "No additional conditions. All traffic matching the path and protocol above is included.")}}
+  </div>
+  {{/* The way in is the act a set adds from, 16px under the slot, as it stands
+       under a set's items.
 
        One act, not two. It was a closed list beside an Add button, which made
        adding a condition a matter of finding it in a drop-down of everything and
        then pressing something else — and a drop-down cannot be searched, cannot
        show what a condition writes, and cannot say what sort of value it takes.
        The picker is a list someone reads or filters, and pressing a line adds it. */}}
-  <div data-verso-condition-picker class="relative border-t border-rule pt-4">
-    <button type="button" data-verso-condition-open aria-expanded="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
+  <div data-verso-condition-picker class="relative pt-4">
+    <button type="button" data-verso-condition-open aria-expanded="false" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
     <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-[0_8px_24px_rgba(27,25,23,.14)]">
       {{/* The filter is the first thing focus lands on, because on a catalogue
            this size typing the name is faster than reading to find it. It is not

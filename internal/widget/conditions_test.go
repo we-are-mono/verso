@@ -66,7 +66,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		`data-verso-condition="dest_port" data-verso-and="and" role="group" aria-labelledby="condition-dest_port-label" class="verso-condition verso-condition-single"`,
 		`class="verso-condition-name flex max-w-form items-center gap-3"`,
 		`class="verso-rhythm max-w-form`,
-		"hover:border-sand-5 hover:bg-rule", "border-rule-strong bg-transparent text-meta",
+		"hover:border-sand-5 hover:bg-rule",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditions missing %q:\n%s", want, got)
@@ -198,6 +198,38 @@ func TestConditionsGroupsKeepCatalogueOrder(t *testing.T) {
 	got := []string{groups[1].Items[0].Key, groups[1].Items[1].Key}
 	if got[0] != "dest_ip" || got[1] != "src_ip" {
 		t.Errorf("Endpoints holds %v, want [dest_ip src_ip]", got)
+	}
+}
+
+// TestConditionsSayWhenEmptyAsASetDoes: a rule carrying no condition draws
+// the empty set the way every set does — the dashed Quiet Sand slot marked
+// absent, its words in Meta, at the form's measure — and the way in is the
+// same compact act a set adds from, 16px under the slot, with no rule of its
+// own above it. Once a condition is added the slot goes; the picker is its own.
+func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
+	c := &Conditions{Label: "Conditions", Items: []ConditionItem{{Key: "rate", Label: "Rate limit"}}}
+	got := render(t, newRenderer(t), c)
+	for _, want := range []string{
+		// mb-0: the block's 8px step would otherwise stand the act 24px under
+		// the slot, not the 16px it stands under every set's.
+		`<div data-verso-condition-empty data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5 max-w-form mb-0">`,
+		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No additional conditions.`,
+		`<div data-verso-condition-picker class="relative pt-4">`,
+		// The collection's own add act, glyph first.
+		`group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+
+	// With a condition carried, the slot is there for the script to bring back
+	// but hidden — by the attribute, which no display utility overrides.
+	c.Items[0].Active = true
+	got = render(t, newRenderer(t), c)
+	if !strings.Contains(got, `<div data-verso-condition-empty data-verso-slot hidden class="`) {
+		t.Errorf("a carried condition hides the slot:\n%s", got)
 	}
 }
 

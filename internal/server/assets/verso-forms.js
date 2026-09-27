@@ -319,7 +319,7 @@
   function refresh(builder) {
     var empty = builder.querySelector("[data-verso-condition-empty]");
     var list = builder.querySelector("[data-verso-condition-list]");
-    if (empty && list) empty.classList.toggle("hidden", list.children.length !== 0);
+    if (empty && list) empty.hidden = list.children.length !== 0;
   }
 
   // The picker: the catalogue as a list to read or filter, where pressing a line
