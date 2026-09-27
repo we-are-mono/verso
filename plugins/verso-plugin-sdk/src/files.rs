@@ -188,7 +188,7 @@ impl FileSet {
         });
         let form = Widget::Form {
             style: "settings".into(),
-            submit: "Save".into(),
+            submit: "Save file".into(),
             error: error.into(),
             fields,
             note: String::new(),

@@ -220,7 +220,7 @@ mod tests {
             let body = read(path);
             assert_eq!(body["title"], "DNS & DHCP");
             assert!(body.get("pages").is_none());
-            assert_eq!(body["widget"]["children"][0]["submit"], "Save");
+            assert_eq!(body["widget"]["children"][0]["submit"], "Save settings");
         }
     }
 

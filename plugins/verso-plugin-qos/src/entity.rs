@@ -16,7 +16,7 @@ use crate::model::{Policy, DAYS};
 
 /// Saving stages configuration; the shell's review drawer owns Apply.
 pub const LABEL: &str = "Limits";
-const CTA: &str = "Save";
+const CTA: &str = "Save limits";
 const NOTE: &str = "Apply pending changes to use these settings.";
 
 const BLOCKED_NOTE: &str =
@@ -258,7 +258,7 @@ mod tests {
             &Errors::default(),
         ));
         assert_eq!(blocked["state"], "blocked");
-        assert_eq!(blocked["cta"], "Save");
+        assert_eq!(blocked["cta"], "Save limits");
         assert_eq!(gate(&blocked, "allowed")["checked"], false);
 
         // Refused between hours: allowed, on a schedule, and the days as written.

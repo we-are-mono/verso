@@ -283,7 +283,7 @@ fn body(
         &uci_block(&zone.section, form, reaches, true),
     ));
     vec![fields::panel_form(
-        "Save",
+        "Save zone",
         vec![Widget::section(title, sub, fields).flush()],
     )]
 }

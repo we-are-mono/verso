@@ -124,6 +124,11 @@ fn computer_time_is_an_immediate_command() {
     assert_eq!(e.commands[0].args["timezone"], "UTC");
 }
 #[test]
+fn general_names_what_it_saves() {
+    let page = serde_json::to_value(get(&request())).unwrap();
+    assert_eq!(page["widget"]["submit"], "Save settings", "{page}");
+}
+#[test]
 fn general_says_where_each_option_lives() {
     // The shell marks a control whose option waits on the stage by its full
     // address, so every control names the config and section it writes.
@@ -337,6 +342,9 @@ fn sections_commit_their_settings_before_what_they_hold() {
     let sections = page["widget"]["children"].as_array().unwrap();
     let (ssh, web) = (&sections[0]["children"], &sections[1]["children"]);
     assert_eq!(ssh[0]["type"], "form", "{ssh}");
+    // Each form's button names what it saves, never a bare "Save".
+    assert_eq!(ssh[0]["submit"], "Save SSH settings");
+    assert_eq!(web[0]["submit"], "Save web interface settings");
     assert!(
         !ssh[0].to_string().contains("Authorized keys"),
         "keys are not a setting"

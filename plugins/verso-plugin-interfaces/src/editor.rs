@@ -624,7 +624,7 @@ fn page(
     ));
     let form = Widget::Form {
         style: String::new(),
-        submit: "Save".into(),
+        submit: "Save interface".into(),
         // Only a refusal no field owns is the form's; each field refusal rides
         // its field.
         error: error.into(),
@@ -1340,7 +1340,7 @@ pub fn delete_page(m: &Model, network: &str, device: &str) -> Envelope {
         )
         .with_back("Interfaces", ROOT);
     }
-    Envelope::page("Delete interface",Widget::Form{style:"page".into(),submit:String::new(),error:String::new(),note:String::new(),target:String::new(),fields:vec![Widget::hidden("delete","1"),Widget::code("Name",if network.is_empty(){device}else{network}),Widget::Confirm{trigger:"Delete".into(),title:"Delete interface?".into(),message:"Its DHCP settings and network references will also be removed. The change takes effect when you apply.".into(),confirm:"Delete".into(),cancel:"Cancel".into()}]}).with_back("Interfaces",ROOT).with_width("narrow")
+    Envelope::page("Delete interface",Widget::Form{style:"page".into(),submit:String::new(),error:String::new(),note:String::new(),target:String::new(),fields:vec![Widget::hidden("delete","1"),Widget::code("Name",if network.is_empty(){device}else{network}),Widget::Confirm{trigger:"Delete interface".into(),title:"Delete interface?".into(),message:"Its DHCP settings and network references will also be removed. The change takes effect when you apply.".into(),confirm:"Delete interface".into(),cancel:"Cancel".into()}]}).with_back("Interfaces",ROOT).with_width("narrow")
 }
 pub fn delete(m: &Model, network: &str, device: &str, f: &Form) -> Envelope {
     if f.get("delete") != "1" || delete_blocked(m, network, device) {

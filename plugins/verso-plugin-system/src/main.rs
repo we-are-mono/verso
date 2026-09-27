@@ -318,7 +318,7 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
     }
     let form = Widget::Form {
         style: "page".into(),
-        submit: "Save".into(),
+        submit: "Save settings".into(),
         note: String::new(),
         target: String::new(),
         error: if e.is_empty() {

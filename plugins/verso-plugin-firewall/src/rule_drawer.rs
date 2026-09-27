@@ -232,7 +232,7 @@ fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &s
     // the stage and closes the panel; applying is the bar's, and so is saying
     // what it costs.
     vec![fields::panel_form(
-        "Save",
+        "Save rule",
         vec![Widget::section(title, sub, fields).flush()],
     )]
 }

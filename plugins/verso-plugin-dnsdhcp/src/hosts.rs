@@ -246,7 +246,7 @@ pub fn save(model: &mut Dnsdhcp, leases: &Leases, section: &str, form: &Form) ->
 /// operator.
 fn editor(section: Option<&str>, host: &Host, errors: &Errors) -> Envelope {
     let (title, subheading, submit) = match section {
-        Some(_) => ("Edit reservation", heading(&host.name), "Save changes"),
+        Some(_) => ("Edit reservation", heading(&host.name), "Save reservation"),
         None => ("New reservation", NEW_SUB.to_string(), "Add reservation"),
     };
     let mut children = vec![Widget::Form {

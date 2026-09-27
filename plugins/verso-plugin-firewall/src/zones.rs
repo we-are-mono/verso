@@ -616,6 +616,8 @@ mod tests {
         let panel = panel_of(&body, "cfg02dc81");
         assert_eq!(panel["title"], "lan");
         assert_eq!(panel["open"], true);
+        // Its button names what it saves, never a bare "Save".
+        assert_eq!(panel["children"][0]["submit"], "Save zone");
         // Closing it leaves the listing, so a reload shows the zones rather than
         // reopening what was just dismissed.
         assert_eq!(panel["closed"], "/plugins/firewall/zones");

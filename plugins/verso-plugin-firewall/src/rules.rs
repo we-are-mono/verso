@@ -725,7 +725,7 @@ mod tests {
         // The commit row carries the one verb and nothing about applying: the
         // panel saves into the stage and closes, and the bar behind it is where
         // applying happens and where its cost is stated.
-        assert_eq!(drawer["children"][0]["submit"], "Save");
+        assert_eq!(drawer["children"][0]["submit"], "Save rule");
         assert!(drawer["children"][0].get("note").is_none());
     }
 

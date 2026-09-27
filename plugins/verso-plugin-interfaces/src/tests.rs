@@ -510,6 +510,7 @@ fn an_object_is_edited_in_a_drawer_over_the_listing() {
         assert_eq!(drawer["closed"], ROOT);
         let form = &drawer["children"][0];
         assert_eq!(form["type"], "form", "{drawer}");
+        assert_eq!(form["submit"], "Save interface", "{drawer}");
         let last = form["fields"].as_array().unwrap().last().unwrap();
         assert_eq!(last["type"], "code");
         assert_eq!(last["live"], true);
