@@ -130,6 +130,16 @@
     padding-bottom: 0;
   }
 
+  /* A form that writes more than one file shows a card per file, one under
+     the other. The rule above the first sets the files off from the form; the
+     next is more of the same answer, so it stands the group's 20px under the
+     one before and draws no rule of its own. */
+  [data-verso-code-divider] + [data-verso-code-divider] {
+    margin-top: calc(var(--spacing) * 5);
+    border-top-width: 0;
+    padding-top: 0;
+  }
+
   /* A section holds its air itself, so the rows it starts and ends with give
      their own padding back: an untitled section's first visible row starts
      where the section does (a titled one keeps it, as the air under its

@@ -169,6 +169,21 @@ func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
 	}
 }
 
+// TestACardUnderACardDrawsNoSecondDivider: a form that writes more than one
+// file shows a card per file, one under the other. The rule above the first
+// sets the files off from the form; the next card is more of the same answer,
+// so it stands the group's 20px under the one before, with no rule of its own.
+func TestACardUnderACardDrawsNoSecondDivider(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing) * 5);border-top-width:0;padding-top:0}"
+	if !strings.Contains(string(css), want) {
+		t.Errorf("stylesheet is missing %s", want)
+	}
+}
+
 // TestStylesheetTypeSystem: the two faces are the only faces, and each is
 // declared across the weights its file actually carries (both are variable),
 // so a weight the design asks for (the top bar's light maker line) is drawn
