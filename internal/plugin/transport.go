@@ -89,13 +89,10 @@ type Envelope struct {
 	Tone          string    `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Width         string    `json:"width"`         // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	Pages         []PageTab `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
-	// Back is an edit page's quiet way home: the shell renders it as a "← Cancel"
-	// back-link in the masthead, above the heading, so a page reached to edit one
-	// record can return to the listing it came from. It reuses the PageAction shape,
-	// but the plugin sets only Href and, if it wants other words, Label — the shell
-	// fixes the glyph to arrow-left and defaults the label to "Cancel", so any
-	// Back.Icon a plugin sends is ignored. Href is a route through the shell, like
-	// the action's.
+	// Back is an editor's return address: where a save that staged, or a
+	// command that ran, sends the person, and where a page form's Cancel leads.
+	// The masthead draws nothing for it. It reuses the PageAction shape, but
+	// only Href is read. Href is a route through the shell, like the action's.
 	Back   *PageAction     `json:"back"`
 	Banner *Banner         `json:"banner"` // optional full-width semantic notice beneath the subpage bar
 	Notice *Notice         `json:"notice"` // optional outcome flash for this render, shown in the shell's flash slot

@@ -2602,10 +2602,10 @@ impl Envelope {
         self
     }
 
-    /// with_back gives the page a "← Cancel" back-link in the masthead — an edit
-    /// page's way home to the listing it came from. The shell fixes the arrow-left
-    /// glyph and defaults an empty label to "Cancel", so a page passes only the
-    /// href and, when it wants other words, the label.
+    /// with_back gives an editor its return address: where a save that staged,
+    /// or a command that ran, sends the person, and where a page form's Cancel
+    /// leads. The masthead draws nothing for it, and the shell reads only the
+    /// href.
     pub fn with_back(mut self, label: &str, href: &str) -> Envelope {
         self.back = Some(PageAction {
             label: label.into(),

@@ -2474,6 +2474,29 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	}
 }
 
+// TestReturnAddressDrawsNoMastheadLink: an editor's return address is where its
+// save and its form's Cancel lead, never a back-link over the title.
+func TestReturnAddressDrawsNoMastheadLink(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK, Title: "Interfaces",
+		Back:   &plugin.PageAction{Label: "Interfaces", Href: "/plugins/demo/"},
+		Widget: json.RawMessage(`{"type":"form","style":"page","fields":[{"type":"field","name":"h","label":"Hostname"}]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+	body := get(t, s, "/plugins/demo/").Body.String()
+	start := strings.Index(body, "<div data-verso-masthead")
+	end := strings.Index(body, "</h1>")
+	if start < 0 || end < start {
+		t.Fatalf("no masthead:\n%s", body)
+	}
+	if masthead := body[start:end]; strings.Contains(masthead, "<a ") {
+		t.Errorf("the masthead draws a back-link:\n%s", masthead)
+	}
+	if !strings.Contains(body, `href="/plugins/demo/"`) {
+		t.Error("the page form's Cancel still leads to the return address")
+	}
+}
+
 // TestPluginWithoutActionRendersNoButton: no action, no doorway.
 func TestPluginWithoutActionRendersNoButton(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{

@@ -374,22 +374,14 @@ func localizeNotice(n *plugin.Notice, tr func(string) string) *plugin.Notice {
 	return &c
 }
 
-// localizeBack returns a copy of the masthead back-link with its label localized
-// and its glyph fixed, or nil for none. An empty label becomes "Cancel" — the
-// quiet default an edit page leans on — and the icon is always the left arrow,
-// since the back-link's glyph is the shell's to choose, never the plugin's. The
-// href is a shell route, sanitized like any plugin-supplied link.
-func localizeBack(a *plugin.PageAction, tr func(string) string) *plugin.PageAction {
+// safeBack returns a copy of a page's return address with its href sanitized
+// like any plugin-supplied link, or nil for none.
+func safeBack(a *plugin.PageAction) *plugin.PageAction {
 	if a == nil {
 		return nil
 	}
 	c := *a
-	c.Label = tr(c.Label)
-	if c.Label == "" {
-		c.Label = tr("Cancel")
-	}
 	c.Href = widget.SafeHref(c.Href)
-	c.Icon = "arrow-left"
 	return &c
 }
 
@@ -557,11 +549,10 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
-	Display       bool               // opt into the display masthead without a kicker
-	Tone          string             // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
-	HeadingAct    template.HTML      // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
-	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
-	Width         string             // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
+	Display       bool          // opt into the display masthead without a kicker
+	Tone          string        // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
+	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
+	Width         string        // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
 	Nav           navModel
 	Body          template.HTML
@@ -652,10 +643,9 @@ type pageHeader struct {
 	// with a live log's live control beside it (widget.TakeLive), already
 	// rendered (Server.headingAct): it stands hard right on the heading row.
 	HeadingAct template.HTML
-	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
-	// back-link in the masthead above the heading. The plugin supplies the Href and
-	// optionally a Label; the shell defaults the label to "Cancel" and fixes the
-	// arrow-left glyph (localizeBack).
+	// Back is an editor's return address: where a save that staged sends the
+	// person, and where a page form's Cancel leads (gateway). The masthead draws
+	// nothing for it.
 	Back   *plugin.PageAction
 	Banner *plugin.Banner
 	Notice *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
@@ -821,7 +811,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		HeadingAct:    hdr.HeadingAct,
-		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
 		CSS:           s.currentCSS(),
 		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr, localizedPages),

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
-	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -654,7 +653,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		}
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral", Back: &plugin.PageAction{Label: "Packages", Href: "/system/packages"}}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 func packageIndexNote(checkedAt int64, err error, tr func(string) string) string {

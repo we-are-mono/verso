@@ -535,7 +535,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
 	hdr.Tone = env.Tone
-	hdr.Back = localizeBack(env.Back, tr)
+	hdr.Back = safeBack(env.Back)
 	hdr.Banner = localizeBanner(env.Banner, tr)
 	*width = env.Width
 	// The subpage tabs carry the plugin id, so renderPage localizes their labels
