@@ -204,12 +204,7 @@ fn prefix_of(netmask: &str) -> Option<u32> {
 }
 
 fn octets(address: &str) -> Option<[u8; 4]> {
-    let mut octets = [0u8; 4];
-    let mut parts = address.split('.');
-    for octet in octets.iter_mut() {
-        *octet = parts.next()?.parse::<u8>().ok()?;
-    }
-    parts.next().is_none().then_some(octets)
+    Some(address.parse::<std::net::Ipv4Addr>().ok()?.octets())
 }
 
 #[cfg(test)]

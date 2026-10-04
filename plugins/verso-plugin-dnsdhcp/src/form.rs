@@ -16,6 +16,7 @@
 //! refuse is refused here, on the control that carries it, before it is written.
 
 use std::collections::BTreeMap;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use verso_plugin::{Field, Form, SelectOption, Widget};
 
@@ -144,27 +145,11 @@ fn valid_mac(value: &str) -> bool {
 /// valid_ipv4 and valid_ipv6 read an address's shape, which is what the daemons
 /// do — the registry it belongs to is not theirs to know either.
 pub fn valid_ipv4(value: &str) -> bool {
-    let octets: Vec<&str> = value.split('.').collect();
-    octets.len() == 4 && octets.iter().all(|octet| octet.parse::<u8>().is_ok())
+    value.parse::<Ipv4Addr>().is_ok()
 }
 
 pub fn valid_ipv6(value: &str) -> bool {
-    if !value.contains(':') || value.matches("::").count() > 1 {
-        return false;
-    }
-    let (head, tail) = match value.rsplit_once(':') {
-        Some((head, tail)) if tail.contains('.') => (head, Some(tail)),
-        _ => (value, None),
-    };
-    if tail.is_some_and(|tail| !valid_ipv4(tail)) {
-        return false;
-    }
-    let groups: Vec<&str> = head.split(':').collect();
-    let limit = if tail.is_some() { 6 } else { 8 };
-    groups.iter().filter(|group| !group.is_empty()).count() <= limit
-        && groups
-            .iter()
-            .all(|group| group.len() <= 4 && group.chars().all(|c| c.is_ascii_hexdigit()))
+    value.parse::<Ipv6Addr>().is_ok()
 }
 
 /// valid_hostname accepts a bare name or a dotted one: letters, digits, hyphens

@@ -27,6 +27,7 @@
 //! twice in two places is two chances to disagree with the parser that decides.
 
 use std::collections::BTreeMap;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use verso_plugin::{json, Form, Map, Section, Value};
 
@@ -1111,31 +1112,11 @@ pub fn valid_address(value: &str) -> bool {
 }
 
 fn valid_ipv4(address: &str) -> bool {
-    let octets: Vec<&str> = address.split('.').collect();
-    octets.len() == 4 && octets.iter().all(|octet| octet.parse::<u8>().is_ok())
+    address.parse::<Ipv4Addr>().is_ok()
 }
 
-/// valid_ipv6 reads the address's shape: hex groups separated by colons, with at
-/// most one `::` run and an optional trailing dotted-quad.
 fn valid_ipv6(address: &str) -> bool {
-    if address.matches("::").count() > 1 {
-        return false;
-    }
-    let (head, tail) = match address.rsplit_once(':') {
-        Some((head, tail)) if tail.contains('.') => (head, Some(tail)),
-        _ => (address, None),
-    };
-    if tail.is_some_and(|tail| !valid_ipv4(tail)) {
-        return false;
-    }
-    let groups: Vec<&str> = head.split(':').collect();
-    let limit = if tail.is_some() { 6 } else { 8 };
-    if groups.iter().filter(|group| !group.is_empty()).count() > limit {
-        return false;
-    }
-    groups
-        .iter()
-        .all(|group| group.len() <= 4 && group.chars().all(|c| c.is_ascii_hexdigit()))
+    address.parse::<Ipv6Addr>().is_ok()
 }
 
 fn prefix_within(value: &str, limit: u32) -> bool {
