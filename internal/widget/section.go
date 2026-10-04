@@ -30,11 +30,6 @@ import (
 // section's own top inset when its parent already supplies the outer padding.
 // Hairline is opt-in: when true, a section following another section gets a
 // divider and additional breathing room above it.
-//
-// Mode is the reading a section belongs to (ADR-015): "basic", "advanced", or
-// empty for both. A basic-mode section is the simplified face of what its
-// advanced counterpart states in full, so the reader sees one face of a fact and
-// never two.
 type Section struct {
 	Title string `json:"title"`
 	// Icon is the glyph of what the section is, by Lucide name, leading its
@@ -60,7 +55,6 @@ type Section struct {
 	MetaLabel    string `json:"meta_label,omitempty"`
 	MetaIcon     string `json:"meta_icon,omitempty"`
 	MetaPosition string `json:"meta_position,omitempty"`
-	Mode         string `json:"mode,omitempty"`
 	Hairline     bool   `json:"hairline,omitempty"`
 	Flush        bool   `json:"flush,omitempty"`
 	// Target is where the options this section's controls write live,
@@ -102,7 +96,6 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 		MetaLabel    string            `json:"meta_label"`
 		MetaIcon     string            `json:"meta_icon"`
 		MetaPosition string            `json:"meta_position"`
-		Mode         string            `json:"mode"`
 		Hairline     bool              `json:"hairline"`
 		Flush        bool              `json:"flush"`
 		Target       string            `json:"target"`
@@ -121,7 +114,6 @@ func (s *Section) UnmarshalJSON(data []byte) error {
 	s.MetaLabel = raw.MetaLabel
 	s.MetaIcon = raw.MetaIcon
 	s.MetaPosition = raw.MetaPosition
-	s.Mode = raw.Mode
 	s.Hairline = raw.Hairline
 	s.Flush = raw.Flush
 	s.Target = raw.Target

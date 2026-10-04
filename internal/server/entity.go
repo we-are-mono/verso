@@ -374,7 +374,7 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		// The tab's widgets are the plugin's prose too, so they translate from
 		// that plugin's catalog exactly as its page would.
 		var body strings.Builder
-		if err := s.widgets.RenderWithToken(&body, s.reading(r, tab.Body), s.sessionCSRF(r), lang, s.pluginTranslators(r)(tab.PluginID)); err != nil {
+		if err := s.widgets.RenderWithToken(&body, tab.Body, s.sessionCSRF(r), lang, s.pluginTranslators(r)(tab.PluginID)); err != nil {
 			continue
 		}
 		data.Body, data.CTA, data.Post = template.HTML(body.String()), tab.CTA, tab.Href

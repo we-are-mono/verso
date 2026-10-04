@@ -120,7 +120,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -176,7 +176,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		}
 	}
 	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: acts}
-	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(page.String()))
+	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.systemPages(r.URL.Path), template.HTML(page.String()))
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,
@@ -415,11 +415,11 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 			// Installing/removing a plugin or catalog can change navigation. Send
 			// those rows with the outcome, without rebuilding the surrounding page.
 			pluginTr := s.pluginTranslators(r)
-			pages := s.systemPages(packagesPath, readerMode(r))
+			pages := s.systemPages(packagesPath)
 			for i := range pages {
 				pages[i].Label = localizeLabel(pages[i].PluginID, pages[i].Label, tr, pluginTr)
 			}
-			nav := s.buildSidebar(packagesPath, readerMode(r), tr, pluginTr, pages)
+			nav := s.buildSidebar(packagesPath, tr, pluginTr, pages)
 			_ = s.pageSet(lang).ExecuteTemplate(w, "package-navigation.html.tmpl", nav)
 			return
 		}
@@ -640,7 +640,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -654,7 +654,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		}
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral", Back: &plugin.PageAction{Label: "Packages", Href: "/system/packages"}}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral", Back: &plugin.PageAction{Label: "Packages", Href: "/system/packages"}}, "wide", s.systemPages(r.URL.Path), template.HTML(body.String()))
 }
 
 func packageIndexNote(checkedAt int64, err error, tr func(string) string) string {

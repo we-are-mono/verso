@@ -135,7 +135,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 		if hdr.Tone != "neutral" {
 			hdr.Heading = "System"
 		}
-		pages = s.systemPages(r.URL.Path, readerMode(r))
+		pages = s.systemPages(r.URL.Path)
 	}
 	s.renderPage(w, r, status, hdr, width, pages, body)
 }
@@ -430,13 +430,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// until the change is applied or discarded.
 	widget.MarkStaged(wdg, s.waitingOptions(r.Context(), s.sessionSID(r)))
 
-	// Everything above judged what the plugin declared; everything below renders
-	// what this reader sees. The mode filter (ADR-015) runs on that boundary: the
-	// datatype gate and the brokered write are never softened by a reading, and the
-	// page-wide lens is then weighed against the content that survives.
-	mode := readerMode(r)
-	wdg = widget.FilterMode(wdg, mode)
-
 	// The page-wide lens is the shell's call, not each plugin's constant: a
 	// plugin declares the filter it would like and the shell keeps it only on a
 	// page with enough to sift (ADR-005 §5 — the vocabulary decides what a widget
@@ -535,26 +528,21 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	*width = env.Width
 	// The subpage tabs carry the plugin id, so renderPage localizes their labels
 	// from the plugin's catalog (ADR-012 §5) — no need to pre-translate here.
-	*pages = subpageTabsAt(m, pluginPath, env.Pages, mode)
+	*pages = subpageTabsAt(m, pluginPath, env.Pages)
 	return template.HTML(b.String()), status
 }
 
 // subpageTabs builds the top bar (the third navigation tier) from a plugin's
 // declared subpages. Paths are relative to the plugin's mount — the shell
 // builds every href and marks the active tab from the request, so the bar can
-// never point outside the plugin. A tab declaring the other reading is absent
-// (ADR-015 §5), filtered by the same rule as a manifest nav entry; its URL still
-// answers, so the operator standing on it keeps their page.
-func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab, mode string) []pageTab {
+// never point outside the plugin.
+func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab) []pageTab {
 	if len(declared) == 0 {
 		return nil
 	}
 	cur := strings.Trim(pluginPath, "/")
 	tabs := make([]pageTab, 0, len(declared))
 	for _, p := range declared {
-		if !modeShows(p.Mode, mode) {
-			continue
-		}
 		rel := strings.Trim(p.Path, "/")
 		href := "/plugins/" + m.ID + "/"
 		if rel != "" {

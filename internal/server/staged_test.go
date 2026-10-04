@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // TestPluginSaveStagesWithoutCommit: a plugin's commit intent stages through
@@ -380,11 +379,10 @@ func TestStagedCountsItemsNotWrites(t *testing.T) {
 	}
 }
 
-// TestStagedCountIsTheSameInEveryReading: the chip's count is the described
-// count — what a person did — in the basic reading as in the advanced one, so
-// the shell describes whenever the stage holds something. A clean stage makes
-// no round-trip.
-func TestStagedCountIsTheSameInEveryReading(t *testing.T) {
+// TestStagedCountIsTheDescribedCount: the chip's count is the described count —
+// what a person did — so the shell describes whenever the stage holds
+// something. A clean stage makes no round-trip.
+func TestStagedCountIsTheDescribedCount(t *testing.T) {
 	tr := &fakeTransport{descriptions: []plugin.Description{{Plain: "Renamed the router.", Covers: []int{0, 1}}}}
 	s := newServerWith(t, fakeBackend{
 		access: true,
@@ -394,11 +392,11 @@ func TestStagedCountIsTheSameInEveryReading(t *testing.T) {
 		}},
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
-	if body := getMode(t, s, "/", widget.ModeBasic).Body.String(); !strings.Contains(body, ">1 staged change</span>") {
-		t.Error("the basic reading counts what a person did, not the writes it took")
+	if body := get(t, s, "/").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
+		t.Error("the chip counts what a person did, not the writes it took")
 	}
 	if len(tr.lastDescribe) != 2 {
-		t.Errorf("the basic reading must describe too; got %+v", tr.lastDescribe)
+		t.Errorf("the page must describe the stage; got %+v", tr.lastDescribe)
 	}
 	clean := &fakeTransport{}
 	_ = get(t, newServerWith(t, fakeBackend{access: true}, clean, []plugin.Manifest{demoACLManifest()}), "/")

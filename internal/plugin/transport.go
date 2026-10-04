@@ -171,12 +171,10 @@ type PageAction struct {
 // sidebar → domain, top bar → kind of visit, in-page → position). Path is
 // relative to the plugin's mount; the shell builds the href and marks the
 // active tab from the request path, so a plugin cannot point the bar outside
-// itself. Mode is the reading the tab belongs to — "basic", "advanced", or empty
-// for both — filtered exactly as a manifest nav entry is (ADR-015).
+// itself.
 type PageTab struct {
 	Label string `json:"label"`
 	Path  string `json:"path"`
-	Mode  string `json:"mode,omitempty"`
 }
 
 // CommitOp is one declarative uci write a plugin asks the shell to perform on its

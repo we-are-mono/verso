@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 func systemManifest() plugin.Manifest {
@@ -36,9 +35,7 @@ func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 			]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{systemManifest()})
-	// The advanced reading, where the whole System frame is on the bar — Services
-	// among it (ADR-015); the basic frame is its own case below.
-	body := getMode(t, s, "/plugins/system/", widget.ModeAdvanced).Body.String()
+	body := get(t, s, "/plugins/system/").Body.String()
 
 	for _, want := range []string{
 		"System", "— General", `href="/system/access"`, `href="/system/packages"`,

@@ -213,14 +213,14 @@ func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
 	}
 }
 
-// TestDiscoverParsesNavModeAndIcon: a nav entry may name the reading it belongs
-// to (ADR-015) and the shell glyph its row draws (ADR-005). Both are optional —
-// an entry declaring neither is the ordinary case and parses to empty.
-func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
+// TestDiscoverParsesNavIconAndPages: a nav entry may name the shell glyph its row
+// draws (ADR-005) and say it opens into subpages. Both are optional — an entry
+// declaring neither is the ordinary case and parses to empty.
+func TestDiscoverParsesNavIconAndPages(t *testing.T) {
 	fsys := mapFS(map[string]string{
 		"plugins/n/manifest.json": `{"manifest_version":1,"id":"n","name":"N","socket":"/run/verso/n.sock",` +
 			`"schema_version":1,"nav":[` +
-			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","mode":"advanced","pages":true},` +
+			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","pages":true},` +
 			`{"section":"Network","label":"DHCP","path":"/"}]}`,
 	})
 
@@ -229,10 +229,10 @@ func TestDiscoverParsesNavModeAndIcon(t *testing.T) {
 		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
 	}
 	nav := got[0].Nav
-	if nav[0].Icon != "globe" || nav[0].Mode != "advanced" || !nav[0].Pages {
-		t.Errorf("nav[0] icon/mode/pages not parsed: %+v", nav[0])
+	if nav[0].Icon != "globe" || !nav[0].Pages {
+		t.Errorf("nav[0] icon/pages not parsed: %+v", nav[0])
 	}
-	if nav[1].Icon != "" || nav[1].Mode != "" || nav[1].Pages {
+	if nav[1].Icon != "" || nav[1].Pages {
 		t.Errorf("nav[1] should declare none of them: %+v", nav[1])
 	}
 }

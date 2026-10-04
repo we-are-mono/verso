@@ -61,7 +61,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hdr := pageHeader{Heading: "Logs", Tone: "neutral", HeadingAct: template.HTML(acts.String())} //nolint:gosec // rendered by the shell's own templates
-	s.renderPage(w, r, http.StatusOK, hdr, "full", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, hdr, "full", s.systemPages(r.URL.Path), template.HTML(body.String()))
 }
 
 // Reuse the authenticated listing stream route and sampling clock. IDs are
@@ -235,7 +235,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		}})
 	}
 	var content, panel strings.Builder
-	if err := s.widgets.RenderWithToken(&content, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&content, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -253,7 +253,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(panel.String()))
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(content.String()))
+	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.systemPages(r.URL.Path), template.HTML(content.String()))
 }
 
 func validateLogSettings(values map[string]any) error {

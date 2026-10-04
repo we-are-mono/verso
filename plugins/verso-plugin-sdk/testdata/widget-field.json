@@ -3,7 +3,6 @@
   "name": "hostname",
   "label": "Hostname",
   "kind": "text",
-  "advanced": true,
   "value": "router.lan",
   "placeholder": "router.lan",
   "datatype": "fqdn",

@@ -13,7 +13,6 @@ import (
 
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // fakeSL is a partial Slovenian catalog: enough to prove both localization seams —
@@ -29,9 +28,7 @@ var fakeSL = fstest.MapFS{
 }
 
 // getLang issues an authenticated GET carrying an Accept-Language header, so the
-// per-request negotiation is exercised the way a real browser drives it. It reads
-// in the advanced mode (ADR-015), where the section titles and the plugin nav
-// labels are on the page for the localization to reach.
+// per-request negotiation is exercised the way a real browser drives it.
 func getLang(t *testing.T, srv *Server, path, acceptLanguage string) string {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -43,7 +40,6 @@ func getLang(t *testing.T, srv *Server, path, acceptLanguage string) string {
 		t.Fatalf("session: %v", err)
 	}
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-	req.AddCookie(&http.Cookie{Name: modeCookie, Value: widget.ModeAdvanced})
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec.Body.String()

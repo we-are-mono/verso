@@ -6,7 +6,6 @@
   "meta": "3 peers",
   "meta_icon": "shield",
   "meta_position": "inline",
-  "mode": "advanced",
   "flush": true,
   "target": "firewall.cfg0a1b2c",
   "control": {

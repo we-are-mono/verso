@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/i18n"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // TestI18nAudit is the deterministic untranslated-string report (`make
@@ -23,9 +22,6 @@ import (
 // installs a recording bundle (the translators are the one seam that knows a
 // key fell back to English — the i18n-pot extractor is partial by design), and
 // crawls every page reachable from / and /login for each installed language.
-// The crawl reads in the advanced mode: the basic reading prunes sections
-// before their strings reach the translator (ADR-015), so auditing basic would
-// hide exactly the strings most likely to be missing.
 //
 // The report is two lists per language: source strings that fell back
 // (untranslated), and catalog keys no render requested (stale, or waiting on a
@@ -92,7 +88,6 @@ func TestI18nAudit(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, path, nil)
 			req.Header.Set("Accept-Language", code)
 			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-			req.AddCookie(&http.Cookie{Name: modeCookie, Value: widget.ModeAdvanced})
 			rec := httptest.NewRecorder()
 			srv.Handler().ServeHTTP(rec, req)
 			if rec.Code != http.StatusOK {

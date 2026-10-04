@@ -289,7 +289,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	var body strings.Builder
 	lang, t := s.localize(r)
 	access := accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r), translatorOrIdentity(t))
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, access), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -344,5 +344,5 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		}
 	}
 
-	s.renderPage(w, r, status, hdr, "form", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+	s.renderPage(w, r, status, hdr, "form", s.systemPages(r.URL.Path), template.HTML(body.String()))
 }

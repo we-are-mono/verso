@@ -516,16 +516,8 @@ func demoManifest() plugin.Manifest {
 	}
 }
 
-// get reads a page the way a browser that never touched the Advanced switch does:
-// in the basic mode every reader starts in (ADR-015).
+// get reads a page as a signed-in browser does.
 func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
-	t.Helper()
-	return getMode(t, srv, path, widget.ModeBasic)
-}
-
-// getMode reads a page in one reading. Basic carries no cookie at all — its
-// absence is what basic means; advanced carries the one the switch sets.
-func getMode(t *testing.T, srv *Server, path, mode string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	// Authenticate by default: mint a session and attach its cookie, so the
@@ -535,9 +527,6 @@ func getMode(t *testing.T, srv *Server, path, mode string) *httptest.ResponseRec
 		t.Fatalf("session: %v", err)
 	}
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-	if mode == widget.ModeAdvanced {
-		req.AddCookie(&http.Cookie{Name: modeCookie, Value: widget.ModeAdvanced})
-	}
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec
@@ -874,8 +863,7 @@ func TestHealthzReturnsOK(t *testing.T) {
 	}
 }
 
-// TestIndexRendersOverview: the landing page renders the advanced overview — the
-// verdict, the traffic section, the System panel with live firmware/kernel/uptime
+// TestIndexRendersOverview: the landing page renders the overview — the verdict, the traffic section, the System panel with live firmware/kernel/uptime
 // from the backend, and the interface listing. The roster itself lives on its own
 // page and is not repeated here.
 func TestIndexRendersOverview(t *testing.T) {
@@ -2521,7 +2509,7 @@ func TestValidateSchemaCoversNestedContainers(t *testing.T) {
 func TestNavListsPlugins(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{demoManifest()})
 
-	rec := getMode(t, s, "/", widget.ModeAdvanced)
+	rec := get(t, s, "/")
 	body := rec.Body.String()
 	for _, want := range []string{"Demo", `href="/plugins/demo/"`} {
 		if !strings.Contains(body, want) {
@@ -2544,7 +2532,7 @@ func TestNavMultipleEntriesPerPlugin(t *testing.T) {
 	}
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
 
-	body := getMode(t, s, "/", widget.ModeAdvanced).Body.String()
+	body := get(t, s, "/").Body.String()
 	for _, want := range []string{"General", "Time", `href="/plugins/demo/"`, `href="/plugins/demo/time"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("nav missing %q", want)

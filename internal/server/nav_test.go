@@ -16,7 +16,6 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/updatecheck"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // nav builds a Server holding manifests and the one device reading the sidebar
@@ -41,7 +40,7 @@ func manifest(id string, entries ...plugin.NavEntry) plugin.Manifest {
 // sidebar builds one path's rail with no subpages; the rules below describe
 // which rows the rail holds and where they lead.
 func sidebar(s *Server, active string) navModel {
-	return s.buildSidebar(active, widget.ModeAdvanced, identityTranslator,
+	return s.buildSidebar(active, identityTranslator,
 		func(string) func(string) string { return identityTranslator }, nil)
 }
 
@@ -387,7 +386,7 @@ func TestBuildSidebarOpensOnlyTheActiveRow(t *testing.T) {
 	s := navServer(firewall)
 	pages := []pageTab{{Label: "Rules", Href: "/plugins/firewall/", Active: true}, {Label: "Zones", Href: "/plugins/firewall/zones"}}
 
-	model := s.buildSidebar("/plugins/firewall/", widget.ModeAdvanced, identityTranslator,
+	model := s.buildSidebar("/plugins/firewall/", identityTranslator,
 		func(string) func(string) string { return identityTranslator }, pages)
 	for _, row := range model.Rows {
 		switch {
@@ -407,7 +406,7 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	s := navServer(system, vpn)
 	s.probe = func(path string) bool { return path == "/live/system.sock" }
 
-	pages := s.systemPages("/plugins/system/", widget.ModeAdvanced)
+	pages := s.systemPages("/plugins/system/")
 	if len(pages) != 7 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
 		t.Fatalf("System pages = %+v, want live General followed by six shell pages", pages)
 	}

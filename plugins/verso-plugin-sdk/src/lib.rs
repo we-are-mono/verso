@@ -503,12 +503,6 @@ fn is_zero(n: &u32) -> bool {
     *n == 0
 }
 
-/// The two readings a person can be in (ADR-015). One switch in the shell chrome
-/// chooses between them app-wide; a plugin only declares which reading its
-/// sections and fields belong to, and the shell filters at render.
-pub const MODE_BASIC: &str = "basic";
-pub const MODE_ADVANCED: &str = "advanced";
-
 /// Widget is the typed mirror of the shell's widget vocabulary: compose these —
 /// the editor's completion is the catalog. Every variant serializes to the
 /// documented wire shape; the conformance fixtures pin that to the shell's
@@ -540,8 +534,6 @@ pub enum Widget {
     /// position refine it). Control is one compact widget placed beside the
     /// title — an object's enabled switch belongs there, not in the body.
     /// Flush drops the region's own top inset where the parent already pads.
-    /// Mode files the region into one reading — MODE_BASIC or MODE_ADVANCED
-    /// (ADR-015); empty belongs to both.
     Section {
         title: String,
         /// The glyph of what the section is, by Lucide name, leading its
@@ -568,8 +560,6 @@ pub enum Widget {
         meta_icon: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         meta_position: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        mode: String,
         #[serde(skip_serializing_if = "is_false")]
         flush: bool,
         /// Rule this section off from whatever precedes it. It is the only rule
@@ -661,16 +651,12 @@ pub enum Widget {
     /// Kind picks the control ("text", "select", "checks", "hidden",
     /// "datetime-local", …); options feed a select or a set of checks, values
     /// are the checked members of that set; placeholder hints at the shape of a
-    /// text value; error is the inline validation message (422). Advanced keeps
-    /// the field out of the basic reading (ADR-015) — set it through
-    /// `advanced_when`, which holds the invariant that live values stay visible.
+    /// text value; error is the inline validation message (422).
     Field {
         name: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         label: String,
         kind: String,
-        #[serde(skip_serializing_if = "is_false")]
-        advanced: bool,
         value: String,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         values: Vec<String>,
@@ -1187,7 +1173,6 @@ impl Widget {
             meta: String::new(),
             meta_icon: String::new(),
             meta_position: String::new(),
-            mode: String::new(),
             flush: false,
             hairline: false,
             target: String::new(),
@@ -1250,33 +1235,6 @@ impl Widget {
         {
             *hairline = true;
             *flush = true;
-        }
-        self
-    }
-
-    /// in_mode files a section into one reading — MODE_BASIC or MODE_ADVANCED
-    /// (ADR-015). A basic-mode section is the simplified face of what its
-    /// advanced counterpart states in full, so a reader sees one face of a fact
-    /// and never both. An advanced-only section is honest only while its contents
-    /// are at their defaults or a paired basic face represents them: mode hides
-    /// capability, never state. Only a section carries a reading; anything else
-    /// comes back as it was.
-    pub fn in_mode(mut self, mode: &str) -> Widget {
-        if let Widget::Section { mode: declared, .. } = &mut self {
-            *declared = mode.into();
-        }
-        self
-    }
-
-    /// advanced_when keeps a field out of the basic reading while `at_default`
-    /// holds — the ADR-015 §4 invariant in one call. The plugin is the only party
-    /// that knows its own defaults, so it is the one that decides: a field
-    /// carrying a value somebody chose is live state and stays visible to every
-    /// reader, whatever mode they are in. Only a field carries the flag; anything
-    /// else comes back as it was.
-    pub fn advanced_when(mut self, at_default: bool) -> Widget {
-        if let Widget::Field { advanced, .. } = &mut self {
-            *advanced = at_default;
         }
         self
     }
@@ -1565,7 +1523,6 @@ impl Widget {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
-            advanced: false,
             value: value.into(),
             values: Vec::new(),
             placeholder: String::new(),
@@ -1595,7 +1552,6 @@ impl Widget {
             name: name.into(),
             label: label.into(),
             kind: "select".into(),
-            advanced: false,
             value: value.into(),
             values: Vec::new(),
             placeholder: String::new(),
@@ -1625,7 +1581,6 @@ impl Widget {
             name: name.into(),
             label: label.into(),
             kind: "checks".into(),
-            advanced: false,
             value: String::new(),
             values: values.to_vec(),
             placeholder: String::new(),
@@ -1649,7 +1604,6 @@ impl Widget {
             name: name.into(),
             label: String::new(),
             kind: "hidden".into(),
-            advanced: false,
             value: value.into(),
             values: Vec::new(),
             placeholder: String::new(),
@@ -2913,7 +2867,7 @@ mod tests {
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
         ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Form,
         PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
-        TableCell, TableRow, Tone, Ubus, Widget, MODE_ADVANCED, MODE_BASIC,
+        TableCell, TableRow, Tone, Ubus, Widget,
     };
 
     // A form's refusal is only what no control of it says: a field's refusal
@@ -3394,7 +3348,6 @@ mod tests {
             meta: String::new(),
             meta_icon: String::new(),
             meta_position: String::new(),
-            mode: String::new(),
             flush: true,
             hairline: false,
             target: String::new(),
@@ -3404,50 +3357,6 @@ mod tests {
         let json = serde_json::to_value(&widget).unwrap();
         assert_eq!(json["flush"], true);
         assert_eq!(json["control"]["type"], "switch");
-    }
-
-    #[test]
-    fn a_section_states_the_reading_it_belongs_to_and_otherwise_says_nothing() {
-        let both = Widget::section("Rule", "", vec![]);
-        assert!(
-            serde_json::to_value(&both).unwrap().get("mode").is_none(),
-            "a section belonging to both readings declares no mode"
-        );
-
-        for mode in [MODE_BASIC, MODE_ADVANCED] {
-            let filed = Widget::section("Rule", "", vec![]).in_mode(mode);
-            assert_eq!(serde_json::to_value(&filed).unwrap()["mode"], mode);
-        }
-
-        // Only a section carries a reading; a widget that cannot is untouched.
-        let text = Widget::text("prose").in_mode(MODE_ADVANCED);
-        assert!(serde_json::to_value(&text).unwrap().get("mode").is_none());
-    }
-
-    #[test]
-    fn an_advanced_field_says_so_only_while_it_is_at_its_default() {
-        let default = Widget::field("family", "Address family", "", "", "").advanced_when(true);
-        assert_eq!(serde_json::to_value(&default).unwrap()["advanced"], true);
-
-        // The same field carrying a value somebody chose is live state, and state
-        // is visible in every reading (ADR-015 §4).
-        let chosen = Widget::field("family", "Address family", "ipv4", "", "").advanced_when(false);
-        assert!(
-            serde_json::to_value(&chosen)
-                .unwrap()
-                .get("advanced")
-                .is_none(),
-            "a field holding a non-default value must not be tagged"
-        );
-
-        // A field left alone declares nothing, and the flag rides every field kind.
-        let plain = Widget::field("name", "Name", "", "", "");
-        assert!(serde_json::to_value(&plain)
-            .unwrap()
-            .get("advanced")
-            .is_none());
-        let select = Widget::select("family", "Address family", "", vec![], "").advanced_when(true);
-        assert_eq!(serde_json::to_value(&select).unwrap()["advanced"], true);
     }
 
     #[test]

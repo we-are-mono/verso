@@ -66,8 +66,7 @@ type ACLScope struct {
 //
 // Icon names a Lucide glyph the shell owns (ADR-005): a plugin references an icon
 // by name and never ships one. An entry naming none takes its section's glyph.
-// Mode is the reading the entry belongs to (ADR-015): "basic", "advanced", or
-// empty for both. Pages says the destination opens into subpages, so its row
+// Pages says the destination opens into subpages, so its row
 // can say so on every page; which subpages they are is still the envelope's to
 // say, on the page itself.
 type NavEntry struct {
@@ -75,7 +74,6 @@ type NavEntry struct {
 	Label   string `json:"label"`
 	Path    string `json:"path"`
 	Icon    string `json:"icon,omitempty"`
-	Mode    string `json:"mode,omitempty"`
 	Pages   bool   `json:"pages,omitempty"`
 }
 

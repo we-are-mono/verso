@@ -25,10 +25,6 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /session", s.handleSessionState)
 	s.mux.HandleFunc("POST /session", s.handleSessionState)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
-	// The reader mode (ADR-015): the sidebar switch posts here, the cookie flips,
-	// and the browser returns to the page it was on. It changes nothing on the
-	// device, so it is outside the staged-changes lifecycle.
-	s.mux.HandleFunc("POST "+modePath, s.handleMode)
 	// The roster is a page of its own, the overview's peer: shell-owned content
 	// read from the kernel and the lease file, with no configuration to stage.
 	s.mux.HandleFunc("GET "+devicesPath, s.handleDevices)

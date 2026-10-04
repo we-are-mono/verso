@@ -94,7 +94,6 @@ pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Err
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
-        advanced: false,
         value: value.into(),
         values: Vec::new(),
         placeholder: String::new(),

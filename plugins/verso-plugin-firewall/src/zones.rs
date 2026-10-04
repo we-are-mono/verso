@@ -1095,7 +1095,7 @@ mod tests {
         assert_eq!(tabs[2]["state"], "default");
 
         // A zone that logs its refusals says so on the strip, which is how a reader
-        // learns of live state without opening the tab (ADR-015 §4). No fixture zone
+        // learns of live state without opening the tab. No fixture zone
         // logs, so the form states it: the strip reads the zone, not the config.
         let logging = serde_json::to_value(zone_drawer::blank(
             &fixture::firewall(),

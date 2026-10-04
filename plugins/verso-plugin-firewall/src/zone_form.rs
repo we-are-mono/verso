@@ -277,14 +277,6 @@ impl ZoneForm {
         !self.named.is_empty() && self.name != self.named
     }
 
-    // at_defaults used to live here: it reported whether the rarely-touched
-    // settings were all where firewall4 leaves them, and the editor page hid that
-    // whole block behind the advanced reading when they were. The panel has no such
-    // block to hide — the Advanced tab is always there — and it keeps the principle
-    // the gate existed for (mode hides capability, never state, ADR-015 §4) by
-    // saying on the tab itself whether anything under it is in force. A reader sees
-    // "logging" or "ipv4" on the strip without opening it.
-
     /// values is what the save writes: every option the zone states, plus — when
     /// editing an existing section — a null for each owned option it no longer
     /// states. The name is written when it is not the one the section carries:

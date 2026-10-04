@@ -312,12 +312,7 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
             ]),
             errors,
         )
-        .writes("family")
-        // Most rules never name a family and fw4 then matches both, so the
-        // control belongs to the advanced reading — but only while it sits at
-        // that default. A rule somebody narrowed carries live state, and state
-        // is visible to every reader whatever mode they are in (ADR-015 §4).
-        .advanced_when(form.family.is_empty()),
+        .writes("family"),
         // Everything else a rule can match on, and the control that adds one.
         // The catalogue is the shell's: it renders the conditions this rule
         // carries as rows and keeps the rest behind its own picker, which is
@@ -1009,43 +1004,6 @@ mod tests {
         assert!(switched_on(&plain, "enabled"));
         assert!(switched_on(&plain, "counter"));
         assert_eq!(control(&plain, "log")["checked"], false);
-    }
-
-    /// The reference case for "mode hides capability, never state" (ADR-015 §4):
-    /// the address family is part of the advanced reading while it sits at fw4's
-    /// default, and the moment a rule narrows it the tag is gone — so a basic
-    /// reader is never shown a rule that hides what it actually does.
-    #[test]
-    fn the_address_family_hides_only_while_it_is_at_its_default() {
-        let untouched = open("plain");
-        assert_eq!(
-            control(&untouched, "family")["advanced"],
-            true,
-            "a rule matching both families keeps the control out of the basic reading"
-        );
-
-        let narrowed = open("everything");
-        assert_eq!(control(&narrowed, "family")["value"], "ipv4");
-        assert!(
-            control(&narrowed, "family").get("advanced").is_none(),
-            "a rule narrowed to one family states that in every reading"
-        );
-
-        // A submission that drops the family puts the control back in the advanced
-        // reading, since the rule is back at the default it started from.
-        let cleared = submit(
-            "everything",
-            &[("src", "guest"), ("target", "ACCEPT"), ("counter", "1")],
-        );
-        assert_eq!(control(&cleared, "family")["advanced"], true);
-
-        // Nothing else on the path is hidden: the essentials are the basic reading.
-        for essential in ["src", "dest", "proto", "target", "name"] {
-            assert!(
-                control(&untouched, essential).get("advanced").is_none(),
-                "{essential} is one of the fields a rule needs to work"
-            );
-        }
     }
 
     #[test]

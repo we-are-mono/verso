@@ -412,8 +412,7 @@ apk-i18n-publish: apk-i18n
 # Author the catalog from the code and the shipped sl.json, using this only to spot
 # drift in the explicit-seam subset.
 # i18n-audit renders every page reachable from / and /login in each installed
-# language — in the advanced reading, so nothing is pruned before it reaches
-# the translator (ADR-015) — and reports the source strings that fell back to
+# language and reports the source strings that fell back to
 # English plus the catalog keys no render requested. The translators record
 # their own misses (i18n.Bundle.Recorded), so the report is exact for
 # everything the crawl renders; i18n-pot below stays the quick partial grep.

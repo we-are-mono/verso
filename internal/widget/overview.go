@@ -353,8 +353,7 @@ func (o *Overview) sysRight() *Properties {
 
 // factCols builds the IPv4/IPv6 connection-facts columns from the live fields:
 // each side an eyebrow over a left-aligned Properties sheet (mono, copyable —
-// the reading order for addresses a person compares line by line). The panel is
-// the advanced face of the internet tile above it (ADR-015 §2), so a page that
+// the reading order for addresses a person compares line by line). A page that
 // carries neither side draws no columns at all.
 func (o *Overview) factCols(r *Renderer, csrf string) ([]ohFactColView, error) {
 	if len(o.V4) == 0 && len(o.V6) == 0 {

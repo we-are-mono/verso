@@ -600,13 +600,9 @@ type pageData struct {
 	CSS           template.CSS
 	Nav           navModel
 	Body          template.HTML
-	// The reader mode (ADR-015): Advanced is what the sidebar switch shows, and
-	// ModeReturn is the page the flip comes back to — this one.
-	Advanced   bool
-	ModeReturn string
-	NoPassword bool
-	Banner     *plugin.Banner
-	CSRFToken  string
+	NoPassword    bool
+	Banner        *plugin.Banner
+	CSRFToken     string
 	// SessionExpiry is the moment this session ends (RFC3339, UTC), restated by
 	// every render: the browser follows it out rather than waiting for a click.
 	SessionExpiry string
@@ -817,7 +813,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	pluginTr := s.pluginTranslators(r)
-	mode := readerMode(r)
 	staged := s.staged(r.Context(), s.sessionSID(r), tr, pluginTr)
 	flashVariant, flashMessage := s.takeFlash(r)
 	// A plugin's outcome notice rides the same flash slot as the shell's PRG
@@ -871,10 +866,8 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
 		CSS:           s.currentCSS(),
-		Nav:           s.buildSidebar(r.URL.Path, mode, tr, pluginTr, localizedPages),
+		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr, localizedPages),
 		Body:          body,
-		Advanced:      mode == widget.ModeAdvanced,
-		ModeReturn:    r.URL.RequestURI(),
 		NoPassword:    !hasPassword,
 		Banner:        localizeBanner(hdr.Banner, tr),
 		CSRFToken:     s.sessionCSRF(r),
@@ -965,24 +958,20 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		d, u = s.wanHist.Latest()
 	}
 	ov.DownVal, ov.UpVal = fmt.Sprintf("%.1f", d), fmt.Sprintf("%.1f", u)
-	// The IPv4/IPv6 panel reads the uplink's live connection facts. It is the
-	// advanced face of what the internet tile above it says in task language
-	// (ADR-015 §2): addresses, gateways and lease times are the machinery behind
-	// "you are online", so the basic reading states the verdict and stops there.
-	if readerMode(r) == widget.ModeAdvanced {
-		if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
-			ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
-			ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn)
-			for i := range ov.V6 {
-				if ov.V6[i].Label == "Expires" {
-					ov.V6[i].Value = loginDuration(tr, conn.V6Valid)
-				}
+	// The IPv4/IPv6 panel reads the uplink's live connection facts: the
+	// addresses, gateways and lease times behind the internet tile's verdict.
+	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
+		ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
+		ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn)
+		for i := range ov.V6 {
+			if ov.V6[i].Label == "Expires" {
+				ov.V6[i].Value = loginDuration(tr, conn.V6Valid)
 			}
-		} else {
-			log.Printf("verso: overview: wan connection unavailable: %v", err)
-			unavailable := []widget.OverviewFact{{Label: "Status", Value: "unavailable"}}
-			ov.V4, ov.V6 = unavailable, unavailable
 		}
+	} else {
+		log.Printf("verso: overview: wan connection unavailable: %v", err)
+		unavailable := []widget.OverviewFact{{Label: "Status", Value: "unavailable"}}
+		ov.V4, ov.V6 = unavailable, unavailable
 	}
 	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid, tr))
@@ -1001,7 +990,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.InterfacesHref = s.navLabelHref("Interfaces")
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, ov), s.sessionCSRF(r), lang, catalog); err != nil {
+	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r), lang, catalog); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

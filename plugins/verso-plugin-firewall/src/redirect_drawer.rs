@@ -132,7 +132,6 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
         meta: String::new(),
         meta_icon: String::new(),
         meta_position: String::new(),
-        mode: String::new(),
         flush: true,
         hairline: false,
         target: String::new(),
@@ -231,8 +230,7 @@ fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Wi
                 zone_options(model, &redirect.dest, "Work it out from the address"),
                 errors,
             )
-            .writes("dest")
-            .advanced_when(redirect.dest.is_empty()),
+            .writes("dest"),
         ],
     )
 }
@@ -396,8 +394,7 @@ fn handling(redirect: &RedirectForm, errors: &Errors) -> Widget {
                 ]),
                 errors,
             )
-            .writes("family")
-            .advanced_when(redirect.family.is_empty()),
+            .writes("family"),
         ],
     )
 }

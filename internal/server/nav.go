@@ -41,9 +41,6 @@ type navLink struct {
 	Href   string
 	Icon   string
 	Active bool
-	// Mode is the reading this entry belongs to (ADR-015): "basic", "advanced",
-	// or empty for both. It comes from the manifest and filters the row.
-	Mode string
 	// PluginID names the plugin that authored this entry's label ("" for a
 	// shell-owned link), so the label is localized from that plugin's catalog
 	// rather than the shell's base (ADR-012 §5).
@@ -210,7 +207,7 @@ func navIcon(label, section string) string {
 // opens. Labels are localized at the display edge (ADR-012): shell-owned labels
 // from base (tr), each plugin's from that plugin's catalog (pluginTr(id)), which
 // is why the ordering above happens while they are still English.
-func (s *Server) buildSidebar(active, mode string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
+func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
 	rows := []navRow{{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")}}
 
 	// A row says nothing of how things are — the homepage does — so Devices
@@ -227,7 +224,7 @@ func (s *Server) buildSidebar(active, mode string, tr func(string) string, plugi
 		}
 		if sec.Title == "System" {
 			system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
-			if sysPages := s.systemPages(active, mode); len(sysPages) > 0 {
+			if sysPages := s.systemPages(active); len(sysPages) > 0 {
 				system.Href, system.Opens = sysPages[0].Href, true
 			}
 			// What System has waiting for you is what it has to install.
@@ -327,7 +324,6 @@ func (s *Server) buildNav(active string) []navSection {
 				Label:    entry.Label,
 				Href:     pluginHref(m.ID, entry.Path),
 				Icon:     entry.Icon,
-				Mode:     entry.Mode,
 				PluginID: m.ID,
 				Pages:    entry.Pages,
 			})

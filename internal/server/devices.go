@@ -61,7 +61,7 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	act := widget.TakeHeadingAct(page)
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, page), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

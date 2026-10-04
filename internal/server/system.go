@@ -8,25 +8,20 @@ import (
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
-// systemPages assembles the mixed-ownership System frame for one reader's mode.
+// systemPages assembles the mixed-ownership System frame.
 // Plugin-owned pages come from live manifest registrations; the shell contributes
 // only the pages it actually owns. A stopped plugin therefore withdraws its page
 // without a System-specific condition or a dead, hardcoded destination.
-//
-// Services is the advanced reading of this domain (ADR-015): procd's live table of
-// what runs is machinery, not a task. Its tab is absent in basic mode — the URL
-// still answers, because mode is never authority (ADR-015 §6).
-func (s *Server) systemPages(active, mode string) []pageTab {
+func (s *Server) systemPages(active string) []pageTab {
 	tabs := make([]pageTab, 0, 6)
 	for _, m := range s.manifestList() {
 		if !s.probe(m.Socket) {
 			continue
 		}
 		for _, entry := range m.Nav {
-			if entry.Section != "System" || !modeShows(entry.Mode, mode) {
+			if entry.Section != "System" {
 				continue
 			}
 			tabs = append(tabs, pageTab{
@@ -36,17 +31,14 @@ func (s *Server) systemPages(active, mode string) []pageTab {
 			})
 		}
 	}
-	for _, item := range []struct{ label, href, mode string }{
-		{"Hardware", "/system/hardware", ""},
-		{"Access", "/system/access", ""},
-		{"Packages", "/system/packages", ""},
-		{"Services", "/system/services", widget.ModeAdvanced},
-		{"Maintenance", "/system/maintenance", ""},
-		{"Logs", "/system/logs", ""},
+	for _, item := range []struct{ label, href string }{
+		{"Hardware", "/system/hardware"},
+		{"Access", "/system/access"},
+		{"Packages", "/system/packages"},
+		{"Services", "/system/services"},
+		{"Maintenance", "/system/maintenance"},
+		{"Logs", "/system/logs"},
 	} {
-		if !modeShows(item.mode, mode) {
-			continue
-		}
 		tabs = append(tabs, pageTab{Label: item.label, Href: item.href})
 	}
 	markActiveTab(tabs, active)
@@ -54,7 +46,7 @@ func (s *Server) systemPages(active, mode string) []pageTab {
 }
 
 func (s *Server) handleSystemRoot(w http.ResponseWriter, r *http.Request) {
-	pages := s.systemPages("", readerMode(r))
+	pages := s.systemPages("")
 	// Access is always present, so this can only be empty if the shell's own
 	// System frame is broken. Keep the fallback defensive and local.
 	destination := "/system/access"

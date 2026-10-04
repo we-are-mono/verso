@@ -354,7 +354,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	}
 
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, s.reading(r, &widget.Stack{Children: children}), s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -362,7 +362,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	// solely when other pages' edits are pending.
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading: "Services", Tone: "neutral",
-	}, "wide", s.systemPages(r.URL.Path, readerMode(r)), template.HTML(body.String()))
+	}, "wide", s.systemPages(r.URL.Path), template.HTML(body.String()))
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name and
