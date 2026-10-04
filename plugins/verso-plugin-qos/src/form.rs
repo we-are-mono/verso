@@ -9,8 +9,6 @@
 //! queueing discipline that never loads. Both are refused here, on the control
 //! carrying the offending value, before anything is written.
 
-use std::collections::BTreeMap;
-
 use verso_plugin::{commit, commit_delete, commit_new, json, Form, Map, Value};
 
 use crate::model::{Policy, CAPS, DAYS, DEVICE, FIREWALL, RULE, WAN};
@@ -20,29 +18,7 @@ use crate::model::{Policy, CAPS, DAYS, DEVICE, FIREWALL, RULE, WAN};
 /// can offer.
 const MAX_MBIT: u32 = 100_000;
 
-/// Errors is what a submission got wrong, addressed to the controls carrying the
-/// offending values. The shell reads the annotations back off the re-rendered
-/// tree, so a form that reports one is a 422 and its write is blocked.
-#[derive(Default)]
-pub struct Errors(BTreeMap<String, String>);
-
-impl Errors {
-    pub fn check(&mut self, name: &str, ok: bool, message: &str) {
-        if !ok {
-            self.0
-                .entry(name.to_string())
-                .or_insert_with(|| message.to_string());
-        }
-    }
-
-    pub fn get(&self, name: &str) -> &str {
-        self.0.get(name).map(String::as_str).unwrap_or("")
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+pub use verso_plugin::Errors;
 
 /// REFUSED is what the tab says when it wrote nothing.
 pub const REFUSED: &str =

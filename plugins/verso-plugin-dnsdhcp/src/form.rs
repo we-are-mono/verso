@@ -15,7 +15,6 @@
 //! section they cannot parse and say nothing about it, so a value they would
 //! refuse is refused here, on the control that carries it, before it is written.
 
-use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use verso_plugin::{Field, Form, SelectOption, Widget};
@@ -30,32 +29,7 @@ pub fn deletes(form: &Form) -> bool {
     form.get(DELETE) == "1"
 }
 
-/// Errors is what a submission got wrong, addressed to the controls carrying the
-/// offending values. The shell reads the annotations back off the re-rendered
-/// tree, so a form that reports one is a 422 and its write is blocked.
-#[derive(Default)]
-pub struct Errors(BTreeMap<String, String>);
-
-impl Errors {
-    /// check records a message against a field when the value is not one the
-    /// daemon accepts.
-    pub fn check(&mut self, name: &str, ok: bool, message: &str) {
-        if !ok {
-            self.0
-                .entry(name.to_string())
-                .or_insert_with(|| message.to_string());
-        }
-    }
-
-    /// get is the message for one field, or "" — what a field widget carries.
-    pub fn get(&self, name: &str) -> &str {
-        self.0.get(name).map(String::as_str).unwrap_or("")
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+pub use verso_plugin::Errors;
 
 /// REFUSED is what an editor says when it wrote nothing. The fields say which
 /// values were wrong; the notice says that nothing happened.

@@ -26,7 +26,6 @@
 //! rule: a redirect carries most of the same vocabulary, and reading `!10/minute`
 //! twice in two places is two chances to disagree with the parser that decides.
 
-use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use verso_plugin::{json, Form, Map, Section, Value};
@@ -874,71 +873,7 @@ pub const MAC_HELP: &str = "Write a MAC address as six hex pairs, such as 00:11:
 const ICMP_HELP: &str = "Write an ICMP type name, or a numeric type or type/code.";
 pub const MARK_HELP: &str = "Write a mark as a decimal or hexadecimal number.";
 
-/// Errors is what a submission got wrong, addressed to the controls that carry
-/// the offending values: a message per field, and a message per item of a list.
-/// The shell reads the annotations back off the re-rendered tree, so a form that
-/// reports one is a 422 whether or not the plugin says so as well.
-#[derive(Default, Clone)]
-pub struct Errors {
-    fields: BTreeMap<String, String>,
-    lists: BTreeMap<String, BTreeMap<String, String>>,
-}
-
-impl Errors {
-    pub fn field(&mut self, name: &str, message: &str) {
-        self.fields
-            .entry(name.to_string())
-            .or_insert_with(|| message.to_string());
-    }
-
-    /// items validates one list and records a message under the index of each
-    /// item that failed — which is how a repeating control says which row is
-    /// wrong rather than reddening the whole list.
-    pub fn items<F>(&mut self, name: &str, values: &[String], check: F)
-    where
-        F: Fn(&str) -> Result<(), &'static str>,
-    {
-        for (index, value) in values.iter().enumerate() {
-            if let Err(message) = check(value) {
-                self.lists
-                    .entry(name.to_string())
-                    .or_default()
-                    .insert(index.to_string(), message.to_string());
-            }
-        }
-    }
-
-    /// get is the message for one field, or "" — what a field widget carries.
-    pub fn get(&self, name: &str) -> &str {
-        self.fields.get(name).map(String::as_str).unwrap_or("")
-    }
-
-    /// list is the per-item messages for one list, keyed by index as a string.
-    pub fn list(&self, name: &str) -> BTreeMap<String, String> {
-        self.lists.get(name).cloned().unwrap_or_default()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty() && self.lists.is_empty()
-    }
-
-    /// merge folds another set of refusals in. One submission may be validated
-    /// by more than one owner — a zone panel writes its zone and the crossings
-    /// out of it, which are different section types with different rules — and
-    /// the operator is owed every refusal at once rather than one per attempt.
-    /// The first message on a field wins, as it does within one set.
-    pub fn merge(&mut self, other: Errors) {
-        for (name, message) in other.fields {
-            self.fields.entry(name).or_insert(message);
-        }
-        for (name, items) in other.lists {
-            let list = self.lists.entry(name).or_default();
-            for (index, message) in items {
-                list.entry(index).or_insert(message);
-            }
-        }
-    }
-}
+pub use verso_plugin::Errors;
 
 // ---- reading firewall4's written forms ----
 

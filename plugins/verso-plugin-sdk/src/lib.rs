@@ -35,6 +35,8 @@ use std::{env, fs, thread};
 pub use serde_json::{json, Map, Value};
 
 pub mod dhcp;
+mod errors;
+pub use errors::Errors;
 /// Hand-edited files a page lists and edits in place. See [`files`].
 pub mod files;
 mod sha256;
