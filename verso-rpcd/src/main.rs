@@ -693,6 +693,23 @@ fn command_failure(name: &str, output: std::process::Output) -> Failure {
 // so a racing plant loses rather than redirects — and then validates and acts on
 // that immutable copy. No other account can rename, unlink, or follow it. The
 // maintenance mutex serializes callers, so fixed working names are safe.
+// The flag's value is per architecture; an architecture not listed here does not
+// compile rather than open with whatever bit another one means.
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "powerpc64"
+))]
+const O_NOFOLLOW: i32 = 0o100000;
+#[cfg(any(
+    target_arch = "x86",
+    target_arch = "x86_64",
+    target_arch = "mips",
+    target_arch = "mips64",
+    target_arch = "riscv64",
+    target_arch = "loongarch64"
+))]
 const O_NOFOLLOW: i32 = 0o400000;
 
 fn root_open_new(work: &str) -> Result<(fs::File, PathBuf), Failure> {
@@ -1459,5 +1476,27 @@ mod tests {
         for value in ["", "UTC;reboot", "UTC\nPATH=/tmp", "UTC=value"] {
             assert!(!valid_posix_timezone(value), "accepted {value:?}");
         }
+    }
+
+    #[test]
+    fn a_backup_is_not_written_through_a_symlink() {
+        // A link swapped in at the upload path must refuse the write and leave
+        // whatever it points at untouched.
+        let dir = std::env::temp_dir().join(format!("verso-rpcd-nofollow-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir(&dir).unwrap();
+        let work = dir.join("work");
+        let target = dir.join("target");
+        let link = dir.join("link");
+        fs::write(&work, "backup").unwrap();
+        fs::write(&target, "precious").unwrap();
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        assert!(write_back(&work, &link).is_err());
+        assert_eq!(fs::read_to_string(&target).unwrap(), "precious");
+
+        write_back(&work, &target).unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "backup");
+        fs::remove_dir_all(&dir).unwrap();
     }
 }
