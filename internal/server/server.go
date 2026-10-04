@@ -560,8 +560,7 @@ type pageData struct {
 	Display       bool               // opt into the display masthead without a kicker or lede
 	Tone          string             // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Subheading    string             // optional lede under the heading
-	Action        *plugin.PageAction // the page's one primary doorway, rendered as a button beside the heading
-	HeadingAct    template.HTML      // a listing's lone act, rendered in the Action's place (pageHeader.HeadingAct)
+	HeadingAct    template.HTML      // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
 	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
 	Width         string             // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
@@ -715,11 +714,10 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Use letters, numbers and hyphens — no spaces.",
 		"Couldn’t save that just now — try again.",
 		// The live listing: its live control (and the act its title names), the
-		// shelf of plucked values, what the section's meta says while events
-		// flow, and the words a row's age is stated in.
+		// shelf of plucked values, and what the section's meta says while events
+		// flow.
 		"Pause", "Resume", "Paused · %d new", "Clear", "Show only %s", "Remove filter %s",
 		"%d of %d events shown", "~%d events/s",
-		"now", "%d s", "%d min", "%d h",
 		// Package and service actions.
 		"Packages could not be loaded. Try again.",
 		"Could not check refresh status. Try again.",

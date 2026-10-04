@@ -164,7 +164,7 @@
           {{range .Modes}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex h-7.5 items-center rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">{{.Label}}</a>{{end}}
         </nav>
         {{end}}
-        {{if .HeadingAct}}{{.HeadingAct}}{{else if .Action}}{{template "verso-page-action" .Action}}{{end}}
+        {{if .HeadingAct}}{{.HeadingAct}}{{end}}
       </div>
       {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
@@ -174,7 +174,7 @@
       {{/* An act's height whether it holds one or not, as above. */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
-        {{if .HeadingAct}}{{.HeadingAct}}{{else if .Action}}{{template "verso-page-action" .Action}}{{end}}
+        {{if .HeadingAct}}{{.HeadingAct}}{{end}}
       </div>
     </div>
     {{end}}
