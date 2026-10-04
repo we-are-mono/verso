@@ -37,6 +37,8 @@ pub use serde_json::{json, Map, Value};
 pub mod dhcp;
 /// Hand-edited files a page lists and edits in place. See [`files`].
 pub mod files;
+mod sha256;
+pub use sha256::{sha256, sha256_hex};
 /// What a config can hold, as the daemon that reads it defines — and the guard
 /// that every option is either rendered, deliberately left out, or unsupported
 /// upstream. See [`vocabulary`].
