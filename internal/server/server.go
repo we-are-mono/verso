@@ -551,6 +551,7 @@ type pageData struct {
 	Live          bool
 	Display       bool          // opt into the display masthead without a kicker
 	Tone          string        // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
+	Light         bool          // the light masthead, on the page's own ground (pageHeader.Light)
 	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
 	Width         string        // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
@@ -622,6 +623,10 @@ type pageHeader struct {
 	// suffix drops, both from the one word. "neutral" drops the suffix without
 	// a tint. Unknown values are ignored; absent means the plain masthead.
 	Tone string
+	// Light draws the masthead on the page's own ground rather than as the
+	// sand bar, for a page whose body is itself a darker surface — a live log
+	// — so the bar does not stack a second ground on top of it.
+	Light bool
 	// PanelOnly marks a render that answered with one panel's contents rather
 	// than a page — the gateway then sends the body alone, with none of the
 	// chrome the frame around it already has.
@@ -808,6 +813,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Kicker:        tr(hdr.Kicker),
 		Display:       hdr.Display,
 		Tone:          pageTone(hdr.Tone),
+		Light:         hdr.Light,
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		HeadingAct:    hdr.HeadingAct,

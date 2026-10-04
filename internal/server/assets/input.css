@@ -840,6 +840,11 @@ html {
     border-bottom: 1px solid var(--color-rule);
     background-color: var(--color-quiet);
   }
+  /* The light masthead stands on the page's own ground, as the rail does, for
+     a page whose body is itself the darker surface (a live log). */
+  main [data-verso-masthead="light"] {
+    background-color: var(--color-ground);
+  }
 
   /* A page that opens on a control band runs the bar on into the band: the
      band's own top edge is the seam, so the masthead draws no hairline of its
@@ -853,9 +858,6 @@ html {
   main:has([data-verso-actionbar="log"]) [data-verso-masthead] {
     border-bottom: 1px solid var(--color-rule);
   }
-  /* A live log stands on Mid Sand, one step under the title's bar, where Meta
-     falls short of the 4.5 floor (4.4:1): its words there take Body. */
-  :is(.verso-console, [data-verso-console-rows]) .text-meta { color: var(--color-body); }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */

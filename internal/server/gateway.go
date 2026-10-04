@@ -543,6 +543,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 			head = &widget.ActionBar{Heading: true}
 		}
 		head.Live, head.Filter = live, filter
+		hdr.Light = true
 	}
 	hdr.HeadingAct = s.headingAct(r, head, lang, t)
 	var b strings.Builder

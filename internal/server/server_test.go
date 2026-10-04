@@ -2516,10 +2516,35 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	for _, want := range []string{
 		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-quiet);",
 		"main:has([data-verso-actionbar]) [data-verso-masthead] {\n    margin-bottom: 0;\n    border-bottom: 0;",
+		"main [data-verso-masthead=\"light\"] {\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
 		}
+	}
+}
+
+// TestALiveLogsMastheadIsLight: a live log's heading line holds what narrows
+// and holds the stream, and its bar is the light one, on the page's own
+// ground, so the log under it is the page's one darker surface.
+func TestALiveLogsMastheadIsLight(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK, Title: "Activity",
+		Widget: json.RawMessage(`{"type":"stack","children":[
+			{"type":"actionbar","filter":"Find an address","live":"Live"},
+			{"type":"table","style":"console","stream":{"source":"firewall-log"},"columns":[{"label":"Verdict"}]}]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+	body := get(t, s, "/plugins/demo/").Body.String()
+	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-6 py-4">`) {
+		t.Errorf("a live log's masthead is not the light one:\n%s", body)
+	}
+	plain := get(t, newServerWith(t, fakeBackend{}, &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Status: http.StatusOK, Title: "Settings",
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+	}}, []plugin.Manifest{demoManifest()}), "/plugins/demo/").Body.String()
+	if strings.Contains(plain, `data-verso-masthead="light"`) {
+		t.Error("a page without a live log keeps the sand bar")
 	}
 }
 

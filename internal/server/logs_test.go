@@ -91,11 +91,11 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		t.Errorf("the log's three acts wear the secondary dress:\n%s", acts)
 	}
 	for _, want := range []string{
-		"overflow-y-auto bg-mid pt-3 pb-6 shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]", // the log one step darker than the title's bar, sunk under it
+		"overflow-y-auto bg-quiet pt-3 pb-6 shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]", // the log on the sand bar's ground, under the light bar, sunk under it
 		`data-log-pause title="Pause"`, "<span data-log-pause-label>Connecting…</span></button>",
 		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
-		`<div data-verso-masthead class="mb-6 py-4">`,
+		`<div data-verso-masthead="light" class="mb-6 py-4">`, // the light bar, on the page's own ground
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs page missing %q", want)

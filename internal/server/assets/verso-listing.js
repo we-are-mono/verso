@@ -183,7 +183,7 @@ function versoConsole(o) {
   // guide it; everything in mono at the reading size, because every value on
   // the line is a machine string.
   var CONSOLE = {
-    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-quiet",
+    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
     mark: "my-0.5 w-0.75 shrink-0 rounded-full ",
     time: "w-18 shrink-0 font-mono text-base font-medium text-body",
     verdict: "w-22 shrink-0 font-mono text-base font-medium ",
@@ -612,7 +612,7 @@ function versoConsole(o) {
       seen.add(row.id);
       var error = ["emerg", "alert", "crit", "err"].indexOf(row.severity) !== -1;
       var warning = error || row.severity === "warn";
-      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-quiet lg:flex lg:py-px");
+      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-mid/50 lg:flex lg:py-px");
       line.setAttribute("data-log-row", String(row.id));
       line.dataset.logAt = String(row.at);
       line.appendChild(el("span", "row-span-2 my-0.5 w-0.75 shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));

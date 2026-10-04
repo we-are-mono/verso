@@ -58,7 +58,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	hdr := pageHeader{Heading: "Logs", Tone: "neutral", HeadingAct: template.HTML(acts.String())} //nolint:gosec // rendered by the shell's own templates
+	hdr := pageHeader{Heading: "Logs", Tone: "neutral", Light: true, HeadingAct: template.HTML(acts.String())} //nolint:gosec // rendered by the shell's own templates
 	s.renderPage(w, r, http.StatusOK, hdr, "full", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
