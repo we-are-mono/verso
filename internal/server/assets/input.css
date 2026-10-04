@@ -826,20 +826,27 @@ html {
     padding-inline-end: calc(var(--spacing) * 10);
   }
 
-  /* A page's masthead — its title's line and its acts — ends where Log out
-     does, whatever measure the column below keeps: the page's gutter in from
-     the window, and never past the top bar's 72rem. The page (main) is the
-     size container; the right margin pulls the masthead out from the column's
-     end to that edge. */
+  /* A page's masthead is a Quiet Sand bar, the colophon's ground, on a
+     hairline that runs from the rail to the window's right edge, while its
+     title keeps to the page's column and its
+     acts end where Log out does, whatever measure the column below keeps:
+     the page's gutter in from the window, and never past the top bar's
+     72rem. The page (main) is the size container; the margins pull the
+     masthead out past the frame's 2.5rem and the column's end to the rail
+     and the window's edge, and the padding brings its content back. */
   main [data-verso-masthead] {
-    margin-right: calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
+    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
+    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
+    border-bottom: 1px solid var(--color-rule);
+    background-color: var(--color-quiet);
   }
 
-  /* A page that opens on a control band keeps 32px between the title and the
-     band's own top edge. The masthead itself draws no divider. */
+  /* A page that opens on a control band runs the bar on into the band: the
+     band's own top edge is the seam, so the masthead draws no hairline of its
+     own. */
   main:has([data-verso-actionbar]) [data-verso-masthead] {
-    padding-bottom: 0;
-    margin-bottom: calc(var(--spacing) * 8);
+    margin-bottom: 0;
+    border-bottom: 0;
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

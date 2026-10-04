@@ -327,16 +327,16 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 }
 
 // TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
-// masthead — the title's line and the page's acts — ends at the right edge
-// Log out ends at: the page's 2.5rem gutter in, never past the top bar's
-// 72rem.
+// masthead's hairline runs from the rail to the window's right edge, while the
+// title keeps to the page's column and the page's acts end at the right edge
+// Log out ends at: the page's 2.5rem gutter in, never past the top bar's 72rem.
 func TestMastheadEndsUnderLogOut(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	if !strings.Contains(string(css), "main [data-verso-masthead]{margin-right:calc(100% - min(100cqw - var(--spacing) * 20, var(--container-6xl)))}") {
-		t.Error("the masthead ends where Log out does")
+	if !strings.Contains(string(css), "main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));border-bottom:1px solid var(--color-rule);background-color:var(--color-quiet)}") {
+		t.Error("the masthead's hairline runs from the rail to the window's edge and its acts end where Log out does")
 	}
 }
 

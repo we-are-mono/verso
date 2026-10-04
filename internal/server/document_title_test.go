@@ -48,13 +48,14 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	}
 }
 
-// TestPageMastheadHasNoDivider: the heading labels the page without a rule
-// competing with the first section band. The masthead still aligns page acts.
-func TestPageMastheadHasNoDivider(t *testing.T) {
+// TestPageMastheadStandsOnAHairline: the heading's line stands 16px over its
+// own hairline, as far as it stands under the bar's top, and the page 24px
+// under it. The masthead still aligns page acts.
+func TestPageMastheadStandsOnAHairline(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="pb-8">`) {
-		t.Error("the masthead keeps its spacing without a divider")
+	if !strings.Contains(access, `<div data-verso-masthead class="mb-6 py-4">`) {
+		t.Error("the masthead stands 16px over its hairline and the page 24px under it")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
 		t.Error("the page's rules are no one page's experiment")
@@ -82,13 +83,13 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 	}
 }
 
-// TestMaintenanceSectionsUsePageBands: the masthead has no divider, and
+// TestMaintenanceSectionsUsePageBands: the masthead stands on its hairline, and
 // Maintenance's content keeps 32px before the next band to match the 32px
 // between the preceding band and its first content.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="pb-8">`) {
-		t.Error("the masthead opens onto the first section without a divider")
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) {
+		t.Error("the masthead opens onto the first section from its hairline")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
 		// The same ruled section the widget draws; its air is sections.css's.
