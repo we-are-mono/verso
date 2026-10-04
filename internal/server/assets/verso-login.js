@@ -2,8 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // The public sign-in page keeps native form submission. JavaScript supplies
-// only the waiting mark and the small public status refresh; it holds no
-// credentials and never needs the authenticated shell's client runtime.
+// only the busy state of the button — whose waiting mark is the stylesheet's
+// own motion (input.css), as everywhere else — and the small public status
+// refresh; it holds no credentials and never needs the authenticated shell's
+// client runtime.
 (function () {
   "use strict";
   var form = document.querySelector("[data-login-form]");
@@ -12,49 +14,6 @@
 
   var button = form.querySelector("[data-login-submit]");
   var motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  var animations = [];
-
-  function stopWaiting() {
-    animations.forEach(function (animation) { animation.cancel(); });
-    animations = [];
-  }
-
-  function startWaiting() {
-    stopWaiting();
-    if (motion.matches || typeof button.animate !== "function") return;
-    var squares = form.querySelector("[data-login-wait]").children;
-    var colors = getComputedStyle(panel);
-    var parked = colors.getPropertyValue("--color-sand-5").trim();
-    var travelling = colors.getPropertyValue("--color-meta").trim();
-    var corners = [[0, 0], [8, 0], [8, 8], [0, 8]];
-    // The design's vq0–vq3 choreography: twelve moves over four seconds.
-    // Appearance stays in Tailwind; the Web Animations API supplies motion.
-    var paths = [
-      [0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0],
-      [0, 1, 1, 1, 1, 1, 2, 3, 0, 1, 2, 3, 0],
-      [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 0],
-      [0, 1, 2, 3, 0, 1, 2, 3, 3, 3, 3, 3, 0],
-    ];
-    var lifted = [
-      [4, 5, 6, 7, 8],
-      [0, 1, 5, 6, 7, 8, 9, 10, 11, 12],
-      [0, 1, 2, 10, 11, 12],
-      [0, 1, 2, 3, 4, 5, 6, 7, 11, 12],
-    ];
-    paths.forEach(function (path, index) {
-      var frames = path.map(function (corner, step) {
-        var active = lifted[index].indexOf(step) !== -1;
-        return {
-          offset: step === 12 ? 1 : step * 0.0833,
-          transform: "translate(" + (corners[corner][0] - corners[index][0]) + "px," + (corners[corner][1] - corners[index][1]) + "px)",
-          backgroundColor: active ? travelling : parked,
-          zIndex: active ? 2 : 1,
-          easing: "ease",
-        };
-      });
-      animations.push(squares[index].animate(frames, { duration: 4000, iterations: Infinity }));
-    });
-  }
 
   form.addEventListener("submit", function (event) {
     if (button.disabled) {
@@ -65,7 +24,6 @@
     button.setAttribute("aria-disabled", "true");
     button.setAttribute("aria-busy", "true");
     form.setAttribute("aria-busy", "true");
-    startWaiting();
   });
 
   // Returning via browser history must restore a usable native form.
@@ -74,7 +32,6 @@
     button.setAttribute("aria-disabled", "false");
     button.removeAttribute("aria-busy");
     form.removeAttribute("aria-busy");
-    stopWaiting();
   });
 
   var clock = panel.querySelector("[data-login-clock]");
@@ -98,7 +55,6 @@
         duration: 2600, iterations: Infinity, easing: "ease-in-out",
       });
     }
-    if (button.disabled) startWaiting();
   }
 
   function setInternet(internet) {

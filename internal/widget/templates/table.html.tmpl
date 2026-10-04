@@ -484,12 +484,6 @@
   <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
     <div data-verso-stream-empty class="px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>
   </div>
-  {{/* the endpoint glyphs a streamed row needs, cloned by the client. */}}
-  <template data-verso-stream-icons>
-    <span data-verso-stream-icon="zone">{{icon "zone" "size-3.5"}}</span>
-    <span data-verso-stream-icon="device">{{icon "device" "size-3.5"}}</span>
-    <span data-verso-stream-icon="router">{{icon "router" "size-3.5"}}</span>
-  </template>
 </div>
 {{else}}
 {{/* Every row is inset from the table's edges, and this is where that is said —
@@ -527,9 +521,10 @@
     {{if .Action}}<a href="{{.Action.Href}}" class="shrink-0 text-sm font-medium text-denim transition-colors hover:text-denim-deep">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  {{/* a live listing states its source and its ring on the table itself: the
-       shell's stream client finds it by that attribute, opens the one event
-       stream the source names, and builds rows into this tbody. */}}
+  {{/* a live listing states its source and its ring on the table itself. The
+       shell's stream client draws arriving rows as a console (style
+       "console", above); a grid carries the declaration and stays as it was
+       rendered. */}}
   <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="w-full border-collapse border-b border-rule text-sm">
     {{/* fit columns squeeze to their content through a colgroup width; the
          table's slack collects in the growing columns, so a huddle of fit
@@ -583,17 +578,6 @@
   </div>
   {{end}}
   <p data-verso-listing-empty hidden class="border-b border-rule px-4 py-2.5 text-sm leading-6 text-meta">{{t "Nothing matches."}}</p>
-  {{if .Stream}}
-  {{/* the endpoint glyphs a streamed row needs, rendered here by the shell's own
-       Lucide source so the client never has to carry markup of its own: it
-       clones these nodes into the rows it builds. A <template> renders
-       nothing. */}}
-  <template data-verso-stream-icons>
-    <span data-verso-stream-icon="zone">{{icon "zone" "size-3.5"}}</span>
-    <span data-verso-stream-icon="device">{{icon "device" "size-3.5"}}</span>
-    <span data-verso-stream-icon="router">{{icon "router" "size-3.5"}}</span>
-  </template>
-  {{end}}
 </div>
 {{end}}
 {{if .Reorderable}}

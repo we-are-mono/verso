@@ -42,8 +42,6 @@
   var countdown = layer && layer.querySelector("[data-verso-session-countdown]");
   var stayButton = layer && layer.querySelector("[data-verso-session-stay]");
   var okButton = layer && layer.querySelector("[data-verso-session-dismiss]");
-  var csrfMeta = document.querySelector('meta[name="verso-csrf"]');
-  var csrf = csrfMeta ? csrfMeta.content : "";
   var deadline = 0;
   var warnTimer = null;
   var endTimer = null;
@@ -73,13 +71,10 @@
   // What the router says is left. An answer that is not the session's state is
   // the login page a redirect led to: the session is already gone.
   function state(method) {
-    var init = { method: method, credentials: "same-origin", headers: {} };
-    if (method === "GET") init.headers["X-Verso-Refresh"] = "1";
-    else {
-      init.headers["Content-Type"] = "application/x-www-form-urlencoded";
-      init.body = "_csrf=" + encodeURIComponent(csrf);
-    }
-    return fetch("/session", init).then(function (res) {
+    var asked = method === "GET"
+      ? fetch("/session", { method: "GET", credentials: "same-origin", headers: { "X-Verso-Refresh": "1" } })
+      : versoPost("/session", versoBody());
+    return asked.then(function (res) {
       var type = res.headers.get("Content-Type") || "";
       if (!res.ok || type.indexOf("application/json") !== 0) throw new Error("signed out");
       return res.json();
@@ -103,8 +98,7 @@
   }
 
   function clock() {
-    var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-    countdown.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+    countdown.textContent = versoMinutes(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
   }
 
   function show(canExtend) {
@@ -186,8 +180,6 @@
   var word = document.getElementById("verso-staged-word");
   // A phone's bar says the count alone; the words say it from sm.
   var tally = document.getElementById("verso-staged-count");
-  var csrfMeta = document.querySelector('meta[name="verso-csrf"]');
-  var csrf = csrfMeta ? csrfMeta.content : "";
   var resting = chip.className;
   var settle = null;
 
@@ -201,19 +193,15 @@
 
   // say puts a count on the chip, in words and as the bare figure. Rolled, the
   // old count rises out of the chip's line as the new one rises into it — a
-  // tally turning over, not a label swapped — clipped by the chip itself.
+  // tally turning over (versoTurn), not a label swapped — clipped by the chip
+  // itself.
   function say(n, rolled) {
     var text = stagedLabel(n);
     [[label, text], [tally, String(n)]].forEach(function (pair) {
       var el = pair[0], next = pair[1];
       if (!el || el.textContent === next) return;
-      if (!rolled || still() || typeof el.animate !== "function") { el.textContent = next; return; }
-      el.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-80%)", opacity: 0 }],
-        { duration: 140, easing: "ease-in" }).finished.then(function () {
-        el.textContent = next;
-        el.animate([{ transform: "translateY(80%)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
-          { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
-      }, function () { el.textContent = next; });
+      if (rolled) versoTurn(el, next);
+      else el.textContent = next;
     });
   }
 
@@ -333,12 +321,7 @@
   };
 
   function post(path) {
-    return fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "_csrf=" + encodeURIComponent(csrf),
-      credentials: "same-origin",
-    });
+    return versoPost(path, versoBody());
   }
 
   function drawer() {
@@ -391,7 +374,7 @@
       .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
       .then(function (html) {
         if (!html) return false;
-        var doc = new DOMParser().parseFromString(html, "text/html");
+        var doc = versoParse(html);
         var mine = document.querySelectorAll("main form");
         var fresh = doc.querySelectorAll("main form");
         var rows = function (d) { return [].map.call(d.querySelectorAll("tr[data-verso-row-id]"), function (r) { return r.getAttribute("data-verso-row-id"); }).join(" "); };
@@ -426,7 +409,7 @@
   function apply() {
     var n = count();
     waiting(true, "verso-staged-apply");
-    var deadline = Date.now() + 28000;
+    var since = Date.now();
 
     function applied() {
       close();
@@ -448,22 +431,13 @@
     }
 
     function confirmLoop() {
-      post("/uci/confirm")
-        .then(function (res) {
-          if (res.ok) {
-            applied();
-            return;
-          }
-          retry();
-        })
-        .catch(retry);
-    }
-    function retry() {
-      if (Date.now() < deadline) {
-        setTimeout(confirmLoop, 500);
-        return;
-      }
-      rolledBack(T("Couldn’t confirm — the router may have rolled back"));
+      versoConfirmApply(function () {
+        return post("/uci/confirm").then(function (res) {
+          if (!res.ok) throw new Error("not confirmed");
+        });
+      }, since).then(applied, function () {
+        rolledBack(T("Couldn’t confirm — the router may have rolled back"));
+      });
     }
 
     post("/uci/apply")

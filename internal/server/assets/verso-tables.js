@@ -49,7 +49,6 @@
       col.style.width = cell.getBoundingClientRect().width + "px";
       group.appendChild(col);
     });
-    group.dataset.versoReorderLock = "";
     // Colgroups add columns; they do not override an earlier group's widths.
     // Temporarily replace the declared grid with the measured one.
     var originals = [].filter.call(table.children, function (node) { return node.tagName === "COLGROUP"; });
@@ -446,17 +445,11 @@ document.addEventListener(
   // step from it. A refusal, or a router out of reach, reloads: the page is
   // what says where the stage still has the rows.
   function stage(form) {
-    fetch(window.location.pathname, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(new FormData(form)).toString(),
-      credentials: "same-origin",
-    }).then(function (res) {
+    versoPost(window.location.pathname, new URLSearchParams(new FormData(form))).then(function (res) {
       if (!res.ok && !res.redirected) throw new Error("order refused");
       return res.text();
     }).then(function (html) {
-      var doc = new DOMParser().parseFromString(html, "text/html");
-      if (window.versoStaged && window.versoStaged.sync) window.versoStaged.sync(doc);
+      if (window.versoStaged && window.versoStaged.sync) window.versoStaged.sync(versoParse(html));
     }).catch(function () {
       if (window.versoDirtyState) window.versoDirtyState.suppress();
       window.location.reload();
@@ -753,7 +746,7 @@ document.addEventListener("click", function (event) {
       try {
         var response = await fetch(location.pathname + location.search, { credentials: "same-origin", cache: "no-store", headers: { "X-Verso-Refresh": "1" }, signal: controller.signal });
         if (!response.ok) throw new Error("inventory unavailable");
-        var doc = new DOMParser().parseFromString(await response.text(), "text/html");
+        var doc = versoParse(await response.text());
         var source = doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")[index];
         var fresh = source && source.querySelector("tbody");
         if (!fresh || !inventory.isConnected) throw new Error("inventory unavailable");

@@ -10,7 +10,6 @@
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>{{ .CSS }}</style>
-<script src="/assets/verso-boot.js"></script>
 <script src="/assets/verso-login.js" defer></script>
 </head>
 <body class="m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink">
@@ -87,7 +86,7 @@
               class="group mt-2 flex h-9 w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-white transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
               <span class="group-disabled:hidden">{{ t "Sign in to router" }}</span>
               <span role="status" class="hidden items-center gap-2.5 group-disabled:flex">
-                <span data-login-wait aria-hidden="true" class="relative block size-3.5 shrink-0">
+                <span data-verso-wait aria-hidden="true" class="relative block size-3.5 shrink-0">
                   <span class="absolute top-0 left-0 size-1.5 rounded-[1px] bg-sand-5"></span>
                   <span class="absolute top-0 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>
                   <span class="absolute top-2 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>

@@ -87,14 +87,8 @@
   var countdownTimeEl = root.querySelector("[data-verso-upgrading-countdown-time]");
   var countdownTick = null;
   var stuckDeadline = 0;
-  function fmtRemaining(ms) {
-    var total = Math.max(0, Math.round(ms / 1000));
-    var mins = Math.floor(total / 60);
-    var secs = total % 60;
-    return mins + ":" + (secs < 10 ? "0" : "") + secs;
-  }
   function paintCountdown() {
-    if (countdownTimeEl) countdownTimeEl.textContent = fmtRemaining(stuckDeadline - Date.now());
+    if (countdownTimeEl) countdownTimeEl.textContent = versoMinutes(Math.max(0, Math.round((stuckDeadline - Date.now()) / 1000)));
   }
   function stopCountdown() {
     if (countdownTick) { window.clearInterval(countdownTick); countdownTick = null; }
@@ -236,9 +230,7 @@
   var clock = root.querySelector("[data-verso-restarting-clock]");
   function paintClock() {
     if (!clock) return;
-    var total = Math.floor((Date.now() - started) / 1000);
-    var secs = total % 60;
-    clock.textContent = Math.floor(total / 60) + ":" + (secs < 10 ? "0" : "") + secs;
+    clock.textContent = versoMinutes(Math.floor((Date.now() - started) / 1000));
   }
   var tick = window.setInterval(paintClock, 1000);
 

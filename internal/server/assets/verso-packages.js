@@ -8,6 +8,10 @@
   var request, sequence = 0, timer, pollTimer, refreshing = false;
   var submissions = new WeakMap();
   var pendingForms = new WeakSet();
+  // watchFiles starts reading the files of each package drawer on the page
+  // as it comes into view (below); without IntersectionObserver a link is
+  // read on its click.
+  var watchFiles = function () {};
 
   function actionLabel(form, submitter) {
     var primary = form.querySelector('[name="_primary"]');
@@ -41,6 +45,7 @@
     else target.replaceWith(fresh);
     if (window.htmx) window.htmx.process(fresh);
     if (window.versoTableFilters) window.versoTableFilters(fresh);
+    watchFiles();
   }
   function filterState() {
     var field = root && root.querySelector("[data-package-query]");
@@ -69,8 +74,7 @@
     try {
       var res = await fetch(url, { credentials: "same-origin", signal: request.signal, headers: { "X-Verso-Interaction": "packages" } });
       if (!res.ok || res.redirected) throw new Error();
-      var doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      var fresh = doc.querySelector("[data-verso-packages]");
+      var fresh = versoParse(await res.text()).querySelector("[data-verso-packages]");
       if (!fresh || id !== sequence) return;
       // Another operator started a refresh: retain the listing already visible.
       if (fresh.hasAttribute("data-verso-package-busy")) { refreshStarted(); return; }
@@ -174,8 +178,7 @@
     files.dataset.loading = "true"; files.setAttribute("aria-busy", "true");
     fetch(files.href, { credentials: "same-origin" }).then(async function (res) {
       if (!res.ok || res.redirected) throw new Error(T("Installed files could not be loaded. Try again."));
-      var doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      var list = doc.querySelector("[data-package-files]");
+      var list = versoParse(await res.text()).querySelector("[data-package-files]");
       if (!list) throw new Error(T("Installed files could not be loaded. Try again."));
       files.replaceWith(document.importNode(list, true));
     }).catch(function (error) {
@@ -192,21 +195,23 @@
         loadFiles(entry.target);
       });
     });
-    var watch = function (scope) {
-      [].forEach.call(scope.querySelectorAll(FILES), function (link) {
-        if (link.closest("[data-verso-panel]")) seen.observe(link);
+    // Each link is watched once: a read that failed waits for its click.
+    var watched = new WeakSet();
+    watchFiles = function () {
+      [].forEach.call(document.querySelectorAll(FILES), function (link) {
+        if (watched.has(link) || !link.closest("[data-verso-panel]")) return;
+        watched.add(link);
+        seen.observe(link);
       });
     };
-    watch(document);
-    // A listing read in place, or a drawer fetched when it opens, brings links
-    // of its own.
-    new MutationObserver(function (records) {
-      records.forEach(function (record) {
-        [].forEach.call(record.addedNodes, function (node) {
-          if (node.nodeType === 1) watch(node.matches && node.matches(FILES) ? node.parentNode : node);
-        });
-      });
-    }).observe(document.body, { childList: true, subtree: true });
+    watchFiles();
+    // Links arrive with drawers: Alpine hangs a listing's drawers on the page
+    // as it starts, a listing read in place brings its own (swap), and a
+    // drawer fetched when it opens brings its contents, settled once htmx has
+    // put them in and Alpine has started what they hold.
+    document.addEventListener("alpine:initialized", watchFiles);
+    document.addEventListener("htmx:afterSwap", watchFiles);
+    document.addEventListener("htmx:afterSettle", watchFiles);
   }
   document.addEventListener("input", function (event) {
     if (!event.target.matches("[data-package-query]") || !root) return;
@@ -238,7 +243,7 @@
     refreshStarted();
     clearTimeout(pollTimer);
     try {
-      var res = await fetch(event.target.action, { method: "POST", credentials: "same-origin", headers: { "X-Verso-Interaction": "packages" }, body: data });
+      var res = await versoPost(event.target.action, data, "packages");
       if (!res.ok || res.redirected) throw new Error();
       pollTimer = setTimeout(poll, 500);
     } catch (_) { poll(); }

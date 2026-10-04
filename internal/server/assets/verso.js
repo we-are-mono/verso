@@ -24,11 +24,15 @@
 //   verso-page.js      a page's own furniture — tips, the section rail, the outcome
 //
 // They were one 3,250-line file. Nothing about the code needed them together: no
-// file here calls into another at load, and the three things they do share
-// (whether there is unsaved work, whether a field is half-typed, what the stage
-// holds) were already passed between them on window, guarded, inside handlers.
-// What the single file cost was the ability to read one behaviour without
-// scrolling past nine others.
+// file here calls into another at load, and the two things they do share
+// (whether there is unsaved work, what the stage holds) were already passed
+// between them on window, guarded, inside handlers. What the single file cost
+// was the ability to read one behaviour without scrolling past nine others.
+//
+// What they all do the same way lives here instead, once: building a row's
+// elements, stating a time, posting in place with the session's token, reading
+// an answer as a document, holding an apply to its rollback window, and
+// turning a tally over.
 
 // Server-rendered translations for the strings this script writes into the page
 // (ADR-012): client JS has no translator, so the render localizes a fixed set
@@ -66,6 +70,95 @@ function versoErrorLine(line, message) {
   return line;
 }
 versoErrorLine.lineClass = "flex items-start gap-2 text-sm leading-5 text-crimson-deep";
+
+// versoEl makes one element of a row a script builds: its tag, its classes,
+// and its words as text — never markup, since what a script writes into a
+// row is often what a stranger sent the router.
+function versoEl(tag, cls, text) {
+  var node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined && text !== null) node.textContent = text;
+  return node;
+}
+
+// versoClock is the wall time a log line carries, HH:MM:SS in the browser's
+// own zone, so a line can be matched against any other log on the machine.
+function versoClock(date) {
+  return [date.getHours(), date.getMinutes(), date.getSeconds()].map(function (n) {
+    return String(n).padStart(2, "0");
+  }).join(":");
+}
+
+// versoMinutes states a span of whole seconds the way a countdown reads it,
+// m:ss.
+function versoMinutes(seconds) {
+  return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+}
+
+// versoCSRF is the session's token, from the meta the page carries it in.
+function versoCSRF() {
+  var meta = document.querySelector('meta[name="verso-csrf"]');
+  return meta ? meta.content : "";
+}
+
+// versoBody is a form body that carries the session's token beside the given
+// fields (anything URLSearchParams takes: pairs, an object, a FormData).
+function versoBody(fields) {
+  var body = new URLSearchParams(fields);
+  var token = versoCSRF();
+  if (token) body.set("_csrf", token);
+  return body;
+}
+
+// versoPost is every in-place post the shell makes: form-encoded, with the
+// session's cookie, and naming the kind of interaction it is when it is one
+// the page answers differently (a switch, a field, an act, a preview). It
+// answers the Response; what counts as success is the caller's.
+function versoPost(url, body, interaction) {
+  var headers = { "Content-Type": "application/x-www-form-urlencoded" };
+  if (interaction) headers["X-Verso-Interaction"] = interaction;
+  return fetch(url, { method: "POST", headers: headers, body: body.toString(), credentials: "same-origin" });
+}
+
+// versoParse reads an answer's markup as a document of its own, to be taken
+// apart rather than shown.
+function versoParse(html) {
+  return new DOMParser().parseFromString(html, "text/html");
+}
+
+// versoConfirmApply holds an apply to the device-side rollback window: it asks
+// confirm() — a promise that rejects while the router is not reached — again
+// every half second until it answers, or until 28 s from `since` have gone,
+// when it rejects with the last failure and the router rolls itself back.
+function versoConfirmApply(confirm, since) {
+  var deadline = since + 28000;
+  return new Promise(function (resolve, reject) {
+    function attempt() {
+      confirm().then(resolve, function (err) {
+        if (Date.now() >= deadline) reject(err);
+        else setTimeout(attempt, 500);
+      });
+    }
+    attempt();
+  });
+}
+
+// versoTurn turns a tally over: the old words rise out of the line as the
+// new rise into it, clipped by whatever holds them. Reduced motion, or a
+// browser that cannot animate, swaps the words.
+function versoTurn(el, text) {
+  if (el.textContent === text) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || typeof el.animate !== "function") {
+    el.textContent = text;
+    return;
+  }
+  el.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-80%)", opacity: 0 }],
+    { duration: 140, easing: "ease-in" }).finished.then(function () {
+    el.textContent = text;
+    el.animate([{ transform: "translateY(80%)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
+      { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+  }, function () { el.textContent = text; });
+}
 
 // versoAnnounce says something to a screen reader without drawing it: what a
 // keyboard move did, what an apply came to. The region is created empty and
@@ -498,13 +591,6 @@ document.addEventListener("alpine:init", function () {
         var dialog = this.$refs.dialog;
         var busy = dialog && dialog.querySelector("[data-verso-busy]");
         if (busy) versoAnnounce(busy.textContent.replace(/\s+/g, " ").trim());
-      },
-      // A table row as trigger: open the drawer unless the click landed on a
-      // control inside the row (a toggle's label, a link, a button) — those keep
-      // their own meaning.
-      showFromRow: function (e) {
-        if (e && e.target && e.target.closest("label,input,button,a,select,textarea")) return;
-        this.show();
       },
       // A row icon that names a panel tab opens the panel on it. The panel is
       // fetched the first time it is revealed, so before the first open the tab

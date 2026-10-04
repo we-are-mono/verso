@@ -42,12 +42,18 @@
  * weight range each file carries (Hanken 100–900, Inconsolata 200–900) so any
  * weight the design asks for is drawn rather than clamped to the nearest one.
  * SIL OFL 1.1 — see their files in assets/fonts.
+ *
+ * font-display: block holds the text, never a fallback face, until a face is
+ * ready, so the type never flashes on navigation; the page heads preload the
+ * latin files every page draws in. A face that never arrives gives way to the
+ * fallback after the browser's block period (about three seconds), so a
+ * missing font cannot strand the UI.
  */
 @font-face {
   font-family: "Hanken Grotesk";
   font-style: normal;
   font-weight: 100 900;
-  font-display: swap;
+  font-display: block;
   src: url("/assets/fonts/hanken-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
@@ -55,7 +61,7 @@
   font-family: "Hanken Grotesk";
   font-style: normal;
   font-weight: 100 900;
-  font-display: swap;
+  font-display: block;
   src: url("/assets/fonts/hanken-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -64,7 +70,7 @@
   font-style: normal;
   font-weight: 200 900;
   font-stretch: 100%;
-  font-display: swap;
+  font-display: block;
   src: url("/assets/fonts/inconsolata-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
@@ -73,7 +79,7 @@
   font-style: normal;
   font-weight: 200 900;
   font-stretch: 100%;
-  font-display: swap;
+  font-display: block;
   src: url("/assets/fonts/inconsolata-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -118,13 +124,8 @@
   [role="dialog"] { --verso-form-width: 40rem; }
 }
 
-/* verso-boot.js removes this pre-paint gate as soon as the three UI faces are
-   ready. Keep the canvas visible while the content waits. */
 html {
   background-color: var(--color-canvas);
-}
-html.verso-fonts-loading body {
-  visibility: hidden;
 }
 
 @layer base {
@@ -321,10 +322,8 @@ html.verso-fonts-loading body {
   }
 
   /* The dock's pin offset lives here (not as a utility, which would win the
-     layer order): the viewport edge normally, below the subpage top bar when
-     one is present. */
+     layer order): the viewport edge. */
   .verso-filter-dock { top: 0; }
-  .verso-haspages .verso-filter-dock { top: 3rem; }
 
   /* Page-wide filter (the still-lens, verso.js "filter"): the dock is invisible at
      rest (page-ground colour); pinned, rows slide beneath it and dissolve through
@@ -829,22 +828,58 @@ html.verso-fonts-loading body {
   }
 }
 
-/* The live listing (verso.js opens the stream, builds the rows). A row arrives
-   at a fixed point — the top — so the only motion is its own settling in;
-   nothing below it moves, and nothing at all moves while the stream is paused.
-   Reduced motion gets the row without the arrival. */
+/* The waiting mark (verso-waiting in shared.html.tmpl, and the sign-in
+   button's): four packets taking turns round the square's corners — the
+   design's vq0–vq3 choreography, twelve moves over four seconds. A packet on
+   the move wears meta and rides above the parked ones. A mark whose wait is
+   held (data-verso-wait-paused: a log that is paused, or not connected) stands
+   still where it is. A reader who asked for less motion gets the four parked
+   packets. */
 @layer components {
-  .verso-stream-row {
-    animation: verso-stream-settle 0.22s ease-out;
+  @media (prefers-reduced-motion: no-preference) {
+    [data-verso-wait] > * {
+      animation-duration: 4s;
+      animation-timing-function: ease;
+      animation-iteration-count: infinite;
+    }
+    [data-verso-wait] > :nth-child(1) { animation-name: verso-wait-0; }
+    [data-verso-wait] > :nth-child(2) { animation-name: verso-wait-1; }
+    [data-verso-wait] > :nth-child(3) { animation-name: verso-wait-2; }
+    [data-verso-wait] > :nth-child(4) { animation-name: verso-wait-3; }
+    [data-verso-wait][data-verso-wait-paused] > * { animation-play-state: paused; }
   }
-  @keyframes verso-stream-settle {
-    from { opacity: 0; transform: translateY(-0.25rem); }
-    to { opacity: 1; transform: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-stream-row { animation: none; }
-  }
+}
+@keyframes verso-wait-0 {
+  0%, 8.33%, 16.66%, 24.99%, 74.97%, 83.3%, 91.63%, 100% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  33.32%, 66.64% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  41.65% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  49.98% { transform: translate(0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+  58.31% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-1 {
+  0%, 66.64%, 100% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  8.33%, 41.65%, 74.97% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 24.99%, 33.32% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  49.98%, 83.3% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+  58.31%, 91.63% { transform: translate(-0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-2 {
+  0%, 100% { transform: translate(-0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  8.33% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 83.3% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  24.99%, 33.32%, 41.65%, 49.98%, 58.31%, 66.64%, 74.97% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  91.63% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-3 {
+  0%, 33.32%, 100% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  8.33%, 41.65% { transform: translate(0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 49.98% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  24.99%, 58.31%, 91.63% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  66.64%, 74.97%, 83.3% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+}
 
+/* The live console (verso-listing.js opens the stream, builds the lines). */
+@layer components {
   /* A value in the stream is its own control: point at a verdict, a zone, an
      address, and the stream narrows to it. The affordance is the pointer and a
      quiet lift on hover — the value keeps exactly the treatment it had, because

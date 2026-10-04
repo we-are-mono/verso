@@ -1,69 +1,176 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-// verso-listing.js — the live listing (ADR-004, ADR-005 §7). A table declares
-// that its rows arrive over time and names its source; everything here is the
-// shell's: the transport, the ring, the pause, the consecutive collapse, the rows
-// themselves, and the shelf of plucked values that filters them.
-
-// The wire carries data, never markup — a log line's contents are whatever a
-// stranger sent this router — so every row is built with createElement and
-// textContent, and the only markup cloned is the shell's own endpoint glyphs
-// from the <template> the renderer left beside the table.
+// verso-listing.js — the live consoles (ADR-004, ADR-005 §7): the firewall's
+// activity log and the router's own log. A console declares that its lines
+// arrive over time and names its source; everything here is the shell's.
 //
-// The filtering is the stream's own values: click a verdict, a zone, an address,
-// and what was clicked travels to a shelf above the table wearing exactly the
-// treatment it had in the row. A second click, the shelf's ×, or Clear lets go;
-// with nothing held there is no shelf at all. The page-wide lens (the
+// The two share one core (versoConsole): the transport, the live control on
+// the heading line that says what the log is doing, and the pause, which holds
+// what arrives — reset included — until the person lets it go. Each log brings
+// only what is its own: how a line is built, and what else a frame says.
+//
+// The wire carries data, never markup — a log line's contents are whatever a
+// stranger sent this router — so every line is built with createElement and
+// textContent (versoEl).
+
+// versoConsole wires one live log. What it is given:
+//
+//   pause    the live control (a button), and label the part of it that
+//            says Live, Paused or Connecting…; counted makes a paused label
+//            say how many events wait
+//   ring     how much a pause holds before the oldest goes
+//   url      where the stream is, read on every (re)connect
+//   draw     what a frame's rows become while the log is live
+//   resume   what the rows held by a pause become (draw, unless given)
+//   clear    the log's lines gone, for a stream that started over
+//   accepts  whether a frame is one this log reads at all
+//   available what the frame says of the source, folded into the log's own
+//            state; answers whether lines can arrive (true, unless given)
+//   reset    what else a stream that started over forgets
+//   lost     what else a dropped connection means
+//   status   what else is said whenever the live control is
+//   liveOnOpen whether the connection landing is itself the log being live
+//   wire     the stream's own further events
+//
+// It answers {status, close, restart}.
+function versoConsole(o) {
+  var es = null;
+  var paused = false;
+  var connected = false;
+  var buffer = [];
+  var pending = 0; // events that arrived while paused — every one of them
+  var pendingReset = false;
+  var waiting = o.pause && o.pause.querySelector("[data-verso-wait]");
+
+  // The control says what the log is doing; its title, what pressing it does.
+  // The spinner turns only while lines can arrive.
+  function status() {
+    if (o.pause) {
+      var label = paused
+        ? (o.counted && pending ? T("Paused · %d new").replace("%d", pending) : T("Paused"))
+        : connected ? T("Live") : T("Connecting…");
+      if (o.label) o.label.textContent = label;
+      else o.pause.textContent = label;
+      o.pause.title = paused ? T("Resume") : T("Pause");
+      if (waiting) waiting.toggleAttribute("data-verso-wait-paused", paused || !connected);
+    }
+    if (o.status) o.status();
+  }
+
+  function receive(event) {
+    var frame;
+    try {
+      frame = JSON.parse(event.data);
+    } catch (e) {
+      return; // a malformed frame costs its own second, nothing more
+    }
+    if (!frame || (o.accepts && !o.accepts(frame))) return;
+    if (frame.reset) {
+      buffer = [];
+      pending = 0;
+      if (o.reset) o.reset();
+      if (paused) pendingReset = true;
+      else o.clear();
+    }
+    connected = o.available ? o.available(frame) : true;
+    status();
+    var rows = frame.rows || [];
+    if (o.arrived) o.arrived(rows);
+    if (paused) {
+      // Nothing moves while paused: the events wait, and a counted control
+      // says how many, so the wait is stated rather than hidden. The count is
+      // every event that arrived; the buffer keeps only what the ring could
+      // hold, since resuming would evict the rest on the spot anyway.
+      pending += rows.length;
+      if (rows.length) {
+        buffer = buffer.concat(rows);
+        if (buffer.length > o.ring) buffer = buffer.slice(buffer.length - o.ring);
+      }
+      status();
+      return;
+    }
+    o.draw(rows);
+  }
+
+  // The live control is the log's only live indicator, so it has to mean
+  // what it shows. EventSource reconnects on its own, and "open" is that
+  // reconnect landing. Neither touches the pause itself — a stream that came
+  // back while a person was reading stays held until they say otherwise.
+  function open() {
+    es = new EventSource(o.url());
+    es.addEventListener("stream", receive);
+    es.addEventListener("open", function () {
+      if (o.liveOnOpen) connected = true;
+      status();
+    });
+    es.addEventListener("error", function () {
+      connected = false;
+      if (o.lost) o.lost();
+      status();
+    });
+    if (o.wire) o.wire(es);
+  }
+
+  function close() {
+    if (es) es.close();
+  }
+
+  if (o.pause) {
+    o.pause.addEventListener("click", function () {
+      paused = !paused;
+      if (!paused) {
+        if (pendingReset) {
+          o.clear();
+          pendingReset = false;
+        }
+        var held = buffer;
+        buffer = [];
+        pending = 0;
+        (o.resume || o.draw)(held);
+      }
+      status();
+    });
+  }
+
+  status();
+  open();
+  return {
+    status: status,
+    close: close,
+    // restart reads the stream again from its start: what waits is dropped,
+    // the control says Connecting… until it lands.
+    restart: function () {
+      close();
+      buffer = [];
+      pending = 0;
+      pendingReset = false;
+      connected = false;
+      status();
+      open();
+    },
+    paused: function () { return paused; },
+  };
+}
+
+// The firewall's activity log: a table of style "console" that names its
+// source. Its lines collapse a run of the same event into one with a count,
+// and its values are their own filter: click a verdict, a zone, an address,
+// and what was clicked travels to a shelf above the log wearing exactly the
+// treatment it had in the line. A second click, the shelf's ×, or Clear lets
+// go; with nothing held there is no shelf at all. The page-wide lens (the
 // still-lens) is the other half and the two compose — a plucked value hides
 // what does not match, the lens dims it.
 (function () {
   if (!window.EventSource) return;
-  var tables = document.querySelectorAll("[data-verso-stream]");
-  if (!tables.length) return;
+  var consoles = document.querySelectorAll('[data-verso-stream][data-verso-stream-style="console"]');
+  if (!consoles.length) return;
 
-  // The td treatments, copied from table.html.tmpl's own column kinds so a
-  // streamed row is indistinguishable from a rendered one. The wrapper's
-  // condensed/lined variants reach these through descendant selectors, so a row
-  // built here inherits them for free.
-  var CELL = {
-    runtime:
-      "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle whitespace-nowrap tabular-nums text-meta group-last:border-b-0",
-    num: "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 text-right align-middle tabular-nums text-ink group-last:border-b-0",
-    pill: "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle whitespace-nowrap group-last:border-b-0",
-    endpoint: "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle group-last:border-b-0",
-    keyword:
-      "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle whitespace-nowrap font-mono text-base font-medium text-body group-last:border-b-0",
-    link: "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 text-right align-middle whitespace-nowrap group-last:border-b-0",
-    mono: "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle font-mono text-sm tabular-nums whitespace-nowrap text-ink group-last:border-b-0",
-    monoEmphasis:
-      "border-b border-rule px-3.5 py-2.5 leading-6 first:pl-0 last:pr-0 align-middle font-mono text-base font-medium tabular-nums whitespace-nowrap text-ink group-last:border-b-0",
-  };
-  // The badge vocabulary, from badge.html.tmpl: the mono chip box, one step
-  // heavier than a sans chip (verso-chip-mono in shared.html.tmpl). The
-  // plugin names a verdict; the shell alone decides what colour a verdict
-  // wears. A verdict leads with the packet it decided about (verso-chip-packet
-  // in shared.html.tmpl): still, in the verdict's hue, hollow with none.
-  var PILL_BASE =
-    "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono ";
-  var PILL_TONE = {
-    success: "border-green-line bg-green-soft text-green-deep",
-    warning: "border-marigold-line bg-marigold-soft text-marigold-deep",
-    danger: "border-crimson-line bg-crimson-soft text-crimson-deep",
-    neutral: "border-rule bg-quiet text-meta",
-  };
-  var PACKET_BASE = "size-1.5 shrink-0 rounded-[1px] ";
-  var PACKET_FILL = {
-    success: "bg-green",
-    warning: "bg-marigold",
-    danger: "bg-crimson",
-    neutral: "border border-faint",
-  };
   // What a verdict means in a log is not what it means in the config. There, a
   // reject is the refusal you wrote and a drop is the silence you chose. Here,
   // every line is something that already happened to real traffic, and the
   // loudest of them is the one that vanished without an answer.
-  var VERDICT_TONE = { accept: "success", reject: "warning", drop: "danger" };
+  //
   // The mark down a console line's left edge: the hue at full chroma, which is
   // what a mark is for.
   var VERDICT_MARK = { accept: "bg-green", reject: "bg-marigold", drop: "bg-crimson" };
@@ -71,13 +178,6 @@
     accept: "text-green-deep",
     reject: "text-marigold-deep",
     drop: "text-crimson-deep",
-  };
-  var ENDPOINT_BASE =
-    "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap ";
-  var ENDPOINT_KIND = {
-    router: "border-denim-line bg-denim-soft text-sm font-normal text-denim-deep",
-    device: "border-transparent font-mono text-base font-medium tabular-nums text-ink",
-    zone: "border-transparent font-mono text-base font-medium tabular-nums text-ink",
   };
   // One console line. Fixed columns so the eye reads down one without a rule to
   // guide it; everything in mono at the reading size, because every value on
@@ -94,11 +194,8 @@
     zone: "shrink-0 text-meta",
     addr: "min-w-0 truncate",
     port: "shrink-0 text-glyph",
-    svc: "shrink-0 text-faint",
-    flag: "text-faint",
     count: "shrink-0 font-mono text-sm text-meta",
   };
-  var EM_DASH = "—";
   var TIMES = "×";
   // SAFE_HREF is the whole URL policy for a destination that arrived over the
   // wire: a path inside this app, and demonstrably nothing else. It enforces,
@@ -109,66 +206,26 @@
   // U+0020 (tab, newline and carriage return are stripped *before* a URL is
   // parsed, so "/\t/evil.example" would become "//evil.example").
   var SAFE_HREF = /^\/(?![/\\])[^\\\x00-\x1f]*$/;
-  // How much of the recent past the rate is measured over, and how often the
-  // relative times age. Both are the page's own clock, and neither runs while
-  // the stream is paused.
+  // How much of the recent past the rate is measured over, and how often it
+  // decays. Both are the page's own clock, and neither runs while the stream
+  // is paused.
   var RATE_WINDOW_MS = 10000;
   var TICK_MS = 5000;
+  var el = versoEl;
 
-  function el(tag, cls, text) {
-    var node = document.createElement(tag);
-    if (cls) node.className = cls;
-    if (text !== undefined && text !== null) node.textContent = text;
-    return node;
-  }
+  [].forEach.call(consoles, start);
 
-  // relative states when an event happened in the words a person uses for the
-  // last few minutes. Anything older is the wrong tool anyway — the ring does
-  // not hold that much.
-  function relative(age) {
-    if (age < 5) return T("now");
-    if (age < 60) return T("%d s").replace("%d", age);
-    if (age < 3600) return T("%d min").replace("%d", Math.floor(age / 60));
-    return T("%d h").replace("%d", Math.floor(age / 3600));
-  }
-
-  // clock is the wall time a console line carries — the stamp the device wrote,
-  // in the browser's own locale, so a line can be matched against any other log
-  // on the machine.
-  function clock(at) {
-    var d = new Date(at * 1000);
-    return (
-      String(d.getHours()).padStart(2, "0") +
-      ":" +
-      String(d.getMinutes()).padStart(2, "0") +
-      ":" +
-      String(d.getSeconds()).padStart(2, "0")
-    );
-  }
-
-  [].forEach.call(tables, function (table) {
-    start(table);
-  });
-
-  function start(table) {
-    var source = table.getAttribute("data-verso-stream");
+  function start(wrapper) {
+    var source = wrapper.getAttribute("data-verso-stream");
     if (!source) return;
-    var ring = parseInt(table.getAttribute("data-verso-stream-ring"), 10) || 200;
-    // A console draws its own lines into a plain scrolling block; a grid draws
-    // rows into a tbody. Everything after this — the ring, the pause, the
-    // pluck, the collapse — is the same either way.
-    var console = table.getAttribute("data-verso-stream-style") === "console";
-    var body = console ? table.querySelector("[data-verso-console-rows]") : table.tBodies && table.tBodies[0];
+    var ring = parseInt(wrapper.getAttribute("data-verso-stream-ring"), 10) || 200;
+    var body = wrapper.querySelector("[data-verso-console-rows]");
     if (!body) return;
-    var wrapper = console ? table : table.parentElement;
-    var section = table.closest("section");
+    var section = wrapper.closest("section");
     var meta = section && section.querySelector("[data-verso-section-meta]");
     var metaRest = meta ? meta.textContent : "";
     // The live control sits on the heading line, outside any section.
     var pause = (section && section.querySelector("button[data-verso-live]")) || document.querySelector("button[data-verso-live]");
-    var pauseLabel = pause && pause.querySelector("[data-verso-live-label]");
-    var waiting = pause && pause.querySelector("[data-verso-wait]");
-    var icons = wrapper && wrapper.querySelector("template[data-verso-stream-icons]");
     var lens = document.querySelector("[data-verso-filter]");
 
     // rows is the ring, newest first; each remembers the tuple it collapses on
@@ -177,55 +234,26 @@
     var emptyTemplate = empty && empty.cloneNode(true);
     var rows = [];
     var arrivals = []; // arrival stamps, for the rolling rate
-    var paused = false;
-    var buffer = [];
-    var pending = 0; // events that arrived while paused — every one of them
     var held = []; // the plucked values, in the order they were picked up
     var shelf = null;
     // The first frame is the backlog: what the device had already logged before
     // this page opened. Everything after it is the present arriving.
     var backlog = true;
-    // Whether the stream is up. Optimistic at load — the connection is being
-    // made — and corrected by the transport's own open/error from then on.
-    var connected = false;
+    // Whether the source can be read, and whether events were lost on the way.
+    var available = true;
     var lost = false;
-    var pendingReset = false;
     var health = el("p", "verso-console-notice border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep");
     health.setAttribute("role", "status");
     health.hidden = true;
     wrapper.parentNode.insertBefore(health, wrapper);
-    function updateHealth(available) {
-      connected = available;
+    function sayHealth() {
       health.hidden = available && !lost;
       health.textContent = available ? T("Some firewall events were lost.") : T("Firewall logs unavailable");
-      updatePause();
     }
     function clearHistory() {
       rows.forEach(function (row) { row.tr.remove(); });
       rows = []; arrivals = []; backlog = true;
       if (emptyTemplate && !body.querySelector("[data-verso-stream-empty]")) body.appendChild(emptyTemplate.cloneNode(true));
-    }
-    // The device stamps its own events and the browser reads them; the two
-    // clocks need not agree. An event that arrives *live* is by definition
-    // happening now, which is exactly the offset between them — so ages are
-    // measured against the device's clock rather than against a disagreement.
-    //
-    // Only live frames set it. The backlog is history: taking its newest row as
-    // "now" would relabel a ten-minute-old verdict as this second, which on a
-    // quiet network is the whole page. The cost is the other way round — until
-    // the first live event, a badly-skewed device clock mis-ages the backlog by
-    // exactly its own error, which is at least the device's own account of it.
-    var skew = 0;
-
-    function ageOf(at) {
-      return Math.max(0, Math.round(Date.now() / 1000 - skew - at));
-    }
-
-    function icon(kind) {
-      if (!icons) return null;
-      var holder = icons.content.querySelector('[data-verso-stream-icon="' + kind + '"]');
-      var svg = holder && holder.firstElementChild;
-      return svg ? svg.cloneNode(true) : null;
     }
 
     // pluckable wraps a value in the control it already is. The button carries
@@ -251,37 +279,6 @@
       return false;
     }
 
-    function pillFor(verdict) {
-      var tone = PILL_TONE[VERDICT_TONE[verdict]] ? VERDICT_TONE[verdict] : "neutral";
-      var pill = el("span", PILL_BASE + PILL_TONE[tone]);
-      var packet = el("span", PACKET_BASE + PACKET_FILL[tone]);
-      packet.setAttribute("aria-hidden", "true");
-      pill.appendChild(packet);
-      pill.appendChild(document.createTextNode(verdict));
-      return pill;
-    }
-
-    function endpointFor(kind, label) {
-      var span = el("span", ENDPOINT_BASE + (ENDPOINT_KIND[kind] || ENDPOINT_KIND.zone));
-      var glyph = icon(kind);
-      if (glyph) {
-        // The glyph's ink is the endpoint's kind, exactly as table.html.tmpl sets
-        // it: the router in the action colour, "anywhere" at the faintest step,
-        // anything else the ordinary glyph grey.
-        var slot = el("span", "shrink-0 " + (kind === "router" ? "text-denim" : kind === "any" ? "text-inert" : "text-faint"));
-        slot.appendChild(glyph);
-        span.appendChild(slot);
-      }
-      span.appendChild(document.createTextNode(label));
-      return span;
-    }
-
-    function cell(kind, child) {
-      var td = el("td", CELL[kind]);
-      if (child) td.appendChild(child);
-      return td;
-    }
-
     // endpoint is one end of a path on a console line: where it is, what it is,
     // which port, and the service that port is usually. Each part is its own
     // step of ink, so the address reads first and the rest sits behind it.
@@ -293,10 +290,10 @@
       return span;
     }
 
-    // buildConsole renders one event as a line of the log: a mark in the
-    // verdict's own hue down the left edge, then the fixed columns. No cells,
-    // no borders — a terminal does not draw a grid around what it prints.
-    function buildConsole(ev) {
+    // build renders one event as a line of the log: a mark in the verdict's
+    // own hue down the left edge, then the fixed columns. No cells, no borders
+    // — a terminal does not draw a grid around what it prints.
+    function build(ev) {
       var row = el("div", CONSOLE.row);
       // The cuts the bar above narrows by. The stream says which they are; this
       // only carries them, the way a rendered row carries the same attribute.
@@ -329,74 +326,17 @@
       return row;
     }
 
-    // build renders one event as the row the rendered table would have drawn.
-    function build(ev) {
-      if (console) return buildConsole(ev);
-      var tr = el("tr", "group verso-stream-row");
-      tr.appendChild(cell("runtime"));
-      tr.appendChild(cell("num"));
-
-      var verdict = cell("pill");
-      if (ev.verdict) {
-        verdict.appendChild(pluckable("verdict", ev.verdict, pillFor(ev.verdict)));
-      } else {
-        verdict.appendChild(el("span", "text-inert", EM_DASH));
-      }
-      tr.appendChild(verdict);
-
-      var from = cell("endpoint");
-      if (ev.from) {
-        from.appendChild(pluckable("from", ev.from, endpointFor(ev.from === "router" ? "router" : "zone", ev.from)));
-      }
-      tr.appendChild(from);
-
-      var src = el("td", CELL.monoEmphasis);
-      if (ev.src) src.appendChild(pluckable("src", ev.src, el("span", null, ev.src)));
-      tr.appendChild(src);
-
-      var to = cell("endpoint");
-      if (ev.to) to.appendChild(endpointFor(ev.to_kind === "router" ? "router" : "device", ev.to));
-      tr.appendChild(to);
-
-      tr.appendChild(cell("keyword", document.createTextNode(ev.proto || "")));
-      tr.appendChild(cell("mono", document.createTextNode(ev.port || EM_DASH)));
-
-      var rule = cell("link");
-      // The same URL policy the shell applies to a rendered link applies here,
-      // and tighter — see SAFE_HREF. Nothing on this row is trusted enough to
-      // be anything but a path inside this app.
-      if (ev.rule && typeof ev.rule_href === "string" && SAFE_HREF.test(ev.rule_href)) {
-        // A cell's link wears what a cell's link wears (table.html.tmpl): the
-        // value in ink, going to the action colour under the pointer. It is the
-        // name of a rule, not a piece of chrome.
-        var link = el("a", "text-sm font-semibold text-ink transition-colors hover:text-denim-deep", ev.rule);
-        link.setAttribute("href", ev.rule_href);
-        rule.appendChild(link);
-      } else if (ev.rule) {
-        rule.appendChild(el("span", "text-sm text-meta", ev.rule));
-      } else {
-        rule.appendChild(el("span", "text-inert", EM_DASH));
-      }
-      tr.appendChild(rule);
-      return tr;
-    }
-
     // key is the tuple a repeat has to match exactly to be the same event
     // happening again: everything about the packet except when it happened.
     function key(ev) {
       return [ev.verdict, ev.from, ev.src, ev.to, ev.proto, ev.port, ev.rule].join(" ");
     }
 
+    // A console prints the clock the device stamped, not how long ago it was:
+    // a log is read down, and a column of "12 s" ages under the eye.
     function paint(row) {
-      if (console) {
-        // A console prints the clock the device stamped, not how long ago it
-        // was: a log is read down, and a column of "12 s" ages under the eye.
-        row.tr.children[1].textContent = clock(row.at);
-        row.tr.lastChild.lastChild.textContent = row.count > 1 ? TIMES + row.count : "";
-        return;
-      }
-      row.tr.cells[0].textContent = relative(ageOf(row.at));
-      row.tr.cells[1].textContent = row.count > 1 ? TIMES + " " + row.count : "";
+      row.tr.children[1].textContent = versoClock(new Date(row.at * 1000));
+      row.tr.lastChild.lastChild.textContent = row.count > 1 ? TIMES + row.count : "";
     }
 
     // matches reports whether a row survives everything currently held. Two
@@ -456,7 +396,7 @@
       if (!shelf) {
         shelf = el("div", "verso-stream-shelf");
         shelf.setAttribute("data-verso-stream-shelf", "");
-        if (wrapper && wrapper.parentNode) wrapper.parentNode.insertBefore(shelf, wrapper);
+        if (wrapper.parentNode) wrapper.parentNode.insertBefore(shelf, wrapper);
       }
       while (shelf.firstChild) shelf.removeChild(shelf.firstChild);
       held.forEach(function (item, index) {
@@ -496,24 +436,13 @@
       meta.textContent = perSecond > 0 ? T("~%d events/s").replace("%d", perSecond) : metaRest;
     }
 
-    function updatePause() {
-      if (!pause) return;
-      // The control says what the log is doing; its title, what pressing it does.
-      var label = paused ? (pending ? T("Paused · %d new").replace("%d", pending) : T("Paused")) : connected ? T("Live") : T("Connecting…");
-      if (pauseLabel) pauseLabel.textContent = label;
-      else pause.textContent = label;
-      pause.title = paused ? T("Resume") : T("Pause");
-      // The spinner turns only while events can arrive.
-      if (waiting) waiting.toggleAttribute("data-verso-wait-paused", paused || !connected);
-    }
-
     // ingest folds one event in. A repeat of the newest row is that row
     // happening again: its counter climbs and its clock moves up, and nothing
     // else on the page moves. A repeat that is not consecutive starts a fresh
     // row, so the order of the list never lies about the order of events.
-    // The rate and the skew are the frame's business, not this one's: an event
-    // is counted when it arrives, which is once, whether it was rendered then or
-    // held in the pause buffer and folded in later.
+    // The rate is the frame's business, not this one's: an event is counted
+    // when it arrives, which is once, whether it was rendered then or held in
+    // the pause buffer and folded in later.
     function ingest(ev) {
       var k = key(ev);
       var newest = rows[0];
@@ -542,32 +471,57 @@
       }
     }
 
-    function drain() {
-      if (pendingReset) { clearHistory(); pendingReset = false; }
-      var waiting = buffer;
-      buffer = [];
-      pending = 0;
-      waiting.forEach(ingest);
-    }
-
     // The still-lens is the page's own control and owns its behaviour; a batch
     // of new rows simply asks it to look again, so the two never drift apart.
     function relens() {
       if (lens && lens.value) lens.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    if (pause) {
-      updatePause();
-      pause.addEventListener("click", function () {
-        paused = !paused;
-        if (!paused) {
-          drain();
-          applyHeld();
-          relens();
+    var log = versoConsole({
+      pause: pause,
+      label: pause && pause.querySelector("[data-verso-live-label]"),
+      counted: true,
+      ring: ring,
+      url: function () { return "/streams/" + encodeURIComponent(source); },
+      clear: clearHistory,
+      reset: function () { lost = false; },
+      // A frame says whether the source can be read and whether events were
+      // lost; a source that cannot be read is one no lines arrive from.
+      available: function (frame) {
+        lost = lost || !!frame.lost;
+        available = frame.available !== false;
+        return available;
+      },
+      lost: function () { available = false; },
+      status: sayHealth,
+      arrived: function (batch) {
+        if (!batch.length) return;
+        if (backlog) {
+          // The opening frame is what the device had already logged. It did
+          // not arrive at the rate the meta measures — counting it would claim
+          // a hammered uplink on a silent network.
+          backlog = false;
+          return;
         }
-        updatePause();
-      });
-    }
+        // Live: every row of it arrived this second, whether the listing is
+        // rendering them or holding them in the pause buffer.
+        var at = Date.now();
+        batch.forEach(function () {
+          arrivals.push(at);
+        });
+      },
+      draw: function (batch) {
+        if (!batch.length) return;
+        batch.forEach(ingest);
+        updateMeta();
+        relens();
+      },
+      resume: function (batch) {
+        batch.forEach(ingest);
+        applyHeld();
+        relens();
+      },
+    });
 
     // One listener for every value in the stream: the row stays inert, its
     // values do not.
@@ -621,83 +575,118 @@
       if (next) next.focus();
     }
 
-    var es = new EventSource("/streams/" + encodeURIComponent(source));
-    es.addEventListener("stream", function (event) {
-      var frame;
-      try {
-        frame = JSON.parse(event.data);
-      } catch (e) {
-        return; // a malformed frame costs its own second, nothing more
-      }
-      if (!frame) return;
-      if (frame.reset) {
-        buffer = []; pending = 0; lost = false;
-        if (paused) pendingReset = true;
-        else clearHistory();
-      }
-      lost = lost || !!frame.lost;
-      updateHealth(frame.available !== false);
-      if (!frame.rows || !frame.rows.length) return;
-      if (backlog) {
-        // The opening frame is what the device had already logged. It did not
-        // arrive at the rate the meta measures — counting it would claim a
-        // hammered uplink on a silent network — and its newest row is not now.
-        backlog = false;
-      } else {
-        // Live: every row of it arrived this second, whether the listing is
-        // rendering them or holding them in the pause buffer, and the newest of
-        // them is happening now, which is the offset between the two clocks.
-        var at = Date.now();
-        frame.rows.forEach(function () {
-          arrivals.push(at);
-        });
-        skew = at / 1000 - frame.rows[frame.rows.length - 1].at;
-      }
-      if (paused) {
-        // Nothing moves while paused: the events wait, and the button counts
-        // them so the wait is stated rather than hidden. The count is every
-        // event that arrived; the buffer keeps only what a ring could hold,
-        // since resuming would evict the rest on the spot anyway.
-        pending += frame.rows.length;
-        frame.rows.forEach(function (ev) {
-          buffer.push(ev);
-        });
-        if (buffer.length > ring) buffer = buffer.slice(buffer.length - ring);
-        updatePause();
-        return;
-      }
-      frame.rows.forEach(ingest);
-      updateMeta();
-      relens();
-    });
-
-    // The live control is this listing's only live indicator, so it has to
-    // mean what it shows: Live, its spinner turning, while the stream is up
-    // and this page is not holding it; Connecting…, still, when the
-    // connection drops. EventSource
-    // reconnects on its own, and "open" is that reconnect landing. Neither
-    // touches the pause itself — a stream that came back while a person was
-    // reading stays held until they say otherwise.
-    es.addEventListener("error", function () {
-      updateHealth(false);
-    });
-    es.addEventListener("open", function () {
-      updatePause();
-    });
-
-    // The page's own clock: relative times age and the rate decays. Frozen
-    // while paused, because a paused list that kept re-labelling itself would
-    // still be moving.
+    // The page's own clock: the rate decays. Frozen while paused, because a
+    // paused list that kept re-labelling itself would still be moving.
     setInterval(function () {
-      if (paused) return;
-      // A console prints wall clock, which does not age; only a grid's relative
-      // time has to be re-read.
-      if (!console) {
-        rows.forEach(function (row) {
-          row.tr.cells[0].textContent = relative(ageOf(row.at));
-        });
-      }
+      if (log.paused()) return;
       updateMeta();
     }, TICK_MS);
   }
+})();
+
+// The router's own log (logs.html.tmpl): every service's lines, oldest first,
+// with the firewall's traffic folded in on request. A line is kept once,
+// however many frames repeat it, and the newest thousand stay.
+(function () {
+  "use strict";
+  var root = document.querySelector("[data-verso-system-log]");
+  if (!root || !window.EventSource) return;
+  var body = root.querySelector("[data-verso-console-rows]");
+  var source = root.querySelector("[data-verso-listing-select]");
+  var health = root.querySelector("[data-log-health]");
+  var includeFirewall = root.querySelector("[data-log-include-firewall]");
+  // The log's acts sit on the heading line, outside the log itself.
+  var pause = document.querySelector("[data-log-pause]");
+  var unreadable = false, firewallUnavailable = false, seen = new Set(), sources = new Set();
+  var el = versoEl;
+
+  function draw(rows) {
+    var pinned = body.scrollHeight - body.scrollTop - body.clientHeight < 32;
+    var fragment = document.createDocumentFragment();
+    rows.forEach(function (row) {
+      if (seen.has(row.id)) return;
+      seen.add(row.id);
+      var error = ["emerg", "alert", "crit", "err"].indexOf(row.severity) !== -1;
+      var warning = error || row.severity === "warn";
+      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-mid/50 lg:flex lg:py-px");
+      line.setAttribute("data-log-row", String(row.id));
+      line.dataset.logAt = String(row.at);
+      line.setAttribute("data-verso-tags", error ? "errors warnings" : warning ? "warnings" : "");
+      line.setAttribute("data-verso-facet-source", row.source);
+      line.appendChild(el("span", "row-span-2 my-0.5 w-0.75 shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
+      var at = new Date(row.at * 1000);
+      var stamp = el("time", "shrink-0 font-mono lg:w-20 text-base font-medium text-body", versoClock(at));
+      stamp.dateTime = at.toISOString(); stamp.title = at.toLocaleString(); line.appendChild(stamp);
+      var origin = el("span", "min-w-0 truncate font-mono lg:w-34 lg:shrink-0 text-base font-medium text-ink", row.source); origin.title = row.source; line.appendChild(origin);
+      line.appendChild(el("span", "w-16 shrink-0 font-mono text-base " + (error ? "font-bold text-crimson-deep" : warning ? "font-medium text-marigold-deep" : "font-medium text-meta"), row.severity));
+      line.appendChild(el("span", "col-span-3 col-start-2 min-w-0 flex-1 wrap-anywhere font-mono text-base font-medium " + (error ? "text-crimson-deep" : "text-ink"), row.message));
+      line.dataset.logText = at.toISOString() + " " + row.source + " " + row.severity + " " + row.message;
+      fragment.appendChild(line);
+      if (!sources.has(row.source)) {
+        sources.add(row.source); var opt = document.createElement("option"); opt.value = row.source; opt.textContent = row.source; source.appendChild(opt);
+      }
+    });
+    body.appendChild(fragment);
+    var lines = Array.from(body.querySelectorAll("[data-log-row]"));
+    // Separate buffers are sampled at different instants. A delayed batch
+    // still belongs beside its timestamp, not below a newer service event.
+    if (includeFirewall.checked && rows.length) {
+      lines.sort(function (a, b) { return Number(a.dataset.logAt) - Number(b.dataset.logAt); });
+      lines.forEach(function (line) { body.appendChild(line); });
+    }
+    for (var i = 0; i < lines.length - 1000; i++) { seen.delete(Number(lines[i].getAttribute("data-log-row"))); lines[i].remove(); }
+    var empty = body.querySelector("[data-verso-stream-empty]");
+    if (empty) { empty.textContent = T("Nothing matches."); empty.hidden = body.querySelectorAll("[data-log-row]").length > 0; }
+    // The shared filter reacts to the inserted rows before this frame paints.
+    requestAnimationFrame(function () { if (pinned) body.scrollTop = body.scrollHeight; });
+  }
+  function clearRows() {
+    seen.clear();
+    body.querySelectorAll("[data-log-row]").forEach(function (n) { n.remove(); });
+  }
+
+  // The live control is the log's state; a source that cannot be read is
+  // said on the notice line above the log.
+  var log = versoConsole({
+    pause: pause,
+    label: pause.querySelector("[data-log-pause-label]"),
+    ring: 1000,
+    url: function () { return "/streams/system-log" + (includeFirewall.checked ? "?firewall=1" : ""); },
+    accepts: function (frame) { return Array.isArray(frame.rows); },
+    available: function (frame) {
+      unreadable = false;
+      firewallUnavailable = !!frame.firewall_unavailable;
+      return true;
+    },
+    status: function () {
+      var problem = unreadable ? T("Logs unavailable") : firewallUnavailable ? T("Firewall logs unavailable") : "";
+      health.textContent = problem;
+      health.hidden = !problem;
+    },
+    liveOnOpen: true,
+    wire: function (es) {
+      es.addEventListener("unavailable", function () { unreadable = true; log.status(); });
+    },
+    clear: clearRows,
+    draw: draw,
+  });
+
+  includeFirewall.addEventListener("change", function () {
+    log.close();
+    clearRows();
+    sources.clear(); source.replaceChildren(new Option(T("Every source"), ""));
+    source.dispatchEvent(new Event("change", { bubbles: true }));
+    unreadable = false; firewallUnavailable = false;
+    var url = new URL(window.location.href);
+    if (includeFirewall.checked) url.searchParams.set("firewall", "1");
+    else url.searchParams.delete("firewall");
+    window.history.replaceState(null, "", url);
+    log.restart();
+  });
+  document.querySelector("[data-log-download]").addEventListener("click", function () {
+    var text = Array.from(body.querySelectorAll("[data-log-row]")).filter(function (n) { return !n.hidden; }).map(function (n) { return n.dataset.logText; }).join("\n");
+    var url = URL.createObjectURL(new Blob([text + "\n"], { type: "text/plain;charset=utf-8" }));
+    var a = document.createElement("a"); a.href = url; a.download = "router-log.txt"; a.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+  window.addEventListener("pagehide", log.close);
 })();

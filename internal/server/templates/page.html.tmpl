@@ -17,8 +17,9 @@
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
-{{/* Synchronous, pre-paint: holds the paint until the self-hosted faces are ready,
-     so the type never flashes on navigation (CSP-safe, first-party). */}}
+{{/* Synchronous, pre-paint: a page a staged save lands on holds the chip back
+     from its first paint, until the change flies to it (CSP-safe,
+     first-party). */}}
 <script src="/assets/verso-boot.js"></script>
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">

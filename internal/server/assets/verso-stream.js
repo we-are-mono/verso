@@ -231,7 +231,6 @@
   var vb = svg.viewBox.baseVal;
   var W = vb.width, H = vb.height, PAD = svg.hasAttribute("data-chart-padding") ? Number(svg.getAttribute("data-chart-padding")) : 8, INTERVAL = 1000;
   var groups = svg.querySelectorAll("g.verso-chart-series");
-  var dots = host.querySelectorAll(".verso-chart-dot-html");
   var downEl = document.querySelector("[data-verso-traffic-down]");
   var upEl = document.querySelector("[data-verso-traffic-up]");
 
@@ -306,30 +305,12 @@
     }
     return s;
   }
-  // The live dots ride the curve's right edge. They move by transform against
-  // the plot's height, measured once and again only when the chart resizes, so
-  // a frame of the glide moves them without laying the page out; top, which the
-  // server's first paint uses, is pinned to the plot's top edge from here on.
-  var plotH = 0;
-  function measure() {
-    var parent = dots[0] && dots[0].offsetParent;
-    plotH = parent ? parent.clientHeight : 0;
-  }
-  measure();
-  if (window.ResizeObserver && dots[0] && dots[0].offsetParent) {
-    new ResizeObserver(function () { measure(); }).observe(dots[0].offsetParent);
-  }
-  function placeDot(dot, v) {
-    dot.style.top = "0";
-    dot.style.transform = "translate(50%, -50%) translateY(" + ((y(v) / H) * plotH).toFixed(1) + "px)";
-  }
   function draw() {
     updateScale();
     series.forEach(function (vals, idx) {
       var p = points(vals), head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
       if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].style.transform = "none"; }
       if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].style.transform = "none"; }
-      if (dots[idx]) placeDot(dots[idx], vals[N - 1]);
     });
   }
 
@@ -385,9 +366,6 @@
     lines.forEach(function (l) { if (l) l.style.transform = tf; });
     areas.forEach(function (a) { if (a) a.style.transform = tf; });
     moveGrid(progress);
-    series.forEach(function (vals, idx) {
-      if (dots[idx]) placeDot(dots[idx], vals[N - 1] * (1 - progress) + vals[N] * progress);
-    });
     if (progress < 1) requestAnimationFrame(frame);
     else gliding = false;
   }

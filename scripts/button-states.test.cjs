@@ -71,6 +71,9 @@ function environment() {
   const context = vm.createContext({document, window, URL, URLSearchParams, T: s => s,
     setTimeout: f => timers.push(f), clearTimeout() {}, setInterval() {}, clearInterval() {},
     versoAnnounce() {}, fetch: () => { throw Error('Unexpected request'); }});
+  // verso.js's in-place post, over whatever fetch the test installs.
+  context.versoBody = () => new URLSearchParams();
+  context.versoPost = (url, body) => context.fetch(url, {method: 'POST', body: String(body)});
   function load(name) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../internal/server/assets', name), 'utf8'), context, {filename: name});
   }
@@ -245,7 +248,11 @@ for (const reducedMotion of [false, true]) {
     assert.equal(form.getAttribute('aria-busy'), 'true');
     assert.equal(form.emit('submit').defaultPrevented, true);
     assert.equal(mark.children.length, 4);
-    assert.equal(animations, reducedMotion ? 0 : 4);
+    // The mark's motion is the stylesheet's, gated on the reader's motion
+    // preference; the script never animates it.
+    assert.equal(animations, 0);
+    const css = fs.readFileSync(path.join(__dirname, '../internal/server/assets/input.css'), 'utf8');
+    assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*\[data-verso-wait\] > \* \{\s*animation-duration:/);
     env.window.emit('pageshow');
     assert.equal(button.disabled, false);
     assert.equal(button.getAttribute('aria-busy'), null);

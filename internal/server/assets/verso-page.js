@@ -241,62 +241,6 @@
   window.versoOutcome = { show: show };
 })();
 
-// Shared waiting mark: the same four-square motion as the sign-in page.
-(function () {
-  var motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  var marks = new Map();
-  function start(mark) {
-    var active = [];
-    marks.set(mark, active);
-    if (motion.matches || typeof mark.animate !== "function") return;
-    var squares = mark.children;
-    var colors = getComputedStyle(mark);
-    var parked = colors.getPropertyValue("--color-sand-5").trim();
-    var travelling = colors.getPropertyValue("--color-meta").trim();
-    var corners = [[0, 0], [8, 0], [8, 8], [0, 8]];
-    // The design's vq0–vq3 choreography: twelve moves over four seconds.
-    // Appearance stays in Tailwind; the Web Animations API supplies motion.
-    var paths = [
-      [0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0],
-      [0, 1, 1, 1, 1, 1, 2, 3, 0, 1, 2, 3, 0],
-      [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 0],
-      [0, 1, 2, 3, 0, 1, 2, 3, 3, 3, 3, 3, 0],
-    ];
-    var lifted = [
-      [4, 5, 6, 7, 8],
-      [0, 1, 5, 6, 7, 8, 9, 10, 11, 12],
-      [0, 1, 2, 10, 11, 12],
-      [0, 1, 2, 3, 4, 5, 6, 7, 11, 12],
-    ];
-    paths.forEach(function (path, index) {
-      var frames = path.map(function (corner, step) {
-        var active = lifted[index].indexOf(step) !== -1;
-        return {
-          offset: step === 12 ? 1 : step * 0.0833,
-          transform: "translate(" + (corners[corner][0] - corners[index][0]) + "px," + (corners[corner][1] - corners[index][1]) + "px)",
-          backgroundColor: active ? travelling : parked,
-          zIndex: active ? 2 : 1,
-          easing: "ease",
-        };
-      });
-      active.push(squares[index].animate(frames, { duration: 4000, iterations: Infinity }));
-    });
-  }
-  function sync() {
-    marks.forEach(function (animations, mark) {
-      if (!mark.isConnected) { animations.forEach(function (a) { a.cancel(); }); marks.delete(mark); }
-      else animations.forEach(function (a) { if (mark.hasAttribute("data-verso-wait-paused")) a.pause(); else a.play(); });
-    });
-    document.querySelectorAll("[data-verso-wait]").forEach(function (mark) { if (!marks.has(mark)) { start(mark); if (mark.hasAttribute("data-verso-wait-paused")) marks.get(mark).forEach(function (a) { a.pause(); }); } });
-  }
-  motion.addEventListener("change", function () {
-    marks.forEach(function (animations) { animations.forEach(function (a) { a.cancel(); }); });
-    marks.clear(); sync();
-  });
-  new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-verso-wait-paused"] });
-  sync();
-})();
-
 // A ledger's count: how many things a part of a section holds. Adding or
 // removing one reloads the page, so the change would otherwise land as a
 // different number with nothing to say it moved. The page remembers each

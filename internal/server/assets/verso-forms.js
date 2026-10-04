@@ -8,10 +8,9 @@
 // because they are complete on their own (a named switch, a row's act), and
 // what a panel's form is owed after it has answered in place.
 //
-// It publishes window.versoDirtyState (is there unsaved work, and stop asking)
-// and window.versoInline (is a field half-typed, and flush it), and it asks
-// window.versoStaged to take a fresh count when a value is staged. Every one of
-// those is read inside a handler, never at load, so these files load in any
+// It publishes window.versoDirtyState (is there unsaved work, and stop asking),
+// and it asks window.versoStaged to take a fresh count when a value is staged.
+// Both are read inside a handler, never at load, so these files load in any
 // order. The htmx events it listens for are DOM events like any other,
 // dispatched by a script that loads after this one.
 
@@ -82,15 +81,6 @@
     },
     suppress: function () {
       suppressed = true;
-    },
-    resume: function () {
-      suppressed = false;
-    },
-    reset: function () {
-      baselines.forEach(function (_, form) {
-        if (form.isConnected) form.reset();
-      });
-      sources.forms = false;
     },
   };
 
@@ -468,20 +458,9 @@
     var el = e.target;
     if (!el || !el.matches || !el.matches("input[data-verso-switch][name]")) return;
     if (el.closest("form")) return;
-    var meta = document.querySelector('meta[name="verso-csrf"]');
-    var body = new URLSearchParams();
-    body.set(el.name, el.checked ? "on" : "off");
-    if (meta) body.set("_csrf", meta.content);
+    var body = versoBody([[el.name, el.checked ? "on" : "off"]]);
     el.disabled = true; // one flip, one round-trip; the reload re-renders truth
-    fetch(window.location.pathname, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Verso-Interaction": "switch",
-      },
-      body: body.toString(),
-      credentials: "same-origin",
-    }).then(function (res) {
+    versoPost(window.location.pathname, body, "switch").then(function (res) {
       if (res.ok || res.redirected) {
         el.disabled = false;
         // The flip is staged. Rather than reload the whole page (a jarring
@@ -490,7 +469,7 @@
         // otherwise unchanged, so only the staged count moves. Fall back to a
         // reload only when there is no chip to sync.
         return res.text().then(function (html) {
-          var doc = new DOMParser().parseFromString(html, "text/html");
+          var doc = versoParse(html);
           if (window.versoStaged && window.versoStaged.sync) {
             window.versoStaged.sync(doc);
           } else {
@@ -589,19 +568,11 @@
       var table = form.closest("table");
       if (table) table.parentNode.insertBefore(notice, table);
     };
-    fetch(window.location.pathname, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Verso-Interaction": "act",
-      },
-      body: new URLSearchParams(new FormData(form)).toString(),
-      credentials: "same-origin",
-    }).then(function (res) {
+    versoPost(window.location.pathname, new URLSearchParams(new FormData(form)), "act").then(function (res) {
       if (res.redirected && new URL(res.url).pathname === "/login") return failure();
       if (!res.ok) return res.text().then(function (message) { failure(message); });
       return res.text().then(function (html) {
-        reconcile(new DOMParser().parseFromString(html, "text/html"));
+        reconcile(versoParse(html));
         if (button) button.disabled = false;
       });
     }).catch(function () { failure(); });
@@ -651,7 +622,7 @@
     return fetch(window.location.pathname + window.location.search, { headers: { Accept: "text/html" }, credentials: "same-origin" })
       .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
       .then(function (html) {
-        var fresh = html && new DOMParser().parseFromString(html, "text/html").querySelector(".verso-page-body");
+        var fresh = html && versoParse(html).querySelector(".verso-page-body");
         var current = document.querySelector(".verso-page-body");
         if (!fresh || !current) return false;
         fresh = document.importNode(fresh, true);
@@ -701,7 +672,7 @@
     var config = evt.detail && evt.detail.requestConfig;
     if (!frame || !xhr || !config || String(config.verb).toLowerCase() !== "post") return;
     if (xhr.status !== 200 || xhr.getResponseHeader("HX-Reswap") !== "none") return;
-    var response = new DOMParser().parseFromString(xhr.responseText, "text/html");
+    var response = versoParse(xhr.responseText);
     var outcome = response.querySelector(".verso-flash");
     var row = rowOf(frame);
     var before = window.versoStaged ? window.versoStaged.count() : 0;
@@ -730,7 +701,7 @@
     fetch(window.location.pathname, { headers: { Accept: "text/html" }, credentials: "same-origin" })
       .then(function (res) { return res.ok ? res.text() : ""; })
       .then(function (html) {
-        if (html) reconcile(new DOMParser().parseFromString(html, "text/html"));
+        if (html) reconcile(versoParse(html));
       })
       .catch(function () {
         // The chip keeps its last count; the next page says the rest.
@@ -760,7 +731,7 @@
     var frame = panelTarget(evt);
     var xhr = evt.detail && evt.detail.xhr;
     if (!frame || !xhr || !xhr.responseText) return;
-    var doc = new DOMParser().parseFromString(xhr.responseText, "text/html");
+    var doc = versoParse(xhr.responseText);
     var notice = doc.body && doc.body.firstElementChild;
     var scroller = frame.querySelector("[data-scroll]");
     if (!notice || !scroller) return;
@@ -775,23 +746,11 @@
 // input that stages its own change on blur or Enter — the natural "done" a person
 // expects, no edit/confirm icons. Validation runs at that moment: an invalid value
 // gets its error beneath the field and does NOT stage, and the page scrolls to the
-// topmost error. window.versoInline exposes anyDirty()/flush() for a caller that
-// must not race a focused, just-typed field's own blur.
+// topmost error.
 (function () {
-  function csrf() {
-    var m = document.querySelector('meta[name="verso-csrf"]');
-    return m ? m.content : "";
-  }
   function input(field) { return field.querySelector("[data-verso-inline-input]"); }
   function committed(el) {
     return (el.dataset.committed !== undefined ? el.dataset.committed : el.defaultValue).trim();
-  }
-  function isDirty(field) {
-    var el = input(field);
-    return !!el && el.value.trim() !== committed(el);
-  }
-  function anyDirty() {
-    return [].some.call(document.querySelectorAll("[data-verso-inline-field]"), isDirty);
   }
   function showError(field, message) {
     var slot = field.querySelector("[data-verso-inline-error]");
@@ -837,22 +796,12 @@
     clearError(field);
     el.value = value;
     field.classList.add("verso-busy");
-    var body = new URLSearchParams();
-    body.set(el.name, value);
-    var token = csrf();
-    if (token) body.set("_csrf", token);
-    var p = fetch(window.location.pathname, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Verso-Interaction": "field" },
-      body: body.toString(),
-      credentials: "same-origin",
-    }).then(function (res) {
+    var p = versoPost(window.location.pathname, versoBody([[el.name, value]]), "field").then(function (res) {
       field.classList.remove("verso-busy");
       if (res.ok || res.redirected) {
         return res.text().then(function (html) {
           el.dataset.committed = value; // this is the saved baseline now
-          var doc = new DOMParser().parseFromString(html, "text/html");
-          if (window.versoStaged && window.versoStaged.sync) window.versoStaged.sync(doc);
+          if (window.versoStaged && window.versoStaged.sync) window.versoStaged.sync(versoParse(html));
           return true;
         });
       }
@@ -867,24 +816,6 @@
       function (e) { field._versoCommit = null; throw e; });
     return field._versoCommit;
   }
-  function flush() {
-    var dirty = [].filter.call(document.querySelectorAll("[data-verso-inline-field]"), isDirty);
-    if (!dirty.length) return Promise.resolve(true);
-    return Promise.all(dirty.map(commit)).then(function (oks) {
-      var all = oks.every(Boolean);
-      if (!all) scrollToFirstError();
-      return all;
-    });
-  }
-  // revert drops any typed-but-unstaged edits back to the saved value — what
-  // Discard does for a field that never committed.
-  function revert() {
-    [].forEach.call(document.querySelectorAll("[data-verso-inline-field]"), function (field) {
-      var el = input(field);
-      if (el && isDirty(field)) { el.value = committed(el); clearError(field); }
-    });
-  }
-  window.versoInline = { anyDirty: anyDirty, flush: flush, revert: revert };
 
   document.addEventListener("input", function (e) {
     var el = e.target.closest && e.target.closest("[data-verso-inline-input]");
@@ -952,12 +883,6 @@
   }, true);
 
   function megabytes(n) { return (n / 1048576).toFixed(1); }
-  function el(tag, cls, text) {
-    var node = document.createElement(tag);
-    node.className = cls;
-    if (text) node.textContent = text;
-    return node;
-  }
 
   // setStep moves the dialog's step line to the step in hand.
   function setStep(dialog, index) {
@@ -970,6 +895,7 @@
 
   function uploadInDialog(form, file, dialog) {
     var scope = window.Alpine ? window.Alpine.$data(dialog) : null;
+    var el = versoEl;
     var row = el("div", "space-y-2");
     row.setAttribute("data-verso-upload", "");
     var line = el("div", "flex items-baseline justify-between gap-4");
@@ -1120,9 +1046,7 @@
   function refresh(form, patched) {
     var preview = previewOf(form);
     if (!preview) return;
-    var body = new URLSearchParams(new FormData(form));
-    var token = csrfToken();
-    if (token) body.set("_csrf", token);
+    var body = versoBody(new FormData(form));
     var mine = (asked.get(form) || 0) + 1;
     asked.set(form, mine);
     // Only the question still waiting for an answer wears the fade. An older one
@@ -1134,15 +1058,7 @@
     // care about, so it does not dim — the confirmation arrives under it and
     // usually changes nothing.
     if (!patched) preview.classList.add("verso-preview-busy");
-    fetch(target(form), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Verso-Interaction": "preview",
-      },
-      body: body.toString(),
-      credentials: "same-origin",
-    }).then(function (res) {
+    versoPost(target(form), body, "preview").then(function (res) {
       settle();
       // 204: the page answered with no preview of its own. Nothing to show and
       // nothing wrong — leave what is on screen.
@@ -1153,8 +1069,7 @@
         if (!current()) return;
         var live = previewOf(form);
         if (!live || !html.trim()) return;
-        var parsed = new DOMParser().parseFromString(html, "text/html");
-        var fresh = parsed.querySelector("[data-verso-preview]");
+        var fresh = versoParse(html).querySelector("[data-verso-preview]");
         if (fresh) {
           live.replaceWith(fresh);
           markChanges(form);
@@ -1166,11 +1081,6 @@
       // nothing", which is the one thing it must never say by accident.
       settle();
     });
-  }
-
-  function csrfToken() {
-    var m = document.querySelector('meta[name="verso-csrf"]');
-    return m ? m.content : "";
   }
 
   // One request per pause, per form. Every control counts — typing, a switch, a
@@ -1503,16 +1413,11 @@ document.addEventListener("mousedown", function (e) {
     return n === 1 ? T("1 setting refused") : T("%d settings refused").replace("%d", n);
   }
 
-  // say turns the tally over: the old words rise out as the new rise in.
+  // say turns the tally over (versoTurn): the old words rise out as the new
+  // rise in. A tally that said nothing yet just says it.
   function say(text) {
-    if (tally.textContent === text) return;
-    if (!tally.textContent || still() || typeof tally.animate !== "function") { tally.textContent = text; return; }
-    tally.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-80%)", opacity: 0 }],
-      { duration: 140, easing: "ease-in" }).finished.then(function () {
-      tally.textContent = text;
-      tally.animate([{ transform: "translateY(80%)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
-        { duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
-    }, function () { tally.textContent = text; });
+    if (!tally.textContent) tally.textContent = text;
+    else versoTurn(tally, text);
   }
 
   // place centres the navigator over the form holding the refused settings,
