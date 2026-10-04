@@ -27,7 +27,7 @@ func TestTelemetrySnapshotIsSharedWithinTick(t *testing.T) {
 	calls := 0
 	now := time.Now()
 	s := &Server{telemetry: fakeTelemetry{calls: &calls, snapshot: telemetry.Snapshot{
-		Version: 1, TimestampMS: uint64(now.UnixMilli()),
+		TimestampMS: uint64(now.UnixMilli()),
 	}}}
 	if _, ok := s.telemetrySnapshot(context.Background()); !ok {
 		t.Fatal("fresh snapshot unavailable")

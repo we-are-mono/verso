@@ -30,24 +30,17 @@ func (*NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessag
 			return nil, ErrAccessDenied
 		}
 	}
-	read := func(object, method string, args map[string]string) (map[string]any, error) {
-		id, err := c.Lookup(object)
-		if err != nil {
-			return nil, err
-		}
-		return c.InvokeArgs(id, method, args)
-	}
 	// No session means rpcd's committed view, after explicitly checking the
 	// operator's read grant above. Including sid here would read pending edits.
-	config, err := read("uci", "get", map[string]string{"config": "dhcp"})
+	config, err := invoke(c, "uci", "get", map[string]any{"config": "dhcp"})
 	if err != nil {
 		return nil, err
 	}
-	services, err := read("service", "list", map[string]string{"name": "dnsmasq"})
+	services, err := invoke(c, "service", "list", map[string]any{"name": "dnsmasq"})
 	if err != nil {
 		return nil, err
 	}
-	dump, err := read("network.interface", "dump", nil)
+	dump, err := invoke(c, "network.interface", "dump", nil)
 	if err != nil {
 		return nil, err
 	}

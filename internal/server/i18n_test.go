@@ -134,7 +134,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 		Widget:     json.RawMessage(`{"type":"form","submit":"Save","fields":[{"type":"field","name":"h","label":"Hostname"}]}`),
 	}
 	m := plugin.Manifest{
-		ManifestVersion: 1, ID: "demo", Name: "Demo", Socket: "/demo.sock", SchemaVersion: 1,
+		ID: "demo", Name: "Demo", Socket: "/demo.sock", SchemaVersion: 1,
 		Nav: []plugin.NavEntry{{Section: "Network", Label: "Widgets", Path: "/"}},
 	}
 	srv := newServerWith(t, fakeBackend{}, &fakeTransport{env: env}, []plugin.Manifest{m})

@@ -29,12 +29,8 @@ type Interface struct {
 }
 
 type Snapshot struct {
-	Version      int
-	TimestampMS  uint64
-	Source       string
-	WirelessPHYs []string
-	Interfaces   []Interface
-	Errors       []string
+	TimestampMS uint64
+	Interfaces  []Interface
 }
 
 func (s Snapshot) Fresh(now time.Time, maxAge time.Duration) bool {

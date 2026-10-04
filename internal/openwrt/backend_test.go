@@ -425,18 +425,13 @@ func TestWANStatusesAllowsIPv6DirectlyOnWAN(t *testing.T) {
 	}
 }
 
-// TestParseDeviceStats: netifd's "1000F" speed string reads as Mbps, counters
-// come from the statistics table, and an unknown speed maps to 0.
+// TestParseDeviceStats: counters come from the statistics table.
 func TestParseDeviceStats(t *testing.T) {
 	got := parseDeviceStats(map[string]any{
-		"carrier": true, "speed": "1000F",
 		"statistics": map[string]any{"rx_bytes": int64(7733), "tx_bytes": int64(13877)},
 	})
-	if !got.Carrier || got.SpeedMbps != 1000 || got.RxBytes != 7733 || got.TxBytes != 13877 {
+	if got.RxBytes != 7733 || got.TxBytes != 13877 {
 		t.Errorf("device stats = %+v", got)
-	}
-	if got := parseDeviceStats(map[string]any{"speed": "-1"}); got.SpeedMbps != 0 {
-		t.Errorf("unknown speed = %d, want 0", got.SpeedMbps)
 	}
 }
 

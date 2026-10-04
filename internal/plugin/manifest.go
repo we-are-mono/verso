@@ -16,13 +16,12 @@ import (
 // the shell's only build-free knowledge of a plugin (ADR-006).
 type Manifest struct {
 	// SystemAccess contributes service settings to the shell-owned Access page.
-	SystemAccess    string     `json:"system_access,omitempty"`
-	ManifestVersion int        `json:"manifest_version"`
-	ID              string     `json:"id"`
-	Name            string     `json:"name"`
-	Socket          string     `json:"socket"`
-	SchemaVersion   int        `json:"schema_version"`
-	Nav             []NavEntry `json:"nav"`
+	SystemAccess  string     `json:"system_access,omitempty"`
+	ID            string     `json:"id"`
+	Name          string     `json:"name"`
+	Socket        string     `json:"socket"`
+	SchemaVersion int        `json:"schema_version"`
+	Nav           []NavEntry `json:"nav"`
 	// EntityTabs and EntityActs are what this plugin has to say about a subject
 	// some other page lists — see EntityTab. Both are optional: most plugins own
 	// pages and contribute to nobody's panel.

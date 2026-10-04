@@ -58,7 +58,7 @@ func rosterBackend() fakeBackend {
 // reserve door has somewhere to lead.
 func dnsdhcpManifest() plugin.Manifest {
 	return plugin.Manifest{
-		ManifestVersion: 1, ID: "dnsdhcp", Name: "DNS and DHCP",
+		ID: "dnsdhcp", Name: "DNS and DHCP",
 		Socket: "/run/verso/dnsdhcp.sock", SchemaVersion: 1,
 		Nav: []plugin.NavEntry{{Section: "Network", Label: "DHCP", Path: "/"}},
 	}
@@ -293,7 +293,7 @@ func TestLeaseIn(t *testing.T) {
 // tab in its panel.
 func shapingManifest() plugin.Manifest {
 	return plugin.Manifest{
-		ManifestVersion: 1, ID: "qos", Name: "Device limits",
+		ID: "qos", Name: "Device limits",
 		Socket: "/run/verso/qos.sock", SchemaVersion: 1,
 		Nav:        []plugin.NavEntry{{Section: "Security", Label: "Device limits", Path: "/"}},
 		EntityTabs: []plugin.EntityTab{{Entity: "device", Slot: "shape", Label: "Limits & schedule"}},

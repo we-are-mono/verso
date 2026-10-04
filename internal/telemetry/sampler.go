@@ -124,7 +124,7 @@ func (s *Sampler) Snapshot(ctx context.Context) (Snapshot, error) {
 func (s *Sampler) sample() {
 	now := s.now()
 	timestampMS := uint64(now.UnixMilli())
-	observed, sampleErrors, err := readInterfaces(s.root, timestampMS)
+	observed, err := readInterfaces(s.root, timestampMS)
 	if err != nil {
 		s.mu.Lock()
 		s.lastErr = err
@@ -169,37 +169,16 @@ func (s *Sampler) sample() {
 	}
 	s.history = nextHistory
 	s.previous = nextPrevious
-	s.snapshot = Snapshot{
-		Version:      1,
-		TimestampMS:  timestampMS,
-		Source:       "interfaces",
-		WirelessPHYs: readWirelessPHYs(s.root),
-		Interfaces:   interfaces,
-		Errors:       sampleErrors,
-	}
+	s.snapshot = Snapshot{TimestampMS: timestampMS, Interfaces: interfaces}
 	s.lastErr = nil
 }
 
-// readWirelessPHYs reports kernel-registered Wi-Fi hardware independently of
-// UCI and netifd. A PHY may exist before any traffic-bearing wireless netdev is
-// configured, so /sys/class/net alone is not sufficient for the overview tile.
-func readWirelessPHYs(netRoot string) []string {
-	entries, err := os.ReadDir(filepath.Join(filepath.Dir(netRoot), "ieee80211"))
-	if err != nil {
-		return nil
-	}
-	phys := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		phys = append(phys, entry.Name())
-	}
-	return phys
-}
-
-// readInterfaces returns counters in os.ReadDir's stable filename order.
-func readInterfaces(root string, timestampMS uint64) ([]observation, []string, error) {
+// readInterfaces returns counters in os.ReadDir's stable filename order. An
+// interface whose counters cannot be read is left out of the sample.
+func readInterfaces(root string, timestampMS uint64) ([]observation, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return nil, nil, fmt.Errorf("telemetry: read %s: %w", root, err)
+		return nil, fmt.Errorf("telemetry: read %s: %w", root, err)
 	}
 	names := make(map[string]bool, len(entries))
 	indexNames := make(map[uint64]string, len(entries))
@@ -211,7 +190,6 @@ func readInterfaces(root string, timestampMS uint64) ([]observation, []string, e
 		}
 	}
 	observed := make([]observation, 0, len(entries))
-	var sampleErrors []string
 	for _, entry := range entries {
 		name := entry.Name()
 		current := counters{timestampMS: timestampMS}
@@ -221,7 +199,6 @@ func readInterfaces(root string, timestampMS uint64) ([]observation, []string, e
 		for index, file := range files {
 			value, readErr := readCounter(filepath.Join(root, name, "statistics", file))
 			if readErr != nil {
-				sampleErrors = append(sampleErrors, readErr.Error())
 				valid = false
 				break
 			}
@@ -235,7 +212,7 @@ func readInterfaces(root string, timestampMS uint64) ([]observation, []string, e
 			})
 		}
 	}
-	return observed, sampleErrors, nil
+	return observed, nil
 }
 
 // readInterfaceMetadata classifies one kernel netdev from sysfs. A hardware
@@ -356,8 +333,6 @@ func counterRate(current, previous, elapsedMS, multiplier uint64) uint64 {
 
 func cloneSnapshot(source Snapshot) Snapshot {
 	clone := source
-	clone.Errors = append([]string(nil), source.Errors...)
-	clone.WirelessPHYs = append([]string(nil), source.WirelessPHYs...)
 	clone.Interfaces = make([]Interface, len(source.Interfaces))
 	for index, iface := range source.Interfaces {
 		clone.Interfaces[index] = iface

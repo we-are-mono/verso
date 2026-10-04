@@ -30,7 +30,7 @@ func TestSamplerRetainsBoundedInterfaceHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Source != "interfaces" || len(snapshot.Interfaces) != 1 {
+	if len(snapshot.Interfaces) != 1 {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
 	history := snapshot.Interfaces[0].History
@@ -75,9 +75,6 @@ func TestSnapshotFreshness(t *testing.T) {
 
 func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(filepath.Dir(root), "ieee80211", "mwiphy0"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	for _, name := range []string{"br-lan", "eth0", "eth0.10", "lo", "pppoe-wan", "sit0", "tailscale0", "wlan0", "uap0"} {
 		writeInterface(t, root, name, "up", 1, 2, 3, 4)
 	}
@@ -121,9 +118,6 @@ func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 	bridge, _ := snapshot.Interface("br-lan")
 	if len(bridge.Members) != 1 || bridge.Members[0] != "eth0" {
 		t.Errorf("br-lan members = %v, want [eth0]", bridge.Members)
-	}
-	if len(snapshot.WirelessPHYs) != 1 || snapshot.WirelessPHYs[0] != "mwiphy0" {
-		t.Errorf("wireless PHYs = %v, want [mwiphy0]", snapshot.WirelessPHYs)
 	}
 }
 

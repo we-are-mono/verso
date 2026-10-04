@@ -62,7 +62,7 @@ func TestDiscoverWANSupplementsPolicyAndUnmanagedRoutes(t *testing.T) {
 	for _, device := range got.Devices {
 		byName[device.Device] = device
 	}
-	if route := byName["wg0"].Routes[0]; !route.Policy || route.Main || route.Table != 100 {
+	if route := byName["wg0"].Routes[0]; route.Main || route.Table != 100 {
 		t.Errorf("policy route = %+v", route)
 	}
 	if networks := byName["wg0"].Networks; len(networks) != 1 || networks[0] != "work-vpn" {

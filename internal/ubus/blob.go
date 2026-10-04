@@ -104,9 +104,8 @@ func (m *msg) bytes() []byte {
 	return append(hdr[:], m.children...)
 }
 
-// encodeArgs encodes named string arguments as the blobmsg table libubus expects
-// in UBUS_ATTR_DATA. It is the flat-string counterpart of decodeTable, covering
-// calls whose arguments are all strings (session.login, uci.get, session.access).
+// encodeArgs encodes a table of named strings as a blobmsg table body — the
+// flat-string counterpart of decodeTable, for a map[string]string value.
 func encodeArgs(args map[string]string) []byte {
 	var body []byte
 	for name, val := range args {

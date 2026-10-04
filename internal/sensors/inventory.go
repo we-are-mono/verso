@@ -4,7 +4,9 @@
 package sensors
 
 import (
+	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -87,14 +89,10 @@ type FanReading struct {
 // bias current) with the module's own min/max/crit limits. RxHasLight is the
 // loss-of-signal verdict: receive power above the module's own floor.
 type FiberModule struct {
-	Cage    string
-	Source  string
-	Present bool
+	Cage   string
+	Source string
 
 	TempMilliC int
-	TempWarn   int
-	TempCrit   int
-	TempFault  bool
 
 	VccMilliV int
 	VccMin    int
@@ -162,7 +160,7 @@ func resolveTemps(p *Profile, zones []Zone, hwmons []Hwmon, amb map[string]bool)
 		out = append(out, tempFromZoneReading(z))
 	}
 	for _, h := range hwmons {
-		for _, ch := range sortedKeys(h.Temp) {
+		for _, ch := range slices.Sorted(maps.Keys(h.Temp)) {
 			if zoneTwin(zones, h, ch) {
 				continue
 			}
@@ -293,7 +291,7 @@ func resolvePowers(p *Profile, hwmons []Hwmon, amb map[string]bool) []PowerReadi
 		if isFiber(h.Name) {
 			continue
 		}
-		for _, ch := range sortedKeys64(h.Power) {
+		for _, ch := range slices.Sorted(maps.Keys(h.Power)) {
 			kernel := readStr(filepath.Join(h.Dir, chanAttr("power", ch, "label")))
 			if kernel == "" {
 				kernel = "power" + strconv.Itoa(ch)
@@ -337,7 +335,7 @@ func matchPowerEntry(p *Profile, h Hwmon) (name string, main, ok bool) {
 func resolveFans(p *Profile, hwmons []Hwmon, amb map[string]bool) []FanReading {
 	var out []FanReading
 	for _, h := range hwmons {
-		for _, ch := range sortedKeys(h.Fan) {
+		for _, ch := range slices.Sorted(maps.Keys(h.Fan)) {
 			rpm := h.Fan[ch]
 			fr := FanReading{
 				Kernel: "fan" + strconv.Itoa(ch), Name: "fan" + strconv.Itoa(ch),
@@ -381,12 +379,7 @@ func resolveFibers(hwmons []Hwmon) []FiberModule {
 func fiberFrom(h Hwmon) FiberModule {
 	// A fibre cage's source is always "sfp · <cage>" — the cage name already
 	// disambiguates, so the driver-name ambiguity rule does not apply.
-	f := FiberModule{Cage: fiberCage(h.Name), Source: hwmonSource(h, false), Present: true}
-
-	f.TempMilliC = h.Temp[1]
-	f.TempWarn, _ = saneTempLimit(readIntOK(filepath.Join(h.Dir, tempAttr(1, "max"))))
-	f.TempCrit, _ = saneTempLimit(readIntOK(filepath.Join(h.Dir, tempAttr(1, "crit"))))
-	f.TempFault = readFlag(filepath.Join(h.Dir, tempAttr(1, "fault")))
+	f := FiberModule{Cage: fiberCage(h.Name), Source: hwmonSource(h, false), TempMilliC: h.Temp[1]}
 
 	vin := firstKey(h)
 	if mv, ok := readIntOK(filepath.Join(h.Dir, chanAttr("in", vin, "input"))); ok {
@@ -751,22 +744,4 @@ func allDigits(s string) bool {
 		}
 	}
 	return true
-}
-
-func sortedKeys(m map[int]int) []int {
-	out := make([]int, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Ints(out)
-	return out
-}
-
-func sortedKeys64(m map[int]int64) []int {
-	out := make([]int, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Ints(out)
-	return out
 }

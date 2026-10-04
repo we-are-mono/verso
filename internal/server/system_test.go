@@ -14,7 +14,7 @@ import (
 
 func systemManifest() plugin.Manifest {
 	return plugin.Manifest{
-		ManifestVersion: 1, ID: "system", Name: "System",
+		ID: "system", Name: "System",
 		Socket: "/var/run/verso/system.sock", SchemaVersion: 1,
 		Nav: []plugin.NavEntry{{Section: "System", Label: "General", Path: "/"}},
 		ACL: plugin.ACL{

@@ -502,7 +502,7 @@ func newServer(t *testing.T, backend openwrt.Backend) *Server {
 
 func demoManifest() plugin.Manifest {
 	return plugin.Manifest{
-		ManifestVersion: 1, ID: "demo", Name: "Demo Plugin",
+		ID: "demo", Name: "Demo Plugin",
 		Socket: "/run/verso/demo.sock", SchemaVersion: 1,
 		Nav: []plugin.NavEntry{{Section: "Apps", Label: "Demo", Path: "/"}},
 	}

@@ -69,11 +69,15 @@ func serve() {
 	if pluginsDir == "" {
 		pluginsDir = "/usr/share/verso/plugins"
 	}
-	manifests, problems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
-	for _, p := range problems {
-		log.Printf("verso: %v", p)
+	// discover reads every plugin manifest, reporting the malformed ones; verb
+	// says whether this is the startup scan or a rescan.
+	discover := func(verb string) []plugin.Manifest {
+		manifests, problems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
+		logProblems(problems)
+		info.Printf("verso: %s %d plugin(s) in %s", verb, len(manifests), pluginsDir)
+		return manifests
 	}
-	info.Printf("verso: discovered %d plugin(s) in %s", len(manifests), pluginsDir)
+	manifests := discover("discovered")
 
 	// Localization catalogs are data packages discovered on disk (ADR-012), the
 	// same resilient glob as plugin manifests; a malformed catalog is skipped and
@@ -87,13 +91,9 @@ func serve() {
 		// (<i18nDir>/<code>/base.json); each plugin's travel beside its manifest
 		// (<pluginsDir>/<id>/i18n/<code>.json) and override any same-component
 		// file in the shell's directory (ADR-012 §1).
-		bundle, i18nProblems := i18n.Load(os.DirFS(i18nDir), "*/*.json")
-		for _, p := range i18nProblems {
-			log.Printf("verso: %v", p)
-		}
-		for _, p := range bundle.LoadPlugins(os.DirFS(pluginsDir), "*/i18n/*.json") {
-			log.Printf("verso: %v", p)
-		}
+		bundle, problems := i18n.Load(os.DirFS(i18nDir), "*/*.json")
+		logProblems(problems)
+		logProblems(bundle.LoadPlugins(os.DirFS(pluginsDir), "*/i18n/*.json"))
 		info.Printf("verso: loaded %d language(s) in %s + %s", len(bundle.Codes()), i18nDir, pluginsDir)
 		// The live counterpart of `make i18n-audit`: with VERSO_I18N_RECORD set,
 		// every string that falls back to English for an installed language is
@@ -127,11 +127,7 @@ func serve() {
 	// apk lands the same way, so re-read the catalogs on the same trigger — a new
 	// language needs no restart either (ADR-012).
 	srv.SetRescan(func() []plugin.Manifest {
-		rescanned, rescanProblems := plugin.Discover(os.DirFS(pluginsDir), "*/manifest.json")
-		for _, p := range rescanProblems {
-			log.Printf("verso: %v", p)
-		}
-		info.Printf("verso: rediscovered %d plugin(s) in %s", len(rescanned), pluginsDir)
+		rescanned := discover("rediscovered")
 		srv.SetBundle(loadBundle())
 		return rescanned
 	})
@@ -151,6 +147,13 @@ func serve() {
 	srv.Close()
 	if err != nil {
 		log.Fatalf("verso: %v", err)
+	}
+}
+
+// logProblems reports each skipped manifest or catalog; none is fatal.
+func logProblems(problems []error) {
+	for _, p := range problems {
+		log.Printf("verso: %v", p)
 	}
 }
 

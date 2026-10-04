@@ -20,9 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"math"
 	"path"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -76,20 +77,39 @@ func (b *Bundle) sink(code, component string) func(key string, translated bool) 
 // in-memory filesystem.
 func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 	b := &Bundle{catalogs: make(map[string]map[string]Catalog)}
+	return b, b.load(fsys, glob, "glob", languageDirCatalog, false)
+}
+
+// LoadPlugins merges each plugin's travelling catalog into b (ADR-012 §1):
+// files matched by glob within fsys (the plugins directory), laid out as
+// "<plugin-dir>/i18n/<code>.json" — the language is the file's basename and
+// the component is the plugin directory's name (the plugin id, the same
+// convention that keys the mount). Resilient exactly like Load: a malformed
+// file is skipped and reported, never fatal. A travelling catalog overrides a
+// same code+component catalog already loaded from the shell's i18n directory —
+// the file that ships with the plugin binary is version-locked to it.
+func (b *Bundle) LoadPlugins(fsys fs.FS, glob string) []error {
+	return b.load(fsys, glob, "plugin glob", pluginDirCatalog, true)
+}
+
+// load reads every catalog matched by glob within fsys into b, in sorted path
+// order. split names each file's language code and component; a file with no
+// code, no component, or English (the source needs no catalog) is skipped. A
+// catalog for a code+component already loaded either overrides it (override)
+// or is reported as a duplicate and skipped. globKind names the glob in its
+// error.
+func (b *Bundle) load(fsys fs.FS, glob, globKind string, split func(p string) (code, component string), override bool) []error {
 	matches, err := fs.Glob(fsys, glob)
 	if err != nil {
-		return b, []error{fmt.Errorf("i18n: bad glob %q: %w", glob, err)}
+		return []error{fmt.Errorf("i18n: bad %s %q: %w", globKind, glob, err)}
 	}
-	sort.Strings(matches)
+	slices.Sort(matches)
 
 	var problems []error
 	for _, p := range matches {
-		code := strings.ToLower(path.Base(path.Dir(p)))
-		component := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
-		if code == "" || code == "." || code == "en" {
-			continue // no language dir, or English (the source needs no catalog)
-		}
-		if component == "" {
+		code, component := split(p)
+		code, component = strings.ToLower(code), strings.ToLower(component)
+		if code == "" || code == "en" || component == "" {
 			continue
 		}
 		if strings.ContainsRune(code, '-') {
@@ -107,64 +127,34 @@ func Load(fsys fs.FS, glob string) (*Bundle, []error) {
 		if b.catalogs[code] == nil {
 			b.catalogs[code] = make(map[string]Catalog)
 		}
-		if _, dup := b.catalogs[code][component]; dup {
+		if _, dup := b.catalogs[code][component]; dup && !override {
 			problems = append(problems, fmt.Errorf("i18n: %s: duplicate catalog for %q/%q, skipped", p, code, component))
 			continue
 		}
 		b.catalogs[code][component] = cat
 	}
-	b.refreshCodes()
-	return b, problems
-}
-
-// LoadPlugins merges each plugin's travelling catalog into b (ADR-012 §1):
-// files matched by glob within fsys (the plugins directory), laid out as
-// "<plugin-dir>/i18n/<code>.json" — the language is the file's basename and
-// the component is the plugin directory's name (the plugin id, the same
-// convention that keys the mount). Resilient exactly like Load: a malformed
-// file is skipped and reported, never fatal. A travelling catalog overrides a
-// same code+component catalog already loaded from the shell's i18n directory —
-// the file that ships with the plugin binary is version-locked to it.
-func (b *Bundle) LoadPlugins(fsys fs.FS, glob string) []error {
-	matches, err := fs.Glob(fsys, glob)
-	if err != nil {
-		return []error{fmt.Errorf("i18n: bad plugin glob %q: %w", glob, err)}
-	}
-	sort.Strings(matches)
-
-	var problems []error
-	for _, p := range matches {
-		component := strings.ToLower(topDir(p))
-		code := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
-		if component == "" || code == "" || code == "en" {
-			continue // no plugin dir, or English (the source needs no catalog)
-		}
-		if strings.ContainsRune(code, '-') {
-			problems = append(problems, fmt.Errorf("i18n: %s: region/script variant %q unsupported; name the base language", p, code))
-			continue
-		}
-		cat, err := readCatalog(fsys, p)
-		if err != nil {
-			problems = append(problems, err)
-			continue
-		}
-		if b.catalogs[code] == nil {
-			b.catalogs[code] = make(map[string]Catalog)
-		}
-		b.catalogs[code][component] = cat
-	}
-	b.refreshCodes()
+	// A travelling catalog may introduce a language base has none of; per-key
+	// English fallback covers the shell's own chrome there.
+	b.codes = slices.Sorted(maps.Keys(b.catalogs))
 	return problems
 }
 
-// topDir returns the first segment of a slash path — the plugin directory a
-// travelling catalog belongs to.
-func topDir(p string) string {
-	dir, _, _ := strings.Cut(p, "/")
-	if dir == p {
-		return ""
+// languageDirCatalog splits "<code>/<component>.json", the shell's i18n
+// directory layout. A file outside any language directory has no code.
+func languageDirCatalog(p string) (code, component string) {
+	if code = path.Base(path.Dir(p)); code == "." {
+		code = ""
 	}
-	return dir
+	return code, strings.TrimSuffix(path.Base(p), path.Ext(p))
+}
+
+// pluginDirCatalog splits "<plugin-dir>/i18n/<code>.json", a travelling
+// catalog: the component is the plugin directory, the first path segment.
+func pluginDirCatalog(p string) (code, component string) {
+	if dir, _, found := strings.Cut(p, "/"); found {
+		component = dir
+	}
+	return strings.TrimSuffix(path.Base(p), path.Ext(p)), component
 }
 
 // readCatalog reads and parses one catalog file, treating unreadable, invalid,
@@ -182,17 +172,6 @@ func readCatalog(fsys fs.FS, p string) (Catalog, error) {
 		return nil, fmt.Errorf("i18n: %s: empty catalog, skipped", p)
 	}
 	return cat, nil
-}
-
-// refreshCodes rebuilds the sorted negotiation candidate set from the loaded
-// catalogs — a travelling catalog may introduce a language base has none of,
-// and per-key English fallback covers the shell's own chrome there.
-func (b *Bundle) refreshCodes() {
-	b.codes = b.codes[:0]
-	for code := range b.catalogs {
-		b.codes = append(b.codes, code)
-	}
-	sort.Strings(b.codes)
 }
 
 // Codes returns the installed language codes, sorted. English is not among them.

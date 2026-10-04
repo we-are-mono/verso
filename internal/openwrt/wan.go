@@ -4,6 +4,7 @@
 package openwrt
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 )
@@ -50,7 +51,7 @@ func discoverWAN(dump map[string]any, kernel []kernelRoute) WANState {
 		return devices[name]
 	}
 	addOwner := func(device *WANDevice, owner netifdOwner) {
-		if owner.name != "" && !containsString(device.Networks, owner.name) {
+		if owner.name != "" && !slices.Contains(device.Networks, owner.name) {
 			device.Networks = append(device.Networks, owner.name)
 		}
 		if device.Transport == "" {
@@ -111,7 +112,7 @@ func discoverWAN(dump map[string]any, kernel []kernelRoute) WANState {
 		}
 		addRoute(device, WANRoute{
 			Family: route.Family, Table: route.Table, Metric: route.Metric,
-			Main: route.Table == mainRouteTable, Policy: route.Table != mainRouteTable,
+			Main: route.Table == mainRouteTable,
 		})
 	}
 
@@ -251,15 +252,6 @@ func preferredStatus(entries []any, family int) map[string]any {
 		}
 	}
 	return best
-}
-
-func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
 }
 
 func stringValue(value any) string {

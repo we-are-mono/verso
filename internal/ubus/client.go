@@ -201,16 +201,9 @@ func (c *Client) Invoke(objID uint32, method string) (map[string]any, error) {
 	return c.invoke(objID, method, nil)
 }
 
-// InvokeArgs calls a method with named string arguments — encoded as a blobmsg
-// table in UBUS_ATTR_DATA — and returns the decoded result table. String args
-// cover the flat calls Verso needs (e.g. session.login's username/password);
-// InvokeTable handles arguments carrying nested tables.
-func (c *Client) InvokeArgs(objID uint32, method string, args map[string]string) (map[string]any, error) {
-	return c.invoke(objID, method, encodeArgs(args))
-}
-
-// InvokeTable calls a method whose arguments may include nested tables — the
-// shape uci.set needs for values:{} — and returns the decoded result table.
+// InvokeTable calls a method with named arguments — encoded as a blobmsg table
+// in UBUS_ATTR_DATA, nested tables included (the shape uci.set needs for
+// values:{}) — and returns the decoded result table.
 // Argument values may be strings, booleans, signed integers, arrays, or nested
 // tables; any other type is rejected before anything is sent.
 func (c *Client) InvokeTable(objID uint32, method string, args map[string]any) (map[string]any, error) {

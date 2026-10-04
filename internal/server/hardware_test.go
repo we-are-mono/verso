@@ -32,8 +32,8 @@ func dkInventory() sensors.Inventory {
 			{Name: "fan2", Kernel: "fan2", Source: "emc2305 · 7-2e", State: "absent"},
 		},
 		Fibers: []sensors.FiberModule{
-			{Cage: "xfi0", Source: "sfp · xfi0", Present: true, TempMilliC: 47200, TempCrit: 78000, VccMilliV: 3300, HasVcc: true, BiasMilliA: 9, HasBias: true, TxMicroW: 542, HasTx: true, RxMicroW: 412, HasRx: true, RxHasLight: true},
-			{Cage: "xfi1", Source: "sfp · xfi1", Present: true, TempMilliC: 54600, VccMilliV: 3260, HasVcc: true, BiasMilliA: 20, HasBias: true, TxMicroW: 2150, HasTx: true, RxMicroW: 3, HasRx: true, RxHasLight: false},
+			{Cage: "xfi0", Source: "sfp · xfi0", TempMilliC: 47200, VccMilliV: 3300, HasVcc: true, BiasMilliA: 9, HasBias: true, TxMicroW: 542, HasTx: true, RxMicroW: 412, HasRx: true, RxHasLight: true},
+			{Cage: "xfi1", Source: "sfp · xfi1", TempMilliC: 54600, VccMilliV: 3260, HasVcc: true, BiasMilliA: 20, HasBias: true, TxMicroW: 2150, HasTx: true, RxMicroW: 3, HasRx: true, RxHasLight: false},
 		},
 	}
 }

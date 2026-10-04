@@ -38,7 +38,7 @@ func (*NativeBackend) WirelessState(_ context.Context, sid string) (json.RawMess
 	if ok, err := probeAccess(c, sid, "ubus", "iwinfo", "info"); err == nil && ok {
 		if iw, err := c.Lookup("iwinfo"); err == nil {
 			iwinfo = func(method, device string) (map[string]any, error) {
-				return c.InvokeArgs(iw, method, map[string]string{"device": device})
+				return c.InvokeTable(iw, method, map[string]any{"device": device})
 			}
 		}
 	}

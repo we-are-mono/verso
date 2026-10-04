@@ -191,7 +191,7 @@ type Backend interface {
 	// DUID, hostname, and assigned addresses — sid-gated. DHCPv6 keys on the DUID,
 	// not the MAC, so the roster joins a lease to a device by a shared address.
 	IPv6Leases(ctx context.Context, sid string) ([]V6Lease, error)
-	// DeviceStats reads one network device's link state and byte counters
+	// DeviceStats reads one network device's byte counters
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
@@ -260,8 +260,7 @@ type WANRoute struct {
 	Family int // 4 or 6
 	Table  uint32
 	Metric uint32
-	Main   bool
-	Policy bool
+	Main   bool   // in the main table; a route elsewhere is a policy route
 	Owner  string // logical netifd interface; empty for an unmanaged route
 }
 
@@ -302,13 +301,11 @@ type WANConn struct {
 	V6Valid   int64 // seconds the prefix stays valid (the lease's time left); 0 = none
 }
 
-// DeviceStats is one network device's link state and byte counters, from
-// network.device status.
+// DeviceStats is one network device's byte counters, from network.device
+// status.
 type DeviceStats struct {
-	Carrier   bool
-	SpeedMbps int // negotiated link speed; 0 when the driver reports none
-	RxBytes   int64
-	TxBytes   int64
+	RxBytes int64
+	TxBytes int64
 }
 
 // Package is one row of a package search or listing, as the helper reports
@@ -1293,7 +1290,7 @@ func probeAccess(c *ubus.Client, sid, scope, object, function string) (bool, err
 	if err != nil {
 		return false, err
 	}
-	res, err := c.InvokeArgs(id, "access", map[string]string{
+	res, err := c.InvokeTable(id, "access", map[string]any{
 		"ubus_rpc_session": sid,
 		"scope":            scope,
 		"object":           object,
@@ -1936,21 +1933,9 @@ func dialDeviceStats(socket string) deviceStatsFn {
 	}
 }
 
-// parseDeviceStats maps network.device status onto DeviceStats. netifd
-// reports speed as a string like "1000F" (Mbps plus duplex) — the leading
-// digits are the number; an unknown speed ("-1", absent) maps to 0.
+// parseDeviceStats maps network.device status onto DeviceStats.
 func parseDeviceStats(m map[string]any) DeviceStats {
-	ds := DeviceStats{Carrier: asBool(m["carrier"])}
-	if s, ok := m["speed"].(string); ok {
-		n := 0
-		for _, r := range s {
-			if r < '0' || r > '9' {
-				break
-			}
-			n = n*10 + int(r-'0')
-		}
-		ds.SpeedMbps = n
-	}
+	var ds DeviceStats
 	if st, ok := m["statistics"].(map[string]any); ok {
 		ds.RxBytes = asInt64(st["rx_bytes"])
 		ds.TxBytes = asInt64(st["tx_bytes"])

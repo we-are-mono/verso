@@ -238,7 +238,7 @@ func TestResolveAllFibers(t *testing.T) {
 	if x0.TxMicroW != 542 || x0.RxMicroW != 412 || x0.VccMilliV != 3300 || x0.BiasMilliA != 9 {
 		t.Fatalf("xfi0 DOM: %+v", x0)
 	}
-	if x0.TempMilliC != 47200 || x0.TempCrit != 78000 {
+	if x0.TempMilliC != 47200 {
 		t.Fatalf("xfi0 temperature: %+v", x0)
 	}
 }
