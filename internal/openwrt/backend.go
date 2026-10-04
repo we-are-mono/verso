@@ -56,12 +56,11 @@ type Backend interface {
 	// writes on the operator's rpcd ACLs (ADR-007). A transport error is distinct
 	// from a denial, so callers can fail closed on the former.
 	Access(ctx context.Context, sid, scope, object, function string) (bool, error)
-	// UCISet and UCICommit write config through rpcd's ACL-gated `uci` object,
-	// carrying the operator's sid so rpcd — not Verso — authorizes the write. The
-	// shell performs writes on a plugin's behalf (ADR-007), so a plugin
-	// holds no write privilege and no session credential of its own.
+	// UCISet writes config through rpcd's ACL-gated `uci` object, carrying the
+	// operator's sid so rpcd — not Verso — authorizes the write. The shell
+	// performs writes on a plugin's behalf (ADR-007), so a plugin holds no
+	// write privilege and no session credential of its own.
 	UCISet(ctx context.Context, sid, config, section string, values map[string]any) error
-	UCICommit(ctx context.Context, sid, config string) error
 	// UCIConfig reads a whole uci config through rpcd's ACL-gated `uci` object,
 	// carrying the sid. It returns the `values` map — section name → section table
 	// (its `.type`/`.name` meta and options) — so the shell can hand a plugin a read
@@ -450,7 +449,6 @@ type (
 	wanConnFn      func(ctx context.Context, sid string) (WANConn, error)
 	accessFn       func(ctx context.Context, sid, scope, object, function string) (bool, error)
 	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
-	uciCommitFn    func(ctx context.Context, sid, config string) error
 	uciConfigFn    func(ctx context.Context, sid, config string) (map[string]any, error)
 	uciAddFn       func(ctx context.Context, sid, config, secType, name string) (string, error)
 	uciDeleteFn    func(ctx context.Context, sid, config, section, option string) error
@@ -497,7 +495,6 @@ type NativeBackend struct {
 	wanConn        wanConnFn
 	access         accessFn
 	uciSet         uciSetFn
-	uciCommit      uciCommitFn
 	uciConfig      uciConfigFn
 	uciAdd         uciAddFn
 	uciDelete      uciDeleteFn
@@ -550,7 +547,6 @@ func NewNativeBackend() *NativeBackend {
 		wanConn:       dialWANConn(""),
 		access:        dialAccess(""),
 		uciSet:        dialUCISet(""),
-		uciCommit:     dialUCICommit(""),
 		uciConfig:     dialUCIConfig(""),
 		uciAdd:        dialUCIAdd(""),
 		uciDelete:     dialUCIDelete(""),
@@ -666,11 +662,6 @@ func (b *NativeBackend) Access(ctx context.Context, sid, scope, object, function
 // UCISet writes option values into a uci section through rpcd, gated by the sid.
 func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]any) error {
 	return b.uciSet(ctx, sid, config, section, values)
-}
-
-// UCICommit persists staged changes to a uci config through rpcd, gated by the sid.
-func (b *NativeBackend) UCICommit(ctx context.Context, sid, config string) error {
-	return b.uciCommit(ctx, sid, config)
 }
 
 // UCIConfig reads a whole uci config through rpcd, gated by the sid.
@@ -965,20 +956,7 @@ func parseNetIfaces(dump map[string]any) []NetIface {
 // default is a subscription that never returns.
 func dialLogRead(socket string) logReadFn {
 	return func(_ context.Context, sid string, lines int) (map[string]any, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "log", "read"); err != nil || !ok {
-			return nil, ErrAccessDenied
-		}
-		id, err := c.Lookup("log")
-		if err != nil {
-			return nil, err
-		}
-		return c.InvokeTable(id, "read", map[string]any{
+		return callChecked(socket, sid, "log", "read", map[string]any{
 			"lines":   lines,
 			"stream":  false,
 			"oneshot": true,
@@ -999,20 +977,7 @@ func dialNetworkInterfaces(socket string) netIfacesFn {
 // the ACL is enforced by the pre-check — the pattern for any non-rpcd ubus call.
 func dialSystemInfo(socket string) systemInfoFn {
 	return func(_ context.Context, sid string) (map[string]any, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "system", "info"); err != nil || !ok {
-			return nil, ErrAccessDenied
-		}
-		id, err := c.Lookup("system")
-		if err != nil {
-			return nil, err
-		}
-		return c.Invoke(id, "info")
+		return callChecked(socket, sid, "system", "info", nil)
 	}
 }
 
@@ -1020,20 +985,7 @@ func dialSystemInfo(socket string) systemInfoFn {
 // the device's identity (firmware release, kernel), sid-gated like system info.
 func dialSystemBoard(socket string) systemBoardFn {
 	return func(_ context.Context, sid string) (map[string]any, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "system", "board"); err != nil || !ok {
-			return nil, ErrAccessDenied
-		}
-		id, err := c.Lookup("system")
-		if err != nil {
-			return nil, err
-		}
-		return c.Invoke(id, "board")
+		return callChecked(socket, sid, "system", "board", nil)
 	}
 }
 
@@ -1041,20 +993,7 @@ func dialSystemBoard(socket string) systemBoardFn {
 // (odhcpd's DHCPv6 lease table), sid-gated like the other reads.
 func dialIPv6Leases(socket string) ipv6LeasesFn {
 	return func(_ context.Context, sid string) (map[string]any, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "dhcp", "ipv6leases"); err != nil || !ok {
-			return nil, ErrAccessDenied
-		}
-		id, err := c.Lookup("dhcp")
-		if err != nil {
-			return nil, err
-		}
-		return c.Invoke(id, "ipv6leases")
+		return callChecked(socket, sid, "dhcp", "ipv6leases", nil)
 	}
 }
 
@@ -1076,16 +1015,7 @@ func dialAccess(socket string) accessFn {
 // encoded as the nested `values:{}` table uci.set expects.
 func dialUCISet(socket string) uciSetFn {
 	return func(_ context.Context, sid, config, section string, values map[string]any) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeTable(id, "set", map[string]any{
+		_, err := call(socket, "uci", "set", map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"section":          section,
@@ -1102,16 +1032,7 @@ func dialUCISet(socket string) uciSetFn {
 // may not read comes back with no values, which surfaces as an empty snapshot.
 func dialUCIConfig(socket string) uciConfigFn {
 	return func(_ context.Context, sid, config string) (map[string]any, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return nil, err
-		}
-		res, err := c.InvokeArgs(id, "get", map[string]string{
+		res, err := call(socket, "uci", "get", map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 		})
@@ -1131,16 +1052,7 @@ func dialUCIConfig(socket string) uciConfigFn {
 // afterwards, as with `set`.
 func dialUCIAdd(socket string) uciAddFn {
 	return func(_ context.Context, sid, config, secType, name string) (string, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return "", err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return "", err
-		}
-		args := map[string]string{
+		args := map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"type":             secType,
@@ -1148,7 +1060,7 @@ func dialUCIAdd(socket string) uciAddFn {
 		if name != "" {
 			args["name"] = name
 		}
-		res, err := c.InvokeArgs(id, "add", args)
+		res, err := call(socket, "uci", "add", args)
 		if err != nil {
 			return "", err
 		}
@@ -1243,16 +1155,7 @@ func dialMaintenanceAct(socket, method string) maintenanceFn {
 // whole section. The caller commits afterwards.
 func dialUCIDelete(socket string) uciDeleteFn {
 	return func(_ context.Context, sid, config, section, option string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		args := map[string]string{
+		args := map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"section":          section,
@@ -1260,7 +1163,7 @@ func dialUCIDelete(socket string) uciDeleteFn {
 		if option != "" {
 			args["option"] = option
 		}
-		_, err = c.InvokeArgs(id, "delete", args)
+		_, err := call(socket, "uci", "delete", args)
 		return err
 	}
 }
@@ -1271,40 +1174,10 @@ func dialUCIDelete(socket string) uciDeleteFn {
 // so the caller's apply is what makes it live.
 func dialUCIOrder(socket string) uciOrderFn {
 	return func(_ context.Context, sid, config string, sections []string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeTable(id, "order", map[string]any{
+		_, err := call(socket, "uci", "order", map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 			"sections":         sections,
-		})
-		return err
-	}
-}
-
-// dialUCICommit returns a uciCommitFn that persists a config's staged changes via
-// rpcd's `uci` object (method `commit`), carrying the sid.
-func dialUCICommit(socket string) uciCommitFn {
-	return func(_ context.Context, sid, config string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeArgs(id, "commit", map[string]string{
-			"ubus_rpc_session": sid,
-			"config":           config,
 		})
 		return err
 	}
@@ -1316,16 +1189,7 @@ func dialUCICommit(socket string) uciCommitFn {
 // may not read simply do not appear.
 func dialUCIChanges(socket string) uciChangesFn {
 	return func(_ context.Context, sid string) (map[string][][]string, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return nil, err
-		}
-		res, err := c.InvokeArgs(id, "changes", map[string]string{
+		res, err := call(socket, "uci", "changes", map[string]any{
 			"ubus_rpc_session": sid,
 		})
 		if err != nil {
@@ -1384,16 +1248,7 @@ func parseChanges(v any) map[string][][]string {
 // rpcd's `uci` object (method `revert`), carrying the sid.
 func dialUCIRevert(socket string) uciRevertFn {
 	return func(_ context.Context, sid, config string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeArgs(id, "revert", map[string]string{
+		_, err := call(socket, "uci", "revert", map[string]any{
 			"ubus_rpc_session": sid,
 			"config":           config,
 		})
@@ -1409,16 +1264,7 @@ func dialUCIRevert(socket string) uciRevertFn {
 // connectivity (ADR-010).
 func dialUCIApply(socket string) uciApplyFn {
 	return func(_ context.Context, sid string, timeout int) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeTable(id, "apply", map[string]any{
+		_, err := call(socket, "uci", "apply", map[string]any{
 			"ubus_rpc_session": sid,
 			"rollback":         true,
 			"timeout":          timeout,
@@ -1431,16 +1277,7 @@ func dialUCIApply(socket string) uciApplyFn {
 // `uci` object (method `confirm`), carrying the sid.
 func dialUCIConfirm(socket string) uciConfirmFn {
 	return func(_ context.Context, sid string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-		id, err := c.Lookup("uci")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeArgs(id, "confirm", map[string]string{
+		_, err := call(socket, "uci", "confirm", map[string]any{
 			"ubus_rpc_session": sid,
 		})
 		return err
@@ -1474,6 +1311,41 @@ func probeAccess(c *ubus.Client, sid, scope, object, function string) (bool, err
 		return v != 0, nil
 	}
 	return false, nil
+}
+
+// call runs one method on a ubus object over a connection of its own — the
+// shape of every single-shot read and write. A nil args table sends the same
+// empty table a no-argument Invoke does.
+func call(socket, object, method string, args map[string]any) (map[string]any, error) {
+	c, err := ubus.Dial(socket)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	return invoke(c, object, method, args)
+}
+
+// callChecked is call behind the session.access pre-check for ubus
+// object.method — the pattern for any object rpcd does not proxy itself. A
+// denial and an unreachable rpcd both fail closed as ErrAccessDenied.
+func callChecked(socket, sid, object, method string, args map[string]any) (map[string]any, error) {
+	c, err := ubus.Dial(socket)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	if ok, err := probeAccess(c, sid, "ubus", object, method); err != nil || !ok {
+		return nil, ErrAccessDenied
+	}
+	return invoke(c, object, method, args)
+}
+
+func invoke(c *ubus.Client, object, method string, args map[string]any) (map[string]any, error) {
+	id, err := c.Lookup(object)
+	if err != nil {
+		return nil, err
+	}
+	return c.InvokeTable(id, method, args)
 }
 
 // parseSystemInfo maps the generic ubus result table onto SystemInfo.
@@ -1915,20 +1787,7 @@ func dialFirmwareUpgrade(socket string) maintenanceFn {
 // caller's (the shell restricts both); rpcd's session gate is the backstop.
 func dialRCInit(socket string) rcInitFn {
 	return func(_ context.Context, sid, name, action string) error {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "rc", "init"); err != nil || !ok {
-			return ErrAccessDenied
-		}
-		id, err := c.Lookup("rc")
-		if err != nil {
-			return err
-		}
-		_, err = c.InvokeArgs(id, "init", map[string]string{"name": name, "action": action})
+		_, err := callChecked(socket, sid, "rc", "init", map[string]any{"name": name, "action": action})
 		return err
 	}
 }
@@ -1961,19 +1820,7 @@ func dialWANConn(socket string) wanConnFn {
 }
 
 func fetchNetworkDump(socket, sid string) (map[string]any, error) {
-	c, err := ubus.Dial(socket)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-	if ok, err := probeAccess(c, sid, "ubus", "network.interface", "dump"); err != nil || !ok {
-		return nil, ErrAccessDenied
-	}
-	id, err := c.Lookup("network.interface")
-	if err != nil {
-		return nil, err
-	}
-	return c.Invoke(id, "dump")
+	return callChecked(socket, sid, "network.interface", "dump", nil)
 }
 
 // wanStatuses returns the preferred active main-table default-route owner for
@@ -2081,20 +1928,7 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 // probing the session's access to the object.
 func dialDeviceStats(socket string) deviceStatsFn {
 	return func(_ context.Context, sid, device string) (DeviceStats, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return DeviceStats{}, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "network.device", "status"); err != nil || !ok {
-			return DeviceStats{}, ErrAccessDenied
-		}
-		id, err := c.Lookup("network.device")
-		if err != nil {
-			return DeviceStats{}, err
-		}
-		res, err := c.InvokeTable(id, "status", map[string]any{"name": device})
+		res, err := callChecked(socket, sid, "network.device", "status", map[string]any{"name": device})
 		if err != nil {
 			return DeviceStats{}, err
 		}

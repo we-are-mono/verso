@@ -105,16 +105,7 @@ func (a *RPCDAuthenticator) access(sid string) error {
 	if a.accessFn != nil {
 		return a.accessFn(sid)
 	}
-	c, err := ubus.Dial(a.socket)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	id, err := c.Lookup("session")
-	if err != nil {
-		return err
-	}
-	_, err = c.InvokeArgs(id, "access", map[string]string{
+	_, err := call(a.socket, "session", "access", map[string]any{
 		"ubus_rpc_session": sid,
 		"scope":            "ubus",
 		"object":           "session",
@@ -129,16 +120,7 @@ func (a *RPCDAuthenticator) call(username, password string) (string, error) {
 	if a.loginFn != nil {
 		return a.loginFn(username, password)
 	}
-	c, err := ubus.Dial(a.socket)
-	if err != nil {
-		return "", err
-	}
-	defer c.Close()
-	id, err := c.Lookup("session")
-	if err != nil {
-		return "", err
-	}
-	res, err := c.InvokeArgs(id, "login", map[string]string{"username": username, "password": password})
+	res, err := call(a.socket, "session", "login", map[string]any{"username": username, "password": password})
 	if err != nil {
 		return "", err
 	}
@@ -153,16 +135,7 @@ func (a *RPCDAuthenticator) destroy(sid string) {
 		a.destroyFn(sid)
 		return
 	}
-	c, err := ubus.Dial(a.socket)
-	if err != nil {
-		return
-	}
-	defer c.Close()
-	id, err := c.Lookup("session")
-	if err != nil {
-		return
-	}
-	_, _ = c.InvokeArgs(id, "destroy", map[string]string{"ubus_rpc_session": sid})
+	_, _ = call(a.socket, "session", "destroy", map[string]any{"ubus_rpc_session": sid})
 }
 
 // decoyPassword returns a random wrong password to probe whether an account

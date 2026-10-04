@@ -177,22 +177,6 @@ func TestUCISetThreadsArgs(t *testing.T) {
 	}
 }
 
-// TestUCICommitThreadsArgs checks UCICommit passes the sid and config through.
-func TestUCICommitThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig string
-	b := &NativeBackend{uciCommit: func(_ context.Context, sid, config string) error {
-		gotSID, gotConfig = sid, config
-		return nil
-	}}
-
-	if err := b.UCICommit(context.Background(), "s1", "system"); err != nil {
-		t.Fatalf("UCICommit: %v", err)
-	}
-	if gotSID != "s1" || gotConfig != "system" {
-		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
-	}
-}
-
 // TestUCIConfigThreadsArgs checks UCIConfig passes the sid and config through and
 // returns the whole-config values map the shell hands a plugin as its read
 // snapshot (ADR-007).

@@ -35,7 +35,7 @@ type fakeBackend struct {
 	err            error
 	access         bool
 	accessErr      error
-	uciErr         error                     // returned by UCISet/UCICommit
+	uciErr         error                     // returned by UCISet
 	uciReadErr     error                     // returned by UCIConfig (a read the shell brokers)
 	uciReads       *int                      // counts UCIConfig calls (pointer: fakeBackend is by value)
 	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
@@ -59,12 +59,11 @@ type fakeBackend struct {
 	restart          func(ctx context.Context, sid string) error
 	factoryReset     func(ctx context.Context, sid string) error
 	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
-	// of what the shell committed, applied, confirmed, or reverted.
+	// of what the shell applied, confirmed, or reverted.
 	changes     map[string][][]string
 	changesErr  error
 	changesRead *int      // counts UCIChanges calls
-	commits     *[]string // records committed configs (pointer: fakeBackend is by value)
-	reverts     *[]string // records reverted configs
+	reverts     *[]string // records reverted configs (pointer: fakeBackend is by value)
 	applies     *[]int    // records UCIApply rollback timeouts
 	confirms    *int      // counts UCIConfirm calls
 	// procd's rc view (ADR-011): canned per-service states, and records of the
@@ -183,13 +182,6 @@ type uciWrite struct {
 func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]any) error {
 	if f.writes != nil {
 		*f.writes = append(*f.writes, uciWrite{sid, config, section, values})
-	}
-	return f.uciErr
-}
-
-func (f fakeBackend) UCICommit(_ context.Context, _, config string) error {
-	if f.commits != nil {
-		*f.commits = append(*f.commits, config)
 	}
 	return f.uciErr
 }

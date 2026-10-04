@@ -63,13 +63,12 @@ func TestCoalesceChangesNetsRepeatedWrites(t *testing.T) {
 
 func TestPluginSaveStagesWithoutCommit(t *testing.T) {
 	writes := []uciWrite{}
-	commits := []string{}
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Saved", Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 		Commit: []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "verso-lab"}}},
 	}}
-	s := newServerWith(t, fakeBackend{access: true, writes: &writes, commits: &commits}, tr, []plugin.Manifest{demoACLManifest()})
+	s := newServerWith(t, fakeBackend{access: true, writes: &writes}, tr, []plugin.Manifest{demoACLManifest()})
 
 	rec := postPlugin(t, s, "/plugins/demo/", url.Values{"hostname": {"verso-lab"}})
 	if rec.Code != http.StatusSeeOther {
@@ -77,9 +76,6 @@ func TestPluginSaveStagesWithoutCommit(t *testing.T) {
 	}
 	if len(writes) != 1 {
 		t.Fatalf("UCISet calls = %d, want 1 (the write must stage)", len(writes))
-	}
-	if len(commits) != 0 {
-		t.Fatalf("UCICommit calls = %v, want none — only the apply commits (ADR-010)", commits)
 	}
 }
 
