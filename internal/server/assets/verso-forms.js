@@ -517,6 +517,17 @@
     return [].filter.call(row.children, function (child) { return child.tagName === "TD"; });
   }
 
+  // A row turned off or back on is marked over or lifted where it stands. The
+  // switched-off mark is the row's own, so it is carried over like the cells,
+  // and the turn plays once on the name the fresh cells brought (input.css).
+  function turn(row, fresh) {
+    var off = fresh.hasAttribute("data-verso-off");
+    if (off === row.hasAttribute("data-verso-off")) return;
+    row.toggleAttribute("data-verso-off", off);
+    row.setAttribute("data-verso-turning", off ? "off" : "on");
+    row.addEventListener("animationend", function () { row.removeAttribute("data-verso-turning"); }, { once: true });
+  }
+
   function reconcileRows(doc) {
     [].forEach.call(document.querySelectorAll("tr[data-verso-row-id]"), function (row) {
       var id = row.getAttribute("data-verso-row-id");
@@ -529,6 +540,7 @@
         patch.dataset.versoRowPatch.split(",").map(Number).forEach(function (i) {
           if (have[i] && want[i]) have[i].replaceWith(document.importNode(want[i], true));
         });
+        turn(row, fresh);
         return;
       }
       var same = have.length === want.length && have.every(function (cell, i) {
@@ -540,6 +552,7 @@
       var anchor = have.length ? have[have.length - 1].nextSibling : null;
       have.forEach(function (cell) { cell.remove(); });
       want.forEach(function (cell) { row.insertBefore(document.importNode(cell, true), anchor); });
+      turn(row, fresh);
     });
   }
 

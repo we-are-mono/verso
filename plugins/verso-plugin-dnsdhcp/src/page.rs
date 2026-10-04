@@ -129,14 +129,6 @@ pub fn network_cell(network: &str) -> TableCell {
     }
 }
 
-/// network_tags is what the page's network cut matches a row by.
-pub fn network_tags(network: &str) -> Vec<String> {
-    match network.is_empty() {
-        true => vec![],
-        false => vec![network.to_string()],
-    }
-}
-
 /// address_cell is a verbatim machine value the row is scanned for: promoted a
 /// step and copyable, because it is what gets typed somewhere else.
 pub fn address_cell(text: &str) -> TableCell {

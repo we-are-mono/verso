@@ -17,7 +17,7 @@
 //! an empty table that reads like calm.
 
 use verso_plugin::{
-    ActionBar, ActionTab, ColumnWidth, Envelope, Section, Snapshot, Table, TableAction,
+    ActionBar, ActionTab, ColumnWidth, Envelope, HeadingAct, Section, Snapshot, Table,
     TableColumn, TableStream, Widget, STREAM_FIREWALL_LOG,
 };
 
@@ -54,6 +54,7 @@ pub fn page(snapshot: &Snapshot) -> Envelope {
     // scrolls inside itself, and runs to the right and bottom edges. A log has
     // no natural end, and a margin under one would say otherwise.
     page::envelope(HEADING, SUBHEADING, live())
+        .with_act(download())
         .with_width("full")
         .immediate()
 }
@@ -82,17 +83,19 @@ fn bar() -> Widget {
             .collect(),
         filter: "Find an address, port or rule".into(),
         live: "Live".into(),
-        // Taking the buffer away with you is not the forward act this page is
-        // for — the page is for watching — so it wears the quiet dress, beside
-        // the live control as its equal: words alone, like it.
-        action: Some(TableAction {
-            label: "Download".into(),
-            href: format!("{}/{}", page::MOUNT, DOWNLOAD),
-            icon: String::new(),
-            style: "quiet".into(),
-        }),
-        ..Default::default()
     })
+}
+
+/// download is the page's act. Taking the buffer away with you is not the
+/// forward act this page is for — the page is for watching — so it wears the
+/// quiet dress, beside the live control as its equal: words alone, like it.
+fn download() -> HeadingAct {
+    HeadingAct {
+        label: "Download".into(),
+        href: format!("{}/{}", page::MOUNT, DOWNLOAD),
+        style: "quiet".into(),
+        ..Default::default()
+    }
 }
 
 /// DOWNLOAD is the sub-path the buffer is fetched from.
@@ -258,11 +261,11 @@ mod tests {
                 {"label": "Allowed", "match": "allowed"}
             ])
         );
-        // Nothing is added here — the page is a read. The one act takes the
-        // buffer away with you, so it wears the quiet weight, in words alone
-        // like the live control it stands beside.
+        // Nothing is added here — the page is a read. The page's one act takes
+        // the buffer away with you, so it wears the quiet weight, in words alone
+        // like the live control it stands beside on the heading line.
         assert_eq!(
-            bar["action"],
+            body["act"],
             json!({
                 "label": "Download",
                 "href": "/plugins/firewall/download",

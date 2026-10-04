@@ -23,7 +23,7 @@ type collapsedSection struct {
 }
 
 var collapsedSections = []collapsedSection{
-	{Section: "Network", Root: "/network", Order: []string{"Interfaces", "DHCP", "DNS"}},
+	{Section: "Network", Root: "/network", Order: []string{"Interfaces", "DHCP", "DNS", "Routes"}},
 	{Section: "System", Root: "/system", Order: []string{"General"}, Shell: []pageTab{
 		{Label: "Hardware", Href: "/system/hardware"},
 		{Label: "Access", Href: "/system/access"},

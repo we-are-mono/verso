@@ -71,8 +71,6 @@ func TestServicesTable(t *testing.T) {
 
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
-		"Find a service",
-		`<option value="daemon" data-label="daemon">daemon · `,
 		`value="stop:dnsmasq"`,           // live stop leaves boot policy alone
 		">dnsmasq</span>",                // …and its providing package in the Package column
 		`value="stop:verso-plugin-demo"`, // the plugin's live action
@@ -95,6 +93,11 @@ func TestServicesTable(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
 		}
+	}
+	// A still listing is scrolled and found in with the browser's own find,
+	// so the services stand under the heading with no control band.
+	if strings.Contains(body, "<div data-verso-actionbar") {
+		t.Error("the services listing should carry no control band")
 	}
 	if strings.Contains(body, `name="svc:verso"`) {
 		t.Error("the keep-list service must not offer its own off switch")

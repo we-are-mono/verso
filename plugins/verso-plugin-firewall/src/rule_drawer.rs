@@ -986,8 +986,8 @@ mod tests {
     fn a_new_rule_starts_where_firewall4s_own_defaults_are() {
         let body = opened_new();
         assert_eq!(
-            body["widget"]["children"][0]["drawer"]["title"], "New rule",
-            "the bar's own act opens the blank panel"
+            body["act"]["drawer"]["title"], "New rule",
+            "the page's own act opens the blank panel"
         );
         let action = opened_new_on(ACTION);
         assert_eq!(control(&action, "enabled")["on"], true);

@@ -445,10 +445,10 @@ mod tests {
             .expect("row");
         assert_eq!(open["drawer"]["title"], "lan");
 
-        // And the blank one on the bar, which is where a zone that does not exist
-        // yet is made.
+        // And the blank one on the page's act, which is where a zone that does
+        // not exist yet is made.
         let body = serde_json::to_value(get(&asking("/zones", "open=new"))).expect("ok");
-        assert_eq!(body["widget"]["children"][0]["drawer"]["title"], "New zone");
+        assert_eq!(body["act"]["drawer"]["title"], "New zone");
     }
 
     /// Nothing lives below /zones any more: the editor page is gone, so the old
@@ -719,10 +719,7 @@ mod tests {
 
         open.query = Form::parse("open=new");
         let body = serde_json::to_value(get(&open)).expect("serialize");
-        assert_eq!(
-            fixture::widget(&body, "actionbar")["drawer"]["title"],
-            "New port forward"
-        );
+        assert_eq!(body["act"]["drawer"]["title"], "New port forward");
     }
 
     /// There is nothing below the listing's address any more: a path that names a

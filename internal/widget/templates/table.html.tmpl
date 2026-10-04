@@ -13,6 +13,13 @@
      hue's hairline on its hue's wash. On a 20px detail line the 22px box
      overhangs the line by a pixel either side rather than making it taller. */}}
 {{define "table.tag"}}<span class="{{template "verso-chip-box"}}{{if .Detail}} -my-px{{end}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{else if .TagDot}}{{template "verso-chip-packet" .TagVariant}}{{end}}{{.Tag}}</span>{{end}}
+{{/* table.name-words: a row's name, its words in a span of their own so a
+     switched-off row's marker can lie under them alone. Only the row's name
+     carries it; a later identity column is a citation and stays bare.
+     table.name-ink: the name's ink — Body when switched off, the one step that
+     holds 4.5 : 1 over the marker. */}}
+{{define "table.name-words"}}{{if .Identity}}<span class="verso-row-name">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}
+{{define "table.name-ink"}}{{if .Off}}text-body{{else if .Muted}}text-meta{{else}}text-ink{{end}}{{end}}
 {{/* table.rowbtn-class: the compact bordered in-row action (a drawer trigger,
      a confirmed or direct row action) — one treatment for all three, taking the
      cell as its dot. A disabled cell keeps the anatomy and drops every
@@ -160,9 +167,9 @@
       {{/* A row that carries only its group is the band alone. */}}
       {{if not .BandOnly}}
       {{if .Drawer}}
-      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{else}}
-      <tr class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if eq .Kind "reorder"}}
@@ -230,15 +237,15 @@
         <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}}{{if .Dense}} pr-4{{end}} align-top group-last:border-b-0">
           <span class="flex items-center gap-3{{if .Detail}} *:leading-5{{end}}">
             {{if and .LeadIcon (not .Expandable)}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
-            {{/* the name is the door wherever the row has one: to the panel that
-                 holds this subject, or to the page that edits it. Everything
-                 else in the row stays selectable, which a click on the whole row
-                 would take away. */}}
+            {{/* the name is words, never a door: a reader cannot tell what
+                 pressing it would do. Where a plugin pointed it, the row's acts
+                 lead instead (doorAct). Only an expandable row's name is a
+                 control, and its chevron says what it does. A name that was
+                 pointed somewhere keeps the size it had as a link. */}}
             {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="{{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}} inline-flex items-center gap-2 font-mono text-base font-medium text-ink hover:text-denim focus-visible:outline-denim">{{icon "chevron-right" "size-3.5 shrink-0"}}{{if .LeadIcon}}<span class="text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}{{.Text}}</button>
-            {{else if .Opens}}<button type="button" @click="show" title="{{ t "Edit" }} {{.Text}}" class="cursor-pointer truncate text-left before:absolute before:inset-0 {{if eq .Kind "reference"}}font-mono text-base font-medium{{else}}font-semibold{{end}} transition-colors {{if .Muted}}text-meta{{else}}text-ink{{end}} hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim"><span class="verso-press-content block truncate">{{.Text}}</span></button>
-            {{else if .OpensPanel}}<a href="{{.Href}}" @click.prevent="showPanel" title="{{ t "Edit" }} {{.Text}}" class="cursor-pointer truncate before:absolute before:inset-0 {{if eq .Kind "reference"}}font-mono text-base font-medium{{else}}font-semibold{{end}} transition-colors {{if .Muted}}text-meta{{else}}text-ink{{end}} hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{.Text}}</a>
-            {{else if .Href}}<a href="{{.Href}}" title="{{ t "Edit" }} {{.Text}}" class="truncate before:absolute before:inset-0 {{if eq .Kind "reference"}}font-mono text-base font-medium{{else}}font-semibold{{end}} transition-colors {{if .Muted}}text-meta{{else}}text-ink{{end}} hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{.Text}}</a>
-            {{else}}<span class="truncate {{if .Primary}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-medium {{end}}{{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>{{end}}
+            {{else}}<span class="truncate {{if and .Primary (not .Href) (not .Opens)}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-medium {{end}}{{template "table.name-ink" .}}">{{template "table.name-words" .}}</span>{{end}}
+            {{/* a mark over words is not read aloud, so the row says it */}}
+            {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
             {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{if .ChipIcon}}<span class="text-faint">{{icon .ChipIcon "size-3.5"}}</span>{{end}}{{.Chip}}</span>{{end}}
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
@@ -420,7 +427,9 @@
              click target in the row. Blank when the row has nothing behind it,
              or when its drawer already opens from an in-cell button. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-top whitespace-nowrap group-last:border-b-0">
-          {{if and .Drawer (not .Inline)}}<button type="button" @click="show" class="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</button>{{end}}
+          {{/* a fetched panel's Details is a link to it, so the panel is reachable with no script at all */}}
+          {{if and .Drawer (not .Inline) .PanelURL}}<a href="{{.PanelURL}}" @click.prevent="showPanel" class="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</a>
+          {{else if and .Drawer (not .Inline)}}<button type="button" @click="show" class="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</button>{{end}}
         </td>
         {{end}}
         {{if .Entity}}{{template "verso-entity-drawer" .}}{{else if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{else if .Drawer}}{{template "verso-drawer-panel" .Panel}}{{end}}

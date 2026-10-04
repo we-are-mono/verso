@@ -319,19 +319,14 @@ impl Snapshot {
             Some(o) => o,
             None => return Vec::new(),
         };
-        let mut secs: Vec<(f64, Section)> = obj
+        let mut secs: Vec<Section> = obj
             .values()
             .filter_map(Value::as_object)
             .filter(|m| m.get(".type").and_then(Value::as_str) == Some(typ))
-            .map(|m| {
-                (
-                    m.get(".index").and_then(Value::as_f64).unwrap_or(0.0),
-                    Section(m),
-                )
-            })
+            .map(Section)
             .collect();
-        secs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        secs.into_iter().map(|(_, s)| s).collect()
+        secs.sort_by(|a, b| a.index().total_cmp(&b.index()));
+        secs
     }
 }
 
@@ -357,6 +352,12 @@ impl Section<'_> {
             .get(".anonymous")
             .and_then(|v| v.as_bool().or_else(|| v.as_i64().map(|n| n != 0)))
             .unwrap_or(false)
+    }
+
+    /// index is the section's place in its file (`.index`), which orders
+    /// sections of different types that one listing shows together.
+    pub fn index(&self) -> f64 {
+        self.0.get(".index").and_then(Value::as_f64).unwrap_or(0.0)
     }
 
     /// scalar reads an option as a string, or "" if unset or a list.
@@ -763,12 +764,12 @@ pub enum Widget {
     /// fills it as events arrive.
     Table(Table),
     /// The listing's own controls, between a page's heading and its rows: which
-    /// slice you are looking at, how to narrow it, and the one thing to do here.
-    /// Everything on it acts on the rows below and nothing else, and all of it
-    /// is client-side — nothing it does is a request, and nothing it does can
-    /// fail. Tabs are the coarse cut, each priced with its own count and matched
-    /// against a row's `tags`; `filter` is the free-text one; `action` is the
-    /// single forward act and the only denim on the bar.
+    /// slice you are looking at and how to narrow it. Everything on it acts on
+    /// the rows below and nothing else, and all of it is client-side — nothing
+    /// it does is a request, and nothing it does can fail. Tabs are the coarse
+    /// cut, each priced with its own count and matched against a row's `tags`;
+    /// `filter` is the free-text one, drawn over a live listing only. The
+    /// page's own act is not here: it is the envelope's ([`HeadingAct`]).
     ActionBar(ActionBar),
     /// A direct action. Without `name` the button is inert — which is what a
     /// control the shell drives (a live listing's pause) wants. `live` says
@@ -804,10 +805,11 @@ pub enum Widget {
     Settings(Settings),
     /// The page-wide lens: one field that narrows every listing on the page at
     /// once. The plugin declares only the placeholder; the shell owns the
-    /// behaviour — and whether the lens renders at all. A page carrying twenty
-    /// filterable entries or fewer (table rows and settings rows, folded ones
-    /// counted) is read in one glance, so the shell removes the widget. State
-    /// the lens your page would want and carry no threshold of your own.
+    /// behaviour — and whether the lens renders at all. Only a page with a live
+    /// listing keeps it: a page that holds what it has is scrolled and searched
+    /// with the browser's own find, however long it is, so there the shell
+    /// removes the widget. State the lens your page would want and carry no
+    /// rule of your own.
     Filter {
         #[serde(skip_serializing_if = "String::is_empty")]
         placeholder: String,
@@ -1099,10 +1101,10 @@ pub struct Table {
 /// default.
 #[derive(Serialize, Debug, Default)]
 pub struct ActionBar {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub style: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tabs: Vec<ActionTab>,
+    /// The search field's placeholder. The shell draws the field over a live
+    /// listing only; over a still one the browser's own find serves.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub filter: String,
     /// The label of the control that holds a running listing still —
@@ -1111,19 +1113,28 @@ pub struct ActionBar {
     /// and it belongs here because what it governs is the rows.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub live: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub action: Option<TableAction>,
-    /// Declares the act's own address a panel rather than a page: making one
-    /// is editing one that does not exist yet, so it opens in the same
-    /// surface and the listing stays where it is. The href remains what a
-    /// browser with no script follows.
+}
+
+/// HeadingAct is a page's one act, which the shell stands on the heading line
+/// beside the title: making a new subject of the kind the page lists, or,
+/// quietly (`style: "quiet"`), taking something away from it (a log's
+/// download). It is the page's, not the listing's, so it travels in the
+/// envelope ([`Envelope::with_act`]) rather than in the widget tree. Making one
+/// is editing one that does not exist yet, so an act may open a panel:
+/// `opens_panel` says its href is a panel this plugin renders, `drawer`
+/// carries the blank object's panel itself. The drawer's own `open` makes an
+/// address asking for a new object arrive with the panel in front of the
+/// operator; the href is what a browser with no script follows.
+#[derive(Serialize, Debug, Default)]
+pub struct HeadingAct {
+    pub label: String,
+    pub href: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
     #[serde(skip_serializing_if = "is_false")]
     pub opens_panel: bool,
-    /// The panel the act opens, where making a new object belongs in the
-    /// same surface that edits an existing one. It carries its own `open`,
-    /// so an address asking for a new object arrives with the panel already
-    /// in front of the operator; the action's href stays the fallback for a
-    /// browser with no script.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drawer: Option<RowDrawer>,
 }
@@ -1966,10 +1977,11 @@ pub struct TableRow {
     pub key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<TableGroup>,
-    /// Read the whole row at the secondary step — the treatment for a row whose
-    /// subject is not in force right now (a rule someone switched off). It is a
-    /// statement about the subject, not about the row's importance: the values
-    /// are still exact, and still copyable.
+    /// The row's subject is switched off (a rule, a Wi-Fi network, a route):
+    /// the shell marks its name over with a sand marker, reads its words at the
+    /// secondary step and drops its hues to sand, and says "off" to a screen
+    /// reader. It is a statement about the subject, not about the row's
+    /// importance: the values are still exact, and still copyable.
     #[serde(skip_serializing_if = "is_false")]
     pub muted: bool,
     /// The flags an [`Widget::ActionBar`] tab narrows this listing by — the row
@@ -2067,7 +2079,8 @@ pub struct TableGroup {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub add_label: String,
     /// The words the add control says beside its glyph — "Add rule" — while
-    /// add_label keeps naming the lane it adds to. Empty draws the glyph alone.
+    /// add_label keeps naming the lane it adds to. Set it on every add: a plus
+    /// on a table head always says what it adds (DESIGN.md, Tables).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub add_text: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -2514,6 +2527,9 @@ pub struct Envelope {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tone: String,
     pub widget: Widget,
+    /// The page's one act, on its heading line; see [`HeadingAct`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub act: Option<HeadingAct>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub commit: Vec<CommitOp>,
     /// Immediate, explicitly brokered commands; never arbitrary shell code.
@@ -2555,6 +2571,7 @@ impl Envelope {
             immediate: false,
             tone: String::new(),
             widget,
+            act: None,
             commit: Vec::new(),
             commands: Vec::new(),
         }
@@ -2603,6 +2620,13 @@ impl Envelope {
             label: label.into(),
             href: href.into(),
         });
+        self
+    }
+
+    /// with_act gives the page its one act, which the shell stands on the
+    /// heading line beside the title.
+    pub fn with_act(mut self, act: HeadingAct) -> Envelope {
+        self.act = Some(act);
         self
     }
 

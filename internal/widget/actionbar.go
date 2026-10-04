@@ -3,90 +3,160 @@
 
 package widget
 
-import "io"
+import (
+	"encoding/json"
+	"io"
+)
 
 // ActionBar is the row between a page's heading and its listing: which slice of
-// the listing you are looking at, how to narrow it, and the one thing to do
-// here. It is the listing's controls, not the page's — every part of it acts on
-// the rows below and nothing else, which is why it sits with them rather than in
-// the chrome.
+// the listing you are looking at and how to narrow it. It is the listing's
+// controls, not the page's — every part of it acts on the rows below and nothing
+// else, which is why it sits with them rather than in the chrome. The page's
+// own act is not on it: that is the envelope's (HeadingAct), and stands on the
+// heading line.
 //
 // The parts read left to right in the order a person reaches for them. Tabs are
 // the coarse cut, each carrying its own count so the cut is priced before it is
 // made. With them, the fine cuts: a free-text Filter and a Select for the one
-// dimension a listing is always sliced along. Hard right, only Action — the
-// single forward act, and the only denim on the bar.
+// dimension a listing is always sliced along.
 //
 // Everything here narrows what is already on screen, so the whole bar is
 // client-side: nothing it does is a request, and nothing it does can fail.
+//
+// The same type draws the heading line's act (Heading), which is why it holds
+// an act's fields; a plugin's bar never sets them, so they are not read from
+// its schema.
 type ActionBar struct {
-	Style  string       `json:"style,omitempty"` // "interfaces": topology legend and one optional problem filter
-	Tabs   []ActionTab  `json:"tabs,omitempty"`
-	Filter string       `json:"filter,omitempty"` // the search field's placeholder; empty draws no field
-	Select *ActionPick  `json:"select,omitempty"`
-	Action *TableAction `json:"action,omitempty"`
+	Tabs   []ActionTab `json:"tabs,omitempty"`
+	Filter string      `json:"filter,omitempty"` // the search field's placeholder; drawn over a live listing only (searches)
+	Select *ActionPick `json:"select,omitempty"`
 	// Live is the label of the control that holds a running listing still. It
-	// is not a narrowing, so the shell lifts it to the heading line with the
-	// log's act (TakeHeadingAct): it reads Live, its spinner turning, while
-	// events arrive and Paused while they are held, and pressing it is how that
+	// is not a narrowing, so the shell lifts it to the heading line beside the
+	// page's act (TakeLive): it reads Live, its spinner turning, while events
+	// arrive and Paused while they are held, and pressing it is how that
 	// changes. The shell owns the rest of that behaviour (verso-listing.js).
 	Live string `json:"live,omitempty"`
-	// Entity makes the act open a panel rather than leave the page: making a new
-	// subject of the kind this listing holds is the same job as editing one, so
-	// it happens in the same place. The address is the panel's, and the Action's
-	// own Href is then only the fallback for a browser with no script.
-	Entity string `json:"entity,omitempty"`
-	// OpensPanel declares the act's own address a panel rather than a page, for a
-	// listing whose plugin renders that panel itself: making one is editing one
-	// that does not exist yet, so it opens in the same surface and the listing
-	// stays where it is. The Href remains what a browser with no script follows.
-	OpensPanel bool `json:"opens_panel,omitempty"`
-	// Drawer is that same panel where the plugin draws it itself rather than the
-	// shell assembling one: the act opens a blank object in the panel that edits
-	// an existing one, which is the whole point — making one and changing one are
-	// the same job and should not be two different screens. It carries its own
-	// Open, so an address that asks for a new object arrives with the panel
-	// already in front of the operator; the Action's Href stays the fallback.
-	Drawer *RowDrawer `json:"drawer,omitempty"`
-	// Heading renders the act alone, for the heading line: set by the shell
-	// when the bar has nothing but its act (TakeHeadingAct), never by a plugin.
+	// Action, Entity, OpensPanel and Drawer are the heading line's act and what
+	// it opens: an entity's panel (Entity), a panel the plugin renders at the
+	// act's own address (OpensPanel), or the blank object's panel it carries
+	// (Drawer), whose Open makes an address asking for a new object arrive
+	// with the panel in front of the operator. The Action's Href is what a
+	// browser with no script follows.
+	Action     *TableAction `json:"-"`
+	Entity     string       `json:"-"`
+	OpensPanel bool         `json:"-"`
+	Drawer     *RowDrawer   `json:"-"`
+	// Heading renders the act alone, for the heading line: set by the shell,
+	// never by a plugin.
 	Heading bool `json:"-"`
 	// liveLog marks a live log's bar whose live control the shell lifted to
 	// the heading line: it still sits over a log, not a table.
 	liveLog bool
 }
 
+// HeadingAct is a page's one act, which stands on its heading line beside the
+// title: making a new subject of the kind the page lists, or, quietly, taking
+// something away from it (a log's download). It travels beside the page in the
+// envelope rather than inside it, because the heading line is the page's, not
+// the listing's. Making one is editing one that does not exist yet, so an act
+// may open a panel: OpensPanel says its address is a panel the plugin renders,
+// Drawer carries the blank object's panel itself.
+type HeadingAct struct {
+	Label      string     `json:"label"`
+	Href       string     `json:"href"`
+	Icon       string     `json:"icon,omitempty"`
+	Style      string     `json:"style,omitempty"` // "quiet": the act takes something away rather than making something
+	OpensPanel bool       `json:"opens_panel,omitempty"`
+	Drawer     *RowDrawer `json:"drawer,omitempty"`
+}
+
+// DecodeHeadingAct reads an envelope's act; no act is nil.
+func DecodeHeadingAct(data []byte) (*HeadingAct, error) {
+	if len(data) == 0 || string(data) == "null" {
+		return nil, nil
+	}
+	act := new(HeadingAct)
+	if err := json.Unmarshal(data, act); err != nil {
+		return nil, err
+	}
+	return act, nil
+}
+
+// Bar is the act as the heading line draws it; no act draws nothing.
+func (a *HeadingAct) Bar() *ActionBar {
+	if a == nil {
+		return nil
+	}
+	return &ActionBar{
+		Action:     &TableAction{Label: a.Label, Href: a.Href, Icon: a.Icon, Style: a.Style},
+		OpensPanel: a.OpensPanel,
+		Drawer:     a.Drawer,
+		Heading:    true,
+	}
+}
+
 // overLog reports whether the bar sits over a live log rather than a table,
 // which it wears unfilled.
 func (a *ActionBar) overLog() bool { return a.Live != "" || a.liveLog }
 
-// TakeHeadingAct lifts a page's acts onto its heading line. Every page keeps
-// what it does there; the band under the heading is for narrowing the listing
-// — the search, the cuts, the select — and nothing else. So a Stack whose
-// first child is a band with a primary act gives that act up, with whatever it
-// opens (its panel, its drawer, its entity), and the act is returned as a bar
-// marked for the heading. A live log gives up its live control and its act,
-// quiet or not, so the log's acts stand together as equals on the heading
-// line. A band left with nothing to narrow goes from the body altogether. On a
-// listing that is not live a quiet act takes something away rather than
-// making something, so it stays with the narrowing; any other shape is left
-// alone and nil is returned.
-func TakeHeadingAct(w Widget) *ActionBar {
+// headed is the page with its act riding in front of it, from decoding until
+// the heading line is drawn (WithHeading, SplitHeading).
+type headed struct {
+	Stack
+}
+
+// WithHeading puts a page's act in front of its tree, so every pass the shell
+// makes over the page — staging marks, refusals, the open panel, the frame a
+// panel's forms post into — reaches the act's blank panel as it reaches a
+// row's. No act leaves the page as it is.
+func WithHeading(act *HeadingAct, w Widget) Widget {
+	if act == nil {
+		return w
+	}
+	return &headed{Stack{Children: []Widget{act.Bar(), w}}}
+}
+
+// SplitHeading takes the act back off for the heading line, returning it and
+// the page as it was; a page that carried none gives none.
+func SplitHeading(w Widget) (*ActionBar, Widget) {
+	h, ok := w.(*headed)
+	if !ok || len(h.Children) != 2 {
+		return nil, w
+	}
+	bar, _ := h.Children[0].(*ActionBar)
+	return bar, h.Children[1]
+}
+
+// TakeLive lifts a live log's live control onto its heading line, where it
+// stands beside the page's act as its equal; the bar keeps what narrows the
+// log, in the log's dress. Only a bar leading the page's Stack has a heading to
+// give it to; any other shape gives nothing and "" is returned.
+func TakeLive(w Widget) string {
 	stack, ok := w.(*Stack)
 	if !ok || len(stack.Children) == 0 {
-		return nil
+		return ""
 	}
 	bar, ok := stack.Children[0].(*ActionBar)
-	if !ok || (bar.Live == "" && (bar.Action == nil || bar.Action.Quiet())) {
-		return nil
+	if !ok || bar.Live == "" {
+		return ""
 	}
-	act := &ActionBar{Live: bar.Live, Action: bar.Action, OpensPanel: bar.OpensPanel, Drawer: bar.Drawer, Entity: bar.Entity, Heading: true}
-	bar.liveLog = bar.overLog()
-	bar.Live, bar.Action, bar.OpensPanel, bar.Drawer, bar.Entity = "", nil, false, nil, ""
-	if bar.Filter == "" && len(bar.Tabs) == 0 && bar.Select == nil && bar.Style == "" {
-		stack.Children = stack.Children[1:]
-	}
-	return act
+	live := bar.Live
+	bar.liveLog, bar.Live = true, ""
+	return live
+}
+
+// searches reports whether the bar draws its search field. Only over a live
+// listing: a listing that holds what it has is read by scrolling and found in
+// with the browser's own find, however long it is, while a live one's rows
+// arrive as it is read and the browser's find cannot hold a question across
+// them.
+func (a *ActionBar) searches() bool { return a.overLog() }
+
+// bare reports whether the bar has nothing left to show: no search it draws,
+// no cut, no select, no act and no live control.
+func (a *ActionBar) bare() bool {
+	return (a.Filter == "" || !a.searches()) && len(a.Tabs) == 0 && a.Select == nil &&
+		a.Action == nil && a.Live == "" && !a.Heading
 }
 
 // ActionTab is one coarse cut of the listing, and what taking it would leave.
@@ -139,8 +209,14 @@ type actionBarView struct {
 }
 
 func (a *ActionBar) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	if a.bare() && a.Drawer == nil {
+		return nil
+	}
 	v := actionBarView{ActionBar: *a, OverLog: a.overLog()}
-	if v.Filter == "" {
+	switch {
+	case !a.searches():
+		v.Filter = ""
+	case v.Filter == "":
 		v.Filter = r.tr("Filter · name, address, MAC")
 	}
 	if v.Action != nil {

@@ -400,12 +400,12 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 }
 
 // Network's pages are every live registration filed under it, whichever plugin
-// files them, in the designed order — Interfaces, DHCP, DNS — and anything else
-// after those by label. The page in hand is the one marked.
+// files them, in the designed order — Interfaces, DHCP, DNS, Routes — and
+// anything else after those by label. The page in hand is the one marked.
 func TestNetworkPagesFollowTheDesignedOrder(t *testing.T) {
 	s := navServer(
 		manifest("dnsdhcp", nav("Network", "DNS", "/dns"), nav("Network", "DHCP", "/")),
-		manifest("interfaces", nav("Network", "Interfaces", "/")),
+		manifest("interfaces", nav("Network", "Routes", "/routes"), nav("Network", "Interfaces", "/")),
 		manifest("vpn", nav("Network", "WireGuard", "/")),
 		manifest("lab", nav("Network", "Bridges", "/")),
 	)
@@ -417,7 +417,7 @@ func TestNetworkPagesFollowTheDesignedOrder(t *testing.T) {
 			t.Errorf("%s active = %v, want only DNS marked", page.Label, page.Active)
 		}
 	}
-	if want := []string{"Interfaces", "DHCP", "DNS", "Bridges", "WireGuard"}; !slices.Equal(got, want) {
+	if want := []string{"Interfaces", "DHCP", "DNS", "Routes", "Bridges", "WireGuard"}; !slices.Equal(got, want) {
 		t.Fatalf("Network pages = %v, want %v", got, want)
 	}
 }

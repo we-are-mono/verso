@@ -20,9 +20,9 @@
 //! page posts on their own, one switch at a time.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ActionBar, ColumnWidth, Envelope, Form, RowDrawer, Settings,
-    SettingsItem, SettingsPill, SettingsToggle, Snapshot, Table, TableAction, TableCell,
-    TableColumn, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
+    Settings, SettingsItem, SettingsPill, SettingsToggle, Snapshot, Table, TableCell, TableColumn,
+    TableRow, Tone, Widget,
 };
 
 use crate::crossings::Crossings;
@@ -86,12 +86,18 @@ pub fn options() -> impl Iterator<Item = &'static str> {
 /// built from is already in the model — a zone's subnets included, which come
 /// from the network config the firewall config only names.
 pub fn page(model: &Firewall) -> Envelope {
+    frame(model, None, None)
+}
+
+/// frame is the Zones page: the listing with the zone `open` names in front of
+/// it, the global defaults under it, and the act that adds a zone on the
+/// heading line, carrying the blank zone's panel when an address asks for one.
+fn frame(model: &Firewall, open: Option<&Open>, blank: Option<RowDrawer>) -> Envelope {
     let children = vec![
-        bar(None),
-        table(model, None),
+        table(model, open),
         Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
     ];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children))
+    page::envelope(HEADING, SUBHEADING, Widget::stack(children)).with_act(act(blank))
 }
 
 /// page_open is the listing with one zone's panel already in front of the
@@ -126,12 +132,7 @@ pub fn page_open(snapshot: &Snapshot, model: &Firewall, query: &Form) -> Envelop
             }
         }),
     };
-    let children = vec![
-        bar(blank),
-        table(model, open.as_ref()),
-        Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
-    ];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children))
+    frame(model, open.as_ref(), blank)
 }
 
 /// Open is the zone whose panel the address asks for: which one, on which
@@ -245,12 +246,7 @@ fn opened(
             reaches: reaches.clone(),
             errors: errors.clone(),
         });
-    let children = vec![
-        bar(None),
-        table(model, open.as_ref()),
-        Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
-    ];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children))
+    frame(model, open.as_ref(), None)
 }
 
 /// opened_blank is the same for a zone that does not exist yet.
@@ -261,29 +257,24 @@ fn opened_blank(
     errors: &Errors,
     tab: &str,
 ) -> Envelope {
-    let children = vec![
-        bar(Some(zone_drawer::blank(model, form, reaches, errors, tab))),
-        table(model, None),
-        Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
-    ];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children))
+    frame(
+        model,
+        None,
+        Some(zone_drawer::blank(model, form, reaches, errors, tab)),
+    )
 }
 
-/// bar is the listing's controls: the lens, and the one forward act. Making a
-/// zone is editing one that does not exist yet, so the act opens the same panel a
-/// row's name opens rather than a page of its own.
-fn bar(blank: Option<RowDrawer>) -> Widget {
-    Widget::ActionBar(ActionBar {
-        filter: "Find a zone".into(),
-        action: Some(TableAction {
-            label: "Add zone".into(),
-            href: zone_drawer::new_href(),
-            ..TableAction::default()
-        }),
+/// act is the page's one forward act. Making a zone is editing one that does
+/// not exist yet, so it opens the same panel a row's edit glyph opens rather
+/// than a page of its own.
+fn act(blank: Option<RowDrawer>) -> HeadingAct {
+    HeadingAct {
+        label: "Add zone".into(),
+        href: zone_drawer::new_href(),
         opens_panel: true,
         drawer: blank,
         ..Default::default()
-    })
+    }
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -588,23 +579,16 @@ mod tests {
         assert_eq!(body["width"], "wide");
         assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][2]["path"], "zones");
-        // The listing's own controls, then the grid, then the baseline the grid
-        // falls back to — which is a region of its own because it is a second
-        // subject, not a second view of this one.
-        let bar = &body["widget"]["children"][0];
-        assert_eq!(bar["type"], "actionbar");
-        assert_eq!(bar["filter"], "Find a zone");
         // Making a zone opens the panel that edits one, at the listing's own
-        // address: there is no page below this listing any more.
-        assert_eq!(bar["action"]["label"], "Add zone");
-        assert_eq!(bar["action"]["href"], "/plugins/firewall/zones?open=new");
-        assert_eq!(bar["opens_panel"], true);
-        assert_eq!(body["widget"]["children"][1]["type"], "table");
-        assert_eq!(body["widget"]["children"][2]["title"], "Global defaults");
-        assert!(
-            body.get("action").is_none(),
-            "the listing's own bar carries the act, not the page masthead"
-        );
+        // address: the page's act, on its heading line.
+        assert_eq!(body["act"]["label"], "Add zone");
+        assert_eq!(body["act"]["href"], "/plugins/firewall/zones?open=new");
+        assert_eq!(body["act"]["opens_panel"], true);
+        // The grid, then the baseline the grid falls back to — which is a
+        // region of its own because it is a second subject, not a second view
+        // of this one.
+        assert_eq!(body["widget"]["children"][0]["type"], "table");
+        assert_eq!(body["widget"]["children"][1]["title"], "Global defaults");
     }
 
     // A firewall that groups nothing still has a baseline, and the listing says
@@ -617,11 +601,9 @@ mod tests {
         let table = fixture::listing(&body);
         assert_eq!(table["empty_text"], EMPTY);
         assert!(table["rows"].as_array().expect("rows").is_empty());
-        // The way to a first zone stays, on the bar above the empty grid.
-        assert_eq!(
-            body["widget"]["children"][0]["action"]["href"],
-            "/plugins/firewall/zones?open=new"
-        );
+        // The way to a first zone stays, on the heading line above the empty
+        // grid.
+        assert_eq!(body["act"]["href"], "/plugins/firewall/zones?open=new");
     }
 
     #[test]
@@ -657,9 +639,9 @@ mod tests {
         );
     }
 
-    /// Every row opens that zone's own panel beside the listing, from the zone's
-    /// own name and from the glyph at the row's trailing edge. Both doors point at
-    /// the same address, and the row ships the empty frame that fetches it.
+    /// Every row opens that zone's own panel beside the listing, from the glyph
+    /// at the row's trailing edge. The zone's name points at the same address,
+    /// and the row ships the empty frame that fetches it.
     #[test]
     fn every_row_opens_its_own_panel_in_place() {
         let body = body();
@@ -747,17 +729,16 @@ mod tests {
         }
     }
 
-    /// The bar's act opens a blank panel rather than a page. It belongs to the bar
-    /// because there is no row for a zone that does not exist yet.
+    /// The page's act opens a blank panel rather than a page. It belongs to the
+    /// act because there is no row for a zone that does not exist yet.
     #[test]
-    fn the_bar_opens_a_blank_zone() {
+    fn the_act_opens_a_blank_zone() {
         let body = opened(zone_drawer::NEW, zone_drawer::TRAFFIC);
-        let bar = &body["widget"]["children"][0];
-        let panel = &bar["drawer"];
+        let panel = &body["act"]["drawer"];
         assert_eq!(panel["title"], "New zone");
         assert_eq!(panel["open"], true);
         assert_eq!(panel["closed"], "/plugins/firewall/zones");
-        // No row carries a panel: the blank one belongs to the bar's own act.
+        // No row carries a panel: the blank one belongs to the page's act.
         for row in rows(&body) {
             assert!(row.get("drawer").is_none(), "{}", row["id"]);
         }

@@ -228,8 +228,9 @@ pub fn remove_act(section: &str, title: &str, question: &str, consequence: &str)
     }
 }
 
-/// name_cell is the row's subject and its door: what this section is called, in
-/// full ink, leading to the page that edits it.
+/// name_cell is the row's subject: what this section is called, in full ink,
+/// naming where it is edited. The shell draws a name as words, never a door;
+/// the row's edit glyph is the way in.
 pub fn name_cell(name: &str, href: String) -> TableCell {
     TableCell {
         text: name.into(),

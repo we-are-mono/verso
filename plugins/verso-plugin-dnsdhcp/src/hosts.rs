@@ -151,7 +151,6 @@ fn row(model: &Dnsdhcp, host: &Host, drawer: Option<RowDrawer>) -> TableRow {
     let network = model.network_of(&host.ip);
     TableRow {
         id: host.section.clone(),
-        tags: page::network_tags(network),
         cells: vec![
             TableCell {
                 text: host.title(),
@@ -580,12 +579,12 @@ mod tests {
         assert_eq!(nas["id"], "host_nas");
         assert_eq!(nas["panel"], "/plugins/dnsdhcp/?open=host_nas");
         assert_eq!(nas["cells"][0]["text"], "nas");
-        // The name is the row's door: the same address as its panel opens it
-        // where it stands.
+        // The name points at the row's panel. The shell draws it as words and
+        // gives the row the edit pencil to that address, since its own act
+        // only removes.
         assert_eq!(nas["cells"][0]["href"], nas["panel"]);
         assert_eq!(nas["cells"][1]["chips"][0]["label"], "lan");
         assert_eq!(nas["cells"][2]["text"], "10.0.0.30");
-        assert_eq!(nas["tags"], serde_json::json!(["lan"]));
         let remove = &nas["cells"][5]["actions"][0];
         assert_eq!(remove["icon"], "pin-off");
         assert_eq!(remove["name"], REMOVE);

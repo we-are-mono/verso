@@ -24,8 +24,9 @@ you can write a Verso plugin — in any language, without touching the shell.
   a renderer to the browser. You never see the browser.
 
 The bundled **Interfaces** plugin owns network, device, VLAN, bridge, and tunnel
-configuration. Its manifest contributes one main navigation destination, with no
-subpages. **System General** remains a bundled System plugin. On **Access**, the
+configuration, and the static routes (`config route`, `config route6`) in the same
+file. Its manifest files two pages under Network: Interfaces (`/`) and Routes
+(`/routes`). **System General** remains a bundled System plugin. On **Access**, the
 shell owns password changes and login sessions; the System plugin contributes
 SSH and uhttpd configuration through its `system_access: "/access"` route.
 Only that contributor receives its own submitted form. Password submissions are
@@ -95,7 +96,7 @@ own `section`:
 
 An entry filed under `Network` or `System` is not a menu row of its own: those two
 sections are each one row, named for the section, that opens into every page filed
-there, whichever plugin files it. Network's pages run Interfaces, DHCP, DNS, then
+there, whichever plugin files it. Network's pages run Interfaces, DHCP, DNS, Routes, then
 the rest by label; System's run General, then the rest by label, then the shell's
 own pages. A page in either section keeps its own title as its heading, with no
 section prefix. Any other section's entries are rows of
@@ -245,9 +246,10 @@ envelope** back — `Content-Type: application/json`:
   are ruled off from the page's first section the way ruled sections are from
   each other. For a page built of ruled sections (a settings page); a listing,
   whose toolbar follows the heading with no rule, leaves it unset.
-- `action` — optional `{label, href, icon?}`: the page's one primary doorway
-  ("New rule", "Add forward"), rendered as a button hard right on the heading
-  row. A page has at most one — it is *the* thing to do here, not a menu, so a
+- `act` — optional `{label, href, icon?, style?, opens_panel?, drawer?}`: the
+  page's one act ("Add rule", "Add forward"), drawn hard right on the heading
+  row, with the blank panel it opens (see [act](#act--the-pages-one-act-on-its-heading-line)).
+  A page has at most one — it is *the* thing to do here, not a menu, so a
   second affordance belongs beside the content it acts on. `href` is a route
   through the shell, exactly like a `link` widget's, so address your own mount
   in full (`/plugins/<id>/…`).
@@ -392,7 +394,7 @@ and you own its meaning. The shell brokers only functions in its own closed set:
 | Function | Returns |
 |---|---|
 | `dhcpState` | `{"networks": {"lan": {"enabled": true, "state": "running", "pool": "192.168.1.100–192.168.1.249", "lease_time": "12h", "leases": 12}}}` — DHCPv4 service observations from procd, generated dnsmasq ranges, netifd and unexpired leases. `enabled` comes from applied configuration, not the operator’s staged changes. States are `running`, `warning`, `stopped` and `disabled`; optional `reason` distinguishes failures, unavailable readings and full pools. Missing lease counts stay unknown. |
-| `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}}` — netifd logical-interface dump, kernel-device state, and installed protocol handlers (when available). The shell adds physical-port and parent relationships from its existing topology reader. |
+| `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}, "routes": [...]}` — netifd logical-interface dump, kernel-device state, installed protocol handlers (when available), and the kernel's main routing table as `ip route` lists it (`family`, `target` in CIDR, `gateway`, `device`, `metric`, `proto`, `type` when not unicast, `source`; local, broadcast, multicast and cached entries left out). The shell adds physical-port and parent relationships from its existing topology reader. |
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
 | `firewallCounters` | `{"counters": [{"chain", "name", "packets", "bytes"}]}` — fw4's live nftables hit counters, one entry per (chain, rule name), summed across the several nft rules a single UCI section can render into. |
 | `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
@@ -697,26 +699,32 @@ outside the vocabulary tones nothing.
 
 ### actionbar — a listing's controls
 
-The band between a page's heading and its listing: `filter` (the search's
-placeholder), `tabs`, `select`, `live`, and `action`. Over a table it is the
-listing's one filled surface — quiet sand between two hairlines, every control
-1rem from its edges — and the table sits flush under it; a `live` log's bar is
-the same controls, unfilled. `tabs` are the coarse cuts, drawn as one dropdown
-beside the search with each option priced by its `count` ("IPv4 · 14"); name
-the whole set in the first one's label ("All families", not "All"). `select` is
-a second dropdown, hard right, for a facet the rows carry.
+The band between a page's heading and its listing, and only the listing's
+controls: `filter` (the search's placeholder), `tabs`, `select` and `live`. Over
+a table it is the listing's one filled surface — quiet sand between two
+hairlines, every control 1rem from its edges — and the table sits flush under
+it; a `live` log's bar is the same controls, unfilled. `tabs` are the coarse
+cuts, drawn as one dropdown with each option priced by its `count` ("IPv4 ·
+14"); name the whole set in the first one's label ("All families", not "All").
+`select` is a second dropdown for a facet the rows carry. A bar left with
+nothing to show is not drawn. The page's act is not on the bar: it is the
+envelope's `act` (below).
 
-`action` is the page's one forward act. Declared on the bar that is the first
-child of the page's stack, the shell lifts it onto the heading line, where every
-listing keeps its primary; a bar left with nothing else on it is dropped. A
-`quiet` act (one that takes something away, like a download) stays on the bar.
-`opens_panel: true` makes the act open the listing's own panel blank (making
-one is editing one that does not exist yet); `drawer` carries that blank panel
-when the address asks for it (`?open=new`).
+### act — the page's one act, on its heading line
+
+The envelope's `act` (`Envelope::with_act`) is the page's one act, which the
+shell stands on the heading line beside the title: making a new subject of the
+kind the page lists, or, with `style: "quiet"`, taking something away from it (a
+log's download). It travels beside the widget tree, not in it, because the
+heading line is the page's. `opens_panel: true` makes the act open the page's
+own panel blank (making one is editing one that does not exist yet); `drawer`
+carries that blank panel, open when the address asks for it (`?open=new`), and
+a panel request for that address is answered with it as it would be with a
+row's.
 
 ```json
-{ "type": "actionbar", "opens_panel": true,
-  "action": { "label": "Add network", "href": "/plugins/wireless/?open=new", "icon": "plus" } }
+{ "label": "Add network", "href": "/plugins/wireless/?open=new", "icon": "plus",
+  "opens_panel": true }
 ```
 
 ### table — config sections as identical rows
@@ -968,7 +976,7 @@ there.)
   its counter climbs (`× 38`) and its clock moves up. A repeat that is *not*
   consecutive starts a fresh row, so the order never lies.
 - **Pause.** The action bar's `live` control is the stream's own indicator and
-  its pause, and stands on the heading line with the bar's act: it reads `Live`,
+  its pause, and stands on the heading line beside the page's act: it reads `Live`,
   its spinner turning, while events flow, `Paused · N new` while they are
   held (its title says the act, Pause or Resume), `Connecting…` while the
   stream is down, and nothing on the page moves — not even the relative
@@ -1011,15 +1019,16 @@ the scroll. Declare it once, near the top of the page:
 { "type": "filter", "placeholder": "Filter — zone, port, IP, comment…" }
 ```
 
-**Whether it renders is the shell's call, not yours.** Before rendering a page
-the shell counts its filterable entries — every table row, folded ones included,
-plus every settings option row, folded ones included — and **removes** the
-filter when that count is 20 or fewer: a page you can read in one glance is not
-helped by a search box over it, and a lens with nothing to sift is a control
-answering a question nobody asked. Removal, not concealment: no dead dock, no
-"/" shortcut into nothing. So declare the filter your page would want and carry
-no threshold of your own — a page's own count changes as its config does, and
-the rule that decides is one rule for every plugin.
+**Whether it renders is the shell's call, not yours.** The shell keeps the
+filter only on a page with a live listing (a table with a `stream`), and
+**removes** it everywhere else: a page that holds what it has is scrolled and
+searched with the browser's own find, however long it is, while a live
+listing's rows arrive as it is read and the browser's find cannot hold a
+question across them. Removal, not concealment: no dead dock, no "/" shortcut
+into nothing. The same rule holds for an `actionbar`'s `filter`: over a still
+listing the bar draws no search field, and a bar left with nothing to narrow
+with is not drawn. So declare the filter your page would want and carry no rule
+of your own — the rule that decides is one rule for every plugin.
 
 ### settings — a card of option rows
 
@@ -1518,8 +1527,8 @@ identity, device type, IPv4 address, MAC, operational state, and actions. Identi
 cells use `lead_icon:"physical"` or `"software"` for the topology mark and `chips`
 for logical network references. State remains plain text with a square mark.
 `depth` describes a transport dependency (VLAN or PPP), not bridge membership.
-The matching `actionbar` style supplies the physical/software legend and a single
-optional Problems filter. A chooser uses drawer `size:"choices"`, kicker
+Its envelope `act` is the add act, carrying the panel open over the listing (the
+chooser, or an object's editor); the page has no control band. A chooser uses drawer `size:"choices"`, kicker
 sections, and icon-bearing choice links. Expanded details use `grid` styles
 `facts` and `configurations`; an editor rail may use `card` style `preview` with
 an unlabeled live code block.

@@ -64,7 +64,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
    for the section, leading to its first live page, lit anywhere inside the
    section, and opening there into its pages — every live registration filed
    under it, whichever plugin files it, in the section's designed order
-   (Network: Interfaces, DHCP, DNS; System: General), the rest by label, then the
+   (Network: Interfaces, DHCP, DNS, Routes; System: General),
+   the rest by label, then the
    pages the shell owns there. Its root (`/network`, `/system`) redirects to that
    first page. A page in a collapsed section keeps its own name as its heading,
    with no section prefix: the open row already says where it is. Rows the design does not

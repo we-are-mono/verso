@@ -3,7 +3,7 @@
 {{/* The listing's control band: the surface it is narrowed from, one row under
      the heading. Left is finding things: the search first, then the coarse cuts
      as one counted dropdown, then the dimension the listing is sliced along.
-     Right, only what acts. Over a table it is the
+     Over a table it is the
      listing's one filled surface — the quiet sand between two hairlines, every
      control 16px from its edges — and it sits flush on the column heads, so
      band and table read as one object. Over a live log it is the same sand
@@ -11,14 +11,13 @@
      own ground — the system log's shape — while the controls keep to the
      content column. Either way the band is the one filled surface, which
      sets the log's controls apart from the page's acts above it.
-     The page's acts are not on it: the shell lifts them to the heading line
-     (TakeHeadingAct) — a listing's forward act, or a live log's live control
-     with its act. On a listing that is not live a quiet act, which takes
-     something away rather than making something, stays here. */}}
+     The page's act is not on it: it is the envelope's (HeadingAct), drawn on
+     the heading line by this same template (Heading), with a live log's live
+     control beside it (TakeLive). */}}
 {{/* On the heading line a live log's acts stand together as equals — the
      live control, then what the log offers — in the one quiet dress. */}}
 {{if .Heading}}{{if .Live}}<div class="flex shrink-0 flex-wrap items-center gap-2">{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
-<div data-verso-actionbar class="{{if .OverLog}}mb-0 -mx-10 border-y border-rule bg-quiet px-10 py-4{{else}}flex flex-wrap items-center {{if eq .Style "interfaces"}}gap-x-5 gap-y-3{{else}}gap-4{{end}} mb-0 border-y border-rule bg-quiet p-4{{end}}">
+<div data-verso-actionbar class="{{if .OverLog}}mb-0 -mx-10 border-y border-rule bg-quiet px-10 py-4{{else}}flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4{{end}}">
   {{if .OverLog}}<div class="flex w-full max-w-6xl flex-wrap items-center gap-4">{{end}}
   {{if .Filter}}
   {{/* The search box wears the app's one input treatment: white, an inset
@@ -27,17 +26,10 @@
   <div class="relative flex max-w-full items-center">
     <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
     <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
-      class="h-9 {{if eq .Style "interfaces"}}w-60{{else}}w-80{{end}} max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+      class="h-9 w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
   </div>
   {{end}}
-  {{if eq .Style "interfaces"}}
-  {{range .Tabs}}<button type="button" data-verso-problem-filter{{if eq .Count 0}} hidden{{end}} data-verso-tab="{{.Match}}" aria-pressed="false" class="flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong px-2.5 text-sm text-body hover:border-faint aria-pressed:border-crimson-line aria-pressed:bg-crimson-soft aria-pressed:text-crimson-deep"><span class="size-1.5 rounded-[1px] bg-crimson" aria-hidden="true"></span>{{.Label}}<span data-verso-problem-count class="text-sm tabular-nums">{{.Count}}</span></button>{{end}}
-  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-meta" aria-label="{{t "Legend"}}">
-    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-2.25 rounded-[1px] border-[1.5px] border-inert"></span>{{t "physical port"}}</span>
-    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-2.25 rounded-full border-[1.5px] border-inert"></span>{{t "defined in software"}}</span>
-    <span class="inline-flex items-center gap-2"><span aria-hidden="true" class="size-1.5 rounded-[1px] bg-marigold"></span>{{t "worth a look"}}</span>
-  </div>
-  {{else if .Tabs}}
+  {{if .Tabs}}
   {{/* The coarse cuts are one dropdown beside the search, each option priced
        with what taking it would leave ("IPv4 · 14"). A live listing prices
        them itself as lines arrive, from each option's own label. */}}

@@ -86,7 +86,6 @@ fn row(model: &Dnsdhcp, lease: &Lease) -> TableRow {
     }
     TableRow {
         id: lease.mac.clone(),
-        tags: page::network_tags(network),
         cells: vec![
             name,
             page::network_cell(network),
@@ -121,7 +120,6 @@ mod tests {
         assert_eq!(rows[0]["cells"][1]["chips"][0]["label"], "lan");
         assert_eq!(rows[0]["cells"][2]["text"], "10.0.0.142");
         assert_eq!(rows[0]["cells"][3]["text"], "42:e6:ad:ff:b7:af");
-        assert_eq!(rows[0]["tags"], serde_json::json!(["lan"]));
         // A device that offered no name is called by its MAC, at the quieter step.
         assert_eq!(rows[1]["cells"][0]["text"], "Device 0e:57");
         assert_eq!(rows[1]["cells"][0]["muted"], true);

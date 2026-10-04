@@ -549,7 +549,7 @@ fn page(
 fn err(e: &mut Errors, k: &str, msg: &str) {
     e.entry(k.into()).or_insert(msg.into());
 }
-fn uint(v: &str, lo: u32, hi: u32) -> bool {
+pub(crate) fn uint(v: &str, lo: u32, hi: u32) -> bool {
     !v.is_empty()
         && v.bytes().all(|b| b.is_ascii_digit())
         && v.parse::<u32>().is_ok_and(|n| (lo..=hi).contains(&n))
@@ -573,7 +573,7 @@ fn valid_mac(s: &str) -> bool {
         && u8::from_str_radix(b[0], 16).is_ok_and(|x| x & 1 == 0)
         && s != "00:00:00:00:00:00"
 }
-fn mask_bits(s: &str) -> Option<u32> {
+pub(crate) fn mask_bits(s: &str) -> Option<u32> {
     let m = u32::from(s.parse::<Ipv4Addr>().ok()?);
     let bits = m.leading_ones();
     (bits > 0 && m == u32::MAX.checked_shl(32 - bits).unwrap_or(0)).then_some(bits)

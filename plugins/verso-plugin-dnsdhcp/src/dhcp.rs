@@ -10,8 +10,8 @@
 //! they are edited on the page itself.
 
 use verso_plugin::{
-    commit, commit_new, dhcp, json, ActionBar, ActionTab, ColumnWidth, CommitOp, Envelope, Errors,
-    Form, List, Map, Request, RowDrawer, SelectOption, Switch, Table, TableCell, TableColumn,
+    commit, commit_new, dhcp, json, ColumnWidth, CommitOp, Envelope, Errors, Form, HeadingAct,
+    List, Map, Request, RowDrawer, SelectOption, Switch, Table, TableCell, TableColumn,
     TableRow, TableRowAct, Tone, Value, Widget,
 };
 
@@ -90,6 +90,21 @@ pub fn post(r: &Request, f: &Form) -> Envelope {
 }
 
 const GONE: &str = "That isn’t in the config any more, so there was nothing to save.";
+
+/// new_reservation is the page's act: reservations are the one thing this page
+/// makes. Making one is editing one that does not exist yet, so it opens the
+/// reservation's own panel, carrying it blank — the one drawer that belongs to
+/// no row yet — when an address (New, or a lease's Reserve) asks for one.
+fn new_reservation(blank: Option<RowDrawer>) -> HeadingAct {
+    HeadingAct {
+        label: "New reservation".into(),
+        href: page::open_href(NEW),
+        icon: "plus".into(),
+        opens_panel: true,
+        drawer: blank,
+        ..Default::default()
+    }
+}
 
 /// State is everything one render reads: the config, the live leases, and the
 /// shell's live reading of each network's server.
@@ -187,23 +202,12 @@ impl State {
             meta: self.model.hosts.len().to_string(),
             meta_position: "inline".into(),
             hairline: true,
-            control: Some(Box::new(Widget::Link {
-                label: "New reservation".into(),
-                icon: "plus".into(),
-                href: page::open_href(NEW),
-                style: "act".into(),
-                panel: true,
-                desc: String::new(),
-                code: String::new(),
-                act: String::new(),
-            })),
             children: vec![hosts::table(&self.model, host_open)],
             ..Default::default()
         });
         Envelope::page(
             TITLE,
             Widget::stack(vec![
-                self.bar(blank),
                 section(
                     "Servers",
                     "One per network. Each hands out addresses from its own range.",
@@ -226,48 +230,8 @@ impl State {
                 ),
             ]),
         )
+        .with_act(new_reservation(blank))
         .with_width("wide")
-    }
-
-    /// bar narrows the page: a search across every listing on it, and the
-    /// network each row sits on. It also holds the blank reservation's drawer,
-    /// the one drawer that belongs to no row yet.
-    fn bar(&self, blank: Option<RowDrawer>) -> Widget {
-        let networks: Vec<&String> = self.servers.iter().map(|s| &s.network).collect();
-        let count = |network: &str| {
-            let hosts = self
-                .model
-                .hosts
-                .iter()
-                .filter(|h| self.model.network_of(h.scalar("ip")) == network)
-                .count();
-            let leases = self
-                .leases
-                .all()
-                .iter()
-                .filter(|l| self.model.network_of(&l.ipv4) == network)
-                .count();
-            (1 + hosts + leases) as u32
-        };
-        let all = (self.servers.len() + self.model.hosts.len() + self.leases.all().len()) as u32;
-        let mut tabs = vec![ActionTab {
-            label: "All networks".into(),
-            count: all,
-            active: true,
-            ..ActionTab::default()
-        }];
-        tabs.extend(networks.into_iter().map(|network| ActionTab {
-            label: network.clone(),
-            count: count(network),
-            matches: network.clone(),
-            ..ActionTab::default()
-        }));
-        Widget::ActionBar(ActionBar {
-            filter: "Find a device, address or MAC".into(),
-            tabs,
-            drawer: blank,
-            ..Default::default()
-        })
     }
 
     fn servers_table(&self, open: Option<(String, RowDrawer)>) -> Widget {
@@ -328,7 +292,6 @@ impl State {
         };
         TableRow {
             id: network.clone(),
-            tags: page::network_tags(network),
             cells: vec![
                 TableCell {
                     text: network.clone(),
@@ -898,7 +861,7 @@ mod tests {
     }
 
     fn sections(page: &Json) -> Vec<Json> {
-        page["widget"]["children"].as_array().unwrap()[1..].to_vec()
+        page["widget"]["children"].as_array().unwrap().to_vec()
     }
 
     fn find(v: &Json, wanted: &dyn Fn(&Json) -> bool) -> Option<Json> {
@@ -929,7 +892,6 @@ ra=server&dhcpv6=server&ra_slaac=1";
     fn the_page_reads_servers_reservations_leases_then_settings() {
         let page = read("");
         assert_eq!(page["title"], "DHCP");
-        assert_eq!(page["widget"]["children"][0]["type"], "actionbar");
         let titles: Vec<Json> = sections(&page).iter().map(|s| s["title"].clone()).collect();
         assert_eq!(
             titles,
@@ -1098,15 +1060,18 @@ ra=server&dhcpv6=server&ra_slaac=1";
     }
 
     #[test]
-    fn the_bar_cuts_every_listing_by_network() {
-        let bar = &read("")["widget"]["children"][0];
-        let labels: Vec<&str> = bar["tabs"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|t| t["label"].as_str().unwrap())
-            .collect();
-        assert_eq!(labels[0], "All networks");
-        assert!(labels.contains(&"lan") && labels.contains(&"guest"));
+    fn new_reservation_is_the_pages_act_and_carries_the_blank_one() {
+        // Reservations are the one thing this page makes, so making one is the
+        // page's act, on its heading line — said once, not again over the
+        // Reservations section. A still page is scrolled and found in with the
+        // browser's own find, so nothing narrows it.
+        let page = read("");
+        assert_eq!(page["act"]["label"], "New reservation");
+        assert_eq!(page["act"]["href"], "/plugins/dnsdhcp/?open=new");
+        assert_eq!(page["act"]["opens_panel"], true);
+        assert!(find(&page, &|v| v["type"] == "actionbar").is_none(), "{page}");
+        assert!(find(&page, &|v| v["label"] == "New reservation" && v["type"] == "link").is_none());
+        // An address asking for a new one arrives with its panel open.
+        assert_eq!(read("open=new")["act"]["drawer"]["title"], "New reservation");
     }
 }

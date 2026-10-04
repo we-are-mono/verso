@@ -673,7 +673,7 @@ fn a_certificate_act_is_a_drawer_that_closes_back_on_access() {
         ),
     ] {
         let (_, j) = certificate_act(path, None);
-        let drawer = drawer_of(&j["widget"]).unwrap_or_else(|| panic!("a drawer at {path}: {j}"));
+        let drawer = drawer_of(&j["act"]).unwrap_or_else(|| panic!("a drawer at {path}: {j}"));
         assert_eq!(drawer["open"], true, "{drawer}");
         assert_eq!(drawer["title"], title);
         assert_eq!(drawer["closed"], "/system/access");
@@ -690,18 +690,18 @@ fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
     let (e, j) = certificate_act("/access/certificate/new", Some("hostname=router.lan"));
     assert_eq!(e.commands.len(), 1);
     assert_eq!(e.commands[0].name, "certificate-generate");
-    assert_eq!(drawer_of(&j["widget"]).unwrap()["open"], true);
+    assert_eq!(drawer_of(&j["act"]).unwrap()["open"], true);
     // An invalid one runs nothing and says why, in the drawer.
     let (e, j) = certificate_act("/access/certificate/new", Some("hostname=not%20a%20host"));
     assert!(e.commands.is_empty());
-    let drawer = drawer_of(&j["widget"]).unwrap();
+    let drawer = drawer_of(&j["act"]).unwrap();
     assert_eq!(
         drawer["children"][0]["error"],
         "Enter a valid hostname or IP address."
     );
     let (e, j) = certificate_act("/access/certificate/install", Some("certificate=x&key=y"));
     assert!(e.commands.is_empty());
-    let drawer = drawer_of(&j["widget"]).unwrap();
+    let drawer = drawer_of(&j["act"]).unwrap();
     assert_eq!(
         drawer["children"][0]["error"],
         "Paste a PEM certificate and its private key."

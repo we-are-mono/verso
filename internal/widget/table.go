@@ -180,14 +180,6 @@ func (t *Table) streaming() bool {
 	return t.Stream != nil && StreamSourceKnown(t.Stream.Source)
 }
 
-// streamRing is the live listing's row budget; zero when it does not stream.
-func (t *Table) streamRing() int {
-	if !t.streaming() {
-		return 0
-	}
-	return t.Stream.ring()
-}
-
 // TableAction is the flat header band's trailing link (e.g. "View all").
 type TableAction struct {
 	Label string `json:"label"`
@@ -300,10 +292,11 @@ type TableRow struct {
 	ID    string      `json:"id,omitempty"`
 	Key   string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
 	Group *TableGroup `json:"group,omitempty"` // optional evaluation-lane header before this row
-	// Muted reads the whole row at the secondary step — the treatment for a row
-	// whose subject is not here right now (a device known but absent). It is a
-	// statement about the subject, not about the row's importance: the values
-	// are still exact, and still copyable.
+	// Muted marks a row whose subject is switched off (a rule, a Wi-Fi network,
+	// a route): its name is marked over with a sand marker, its words read at Meta and
+	// its hues fall to sand, and a screen reader hears "off" after the name. It
+	// is a statement about the subject, not about the row's importance: the
+	// values are still exact, still readable at 4.5 : 1, and still copyable.
 	Muted bool `json:"muted,omitempty"`
 	// Tags and Facet are what an ActionBar narrows this row by, and they exist
 	// only because narrowing a listing you are already looking at should not be
@@ -372,7 +365,8 @@ type TableGroup struct {
 	AddHref  string `json:"add_href,omitempty"`
 	// AddText is the add's own words ("Add rule"), drawn beside its glyph as a
 	// quiet labelled button; AddLabel stays its tooltip, naming the lane it
-	// adds to. Without it the add is the glyph alone.
+	// adds to. Every add sets it: a plus on a table head always says what it
+	// adds (DESIGN.md, Tables).
 	AddText string `json:"add_text,omitempty"`
 	// AddPanel declares that address a panel rather than a page: the lane's add
 	// opens it where the lane is, seeded with the lane's own path, and the
@@ -446,7 +440,7 @@ type TableCell struct {
 	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
 	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)
 	TagDot       bool            `json:"tag_dot,omitempty"`       // name/status cells: the packet square leading the tag, in its variant; an icon wins
-	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link
+	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link; name cells: where the row is edited, reached by the edit pencil the shell draws if the row lacks one
 	Button       string          `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
 	Disabled     bool            `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
 	Action       string          `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
@@ -457,10 +451,9 @@ type TableCell struct {
 	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
 	Chips        []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
 	Actions      []TableRowAct   `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
-	// Opens makes this cell's own value the door to the row's drawer, instead of
-	// a trailing "Details" link in a column of its own. The subject of the row is
-	// what a person reaches for, so the subject is what opens it — and the row
-	// keeps every other value selectable, which a whole-row click would not.
+	// Opens says the row's drawer is where this cell's subject is read. A name
+	// is never drawn as a door (doorAct): the shell puts a Details act on the
+	// row, or the trailing Details link where the row has no acts.
 	Opens bool `json:"opens,omitempty"`
 }
 
@@ -673,6 +666,7 @@ type tableRowView struct {
 	Dense       bool // the listing's geometry: cells carry no inset of their own, only the edges do
 	Seam        bool // this row belongs to the collapsible continuation block
 	Open        bool // the row's drawer renders already open
+	Off         bool // the row's subject is switched off (TableRow.Muted): its name marked over
 	DrawerLabel string
 	DrawerIcon  string
 	Panel       drawerPanelView // the row's slide-in detail panel (shared with the drawer widget)
@@ -705,6 +699,8 @@ type tableCellView struct {
 	Indent     string
 
 	Kind      string
+	Identity  bool // the row's name: its first identity column, the one a switched-off row marks
+	Off       bool // the row's subject is switched off and this is its name: marked over, set in Body, and said to a screen reader
 	Primary   bool // the first column — the row's identity, set one step larger
 	Draggable bool // reorder cells: the table persists an order, so draw the handle
 	RowID     string
@@ -833,13 +829,64 @@ func EntityPath(kind, id string) string {
 // trailing edge. Any of them means the listing has said how this row is entered,
 // and the shell's own "Details" affordance would be a second door beside a door
 // — with the added cost of a whole extra column on a listing that had none.
-func rowOpensItself(row TableRow) bool {
-	for _, c := range row.Cells {
-		if c.Button != "" || c.Opens || c.Href != "" || len(c.Actions) > 0 {
+func (t *Table) rowOpensItself(row TableRow) bool {
+	for i, c := range row.Cells {
+		if c.Button != "" || len(c.Actions) > 0 {
 			return true
+		}
+		if c.Opens || c.Href != "" {
+			// A name is never a door; where it pointed is reached by an act
+			// the shell draws (doorAct), which needs an actions column.
+			if i >= len(t.Columns) || !isName(t.Columns[i].Kind) || t.actionsColumn() >= 0 {
+				return true
+			}
 		}
 	}
 	return false
+}
+
+// isName reports whether a column holds a row's identity: its name, or an
+// interface cited as the subject.
+func isName(kind string) bool { return kind == "name" || kind == "reference" }
+
+// actionsColumn is the index of the column holding the rows' acts, or -1.
+func (t *Table) actionsColumn() int {
+	return slices.IndexFunc(t.Columns, func(c TableColumn) bool { return c.Kind == "actions" })
+}
+
+// doorAct is the act a row needs because its name may not be a door. A name
+// is words, never a control: a reader cannot tell what pressing it would do,
+// while an act says it with its glyph (DESIGN.md, Tables). A plugin that
+// points a name at the row's panel or drawer still gets there, by the edit
+// pencil for a panel and Details for a drawer, unless one of the row's own
+// acts already leads to the same place.
+func (t *Table) doorAct(row TableRow) (TableRowAct, bool) {
+	var want TableRowAct
+	for i, c := range row.Cells {
+		if i >= len(t.Columns) || !isName(t.Columns[i].Kind) {
+			continue
+		}
+		switch {
+		case c.Href != "":
+			want = TableRowAct{Icon: "square-pen", Title: "Edit", Href: c.Href}
+		case c.Opens:
+			want = TableRowAct{Icon: "info", Title: "Details", Opens: true}
+		default:
+			continue
+		}
+		break
+	}
+	if want.Icon == "" {
+		return TableRowAct{}, false
+	}
+	for _, c := range row.Cells {
+		for _, a := range c.Actions {
+			if (want.Href != "" && a.Href == want.Href) || (want.Opens && a.Opens && a.Tab == "") {
+				return TableRowAct{}, false
+			}
+		}
+	}
+	return want, true
 }
 
 // hasDetail reports whether the table needs a trailing "Details" column: true
@@ -847,7 +894,7 @@ func rowOpensItself(row TableRow) bool {
 func (t *Table) hasDetail() bool {
 	need := func(rows []TableRow) bool {
 		for _, row := range rows {
-			if row.Drawer != nil && !rowOpensItself(row) {
+			if (row.Drawer != nil || row.Panel != "") && !t.rowOpensItself(row) {
 				return true
 			}
 		}
@@ -1014,6 +1061,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	if len(t.Columns) > 0 && t.Columns[0].Kind == "reorder" {
 		primary = 1
 	}
+	// The row's name is its first identity column; a later one (the radio a
+	// network runs on) is a citation.
+	identity := slices.IndexFunc(t.Columns, func(c TableColumn) bool { return isName(c.Kind) })
 	reorderable := t.reorderable()
 	reorderGroup := ""
 	columnSpan := len(t.Columns)
@@ -1044,7 +1094,16 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				reorderGroup = row.Group.Label + " → " + row.Group.To
 			}
 		}
-		rv := tableRowView{ID: row.ID, Key: row.Key, ColumnSpan: columnSpan, Reorder: reorderable, ReorderGroup: reorderGroup, HasDetail: hasDetail, Inline: rowOpensItself(row), Dense: t.Dense, DrawerLabel: drawerLabel, DrawerIcon: t.DrawerIcon, Cells: make([]tableCellView, 0, len(t.Columns))}
+		if act, ok := t.doorAct(row); ok {
+			if at := t.actionsColumn(); at >= 0 {
+				// The row's cells are the plugin's; the act goes on a copy.
+				cells := make([]TableCell, max(len(row.Cells), at+1))
+				copy(cells, row.Cells)
+				cells[at].Actions = append(slices.Clone(cells[at].Actions), act)
+				row.Cells = cells
+			}
+		}
+		rv := tableRowView{ID: row.ID, Key: row.Key, Off: row.Muted, ColumnSpan: columnSpan, Reorder: reorderable, ReorderGroup: reorderGroup, HasDetail: hasDetail, Inline: t.rowOpensItself(row), Dense: t.Dense, DrawerLabel: drawerLabel, DrawerIcon: t.DrawerIcon, Cells: make([]tableCellView, 0, len(t.Columns))}
 		if t.Style == "interfaces" {
 			depth := max(0, min(row.Depth, 2))
 			rv.TreeRoot = depth == 0
@@ -1150,6 +1209,8 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				// statement about the row's subject, so no cell in that row can
 				// disagree with the rest.
 				cv.Muted = cv.Muted || row.Muted
+				cv.Identity = i == identity
+				cv.Off = row.Muted && cv.Identity
 				if len(cv.TableCell.Actions) > 0 {
 					acts := make([]tableRowActView, len(cv.TableCell.Actions))
 					for j, a := range cv.TableCell.Actions {

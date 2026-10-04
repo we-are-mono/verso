@@ -547,23 +547,19 @@ mod tests {
         );
     }
 
-    /// Add opens the same panel blank, from the listing's bar, at firewall4's own
+    /// Add opens the same panel blank, from the page's act, at firewall4's own
     /// defaults — what the operator starts from is what the packet filter would
     /// assume.
     #[test]
     fn a_new_forward_starts_where_firewall4s_own_defaults_are() {
         let body = blank();
-        let drawer = fixture::widget(&body, "actionbar")["drawer"].clone();
+        let drawer = body["act"]["drawer"].clone();
         assert_eq!(drawer["title"], "New port forward");
         assert_eq!(drawer["children"][0]["submit"], "Add port forward");
         assert_eq!(control(&drawer, "enabled")["on"], true);
         assert_eq!(control(&drawer, "proto")["value"], "tcp udp");
         assert_eq!(control(&drawer, "src")["value"], "");
-        assert_eq!(
-            fixture::widget(&body, "actionbar")["action"]["href"],
-            new_href(),
-            "the bar's Add opens this panel"
-        );
+        assert_eq!(body["act"]["href"], new_href(), "the page's Add opens this panel");
     }
 
     #[test]

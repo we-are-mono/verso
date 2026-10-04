@@ -176,9 +176,8 @@ func deviceTags(d Device) []string {
 }
 
 // DevicesBar is the roster's own controls: the cuts a person makes on a list of
-// devices — which are here, which are pinned — the search over what is on
-// screen, the network to look at, and the one act the page offers.
-func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string) string) *ActionBar {
+// devices — which are here, which are pinned — and the network to look at.
+func DevicesBar(devices []Device) *ActionBar {
 	online, offline, reserved, limited := 0, 0, 0, 0
 	for _, d := range devices {
 		if d.Presence == "online" {
@@ -211,17 +210,25 @@ func DevicesBar(devices []Device, reserveHref string, panelHref func(mac string)
 		seen[d.Network] = true
 		bar.Select.Options = append(bar.Select.Options, ActionOption{Label: networkLabel(d.Network), Value: d.Network})
 	}
-	// The act is offered only where it leads somewhere: with no plugin serving
-	// reservations there is nothing to reserve an address with.
-	if reserveHref != "" {
-		// The href is the fallback a browser with no script follows; with one,
-		// the act opens the same panel a row's own reserve icon opens — on the
-		// device it would most likely be about, so the panel arrives with that
-		// device's own facts pinned rather than as an empty form.
-		bar.Action = &TableAction{Label: "Reserve an address", Href: reserveHref}
-		bar.Entity = panelHref(reservableDevice(devices))
-	}
 	return bar
+}
+
+// DevicesAct is the roster's act on its heading line. It is offered only where
+// it leads somewhere: with no plugin serving reservations there is nothing to
+// reserve an address with, and nil is returned. The href is the fallback a
+// browser with no script follows; with one, the act opens the same panel a
+// row's own reserve icon opens — on the device it would most likely be about,
+// so the panel arrives with that device's own facts pinned rather than as an
+// empty form.
+func DevicesAct(devices []Device, reserveHref string, panelHref func(mac string) string) *ActionBar {
+	if reserveHref == "" {
+		return nil
+	}
+	return &ActionBar{
+		Heading: true,
+		Action:  &TableAction{Label: "Reserve an address", Href: reserveHref},
+		Entity:  panelHref(reservableDevice(devices)),
+	}
 }
 
 // reservableDevice is the device the listing's own act opens on: one that holds

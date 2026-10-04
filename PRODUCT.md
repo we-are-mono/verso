@@ -55,8 +55,7 @@ like part of the shell.
 
 ## Capabilities and Constraints
 
-- **Pages:** Overview, Devices, Network (interfaces, DHCP, DNS), Wireless, Firewall
-  (rules, zones, redirects, activity, settings), Routing, System (general,
+- **Pages:** Overview, Devices, Network (interfaces, DHCP, DNS, routes), Wireless, Firewall (rules, zones, redirects, activity, settings), System (general,
   maintenance, access, packages, services, logs, diagnostics). First-party
   plugins: system, firewall, interfaces, dnsdhcp, wireless, wireguard, qos.
 - **Stack:** the shell is a single static Go binary (`net/http`,

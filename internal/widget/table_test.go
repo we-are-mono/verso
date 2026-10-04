@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -1083,8 +1084,8 @@ func TestDecodeTableStream(t *testing.T) {
 	if tb.Stream == nil || tb.Stream.Source != StreamSourceFirewallLog || tb.Stream.Ring != 120 {
 		t.Fatalf("stream not decoded: %+v", tb.Stream)
 	}
-	if !tb.streaming() || tb.streamRing() != 120 {
-		t.Errorf("decoded stream table is not live: streaming=%v ring=%d", tb.streaming(), tb.streamRing())
+	if !tb.streaming() || tb.Stream.ring() != 120 {
+		t.Errorf("decoded stream table is not live: streaming=%v ring=%d", tb.streaming(), tb.Stream.ring())
 	}
 }
 
@@ -1451,5 +1452,138 @@ func TestAMonoCellCanStateWhatComesNext(t *testing.T) {
 	})
 	if strings.Contains(plain, "Available version") {
 		t.Errorf("a plain value has no second line:\n%s", plain)
+	}
+}
+
+// TestRenderTableOffRow: a row whose subject is switched off has its name
+// marked over with a sand marker rather than faded past reading. The row
+// carries data-verso-off, which the stylesheet draws the marker and drains the
+// row's hues by; every name's words sit in their own span, the marker's hook,
+// inside whatever door the name is; a switched-off name is set in Body, which
+// holds 4.5 : 1 over the marker where Meta would not; and a screen reader hears
+// "off" after the name, since a mark over words is not read aloud.
+func TestRenderTableOffRow(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "mono"}},
+		Rows: []TableRow{
+			{ID: "ping", Cells: []TableCell{{Text: "Allow-Ping"}, {Text: "icmp"}}},
+			{ID: "renew", Muted: true, Cells: []TableCell{{Text: "Allow-DHCP-Renew"}, {Text: "udp"}}},
+			{ID: "igmp", Muted: true, Cells: []TableCell{{Text: "Allow-IGMP", Href: "/rules/igmp"}, {Text: "igmp"}}},
+		},
+	})
+	if n := strings.Count(got, "data-verso-off"); n != 2 {
+		t.Fatalf("data-verso-off on %d rows, want only the two switched off:\n%s", n, got)
+	}
+	if !regexp.MustCompile(`<tr[^>]*data-verso-row-id="renew"[^>]*data-verso-off`).MatchString(got) {
+		t.Errorf("the switched-off row should carry data-verso-off:\n%s", got)
+	}
+	for _, name := range []string{"Allow-Ping", "Allow-DHCP-Renew", "Allow-IGMP"} {
+		if !strings.Contains(got, `<span class="verso-row-name">`+name+`</span>`) {
+			t.Errorf("%s's words should sit in the marker's own span:\n%s", name, got)
+		}
+	}
+	for _, name := range []string{"Allow-DHCP-Renew", "Allow-IGMP"} {
+		if !regexp.MustCompile(`text-body[^>]*>(<span class="verso-row-name">)?` + name).MatchString(got) {
+			t.Errorf("switched-off %s should be set in Body:\n%s", name, got)
+		}
+	}
+	if !regexp.MustCompile(`text-ink[^>]*>(<span class="verso-row-name">)?Allow-Ping`).MatchString(got) {
+		t.Errorf("a name in force keeps Ink:\n%s", got)
+	}
+	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 2 {
+		t.Errorf("a screen reader should hear off after each switched-off name; got %d:\n%s", n, got)
+	}
+}
+
+// TestRenderTableOffRowMarksOnlyItsName: a switched-off row is marked over on
+// its name alone. Another identity-shaped column in the row (the radio a Wi-Fi
+// network runs on, an interface cited as the subject) is a citation, not the
+// row's name, and stays as it is.
+func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "reference"}},
+		Rows: []TableRow{{ID: "guest", Muted: true, Cells: []TableCell{
+			{Text: "Guest"}, {Text: "radio0"},
+		}}},
+	})
+	if n := strings.Count(got, "verso-row-name"); n != 1 {
+		t.Errorf("verso-row-name on %d cells, want the name only:\n%s", n, got)
+	}
+	if !strings.Contains(got, `<span class="verso-row-name">Guest</span>`) {
+		t.Errorf("the name should carry the marker's span:\n%s", got)
+	}
+	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 1 {
+		t.Errorf("off said %d times, want once, after the name:\n%s", n, got)
+	}
+	if !strings.Contains(got, `text-meta">radio0</span>`) {
+		t.Errorf("the radio should read at Meta like the rest of the row:\n%s", got)
+	}
+}
+
+// TestRenderTableNameIsNeverADoor: a row's name is words, never a control. A
+// reader cannot tell what pressing a name would do, while the row's acts say
+// it with their glyphs. A plugin may still point its name at the row's panel
+// or drawer; the shell then makes sure an act reaches the same place, drawing
+// the one the row lacks: the edit pencil for a panel, Details for a drawer.
+func TestRenderTableNameIsNeverADoor(t *testing.T) {
+	r := newRenderer(t)
+	nameIsADoor := regexp.MustCompile(`<(a|button)\b[^>]*>(<span[^>]*>)*<span class="verso-row-name">`)
+	edit := TableRowAct{Icon: "square-pen", Title: "Edit", Href: "/p/lan"}
+
+	// A panel row whose name was its only door gains the pencil.
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "lan", Panel: "/p/lan", Cells: []TableCell{
+			{Text: "lan", Href: "/p/lan"},
+			{Actions: []TableRowAct{{Icon: "pin-off", Title: "Remove", Name: "_remove", Value: "lan"}}},
+		}}},
+	})
+	if nameIsADoor.MatchString(got) {
+		t.Errorf("the name should be words, not a link:\n%s", got)
+	}
+	if !strings.Contains(got, lucideIcons["square-pen"]) || !strings.Contains(got, `href="/p/lan"`) {
+		t.Errorf("a row whose name was its door should gain the edit pencil to the same panel:\n%s", got)
+	}
+
+	// A row that already has the pencil keeps exactly one.
+	got = render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "lan", Panel: "/p/lan", Cells: []TableCell{
+			{Text: "lan", Href: "/p/lan"}, {Actions: []TableRowAct{edit}},
+		}}},
+	})
+	if n := strings.Count(got, lucideIcons["square-pen"]); n != 1 {
+		t.Errorf("pencils = %d, want the row's own one only:\n%s", n, got)
+	}
+
+	// A drawer row with an actions column gains Details beside its other acts.
+	got = render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "nano", Drawer: &RowDrawer{Title: "nano"}, Cells: []TableCell{
+			{Text: "nano", Opens: true},
+			{Actions: []TableRowAct{{Icon: "trash-2", Title: "Remove", Name: "remove", Value: "nano"}}},
+		}}},
+	})
+	if nameIsADoor.MatchString(got) {
+		t.Errorf("a drawer row's name should be words, not a button:\n%s", got)
+	}
+	if !strings.Contains(got, lucideIcons["info"]) {
+		t.Errorf("a drawer row whose name was its door should gain a Details act:\n%s", got)
+	}
+
+	// A drawer row with no acts at all falls back to the trailing Details.
+	got = render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}},
+		Rows: []TableRow{{ID: "nano", Drawer: &RowDrawer{Title: "nano"}, Cells: []TableCell{
+			{Text: "nano", Opens: true},
+		}}},
+	})
+	if nameIsADoor.MatchString(got) {
+		t.Errorf("a drawer row's name should be words, not a button:\n%s", got)
+	}
+	if !strings.Contains(got, ">Details</button>") {
+		t.Errorf("a drawer row with no acts should keep the trailing Details:\n%s", got)
 	}
 }

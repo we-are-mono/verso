@@ -40,7 +40,8 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
 	// The bar belongs to the listing, so the two render together: the cuts it
 	// offers are priced from the same roster the rows come from.
-	bar := widget.DevicesBar(roster, s.EntityListingAct("device"), func(mac string) string {
+	bar := widget.DevicesBar(roster)
+	act := widget.DevicesAct(roster, s.EntityListingAct("device"), func(mac string) string {
 		if mac == "" {
 			return widget.EntityPath("device", "new")
 		}
@@ -60,7 +61,6 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 			}, table}
 		}
 	}
-	act := widget.TakeHeadingAct(page)
 	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return

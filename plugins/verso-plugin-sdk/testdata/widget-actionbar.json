@@ -13,9 +13,5 @@
     }
   ],
   "filter": "Find a rule",
-  "live": "Pause",
-  "action": {
-    "label": "Add rule",
-    "href": "/plugins/firewall/rules/new"
-  }
+  "live": "Pause"
 }

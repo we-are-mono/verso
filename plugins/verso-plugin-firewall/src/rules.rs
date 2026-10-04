@@ -15,8 +15,8 @@
 //! between chains would change which packets it sees rather than when.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ActionBar, ActionTab, ColumnWidth, Envelope, Form,
-    RowDrawer, Snapshot, Table, TableAction, TableCell, TableColumn, TableGroup, TableRow, Tone,
+    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct,
+    RowDrawer, Snapshot, Table, TableCell, TableColumn, TableGroup, TableRow, Tone,
     Widget,
 };
 
@@ -36,8 +36,10 @@ pub const HEADING: &str = "Firewall rules";
 /// frame wraps the listing in the firewall's page frame. The heading is the
 /// page's whole introduction: the toolbar sits straight under it, and a lede
 /// between them would say in prose what the listing says in rows.
-fn frame(widget: Widget) -> Envelope {
-    page::envelope(HEADING, "", widget)
+/// frame is the Rules page: the listing, and the act that adds to it on the
+/// heading line, carrying the blank rule's panel when an address asks for one.
+fn frame(listing: Widget, blank: Option<RowDrawer>) -> Envelope {
+    page::envelope(HEADING, "", listing).with_act(act(blank))
 }
 
 /// NOTE is the one sentence the listing owes its reader, under the last row
@@ -54,8 +56,7 @@ const EMPTY: &str = "No rules yet — every packet is decided by its zone's defa
 /// added from the bar, which makes one anywhere, or from a chain's own header,
 /// which makes one already in that chain.
 pub fn page(model: &Firewall, counters: &Counters) -> Envelope {
-    let children = vec![bar(&model.rules, None), table(model, counters, None)];
-    frame(Widget::stack(children))
+    frame(table(model, counters, None), None)
 }
 
 /// page_open is the listing with one rule's panel already in front of the
@@ -92,11 +93,7 @@ pub fn page_open(
             errors: Errors::default(),
         }),
     };
-    let children = vec![
-        bar(&model.rules, blank),
-        table(model, counters, open.as_ref()),
-    ];
-    frame(Widget::stack(children))
+    frame(table(model, counters, open.as_ref()), blank)
 }
 
 /// seeded is the blank rule as the address asked for it. A lane's own New rule
@@ -198,11 +195,7 @@ fn opened(
         form: form.clone(),
         errors: errors.clone(),
     });
-    let children = vec![
-        bar(&model.rules, None),
-        table(model, counters, open.as_ref()),
-    ];
-    frame(Widget::stack(children))
+    frame(table(model, counters, open.as_ref()), None)
 }
 
 /// opened_blank is the same for a rule that does not exist yet.
@@ -213,62 +206,25 @@ fn opened_blank(
     errors: &Errors,
     tab: &str,
 ) -> Envelope {
-    let children = vec![
-        bar(
-            &model.rules,
-            Some(rule_drawer::blank(model, form, errors, tab)),
-        ),
+    frame(
         table(model, counters, None),
-    ];
-    frame(Widget::stack(children))
+        Some(rule_drawer::blank(model, form, errors, tab)),
+    )
 }
 
-/// bar is the listing's controls: the address-family cut, the lens, and the one
-/// forward act. The family tabs are priced with what taking them would leave,
-/// because a firewall is usually only wrong on one family at a time and the
-/// count is what says which.
-fn bar(rules: &[Rule], blank: Option<RowDrawer>) -> Widget {
-    let ipv4 = rules.iter().filter(|rule| families(rule).0).count() as u32;
-    let ipv6 = rules.iter().filter(|rule| families(rule).1).count() as u32;
-    Widget::ActionBar(ActionBar {
-        tabs: vec![
-            ActionTab {
-                label: "All families".into(),
-                count: rules.len() as u32,
-                active: true,
-                ..ActionTab::default()
-            },
-            ActionTab {
-                label: "IPv4".into(),
-                count: ipv4,
-                matches: TAG_IPV4.into(),
-                ..ActionTab::default()
-            },
-            ActionTab {
-                label: "IPv6".into(),
-                count: ipv6,
-                matches: TAG_IPV6.into(),
-                ..ActionTab::default()
-            },
-        ],
-        filter: "Find a rule".into(),
-        // Making a rule is editing one that does not exist yet, so the act opens
-        // the same panel a row's name opens rather than a page of its own.
-        action: Some(TableAction {
-            label: "Add rule".into(),
-            href: rule_drawer::new_href("", ""),
-            ..TableAction::default()
-        }),
+/// act is the page's one forward act. Making a rule is editing one that does
+/// not exist yet, so it opens the same panel a row's edit glyph opens rather
+/// than a page of its own. A still listing is scrolled and found in with the
+/// browser's own find, so nothing narrows it.
+fn act(blank: Option<RowDrawer>) -> HeadingAct {
+    HeadingAct {
+        label: "Add rule".into(),
+        href: rule_drawer::new_href("", ""),
         opens_panel: true,
         drawer: blank,
         ..Default::default()
-    })
+    }
 }
-
-/// The tags a family tab cuts by. A rule that names no family covers both, and
-/// so survives either cut.
-const TAG_IPV4: &str = "ipv4";
-const TAG_IPV6: &str = "ipv6";
 
 fn columns() -> Vec<TableColumn> {
     [
@@ -360,12 +316,12 @@ fn row(
         // A rule that is switched off still decides nothing, so it reads at the
         // secondary step — present, exact, and plainly not in force.
         muted: !rule.enabled,
-        tags: tags(rule),
+        tags: Vec::new(),
         cells: vec![
             TableCell::default(),
             page::index_cell(position),
-            // The name is the row's subject and its door: what the log calls
-            // this rule, and where it is edited.
+            // The name is the row's subject: what the log calls this rule,
+            // and where it is edited.
             page::name_cell(&rule.name, door.clone()),
             page::endpoint_cell(&rule.src_ips, &rule.src),
             page::endpoint_cell(&rule.dest_ips, &rule.dest),
@@ -395,24 +351,6 @@ fn row(
     }
 }
 
-/// families is the pair of address families this rule's traffic can be on.
-fn families(rule: &Rule) -> (bool, bool) {
-    format::families(&rule.proto, &rule.family)
-}
-
-/// tags are what the bar's family tabs cut this row by. A rule that names no
-/// family covers both, so it carries both tags and survives either cut.
-fn tags(rule: &Rule) -> Vec<String> {
-    let (ipv4, ipv6) = families(rule);
-    let mut tags = Vec::with_capacity(2);
-    if ipv4 {
-        tags.push(TAG_IPV4.to_string());
-    }
-    if ipv6 {
-        tags.push(TAG_IPV6.to_string());
-    }
-    tags
-}
 
 /// Lane is one evaluation chain's run of rules, plus the destination zone the
 /// whole run shares — the label says where forwarded traffic goes only when
@@ -520,29 +458,22 @@ mod tests {
                 {"label": "Activity", "path": "activity"}
             ])
         );
-        // The listing's own controls sit between the heading and the rows: the
-        // family cut priced with what taking it leaves, the lens, and the one
-        // act that adds to the listing.
-        let bar = &body["widget"]["children"][0];
-        assert_eq!(bar["type"], "actionbar");
-        assert_eq!(bar["filter"], "Find a rule");
+        // The page's one act stands on its heading line; a still listing is
+        // scrolled and found in with the browser's own find, so nothing
+        // narrows it.
         assert_eq!(
-            bar["action"],
+            body["act"],
             // Making a rule is editing one that does not exist yet, so the act
-            // opens the same panel a row's name opens — the href is the
+            // opens the same panel a row's edit glyph opens — the href is the
             // fallback a browser with no script follows.
-            serde_json::json!({"label": "Add rule", "href": "/plugins/firewall/?open=new"})
+            serde_json::json!({
+                "label": "Add rule",
+                "href": "/plugins/firewall/?open=new",
+                "opens_panel": true
+            })
         );
-        assert_eq!(
-            bar["tabs"],
-            serde_json::json!([
-                {"label": "All families", "count": 9, "active": true},
-                {"label": "IPv4", "count": 6, "match": "ipv4"},
-                {"label": "IPv6", "count": 7, "match": "ipv6"}
-            ])
-        );
-        // The grid is the page's own content, not a titled region inside it.
-        assert_eq!(body["widget"]["children"][1]["type"], "table");
+        // The grid is the page itself, not a titled region inside it.
+        assert_eq!(body["widget"]["type"], "table");
         // What evaluation order means is a caption under the last row, not a
         // paragraph to get past before the first.
         assert_eq!(table_of(&body)["note"], NOTE);
@@ -723,25 +654,24 @@ mod tests {
     }
 
     // Making a rule is editing one that does not exist yet, so it opens the same
-    // panel — from the bar, because there is no row for it to open from.
+    // panel — from the page's act, because there is no row for it to open from.
     #[test]
-    fn the_bar_opens_a_blank_rule_seeded_with_the_lane_it_was_asked_from() {
+    fn the_act_opens_a_blank_rule_seeded_with_the_lane_it_was_asked_from() {
         let body = opened(rule_drawer::NEW, "");
-        let bar = &body["widget"]["children"][0];
-        let drawer = &bar["drawer"];
+        let drawer = &body["act"]["drawer"];
         assert_eq!(drawer["title"], "New rule");
         assert_eq!(drawer["open"], true);
         // Closing it leaves the address it opened from, so a reload shows the
         // listing rather than reopening what was just dismissed.
         assert_eq!(drawer["closed"], "/plugins/firewall/");
-        // No row carries a panel: the blank one belongs to the bar's own act.
+        // No row carries a panel: the blank one belongs to the page's act.
         assert!(
             table_of(&body)["rows"]
                 .as_array()
                 .expect("rows")
                 .iter()
                 .all(|row| row.get("drawer").is_none()),
-            "a blank rule opens from the bar, never from a row"
+            "a blank rule opens from the page's act, never from a row"
         );
         // A blank rule uses the same title-only header as an existing rule.
         assert!(drawer.get("verdict").is_none());
@@ -761,7 +691,7 @@ mod tests {
             &query,
         ))
         .expect("serialize");
-        let fields = &body["widget"]["children"][0]["drawer"]["children"][0]["fields"][0];
+        let fields = &body["act"]["drawer"]["children"][0]["fields"][0];
         let src = fixture::find_with(fields, &|w| w["type"] == "field" && w["name"] == "src")
             .expect("the source pick");
         assert_eq!(src["value"], "wan");
@@ -844,7 +774,6 @@ mod tests {
             rows[1],
             serde_json::json!({
                 "id": "allow_ping",
-                "tags": ["ipv4"],
                 // The row ships an empty frame and fetches its panel from here
                 // when someone opens it — the same address both its doors point
                 // at, so either opens it where it stands.
@@ -947,8 +876,8 @@ mod tests {
         );
         for row in table["rows"].as_array().expect("rows") {
             let section = row["id"].as_str().expect("id");
-            // Both doors lead to the same place: the rule's own name, and the
-            // glyph at the row's trailing edge. That place is this listing with
+            // The name and the glyph at the row's trailing edge name the same
+            // place, and the glyph is the way in. That place is this listing with
             // the rule's panel open beside it — a rule is read in the order it
             // sits in, so opening one never leaves the order.
             let href = format!("/plugins/firewall/?open={section}");
@@ -1044,9 +973,6 @@ mod tests {
             .expect("row");
         assert_eq!(icmpv6["cells"][5]["text"], "icmpv6");
         assert_eq!(icmpv6["cells"][6]["text"], "11 types · ≤1000/s");
-        // ICMPv6 exists only on IPv6, so the family cut knows it without the
-        // rule having to state a family.
-        assert_eq!(icmpv6["tags"], serde_json::json!(["ipv6"]));
     }
 
     #[test]

@@ -210,9 +210,11 @@ func TestRowShipsAnEmptyFrame(t *testing.T) {
 	})
 	for _, want := range []string{
 		`data-verso-panel data-verso-panel-url="/x?open=r1"`,
-		// The name is still a link, so the panel is reachable with no script at
-		// all; the click handler is what keeps it from leaving the page.
+		// The name is words, and a row with no acts keeps its trailing Details,
+		// a link, so the panel is reachable with no script at all; the click
+		// handler is what keeps it from leaving the page.
 		`<a href="/x?open=r1" @click.prevent="showPanel"`,
+		`>Details</a>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("fetched-panel row missing %q:\n%s", want, got)

@@ -11,9 +11,9 @@ use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
     ActionBar, ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth,
-    ConditionItem, Field, Grid, List, Property, RemoveConfirm, RowDrawer, SectionWidget,
+    ConditionItem, Field, Grid, HeadingAct, List, Property, RemoveConfirm, RowDrawer, SectionWidget,
     SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam, SettingsToggle, Switch,
-    Table, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow, TableRowAct,
+    Table, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow, TableRowAct,
     TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
@@ -438,12 +438,6 @@ fn write_widget_fixtures() {
                 ],
                 filter: "Find a rule".into(),
                 live: "Pause".into(),
-                action: Some(TableAction {
-                    label: "Add rule".into(),
-                    href: "/plugins/firewall/rules/new".into(),
-                    ..TableAction::default()
-                }),
-                ..Default::default()
             }),
         ),
         ("stream-table", live_listing()),
@@ -471,6 +465,31 @@ fn write_widget_fixtures() {
         assert!(v.get("type").is_some(), "{name}: missing type tag");
         fs::write(format!("{dir}/widget-{name}.json"), json).unwrap();
     }
+}
+
+// The page's act travels beside the widget tree, in the envelope, so it is
+// pinned on its own: the shell decodes it through widget.DecodeHeadingAct,
+// blank panel and all.
+#[test]
+fn write_act_fixture() {
+    let act = HeadingAct {
+        label: "Add rule".into(),
+        href: "/plugins/firewall/?open=new".into(),
+        icon: "plus".into(),
+        style: String::new(),
+        opens_panel: true,
+        drawer: Some(RowDrawer {
+            title: "New rule".into(),
+            closed: "/plugins/firewall/".into(),
+            open: true,
+            children: vec![Widget::text("A blank rule.")],
+            ..Default::default()
+        }),
+    };
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    let json = serde_json::to_vec_pretty(&act).unwrap();
+    fs::write(format!("{dir}/act-new-rule.json"), json).unwrap();
 }
 
 // listing is the table fixture: a column set broad enough that every TableCell

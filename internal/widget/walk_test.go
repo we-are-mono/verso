@@ -143,48 +143,28 @@ func TestStripFiltersReachesEveryContainer(t *testing.T) {
 	}
 }
 
-// TestFilterableCount: the lens sifts rows and option rows, folded ones included,
-// wherever they sit; 20 is the boundary at which a page still reads whole.
-func TestFilterableCount(t *testing.T) {
-	rows := func(n int) []TableRow {
-		out := make([]TableRow, n)
-		return out
-	}
-	items := func(n int) []SettingsItem {
-		out := make([]SettingsItem, n)
-		return out
-	}
+// TestHasLiveListing: the lens is earned by a listing whose rows arrive while it
+// is read, wherever on the page it sits; a still listing of any length, or a
+// stream from a source nobody serves, earns none.
+func TestHasLiveListing(t *testing.T) {
 	cases := []struct {
 		name string
 		tree Widget
-		want int
+		want bool
 	}{
-		{"nothing to sift", &Stack{Children: []Widget{&Text{Markdown: "prose"}}}, 0},
-		{"rows and folded rows", &Table{Rows: rows(3), Seam: &TableSeam{Rows: rows(2)}}, 5},
-		{"option rows and folded ones", &Settings{Items: items(4), Seam: &SettingsSeam{Items: items(1)}}, 5},
-		{"across the page", &Stack{Children: []Widget{
-			&Section{Children: []Widget{&Table{Rows: rows(18)}}},
-			&Section{Children: []Widget{&Settings{Items: items(2)}}},
-		}}, 20},
-		{"one past the threshold", &Stack{Children: []Widget{
-			&Section{Children: []Widget{&Table{Rows: rows(21)}}},
-		}}, 21},
-		// A live listing renders with nothing in it and fills afterwards. What
-		// the lens will sift is the ring it keeps, so the page earns its lens
-		// on the strength of the stream, not of the empty table it starts as.
-		{"a live listing counts its ring", &Table{Stream: &TableStream{Source: StreamSourceFirewallLog}}, StreamRingDefault},
-		{"a declared ring is what it keeps", &Table{Stream: &TableStream{Source: StreamSourceFirewallLog, Ring: 40}}, 40},
-		{"a source nobody serves sifts nothing", &Table{Stream: &TableStream{Source: "syslog"}}, 0},
+		{"nothing listed", &Stack{Children: []Widget{&Text{Markdown: "prose"}}}, false},
+		{"a long still listing", &Table{Rows: make([]TableRow, 500)}, false},
+		{"a live listing in a section", &Stack{Children: []Widget{
+			&Section{Children: []Widget{&Table{Stream: &TableStream{Source: StreamSourceFirewallLog}}}},
+		}}, true},
+		{"a source nobody serves", &Table{Stream: &TableStream{Source: "syslog"}}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := FilterableCount(c.tree); got != c.want {
-				t.Errorf("FilterableCount = %d, want %d", got, c.want)
+			if got := HasLiveListing(c.tree); got != c.want {
+				t.Errorf("HasLiveListing = %v, want %v", got, c.want)
 			}
 		})
-	}
-	if FilterThreshold != 20 {
-		t.Errorf("FilterThreshold = %d, want 20", FilterThreshold)
 	}
 }
 

@@ -12,86 +12,88 @@ func actOnly() *ActionBar {
 	return &ActionBar{Action: &TableAction{Label: "Add network", Href: "/plugins/wireless/?open=new", Icon: "plus"}, OpensPanel: true}
 }
 
-// TestTakeHeadingActLiftsABarThatOnlyActs: a page with nothing to search or
-// narrow has no control band at all — its one act sits on the heading line,
-// and the listing under it stays where it was.
-func TestTakeHeadingActLiftsABarThatOnlyActs(t *testing.T) {
-	table := &Table{Columns: []TableColumn{{Label: "Network"}}}
-	bar := actOnly()
-	page := &Stack{Children: []Widget{bar, table}}
-
-	got := TakeHeadingAct(page)
-	if got == nil || !got.Heading || got.Action == nil || got.Action.Label != "Add network" || !got.OpensPanel {
-		t.Fatalf("the act was not lifted whole: %+v", got)
+// TestDecodeHeadingAct: a page's act arrives beside the page, not inside it,
+// and carries what it opens — a blank object's panel decodes through
+// RowDrawer's own decoder, typed children and all.
+func TestDecodeHeadingAct(t *testing.T) {
+	act, err := DecodeHeadingAct([]byte(`{"label":"Add rule","href":"/x?open=new","opens_panel":true,
+		"drawer":{"title":"New rule","open":true,"closed":"/x","children":[{"type":"text","markdown":"blank"}]}}`))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(page.Children) != 1 || page.Children[0] != table {
-		t.Errorf("a band with nothing left on it goes; the listing stays: %v", page.Children)
+	bar := act.Bar()
+	if !bar.Heading || bar.Action == nil || bar.Action.Label != "Add rule" || !bar.OpensPanel {
+		t.Fatalf("the act should draw on the heading line whole: %+v", bar)
 	}
-}
-
-// TestTakeHeadingActLiftsThePrimaryOffABandThatNarrows: every page's primary
-// act lives on its heading line, so a band that narrows the listing gives its
-// act up and keeps only the narrowing — the search, the cuts, the select, the
-// live control. The act keeps what it opens.
-func TestTakeHeadingActLiftsThePrimaryOffABandThatNarrows(t *testing.T) {
-	blank := &RowDrawer{Title: "New rule", Open: true}
-	band := &ActionBar{
-		Filter: "Find a rule", Tabs: []ActionTab{{Label: "All"}},
-		Action: &TableAction{Label: "Add rule", Href: "/x?open=new", Icon: "plus"}, OpensPanel: true, Drawer: blank,
+	if bar.Drawer == nil || !bar.Drawer.Open || len(bar.Drawer.Children) != 1 {
+		t.Fatalf("the act's blank panel should decode with its children: %+v", bar.Drawer)
 	}
-	page := &Stack{Children: []Widget{band, &Table{}}}
-
-	got := TakeHeadingAct(page)
-	if got == nil || got.Action == nil || got.Action.Label != "Add rule" || got.Drawer != blank || !got.OpensPanel || !got.Heading {
-		t.Fatalf("the act and its panel should move to the heading line: %+v", got)
+	if empty, err := DecodeHeadingAct(nil); err != nil || empty != nil {
+		t.Errorf("no act is no act: %v, %v", empty, err)
 	}
-	if got.Filter != "" || len(got.Tabs) > 0 {
-		t.Errorf("the heading takes the act alone: %+v", got)
-	}
-	if len(page.Children) != 2 || page.Children[0] != band {
-		t.Fatalf("the band stays at the head of its listing: %v", page.Children)
-	}
-	if band.Action != nil || band.Drawer != nil || band.OpensPanel {
-		t.Errorf("the band keeps only its narrowing: %+v", band)
-	}
-	if band.Filter != "Find a rule" || len(band.Tabs) != 1 {
-		t.Errorf("the band's narrowing is untouched: %+v", band)
+	if (*HeadingAct)(nil).Bar() != nil {
+		t.Error("no act draws no heading")
 	}
 }
 
-// TestTakeHeadingActLeavesAQuietActAndOtherShapes: a quiet act takes something
-// away from the listing rather than making something, so it stays with the
-// narrowing; and only a band leading the page's stack has a heading to go to.
-func TestTakeHeadingActLeavesAQuietActAndOtherShapes(t *testing.T) {
-	quiet := &ActionBar{Filter: "Find", Action: &TableAction{Label: "Download", Href: "/x", Style: "quiet"}}
-	if got := TakeHeadingAct(&Stack{Children: []Widget{quiet, &Table{}}}); got != nil || quiet.Action == nil {
-		t.Error("a quiet act stays on the band")
+// TestTheActRidesWithThePageUntilItIsDrawn: between decoding and drawing, the
+// shell's passes over a page (staging marks, refusals, the open panel, the
+// frame a panel's forms post into) see the act's blank panel exactly as they
+// see a row's, so the act travels in the tree; it leaves it only to be drawn on
+// the heading line.
+func TestTheActRidesWithThePageUntilItIsDrawn(t *testing.T) {
+	page := &Stack{Children: []Widget{&Table{}}}
+	act := &HeadingAct{Label: "Add rule", Href: "/x?open=new", Drawer: &RowDrawer{Title: "New rule", Open: true}}
+	tree := WithHeading(act, page)
+	if openPanel(tree) != act.Drawer {
+		t.Error("the act's open blank panel should be found like a row's")
 	}
-	none := &ActionBar{Filter: "Find"}
-	if got := TakeHeadingAct(&Stack{Children: []Widget{none, &Table{}}}); got != nil {
-		t.Error("a band with no act gives nothing to the heading")
+	bar, rest := SplitHeading(tree)
+	if bar == nil || !bar.Heading || bar.Drawer != act.Drawer || rest != page {
+		t.Errorf("the act should come off whole and leave the page as it was: %+v, %v", bar, rest)
 	}
-	if got := TakeHeadingAct(&Stack{Children: []Widget{&Table{}, actOnly()}}); got != nil {
-		t.Error("only a band leading the page stands for the heading's act")
+	if bar, rest := SplitHeading(page); bar != nil || rest != page {
+		t.Error("a page with no act gives none")
 	}
-	if got := TakeHeadingAct(actOnly()); got != nil {
-		t.Error("a band that is the whole page has no heading to move to")
+	if WithHeading(nil, page) != page {
+		t.Error("no act leaves the page alone")
 	}
 }
 
-// TestTakeHeadingActLiftsALogsActsTogether: a live log's live control and its
-// act — quiet or not — go to the heading line together, as equals; the bar
-// keeps what narrows the log and still wears the log's unfilled dress.
-func TestTakeHeadingActLiftsALogsActsTogether(t *testing.T) {
-	bar := &ActionBar{Filter: "Find", Tabs: []ActionTab{{Label: "All traffic", Active: true}}, Live: "Live",
-		Action: &TableAction{Label: "Download", Href: "/x", Style: "quiet"}}
-	act := TakeHeadingAct(&Stack{Children: []Widget{bar, &Table{Style: "console"}}})
-	if act == nil || act.Live != "Live" || act.Action == nil || !act.Heading {
-		t.Fatalf("the log's live control and act should go to the heading line together, got %+v", act)
+// TestABarTakesNoActFromAPlugin: a listing's bar narrows the listing and
+// nothing else. A page's act is the envelope's own, so an act a plugin puts on
+// a bar is not read.
+func TestABarTakesNoActFromAPlugin(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"actionbar","live":"Live","filter":"Find",
+		"action":{"label":"Add rule","href":"/x"},"opens_panel":true,
+		"drawer":{"title":"New rule","open":true,"children":[]}}`))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if bar.Live != "" || bar.Action != nil {
-		t.Errorf("the bar should give up its live control and act, left %+v", bar)
+	bar := w.(*ActionBar)
+	if bar.Action != nil || bar.Drawer != nil || bar.OpensPanel {
+		t.Errorf("the bar should take no act from a plugin: %+v", bar)
 	}
+	if bar.Live != "Live" || bar.Filter != "Find" {
+		t.Errorf("the bar keeps what narrows: %+v", bar)
+	}
+}
+
+// TestTakeLiveJoinsTheLogsActs: a live log's live control stands on the
+// heading line beside the page's act, as its equal; the bar keeps what narrows
+// the log and still wears the log's unfilled dress. Only a bar leading the
+// page's stack has a heading to give it to.
+func TestTakeLiveJoinsTheLogsActs(t *testing.T) {
+	bar := &ActionBar{Filter: "Find", Tabs: []ActionTab{{Label: "All traffic", Active: true}}, Live: "Live"}
+	lifted := TakeLive(&Stack{Children: []Widget{bar, &Table{Style: "console"}}})
+	if lifted != "Live" || bar.Live != "" {
+		t.Fatalf("the live control should leave the bar for the heading: %q, bar %+v", lifted, bar)
+	}
+	if got := TakeLive(&Stack{Children: []Widget{&Table{}, &ActionBar{Live: "Live"}}}); got != "" {
+		t.Error("only a bar leading the page gives up its live control")
+	}
+	act := (&HeadingAct{Label: "Download", Href: "/x", Style: "quiet"}).Bar()
+	act.Live = lifted
 	heading := render(t, newRenderer(t), act)
 	live, download := strings.Index(heading, "data-verso-live"), strings.Index(heading, ">Download<")
 	if live < 0 || download < 0 || live > download || strings.Contains(heading, "<svg") {
@@ -148,7 +150,7 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 // one filled surface — the quiet sand between two hairlines, every control 16px
 // from its edges — and it sits flush on the listing's column heads.
 func TestControlBandIsTheListingsSurface(t *testing.T) {
-	got := render(t, newRenderer(t), &ActionBar{Filter: "Find a rule"})
+	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
 	// mb-0 outranks a nested stack's space-y, which would part band and table.
 	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4"`) {
 		t.Errorf("control band surface wrong:\n%s", got)

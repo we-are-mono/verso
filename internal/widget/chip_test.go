@@ -82,14 +82,14 @@ func renderTagCell(t *testing.T, r *Renderer, cell TableCell) string {
 // sans for words.
 func TestEveryCitationChipIsOneBox(t *testing.T) {
 	r := newRenderer(t)
-	tabs, err := Decode([]byte(`{"type":"actionbar","filter":"Find a rule",
-		"action":{"label":"Add rule","href":"/x?open=new"},
+	act, err := DecodeHeadingAct([]byte(`{"label":"Add rule","href":"/x?open=new",
 		"drawer":{"title":"New rule","open":true,"closed":"/x",
 			"tabs":[{"label":"Match","state":"0 conditions","active":true},{"label":"Action","state":"accept"}],
 			"children":[{"type":"text","text":"."}]}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
+	tabs := act.Bar()
 	for name, tc := range map[string]struct {
 		got  string
 		want []string

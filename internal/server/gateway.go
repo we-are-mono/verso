@@ -293,6 +293,14 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		log.Printf("verso: plugin %q returned undecodable schema: %v", m.ID, err)
 		return s.unavailable(m, tr), http.StatusOK
 	}
+	act, err := widget.DecodeHeadingAct(env.Act)
+	if err != nil {
+		log.Printf("verso: plugin %q returned an undecodable act: %v", m.ID, err)
+		return s.unavailable(m, tr), http.StatusOK
+	}
+	// The act rides in front of the page until the heading line is drawn, so
+	// every pass below reaches its blank panel as it reaches a row's.
+	wdg = widget.WithHeading(act, wdg)
 
 	// A composed access form returns through its shell host. The plugin still
 	// owns the schema, validation, ACL and commit intents.
@@ -428,11 +436,12 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	widget.MarkStaged(wdg, s.waitingOptions(r.Context(), s.sessionSID(r)))
 
 	// The page-wide lens is the shell's call, not each plugin's constant: a
-	// plugin declares the filter it would like and the shell keeps it only on a
-	// page with enough to sift (ADR-005 §5 — the vocabulary decides what a widget
-	// is worth). Below the threshold the widget is removed rather than hidden, so
-	// the page carries no dead dock and no "/" shortcut into nothing.
-	if widget.FilterableCount(wdg) <= widget.FilterThreshold {
+	// plugin declares the filter it would like and the shell keeps it only over
+	// a live listing (ADR-005 §5 — the vocabulary decides what a widget is
+	// worth). A still page is scrolled and searched with the browser's own
+	// find, so there the widget is removed rather than hidden: no dead dock and
+	// no "/" shortcut into nothing.
+	if !widget.HasLiveListing(wdg) {
 		wdg = widget.StripFilters(wdg)
 	}
 
@@ -496,10 +505,18 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		}
 	}
 
-	// A bar with nothing to narrow is no toolbar: its act goes to the heading
-	// line. Lifted only here, for a whole page — a panel request above still
-	// finds a blank object's panel on the bar where the plugin put it.
-	hdr.HeadingAct = s.headingAct(r, widget.TakeHeadingAct(wdg), lang, t)
+	// The page's act comes off the tree for the heading line only here, for a
+	// whole page — a panel request above still finds the act's blank panel in
+	// the tree. A live log's live control stands beside it as its equal.
+	head, page := widget.SplitHeading(wdg)
+	wdg = page
+	if live := widget.TakeLive(wdg); live != "" {
+		if head == nil {
+			head = &widget.ActionBar{Heading: true}
+		}
+		head.Live = live
+	}
+	hdr.HeadingAct = s.headingAct(r, head, lang, t)
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)

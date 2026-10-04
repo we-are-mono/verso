@@ -163,7 +163,6 @@
   "Leases": "Zakupi",
   "Who holds an address right now, read live from the router.": "Kdo ima trenutno naslov, prebrano sproti z usmerjevalnika.",
   "How every network is served. These are dnsmasq’s own options, so they apply to all of the servers above.": "Kako so postrežena vsa omrežja. To so lastne možnosti programa dnsmasq, zato veljajo za vse zgornje strežnike.",
-  "Find a device, address or MAC": "Poiščite napravo, naslov ali MAC",
   "Range": "Obseg",
   "Leased": "Zakupljeno",
   "Lease time": "Čas zakupa",

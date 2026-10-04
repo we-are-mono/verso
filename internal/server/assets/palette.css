@@ -120,3 +120,33 @@
   --color-hw-tip-edge: #333b49;
   --color-hw-tip-key: #8a94a8;
 }
+
+/*
+ * A switched-off row (data-verso-off) states a subject that is not in force,
+ * so it carries no verdict: inside it the three status families fall to their
+ * sand neutrals, and inside its chips denim falls with them. Colour in a table
+ * then means "in force". The row's acts and its focus ring keep denim, since
+ * they are the way back to turning it on. Every step keeps its job's contrast:
+ * a deep step's words become Meta on Quiet Sand (4.8 : 1), a mark becomes a
+ * Glyph mark (3.5 : 1).
+ */
+[data-verso-off] {
+  --color-green: var(--color-glyph);
+  --color-green-deep: var(--color-meta);
+  --color-green-line: var(--color-rule);
+  --color-green-soft: var(--color-quiet);
+  --color-marigold: var(--color-glyph);
+  --color-marigold-deep: var(--color-meta);
+  --color-marigold-line: var(--color-rule);
+  --color-marigold-soft: var(--color-quiet);
+  --color-crimson: var(--color-glyph);
+  --color-crimson-deep: var(--color-meta);
+  --color-crimson-line: var(--color-rule);
+  --color-crimson-soft: var(--color-quiet);
+}
+[data-verso-off] .verso-chip {
+  --color-denim: var(--color-glyph);
+  --color-denim-deep: var(--color-meta);
+  --color-denim-line: var(--color-rule);
+  --color-denim-soft: var(--color-quiet);
+}

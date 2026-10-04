@@ -308,6 +308,81 @@ html {
   .verso-table-seam-row { visibility: collapse; }
   tbody:has(.verso-table-seam-control details[open]) > .verso-table-seam-row { visibility: visible; }
 
+  /* A switched-off row's name is marked over with a sand marker, the way an
+     operator runs a highlighter through an entry in the notebook that no
+     longer holds: Strong Hairline ink, laid under the words, its edges frayed
+     and streaked along the stroke, its chisel ends pooled a little darker
+     where the tip landed and lifted. The ink never passes 80%, so the name's
+     Body words keep 4.9 : 1 over it (4.87 on a hovered row); the rest of the
+     row's hues fall to sand (palette.css). The mask is the stroke's shape and
+     texture only; its colour is the palette's. When the row's power act turns
+     it off in place the marker is drawn left to right, and when it turns it
+     back on the marker lifts, once each (verso-forms.js marks the turn).
+     The stroke overshoots the words by 10px each side, as a hand does. It is
+     absolute, sized to the words; the box the name truncates in clips what
+     overflows it (that is its ellipsis), and only a containing block outside
+     that box would escape it, which could not then size to the words. So in
+     a marked row the box is given 12px of room each side, taken back by an
+     equal negative margin so nothing moves: a cell's 14px inset holds it, and
+     in a dense table the index column's slack does, to two digits. */
+  /* A name not in force gives up its weight too: it still names the row, but
+     no longer makes the row's claim. */
+  [data-verso-off] .verso-row-name {
+    position: relative;
+    isolation: isolate;
+    font-weight: 400;
+  }
+  [data-verso-off] :has(> .verso-row-name) {
+    padding-inline: 0.75rem;
+    margin-inline: -0.75rem;
+  }
+  [data-verso-off] .verso-row-name::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: var(--verso-marker-inset);
+    background-color: var(--color-rule-strong);
+    -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+    mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+  }
+  .verso-row-name {
+    --verso-marker-inset: 0.25rem -0.625rem 0.1875rem;
+    --verso-marker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cfilter id='f' x='-5%25' y='-30%25' width='110%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.015 .45' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.5'/%3E%3C/filter%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-opacity='.8'/%3E%3Cstop offset='.12' stop-opacity='.66'/%3E%3Cstop offset='.55' stop-opacity='.72'/%3E%3Cstop offset='.9' stop-opacity='.62'/%3E%3Cstop offset='1' stop-opacity='.78'/%3E%3C/linearGradient%3E%3Cpath d='M4 4.5 120 2.5 116.5 17 0 18.5Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-verso-turning="off"] .verso-row-name::after {
+      animation: verso-marker-draw 520ms cubic-bezier(.3, .7, .2, 1) 40ms both;
+    }
+    /* A row turned back on has no marker of its own; the turn holds one up
+       just long enough to lift it. */
+    [data-verso-turning="on"] .verso-row-name {
+      position: relative;
+      isolation: isolate;
+    }
+    [data-verso-turning="on"] :has(> .verso-row-name) {
+      padding-inline: 0.75rem;
+      margin-inline: -0.75rem;
+    }
+    [data-verso-turning="on"] .verso-row-name::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: var(--verso-marker-inset);
+      background-color: var(--color-rule-strong);
+      -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+      mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+      animation: verso-marker-lift 280ms ease-out both;
+    }
+  }
+  @keyframes verso-marker-draw {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  @keyframes verso-marker-lift {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
   /* Autofilled inputs: the browser's trust tint, repainted in the action colour.
      Chrome's own pale blue sits off the palette and washes the field's outline
      soft. The UA background yields only to an inset shadow — and the fields'

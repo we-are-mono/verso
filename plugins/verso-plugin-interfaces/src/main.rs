@@ -6,6 +6,7 @@ use verso_plugin::{
 mod editor;
 mod model;
 mod page;
+mod routes;
 use model::Model;
 pub const ROOT: &str = "/plugins/interfaces/";
 fn main() {
@@ -18,6 +19,7 @@ fn get(r: &Request) -> Envelope {
         "/new" => editor::new(&m, &r.query.get("kind")),
         "/edit" => editor::edit(&m, &r.query.get("network"), &r.query.get("device")),
         "/delete" => editor::delete_page(&m, &r.query.get("network"), &r.query.get("device")),
+        "/routes" => routes::page(&m, &r.query.get("open"), &r.query.get("family")),
         "/vpn" => {
             let body = Widget::stack(vec![
                 Widget::text("WireGuard and OpenVPN are configured by their tunnel plugins. Install a compatible tunnel plugin from System → Packages."),
@@ -34,6 +36,7 @@ fn post(r: &Request, f: &Form) -> Envelope {
         "/new" => editor::save(&m, &r.query.get("kind"), "", "", f),
         "/edit" => editor::save(&m, "", &r.query.get("network"), &r.query.get("device"), f),
         "/delete" => editor::delete(&m, &r.query.get("network"), &r.query.get("device"), f),
+        "/routes" => routes::post(&m, &r.query.get("open"), f),
         "" => editor::action(&m, f),
         _ => missing(),
     }
@@ -46,22 +49,23 @@ fn missing() -> Envelope {
         )
         .with_back("Interfaces", ROOT)
 }
-fn describe(changes: &[Change], _: &Snapshot) -> Vec<Description> {
-    changes
-        .iter()
-        .enumerate()
-        .filter(|(_, c)| c.config == "network")
-        .map(|(i, c)| {
-            Description::one(
-                if c.op == "remove-section" {
-                    "Removed interface"
-                } else {
-                    "Changed interface settings"
-                },
-                i,
-            )
-        })
-        .collect()
+// describe names a route by its target and any other network change as the
+// interface settings it is. A removed section is gone from the staged
+// snapshot, so nothing says whether it was an interface, a device or a route:
+// its change keeps its raw line.
+fn describe(changes: &[Change], s: &Snapshot) -> Vec<Description> {
+    let mut out = routes::describe(changes, s);
+    let covered: Vec<usize> = out.iter().flat_map(|d| d.covers.clone()).collect();
+    out.extend(
+        changes
+            .iter()
+            .enumerate()
+            .filter(|(i, c)| {
+                c.config == "network" && c.op != "remove-section" && !covered.contains(i)
+            })
+            .map(|(i, _)| Description::one("Changed interface settings", i)),
+    );
+    out
 }
 #[cfg(test)]
 mod tests;

@@ -8,6 +8,12 @@
       "section": "Network",
       "label": "Interfaces",
       "path": "/"
+    },
+    {
+      "section": "Network",
+      "label": "Routes",
+      "path": "/routes",
+      "icon": "route"
     }
   ],
   "acl": {

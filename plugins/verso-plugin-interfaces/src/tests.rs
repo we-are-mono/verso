@@ -538,13 +538,12 @@ fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
     assert_eq!(pool["value"], "192.168.1.100–192.168.1.249");
     assert!(pool.get("span").is_none(), "{pool}");
 }
-// open_drawer is the one panel a listing's bar says is open.
+// open_drawer is the one panel the page's act says is open.
 fn open_drawer(e: &Envelope) -> serde_json::Value {
     let j = serde_json::to_value(e).unwrap();
-    let bar = j["widget"]["children"][0].clone();
-    assert_eq!(bar["type"], "actionbar", "{j}");
-    assert_eq!(bar["drawer"]["open"], true, "{bar}");
-    bar["drawer"].clone()
+    let act = j["act"].clone();
+    assert_eq!(act["drawer"]["open"], true, "{j}");
+    act["drawer"].clone()
 }
 #[test]
 fn an_object_is_edited_in_a_drawer_over_the_listing() {

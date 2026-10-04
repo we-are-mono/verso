@@ -484,7 +484,6 @@ document.addEventListener(
   var table = rows || scope.querySelector("table");
   if (!table) return;
 
-  var tabs = [].slice.call(bar.querySelectorAll("[data-verso-tab]"));
   var cut = bar.querySelector("[data-verso-listing-cut]");
   var field = bar.querySelector("[data-verso-listing-filter]");
   var select = bar.querySelector("[data-verso-listing-select]");
@@ -505,10 +504,6 @@ document.addEventListener(
       }
       return n;
     }
-    for (var i = 0; i < tabs.length; i++) {
-      var slot = tabs[i].querySelector("span");
-      if (slot) slot.textContent = String(priced(tabs[i].getAttribute("data-verso-tab") || ""));
-    }
     if (cut) {
       for (var k = 0; k < cut.options.length; k++) {
         var option = cut.options[k];
@@ -521,11 +516,7 @@ document.addEventListener(
   // band, so the pass walks the body once, in order, and hides a band only once
   // it knows nothing under it survived.
   function apply() {
-    var tag = "";
-    for (var i = 0; i < tabs.length; i++) {
-      if (tabs[i].getAttribute("data-active") === "true") tag = tabs[i].getAttribute("data-verso-tab") || "";
-    }
-    if (cut) tag = cut.value;
+    var tag = cut ? cut.value : "";
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
     var facet = select ? select.value : "";
     if (table.closest("[data-verso-inventory]")) table.dataset.filtered = String(!!(needle || tag));
@@ -573,15 +564,6 @@ document.addEventListener(
     }
   }
 
-  for (var i = 0; i < tabs.length; i++) {
-    // A problem filter is a chip pressed on and off, not one of a set.
-    tabs[i].addEventListener("click", function (e) {
-      var pressed = e.currentTarget.getAttribute("aria-pressed") !== "true";
-      e.currentTarget.setAttribute("data-active", String(pressed));
-      e.currentTarget.setAttribute("aria-pressed", String(pressed));
-      apply();
-    });
-  }
   bar.versoApplyFilters = apply;
   if (field) field.addEventListener("input", apply);
   if (select) select.addEventListener("change", apply);
@@ -771,13 +753,6 @@ document.addEventListener("click", function (event) {
           }
         }
         var bar = document.querySelector("[data-verso-actionbar]");
-        var problem = bar && bar.querySelector("[data-verso-problem-filter]");
-        var nextProblem = doc.querySelector("[data-verso-problem-filter]");
-        if (problem && nextProblem) {
-          problem.hidden = nextProblem.hidden;
-          problem.querySelector("[data-verso-problem-count]").textContent = nextProblem.querySelector("[data-verso-problem-count]").textContent;
-          if (problem.hidden) { problem.setAttribute("aria-pressed", "false"); problem.dataset.active = "false"; }
-        }
         if (bar && bar.versoApplyFilters) bar.versoApplyFilters();
         inventory.querySelector("[data-verso-inventory-stale]").hidden = true;
       } catch (_) {

@@ -651,10 +651,9 @@ type pageHeader struct {
 	// page can show.
 	StagedStructure bool
 	Subheading      string
-	// HeadingAct is a listing's forward act lifted off its control band
-	// (widget.TakeHeadingAct), already rendered (Server.headingAct): it stands
-	// hard right on the heading row and opens what the bar's act would have
-	// opened.
+	// HeadingAct is the page's one act (the envelope's act, widget.HeadingAct),
+	// with a live log's live control beside it (widget.TakeLive), already
+	// rendered (Server.headingAct): it stands hard right on the heading row.
 	HeadingAct template.HTML
 	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
 	// back-link in the masthead above the heading. The plugin supplies the Href and

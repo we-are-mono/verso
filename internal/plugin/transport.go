@@ -101,6 +101,10 @@ type Envelope struct {
 	Banner *Banner         `json:"banner"` // optional full-width semantic notice beneath the subpage bar
 	Notice *Notice         `json:"notice"` // optional outcome flash for this render, shown in the shell's flash slot
 	Widget json.RawMessage `json:"widget"`
+	// Act is the page's one act, drawn on its heading line beside the title
+	// (widget.HeadingAct): the page's, not the listing's, so it travels beside
+	// the widget tree rather than inside it.
+	Act json.RawMessage `json:"act,omitempty"`
 	// CTA is the commit row's verb when this envelope is one tab of a
 	// shell-owned entity panel ("Reserve address"). It belongs to the plugin
 	// because only the plugin knows what its tab saves; the act carries no

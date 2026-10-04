@@ -13,8 +13,8 @@
 //! panel survives a reload and travels in a link.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ActionBar, ColumnWidth, Envelope, Form, RowDrawer, Snapshot,
-    Table, TableAction, TableColumn, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
+    Snapshot, Table, TableColumn, TableRow, Tone, Widget,
 };
 
 use crate::counters::Counters;
@@ -164,25 +164,24 @@ fn listing(
         .iter()
         .filter(|redirect| redirect.is_port_forward())
         .collect();
-    let children = vec![bar(blank), table(model, &forwards, counters, open)];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children))
+    page::envelope(
+        HEADING,
+        SUBHEADING,
+        table(model, &forwards, counters, open),
+    )
+    .with_act(act(blank))
 }
 
-/// bar is the listing's controls: the lens, and the one forward act. Making a
-/// forward is editing one that does not exist yet, so the act opens the same
-/// panel a row's name opens.
-fn bar(blank: Option<RowDrawer>) -> Widget {
-    Widget::ActionBar(ActionBar {
-        filter: "Find a forward".into(),
-        action: Some(TableAction {
-            label: "Add forward".into(),
-            href: redirect_drawer::new_href(),
-            ..TableAction::default()
-        }),
+/// act is the page's one forward act. Making a forward is editing one that
+/// does not exist yet, so it opens the same panel a row's edit glyph opens.
+fn act(blank: Option<RowDrawer>) -> HeadingAct {
+    HeadingAct {
+        label: "Add forward".into(),
+        href: redirect_drawer::new_href(),
         opens_panel: true,
         drawer: blank,
         ..Default::default()
-    })
+    }
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -327,28 +326,24 @@ mod tests {
         assert_eq!(body["width"], "wide");
         assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][1]["path"], "port-forwards");
-        // The listing's own controls sit between the heading and the rows: the
-        // lens that narrows it, and the one act that adds to it.
-        let bar = &body["widget"]["children"][0];
-        assert_eq!(bar["type"], "actionbar");
-        assert_eq!(bar["filter"], "Find a forward");
+        // The page's one act stands on its heading line, and opens the panel
+        // rather than a page; nothing narrows a still listing.
         assert_eq!(
-            bar["action"],
+            body["act"],
             serde_json::json!({
                 "label": "Add forward",
-                "href": "/plugins/firewall/port-forwards?open=new"
+                "href": "/plugins/firewall/port-forwards?open=new",
+                "opens_panel": true
             })
         );
-        assert_eq!(bar["opens_panel"], true, "Add opens the panel, not a page");
-        // The grid is the page's own content, not a titled region inside it:
-        // the heading already says what this page lists.
-        assert_eq!(body["widget"]["children"][1]["type"], "table");
-        assert_eq!(fixture::widget(&body, "table")["note"], NOTE);
-        assert!(body.get("action").is_none(), "the bar carries the one act");
+        // The grid is the page itself, not a titled region inside it: the
+        // heading already says what this page lists.
+        assert_eq!(body["widget"]["type"], "table");
+        assert_eq!(body["widget"]["note"], NOTE);
     }
 
     // Nothing forwarded is one row where the first forward would sit, saying
-    // what the firewall does without one; the bar's Add forward is the way in.
+    // what the firewall does without one; the page's Add forward is the way in.
     #[test]
     fn a_config_with_no_port_forwards_says_so_in_one_row() {
         let mut model = fixture::firewall();
@@ -357,10 +352,8 @@ mod tests {
             .retain(|redirect| !redirect.is_port_forward());
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
 
-        let children = &body["widget"]["children"];
-        assert_eq!(children.as_array().map(Vec::len), Some(2));
-        assert_eq!(children[0]["action"]["label"], "Add forward");
-        let table = &children[1];
+        assert_eq!(body["act"]["label"], "Add forward");
+        let table = &body["widget"];
         assert_eq!(table["type"], "table");
         assert_eq!(table["rows"].as_array().map(Vec::len).unwrap_or(0), 0);
         assert_eq!(table["empty_text"], EMPTY);
@@ -433,8 +426,8 @@ mod tests {
         for row in table["rows"].as_array().expect("rows") {
             let section = row["id"].as_str().expect("id");
             let href = format!("/plugins/firewall/port-forwards?open={section}");
-            // Both doors open the same panel: the name a reader reaches for,
-            // and the glyph at the row's trailing edge.
+            // The name and the glyph at the row's trailing edge name the same
+            // panel; the glyph is the way in.
             assert_eq!(row["cells"][0]["href"], href);
             assert_eq!(row["cells"][5]["actions"][1]["href"], href);
             assert_eq!(row["panel"], href);

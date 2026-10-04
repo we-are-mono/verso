@@ -6,8 +6,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    uci_text, ActionBar, ActionTab, Envelope, Grid, Property, RowDrawer, SectionWidget, Table,
-    TableAction, TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
+    uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table, TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -627,7 +626,6 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         visit(name, 0, &names, &parents, &mut seen, &mut ordered);
     }
     let mut rows = vec![];
-    let mut attention = 0;
     for (name, depth) in ordered {
         let runtime = m.live.get("devices").and_then(|v| v.get(&name));
         let nets = owners.get(&name).cloned().unwrap_or_default();
@@ -645,14 +643,6 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
                         .any(|d| crate::model::strings(d.get("bridge-members")).contains(&name))
                 });
         let (state, tone) = state(m, &nets, runtime, used);
-        let problem = tone == "danger"
-            || tone == "warning"
-            || m.dhcp_servers
-                .iter()
-                .any(|s| nets.contains(&s.network) && matches!(s.tone(), "danger" | "warning"));
-        if problem {
-            attention += 1;
-        }
         let mut ipv4: Vec<_> = nets
             .iter()
             .flat_map(|n| addresses(m.live_network(n), "ipv4-address"))
@@ -715,11 +705,6 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         rows.push(TableRow {
             id: name.clone(),
             depth,
-            tags: if problem {
-                vec!["attention".into()]
-            } else {
-                vec![]
-            },
             // The row's editor is its panel: the pencil, whose address this
             // is, opens it in place rather than leaving the listing.
             panel: actions[3].href.clone(),
@@ -775,25 +760,17 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
             ..Default::default()
         });
     }
-    let toolbar = Widget::ActionBar(ActionBar {
-        style: "interfaces".into(),
-        tabs: vec![ActionTab {
-            label: "Problems".into(),
-            count: attention,
-            matches: "attention".into(),
-            ..Default::default()
-        }],
-        filter: "Find an interface".into(),
-        action: Some(TableAction {
-            label: "Add interface".into(),
-            href: format!("{ROOT}?new=1"),
-            icon: "plus".into(),
-            ..Default::default()
-        }),
+    // The page's one act, on its heading line. It carries the panel open over
+    // the listing — the chooser, or an object's editor — so an address naming
+    // either arrives with it in front of the operator.
+    let act = HeadingAct {
+        label: "Add interface".into(),
+        href: format!("{ROOT}?new=1"),
+        icon: "plus".into(),
         opens_panel: true,
         drawer: Some(drawer),
         ..Default::default()
-    });
+    };
     let columns = [
         ("Device · network", "reference"),
         ("Type", "keyword"),
@@ -816,7 +793,9 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         empty_text: "No interfaces are configured or reported by the router.".into(),
         ..Default::default()
     });
-    let page = Envelope::page("Interfaces", Widget::stack(vec![toolbar, table])).with_width("wide");
+    let page = Envelope::page("Interfaces", table)
+        .with_act(act)
+        .with_width("wide");
     if m.live.get("interfaces").is_none() {
         page.with_notice(
             Tone::Warning,

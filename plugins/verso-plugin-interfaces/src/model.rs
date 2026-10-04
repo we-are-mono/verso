@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
-use verso_plugin::{Request, Snapshot};
+use verso_plugin::{Request, Section, Snapshot};
 
 #[derive(Clone, Default)]
 pub struct Record {
     pub id: String,
     pub anonymous: bool,
+    /// The section's uci type: `route` or `route6` tells a route's family.
+    pub kind: String,
     pub values: Map<String, Value>,
 }
 impl Record {
@@ -42,13 +44,32 @@ pub fn strings(v: Option<&Value>) -> Vec<String> {
 }
 pub fn records(s: &Snapshot, config: &str, kind: &str) -> Vec<Record> {
     s.sections_of_type(config, kind)
-        .into_iter()
-        .map(|s| Record {
-            id: s.name(),
-            anonymous: s.anonymous(),
-            values: s.entries().map(|(k, v)| (k.clone(), v.clone())).collect(),
-        })
+        .iter()
+        .map(|s| record(s, kind))
         .collect()
+}
+fn record(s: &Section, kind: &str) -> Record {
+    Record {
+        id: s.name(),
+        anonymous: s.anonymous(),
+        kind: kind.into(),
+        values: s.entries().map(|(k, v)| (k.clone(), v.clone())).collect(),
+    }
+}
+// routes is every static route, IPv4 and IPv6 together, in the order the file
+// states them.
+fn routes(s: &Snapshot) -> Vec<Record> {
+    let mut all: Vec<(f64, Record)> = ["route", "route6"]
+        .into_iter()
+        .flat_map(|kind| {
+            s.sections_of_type("network", kind)
+                .iter()
+                .map(|s| (s.index(), record(s, kind)))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all.sort_by(|a, b| a.0.total_cmp(&b.0));
+    all.into_iter().map(|(_, r)| r).collect()
 }
 #[derive(Clone, Default)]
 pub struct Model {
@@ -83,8 +104,6 @@ impl Model {
         name
     }
     pub fn read(r: &Request) -> Self {
-        let mut routes = records(&r.snapshot, "network", "route");
-        routes.extend(records(&r.snapshot, "network", "route6"));
         Self {
             networks: records(&r.snapshot, "network", "interface"),
             devices: records(&r.snapshot, "network", "device"),
@@ -92,7 +111,7 @@ impl Model {
             dhcp: records(&r.snapshot, "dhcp", "dhcp"),
             dhcp_servers: verso_plugin::dhcp::servers(&r.snapshot, &r.ubus),
             wireless: records(&r.snapshot, "wireless", "wifi-iface"),
-            routes,
+            routes: routes(&r.snapshot),
             live: r.ubus.get("networkState").cloned().unwrap_or(Value::Null),
         }
     }

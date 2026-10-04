@@ -31,6 +31,23 @@ func TestSDKFixturesDecode(t *testing.T) {
 	}
 }
 
+// TestSDKActDecodes: the page's act travels in the envelope, beside the widget
+// tree, so the SDK pins it on its own; the shell must read it whole, blank
+// panel and its children included.
+func TestSDKActDecodes(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "act-new-rule.json"))
+	if err != nil {
+		t.Skip("SDK act fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	act, err := DecodeHeadingAct(data)
+	if err != nil {
+		t.Fatalf("SDK act fixture does not decode: %v", err)
+	}
+	if act.Label != "Add rule" || !act.OpensPanel || act.Drawer == nil || !act.Drawer.Open || len(act.Drawer.Children) != 1 {
+		t.Errorf("SDK act lost a field crossing the wire: %+v", act)
+	}
+}
+
 // TestSDKTargetsReachTheShell: where a form's or section's options live, as
 // the SDK serializes it, is what the shell marks staged controls by — it must
 // survive the trip.

@@ -226,10 +226,6 @@ func TestCoarseCutsAreOneCountedDropdown(t *testing.T) {
 			t.Errorf("cut missing %q:\n%s", want, got)
 		}
 	}
-	problems := render(t, newRenderer(t), &ActionBar{Style: "interfaces", Tabs: []ActionTab{{Label: "Needs a look", Count: 2, Match: "problem"}}})
-	if !strings.Contains(problems, `data-verso-problem-count class="text-sm tabular-nums"`) {
-		t.Errorf("the problem count must be a sans count:\n%s", problems)
-	}
 }
 
 // refusedBorder is a refused box's border: crimson at rest, deep crimson under

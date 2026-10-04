@@ -126,23 +126,6 @@ pub fn family(option: &str) -> Family {
     }
 }
 
-/// families says which address families a section's traffic can be on, as
-/// (IPv4, IPv6). The family option decides it outright where one is set; with
-/// none set the protocol can still decide, because ICMPv6 exists only on IPv6.
-pub fn families(protos: &[String], family_option: &str) -> (bool, bool) {
-    match family(family_option) {
-        Family::V4 => (true, false),
-        Family::V6 => (false, true),
-        Family::Any => {
-            let names = expand(protos);
-            match names.iter().all(|name| name == "icmpv6") {
-                true => (false, true),
-                false => (true, true),
-            }
-        }
-    }
-}
-
 /// protocol renders the protocols a section matches, with the address family
 /// beside them when it is restricted to one. An absent protocol option is tcp
 /// and udp, which is what firewall4 matches. ICMP over IPv6 is a protocol of its

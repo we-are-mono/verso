@@ -334,7 +334,6 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 			Body: fmt.Sprintf(tr("procd could not be read (%v)."), rcErr)})
 	} else {
 		table := servicesTable(s.pluginStates(rc), rc, owners).(*widget.Table)
-		counts := map[string]int{}
 		for i := range table.Rows {
 			row := &table.Rows[i]
 			// The service identity stays verbatim; its lifecycle classification
@@ -342,15 +341,10 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 			for j := range row.Cells[1].Chips {
 				row.Cells[1].Chips[j].Label = tr(row.Cells[1].Chips[j].Label)
 			}
-			for _, tag := range row.Tags {
-				counts[tag]++
-			}
 		}
-		tabs := []widget.ActionTab{{Label: "All services", Count: len(table.Rows), Active: true}}
-		for _, kind := range []openwrt.ServiceKind{openwrt.ServiceDaemon, openwrt.ServiceTask, openwrt.ServiceSubsystem} {
-			tabs = append(tabs, widget.ActionTab{Label: string(kind), Match: serviceTag(kind), Count: counts[serviceTag(kind)]})
-		}
-		children = append(children, &widget.ActionBar{Filter: "Find a service", Tabs: tabs}, table)
+		// A still listing is scrolled and found in with the browser's own
+		// find, so it stands under the heading with no control band.
+		children = append(children, table)
 	}
 
 	var body strings.Builder
@@ -504,8 +498,6 @@ func runningStateCell(uptime int64) widget.TableCell {
 	return cell
 }
 
-func serviceTag(kind openwrt.ServiceKind) string { return strings.ReplaceAll(string(kind), " ", "-") }
-
 func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, owners map[string]string, managed bool) widget.TableRow {
 	order, pid, memory := "—", "—", "—"
 	if st.Order != nil {
@@ -546,7 +538,7 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 	if state.Text == "" {
 		state.Text = "—"
 	}
-	return widget.TableRow{ID: name, Tags: []string{serviceTag(kind)}, Cells: []widget.TableCell{
+	return widget.TableRow{ID: name, Cells: []widget.TableCell{
 		{Text: order}, serviceNameCell(name, kind), {Text: packageOf(name, owners)},
 		{Text: pid}, {Text: memory}, state, {Actions: acts},
 	}}

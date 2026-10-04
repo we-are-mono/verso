@@ -60,37 +60,21 @@ func pruneList(ws []Widget, keep func(Widget) bool) []Widget {
 	return kept
 }
 
-// FilterThreshold is how much a page has to list before the page-wide lens earns
-// its place. At or below it the whole page is one glance, and a search field over
-// it is a control answering a question nobody asked — so the shell removes it.
-// The rule lives here rather than in each plugin: what a filter is worth is a
-// property of the vocabulary, not of any one domain.
-const FilterThreshold = 20
-
-// FilterableCount counts what the lens would have to sift: every table row, the
-// folded ones included (a seam opens when it holds a match), and every settings
-// option row, the folded ones likewise. Those are the entries the filter dims and
-// reveals; nothing else on a page is filterable.
-func FilterableCount(w Widget) int {
-	count := 0
+// HasLiveListing reports whether the page lists something whose rows arrive
+// while it is read — the one place the page-wide lens earns its place. A page
+// that holds what it has is read by scrolling and found in with the browser's
+// own find, however long it is; a live one keeps changing under that find, so
+// only a lens of its own can hold a question across the rows to come. The rule
+// lives here rather than in each plugin: what a filter is worth is a property
+// of the vocabulary, not of any one domain.
+func HasLiveListing(w Widget) bool {
+	live := false
 	Walk(w, func(n Widget) {
-		switch n := n.(type) {
-		case *Table:
-			count += len(n.Rows)
-			if n.Seam != nil {
-				count += len(n.Seam.Rows)
-			}
-			// A live listing renders empty and fills after: what the lens will
-			// have to sift is the ring it keeps, not the nothing it starts as.
-			count += n.streamRing()
-		case *Settings:
-			count += len(n.Items)
-			if n.Seam != nil {
-				count += len(n.Seam.Items)
-			}
+		if t, ok := n.(*Table); ok && t.streaming() {
+			live = true
 		}
 	})
-	return count
+	return live
 }
 
 // StripFilters removes every filter widget from the tree and returns the root —

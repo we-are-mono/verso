@@ -225,6 +225,111 @@ func kernelVRFTables() (map[uint32]bool, error) {
 	return out, nil
 }
 
+// liveRoutes is the kernel's main routing table, IPv4 then IPv6.
+func liveRoutes() ([]liveRoute, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	nameByIndex := make(map[int]string, len(interfaces))
+	for _, iface := range interfaces {
+		nameByIndex[iface.Index] = iface.Name
+	}
+	out := []liveRoute{}
+	for _, af := range []int{syscall.AF_INET, syscall.AF_INET6} {
+		rib, err := syscall.NetlinkRIB(syscall.RTM_GETROUTE, af)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, liveRoutesFrom(rib, af, nameByIndex)...)
+	}
+	return out, nil
+}
+
+// routeProtocols names the protocols rtnetlink numbers (rtnetlink.h), as
+// ip-route(8) prints them; any other prints as its number.
+var routeProtocols = map[byte]string{1: "redirect", 2: "kernel", 3: "boot", 4: "static", 9: "ra", 16: "dhcp"}
+
+// routeTypes are the route types a person states or reads in the main table:
+// a unicast route, and the ones that refuse traffic. Local, broadcast,
+// anycast and multicast entries are the kernel's own bookkeeping.
+var routeTypes = map[byte]string{
+	syscall.RTN_UNICAST: "", syscall.RTN_BLACKHOLE: "blackhole", syscall.RTN_UNREACHABLE: "unreachable",
+	syscall.RTN_PROHIBIT: "prohibit", syscall.RTN_THROW: "throw",
+}
+
+// liveRoutesFrom reads one family's route dump as `ip route show table main`
+// lists it. A cached clone (RTM_F_CLONED) is not a route anyone set.
+func liveRoutesFrom(rib []byte, af int, nameByIndex map[int]string) []liveRoute {
+	const (
+		rtaDst, rtaGateway, rtaPrefSrc = 1, 5, 7
+		rtmFCloned                     = 0x200
+	)
+	messages, err := syscall.ParseNetlinkMessage(rib)
+	if err != nil {
+		return nil
+	}
+	family := 4
+	if af == syscall.AF_INET6 {
+		family = 6
+	}
+	var out []liveRoute
+	for _, message := range messages {
+		data := message.Data
+		if message.Header.Type != syscall.RTM_NEWROUTE || len(data) < syscall.SizeofRtMsg || int(data[0]) != af {
+			continue
+		}
+		typ, kept := routeTypes[data[7]]
+		if !kept || binary.NativeEndian.Uint32(data[8:12])&rtmFCloned != 0 {
+			continue
+		}
+		attrs, err := parseNetlinkAttrs(data[syscall.SizeofRtMsg:])
+		if err != nil {
+			continue
+		}
+		table := uint32(data[4])
+		dst := net.IPv4zero
+		if family == 6 {
+			dst = net.IPv6zero
+		}
+		route := liveRoute{Family: family, Type: typ, Proto: routeProtocols[data[5]]}
+		if route.Proto == "" {
+			route.Proto = fmt.Sprint(data[5])
+		}
+		for _, attr := range attrs {
+			value, isUint := attrUint32(attr.value)
+			switch attr.typeID {
+			case rtaTable:
+				if isUint {
+					table = value
+				}
+			case rtaDst:
+				dst = net.IP(attr.value)
+			case rtaGateway:
+				route.Gateway = net.IP(attr.value).String()
+			case rtaPrefSrc:
+				route.Source = net.IP(attr.value).String()
+			case rtaPriority:
+				route.Metric = value
+			case rtaOIF:
+				route.Device = nameByIndex[int(value)]
+			case rtaMultipath:
+				// ponytail: a multipath route reads as its first live output;
+				// list every nexthop when ECMP is something Verso configures.
+				if outputs := multipathOutputs(attr.value); len(outputs) > 0 {
+					route.Device = nameByIndex[outputs[0]]
+				}
+			}
+		}
+		if table != mainRouteTable {
+			continue
+		}
+		route.Target = fmt.Sprintf("%s/%d", dst, data[1])
+		out = append(out, route)
+	}
+	return out
+}
+
 func multipathOutputs(data []byte) []int {
 	var out []int
 	for len(data) >= 8 {

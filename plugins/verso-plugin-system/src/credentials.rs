@@ -3,8 +3,8 @@
 use crate::sshkey;
 use std::collections::BTreeMap;
 use verso_plugin::{
-    ActionBar, ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Field, Form,
-    Property, RemoveConfirm, Request, RowDrawer, Tone, Widget,
+    ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Field, Form,
+    HeadingAct, Property, RemoveConfirm, Request, RowDrawer, Tone, Widget,
 };
 // An artifact is a document the router holds — a certificate — and reads like
 // one: named, with what it is for, then each fact's value beside its label,
@@ -328,11 +328,18 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
         }],
         ..Default::default()
     };
-    let host = Widget::ActionBar(ActionBar {
+    // At this address the page's one act is the one the drawer runs, and the
+    // act carries its drawer open: a panel request is answered with the drawer
+    // alone, and a visit with no script finds the act on the heading line.
+    let act = HeadingAct {
+        label: submit.into(),
+        href: format!("/plugins/system{path}"),
         drawer: Some(drawer),
         ..Default::default()
-    });
-    let mut result = Envelope::page(title, host).with_back("Access", "/system/access");
+    };
+    let mut result = Envelope::page(title, Widget::stack(vec![]))
+        .with_act(act)
+        .with_back("Access", "/system/access");
     if let Some(command) = command {
         result.commands = vec![command];
         result = result.with_notice(Tone::Success, "Access credentials updated.");

@@ -30,32 +30,63 @@ func TestActionBarCutsStandTogether(t *testing.T) {
 	}
 }
 
-// TestDecodeActionBarDrawer: the bar's act can open a panel, and the panel
-// decodes through RowDrawer's own decoder. It is the same decoder a row's panel
-// uses on purpose — when this lived inside the row's, the bar's panel decoded to
-// an error nobody saw and the act silently fell back to being a link.
-func TestDecodeActionBarDrawer(t *testing.T) {
-	w, err := Decode([]byte(`{"type":"actionbar","filter":"Find a rule",
-		"action":{"label":"Add rule","href":"/x?open=new"},
+// TestActionBarSearchesOnlyALiveListing: a listing that holds what it has is
+// read by scrolling and found in with the browser's own find, so its bar draws
+// no search field, whatever the plugin asked for; the cuts stay, since they
+// say what the listing holds. Over a live listing the field stays: its rows
+// arrive while it is read, and the browser's find cannot hold a question
+// across them.
+func TestActionBarSearchesOnlyALiveListing(t *testing.T) {
+	still := render(t, newRenderer(t), &ActionBar{
+		Filter: "Find a rule",
+		Tabs:   []ActionTab{{Label: "All families", Count: 3, Active: true}, {Label: "IPv4", Match: "ipv4", Count: 2}},
+	})
+	if strings.Contains(still, "data-verso-listing-filter") {
+		t.Errorf("a still listing's bar should draw no search field:\n%s", still)
+	}
+	if !strings.Contains(still, "data-verso-listing-cut") {
+		t.Errorf("the cuts should stay:\n%s", still)
+	}
+	live := render(t, newRenderer(t), &ActionBar{Filter: "Find an address, port or rule", Live: "Live"})
+	if !strings.Contains(live, `data-verso-listing-filter autocomplete="off" placeholder="Find an address, port or rule"`) {
+		t.Errorf("a live listing's bar should keep its search field:\n%s", live)
+	}
+}
+
+// TestABandWithNothingLeftGoes: a still listing's bar that held only a search
+// has nothing left to narrow with, so it draws nothing rather than standing
+// empty.
+func TestABandWithNothingLeftGoes(t *testing.T) {
+	if got := render(t, newRenderer(t), &ActionBar{Filter: "Find a zone"}); strings.Contains(got, "data-verso-actionbar") {
+		t.Errorf("a bar with nothing to show should draw nothing:\n%s", got)
+	}
+}
+
+// TestHeadingActCarriesItsPanel: a page's act can open a blank object's panel,
+// and the panel decodes through RowDrawer's own decoder, tabs and all. It is
+// the same decoder a row's panel uses on purpose — when the act lived inside a
+// row's decoder, its panel decoded to an error nobody saw and the act silently
+// fell back to being a link.
+func TestHeadingActCarriesItsPanel(t *testing.T) {
+	act, err := DecodeHeadingAct([]byte(`{"label":"Add rule","href":"/x?open=new",
 		"drawer":{"title":"New rule","open":true,"closed":"/x","lede":["Added to the end."],
 			"tabs":[{"label":"Match","state":"0 conditions","active":true}],
 			"children":[{"type":"form","submit":"Add rule","fields":[{"type":"field","name":"n","label":"Name"}]}]}}`))
 	if err != nil {
-		t.Fatalf("Decode: %v", err)
+		t.Fatalf("DecodeHeadingAct: %v", err)
 	}
-	bar := w.(*ActionBar)
-	if bar.Drawer == nil {
-		t.Fatal("the bar's panel was dropped in decode")
+	if act.Drawer == nil {
+		t.Fatal("the act's panel was dropped in decode")
 	}
-	if bar.Drawer.Title != "New rule" || !bar.Drawer.Open || len(bar.Drawer.Children) != 1 {
-		t.Errorf("panel lost in decode: %#v", bar.Drawer)
+	if act.Drawer.Title != "New rule" || !act.Drawer.Open || len(act.Drawer.Children) != 1 {
+		t.Errorf("panel lost in decode: %#v", act.Drawer)
 	}
-	if len(bar.Drawer.Tabs) != 1 || bar.Drawer.Tabs[0].State != "0 conditions" {
-		t.Errorf("panel tabs lost in decode: %#v", bar.Drawer.Tabs)
+	if len(act.Drawer.Tabs) != 1 || act.Drawer.Tabs[0].State != "0 conditions" {
+		t.Errorf("panel tabs lost in decode: %#v", act.Drawer.Tabs)
 	}
 	// And it renders: the act hosts the modal scope, arrives open, and carries
 	// the panel — while the anchor underneath stays the scriptless fallback.
-	got := render(t, newRenderer(t), w)
+	got := render(t, newRenderer(t), act.Bar())
 	for _, want := range []string{
 		// Opened by address, so closing it has to leave that address: the scope
 		// carries where the page goes when nothing is open.

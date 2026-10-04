@@ -1,0 +1,17 @@
+{
+  "label": "Add rule",
+  "href": "/plugins/firewall/?open=new",
+  "icon": "plus",
+  "opens_panel": true,
+  "drawer": {
+    "title": "New rule",
+    "closed": "/plugins/firewall/",
+    "open": true,
+    "children": [
+      {
+        "type": "text",
+        "markdown": "A blank rule."
+      }
+    ]
+  }
+}

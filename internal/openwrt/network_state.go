@@ -45,6 +45,9 @@ func (*NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessa
 	state := networkState(dump, devices)
 	kernelNetworkDevices("/sys/class/net", devices)
 	kernelNetworkAddresses(devices)
+	if routes, err := liveRoutes(); err == nil {
+		state["routes"] = routes
+	}
 	if ok, err := probeAccess(c, sid, "ubus", "network", "get_proto_handlers"); err == nil && ok {
 		if id, err := c.Lookup("network"); err == nil {
 			if protocols, err := c.Invoke(id, "get_proto_handlers"); err == nil {
@@ -53,6 +56,20 @@ func (*NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessa
 		}
 	}
 	return json.Marshal(state)
+}
+
+// liveRoute is one route of the kernel's main table, in ip-route(8)'s words:
+// Target in CIDR (a default is 0.0.0.0/0 or ::/0), Proto the protocol that
+// added it, Type empty for unicast, Source the preferred source address.
+type liveRoute struct {
+	Family  int    `json:"family"`
+	Target  string `json:"target"`
+	Gateway string `json:"gateway,omitempty"`
+	Device  string `json:"device,omitempty"`
+	Metric  uint32 `json:"metric"`
+	Proto   string `json:"proto"`
+	Type    string `json:"type,omitempty"`
+	Source  string `json:"source,omitempty"`
 }
 
 func kernelNetworkAddresses(devices map[string]any) {
