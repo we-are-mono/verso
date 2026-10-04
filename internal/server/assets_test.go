@@ -277,7 +277,7 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 	// column, which pads its own end, reaches back through it.
 	for _, want := range []string{
 		"main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px}",
-		"[data-verso-form-column]:not([role=dialog] *){--verso-reach-end:calc(var(--spacing) * 10)}",
+		"[data-verso-form-column]:not(dialog *){--verso-reach-end:calc(var(--spacing) * 10)}",
 		"margin-inline:calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));padding-inline:var(--verso-reach-start) var(--verso-reach-end)",
 	} {
 		if !strings.Contains(string(css), want) {
@@ -383,7 +383,7 @@ func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 	for _, want := range []string{
 		"@media (forced-colors:active){:focus-visible{",
 		"outline:2px solid canvastext!important",
-		`@media (prefers-reduced-motion:reduce){[role=dialog],[role=alertdialog]{transition-duration:0s!important`,
+		`@media (prefers-reduced-motion:reduce){dialog{transition-duration:0s!important`,
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)

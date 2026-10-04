@@ -442,6 +442,7 @@
     // The picker takes the key rather than the panel it sits in, so Escape over an
     // open list puts the list away and leaves the drawer where it is.
     event.stopPropagation();
+    event.preventDefault();
     open(builder, false);
     var button = builder.querySelector("[data-verso-condition-open]");
     if (button) button.focus();
@@ -583,13 +584,12 @@
     return target && target.matches && target.matches("[data-verso-panel]") ? target : null;
   }
 
-  // openerOf is the template this frame was opened from. The frame lives in
-  // <body>, moved there from its template, and the template still knows its
-  // clone and where on the page it stands (a row, a settings row's act).
+  // openerOf is where on the page this frame opens from (a row, a settings
+  // row's act): the root of the modal component it belongs to. The frame lives
+  // in <body>, and keeps that component's scope there.
   function openerOf(frame) {
-    return [].find.call(document.querySelectorAll("template[x-teleport]"), function (template) {
-      return !!(template._x_teleport && template._x_teleport.contains(frame));
-    }) || null;
+    var scope = window.Alpine ? window.Alpine.$data(frame) : null;
+    return (scope && scope._root) || null;
   }
 
   // rowOf is the row whose panel this frame is.
@@ -957,6 +957,8 @@
         return;
       }
       dialog.innerHTML = xhr.responseText;
+      // The title came with the rest, so the dialog is named by it again.
+      versoNameDialog(dialog);
       if (scope) { scope.busy = false; scope.idle = true; }
       if (window.htmx) window.htmx.process(dialog);
       // Focus goes to what the next step asks for: the password that
@@ -976,7 +978,7 @@
     if (!input || input.type !== "file" || !input.files || input.files.length === 0) return;
     var form = input.closest("form[data-verso-autosubmit]");
     if (!form) return;
-    var dialog = form.closest("[role=dialog]");
+    var dialog = form.closest("dialog");
     if (dialog && dialog.querySelector("[data-verso-steps]") && window.XMLHttpRequest && window.FormData) {
       uploadInDialog(form, input.files[0], dialog);
       return;

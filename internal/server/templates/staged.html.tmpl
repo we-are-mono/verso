@@ -28,16 +28,9 @@
      stays the page's while it is open, and every open fetches the stage afresh,
      so a drawer closed and reopened after another save reads the new count. */}}
 {{define "verso-drawer-review"}}<template x-teleport="body">
-  <div x-show="open" x-cloak @keydown.window="onKeydown" @verso-panel-done="finish" class="fixed inset-0 z-50">
-    {{template "verso-overlay-backdrop"}}
-    <aside x-show="open"
-      x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-      x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-      x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true" aria-label="{{ t "Staged changes" }}"
-      class="absolute inset-y-0 right-0 flex w-full {{template "verso-drawer-width"}} flex-col overflow-hidden border-l border-rule-strong bg-ground shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none">
-      <div data-verso-panel data-verso-panel-chrome class="contents"></div>
-    </aside>
-  </div>
+  <dialog x-ref="dialog" tabindex="-1" aria-label="{{ t "Staged changes" }}" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="{{template "verso-drawer-box"}} overflow-hidden">
+    <div data-verso-panel data-verso-panel-chrome class="contents"></div>
+  </dialog>
 </template>{{end}}
 
 {{/* The drawer's contents: the stage read back in plain words, by the page each

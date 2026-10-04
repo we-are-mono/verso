@@ -26,7 +26,10 @@
 </div>
 {{end}}
 {{/* modal: shell-owned Alpine dialog (CSP build). The plugin declares the intent;
-     verso.js owns open/close/focus. */}}
+     verso.js owns open/close/focus. The dialog is a native <dialog> (input.css,
+     .verso-modal) that moves to <body>, so what it holds is styled as on the
+     page's own ground rather than as part of the section its trigger stands
+     in, and its forms are never nested in another. */}}
 {{/* The window is a card like every other card — one hairline on the page's own
      ground — lifted off the scrim by a shadow rather than by a second colour. */}}
 {{define "modal.frame"}}rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)]{{end}}
@@ -45,12 +48,9 @@
   </button>
   {{end}}
   <template x-teleport="body">
-    <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {{template "verso-overlay-backdrop"}}
-      <div x-show="open" x-transition{{if .BusyTitle}} @submit="startBusy"{{end}} x-ref="dialog" tabindex="-1" role="dialog" aria-modal="true"
-        class="relative w-full max-w-md {{template "modal.frame"}} focus:outline-none">
-        {{template "modal.standard.contents" .}}
-      </div>
-    </div>
+    <dialog x-ref="dialog" tabindex="-1"{{if .BusyTitle}} @submit="startBusy"{{end}} {{template "verso-dialog-on"}}
+      class="verso-modal verso-modal-motion m-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} focus:outline-none">
+      {{template "modal.standard.contents" .}}
+    </dialog>
   </template>
 </div>

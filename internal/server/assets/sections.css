@@ -29,7 +29,7 @@
  * utilities, and only this layer outranks them. */
 @layer utilities {
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
-  [data-verso-form-column]:not([role="dialog"] *) { --verso-reach-end: calc(var(--spacing) * 10); }
+  [data-verso-form-column]:not(dialog *) { --verso-reach-end: calc(var(--spacing) * 10); }
   [data-verso-drawer-body] {
     --verso-reach-start: calc(var(--spacing) * 10);
     --verso-reach-end: calc(var(--spacing) * 10);

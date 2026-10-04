@@ -523,12 +523,14 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		"text-denim transition-colors hover:text-denim-deep", // the action colour, like every other link
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
-		"bg-ink/18",
+		// A native dialog the browser holds modal, its scrim its ::backdrop;
+		// Escape and the scrim close it through the component.
+		`<dialog x-ref="dialog"`, "verso-modal verso-drawer-motion", `@cancel="dismiss"`, `@click="scrim"`,
 		// The panel is a column that does not itself scroll: the nameplate and
 		// the tab strip stay put and only the body moves under them, so what
 		// the panel is about is still on screen at the bottom of a long form.
-		`absolute inset-y-0 right-0 flex w-full`,
-		"flex-col overflow-hidden border-l border-rule-strong",
+		"ml-auto h-full max-h-none w-full max-w-3xl flex-col open:flex",
+		"overflow-hidden",
 		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // the shared drawer panel's header
 		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-10",
 	} {

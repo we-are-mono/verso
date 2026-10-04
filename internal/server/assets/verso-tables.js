@@ -737,7 +737,7 @@ document.addEventListener("click", function (event) {
     var interval = setInterval(async function () {
       if (!inventory.isConnected) { clearInterval(interval); return; }
       if (busy || document.hidden || inventory.matches(":active")) return;
-      if ([].some.call(document.querySelectorAll('[role="dialog"]'), function (d) { return d.getClientRects().length > 0; })) return;
+      if (document.querySelector("dialog[open]")) return;
       var selection = window.getSelection();
       if (selection && !selection.isCollapsed && inventory.contains(selection.anchorNode)) return;
       busy = true;

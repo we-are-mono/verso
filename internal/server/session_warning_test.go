@@ -119,7 +119,7 @@ func TestSessionAtItsCapCannotBeExtended(t *testing.T) {
 func TestPageCarriesTheSessionWarning(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
 	for _, want := range []string{
-		`id="verso-session-ending"`, `role="alertdialog"`, `aria-modal="true"`,
+		`<dialog id="verso-session-ending"`, `role="alertdialog"`,
 		`aria-labelledby="verso-session-ending-title"`, `aria-describedby="verso-session-ending-body"`,
 		"data-verso-session-countdown",
 		"data-verso-session-stay", "Stay signed in",

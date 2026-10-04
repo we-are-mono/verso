@@ -38,7 +38,6 @@
 
   var WARN = 60 * 1000;
   var layer = document.getElementById("verso-session-ending");
-  var box = layer && layer.querySelector('[role="alertdialog"]');
   var countdown = layer && layer.querySelector("[data-verso-session-countdown]");
   var stayButton = layer && layer.querySelector("[data-verso-session-stay]");
   var okButton = layer && layer.querySelector("[data-verso-session-dismiss]");
@@ -108,16 +107,24 @@
     clock();
     clearInterval(ticker);
     ticker = setInterval(clock, 1000);
-    if (layer.hidden) returnTo = document.activeElement;
-    layer.hidden = false;
-    versoLayerOpen(layer);
+    // Opened last, it stands over whatever else is open.
+    if (!layer.open) {
+      returnTo = document.activeElement;
+      layer.showModal();
+    }
     (canExtend ? stayButton : okButton).focus();
   }
 
   function hide() {
     clearInterval(ticker);
-    layer.hidden = true;
-    versoLayerClose(layer);
+    versoDialogClose(layer);
+  }
+
+  // Closed by its own acts or by the browser (a second Escape it will not let
+  // a page refuse), the dialog lets go the same way, and focus goes back once
+  // the page is no longer shut.
+  function closed() {
+    clearInterval(ticker);
     if (returnTo && returnTo.focus && document.contains(returnTo)) returnTo.focus();
     returnTo = null;
   }
@@ -135,28 +142,15 @@
   if (layer) {
     stayButton.addEventListener("click", stay);
     okButton.addEventListener("click", hide);
-    // The dialog keeps focus while it is up, and Escape answers it the way
-    // its first button does: pressing a key is someone at the router.
-    box.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (extendable) stay();
-        else hide();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      var f = versoTabbable(box);
-      if (!f.length) return;
-      var active = document.activeElement;
-      if (e.shiftKey && active === f[0]) {
-        e.preventDefault();
-        f[f.length - 1].focus();
-      } else if (!e.shiftKey && active === f[f.length - 1]) {
-        e.preventDefault();
-        f[0].focus();
-      }
+    // Escape answers the dialog the way its first button does: pressing a key
+    // is someone at the router. The browser's own closing is held back so
+    // staying can take its round trip with the dialog still up.
+    layer.addEventListener("cancel", function (e) {
+      e.preventDefault();
+      if (extendable) stay();
+      else hide();
     });
+    layer.addEventListener("close", closed);
   }
   arm(first);
 })();
@@ -291,10 +285,15 @@
       var dx = target.left + target.width / 2 - x0, dy = target.top + target.height / 2 - y0;
       var square = document.createElement("span");
       square.setAttribute("aria-hidden", "true");
-      square.className = "pointer-events-none fixed z-[60] size-1.5 rounded-[1px] bg-marigold";
+      square.className = "pointer-events-none fixed z-[60] m-0 size-1.5 rounded-[1px] bg-marigold";
       square.style.left = (x0 - 3) + "px";
       square.style.top = (y0 - 3) + "px";
       document.body.appendChild(square);
+      // It flies in the top layer, over a drawer still on its way out.
+      if (typeof square.showPopover === "function") {
+        square.popover = "manual";
+        square.showPopover();
+      }
       // Until the square lands the chip says what it said before the save: the
       // old count, or nothing at all.
       if (before > 0) say(before, false);
@@ -346,7 +345,7 @@
       if (on) {
         // Keep focus in the drawer when its active button becomes disabled.
         if (document.activeElement === button) {
-          var dialog = button.closest('[role="dialog"]');
+          var dialog = button.closest("dialog");
           if (dialog) dialog.focus();
         }
         var label = button.id === activeID ? button.getAttribute("data-busy-label") : "";

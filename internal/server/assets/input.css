@@ -6,8 +6,8 @@
  * served by the shell. Only genuinely-custom rules live here: the raw-bridge prose,
  * the details chevron, and the conditional widget's pure-CSS show/hide.
  *
- * Colour lives in palette.css, never here — that file is the single transcription
- * of the design canvas, and every hue Verso paints is named in it. Rules here
+ * Colour lives in palette.css, never here — every hue Verso paints is named in
+ * it once. Rules here
  * reach a colour only through its var(--color-*).
  *
  * Plugins never touch any of this — they emit a semantic widget schema (ADR-005).
@@ -121,7 +121,7 @@
 
 @layer components {
   main { --verso-form-width: var(--container-3xl); }
-  [role="dialog"] { --verso-form-width: 40rem; }
+  dialog { --verso-form-width: 40rem; }
 }
 
 html {
@@ -149,7 +149,7 @@ html {
      rather than slide or scale in; the backdrop's fade is not motion, and
      stays. */
   @media (prefers-reduced-motion: reduce) {
-    [role="dialog"], [role="alertdialog"] { transition-duration: 0s !important; }
+    dialog { transition-duration: 0s !important; }
   }
 }
 
@@ -157,6 +157,39 @@ html {
   /* Hide Alpine-controlled elements (e.g. a modal overlay) until Alpine has
      initialized, so nothing flashes on load before x-show applies (ADR-004). */
   [x-cloak] { display: none !important; }
+
+  /* Every overlay — a dialog, a drawer — is a native <dialog> opened with
+     showModal(): the top layer, the page shut behind it, Tab kept inside it and
+     Escape are the browser's. It is held to the window, and its scrim is its
+     ::backdrop: ink at 18% over a 2px blur, so what it covers stays legible as
+     texture and the panel in front is plainly the thing in hand — a heavier
+     scrim would make the page behind it look switched off. */
+  .verso-modal { position: fixed; inset: 0; }
+  .verso-modal::backdrop {
+    background-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+    -webkit-backdrop-filter: blur(0.125rem);
+    backdrop-filter: blur(0.125rem);
+  }
+
+  /* How it comes and goes. A dialog scales up from 95% as it fades in over
+     150ms and leaves in 75ms; a drawer slides in from the right over 300ms and
+     out over 200ms. The scrim fades over 280ms both ways, so the dimming is
+     already there as the panel arrives, and its fade out is the last thing to
+     finish. Arriving is the browser's (@starting-style); leaving is marked
+     data-closing while the dialog is still open, and versoDialogClose
+     (verso.js) closes it once the scrim has gone — a dialog that had already
+     left the top layer would drop onto the page mid-fade. */
+  .verso-modal-motion { transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), scale 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .verso-modal-motion[data-closing] { opacity: 0; scale: 0.95; transition-duration: 75ms; }
+  .verso-drawer-motion { transition: translate 300ms cubic-bezier(0, 0, 0.2, 1); }
+  .verso-drawer-motion[data-closing] { translate: 100% 0; transition: translate 200ms cubic-bezier(0.4, 0, 1, 1); }
+  :is(.verso-modal-motion, .verso-drawer-motion)::backdrop { transition: opacity 280ms cubic-bezier(0.4, 0, 0.2, 1); }
+  :is(.verso-modal-motion, .verso-drawer-motion)[data-closing]::backdrop { opacity: 0; }
+  @starting-style {
+    .verso-modal-motion[open] { opacity: 0; scale: 0.95; }
+    .verso-drawer-motion[open] { translate: 100% 0; }
+    :is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop { opacity: 0; }
+  }
 
   /* A label's wide tip hangs below it, which is where it belongs on a page: the
      label stays readable and the explanation follows the eye down. Low in a
@@ -713,7 +746,7 @@ html {
   /* Page-form sections keep the same 40px inset at both ends of their rules.
      Apply the end inset once to the work column, never to each nested row;
      its rules reach back through it (sections.css). */
-  [data-verso-form-column]:not([data-verso-form-column] *, [role="dialog"] *) {
+  [data-verso-form-column]:not([data-verso-form-column] *, dialog *) {
     padding-inline-end: calc(var(--spacing) * 10);
   }
 

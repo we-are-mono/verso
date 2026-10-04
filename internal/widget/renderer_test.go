@@ -1063,13 +1063,14 @@ func TestRenderModal(t *testing.T) {
 	})
 
 	for _, want := range []string{
-		`x-data="modal"`,    // the shell-owned Alpine component
-		`@click="show"`,     // trigger opens it
-		`x-teleport="body"`, // dialog escapes the content flow
-		`role="dialog"`,
-		"Add a device",       // trigger + title
-		`name="device_name"`, // the child widget is rendered inside
-		"bg-ink/18",          // the canvas scrim, shared with every other overlay
+		`x-data="modal"`,         // the shell-owned Alpine component
+		`@click="show"`,          // trigger opens it
+		`x-teleport="body"`,      // dialog escapes the content flow
+		`<dialog x-ref="dialog"`, // a native dialog: top layer, inert page, Escape
+		`@cancel="dismiss"`,      // Escape closes it through the component
+		"Add a device",           // trigger + title
+		`name="device_name"`,     // the child widget is rendered inside
+		"verso-modal",            // the canvas scrim, as its ::backdrop
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("modal missing %q in: %s", want, got)

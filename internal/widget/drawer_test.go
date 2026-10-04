@@ -104,7 +104,7 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 		}
 	}
 	// The frame, the scrim and the listing around them are already on screen.
-	for _, unwanted := range []string{"x-teleport", `role="dialog"`, "Allow-Ping", "<table", "verso-flash"} {
+	for _, unwanted := range []string{"x-teleport", "<dialog", "Allow-Ping", "<table", "verso-flash"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("a panel's contents must not carry %q:\n%s", unwanted, got)
 		}

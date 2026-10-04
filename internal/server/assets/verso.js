@@ -164,7 +164,9 @@ function versoTurn(el, text) {
 // keyboard move did, what an apply came to. The region is created empty and
 // filled a frame later, because a live region that arrives already holding its
 // words is often not read at all. Saying the same thing twice in a row still
-// speaks, since the text is cleared before it is set.
+// speaks, since the text is cleared before it is set. While a <dialog> is open
+// the region speaks from inside it: the browser shuts everything outside a
+// modal dialog, live regions included.
 var versoAnnounce = (function () {
   var region = null;
   return function (text) {
@@ -174,8 +176,10 @@ var versoAnnounce = (function () {
       region.className = "sr-only";
       region.setAttribute("role", "status");
       region.setAttribute("aria-live", "polite");
-      document.body.appendChild(region);
     }
+    var open = document.querySelectorAll("dialog[open]");
+    var host = open.length ? open[open.length - 1] : document.body;
+    if (region.parentNode !== host) host.appendChild(region);
     region.textContent = "";
     window.requestAnimationFrame(function () {
       region.textContent = text;
@@ -197,42 +201,31 @@ function versoNameDialog(dialog) {
   dialog.setAttribute("aria-labelledby", heading.id);
 }
 
-// While a dialog is open the page behind it is inert: out of the tab order and
-// out of what a screen reader reads, which is what aria-modal promises and does
-// not itself do. Each layer remembers what it made inert and gives back exactly
-// that, so a dialog opened over a drawer leaves the drawer inert until it closes
-// and live regions keep speaking throughout.
-// The layer is the dialog's overlay: the element x-teleport hung on <body>.
-function versoLayerOf(el) {
-  while (el && el.parentElement && el.parentElement !== document.body) el = el.parentElement;
-  return el && el.parentElement === document.body ? el : null;
-}
-
-function versoLayerOpen(layer) {
-  if (!layer || layer._versoInerted) return;
-  layer._versoInerted = [].filter.call(document.body.children, function (node) {
-    if (node === layer || node.contains(layer) || node.inert) return false;
-    if (/^(SCRIPT|TEMPLATE|STYLE)$/.test(node.tagName)) return false;
-    return !node.matches('[role="status"],[role="alert"],[aria-live]');
-  });
-  layer._versoInerted.forEach(function (node) { node.inert = true; });
-}
-
-function versoLayerClose(layer) {
-  if (!layer || !layer._versoInerted) return;
-  layer._versoInerted.forEach(function (node) { node.inert = false; });
-  layer._versoInerted = null;
-}
-
-// What Tab can reach inside a dialog: the focusable elements that are drawn. A
-// pane hidden by x-show or [hidden] is still in the DOM, and a trap that counts
-// it wraps from an element nobody can see.
-function versoTabbable(root) {
-  return [].filter.call(root.querySelectorAll(
-    'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
-  ), function (el) {
-    return el.getClientRects().length > 0 && !el.closest("[inert]");
-  });
+// Every overlay — a dialog, a drawer — is a native <dialog> opened with
+// showModal(): the top layer, the page shut behind it, Tab kept inside it and
+// Escape are the browser's.
+//
+// versoDialogClose is the one way one leaves. It is marked data-closing while
+// it is still open, so its exit runs in the top layer (input.css), and closed
+// once its scrim has faded, the last of it to finish; a browser that does not
+// say when is answered by the clock at the scrim's own 280ms. One with no
+// motion of its own, or for a reader who asked for less, closes at once.
+function versoDialogClose(dialog) {
+  if (!dialog || !dialog.open || dialog.hasAttribute("data-closing")) return;
+  if (!dialog.matches(".verso-modal-motion, .verso-drawer-motion") ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches) return dialog.close();
+  function ended(e) {
+    if (e.target === dialog && e.pseudoElement === "::backdrop") leave();
+  }
+  function leave() {
+    clearTimeout(timer);
+    dialog.removeEventListener("transitionend", ended);
+    dialog.removeAttribute("data-closing");
+    dialog.close();
+  }
+  dialog.setAttribute("data-closing", "");
+  dialog.addEventListener("transitionend", ended);
+  var timer = setTimeout(leave, 280);
 }
 
 // A swap inside an open dialog (a drawer's tab, a refused form coming back)
@@ -243,7 +236,7 @@ function versoTabbable(root) {
 // While a panel's contents are on their way, the dialog it sits in is busy: a
 // screen reader holds off reading a region that is about to be replaced.
 function versoBusy(panel, on) {
-  var dialog = panel && panel.closest && panel.closest('[role="dialog"]');
+  var dialog = panel && panel.closest && panel.closest("dialog");
   if (!dialog) return;
   if (on) dialog.setAttribute("aria-busy", "true");
   else dialog.removeAttribute("aria-busy");
@@ -254,7 +247,7 @@ document.addEventListener("htmx:responseError", function (e) { versoBusy(e.targe
 document.addEventListener("htmx:sendError", function (e) { versoBusy(e.target, false); });
 
 document.addEventListener("htmx:afterSwap", function (e) {
-  var dialog = e.target && e.target.closest && e.target.closest('[role="dialog"][aria-modal="true"]');
+  var dialog = e.target && e.target.closest && e.target.closest("dialog[open]");
   if (!dialog) return;
   versoBusy(e.target, false);
   versoNameDialog(dialog);
@@ -323,8 +316,11 @@ document.addEventListener("alpine:init", function () {
           finish(self.fallback(text));
         }
       },
+      // The scratch box stands inside the <dialog> the widget is in, if any:
+      // outside an open one the browser lets nothing be focused or selected.
       fallback: function (text) {
         var active = document.activeElement;
+        var host = (this.$el && this.$el.closest && this.$el.closest("dialog")) || document.body;
         var ta = document.createElement("textarea");
         try {
           ta.value = text;
@@ -334,7 +330,7 @@ document.addEventListener("alpine:init", function () {
           ta.style.top = "0";
           ta.style.left = "0";
           ta.style.opacity = "0";
-          document.body.appendChild(ta);
+          host.appendChild(ta);
           ta.select();
           return document.execCommand("copy");
         } catch (e) {
@@ -456,16 +452,20 @@ document.addEventListener("alpine:init", function () {
           if (self.$refs.trigger) self.$refs.trigger.focus();
         });
       },
+      // Kept from the browser's default, which would close the <dialog> the
+      // question sits in.
       escape: function (e) {
         if (!this.asking) return;
         e.stopPropagation();
+        e.preventDefault();
         this.cancel();
       },
     };
   });
 
-  // modal: an overlay dialog. Open/close, focus the dialog on open, return focus
-  // on close, close on Escape, and trap Tab within the dialog while open.
+  // modal: a dialog or a drawer — the <dialog> x-ref="dialog" names. Open and
+  // close it, focus it on open, return focus on close. The browser holds it
+  // modal; this keeps its own state in step (dismiss, closed, scrim).
   Alpine.data("modal", function () {
     return {
       open: false,
@@ -475,17 +475,15 @@ document.addEventListener("alpine:init", function () {
       _root: null,
       _tab: "",
       _closed: "",
+      _pressed: false,
       init: function () {
         // $el resolves to whatever element an expression is evaluated on, so a
         // method called from a nested button sees that button. Keep the
         // component's own root from here, where $el is still it.
         this._root = this.$el;
         if (!this.$el || this.$el.dataset.open !== "true") return;
-        // A panel the address asked for still arrives the way a panel arrives:
-        // from the edge. Opening it on the next frame rather than during init
-        // is what lets the enter transition run — set here, it would already be
-        // in its final place and would simply appear, which reads as a glitch
-        // rather than as something opening.
+        // A panel the address asked for opens once Alpine has hung its frame
+        // on <body>: the frame is not there yet while this runs.
         var self = this;
         requestAnimationFrame(function () {
           self.open = true;
@@ -502,7 +500,7 @@ document.addEventListener("alpine:init", function () {
         var dialog = this.$refs.dialog;
         if (!dialog) return;
         versoNameDialog(dialog);
-        versoLayerOpen(versoLayerOf(dialog));
+        if (!dialog.open) dialog.showModal();
         dialog.focus();
       },
       show: function () {
@@ -536,17 +534,30 @@ document.addEventListener("alpine:init", function () {
       // What genuinely loses the work is leaving the page, and that is still
       // guarded — by the browser's own prompt, from the dirty-state tracker in
       // verso-forms.js, where it is about something real.
+      //
+      // Every way of closing comes here — the ×, Escape, the scrim, a finished
+      // submission — and the dialog leaves through versoDialogClose, which
+      // lets its exit run before it is closed.
       hide: function () {
-        if (this.busy) return;
-        this.open = false;
-        // The page comes back before focus does: focus cannot land on an inert
-        // element, and the trigger it returns to is on that page.
-        versoLayerClose(versoLayerOf(this.$refs.dialog));
+        if (this.busy || !this.open) return;
+        versoDialogClose(this.$refs.dialog);
+        this.left();
+      },
+      // The dialog has closed: after its exit, or by the browser itself (a
+      // second Escape it will not let a page refuse, a phone's back gesture).
+      // Focus goes back to what opened it now that the page is no longer shut.
+      closed: function () {
+        this.busy = false;
+        this.left();
         if (this._return && this._return.focus) this._return.focus();
+      },
+      // The panel is let go of: the address leaves it, and the root says so —
+      // closing is something a script may be waiting on (a page that went
+      // stale under its panel reloads once the panel is gone).
+      left: function () {
+        if (!this.open) return;
+        this.open = false;
         this.releaseAddress();
-        // Closing is something a script may be waiting on — a page that went
-        // stale under its panel reloads once the panel is gone — so the root
-        // announces it, whichever way it was closed.
         if (this._root) this._root.dispatchEvent(new CustomEvent("verso-panel-hidden", { bubbles: true }));
       },
       // The panel's submission is done and the object it was about is in the
@@ -708,35 +719,30 @@ document.addEventListener("alpine:init", function () {
         var dialog = this.$refs.dialog;
         return dialog ? dialog.querySelector(selector) : null;
       },
-      onKeydown: function (e) {
-        if (!this.open) return;
-        if (e.key === "Escape") {
-          this.hide();
-          return;
-        }
-        if (e.key !== "Tab") return;
-        var el = this.$refs.dialog;
-        if (!el) return;
-        var f = versoTabbable(el);
-        if (!f.length) {
-          e.preventDefault();
-          el.focus();
-          return;
-        }
-        var first = f[0],
-          last = f[f.length - 1],
-          active = document.activeElement;
-        // Focus on the dialog itself (where it lands on open) or anywhere
-        // outside it is not inside the loop yet: Tab enters at the start,
-        // Shift+Tab at the end, instead of stepping out to the page behind.
-        var outside = active === el || !el.contains(active);
-        if (e.shiftKey && (outside || active === first)) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && (outside || active === last)) {
-          e.preventDefault();
-          first.focus();
-        }
+      // Escape on a <dialog> asks it to close (its cancel event). Closing goes
+      // through hide, so a dialog busy with its submission stays up.
+      dismiss: function (e) {
+        e.preventDefault();
+        this.hide();
+      },
+      // A <dialog>'s scrim is its ::backdrop, which is no element: a press on
+      // it reaches the dialog itself, at a point outside the dialog's box.
+      // Only a press that starts and ends there closes it, so a drag that
+      // began inside the dialog and was let go outside is a selection, not a
+      // dismissal.
+      press: function (e) {
+        this._pressed = this.onScrim(e);
+      },
+      scrim: function (e) {
+        var pressed = this._pressed;
+        this._pressed = false;
+        if (pressed && this.onScrim(e)) this.hide();
+      },
+      onScrim: function (e) {
+        var dialog = this.$refs.dialog;
+        if (!dialog || e.target !== dialog) return false;
+        var box = dialog.getBoundingClientRect();
+        return e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom;
       },
     };
   });

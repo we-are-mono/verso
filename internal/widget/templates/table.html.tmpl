@@ -47,32 +47,30 @@
 {{define "table.cellpad-stack"}}{{if .Dense}}pt-3 pb-2{{else}}px-3.5 pt-3 pb-2{{end}}{{end}}
 {{/* table.confirm-dialog: the alert a row act that ends something asks in,
      inside the act's own x-data="modal": the question, what is at stake, and
-     the act named again on the danger button, which posts the one pair. */}}
+     the act named again on the danger button, which posts the one pair. A
+     native <dialog>, as the modal widget's is; on a phone it stands at the
+     foot of the window, under the thumb. */}}
 {{define "table.confirm-dialog"}}
 <template x-teleport="body">
-  <div x-show="open" x-cloak @keydown.window="onKeydown" class="fixed inset-0 z-50 overflow-y-auto">
-    {{template "verso-overlay-backdrop"}}
-    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
-      <div x-show="open" x-transition x-ref="dialog" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="{{.ID}}-title" aria-describedby="{{.ID}}-body" class="relative w-full max-w-md {{template "modal.frame"}} p-5 text-left whitespace-normal focus:outline-none sm:p-6">
-        {{/* the danger square hangs on the title's 24px line, as on every
-             message; the words say what is at stake */}}
-        <div class="flex items-start gap-2.5">
-          <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
-          <div class="min-w-0">
-            <h2 id="{{.ID}}-title" class="text-base leading-6 font-semibold text-ink">{{.Title}}</h2>
-            <p id="{{.ID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Body}}</p>
-          </div>
-        </div>
-        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-          <form method="post">
-            {{template "verso-csrf" .CSRFToken}}
-            <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-9 w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
-          </form>
-          <button type="button" @click="hide" class="inline-flex h-9 w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
-        </div>
+  <dialog x-ref="dialog" tabindex="-1" role="alertdialog" aria-labelledby="{{.ID}}-title" aria-describedby="{{.ID}}-body" {{template "verso-dialog-on"}}
+    class="verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} p-5 text-left whitespace-normal focus:outline-none sm:p-6">
+    {{/* the danger square hangs on the title's 24px line, as on every
+         message; the words say what is at stake */}}
+    <div class="flex items-start gap-2.5">
+      <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
+      <div class="min-w-0">
+        <h2 id="{{.ID}}-title" class="text-base leading-6 font-semibold text-ink">{{.Title}}</h2>
+        <p id="{{.ID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Body}}</p>
       </div>
     </div>
-  </div>
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+      <form method="post">
+        {{template "verso-csrf" .CSRFToken}}
+        <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-9 w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
+      </form>
+      <button type="button" @click="hide" class="inline-flex h-9 w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
+    </div>
+  </dialog>
 </template>
 {{end}}
 {{/* table.cellpad-detail: a value over its detail line, 12px above and below
