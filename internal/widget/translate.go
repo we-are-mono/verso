@@ -78,8 +78,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.Cancel = t(n.Cancel)
 	case *Disclosure:
 		n.Summary = t(n.Summary)
-	case *Divider:
-		n.Label = t(n.Label)
 	case *Empty:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)

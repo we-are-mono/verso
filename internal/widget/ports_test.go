@@ -11,8 +11,8 @@ import (
 func TestRenderPorts(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Ports{Device: "Mono Gateway", Accent: "emerald", Items: []PortItem{
-		{Kind: "rj45", Label: "Network 1", Role: "lan", Linked: true, Speed: "1 Gbps", Iface: "eth0", Addr: "192.168.1.1"},
-		{Kind: "sfp", Label: "Internet", Role: "wan", Linked: false, Speed: "—", Iface: "eth4", Note: "PPPoE"},
+		{Kind: "rj45", Label: "Network 1", Role: "lan", Linked: true, Iface: "eth0", Addr: "192.168.1.1"},
+		{Kind: "sfp", Label: "Internet", Role: "wan", Linked: false, Iface: "eth4", Note: "PPPoE"},
 	}})
 	for _, want := range []string{
 		"Mono Gateway", "verso-ports--emerald",

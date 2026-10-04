@@ -74,33 +74,6 @@ func TestRenderTableKinds(t *testing.T) {
 	}
 }
 
-// TestRenderTableFitColumns: fit columns squeeze to content through a colgroup
-// width, so a huddle of related fact columns (a version pair and its arrow)
-// sits together at the table's edge; a table with no fit columns draws no
-// colgroup at all.
-func TestRenderTableFitColumns(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Table{
-		Columns: []TableColumn{
-			{Label: "Package", Kind: "name"},
-			{Label: "Installed", Kind: "mono", Fit: true},
-			{Kind: "keyword", Fit: true},
-			{Label: "Available", Kind: "mono", Fit: true},
-		},
-		Rows: []TableRow{{Cells: []TableCell{{Text: "verso"}, {Text: "0.0.11"}, {Text: "→"}, {Text: "0.0.14"}}}},
-	})
-	if !strings.Contains(got, "<colgroup>") {
-		t.Errorf("fit columns must draw a colgroup:\n%s", got)
-	}
-	if strings.Count(got, `<col class="w-px">`) != 3 {
-		t.Errorf("each fit column carries the squeeze width:\n%s", got)
-	}
-	plain := render(t, r, redirectsTable())
-	if strings.Contains(plain, "<colgroup") {
-		t.Errorf("a table with no fit columns draws no colgroup:\n%s", plain)
-	}
-}
-
 func TestRenderEmphasisedMonoCell(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{

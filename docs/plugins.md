@@ -785,12 +785,7 @@ Column kinds, one treatment each (never mix them per row):
 
 A row's `id` is its stable handle — use the UCI section name.
 
-A column may declare `"fit": true` to squeeze to its content's width instead of
-sharing the table's slack, which collects in the growing columns — how a group
-of related fact columns (a version pair and the arrow between them) huddles at
-one edge instead of drifting apart. Pair it with kinds that do not wrap.
-
-A column may instead fix its `width` at a measure named by what it holds, so a
+A column may fix its `width` at a measure named by what it holds, so a
 column keeps its place when one row's value is shorter and every listing's
 address column is the same width. The set is closed: any other word (a CSS
 length included) fails the decode. A column that states none grows, sharing

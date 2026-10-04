@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -222,12 +223,6 @@ type TableSeam struct {
 type TableColumn struct {
 	Label string `json:"label,omitempty"`
 	Kind  string `json:"kind,omitempty"` // see Table; "" means "text"
-	// Fit squeezes the column to its content's width instead of sharing the
-	// table's slack, which collects in the growing columns — how a group of
-	// related fact columns (a version pair and the arrow between them) huddles
-	// at one edge instead of drifting apart. Pair it with kinds that do not
-	// wrap; the table realizes it as a colgroup width, not text alignment.
-	Fit bool `json:"fit,omitempty"`
 	// Width fixes the column at a measure the listing decides rather than at
 	// whatever this page's data happens to need — so a column of addresses keeps
 	// its place when one device has a shorter one, and two boards' rosters line
@@ -675,7 +670,7 @@ type tableView struct {
 	Detail    string
 	Action    *TableAction
 	HasLabels bool // any column carries a header label; a labelless table draws no <thead>
-	HasFit    bool // any column squeezes to content; the table draws a colgroup
+	HasWidths bool // a column fixes its width; the table draws a colgroup
 	Columns   []TableColumn
 	HasDetail bool
 	Empty     bool // nothing to list: no head, no rows, one quiet sentence
@@ -1000,7 +995,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		// A live listing keeps its heads while it waits: they name what is
 		// about to arrive, and the first event must not shift the layout.
 		HasLabels: hasColumnLabels(t.Columns) && (!empty || stream),
-		HasFit:    hasFitColumns(t.Columns),
+		HasWidths: slices.ContainsFunc(t.Columns, func(c TableColumn) bool { return c.Width != "" }),
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 		Empty: empty, EmptyText: t.EmptyText,
 	}
@@ -1091,17 +1086,6 @@ func reorderIDs(runs ...[]tableRowView) []string {
 func hasColumnLabels(cols []TableColumn) bool {
 	for _, c := range cols {
 		if c.Label != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// hasFitColumns reports whether any column squeezes to its content, which is
-// what makes the table draw a colgroup to carry the widths.
-func hasFitColumns(cols []TableColumn) bool {
-	for _, c := range cols {
-		if c.Fit || c.Width != "" {
 			return true
 		}
 	}

@@ -1,15 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* divider: a light rule, optionally with a label centred on the line. With a
-     label, the rule runs behind it (the label carries the page-ground background so
-     the rule breaks cleanly around it). Without a label it's a plain <hr> — a real
-     box with symmetric margins, so its spacing can't self-collapse. Tight uses
-     compact spacing for separating groups inside a card/panel. */}}
-{{if .Label}}
-<div class="relative text-center {{if .Tight}}my-6{{else}}my-20{{end}}">
-  <span class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-rule"></span>
-  <span class="relative bg-ground px-4 text-sm font-medium text-meta">{{.Label}}</span>
-</div>
-{{else}}
+{{/* divider: a plain <hr> — a real box with symmetric margins, so its spacing
+     can't self-collapse. Tight uses compact spacing for separating groups inside
+     a card/panel. */}}
 <hr class="border-rule {{if .Tight}}my-6{{else}}my-20{{end}}">
-{{end}}

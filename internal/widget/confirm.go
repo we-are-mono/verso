@@ -17,11 +17,10 @@ type Confirm struct {
 	// Title is an optional bold heading above the message — for a consequence
 	// too long to read as one paragraph, the heading asks the question and the
 	// message explains it. Absent, the message stands alone as it always has.
-	Title           string `json:"title"`
-	Message         string `json:"message"`          // the confirmation prompt
-	Confirm         string `json:"confirm"`          // confirm-button label (default: the Trigger's own name)
-	Cancel          string `json:"cancel"`           // cancel label (default "Cancel")
-	RequirePassword bool   `json:"require_password"` // ask for the current administrator password
+	Title   string `json:"title"`
+	Message string `json:"message"` // the confirmation prompt
+	Confirm string `json:"confirm"` // confirm-button label (default: the Trigger's own name)
+	Cancel  string `json:"cancel"`  // cancel label (default "Cancel")
 	// Tone is what the act costs. "caution" is disruptive but wanted — installing
 	// firmware — and asks in marigold, so it steadies rather than scares. Anything
 	// else is danger: the act destroys something, and asks in crimson.
@@ -52,7 +51,6 @@ type confirmView struct {
 	ID                                             string
 	Trigger, Title, Message, Confirm, Cancel, Tone string
 	Icon, Subject                                  string
-	RequirePassword                                bool
 }
 
 func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -76,15 +74,14 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 		tone = ToneCaution
 	}
 	return r.execute(out, "confirm.html.tmpl", confirmView{
-		ID:              fmt.Sprintf("verso-confirm-%d", r.seq.cfm.Add(1)),
-		Tone:            tone,
-		Trigger:         c.Trigger,
-		Title:           c.Title,
-		Message:         c.Message,
-		Confirm:         confirm,
-		Cancel:          cancel,
-		Icon:            c.Icon,
-		Subject:         c.subject,
-		RequirePassword: c.RequirePassword,
+		ID:      fmt.Sprintf("verso-confirm-%d", r.seq.cfm.Add(1)),
+		Tone:    tone,
+		Trigger: c.Trigger,
+		Title:   c.Title,
+		Message: c.Message,
+		Confirm: confirm,
+		Cancel:  cancel,
+		Icon:    c.Icon,
+		Subject: c.subject,
 	})
 }

@@ -17,7 +17,7 @@ import (
 type Modal struct {
 	Trigger      string // label of the button that opens the dialog
 	TriggerIcon  string
-	TriggerStyle string // "" (default solid button) | "secondary" | "add"
+	TriggerStyle string // "" (default solid button) | "secondary" | "link"
 	Open         bool   // open immediately (server-rendered verified/error state)
 	BusyTitle    string // optional submit-time progress state
 	BusyBody     string
@@ -140,5 +140,5 @@ func (r *Renderer) RenderModalContents(out io.Writer, m *Modal, csrfToken, lang 
 	if err != nil {
 		return err
 	}
-	return pass.execute(out, "modal.contents", v)
+	return pass.execute(out, "modal.standard.contents", v)
 }

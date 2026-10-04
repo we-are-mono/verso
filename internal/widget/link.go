@@ -9,19 +9,16 @@ import (
 	"strings"
 )
 
-// Link is a labelled hyperlink, optionally styled as a button and optionally a
-// download. It is the escape hatch for "take me there" or "save this file" — a
-// device's config file, a link to docs. The href is
-// the plugin's to choose (a shell route, a data: URL); the shell owns the look and
-// the URL policy.
+// Link is a labelled hyperlink, optionally styled as a button. It is the escape
+// hatch for "take me there" — a link to docs, a shell route. The href is the
+// plugin's to choose; the shell owns the look and the URL policy.
 type Link struct {
-	Desc     string `json:"desc,omitempty"`
-	Code     string `json:"code,omitempty"`
-	Label    string `json:"label"`
-	Icon     string `json:"icon,omitempty"`
-	Href     string `json:"href"`
-	Download string `json:"download"` // non-empty => a download with this filename
-	// Style is "" (an ordinary link), "button", "ghost", "secondary", "act" (an
+	Desc  string `json:"desc,omitempty"`
+	Code  string `json:"code,omitempty"`
+	Label string `json:"label"`
+	Icon  string `json:"icon,omitempty"`
+	Href  string `json:"href"`
+	// Style is "" (an ordinary link), "button", "secondary", "act" (an
 	// act on a part of a section, in the 28px quiet dress a set's add slot
 	// wears), or "rail" — one place on this page in a list of them, beside the
 	// work it points into.
@@ -48,7 +45,6 @@ type linkView struct {
 	Label      string
 	Icon       string
 	Href       template.URL
-	Download   string
 	Style      string
 	NewTab     bool
 	Act        string
@@ -65,7 +61,7 @@ func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 		href = href[:at+1] + SectionID(href[at+1:])
 	}
 	return r.execute(out, "link.html.tmpl", linkView{
-		Desc: l.Desc, Code: l.Code, Label: l.Label, Icon: l.Icon, Href: safeHref(href, l.Download != ""), Download: l.Download, Style: l.Style, NewTab: l.NewTab,
+		Desc: l.Desc, Code: l.Code, Label: l.Label, Icon: l.Icon, Href: template.URL(SafeHref(href)), Style: l.Style, NewTab: l.NewTab,
 		Act: l.Act, Panel: l.Panel,
 	})
 }
@@ -75,15 +71,6 @@ func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 // http(s), and mailto pass; everything else collapses to a clean "#" rather
 // than html/template's visible ZgotmplZ junk.
 func SafeHref(raw string) string {
-	return string(safeHref(raw, false))
-}
-
-// safeHref applies the link widget's URL policy, since a download's href is a data:
-// URL that html/template would otherwise strip. Relative, http(s), and mailto are
-// always allowed; data: is allowed only for downloads and only for plain-text or
-// octet-stream payloads (a config file) — never data:text/html or script schemes.
-// Anything else collapses to "#".
-func safeHref(raw string, download bool) template.URL {
 	s := strings.TrimSpace(raw)
 	low := strings.ToLower(s)
 	colon := strings.IndexByte(low, ':')
@@ -92,16 +79,10 @@ func safeHref(raw string, download bool) template.URL {
 	if colon >= 0 && (slash == -1 || colon < slash) {
 		scheme = low[:colon]
 	}
-	switch {
-	case scheme == "": // relative
-		return template.URL(s)
-	case scheme == "http", scheme == "https", scheme == "mailto":
-		return template.URL(s)
-	case download && strings.HasPrefix(low, "data:text/plain"):
-		return template.URL(s)
-	case download && strings.HasPrefix(low, "data:application/octet-stream"):
-		return template.URL(s)
+	switch scheme {
+	case "", "http", "https", "mailto":
+		return s
 	default:
-		return template.URL("#")
+		return "#"
 	}
 }

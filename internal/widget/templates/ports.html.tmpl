@@ -69,15 +69,15 @@
         {{end}}
         <div class="verso-port-label">{{.Label}}</div>
         {{/* A port with an Iface is live (the overview stream updates it in
-             place), so its speed, addr, and link slots render even when empty
-             — a later reading needs a place to land. */}}
-        {{if or .Speed .Iface}}<div class="verso-port-speed">{{.Speed}}</div>{{end}}
+             place), so its speed, addr, and link slots render empty — a later
+             reading needs a place to land. */}}
+        {{if .Iface}}<div class="verso-port-speed"></div>{{end}}
         <div class="verso-port-tip">
           <b>{{.Label}}</b>{{if .Role}} · <span class="role">{{.Role}}</span>{{end}}
           {{if .Iface}}<div class="r"><span class="k">iface</span>{{.Iface}}</div>{{end}}
           {{if .Note}}<div class="r"><span class="k">type</span>{{.Note}}</div>{{end}}
           {{if or .Addr .Iface}}<div class="r"><span class="k">addr</span><span data-verso-port-addr>{{.Addr}}</span></div>{{end}}
-          {{if or .Speed .Iface}}<div class="r"><span class="k">link</span><span data-verso-port-link>{{.Speed}}</span></div>{{end}}
+          {{if .Iface}}<div class="r"><span class="k">link</span><span data-verso-port-link></span></div>{{end}}
         </div>
       </div>
       {{end}}

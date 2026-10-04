@@ -370,16 +370,9 @@ func TestRenderBadgeDotIsStill(t *testing.T) {
 
 func TestRenderDivider(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Divider{Label: "First-run / empty state"})
-	for _, want := range []string{"First-run / empty state", "bg-rule", "my-20"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("divider missing %q in: %s", want, got)
-		}
-	}
-	// No label → a bare rule, no label text.
 	plain := render(t, r, &Divider{})
-	if strings.Contains(plain, "<span class=\"relative") {
-		t.Errorf("labelless divider should not render a label span: %s", plain)
+	if !strings.Contains(plain, `<hr class="border-rule my-20">`) {
+		t.Errorf("divider should be a bare rule at the page gap: %s", plain)
 	}
 	// Tight uses compact spacing for inline group separators, not the page-scale gap.
 	tight := render(t, r, &Divider{Tight: true})
@@ -549,7 +542,7 @@ func TestRenderConfirmCaution(t *testing.T) {
 
 func TestRenderConfirm(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it", RequirePassword: true})
+	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it"})
 	for _, want := range []string{
 		"verso-confirm", `x-data="confirm"`,
 		// The trigger and the way back are real buttons: reached by Tab, pressed
@@ -563,7 +556,6 @@ func TestRenderConfirm(t *testing.T) {
 		// value stays a mark, on the square.
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 shrink-0 rounded-[1px] bg-crimson",
 		"mt-6 ml-4 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
-		`type="password"`, `autocomplete="current-password"`, "w-1/3", // sensitive actions can require re-authentication
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a 36px control like every other button: h-9 holds the
@@ -656,17 +648,9 @@ func TestRenderCallout(t *testing.T) {
 
 func TestRenderLink(t *testing.T) {
 	r := newRenderer(t)
-	dl := render(t, r, &Link{Label: "Download config", Href: "data:text/plain,abc", Download: "phone.conf", Style: "ghost"})
-	for _, want := range []string{`href="data:text/plain,abc"`, `download="phone.conf"`, "Download config"} {
-		if !strings.Contains(dl, want) {
-			t.Errorf("link missing %q in: %s", want, dl)
-		}
-	}
-	if !strings.Contains(dl, "border border-rule-strong bg-transparent text-meta") || !strings.Contains(dl, "hover:border-sand-5 hover:bg-rule") {
-		t.Errorf("ghost link missing the secondary-button treatment: %s", dl)
-	}
-	if !strings.Contains(dl, "verso-press") {
-		t.Errorf("button-styled link missing tactile pressed state: %s", dl)
+	// A data: URL is never a link's destination.
+	if data := render(t, r, &Link{Label: "Config", Href: "data:text/plain,abc"}); !strings.Contains(data, `href="#"`) {
+		t.Errorf("a data: link must collapse to #: %s", data)
 	}
 	primary := render(t, r, &Link{Label: "Download backup", Href: "/backup", Style: "button"})
 	if !strings.Contains(primary, "verso-press") {
@@ -1097,22 +1081,6 @@ func TestRenderModal(t *testing.T) {
 	}
 	if strings.Contains(got, `<header class="flex items-center justify-between border-b`) {
 		t.Errorf("modal title and content should not be divided by a hairline: %s", got)
-	}
-}
-
-// TestRenderModalAddTrigger: the "add" trigger style renders a full-width dashed
-// button (a create affordance), while the default stays a solid button.
-func TestRenderModalAddTrigger(t *testing.T) {
-	r := newRenderer(t)
-	add := render(t, r, &Modal{Trigger: "Add a device", TriggerStyle: "add", Title: "Add a device"})
-	for _, want := range []string{"border-dashed", "w-full", "Add a device"} {
-		if !strings.Contains(add, want) {
-			t.Errorf("add-style modal trigger missing %q in: %s", want, add)
-		}
-	}
-	solid := render(t, r, &Modal{Trigger: "Open", Title: "T"})
-	if strings.Contains(solid, "border-dashed") {
-		t.Errorf("default modal trigger should be solid, not dashed: %s", solid)
 	}
 }
 

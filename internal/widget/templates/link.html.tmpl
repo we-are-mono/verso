@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* link: a labelled hyperlink, optionally a download, in one of a few styles. */}}
+{{/* link: a labelled hyperlink, in one of a few styles. */}}
 {{/* verso-link-face: what a link wears inside its dress — its glyph, then its
      words. One that opens in a new tab leaves the router, and says so before
      its words (the external-link glyph, unless it names its own) and after
@@ -33,9 +33,7 @@
   <span class="mt-0.5 shrink-0 text-faint group-hover:text-denim">{{icon "chevron-right" "size-4"}}</span>
 </a>
 {{else if eq .Style "button"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
-{{else if eq .Style "ghost"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "rail"}}
 {{/* One place on this page, in the list of them. It is a block so a run of them
      is a column, and it carries its own left hairline so the run draws one
@@ -55,10 +53,10 @@
 <a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else if eq .Style "secondary"}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{else}}
-<a href="{{.Href}}"{{if .Download}} download="{{.Download}}"{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
 {{end}}
