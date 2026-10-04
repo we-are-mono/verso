@@ -93,6 +93,14 @@ own `section`:
 ]
 ```
 
+An entry filed under `Network` or `System` is not a menu row of its own: those two
+sections are each one row, named for the section, that opens into every page filed
+there, whichever plugin files it. Network's pages run Interfaces, DHCP, DNS, then
+the rest by label; System's run General, then the rest by label, then the shell's
+own pages. A page in either section keeps its own title as its heading, with no
+section prefix. Any other section's entries are rows of
+their own (Wireless files under `Wireless` to keep one).
+
 These entries are registrations, not suggestions layered over a shell page list.
 For example, the bundled System plugin creates **System → General** solely through
 the first entry above. The shell contributes its own System pages separately and

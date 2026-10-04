@@ -119,8 +119,8 @@ type navRow struct {
 // name follows these, in the order of the section it is filed under
 // (sectionLess), so a new plugin appears in the rail with no shell change.
 var railOrder = []string{
-	"Overview", "Devices", "Traffic", "Journal", "Interfaces", "Wireless",
-	"Firewall", "DNS & DHCP", "Routing", "Tunnels", "Storage", "System",
+	"Overview", "Devices", "Traffic", "Journal", "Network", "Wireless",
+	"Firewall", "Routing", "Tunnels", "Storage", "System",
 }
 
 // navIcon chooses a shell-owned glyph before labels are localized. Designed
@@ -136,14 +136,10 @@ func navIcon(label, section string) string {
 		return "activity"
 	case "Journal":
 		return "menu"
-	case "Interfaces":
-		return "ethernet-port"
 	case "Wireless":
 		return "wifi"
 	case "Firewall":
 		return "zone"
-	case "DNS & DHCP":
-		return "globe"
 	case "Routing":
 		return "route"
 	case "Tunnels":
@@ -175,8 +171,8 @@ func navIcon(label, section string) string {
 func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
 	// Every section the manifests register becomes rows — no titles between
 	// them, because the rail is a list of places and not a taxonomy. Status is
-	// served by Overview; System collapses to one row whose subpages are the
-	// shell-owned pages and the plugin-owned ones together (systemPages).
+	// served by Overview; Network and System each collapse to one row whose
+	// subpages are the pages filed there (sectionPages).
 	//
 	// Only plugins whose socket answers contribute rows: a row that leads to
 	// "unavailable" is a dead door, and an installed-but-off plugin is the
@@ -195,7 +191,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		for _, entry := range m.Nav {
 			href := pluginHref(m.ID, entry.Path)
 			hrefs = append(hrefs, href)
-			if entry.Section == "Status" || entry.Section == "System" {
+			if _, folded := collapsed(entry.Section); folded || entry.Section == "Status" {
 				continue
 			}
 			icon := entry.Icon
@@ -205,17 +201,23 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 			places = append(places, filed{entry.Section, navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages}})
 		}
 	}
-	system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
-	if sysPages := s.systemPages(active); len(sysPages) > 0 {
-		system.Href, system.Opens = sysPages[0].Href, true
-	}
-	// What System has waiting for you is what it has to install.
-	if truth, ok := s.updateTruth(); ok {
-		if system.Detail, system.Hint = waitingToInstall(truth, tr); system.Detail != "" {
-			system.Dot, system.Variant = true, "info"
+	here := s.sectionAt(active)
+	for _, c := range collapsedSections {
+		pages := s.sectionPages(c.Section, active)
+		if len(pages) == 0 {
+			continue
 		}
+		row := navRow{Label: c.Section, Href: pages[0].Href, Icon: navIcon(c.Section, c.Section), Active: here == c.Section, Opens: true}
+		// What System has waiting for you is what it has to install.
+		if c.Section == "System" {
+			if truth, ok := s.updateTruth(); ok {
+				if row.Detail, row.Hint = waitingToInstall(truth, tr); row.Detail != "" {
+					row.Dot, row.Variant = true, "info"
+				}
+			}
+		}
+		places = append(places, filed{c.Section, row})
 	}
-	places = append(places, filed{"System", system})
 	// Stable, so a section's rows keep discovery (id-sorted) order.
 	sort.SliceStable(places, func(a, b int) bool { return sectionLess(places[a].section, places[b].section) })
 
@@ -225,8 +227,9 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")},
 		{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)},
 	}
-	// Only the most specific registration lights its row; one filed under System
-	// or Status lights none here (System's row is lit by its domain).
+	// Only the most specific registration lights its row; one filed under a
+	// collapsed section or Status lights none here (the section's row is lit by
+	// sectionAt).
 	lit := ""
 	if i := bestHref(active, hrefs); i >= 0 {
 		lit = hrefs[i]
@@ -265,30 +268,6 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		}
 	}
 	return navModel{Rows: rows}
-}
-
-// isSystemPath reports whether a request belongs to either a shell-owned
-// System page or any manifest-registered System plugin page.
-func (s *Server) isSystemPath(active string) bool {
-	if active == "/system" || strings.HasPrefix(active, "/system/") {
-		return true
-	}
-	return s.isSectionPath("System", active)
-}
-
-// isSectionPath reports whether a request belongs to any manifest-registered
-// page of one nav section. Liveness is not required here: a direct URL to a
-// stopped plugin still belongs visually to its domain while it explains that the
-// plugin is unavailable.
-func (s *Server) isSectionPath(section, active string) bool {
-	for _, m := range s.manifestList() {
-		for _, entry := range m.Nav {
-			if entry.Section == section && isActive(active, pluginHref(m.ID, entry.Path)) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount

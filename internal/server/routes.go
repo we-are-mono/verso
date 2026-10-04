@@ -33,8 +33,10 @@ func (s *Server) routes() {
 	// for its tab only once someone has asked to see one.
 	s.mux.HandleFunc("GET "+entityPath, s.handleEntity)
 	s.mux.HandleFunc("POST "+entityPath, s.handleEntitySave)
-	s.mux.HandleFunc("GET /system", s.handleSystemRoot)
-	s.mux.HandleFunc("GET /system/{$}", s.handleSystemRoot)
+	for _, c := range collapsedSections {
+		s.mux.HandleFunc("GET "+c.Root, s.handleSectionRoot(c.Section))
+		s.mux.HandleFunc("GET "+c.Root+"/{$}", s.handleSectionRoot(c.Section))
+	}
 
 	// Hardware: shell-owned "about this box" — the device's model, panel, and
 	// every sensor reading, read from local sysfs with no configuration to stage.

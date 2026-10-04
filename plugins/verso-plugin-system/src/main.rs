@@ -352,9 +352,7 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
     if let Widget::Form { error, fields, .. } = &mut form {
         *error = Widget::refusal(fields, e);
     }
-    Envelope::page("General", form)
-        .with_width("form")
-        .with_tone("neutral")
+    Envelope::page("General", form).with_width("form")
 }
 fn valid_ula(value: &str) -> bool {
     let Some((address, prefix)) = value.split_once('/') else {

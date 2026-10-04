@@ -132,7 +132,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 	}
 	m := plugin.Manifest{
 		ID: "demo", Name: "Demo", Socket: "/demo.sock", SchemaVersion: 1,
-		Nav: []plugin.NavEntry{{Section: "Network", Label: "Widgets", Path: "/"}},
+		Nav: []plugin.NavEntry{{Section: "Apps", Label: "Widgets", Path: "/"}},
 	}
 	srv := newServerWith(t, fakeBackend{}, &fakeTransport{env: env}, []plugin.Manifest{m})
 	srv.probe = func(string) bool { return true }

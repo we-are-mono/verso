@@ -26,7 +26,7 @@ func systemManifest() plugin.Manifest {
 
 func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "ignored plugin title", Status: http.StatusOK,
+		SchemaVersion: 1, Title: "General", Status: http.StatusOK,
 		Subheading: "The name, place, and clock shared by everything on this router.",
 		Width:      "narrow",
 		Widget: json.RawMessage(`{
@@ -37,8 +37,11 @@ func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{systemManifest()})
 	body := get(t, s, "/plugins/system/").Body.String()
 
+	if !strings.Contains(body, `verso-page-heading">General</h1>`) {
+		t.Error("a page in System keeps its own name as the heading, with no section prefix")
+	}
 	for _, want := range []string{
-		"System", "— General", `href="/system/access"`, `href="/system/packages"`,
+		`href="/system/access"`, `href="/system/packages"`,
 		`href="/system/services"`, `href="/system/maintenance"`,
 		`data-verso-page-form`, `name="hostname"`,
 		// The form carries its own submit: the shell's, since General declares
@@ -59,6 +62,52 @@ func TestSystemRootRedirectsToFirstLiveRegisteredPage(t *testing.T) {
 	rec := get(t, s, "/system")
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/plugins/system/" {
 		t.Fatalf("redirect = %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+func networkManifests() []plugin.Manifest {
+	return []plugin.Manifest{
+		{ID: "dnsdhcp", Name: "DNS and DHCP", Socket: "/var/run/verso/dnsdhcp.sock", SchemaVersion: 1,
+			Nav: []plugin.NavEntry{{Section: "Network", Label: "DHCP", Path: "/"}}},
+		{ID: "interfaces", Name: "Interfaces", Socket: "/var/run/verso/interfaces.sock", SchemaVersion: 1,
+			Nav: []plugin.NavEntry{{Section: "Network", Label: "Interfaces", Path: "/"}}},
+	}
+}
+
+// Network's root leads to its first live page, as System's does.
+func TestNetworkRootRedirectsToFirstLiveRegisteredPage(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, networkManifests())
+	for _, path := range []string{"/network", "/network/"} {
+		rec := get(t, s, path)
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/plugins/interfaces/" {
+			t.Errorf("GET %s = %d %q, want a redirect to Interfaces", path, rec.Code, rec.Header().Get("Location"))
+		}
+	}
+	s.probe = func(string) bool { return false }
+	if rec := get(t, s, "/network"); rec.Code != http.StatusNotFound {
+		t.Errorf("GET /network with nothing live = %d, want 404", rec.Code)
+	}
+}
+
+// A plugin page filed under Network joins the Network frame: the page keeps its
+// own name as the heading, as System's pages do, and the rail's Network row
+// opens into every live Network page, whichever plugin files it.
+func TestNetworkFiledPluginPageOpensTheNetworkRow(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "DHCP", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	s := newServerWith(t, fakeBackend{}, tr, networkManifests())
+	body := get(t, s, "/plugins/dnsdhcp/").Body.String()
+	body = body[strings.LastIndex(body, "</style>"):]
+	nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+	for _, want := range []string{`href="/plugins/interfaces/"`, `href="/plugins/dnsdhcp/" aria-current="page"`, ">Network</span>"} {
+		if !strings.Contains(nav, want) {
+			t.Errorf("rail missing %q", want)
+		}
+	}
+	if !strings.Contains(body, `verso-page-heading">DHCP</h1>`) {
+		t.Error("a page in Network keeps its own name as the heading, with no section prefix")
 	}
 }
 

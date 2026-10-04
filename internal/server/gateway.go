@@ -127,15 +127,18 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
 		return
 	}
-	// A plugin filing a page into System joins the shell's mixed-ownership
-	// System frame. The manifest registration, not a shell route, supplies the
-	// page and its label; stopped plugins disappear through the ordinary live
-	// registration filter used by every other plugin page.
-	if entry, _ := navEntryAt(m, r.PathValue("path")); entry.Section == "System" {
-		if hdr.Tone != "neutral" {
-			hdr.Heading = "System"
+	// A plugin filing a page into a collapsed section (Network, System) joins
+	// that section's frame: the rail opens into the section's pages, and the
+	// page keeps its own name as the heading with no section prefix, as the
+	// shell's own pages there do. The manifest registration, not a shell route,
+	// supplies the page and its label; stopped plugins disappear through the
+	// ordinary live registration filter used by every other plugin page.
+	entry, _ := navEntryAt(m, r.PathValue("path"))
+	if _, folded := collapsed(entry.Section); folded {
+		if hdr.Tone == "" {
+			hdr.Tone = "neutral"
 		}
-		pages = s.systemPages(r.URL.Path)
+		pages = s.sectionPages(entry.Section, r.URL.Path)
 	}
 	s.renderPage(w, r, status, hdr, width, pages, body)
 }

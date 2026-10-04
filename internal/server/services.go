@@ -362,7 +362,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 	// solely when other pages' edits are pending.
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading: "Services", Tone: "neutral",
-	}, "wide", s.systemPages(r.URL.Path), template.HTML(body.String()))
+	}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name and

@@ -44,7 +44,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, r, http.StatusOK, pageHeader{
 		Heading: hardwareModel(board, profile),
 		Display: true,
-	}, "narrow", s.systemPages(r.URL.Path), template.HTML(body.String()))
+	}, "narrow", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 // hardwareBody composes the page's widget tree: the panel, the vitals grid, the

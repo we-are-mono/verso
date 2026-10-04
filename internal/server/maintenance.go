@@ -165,7 +165,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.systemPages(r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

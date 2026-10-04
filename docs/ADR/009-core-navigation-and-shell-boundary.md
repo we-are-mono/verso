@@ -56,16 +56,20 @@ call: **on a gateway the firewall is not optional, so it is core.**
 
    This ordered list is data the shell owns — the analog of `luci-base` declaring
    the top-level slots — but it does not drive the top-level chrome directly. The
-   sidebar is device-first: a few everyday, plain-language rows (Home, Internet,
-   Devices, Wi-Fi, Family, Security, System — several still `#` placeholders) sit up
-   top for the least-technical operator, and the remaining core sections render
-   below them as section rows. Three sections are not section rows. Status
-   is the **Home** overview at the head of the everyday rows, so status never
-   appears twice and the nav carries no live state; Security and System are
-   everyday rows of their own, each leading to the first live page registered
-   under it and lit anywhere inside that domain. The section rows
-   render in this canonical order, ahead of any non-core section, so the sidebar
-   is coherent and deterministic regardless of plugin discovery order.
+   sidebar is a flat list of places in a designed order (Overview, Devices,
+   Network, Wireless, Firewall, …, System), with no section titles between them.
+   Status is the **Overview** at its head, so status never appears twice and the
+   nav carries no live state. Every other entry is a row of its own, except in the
+   two **collapsed sections**, **Network** and **System**: each is one row named
+   for the section, leading to its first live page, lit anywhere inside the
+   section, and opening there into its pages — every live registration filed
+   under it, whichever plugin files it, in the section's designed order
+   (Network: Interfaces, DHCP, DNS; System: General), the rest by label, then the
+   pages the shell owns there. Its root (`/network`, `/system`) redirects to that
+   first page. A page in a collapsed section keeps its own name as its heading,
+   with no section prefix: the open row already says where it is. Rows the design does not
+   name follow in this canonical section order, ahead of any non-core section,
+   so the sidebar is deterministic regardless of plugin discovery order.
 
 3. **The shell serves its own machinery and generic platform administration
    directly; feature-specific device configuration is a plugin.** Four bounded
@@ -133,12 +137,13 @@ call: **on a gateway the firewall is not optional, so it is core.**
    next to manifest-registered plugin pages (General, SSH, cron). The bundled
    System plugin's manifest registers General; the shell neither predeclares nor
    conditionally hides it. The System destination is the first live registered
-   page, falling back to Access when no System plugin page is available. The
-   Security destination resolves the same way, with no shell-owned pages behind
-   it: the section's one occupant is the firewall plugin, so the row leads
-   nowhere while that plugin is not answering, and the shell never merges its
-   heading or subpage bar the way the mixed System frame does. Status is
-   shell-only; Security is one plugin end to end; System is mixed.
+   page, falling back to the shell's own pages when no System plugin page is
+   available. **Network** collapses the same way with no shell-owned pages: its
+   pages come from the interfaces and DNS/DHCP plugins, so with neither answering
+   it has no row. Wi-Fi files under a section of its own (`Wireless`) and keeps
+   its row. Security is not collapsed: its one occupant, the firewall plugin, is
+   its own row and declares its own subpages. Status is shell-only; Security is
+   one plugin end to end; Network is several plugins; System is mixed.
 
    **Page ownership is not exclusive composition.** Shell page templates publish a
    stable hook at every semantic seam between their sections (ADR-005, ADR-006). A
@@ -166,7 +171,9 @@ call: **on a gateway the firewall is not optional, so it is core.**
 
 5. **Plugins extend the taxonomy; unknown sections sort after core.** A plugin's
    `nav[].section` (ADR-006) either names a core section — its links join that
-   section in place — or names a new one. New (non-core) sections render **after**
+   section in place, and in a collapsed section (Network, System) they become
+   pages of the section's one row rather than rows — or names a new one. New
+   (non-core) sections render **after**
    all core sections among the section rows, ordered
    deterministically (by section title, then plugin id).
    This is the direct analog of a LuCI app filling the **Services** or **VPN**

@@ -344,5 +344,5 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		}
 	}
 
-	s.renderPage(w, r, status, hdr, "form", s.systemPages(r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, status, hdr, "form", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }

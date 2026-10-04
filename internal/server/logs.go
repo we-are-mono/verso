@@ -59,7 +59,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hdr := pageHeader{Heading: "Logs", Tone: "neutral", HeadingAct: template.HTML(acts.String())} //nolint:gosec // rendered by the shell's own templates
-	s.renderPage(w, r, http.StatusOK, hdr, "full", s.systemPages(r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, hdr, "full", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 // Reuse the authenticated listing stream route and sampling clock. IDs are
@@ -228,7 +228,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(panel.String()))
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.systemPages(r.URL.Path), template.HTML(content.String()))
+	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.sectionPages("System", r.URL.Path), template.HTML(content.String()))
 }
 
 func validateLogSettings(values map[string]any) error {

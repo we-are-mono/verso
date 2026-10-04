@@ -72,7 +72,8 @@ func nav(section, label, path string) plugin.NavEntry {
 // Destinations the canvas does not name follow the core taxonomy's order of the
 // sections they are filed under, no matter what order the plugins are
 // discovered in — the whole point of the shell owning the taxonomy — and
-// plugin-introduced sections come after every core one, by title.
+// plugin-introduced sections come after every core one, by title. A page filed
+// under Network is no row of its own: it is one of the Network row's pages.
 func TestBuildSidebarUnnamedRowsFollowSectionOrder(t *testing.T) {
 	s := navServer(
 		manifest("vpn", nav("VPN", "WireGuard", "/")),
@@ -80,7 +81,7 @@ func TestBuildSidebarUnnamedRowsFollowSectionOrder(t *testing.T) {
 		manifest("links", nav("Network", "Links", "/")),
 		manifest("stats", nav("Statistics", "Graphs", "/")),
 	)
-	want := []string{"Overview", "Devices", "System", "Links", "Guard", "Graphs", "WireGuard"}
+	want := []string{"Overview", "Devices", "Network", "System", "Guard", "Graphs", "WireGuard"}
 	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
 		t.Fatalf("rail = %v, want %v", got, want)
 	}
@@ -114,26 +115,46 @@ func TestBuildSidebarRowsKeepDiscoveryOrder(t *testing.T) {
 	}
 }
 
-// System is one row, not a group: it targets the first page its frame resolves
-// to and stays lit anywhere inside the domain.
-func TestBuildSidebarSystemIsOneRow(t *testing.T) {
-	system := manifest("system", nav("System", "General", "/"))
-	system.Socket = "/system.sock"
-	s := navServer(system, manifest("net", nav("Network", "Interfaces", "/")))
-
-	model := sidebar(s, "/plugins/system/")
-	row := railRow(t, model, "System")
-	if row.Href != "/plugins/system/" || !row.Active {
-		t.Fatalf("System row = %+v, want active System targeting registered General", row)
-	}
-	if n := strings.Count(strings.Join(railLabels(model), "\x00"), "System"); n != 1 {
-		t.Fatalf("rail = %v, want System exactly once", railLabels(model))
-	}
-	// The row's own registration must not also stand on its own in the rail.
-	for _, label := range railLabels(model) {
-		if label == "General" {
-			t.Fatal("a System page belongs under the System row, not beside it")
+// Network and System are each one row, not a group: the row targets the first
+// page its section resolves to, opens into its pages, and stays lit anywhere
+// inside the section. The pages filed there never stand in the rail themselves.
+func TestBuildSidebarCollapsedSectionIsOneRow(t *testing.T) {
+	s := navServer(
+		manifest("system", nav("System", "General", "/")),
+		manifest("dnsdhcp", nav("Network", "DHCP", "/dhcp"), nav("Network", "DNS", "/dns")),
+		manifest("interfaces", nav("Network", "Interfaces", "/")),
+	)
+	for _, tc := range []struct {
+		section, at, first string
+		members            []string
+	}{
+		{"System", "/plugins/system/", "/plugins/system/", []string{"General"}},
+		{"Network", "/plugins/dnsdhcp/dns", "/plugins/interfaces/", []string{"Interfaces", "DHCP", "DNS"}},
+	} {
+		model := sidebar(s, tc.at)
+		row := railRow(t, model, tc.section)
+		if row.Href != tc.first || !row.Active || !row.Opens {
+			t.Errorf("%s row = %+v, want the active row opening at %s", tc.section, row, tc.first)
 		}
+		labels := railLabels(model)
+		if n := strings.Count(strings.Join(labels, "\x00"), tc.section); n != 1 {
+			t.Errorf("rail = %v, want %s exactly once", labels, tc.section)
+		}
+		for _, member := range tc.members {
+			if slices.Contains(labels, member) {
+				t.Errorf("rail = %v: %s belongs under the %s row, not beside it", labels, member, tc.section)
+			}
+		}
+	}
+}
+
+// A section with no live page has no row: nothing filed under Network answers,
+// so Network leads nowhere and stays out of the rail.
+func TestBuildSidebarEmptyCollapsedSectionHasNoRow(t *testing.T) {
+	s := navServer(manifest("interfaces", nav("Network", "Interfaces", "/")))
+	s.probe = func(string) bool { return false }
+	if labels := railLabels(sidebar(s, "/")); slices.Contains(labels, "Network") {
+		t.Fatalf("rail = %v, want no Network row without a live Network page", labels)
 	}
 }
 
@@ -173,18 +194,21 @@ func TestARailRowIsTheSamePlaceOnEveryPage(t *testing.T) {
 }
 
 // A row that opens into subpages says so on every page, not only once you are
-// in it: System, whose pages the shell holds, and a plugin's destination that
-// declares its pages in its manifest. A row with none says nothing.
+// in it: Network and System, whose pages the shell gathers, and a plugin's
+// destination that declares its pages in its manifest. A row with none says
+// nothing.
 func TestARowThatOpensSaysSoEverywhere(t *testing.T) {
 	firewall := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: true})
 	firewall.Socket = "/firewall.sock"
 	interfaces := manifest("net", nav("Network", "Interfaces", "/"))
 	interfaces.Socket = "/net.sock"
-	s := navServer(firewall, interfaces)
+	wireless := manifest("wireless", nav("Wireless", "Wireless", "/"))
+	wireless.Socket = "/wireless.sock"
+	s := navServer(firewall, interfaces, wireless)
 
 	for _, at := range []string{"/", "/plugins/net/"} {
 		model := sidebar(s, at)
-		for label, opens := range map[string]bool{"Firewall": true, "System": true, "Interfaces": false, "Overview": false} {
+		for label, opens := range map[string]bool{"Firewall": true, "System": true, "Network": true, "Wireless": false, "Overview": false} {
 			if got := railRow(t, model, label).Opens; got != opens {
 				t.Errorf("at %s, %s row Opens = %v, want %v", at, label, got, opens)
 			}
@@ -227,12 +251,13 @@ func TestBuildSidebarDropsARowWithoutALivePlugin(t *testing.T) {
 	}
 }
 
-// The rail follows its designed order, whatever order the
-// plugins were discovered in.
+// The rail follows its designed order, whatever order the plugins were
+// discovered in. Wi-Fi files under a section of its own, so it keeps its row
+// beside Network rather than becoming one of Network's pages.
 func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
-	dns := manifest("dnsdhcp", nav("Network", "DNS & DHCP", "/"))
+	dns := manifest("dnsdhcp", nav("Network", "DHCP", "/"))
 	dns.Socket = "/dns.sock"
-	wireless := manifest("wireless", nav("Network", "Wireless", "/"))
+	wireless := manifest("wireless", nav("Wireless", "Wireless", "/"))
 	wireless.Socket = "/wireless.sock"
 	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
 	firewall.Socket = "/firewall.sock"
@@ -240,7 +265,7 @@ func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
 	// wireless — nothing like the order the rail must draw them in.
 	s := navServer(dns, firewall, wireless)
 
-	want := []string{"Overview", "Devices", "Wireless", "Firewall", "DNS & DHCP", "System"}
+	want := []string{"Overview", "Devices", "Network", "Wireless", "Firewall", "System"}
 	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
 		t.Fatalf("rail = %v, want %v", got, want)
 	}
@@ -363,7 +388,7 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	s := navServer(system, vpn)
 	s.probe = func(path string) bool { return path == "/live/system.sock" }
 
-	pages := s.systemPages("/plugins/system/")
+	pages := s.sectionPages("System", "/plugins/system/")
 	if len(pages) != 7 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
 		t.Fatalf("System pages = %+v, want live General followed by six shell pages", pages)
 	}
@@ -371,6 +396,29 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 		if page.Label == "VPN" {
 			t.Fatal("stopped plugin registration remained in System pages")
 		}
+	}
+}
+
+// Network's pages are every live registration filed under it, whichever plugin
+// files them, in the designed order — Interfaces, DHCP, DNS — and anything else
+// after those by label. The page in hand is the one marked.
+func TestNetworkPagesFollowTheDesignedOrder(t *testing.T) {
+	s := navServer(
+		manifest("dnsdhcp", nav("Network", "DNS", "/dns"), nav("Network", "DHCP", "/")),
+		manifest("interfaces", nav("Network", "Interfaces", "/")),
+		manifest("vpn", nav("Network", "WireGuard", "/")),
+		manifest("lab", nav("Network", "Bridges", "/")),
+	)
+	pages := s.sectionPages("Network", "/plugins/dnsdhcp/dns")
+	var got []string
+	for _, page := range pages {
+		got = append(got, page.Label)
+		if page.Active != (page.Label == "DNS") {
+			t.Errorf("%s active = %v, want only DNS marked", page.Label, page.Active)
+		}
+	}
+	if want := []string{"Interfaces", "DHCP", "DNS", "Bridges", "WireGuard"}; !slices.Equal(got, want) {
+		t.Fatalf("Network pages = %v, want %v", got, want)
 	}
 }
 
@@ -403,16 +451,19 @@ func TestBuildSidebarDeepSubpageMarksOnlyItself(t *testing.T) {
 	}
 }
 
-// A page filed under System lights the System row and no plugin row, even when
-// a sibling registration's shorter path also holds it.
-func TestBuildSidebarSystemPageLightsOnlySystem(t *testing.T) {
+// A page lights the row of the section its most specific registration is filed
+// under, and no other, even when a sibling registration's shorter path in
+// another section also holds it.
+func TestBuildSidebarSectionPageLightsOnlyItsSection(t *testing.T) {
 	s := navServer(manifest("tools",
 		nav("Network", "Tools", "/"),
 		nav("System", "Schedule", "/schedule"),
 	))
-	for _, row := range sidebar(s, "/plugins/tools/schedule").Rows {
-		if row.Active != (row.Label == "System") {
-			t.Errorf("row %q active = %v, want only System lit", row.Label, row.Active)
+	for at, lit := range map[string]string{"/plugins/tools/schedule": "System", "/plugins/tools/": "Network"} {
+		for _, row := range sidebar(s, at).Rows {
+			if row.Active != (row.Label == lit) {
+				t.Errorf("at %s, row %q active = %v, want only %s lit", at, row.Label, row.Active, lit)
+			}
 		}
 	}
 }

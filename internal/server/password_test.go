@@ -248,7 +248,7 @@ func TestPasswordLinkAlwaysInNav(t *testing.T) {
 		t.Fatalf("System row = %+v, want it to open into its pages", row)
 	}
 	found := false
-	for _, page := range s.systemPages("/") {
+	for _, page := range s.sectionPages("System", "/") {
 		if page.Href == "/system/access" && page.Label == "Access" {
 			found = true
 		}
