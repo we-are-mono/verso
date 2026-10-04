@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 )
@@ -16,10 +15,10 @@ import (
 // just under the title as part of the header block — describing the card — set apart
 // from the content below it.
 type Card struct {
-	Style    string
-	Title    string
-	Subtitle string
-	Children []Widget
+	Style    string  `json:"style"`
+	Title    string  `json:"title"`
+	Subtitle string  `json:"subtitle"`
+	Children Widgets `json:"children"`
 }
 
 func (*Card) isWidget() {}
@@ -27,29 +26,6 @@ func (*Card) isWidget() {}
 func (c *Card) children() []Widget { return c.Children }
 
 func (c *Card) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children, keep) }
-
-// UnmarshalJSON decodes a card's title, subtitle, and children, recursing through
-// Decode so an unknown child type fails here rather than silently vanishing.
-func (c *Card) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Style    string            `json:"style"`
-		Title    string            `json:"title"`
-		Subtitle string            `json:"subtitle"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	c.Style = raw.Style
-	c.Title = raw.Title
-	c.Subtitle = raw.Subtitle
-	children, err := decodeChildren(raw.Children, "card child")
-	if err != nil {
-		return err
-	}
-	c.Children = children
-	return nil
-}
 
 // cardView is the card template's model: the title and subtitle plus the children
 // already rendered to trusted HTML fragments.

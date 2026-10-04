@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 )
@@ -14,17 +13,17 @@ import (
 // draws the box. Compact tightens that rhythm and Loose opens it; Divided draws a
 // hairline between entries; Inline forms a wrapping action/content row.
 type Stack struct {
-	Divided bool
-	Compact bool
-	Loose   bool
-	Inline  bool
+	Divided bool `json:"divided"`
+	Compact bool `json:"compact"`
+	Loose   bool `json:"loose"`
+	Inline  bool `json:"inline"`
 	// Flush adds no rhythm of its own, for a run of children that already carry
 	// their own — form rows, which each hold 12px above and below themselves.
 	// Any spacing here would be added to theirs and a form would read as a list
 	// of separate things rather than as one set of settings.
-	Flush    bool
-	Width    string
-	Children []Widget
+	Flush    bool    `json:"flush"`
+	Width    string  `json:"width"`
+	Children Widgets `json:"children"`
 }
 
 func (*Stack) isWidget() {}
@@ -32,33 +31,6 @@ func (*Stack) isWidget() {}
 func (s *Stack) children() []Widget { return s.Children }
 
 func (s *Stack) prune(keep func(Widget) bool) { s.Children = pruneList(s.Children, keep) }
-
-func (s *Stack) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Divided  bool              `json:"divided"`
-		Compact  bool              `json:"compact"`
-		Loose    bool              `json:"loose"`
-		Flush    bool              `json:"flush"`
-		Inline   bool              `json:"inline"`
-		Width    string            `json:"width"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	s.Divided = raw.Divided
-	s.Compact = raw.Compact
-	s.Loose = raw.Loose
-	s.Flush = raw.Flush
-	s.Inline = raw.Inline
-	s.Width = raw.Width
-	children, err := decodeChildren(raw.Children, "stack child")
-	if err != nil {
-		return err
-	}
-	s.Children = children
-	return nil
-}
 
 type stackView struct {
 	Divided  bool

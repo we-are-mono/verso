@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 	"slices"
@@ -33,12 +32,12 @@ import (
 // time to the next. The word always splits them: each part stands as its own
 // control, dropdowns and typed values alike, with the word between.
 type Grid struct {
-	Style    string
-	Columns  int
-	Children []Widget
-	Label    string
-	Help     string
-	Join     string
+	Style    string  `json:"style"`
+	Columns  int     `json:"columns"`
+	Children Widgets `json:"children"`
+	Label    string  `json:"label"`
+	Help     string  `json:"help"`
+	Join     string  `json:"join"`
 }
 
 func (*Grid) isWidget() {}
@@ -46,31 +45,6 @@ func (*Grid) isWidget() {}
 func (g *Grid) children() []Widget { return g.Children }
 
 func (g *Grid) prune(keep func(Widget) bool) { g.Children = pruneList(g.Children, keep) }
-
-func (g *Grid) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Style    string            `json:"style"`
-		Columns  int               `json:"columns"`
-		Children []json.RawMessage `json:"children"`
-		Label    string            `json:"label"`
-		Help     string            `json:"help"`
-		Join     string            `json:"join"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	g.Style = raw.Style
-	g.Columns = raw.Columns
-	g.Label = raw.Label
-	g.Help = raw.Help
-	g.Join = raw.Join
-	children, err := decodeChildren(raw.Children, "grid child")
-	if err != nil {
-		return err
-	}
-	g.Children = children
-	return nil
-}
 
 // fusable reports whether a group of related fields is values typed into
 // boxes, which the shell joins into one control (verso-box) — a secret and

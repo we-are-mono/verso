@@ -5,7 +5,6 @@ package widget
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -24,8 +23,8 @@ type Empty struct {
 	// Variant tones the icon by the badge vocabulary — "success" for a state
 	// that has arrived (an upgrade finished) rather than one waiting to begin.
 	// Absent, the icon wears the accent; an unknown value falls back to it.
-	Variant  string   `json:"variant,omitempty"`
-	Children []Widget // the call(s) to action
+	Variant  string  `json:"variant,omitempty"`
+	Children Widgets `json:"children"` // the call(s) to action
 }
 
 func (*Empty) isWidget() {}
@@ -33,28 +32,6 @@ func (*Empty) isWidget() {}
 func (e *Empty) children() []Widget { return e.Children }
 
 func (e *Empty) prune(keep func(Widget) bool) { e.Children = pruneList(e.Children, keep) }
-
-// UnmarshalJSON decodes the action children recursively through Decode, so an
-// unknown child type fails loudly rather than vanishing.
-func (e *Empty) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Icon     string            `json:"icon"`
-		Title    string            `json:"title"`
-		Body     string            `json:"body"`
-		Variant  string            `json:"variant"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	e.Icon, e.Title, e.Body, e.Variant = raw.Icon, raw.Title, raw.Body, raw.Variant
-	children, err := decodeChildren(raw.Children, "empty child")
-	if err != nil {
-		return err
-	}
-	e.Children = children
-	return nil
-}
 
 // emptyView is the empty template's model: the icon/title plus the reassurance
 // and the call-to-action children already rendered to trusted HTML.

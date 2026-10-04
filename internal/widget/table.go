@@ -294,8 +294,8 @@ func (m *ColumnMeasure) UnmarshalJSON(data []byte) error {
 // clicking it slides in the drawer (the row gets a trailing chevron and the
 // pointer; controls inside the row keep their own meaning).
 type TableRow struct {
-	Expanded []Widget `json:"expanded,omitempty"`
-	Depth    int      `json:"depth,omitempty"`
+	Expanded Widgets `json:"expanded,omitempty"`
+	Depth    int     `json:"depth,omitempty"`
 
 	ID    string      `json:"id,omitempty"`
 	Key   string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
@@ -409,7 +409,7 @@ type RowDrawer struct {
 	Tabs     []DrawerTab `json:"tabs,omitempty"`
 	Size     string      `json:"size,omitempty"`
 	Open     bool        `json:"open,omitempty"`
-	Children []Widget    `json:"children"`
+	Children Widgets     `json:"children"`
 }
 
 // DrawerTab is one heading in a panel's strip: what it is called, where the
@@ -421,79 +421,6 @@ type DrawerTab struct {
 	State  string `json:"state,omitempty"`
 	Href   string `json:"href,omitempty"`
 	Active bool   `json:"active,omitempty"`
-}
-
-// UnmarshalJSON decodes the panel's children recursively through Decode, so an
-// unknown child type fails loudly rather than vanishing. It lives on RowDrawer
-// rather than inside the row's decoder because a panel is not only a row's: the
-// bar's own act opens one too, and a second copy of this list would be a second
-// place for a field to go missing from.
-func (d *RowDrawer) UnmarshalJSON(data []byte) error {
-	// Every field a plugin may send is named here. A field left out of this
-	// shape is silently dropped on the way in — the panel renders without it and
-	// nothing fails — so the list has to stay complete as RowDrawer grows.
-	var raw struct {
-		Title    string            `json:"title"`
-		Verbatim bool              `json:"verbatim"`
-		Closed   string            `json:"closed"`
-		Tabs     []DrawerTab       `json:"tabs"`
-		Size     string            `json:"size"`
-		Open     bool              `json:"open"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	children, err := decodeChildren(raw.Children, "row drawer child")
-	if err != nil {
-		return err
-	}
-	*d = RowDrawer{
-		Title: raw.Title, Verbatim: raw.Verbatim, Closed: raw.Closed, Tabs: raw.Tabs,
-		Size: raw.Size, Open: raw.Open, Children: children,
-	}
-	return nil
-}
-
-// UnmarshalJSON decodes the row, handing its panel to the panel's own decoder.
-func (tr *TableRow) UnmarshalJSON(data []byte) error {
-	// Every field a plugin may send is named here. A field left out of this
-	// shape is silently dropped on the way in — the row renders without it and
-	// nothing fails — so the list has to stay complete as TableRow grows.
-	var raw struct {
-		Expanded []json.RawMessage `json:"expanded"`
-		Depth    int               `json:"depth"`
-		ID       string            `json:"id"`
-		Key      string            `json:"key"`
-		Group    *TableGroup       `json:"group"`
-		Muted    bool              `json:"muted"`
-		Tags     []string          `json:"tags"`
-		Facet    map[string]string `json:"facet"`
-		Entity   *EntityRef        `json:"entity"`
-		Panel    string            `json:"panel"`
-		Cells    []TableCell       `json:"cells"`
-		Drawer   *RowDrawer        `json:"drawer"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	var err error
-	tr.Expanded, err = decodeChildren(raw.Expanded, "table expanded")
-	if err != nil {
-		return err
-	}
-	tr.Depth = raw.Depth
-	tr.ID = raw.ID
-	tr.Key = raw.Key
-	tr.Group = raw.Group
-	tr.Muted = raw.Muted
-	tr.Tags = raw.Tags
-	tr.Facet = raw.Facet
-	tr.Entity = raw.Entity
-	tr.Panel = raw.Panel
-	tr.Cells = raw.Cells
-	tr.Drawer = raw.Drawer
-	return nil
 }
 
 // TableCell carries the value for one cell; which field applies is decided by

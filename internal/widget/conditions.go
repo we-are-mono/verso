@@ -37,9 +37,9 @@ type ConditionItem struct {
 	// "names or numbers" — shown at the picker row's trailing edge. It is an
 	// example, not an explanation: Help says what the condition is for and belongs
 	// to the row once it is added, while this says what you would type.
-	Hint     string   `json:"hint,omitempty"`
-	Active   bool     `json:"active,omitempty"`
-	Children []Widget `json:"-"`
+	Hint     string  `json:"hint,omitempty"`
+	Active   bool    `json:"active,omitempty"`
+	Children Widgets `json:"children"`
 }
 
 func (*Conditions) isWidget() {}
@@ -58,27 +58,15 @@ func (c *Conditions) prune(keep func(Widget) bool) {
 	}
 }
 
+// UnmarshalJSON refuses an item without a key, or with a key another item
+// already has: the key is what the picker adds and removes an item by.
 func (c *Conditions) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Label string `json:"label"`
-		Help  string `json:"help"`
-		Items []struct {
-			Key      string            `json:"key"`
-			Label    string            `json:"label"`
-			Help     string            `json:"help"`
-			Group    string            `json:"group"`
-			Hint     string            `json:"hint"`
-			Active   bool              `json:"active"`
-			Children []json.RawMessage `json:"children"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	type plain Conditions
+	if err := json.Unmarshal(data, (*plain)(c)); err != nil {
 		return err
 	}
-	c.Label, c.Help = raw.Label, raw.Help
-	c.Items = make([]ConditionItem, 0, len(raw.Items))
-	seen := make(map[string]bool, len(raw.Items))
-	for i, item := range raw.Items {
+	seen := make(map[string]bool, len(c.Items))
+	for i, item := range c.Items {
 		if item.Key == "" {
 			return fmt.Errorf("condition item %d: missing key", i)
 		}
@@ -86,14 +74,6 @@ func (c *Conditions) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("condition item %d: duplicate key %q", i, item.Key)
 		}
 		seen[item.Key] = true
-		children, err := decodeChildren(item.Children, fmt.Sprintf("condition item %d child", i))
-		if err != nil {
-			return err
-		}
-		c.Items = append(c.Items, ConditionItem{
-			Key: item.Key, Label: item.Label, Help: item.Help, Group: item.Group,
-			Hint: item.Hint, Active: item.Active, Children: children,
-		})
 	}
 	return nil
 }

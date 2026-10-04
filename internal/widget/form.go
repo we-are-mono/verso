@@ -5,7 +5,6 @@ package widget
 
 import (
 	"bytes"
-	"encoding/json"
 	"html/template"
 	"io"
 )
@@ -38,11 +37,11 @@ type Form struct {
 	// "config.section", when the form writes one uci section — said once here
 	// rather than on each control (MarkStaged).
 	Target  string       `json:"target,omitempty"`
-	Submit  string       // submit button label: the act and its object, "Save rule" (default "Save changes")
-	Success string       // optional message shown after a successful save
-	Error   string       // optional error not tied to a single field, shown above the fields
-	Actions []FormAction // secondary submit buttons besides Save (below)
-	Fields  []Widget     // form contents
+	Submit  string       `json:"submit"`  // submit button label: the act and its object, "Save rule" (default "Save changes")
+	Success string       `json:"success"` // optional message shown after a successful save
+	Error   string       `json:"error"`   // optional error not tied to a single field, shown above the fields
+	Actions []FormAction `json:"actions"` // secondary submit buttons besides Save (below)
+	Fields  Widgets      `json:"fields"`  // form contents
 }
 
 // FormAction is a secondary submit button: it submits the form — all its fields —
@@ -96,39 +95,6 @@ func (f *Form) ConfirmDriven() bool {
 		})
 	}
 	return found
-}
-
-// UnmarshalJSON decodes a form's fields recursively through Decode, so an unknown
-// field type fails loudly rather than vanishing.
-func (f *Form) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Style   string            `json:"style"`
-		Submit  string            `json:"submit"`
-		Icon    string            `json:"icon"`
-		Note    string            `json:"note"`
-		Target  string            `json:"target"`
-		Success string            `json:"success"`
-		Error   string            `json:"error"`
-		Actions []FormAction      `json:"actions"`
-		Fields  []json.RawMessage `json:"fields"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	f.Style = raw.Style
-	f.Submit = raw.Submit
-	f.Icon = raw.Icon
-	f.Note = raw.Note
-	f.Target = raw.Target
-	f.Success = raw.Success
-	f.Error = raw.Error
-	f.Actions = raw.Actions
-	fields, err := decodeChildren(raw.Fields, "form field")
-	if err != nil {
-		return err
-	}
-	f.Fields = fields
-	return nil
 }
 
 // formView is the form template's model: its fields pre-rendered to trusted HTML,

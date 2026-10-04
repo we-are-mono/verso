@@ -90,14 +90,12 @@ func (a *CollectionAdd) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	*a = CollectionAdd(raw.plain)
-	if len(raw.Preview) != 0 && string(raw.Preview) != "null" {
-		preview, err := Decode(raw.Preview)
-		if err != nil {
-			return fmt.Errorf("collection add preview: %w", err)
-		}
-		a.Preview = preview
+	preview, err := decodeOptional(raw.Preview)
+	if err != nil {
+		return fmt.Errorf("collection add preview: %w", err)
 	}
+	*a = CollectionAdd(raw.plain)
+	a.Preview = preview
 	return nil
 }
 

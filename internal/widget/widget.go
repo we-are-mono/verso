@@ -21,9 +21,9 @@ import (
 //
 // renderInto is the render dispatch — polymorphism in place of a type switch
 // (Open/Closed): the engine calls it, each widget's own file implements it, so a
-// new widget never edits a shared switch. Decode below stays a switch on purpose:
-// it is the one place the wire "type" strings map to concrete structs, a single
-// visible catalog of the closed set.
+// new widget never edits a shared switch. Decode's catalog below stays one table
+// on purpose: it is the one place the wire "type" strings map to concrete
+// structs, a single visible list of the closed set.
 type Widget interface {
 	isWidget()
 	renderInto(r *Renderer, out io.Writer, csrf string) error
@@ -35,24 +35,78 @@ type Widget interface {
 	children() []Widget
 }
 
-// decodeChildren decodes a slice of raw child schemas through Decode, so an
-// unknown child type fails loudly rather than silently vanishing. what names
-// the parent context in the error, e.g. "card child" → "card child 3: …".
-func decodeChildren(raw []json.RawMessage, what string) ([]Widget, error) {
-	children := make([]Widget, 0, len(raw))
+// Widgets is a container's children. Each element decodes through Decode, so an
+// unknown child type fails loudly rather than silently vanishing — and a
+// container whose children are Widgets needs no decoder of its own.
+type Widgets []Widget
+
+// UnmarshalJSON decodes each element through Decode, naming the failing one.
+func (ws *Widgets) UnmarshalJSON(data []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	children := make(Widgets, 0, len(raw))
 	for i, rc := range raw {
 		w, err := Decode(rc)
 		if err != nil {
-			return nil, fmt.Errorf("%s %d: %w", what, i, err)
+			return fmt.Errorf("child %d: %w", i, err)
 		}
 		children = append(children, w)
 	}
-	return children, nil
+	*ws = children
+	return nil
+}
+
+// decodeOptional decodes a lone widget a schema may leave out: absent or null
+// is no widget, anything else decodes through Decode.
+func decodeOptional(raw json.RawMessage) (Widget, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	return Decode(raw)
+}
+
+// catalog maps each wire "type" to a fresh widget of that type. It is the one
+// place a new widget type is wired in; the set is small and closed by design.
+var catalog = map[string]func() Widget{
+	"table":       func() Widget { return new(Table) },
+	"card":        func() Widget { return new(Card) },
+	"form":        func() Widget { return new(Form) },
+	"field":       func() Widget { return new(Field) },
+	"list":        func() Widget { return new(List) },
+	"raw":         func() Widget { return new(Raw) },
+	"repeater":    func() Widget { return new(Repeater) },
+	"conditional": func() Widget { return new(Conditional) },
+	"when":        func() Widget { return new(When) },
+	"conditions":  func() Widget { return new(Conditions) },
+	"switch":      func() Widget { return new(Switch) },
+	"modal":       func() Widget { return new(Modal) },
+	"badge":       func() Widget { return new(Badge) },
+	"text":        func() Widget { return new(Text) },
+	"stack":       func() Widget { return new(Stack) },
+	"empty":       func() Widget { return new(Empty) },
+	"divider":     func() Widget { return new(Divider) },
+	"properties":  func() Widget { return new(Properties) },
+	"collection":  func() Widget { return new(Collection) },
+	"confirm":     func() Widget { return new(Confirm) },
+	"callout":     func() Widget { return new(Callout) },
+	"link":        func() Widget { return new(Link) },
+	"button":      func() Widget { return new(Button) },
+	"disclosure":  func() Widget { return new(Disclosure) },
+	"section":     func() Widget { return new(Section) },
+	"code":        func() Widget { return new(Code) },
+	"stat":        func() Widget { return new(Stat) },
+	"grid":        func() Widget { return new(Grid) },
+	"meter":       func() Widget { return new(Meter) },
+	"ports":       func() Widget { return new(Ports) },
+	"settings":    func() Widget { return new(Settings) },
+	"actionbar":   func() Widget { return new(ActionBar) },
+	"filter":      func() Widget { return new(Filter) },
 }
 
 // Decode parses one widget from its JSON schema representation, using the
-// "type" discriminator to select the concrete widget. This switch is the one
-// place a new widget type is wired in; the set is small and closed by design.
+// "type" discriminator to select the concrete widget from the catalog.
 func Decode(data []byte) (Widget, error) {
 	var head struct {
 		Type string `json:"type"`
@@ -60,209 +114,16 @@ func Decode(data []byte) (Widget, error) {
 	if err := json.Unmarshal(data, &head); err != nil {
 		return nil, fmt.Errorf("widget: decode type: %w", err)
 	}
-
-	switch head.Type {
-	case "":
+	if head.Type == "" {
 		return nil, fmt.Errorf("widget: missing \"type\" field")
-	case "table":
-		var t Table
-		if err := json.Unmarshal(data, &t); err != nil {
-			return nil, fmt.Errorf("widget: decode table: %w", err)
-		}
-		return &t, nil
-	case "card":
-		var c Card
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode card: %w", err)
-		}
-		return &c, nil
-	case "form":
-		var f Form
-		if err := json.Unmarshal(data, &f); err != nil {
-			return nil, fmt.Errorf("widget: decode form: %w", err)
-		}
-		return &f, nil
-	case "field":
-		var f Field
-		if err := json.Unmarshal(data, &f); err != nil {
-			return nil, fmt.Errorf("widget: decode field: %w", err)
-		}
-		return &f, nil
-	case "list":
-		var l List
-		if err := json.Unmarshal(data, &l); err != nil {
-			return nil, fmt.Errorf("widget: decode list: %w", err)
-		}
-		return &l, nil
-	case "raw":
-		var rw Raw
-		if err := json.Unmarshal(data, &rw); err != nil {
-			return nil, fmt.Errorf("widget: decode raw: %w", err)
-		}
-		return &rw, nil
-	case "repeater":
-		var rp Repeater
-		if err := json.Unmarshal(data, &rp); err != nil {
-			return nil, fmt.Errorf("widget: decode repeater: %w", err)
-		}
-		return &rp, nil
-	case "conditional":
-		var c Conditional
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode conditional: %w", err)
-		}
-		return &c, nil
-	case "when":
-		var w When
-		if err := json.Unmarshal(data, &w); err != nil {
-			return nil, fmt.Errorf("widget: decode when: %w", err)
-		}
-		return &w, nil
-	case "conditions":
-		var c Conditions
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode conditions: %w", err)
-		}
-		return &c, nil
-	case "switch":
-		var s Switch
-		if err := json.Unmarshal(data, &s); err != nil {
-			return nil, fmt.Errorf("widget: decode switch: %w", err)
-		}
-		return &s, nil
-	case "modal":
-		var m Modal
-		if err := json.Unmarshal(data, &m); err != nil {
-			return nil, fmt.Errorf("widget: decode modal: %w", err)
-		}
-		return &m, nil
-	case "badge":
-		var b Badge
-		if err := json.Unmarshal(data, &b); err != nil {
-			return nil, fmt.Errorf("widget: decode badge: %w", err)
-		}
-		return &b, nil
-	case "text":
-		var t Text
-		if err := json.Unmarshal(data, &t); err != nil {
-			return nil, fmt.Errorf("widget: decode text: %w", err)
-		}
-		return &t, nil
-	case "stack":
-		var st Stack
-		if err := json.Unmarshal(data, &st); err != nil {
-			return nil, fmt.Errorf("widget: decode stack: %w", err)
-		}
-		return &st, nil
-	case "empty":
-		var e Empty
-		if err := json.Unmarshal(data, &e); err != nil {
-			return nil, fmt.Errorf("widget: decode empty: %w", err)
-		}
-		return &e, nil
-	case "divider":
-		var d Divider
-		if err := json.Unmarshal(data, &d); err != nil {
-			return nil, fmt.Errorf("widget: decode divider: %w", err)
-		}
-		return &d, nil
-	case "properties":
-		var p Properties
-		if err := json.Unmarshal(data, &p); err != nil {
-			return nil, fmt.Errorf("widget: decode properties: %w", err)
-		}
-		return &p, nil
-	case "collection":
-		var c Collection
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode collection: %w", err)
-		}
-		return &c, nil
-	case "confirm":
-		var c Confirm
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode confirm: %w", err)
-		}
-		return &c, nil
-	case "callout":
-		var c Callout
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode callout: %w", err)
-		}
-		return &c, nil
-	case "link":
-		var l Link
-		if err := json.Unmarshal(data, &l); err != nil {
-			return nil, fmt.Errorf("widget: decode link: %w", err)
-		}
-		return &l, nil
-	case "button":
-		var b Button
-		if err := json.Unmarshal(data, &b); err != nil {
-			return nil, fmt.Errorf("widget: decode button: %w", err)
-		}
-		return &b, nil
-	case "disclosure":
-		var d Disclosure
-		if err := json.Unmarshal(data, &d); err != nil {
-			return nil, fmt.Errorf("widget: decode disclosure: %w", err)
-		}
-		return &d, nil
-	case "section":
-		var s Section
-		if err := json.Unmarshal(data, &s); err != nil {
-			return nil, fmt.Errorf("widget: decode section: %w", err)
-		}
-		return &s, nil
-	case "code":
-		var c Code
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode code: %w", err)
-		}
-		return &c, nil
-	case "stat":
-		var s Stat
-		if err := json.Unmarshal(data, &s); err != nil {
-			return nil, fmt.Errorf("widget: decode stat: %w", err)
-		}
-		return &s, nil
-	case "grid":
-		var g Grid
-		if err := json.Unmarshal(data, &g); err != nil {
-			return nil, fmt.Errorf("widget: decode grid: %w", err)
-		}
-		return &g, nil
-	case "meter":
-		var m Meter
-		if err := json.Unmarshal(data, &m); err != nil {
-			return nil, fmt.Errorf("widget: decode meter: %w", err)
-		}
-		return &m, nil
-	case "ports":
-		var p Ports
-		if err := json.Unmarshal(data, &p); err != nil {
-			return nil, fmt.Errorf("widget: decode ports: %w", err)
-		}
-		return &p, nil
-	case "settings":
-		var s Settings
-		if err := json.Unmarshal(data, &s); err != nil {
-			return nil, fmt.Errorf("widget: decode settings: %w", err)
-		}
-		return &s, nil
-	case "actionbar":
-		var a ActionBar
-		if err := json.Unmarshal(data, &a); err != nil {
-			return nil, fmt.Errorf("widget: decode actionbar: %w", err)
-		}
-		return &a, nil
-	case "filter":
-		var f Filter
-		if err := json.Unmarshal(data, &f); err != nil {
-			return nil, fmt.Errorf("widget: decode filter: %w", err)
-		}
-		return &f, nil
-	default:
+	}
+	fresh, ok := catalog[head.Type]
+	if !ok {
 		return nil, fmt.Errorf("widget: unknown type %q", head.Type)
 	}
+	w := fresh()
+	if err := json.Unmarshal(data, w); err != nil {
+		return nil, fmt.Errorf("widget: decode %s: %w", head.Type, err)
+	}
+	return w, nil
 }

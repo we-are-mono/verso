@@ -51,7 +51,7 @@ type Section struct {
 	// MetaVerbatim declares Meta a machine value or an already-composed string
 	// — data the localization walk leaves exactly as authored. Prose meta
 	// stays undeclared and translates.
-	MetaVerbatim bool   `json:"meta_verbatim,omitempty"`
+	MetaVerbatim bool   `json:"-"`
 	MetaLabel    string `json:"meta_label,omitempty"`
 	MetaIcon     string `json:"meta_icon,omitempty"`
 	MetaPosition string `json:"meta_position,omitempty"`
@@ -60,9 +60,9 @@ type Section struct {
 	// Target is where the options this section's controls write live,
 	// "config.section", when they all live in one place — said once here
 	// rather than on each control (MarkStaged).
-	Target   string   `json:"target,omitempty"`
-	Control  Widget   `json:"-"`
-	Children []Widget `json:"children"`
+	Target   string  `json:"target,omitempty"`
+	Control  Widget  `json:"-"`
+	Children Widgets `json:"children"`
 }
 
 func (*Section) isWidget() {}
@@ -83,53 +83,23 @@ func (s *Section) prune(keep func(Widget) bool) {
 	s.Children = pruneList(s.Children, keep)
 }
 
-// UnmarshalJSON decodes the contents recursively through Decode, so an unknown
-// child type fails loudly rather than vanishing.
+// UnmarshalJSON decodes the lone control through Decode, so an unknown control
+// type fails loudly rather than vanishing; the children are Widgets.
 func (s *Section) UnmarshalJSON(data []byte) error {
+	type plain Section
 	var raw struct {
-		Title        string            `json:"title"`
-		Icon         string            `json:"icon"`
-		Anchor       string            `json:"anchor"`
-		Kicker       bool              `json:"kicker"`
-		Sub          string            `json:"sub"`
-		Meta         string            `json:"meta"`
-		MetaLabel    string            `json:"meta_label"`
-		MetaIcon     string            `json:"meta_icon"`
-		MetaPosition string            `json:"meta_position"`
-		Hairline     bool              `json:"hairline"`
-		Flush        bool              `json:"flush"`
-		Target       string            `json:"target"`
-		Control      json.RawMessage   `json:"control"`
-		Children     []json.RawMessage `json:"children"`
+		plain
+		Control json.RawMessage `json:"control"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	s.Title = raw.Title
-	s.Icon = raw.Icon
-	s.Anchor = raw.Anchor
-	s.Kicker = raw.Kicker
-	s.Sub = raw.Sub
-	s.Meta = raw.Meta
-	s.MetaLabel = raw.MetaLabel
-	s.MetaIcon = raw.MetaIcon
-	s.MetaPosition = raw.MetaPosition
-	s.Hairline = raw.Hairline
-	s.Flush = raw.Flush
-	s.Target = raw.Target
-	s.Control = nil
-	if len(raw.Control) != 0 && string(raw.Control) != "null" {
-		control, err := Decode(raw.Control)
-		if err != nil {
-			return fmt.Errorf("section control: %w", err)
-		}
-		s.Control = control
-	}
-	children, err := decodeChildren(raw.Children, "section child")
+	control, err := decodeOptional(raw.Control)
 	if err != nil {
-		return err
+		return fmt.Errorf("section control: %w", err)
 	}
-	s.Children = children
+	*s = Section(raw.plain)
+	s.Control = control
 	return nil
 }
 

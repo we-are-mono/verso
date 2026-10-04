@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 )
@@ -15,22 +14,22 @@ import (
 // the shell renders the markup plus the open/close/focus behaviour. Plugins ship
 // no JS; the shell owns every pixel and every interaction.
 type Modal struct {
-	Trigger      string // label of the button that opens the dialog
-	TriggerIcon  string
-	TriggerStyle string // "" (default solid button) | "secondary" | "link"
-	Open         bool   // open immediately (server-rendered verified/error state)
-	BusyTitle    string // optional submit-time progress state
-	BusyBody     string
+	Trigger      string `json:"trigger"` // label of the button that opens the dialog
+	TriggerIcon  string `json:"trigger_icon"`
+	TriggerStyle string `json:"trigger_style"` // "" (default solid button) | "secondary" | "link"
+	Open         bool   `json:"open"`          // open immediately (server-rendered verified/error state)
+	BusyTitle    string `json:"busy_title"`    // optional submit-time progress state
+	BusyBody     string `json:"busy_body"`
 	// BusyBodyVerbatim marks a busy line the shell composed around data after
 	// translating it (a board's model in a sentence); the walk leaves it.
-	BusyBodyVerbatim bool
-	Title            string   // dialog heading
-	Children         []Widget // dialog body
+	BusyBodyVerbatim bool    `json:"-"`
+	Title            string  `json:"title"`    // dialog heading
+	Children         Widgets `json:"children"` // dialog body
 	// Steps names the steps a dialog walks through ("Choose", "Verify",
 	// "Install"), and Step is the one in hand (0-based). The dialog says where
 	// it is under its title; the page's script moves it on as an upload goes.
-	Steps []string
-	Step  int
+	Steps []string `json:"steps"`
+	Step  int      `json:"step"`
 }
 
 func (*Modal) isWidget() {}
@@ -38,40 +37,6 @@ func (*Modal) isWidget() {}
 func (m *Modal) children() []Widget { return m.Children }
 
 func (m *Modal) prune(keep func(Widget) bool) { m.Children = pruneList(m.Children, keep) }
-
-// UnmarshalJSON decodes a modal's children recursively through Decode, so an
-// unknown child type fails loudly rather than vanishing.
-func (m *Modal) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Trigger      string            `json:"trigger"`
-		TriggerIcon  string            `json:"trigger_icon"`
-		TriggerStyle string            `json:"trigger_style"`
-		Open         bool              `json:"open"`
-		BusyTitle    string            `json:"busy_title"`
-		BusyBody     string            `json:"busy_body"`
-		Title        string            `json:"title"`
-		Children     []json.RawMessage `json:"children"`
-		Steps        []string          `json:"steps"`
-		Step         int               `json:"step"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	m.Trigger = raw.Trigger
-	m.TriggerIcon = raw.TriggerIcon
-	m.TriggerStyle = raw.TriggerStyle
-	m.Open = raw.Open
-	m.BusyTitle = raw.BusyTitle
-	m.BusyBody = raw.BusyBody
-	m.Title = raw.Title
-	m.Steps, m.Step = raw.Steps, raw.Step
-	children, err := decodeChildren(raw.Children, "modal child")
-	if err != nil {
-		return err
-	}
-	m.Children = children
-	return nil
-}
 
 // modalView is the modal template's model: the trigger label and style, title, and
 // the dialog body already rendered to trusted HTML.

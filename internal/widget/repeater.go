@@ -19,10 +19,10 @@ import (
 // is a re-render round-trip today, swappable for client-side later behind this same
 // declaration.
 type Repeater struct {
-	Config      string         // uci config backing the items (e.g. "network")
-	SectionType string         // uci section type of each item (e.g. "wireguard_wg0")
-	AddLabel    string         // label for the add affordance
-	Items       []RepeaterItem // the current items, in order
+	Config      string         `json:"config"`       // uci config backing the items (e.g. "network")
+	SectionType string         `json:"section_type"` // uci section type of each item (e.g. "wireguard_wg0")
+	AddLabel    string         `json:"add_label"`    // label for the add affordance
+	Items       []RepeaterItem `json:"items"`        // the current items, in order
 }
 
 // RepeaterItem is one repeated element: the uci section it maps to (so remove
@@ -30,6 +30,24 @@ type Repeater struct {
 type RepeaterItem struct {
 	Section string
 	Widget  Widget
+}
+
+// UnmarshalJSON decodes the item's widget through Decode, so an unknown item
+// widget fails loudly rather than vanishing.
+func (it *RepeaterItem) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Section string          `json:"section"`
+		Widget  json.RawMessage `json:"widget"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	w, err := Decode(raw.Widget)
+	if err != nil {
+		return fmt.Errorf("repeater item: %w", err)
+	}
+	*it = RepeaterItem{Section: raw.Section, Widget: w}
+	return nil
 }
 
 func (*Repeater) isWidget() {}
@@ -67,35 +85,6 @@ const (
 	RepeaterOpAdd        = "add"
 	RepeaterOpRemove     = "remove"
 )
-
-// UnmarshalJSON decodes a repeater's items recursively through Decode, so an
-// unknown item widget fails loudly rather than vanishing.
-func (rp *Repeater) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Config      string `json:"config"`
-		SectionType string `json:"section_type"`
-		AddLabel    string `json:"add_label"`
-		Items       []struct {
-			Section string          `json:"section"`
-			Widget  json.RawMessage `json:"widget"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	rp.Config = raw.Config
-	rp.SectionType = raw.SectionType
-	rp.AddLabel = raw.AddLabel
-	rp.Items = make([]RepeaterItem, 0, len(raw.Items))
-	for i, it := range raw.Items {
-		w, err := Decode(it.Widget)
-		if err != nil {
-			return fmt.Errorf("repeater item %d: %w", i, err)
-		}
-		rp.Items = append(rp.Items, RepeaterItem{Section: it.Section, Widget: w})
-	}
-	return nil
-}
 
 // repeaterItemView is one rendered item plus the uci section it maps to, so the
 // remove affordance can name it.

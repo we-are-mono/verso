@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 )
@@ -17,10 +16,10 @@ import (
 // Open renders it already expanded — for content that is the page's focus right
 // now (an update's package manifest) yet still folds away once read.
 type Disclosure struct {
-	Style    string   `json:"style,omitempty"`
-	Summary  string   `json:"summary"`
-	Open     bool     `json:"open,omitempty"`
-	Children []Widget `json:"children"`
+	Style    string  `json:"style,omitempty"`
+	Summary  string  `json:"summary"`
+	Open     bool    `json:"open,omitempty"`
+	Children Widgets `json:"children"`
 }
 
 func (*Disclosure) isWidget() {}
@@ -28,27 +27,6 @@ func (*Disclosure) isWidget() {}
 func (d *Disclosure) children() []Widget { return d.Children }
 
 func (d *Disclosure) prune(keep func(Widget) bool) { d.Children = pruneList(d.Children, keep) }
-
-// UnmarshalJSON decodes the contents recursively through Decode, so an unknown
-// child type fails loudly rather than vanishing.
-func (d *Disclosure) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Style    string            `json:"style"`
-		Summary  string            `json:"summary"`
-		Open     bool              `json:"open"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	d.Style, d.Summary, d.Open = raw.Style, raw.Summary, raw.Open
-	children, err := decodeChildren(raw.Children, "disclosure child")
-	if err != nil {
-		return err
-	}
-	d.Children = children
-	return nil
-}
 
 // disclosureView is the template's model: the summary plus the contents already
 // rendered to trusted HTML.

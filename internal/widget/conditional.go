@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 	"strings"
@@ -17,20 +16,20 @@ import (
 // persist. The toggle posts its own value, so the plugin can read it when
 // interpreting a save.
 type Conditional struct {
-	Name      string   // form field name of the controlling toggle
-	Label     string   // the toggle's label
-	Checked   bool     // whether the toggle starts on
-	Fields    []Widget // the field-set revealed when the toggle is on
-	Otherwise []Widget // optional field-set revealed when the toggle is off
+	Name      string  `json:"name"`      // form field name of the controlling toggle
+	Label     string  `json:"label"`     // the toggle's label
+	Checked   bool    `json:"checked"`   // whether the toggle starts on
+	Fields    Widgets `json:"fields"`    // the field-set revealed when the toggle is on
+	Otherwise Widgets `json:"otherwise"` // optional field-set revealed when the toggle is off
 	// Key is the option the toggle writes, worn as the mono chip a field's label
 	// wears — the toggle is a form row like any other, so it reads like one.
-	Key string
+	Key string `json:"key"`
 	// Help is the line under the toggle: what turning it on means, in the place
 	// a field's helper line sits.
-	Help string
+	Help string `json:"help"`
 	// Staged is the shell's word that the toggle's option waits to be applied.
 	// The gate names only its key; the form or section around it says where.
-	Staged bool
+	Staged bool `json:"-"`
 }
 
 func (*Conditional) isWidget() {}
@@ -53,36 +52,6 @@ func (c *Conditional) children() []Widget {
 func (c *Conditional) prune(keep func(Widget) bool) {
 	c.Fields = pruneList(c.Fields, keep)
 	c.Otherwise = pruneList(c.Otherwise, keep)
-}
-
-// UnmarshalJSON decodes the gated fields recursively through Decode, so an unknown
-// field type fails loudly rather than vanishing.
-func (c *Conditional) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Name      string            `json:"name"`
-		Label     string            `json:"label"`
-		Key       string            `json:"key"`
-		Help      string            `json:"help"`
-		Checked   bool              `json:"checked"`
-		Fields    []json.RawMessage `json:"fields"`
-		Otherwise []json.RawMessage `json:"otherwise"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	c.Name = raw.Name
-	c.Label = raw.Label
-	c.Key = raw.Key
-	c.Help = raw.Help
-	c.Checked = raw.Checked
-	var err error
-	if c.Fields, err = decodeChildren(raw.Fields, "conditional field"); err != nil {
-		return err
-	}
-	if c.Otherwise, err = decodeChildren(raw.Otherwise, "conditional otherwise field"); err != nil {
-		return err
-	}
-	return nil
 }
 
 // conditionalView is the conditional template's model: the gate's row and the
