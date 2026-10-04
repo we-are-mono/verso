@@ -50,8 +50,8 @@ like part of the shell.
   seconds (ADR-010).
 - Firmware upgrades go through owut and a self-hosted ASU server. Verso ships
   as apk packages in its own feed.
-- Designs live as Claude Design canvases, mirrored in `~/Mono/Designs`. Their
-  `CLAUDE.md` holds the design rules that code follows.
+- `DESIGN.md` holds the design system and the rules that code follows; the
+  running app is the visual reference.
 
 ## Capabilities and Constraints
 
@@ -85,7 +85,6 @@ like part of the shell.
 
 - Live test setup: the Docker OpenWrt lab (`docker compose`) and the Mono
   Gateway DK board.
-- Design canvases for every page in `~/Mono/Designs`.
 - No customers, testimonials, benchmarks, pricing or deployment numbers exist.
   Do not invent them.
 

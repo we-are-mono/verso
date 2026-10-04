@@ -147,7 +147,5 @@ rediscovery so the shell never restarts itself.**
   startup-only into a rescan the management flow (and startup) share.
 - The shell gains its own nav rows and two shell-rendered pages beside the
   password page — the schema gateway is unchanged.
-- The design canvases are the visual reference for both faces; the shell
-  implementation renders the same compositions from live data.
 - The dev container tracks the apk-based 25.12 series so the package backend
   is exercised for real.

@@ -47,8 +47,8 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    signal for the next widget. Lifecycle: author ships raw → Verso ships the widget →
    author migrates. Health metric: raw usage *declines* for recurring needs.
 6. **Tailwind v4, over the design palette.** The templates use Tailwind's utility
-   classes over one `@theme` — `palette.css`, the transcription of the design canvas's
-   palette, which replaces Tailwind's own colour scales. One light theme; there is no
+   classes over one `@theme` — `palette.css`, the design palette (`DESIGN.md`),
+   which replaces Tailwind's own colour scales. One light theme; there is no
    dark palette. The stylesheet compiles via the
    standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
    change: plugins never see classes, so the styling stays reversible with zero plugin

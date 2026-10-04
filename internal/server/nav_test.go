@@ -227,7 +227,7 @@ func TestBuildSidebarDropsARowWithoutALivePlugin(t *testing.T) {
 	}
 }
 
-// The rail follows the order the design canvas gives it, whatever order the
+// The rail follows its designed order, whatever order the
 // plugins were discovered in.
 func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
 	dns := manifest("dnsdhcp", nav("Network", "DNS & DHCP", "/"))

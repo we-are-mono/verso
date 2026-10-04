@@ -2,9 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /*
- * The palette, and nothing else. Every colour Verso paints is named here once,
- * transcribed from Palette.dc.html in the Designs repo beside this one — the canvas is the source of truth
- * and this file is its transcription, so a value changes there first.
+ * The palette, and nothing else. Every colour Verso paints is named here once;
+ * DESIGN.md names each one's job, and a value changes here and there together.
  *
  * Five families, one rule each:
  *

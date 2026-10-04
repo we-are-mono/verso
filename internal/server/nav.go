@@ -112,11 +112,11 @@ type navRow struct {
 	PluginID string
 }
 
-// railOrder is the order the design canvas gives the rail. Matching on the
+// railOrder is the rail's designed order. Matching on the
 // English label is what lets a plugin land in its designed place without the
 // shell knowing anything about that plugin: the labels are still English at
-// this point, localized only at the display edge. A destination the canvas does
-// not name follows these, in the order of the section it is filed under
+// this point, localized only at the display edge. A destination it does not
+// name follows these, in the order of the section it is filed under
 // (sectionLess), so a new plugin appears in the rail with no shell change.
 var railOrder = []string{
 	"Overview", "Devices", "Traffic", "Journal", "Interfaces", "Wireless",
