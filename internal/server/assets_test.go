@@ -161,6 +161,31 @@ func TestAPackageDrawerShowsItsFilesAsItOpens(t *testing.T) {
 	}
 }
 
+// TestAReshapingChoiceAsksForItsForm: changing a choice marked to reshape its
+// form posts the form as a reshape — the mark the gateway answers without
+// staging — into the drawer that holds it, and the live preview stands aside
+// for it, since the form that comes back brings its own.
+func TestAReshapingChoiceAsksForItsForm(t *testing.T) {
+	forms, err := scriptFS.ReadFile("assets/verso-forms.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`el.closest("[data-verso-reshape]")`,
+		`headers: { "X-Verso-Interaction": "reshape" }`,
+		`versoPost(url, versoBody(new FormData(form)), "reshape")`,
+		"if (el.closest(\"[data-verso-reshape]\")) return;",
+		// The waiting mark beside the choice turns while the form is on its way.
+		`row.querySelector("[data-verso-reshape-wait]")`,
+		`if (mark) mark.hidden = false;`,
+		`form.setAttribute("aria-busy", "true");`,
+	} {
+		if !strings.Contains(string(forms), want) {
+			t.Errorf("verso-forms.js is missing %s", want)
+		}
+	}
+}
+
 // TestADevRedeployWaitsForUnsavedWork: the dev reload that follows a redeploy
 // asks the page's unsaved-work guard first and holds while it answers yes, so a
 // redeploy never throws the browser's leave prompt over a half-made edit; the

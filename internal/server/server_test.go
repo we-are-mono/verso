@@ -1599,6 +1599,55 @@ func TestPluginPreviewStagesNothing(t *testing.T) {
 	}
 }
 
+// TestPluginReshapeStagesNothing: a choice that reshapes its form asks the
+// plugin for the form again with the values on screen. The shell marks the
+// question for the plugin (_action=reshape) and answers it with the panel the
+// plugin drew, whatever else came with it: nothing is staged, and nothing on
+// screen is refused — a half-typed address is still being typed.
+func TestPluginReshapeStagesNothing(t *testing.T) {
+	calls := []uciWrite{}
+	env := openPanelEnvelope(http.StatusOK, nil, `{"type":"field","name":"ipaddr","label":"Address","datatype":"ip4addr","value":"10.0."}`)
+	env.Commit = []plugin.CommitOp{{Config: "system", Section: "@system[0]", Values: map[string]any{"hostname": "x"}}}
+	tr := &fakeTransport{env: env}
+	s := newServerWith(t, fakeBackend{access: true, writes: &calls}, tr, []plugin.Manifest{demoACLManifest()})
+
+	rec, _ := postPluginRequest(t, s, "/plugins/demo/?open=r1", url.Values{"kind": {"bridge"}, "ipaddr": {"10.0."}}, func(req *http.Request) {
+		req.Header.Set("HX-Request", "true")
+		req.Header.Set("X-Verso-Interaction", "reshape")
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("a reshape staged %d write(s); it must stage none: %+v", len(calls), calls)
+	}
+	if got := tr.lastReq.Form["_action"]; len(got) != 1 || got[0] != "reshape" {
+		t.Errorf("the plugin was not told the form is being reshaped: _action = %q", got)
+	}
+	if rec.Header().Get("HX-Redirect") != "" || rec.Header().Get("HX-Reswap") != "" {
+		t.Errorf("a reshape is answered in place, not sent away: %v", rec.Header())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="ipaddr"`) || strings.Contains(body, "<main") {
+		t.Errorf("the answer is not the panel alone:\n%s", body)
+	}
+	if strings.Contains(body, `aria-invalid="true"`) {
+		t.Errorf("a reshape refused a value still being typed:\n%s", body)
+	}
+}
+
+// TestPluginReshapeMarkIsTheShells: only the shell says a submission is a
+// reshape. A form that posts _action=reshape itself reaches the plugin without
+// it, so a plugin can trust the marker it reads.
+func TestPluginReshapeMarkIsTheShells(t *testing.T) {
+	tr := &fakeTransport{env: openPanelEnvelope(http.StatusOK, nil, `{"type":"field","name":"h","label":"Name"}`)}
+	s := newServerWith(t, fakeBackend{access: true, writes: &[]uciWrite{}}, tr, []plugin.Manifest{demoACLManifest()})
+	postPluginFromPanel(t, s, "/plugins/demo/?open=r1", url.Values{"_action": {"reshape"}, "h": {"x"}})
+	if got := tr.lastReq.Form["_action"]; len(got) != 0 {
+		t.Errorf("a posted reshape marker reached the plugin: _action = %q", got)
+	}
+}
+
 // openPanelEnvelope is a listing with one row's panel open on a form — the
 // shape a rules listing answers with while a rule is being edited beside it,
 // and the shape it answers that panel's submission with.

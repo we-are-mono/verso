@@ -91,6 +91,20 @@ fn write_widget_fixtures() {
                 "",
             ),
         ),
+        (
+            "select-reshapes",
+            Widget::select(
+                "kind",
+                "Type",
+                "network",
+                vec![
+                    verso_plugin::SelectOption::new("network", "Network"),
+                    verso_plugin::SelectOption::new("bridge", "Bridge"),
+                ],
+                "",
+            )
+            .reshapes(),
+        ),
         ("hidden", Widget::hidden("ntp_section", "cfg1")),
         (
             "checks",

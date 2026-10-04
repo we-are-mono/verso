@@ -70,6 +70,33 @@ func TestRadiosPreserveSingleSelectDefaults(t *testing.T) {
 	}
 }
 
+// A choice that reshapes its form says so on the control that changes, whether
+// it is drawn as a dropdown or as radios, so the shell can ask for the form
+// again when it does. A choice that does not reshape says nothing.
+func TestReshapingChoiceMarksItsControl(t *testing.T) {
+	r := newRenderer(t)
+	for _, count := range []int{RadioOptionLimit, RadioOptionLimit + 1} {
+		got := render(t, r, &Field{Name: "kind", Label: "Type", Kind: "select", Reshapes: true, Options: choiceOptions(count)})
+		radios := count <= RadioOptionLimit
+		marked := `<select id="kind" name="kind" data-verso-reshape`
+		if radios {
+			marked = `<div role="radiogroup" data-verso-reshape`
+		}
+		if strings.Count(got, "data-verso-reshape ") != 1 || !strings.Contains(got, marked) {
+			t.Errorf("%d choices: the reshaping control must carry the mark once, on %q:\n%s", count, marked, got)
+		}
+		// The form it asks for takes a moment: beside the choice stands the
+		// waiting mark, hidden until the choice is made.
+		if !strings.Contains(got, `<span data-verso-reshape-wait hidden`) || strings.Count(got, "data-verso-wait ") != 1 {
+			t.Errorf("%d choices: the reshaping control has no waiting mark beside it:\n%s", count, got)
+		}
+		plain := render(t, r, &Field{Name: "kind", Label: "Type", Kind: "select", Options: choiceOptions(count)})
+		if strings.Contains(plain, "data-verso-reshape") || strings.Contains(plain, "data-verso-wait") {
+			t.Errorf("%d choices: a choice that does not reshape is unmarked:\n%s", count, plain)
+		}
+	}
+}
+
 // A hidden field that names an autocomplete purpose is an account a password
 // form belongs to: present for the password manager, never drawn. A plain
 // hidden carrier stays a hidden input.

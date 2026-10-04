@@ -77,8 +77,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    pure-CSS `:has()` rule driving which fields show. Pure CSS, a round-trip,
    and shell JS are all just realizations of a declared intent.
    A realization is chosen per widget for what it does — the repeater's rpcd
-   round-trip, the conditional's CSS, and a form's secondary *action*, which submits
-   the form for the **plugin** to compute on and re-render (generating a keypair); the
+   round-trip, the conditional's CSS, a form's secondary *action*, which submits
+   the form for the **plugin** to compute on and re-render (generating a keypair),
+   and a select marked `reshapes`, whose change asks the plugin for the form again in
+   the shape the new value names (what kind of interface a New drawer makes), which
+   the shell swaps in without staging or refusing anything; the
    invariant is that the plugin declares intent and the shell owns the behaviour. The
    round-trip's
    *mechanics* are the mechanical contract's (ADR-006); what a plugin may *emit* is

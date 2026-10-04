@@ -1230,6 +1230,9 @@
     if (!el || !el.closest) return;
     var form = el.closest("form");
     if (!form || !previewOf(form)) return;
+    // A choice that reshapes the form brings a whole new form back, its
+    // preview with it; asking for the preview as well would ask twice.
+    if (el.closest("[data-verso-reshape]")) return;
     if (!before.has(form)) before.set(form, linesOf(previewOf(form)));
     var patched = patch(form, el);
     if (patched) markChanges(form);
@@ -1271,6 +1274,76 @@ window.versoValidate = function (datatype, value) {
   document.addEventListener("change", function (e) { branches(e.target.closest("form") || document); });
   document.addEventListener("DOMContentLoaded", function () { branches(document); });
   document.addEventListener("htmx:afterSwap", function () { branches(document); });
+
+  // A choice that reshapes its form (widget.Field.Reshapes) decides which fields
+  // the form has at all — what kind of object a New drawer makes — so a branch
+  // shown or hidden here cannot answer it: the plugin draws the form again in
+  // the shape now chosen, from the values on screen, and that form takes this
+  // one's place. The request is marked a reshape, which the shell answers
+  // without staging or refusing anything. A drawer's form is answered with the
+  // drawer, swapped in as any of its answers is, title and all; a page's form
+  // is answered with the page, and only its form is taken from it. Focus comes
+  // back to the choice, so a keyboard carries on from where it was.
+  var reshaped = 0;
+  function refocus(scope, name) {
+    var control = scope.querySelector('select[name="' + CSS.escape(name) + '"], input[name="' + CSS.escape(name) + '"]:checked');
+    if (control) control.focus();
+  }
+  // While the form is on its way the choice says so: the waiting mark beside
+  // it turns, and the form is busy to a screen reader. The mark waits out a
+  // moment first, so an answer that is already here never flickers it. The
+  // answer replaces both; one that never comes stands them down.
+  var SETTLE = 120;
+  function waiting(form, control) {
+    var row = control.closest("[data-verso-control]");
+    var mark = row && row.querySelector("[data-verso-reshape-wait]");
+    var timer = setTimeout(function () { if (mark) mark.hidden = false; }, SETTLE);
+    form.setAttribute("aria-busy", "true");
+    return function () {
+      clearTimeout(timer);
+      if (mark) mark.hidden = true;
+      form.removeAttribute("aria-busy");
+    };
+  }
+  function reshape(form, control) {
+    var name = control.name;
+    var mine = ++reshaped;
+    var done = waiting(form, control);
+    var frame = form.hasAttribute("hx-post") && form.closest("[data-verso-panel], [data-verso-entity-body]");
+    var url = form.getAttribute("hx-post") || form.action || window.location.href;
+    if (frame && window.htmx) {
+      window.htmx.ajax("POST", url, { source: form, target: frame, swap: "innerHTML", headers: { "X-Verso-Interaction": "reshape" } })
+        .then(function () {
+          done();
+          if (mine === reshaped) refocus(frame, name);
+        }, done);
+      return;
+    }
+    versoPost(url, versoBody(new FormData(form)), "reshape").then(function (res) {
+      return res.ok ? res.text() : "";
+    }).then(function (html) {
+      // A later choice is already on its way; this answer describes one nobody
+      // is looking at any more, and the later one stands its own mark down.
+      if (mine !== reshaped || !form.isConnected) return;
+      done();
+      var mark = html && versoParse(html).querySelector('[data-verso-reshape][name="' + CSS.escape(name) + '"], [data-verso-reshape] input[name="' + CSS.escape(name) + '"]');
+      var fresh = mark && mark.closest("form");
+      if (!fresh) return;
+      fresh = document.importNode(fresh, true);
+      form.replaceWith(fresh);
+      if (window.htmx) window.htmx.process(fresh);
+      branches(fresh);
+      refocus(fresh, name);
+    }).catch(function () {
+      // The form keeps the shape it had; the choice can be made again.
+      done();
+    });
+  }
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (!el || !el.form || !el.name || !el.closest("[data-verso-reshape]")) return;
+    reshape(el.form, el);
+  });
   // versoBreakable writes a machine string into el so that it wraps where it
   // divides itself: after each of the first separator it has, "/" before "."
   // before ":", and nowhere else — widget.Breakable's rule, for a value added

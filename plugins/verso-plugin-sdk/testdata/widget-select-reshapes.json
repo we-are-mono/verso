@@ -1,0 +1,18 @@
+{
+  "type": "field",
+  "name": "kind",
+  "label": "Type",
+  "kind": "select",
+  "value": "network",
+  "options": [
+    {
+      "value": "network",
+      "label": "Network"
+    },
+    {
+      "value": "bridge",
+      "label": "Bridge"
+    }
+  ],
+  "reshapes": true
+}

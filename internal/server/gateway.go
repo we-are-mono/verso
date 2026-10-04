@@ -198,6 +198,19 @@ func previewRequest(r *http.Request) bool {
 	return !safeMethod(r.Method) && r.Header.Get("X-Verso-Interaction") == "preview"
 }
 
+// reshapeRequest reports whether a submission is a choice that reshapes its
+// form asking for that form again (widget.Field.Reshapes) — the values on
+// screen, drawn into the shape the choice now names. The shell marks it, the
+// watcher in verso-forms.js sends the header, and like a preview nothing on
+// this path is staged, run, or refused.
+func reshapeRequest(r *http.Request) bool {
+	return !safeMethod(r.Method) && r.Header.Get("X-Verso-Interaction") == "reshape"
+}
+
+// reshapeAction is the marker a plugin reads to know a submission is a reshape
+// rather than a save: the shell's to set, never the form's.
+const reshapeAction = "reshape"
+
 // actRequest reports whether a submission is a row's act — a switch flipped or
 // a lifecycle pressed in a listing — which the page posts by fetch and
 // reconciles in place from the answer, rather than a page being submitted.
@@ -250,6 +263,14 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	if !safeMethod(method) {
 		if err := r.ParseForm(); err == nil {
 			r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
+		}
+		// A reshape is the shell's to say: the plugin reads it as _action, so
+		// a form's own claim to be one is taken off before the shell's is set.
+		if r.PostForm.Get("_action") == reshapeAction {
+			r.PostForm.Del("_action")
+		}
+		if reshapeRequest(r) {
+			r.PostForm.Set("_action", reshapeAction)
 		}
 		// A structural change to the plugin's own uci sections is the shell's to
 		// realize, not the plugin's (ADR-005 §7): the shell performs the add,
@@ -391,7 +412,13 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		return template.HTML(preview.String()), http.StatusOK //nolint:gosec // rendered by the shell's own templates
 	}
 
-	if !safeMethod(method) {
+	// A reshape is a question too: the plugin drew the form in the shape the
+	// choice now names, from the values on screen, and that form is the whole
+	// answer. Nothing is staged or run, and nothing is refused — what was typed
+	// for the old shape is still being typed — so the form is drawn as it came.
+	if reshapeRequest(r) {
+		status = http.StatusOK
+	} else if !safeMethod(method) {
 		if validateSchema(wdg) || status == http.StatusUnprocessableEntity {
 			status = http.StatusUnprocessableEntity
 		} else {

@@ -1111,6 +1111,9 @@ applies from the staged changes.
 
 On a POST, read `_action`: when it names one of your actions, compute and re-render
 (return no `commit`); otherwise treat it as the save's prepare request.
+`_action=reshape` is the shell's own: it arrives only when a `reshapes` select
+changed (see [field](#field--one-labelled-control)), and the shell strips it from
+any form that posts it itself.
 
 ### field — one labelled control
 
@@ -1150,6 +1153,15 @@ On a POST, read `_action`: when it names one of your actions, compute and re-ren
   style. Plugins declare the option set; the shared shell chooses its control.
   Selected multi-select chips share the shell's Denim choice colour and white
   labels with the other selected form controls.
+- `reshapes: true` on a `select`: its value decides which fields the form has
+  at all — what kind of object a New drawer makes. Changing it posts the form
+  with `_action=reshape`; answer with the form drawn for the value now chosen,
+  keeping the posted values that still mean the same thing, refusing nothing
+  and returning no `commit`. The shell swaps that form (in a drawer, the whole
+  drawer, title included) into place, stages nothing even if a `commit` comes
+  back, and returns focus to the choice. While the form is on its way the
+  shell's waiting mark turns beside the choice. A choice that only shows or hides
+  fields inside one shape is a `when`, which needs no round trip.
 - `tip` and `source`: what the field *is*, raised from the label on hover or
   focus, closed by a mono line pairing `key` with what reads it. Use it where
   the label is a term of art the operator did not choose — a DUID, an interface

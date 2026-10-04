@@ -972,6 +972,10 @@ pub struct Field {
     /// including when this style is supplied.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub style: String,
+    /// Marks a `select` whose value decides which fields the form has — what
+    /// kind of object a New drawer makes. Set it through `reshapes`.
+    #[serde(skip_serializing_if = "is_false")]
+    pub reshapes: bool,
 }
 
 /// Switch is the body of [`Widget::Switch`]; set what differs from the default.
@@ -1271,6 +1275,19 @@ impl Widget {
         if let Widget::Field(Field { tip, source: s, .. }) = &mut self {
             *tip = what.into();
             *s = source.into();
+        }
+        self
+    }
+
+    /// reshapes makes a `select` the choice that decides which fields its form
+    /// has. Changing it posts the form with `_action=reshape` — the shell's
+    /// mark, never a save — and the plugin answers with the form in the shape
+    /// now chosen, carrying over what still applies; the shell puts it in the
+    /// old one's place and stages nothing. A choice that only shows or hides
+    /// fields within one shape is a [`Widget::When`], which needs no round trip.
+    pub fn reshapes(mut self) -> Widget {
+        if let Widget::Field(Field { reshapes, .. }) = &mut self {
+            *reshapes = true;
         }
         self
     }

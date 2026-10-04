@@ -48,6 +48,22 @@ func TestSDKActDecodes(t *testing.T) {
 	}
 }
 
+// TestSDKReshapeReachesTheShell: a choice the SDK marks as reshaping its form
+// must arrive marked, or changing it would ask for nothing.
+func TestSDKReshapeReachesTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-select-reshapes.json"))
+	if err != nil {
+		t.Skip("SDK reshape fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK reshape fixture does not decode: %v", err)
+	}
+	if f, ok := w.(*Field); !ok || !f.Reshapes || f.Kind != "select" {
+		t.Errorf("SDK reshaping choice lost its mark crossing the wire: %+v", w)
+	}
+}
+
 // TestSDKTargetsReachTheShell: where a form's or section's options live, as
 // the SDK serializes it, is what the shell marks staged controls by — it must
 // survive the trip.

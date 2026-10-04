@@ -80,6 +80,12 @@ type Field struct {
 	// band: the row keeps its label and key, Value is shown in a quiet box with
 	// a padlock and Help as the reason, and nothing posts.
 	Style string `json:"style,omitempty"`
+	// Reshapes marks a kind "select" whose value decides which fields the form
+	// has — what kind of object a New drawer makes. Changing it asks the plugin
+	// for the form again, with the values on screen and `_action=reshape`, and
+	// the answer replaces the form where it stands; nothing is staged. A choice
+	// that only shows or hides fields within one shape is a When, not this.
+	Reshapes bool `json:"reshapes,omitempty"`
 }
 
 // UseRadios applies the shell's option-count policy, regardless of style hints
