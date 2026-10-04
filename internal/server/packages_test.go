@@ -537,6 +537,11 @@ func TestPackagePagesRenderWhileTheFeedsRefresh(t *testing.T) {
 		if !strings.Contains(body, "Refreshing the package feeds") {
 			t.Errorf("%s must say what the device is doing instead of listing", path)
 		}
+		// The busy button says it is refreshing; the note beside it says
+		// nothing until the index has an age again.
+		if path == "/system/packages" && !strings.Contains(body, `<span data-package-note class="text-sm text-meta" aria-live="polite"></span>`) {
+			t.Errorf("%s repeats the refresh beside its busy button", path)
+		}
 	}
 	if n := b.guarded.Load(); n != 0 {
 		t.Fatalf("%d guarded helper calls made while the refresh held apk", n)

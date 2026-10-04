@@ -95,7 +95,8 @@
     if (root) {
       var button = root.querySelector("[data-package-refresh] button");
       versoButtons.start(button, T("Refreshing index…"));
-      root.querySelector("[data-package-note]").textContent = T("Refreshing index…");
+      // The button says it; the note beside it waits for the index's new age.
+      root.querySelector("[data-package-note]").textContent = "";
     }
     pollTimer = setTimeout(poll, 500);
   }

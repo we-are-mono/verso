@@ -124,11 +124,13 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		return
 	}
 	truth, _ := s.updateTruth()
-	checked, checkErr := int64(0), error(nil)
+	// While the index refreshes, the busy button says so and the note beside it
+	// says nothing: the index has no age until the refresh ends.
+	note := ""
 	if !feedRefresh.running() {
-		checked, checkErr = s.backend.PkgStatus(r.Context(), s.sessionSID(r))
+		checked, checkErr := s.backend.PkgStatus(r.Context(), s.sessionSID(r))
+		note = packageIndexNote(checked, checkErr, tr)
 	}
-	note := packageIndexNote(checked, checkErr, tr)
 	var page strings.Builder
 	data := struct {
 		Body                  template.HTML
