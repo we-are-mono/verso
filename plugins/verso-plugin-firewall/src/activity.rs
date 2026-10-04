@@ -17,7 +17,7 @@
 //! an empty table that reads like calm.
 
 use verso_plugin::{
-    ActionBar, ActionTab, ColumnWidth, Envelope, HeadingAct, Section, Snapshot, Table,
+    ActionBar, ColumnWidth, Envelope, HeadingAct, Section, Snapshot, Table,
     TableColumn, TableStream, Widget, STREAM_FIREWALL_LOG,
 };
 
@@ -62,22 +62,12 @@ fn live() -> Widget {
     Widget::stack(vec![bar(), console()])
 }
 
-/// bar is the console's own controls: the coarse cut between what was stopped
-/// and what got through, the free-text lens over everything on screen, and the
-/// control that holds the stream still. The counts are what the browser has, so
-/// the page states none — the shell keeps them in step as events arrive.
+/// bar is the console's own controls: the free-text lens over everything on
+/// screen and the control that holds the stream still, which the shell stands
+/// on the heading line.
 fn bar() -> Widget {
     Widget::ActionBar(ActionBar {
-        tabs: ["All traffic", "Blocked", "Allowed"]
-            .into_iter()
-            .zip(["", TAG_BLOCKED, TAG_ALLOWED])
-            .map(|(label, matches)| ActionTab {
-                label: label.into(),
-                count: 0,
-                matches: matches.into(),
-                active: matches.is_empty(),
-            })
-            .collect(),
+        tabs: Vec::new(),
         filter: "Find an address, port or rule".into(),
         live: "Live".into(),
     })
@@ -97,12 +87,6 @@ fn download() -> HeadingAct {
 
 /// DOWNLOAD is the sub-path the buffer is fetched from.
 const DOWNLOAD: &str = "download";
-
-/// The cuts the bar offers. The shell's own firewall-log source tags each line
-/// with one of them, because whether traffic was stopped is the verdict's to
-/// say and not the browser's to work out.
-const TAG_BLOCKED: &str = "blocked";
-const TAG_ALLOWED: &str = "allowed";
 
 /// teaching is the page with nothing to show and a reason: the firewall is not
 /// being asked to record anything, and the door to the page where that is
@@ -241,23 +225,16 @@ mod tests {
         assert_eq!(table["stream"]["ring"], RING);
     }
 
-    /// The bar states the two cuts a firewall log is read by, and the control
-    /// that holds the stream still. The counts are what is on screen this
-    /// second, so the page states none and the shell keeps them in step.
+    /// The bar is the search and the control that holds the stream still,
+    /// which the shell stands on the heading line; the log is read whole.
     #[test]
-    fn the_bar_offers_the_cuts_and_the_pause() {
+    fn the_bar_offers_the_search_and_the_pause() {
         let body = body(&logging_snapshot());
         let bar = &body["widget"]["children"][0];
         assert_eq!(bar["type"], "actionbar");
         assert_eq!(bar["live"], "Live");
-        assert_eq!(
-            bar["tabs"],
-            json!([
-                {"label": "All traffic", "active": true},
-                {"label": "Blocked", "match": "blocked"},
-                {"label": "Allowed", "match": "allowed"}
-            ])
-        );
+        assert_eq!(bar["filter"], "Find an address, port or rule");
+        assert!(bar.get("tabs").is_none(), "{bar}");
         // Nothing is added here — the page is a read. The page's one act takes
         // the buffer away with you, so it wears the quiet weight, in words alone
         // like the live control it stands beside on the heading line.

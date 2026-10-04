@@ -79,29 +79,29 @@ func TestABarTakesNoActFromAPlugin(t *testing.T) {
 	}
 }
 
-// TestTakeLiveJoinsTheLogsActs: a live log's live control stands on the
-// heading line beside the page's act, as its equal; the bar keeps what narrows
-// the log and still wears the log's unfilled dress. Only a bar leading the
-// page's stack has a heading to give it to.
+// TestTakeLiveJoinsTheLogsActs: a live log has no band. Its search and its
+// live control stand on the heading line beside the page's act, as equals,
+// and the bar leaves the page. Only a bar leading the page's stack has a
+// heading to give them to.
 func TestTakeLiveJoinsTheLogsActs(t *testing.T) {
-	bar := &ActionBar{Filter: "Find", Tabs: []ActionTab{{Label: "All traffic", Active: true}}, Live: "Live"}
-	lifted := TakeLive(&Stack{Children: []Widget{bar, &Table{Style: "console"}}})
-	if lifted != "Live" || bar.Live != "" {
-		t.Fatalf("the live control should leave the bar for the heading: %q, bar %+v", lifted, bar)
+	page := &Stack{Children: []Widget{&ActionBar{Filter: "Find", Live: "Live"}, &Table{Style: "console"}}}
+	live, filter := TakeLive(page)
+	if live != "Live" || filter != "Find" || len(page.Children) != 1 {
+		t.Fatalf("the live control and the search should leave the page for the heading: %q %q, page %+v", live, filter, page.Children)
 	}
-	if got := TakeLive(&Stack{Children: []Widget{&Table{}, &ActionBar{Live: "Live"}}}); got != "" {
+	if got, _ := TakeLive(&Stack{Children: []Widget{&Table{}, &ActionBar{Live: "Live"}}}); got != "" {
 		t.Error("only a bar leading the page gives up its live control")
 	}
 	act := (&HeadingAct{Label: "Download", Href: "/x", Style: "quiet"}).Bar()
-	act.Live = lifted
+	act.Live, act.Filter = live, filter
 	heading := render(t, newRenderer(t), act)
-	live, download := strings.Index(heading, "data-verso-live"), strings.Index(heading, ">Download<")
-	if live < 0 || download < 0 || live > download || strings.Contains(heading, "<svg") {
-		t.Errorf("the heading line should hold Live then Download, words alone:\n%s", heading)
+	search, pause, download := strings.Index(heading, "data-verso-listing-filter"), strings.Index(heading, "data-verso-live"), strings.Index(heading, ">Download<")
+	if search < 0 || pause < search || download < pause {
+		t.Errorf("the heading line should hold the search, Live, then Download:\n%s", heading)
 	}
-	left := render(t, newRenderer(t), bar)
-	if !strings.Contains(left, `data-verso-actionbar class="mb-0 -mx-10 border-y border-rule bg-quiet px-10 py-4"`) || strings.Contains(left, "data-verso-live") {
-		t.Errorf("the bar keeps the log's dress and only its narrowing:\n%s", left)
+	// The search narrows the log from up here: the group is the log's bar.
+	if !strings.Contains(heading, `<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">`) {
+		t.Errorf("the heading's log group is not the log's bar:\n%s", heading)
 	}
 }
 
@@ -158,19 +158,9 @@ func TestControlBandIsTheListingsSurface(t *testing.T) {
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {
 		t.Errorf("the band sits flush on its listing:\n%s", got)
 	}
-	// A live log's bar is the system log's: the same sand band run to the
-	// window's edges, its controls kept to the content column.
-	live := render(t, newRenderer(t), &ActionBar{Filter: "Find an address", Live: "Live"})
-	for _, want := range []string{
-		`data-verso-actionbar class="mb-0 -mx-10 border-y border-rule bg-quiet px-10 py-4"`,
-		`<div class="flex w-full max-w-6xl flex-wrap items-center gap-4">`,
-	} {
-		if !strings.Contains(live, want) {
-			t.Errorf("a live log's bar missing %q:\n%s", want, live)
-		}
-	}
-	if strings.Contains(live, "bg-quiet p-4") || !strings.Contains(live, "data-verso-wait") {
-		t.Errorf("a live log's band runs edge to edge, and its live control carries the spinner:\n%s", live)
+	console := render(t, newRenderer(t), &Table{Style: "console", Stream: &TableStream{Source: StreamSourceFirewallLog}})
+	if !strings.Contains(console, `class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-mid shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]"`) {
+		t.Errorf("a live log stands one step darker than the title's bar, sunk under it:\n%s", console)
 	}
 }
 

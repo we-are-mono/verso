@@ -3,32 +3,19 @@
 {{/* The listing's control band: the surface it is narrowed from, one row under
      the heading. Left is finding things: the search first, then the coarse cuts
      as one counted dropdown, then the dimension the listing is sliced along.
-     Over a table it is the
+     It is the
      listing's one filled surface — the quiet sand between two hairlines, every
      control 16px from its edges — and it sits flush on the column heads, so
-     band and table read as one object. Over a live log it is the same sand
-     band run to the window's edges, the log flush beneath it on the page's
-     own ground — the system log's shape — while the controls keep to the
-     content column. Either way the band is the one filled surface, which
-     sets the log's controls apart from the page's acts above it.
+     band and table read as one object. A live log has none: its search and
+     live control stand on the heading line (TakeLive).
      The page's act is not on it: it is the envelope's (HeadingAct), drawn on
-     the heading line by this same template (Heading), with a live log's live
-     control beside it (TakeLive). */}}
-{{/* On the heading line a live log's acts stand together as equals — the
-     live control, then what the log offers — in the one quiet dress. */}}
-{{if .Heading}}{{if .Live}}<div class="flex shrink-0 flex-wrap items-center gap-2">{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
-<div data-verso-actionbar class="{{if .OverLog}}mb-0 -mx-10 border-y border-rule bg-quiet px-10 py-4{{else}}flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4{{end}}">
-  {{if .OverLog}}<div class="flex w-full max-w-6xl flex-wrap items-center gap-4">{{end}}
-  {{if .Filter}}
-  {{/* The search box wears the app's one input treatment: white, an inset
-       shadow, the strong hairline that warms to the faint step under the
-       pointer and to the action colour while typing. */}}
-  <div class="relative flex max-w-full items-center">
-    <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
-    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
-      class="h-9 w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
-  </div>
-  {{end}}
+     the heading line by this same template (Heading). */}}
+{{/* A live log has no band: on the heading line its search, its live control
+     and what the log offers stand together as equals, and the group is the
+     log's bar, which its search narrows the log from. */}}
+{{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
+<div data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4">
+  {{if .Filter}}{{template "verso-listing-search" .}}{{end}}
   {{if .Tabs}}
   {{/* The coarse cuts are one dropdown beside the search, each option priced
        with what taking it would leave ("IPv4 · 14"). A live listing prices
@@ -54,7 +41,6 @@
     {{if .Live}}{{template "actionbar.live" .}}{{end}}
     {{template "actionbar.act" .}}
   </div>
-  {{if .OverLog}}</div>{{end}}
 </div>
 {{end}}
 {{/* the live control says what the log is doing — Live, Paused — and

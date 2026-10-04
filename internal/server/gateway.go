@@ -534,14 +534,15 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 
 	// The page's act comes off the tree for the heading line only here, for a
 	// whole page — a panel request above still finds the act's blank panel in
-	// the tree. A live log's live control stands beside it as its equal.
+	// the tree. A live log's search and live control stand beside it as its
+	// equals, and the log runs straight under the heading.
 	head, page := widget.SplitHeading(wdg)
 	wdg = page
-	if live := widget.TakeLive(wdg); live != "" {
+	if live, filter := widget.TakeLive(wdg); live != "" {
 		if head == nil {
 			head = &widget.ActionBar{Heading: true}
 		}
-		head.Live = live
+		head.Live, head.Filter = live, filter
 	}
 	hdr.HeadingAct = s.headingAct(r, head, lang, t)
 	var b strings.Builder

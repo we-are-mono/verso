@@ -67,48 +67,59 @@ func TestSystemLogStreamKeepsZeroIDAndParsesSyslog(t *testing.T) {
 	}
 }
 
-// TestSystemLogActsStandOnTheHeadingLine: what acts on the log — the live
-// control, the download, the settings — stands on the heading line as equals,
-// in words alone; the bar under it keeps what narrows the log, capped to the
-// content column, and a source that cannot be read is said on a notice line.
+// TestSystemLogActsStandOnTheHeadingLine: the log has no band. The search and
+// what acts on the log — the live control, the download, the settings — stand
+// on the heading line as equals, the search first, and that group is the log's
+// bar; the log runs straight under the heading, and a source that cannot be
+// read is said on a notice line.
 func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 	whole := get(t, newServer(t, fakeBackend{access: true}), "/system/logs").Body.String()
 	body := whole[strings.LastIndex(whole, "</style>"):]
 	heading := strings.Index(body, `verso-page-heading">Logs`)
+	bar, search := strings.Index(body, `data-verso-actionbar="log"`), strings.Index(body, "data-verso-listing-filter")
 	live, download := strings.Index(body, "data-log-pause"), strings.Index(body, "data-log-download")
-	settings, bar := strings.Index(body, `href="/system/logs/settings"`), strings.Index(body, "data-verso-actionbar")
-	if heading < 0 || live < 0 || download < 0 || settings < 0 || bar < 0 {
-		t.Fatalf("logs page missing heading, acts or bar:\n%s", body)
+	settings, rows := strings.Index(body, `href="/system/logs/settings"`), strings.Index(body, "data-verso-console-rows")
+	if heading < 0 || bar < 0 || search < 0 || live < 0 || download < 0 || settings < 0 || rows < 0 {
+		t.Fatalf("logs page missing heading, search, acts or log:\n%s", body)
 	}
-	if !(heading < live && live < download && download < settings && settings < bar) {
-		t.Errorf("Live, Download, Settings should stand in that order on the heading line (h1 %d, live %d, download %d, settings %d, bar %d)", heading, live, download, settings, bar)
+	if !(heading < bar && bar < search && search < live && live < download && download < settings && settings < rows) {
+		t.Errorf("search, Live, Download, Settings should stand in that order on the heading line, the log under them (h1 %d, bar %d, search %d, live %d, download %d, settings %d, log %d)", heading, bar, search, live, download, settings, rows)
 	}
-	if acts := body[live:bar]; strings.Contains(acts, "<svg") {
-		t.Errorf("the log's acts are words alone:\n%s", acts)
-	}
-	// and they wear the secondary dress every quiet button does: meta words on
+	// the acts wear the secondary dress every quiet button does: meta words on
 	// the strong hairline, the hairline wash and ink under the pointer
-	if acts := body[live:bar]; strings.Count(acts, "border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink") != 3 {
+	if acts := body[live:rows]; strings.Count(acts, "border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink") != 3 {
 		t.Errorf("the log's three acts wear the secondary dress:\n%s", acts)
 	}
 	for _, want := range []string{
-		// the controls sit on the log's top edge in the quiet sand, the log on
-		// the page's own ground under them, and keep to the content column
-		`data-verso-actionbar class="-mx-10 flex-none border-y border-rule bg-quiet px-10 py-4"`,
-		"overflow-y-auto bg-ground pt-3 pb-6",
-		`<div class="flex w-full max-w-6xl flex-wrap items-center gap-4">`,
+		"overflow-y-auto bg-mid pt-3 pb-6 shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]", // the log one step darker than the title's bar, sunk under it
 		`data-log-pause title="Pause"`, "<span data-log-pause-label>Connecting…</span></button>",
-		"data-verso-wait", // the firewall log's spinner, turning while lines arrive
+		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
-		"h-9 w-56 max-w-full",
-		`<div data-verso-masthead class="mb-6 py-4">`, // the stylesheet ends the masthead under Log out, and runs its bar on into the control band
+		`<div data-verso-masthead class="mb-6 py-4">`,
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("logs bar missing %q", want)
+			t.Errorf("logs page missing %q", want)
 		}
 	}
-	if strings.Contains(body, "data-log-state") {
-		t.Error("the live control is the log's state; no separate status sits beside it")
+	// the log is read whole: no cut, no source, and its firewall traffic is
+	// the settings drawer's to turn on
+	for _, never := range []string{"data-log-state", "data-verso-listing-cut", "data-verso-listing-select", "data-log-include-firewall", "px-10 py-4"} {
+		if strings.Contains(body, never) {
+			t.Errorf("logs page still carries %q", never)
+		}
+	}
+}
+
+// TestLogSettingsHoldTheFirewallTraffic: whether the log folds in the
+// firewall's traffic is a way of reading it, so it stands in the settings
+// drawer over the log, above the settings and outside their form: it never
+// stages.
+func TestLogSettingsHoldTheFirewallTraffic(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true, uci: map[string]map[string]any{"system": {"main": map[string]any{".type": "system", "hostname": "router"}}}})
+	body := getPanel(t, s, "/system/logs/settings").Body.String()
+	toggle, form := strings.Index(body, "data-log-include-firewall"), strings.Index(body, "<form")
+	if toggle < 0 || form < 0 || toggle > form || !strings.Contains(body, "Include firewall traffic") {
+		t.Errorf("the firewall traffic switch should stand above the settings form:\n%s", body)
 	}
 }
 

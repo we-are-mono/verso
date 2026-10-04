@@ -255,6 +255,15 @@
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
     {{if .Reshapes}}{{template "verso-reshape-wait" "absolute inset-y-0 left-full ml-3 flex items-center"}}{{end}}
   </div>{{end}}
+{{/* verso-listing-search: the search that narrows a listing, given its
+     placeholder (.Filter). It wears the app's one input treatment: white, an
+     inset shadow, the strong hairline that warms to the faint step under the
+     pointer and to the action colour while typing. */}}
+{{define "verso-listing-search"}}<div class="relative flex max-w-full items-center">
+    <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
+    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
+      class="h-9 w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+  </div>{{end}}
 {{/* verso-reshape-wait: the waiting mark beside a choice that reshapes its
      form, hidden until the choice is made and the form it names is on its way
      (verso-forms.js). It stands outside the control's box, so the control's

@@ -49,9 +49,6 @@ type ActionBar struct {
 	// Heading renders the act alone, for the heading line: set by the shell,
 	// never by a plugin.
 	Heading bool `json:"-"`
-	// liveLog marks a live log's bar whose live control the shell lifted to
-	// the heading line: it still sits over a log, not a table.
-	liveLog bool
 }
 
 // HeadingAct is a page's one act, which stands on its heading line beside the
@@ -97,7 +94,7 @@ func (a *HeadingAct) Bar() *ActionBar {
 
 // overLog reports whether the bar sits over a live log rather than a table,
 // which it wears unfilled.
-func (a *ActionBar) overLog() bool { return a.Live != "" || a.liveLog }
+func (a *ActionBar) overLog() bool { return a.Live != "" }
 
 // headed is the page with its act riding in front of it, from decoding until
 // the heading line is drawn (WithHeading, SplitHeading).
@@ -127,22 +124,21 @@ func SplitHeading(w Widget) (*ActionBar, Widget) {
 	return bar, h.Children[1]
 }
 
-// TakeLive lifts a live log's live control onto its heading line, where it
-// stands beside the page's act as its equal; the bar keeps what narrows the
-// log, in the log's dress. Only a bar leading the page's Stack has a heading to
-// give it to; any other shape gives nothing and "" is returned.
-func TakeLive(w Widget) string {
+// TakeLive lifts a live log's bar onto its heading line: its search and its
+// live control stand there beside the page's act as equals, and the bar leaves
+// the page, so the log runs straight under the heading. Only a bar leading the
+// page's Stack has a heading to give it to; any other shape gives nothing.
+func TakeLive(w Widget) (live, filter string) {
 	stack, ok := w.(*Stack)
 	if !ok || len(stack.Children) == 0 {
-		return ""
+		return "", ""
 	}
 	bar, ok := stack.Children[0].(*ActionBar)
 	if !ok || bar.Live == "" {
-		return ""
+		return "", ""
 	}
-	live := bar.Live
-	bar.liveLog, bar.Live = true, ""
-	return live
+	stack.Children = stack.Children[1:]
+	return bar.Live, bar.Filter
 }
 
 // searches reports whether the bar draws its search field. Only over a live
@@ -205,14 +201,13 @@ type actionBarView struct {
 	HasPanel bool
 	Open     bool
 	Panel    drawerPanelView
-	OverLog  bool // the bar sits over a live log, which it wears unfilled
 }
 
 func (a *ActionBar) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if a.bare() && a.Drawer == nil {
 		return nil
 	}
-	v := actionBarView{ActionBar: *a, OverLog: a.overLog()}
+	v := actionBarView{ActionBar: *a}
 	switch {
 	case !a.searches():
 		v.Filter = ""

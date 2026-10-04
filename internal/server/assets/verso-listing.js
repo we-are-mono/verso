@@ -183,7 +183,7 @@ function versoConsole(o) {
   // guide it; everything in mono at the reading size, because every value on
   // the line is a machine string.
   var CONSOLE = {
-    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
+    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-quiet",
     mark: "my-0.5 w-0.75 shrink-0 rounded-full ",
     time: "w-18 shrink-0 font-mono text-base font-medium text-body",
     verdict: "w-22 shrink-0 font-mono text-base font-medium ",
@@ -592,12 +592,16 @@ function versoConsole(o) {
   var root = document.querySelector("[data-verso-system-log]");
   if (!root || !window.EventSource) return;
   var body = root.querySelector("[data-verso-console-rows]");
-  var source = root.querySelector("[data-verso-listing-select]");
   var health = root.querySelector("[data-log-health]");
-  var includeFirewall = root.querySelector("[data-log-include-firewall]");
   // The log's acts sit on the heading line, outside the log itself.
   var pause = document.querySelector("[data-log-pause]");
-  var unreadable = false, firewallUnavailable = false, seen = new Set(), sources = new Set();
+  // Whether the firewall's traffic is folded in is this reader's way of reading
+  // the log, kept in the browser so a reload keeps it; its switch is in the
+  // settings drawer, fetched later. A browser that keeps nothing reads it out.
+  var FIREWALL_KEY = "verso-log-firewall";
+  var firewall = false;
+  try { firewall = window.localStorage.getItem(FIREWALL_KEY) === "1"; } catch (_) { /* kept nowhere: out */ }
+  var unreadable = false, firewallUnavailable = false, seen = new Set();
   var el = versoEl;
 
   function draw(rows) {
@@ -608,11 +612,9 @@ function versoConsole(o) {
       seen.add(row.id);
       var error = ["emerg", "alert", "crit", "err"].indexOf(row.severity) !== -1;
       var warning = error || row.severity === "warn";
-      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-mid/50 lg:flex lg:py-px");
+      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-quiet lg:flex lg:py-px");
       line.setAttribute("data-log-row", String(row.id));
       line.dataset.logAt = String(row.at);
-      line.setAttribute("data-verso-tags", error ? "errors warnings" : warning ? "warnings" : "");
-      line.setAttribute("data-verso-facet-source", row.source);
       line.appendChild(el("span", "row-span-2 my-0.5 w-0.75 shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
       var at = new Date(row.at * 1000);
       var stamp = el("time", "shrink-0 font-mono lg:w-20 text-base font-medium text-body", versoClock(at));
@@ -622,15 +624,12 @@ function versoConsole(o) {
       line.appendChild(el("span", "col-span-3 col-start-2 min-w-0 flex-1 wrap-anywhere font-mono text-base font-medium " + (error ? "text-crimson-deep" : "text-ink"), row.message));
       line.dataset.logText = at.toISOString() + " " + row.source + " " + row.severity + " " + row.message;
       fragment.appendChild(line);
-      if (!sources.has(row.source)) {
-        sources.add(row.source); var opt = document.createElement("option"); opt.value = row.source; opt.textContent = row.source; source.appendChild(opt);
-      }
     });
     body.appendChild(fragment);
     var lines = Array.from(body.querySelectorAll("[data-log-row]"));
     // Separate buffers are sampled at different instants. A delayed batch
     // still belongs beside its timestamp, not below a newer service event.
-    if (includeFirewall.checked && rows.length) {
+    if (firewall && rows.length) {
       lines.sort(function (a, b) { return Number(a.dataset.logAt) - Number(b.dataset.logAt); });
       lines.forEach(function (line) { body.appendChild(line); });
     }
@@ -651,7 +650,7 @@ function versoConsole(o) {
     pause: pause,
     label: pause.querySelector("[data-log-pause-label]"),
     ring: 1000,
-    url: function () { return "/streams/system-log" + (includeFirewall.checked ? "?firewall=1" : ""); },
+    url: function () { return "/streams/system-log" + (firewall ? "?firewall=1" : ""); },
     accepts: function (frame) { return Array.isArray(frame.rows); },
     available: function (frame) {
       unreadable = false;
@@ -671,16 +670,19 @@ function versoConsole(o) {
     draw: draw,
   });
 
-  includeFirewall.addEventListener("change", function () {
+  // The settings drawer's switch arrives with the drawer: it is set from the
+  // log's state when it lands, and turning it reads the log again.
+  document.addEventListener("htmx:afterSwap", function () {
+    var toggle = document.querySelector("[data-log-include-firewall]");
+    if (toggle) toggle.checked = firewall;
+  });
+  document.addEventListener("change", function (e) {
+    if (!e.target.matches || !e.target.matches("[data-log-include-firewall]")) return;
+    firewall = e.target.checked;
     log.close();
     clearRows();
-    sources.clear(); source.replaceChildren(new Option(T("Every source"), ""));
-    source.dispatchEvent(new Event("change", { bubbles: true }));
     unreadable = false; firewallUnavailable = false;
-    var url = new URL(window.location.href);
-    if (includeFirewall.checked) url.searchParams.set("firewall", "1");
-    else url.searchParams.delete("firewall");
-    window.history.replaceState(null, "", url);
+    try { window.localStorage.setItem(FIREWALL_KEY, firewall ? "1" : "0"); } catch (_) { /* this visit only */ }
     log.restart();
   });
   document.querySelector("[data-log-download]").addEventListener("click", function () {

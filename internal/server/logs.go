@@ -46,15 +46,15 @@ func systemLogRow(entry openwrt.LogEntry) systemLogEvent {
 }
 
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
-	lang, _ := s.localize(r)
+	lang, t := s.localize(r)
 	var body, acts strings.Builder
-	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", struct{ IncludeFirewall bool }{r.URL.Query().Get("firewall") == "1"}); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&body, "logs.html.tmpl", nil); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	// What acts on the log — its live control, the download, the settings —
-	// sits on the heading line; the bar keeps what narrows it.
-	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", nil); err != nil {
+	// What narrows the log and what acts on it — its search, its live control,
+	// the download, the settings — sit on the heading line.
+	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", struct{ Filter string }{translatorOrIdentity(t)("Find a message or source")}); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -209,15 +209,21 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 			&widget.Field{Name: "log_file", Label: "Log file", Value: value("log_file", ""), Placeholder: "Optional", Help: "An absolute path. Writing logs to persistent storage uses flash write cycles."},
 		}})
 	}
-	var content, panel strings.Builder
+	var content, view, panel strings.Builder
 	if err := s.widgets.RenderWithToken(&content, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	// The drawer over the log opens on how the log is read (logs.view), above
+	// the settings and outside their form.
+	if err := s.pageSet(lang).ExecuteTemplate(&view, "logs.view", nil); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
 	data := struct {
 		Title string
 		Body  template.HTML
-	}{tr("Log settings"), template.HTML(content.String())}
+	}{tr("Log settings"), template.HTML(view.String() + content.String())} //nolint:gosec // rendered by the shell's own templates
 	if err := s.pageSet(lang).ExecuteTemplate(&panel, "system-panel.html.tmpl", data); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
@@ -228,6 +234,8 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(panel.String()))
 		return
 	}
+	// The settings alone, as a page: the way the log is read stays with the
+	// log, in the drawer over it.
 	s.renderPage(w, r, status, pageHeader{Heading: "Log settings", Tone: "neutral"}, "narrow", s.sectionPages("System", r.URL.Path), template.HTML(content.String()))
 }
 

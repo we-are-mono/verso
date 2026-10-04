@@ -486,7 +486,7 @@
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
-<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-ground"
+<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-mid shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
   <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
     <div data-verso-stream-empty class="px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>

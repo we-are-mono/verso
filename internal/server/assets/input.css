@@ -848,6 +848,14 @@ html {
     margin-bottom: 0;
     border-bottom: 0;
   }
+  /* A live log has no band: its bar is the group on the heading line, and the
+     masthead keeps its hairline over the log. */
+  main:has([data-verso-actionbar="log"]) [data-verso-masthead] {
+    border-bottom: 1px solid var(--color-rule);
+  }
+  /* A live log stands on Mid Sand, one step under the title's bar, where Meta
+     falls short of the 4.5 floor (4.4:1): its words there take Body. */
+  :is(.verso-console, [data-verso-console-rows]) .text-meta { color: var(--color-body); }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
