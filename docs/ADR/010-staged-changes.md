@@ -12,12 +12,10 @@
 
 ## Context
 
-Every UCI write in Verso is save-equals-commit: a plugin's successful
-POST returns a `commit` intent, and the shell's broker executes `UCISet`
-followed immediately by `UCICommit` (`internal/server/gateway.go`; that
-immediate-commit `brokerCommit` is now the staged `brokerStage` this ADR
-introduces). Each Save is live the moment it lands. That model has three
-problems on a router:
+Without staging, every UCI write is save-equals-commit: a plugin's successful
+POST returns a `commit` intent, and the shell's broker runs `uci set`
+followed immediately by `uci commit`. Each Save is live the moment it lands.
+That model has three problems on a router:
 
 - **No atomicity.** A change that only makes sense as a set (retarget a zone,
   then fix the rules that reference it) goes live piecemeal, with the firewall

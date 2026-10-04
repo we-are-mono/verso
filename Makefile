@@ -15,12 +15,19 @@ GOOS     ?= linux
 BUILDDIR := build
 CARGO    ?= $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RPCD_MANIFEST := verso-rpcd/Cargo.toml
-SDK_MANIFEST := plugins/verso-plugin-sdk/Cargo.toml
-INTERFACES_PLUGIN_MANIFEST := plugins/verso-plugin-interfaces/Cargo.toml
-SYSTEM_PLUGIN_MANIFEST := plugins/verso-plugin-system/Cargo.toml
-FIREWALL_PLUGIN_MANIFEST := plugins/verso-plugin-firewall/Cargo.toml
-DNSDHCP_PLUGIN_MANIFEST := plugins/verso-plugin-dnsdhcp/Cargo.toml
-QOS_PLUGIN_MANIFEST := plugins/verso-plugin-qos/Cargo.toml
+# The bundled plugins; each is plugins/verso-plugin-<name>, a crate of its own.
+PLUGINS := interfaces system firewall dnsdhcp qos
+plugin_manifest = plugins/verso-plugin-$(1)/Cargo.toml
+# Every Rust crate the tree tests and lints: the helper, the SDK, the plugins.
+CRATES := $(RPCD_MANIFEST) plugins/verso-plugin-sdk/Cargo.toml $(foreach p,$(PLUGINS),$(call plugin_manifest,$(p)))
+
+# cargo_plugin builds one plugin for one arch and copies it beside the shell. A
+# canned recipe: each line runs as its own recipe line when expanded in a loop.
+define cargo_plugin
+$(CARGO) build --locked --release --manifest-path $(call plugin_manifest,$(1)) --target $(rust_target_$(2))
+cp plugins/verso-plugin-$(1)/target/$(rust_target_$(2))/release/verso-plugin-$(1) $(BUILDDIR)/verso-plugin-$(1)-$(2)
+
+endef
 
 # `make build` cross-compiles every architecture in ARCHES; each maps to a Go
 # GOARCH and the matching Rust musl target triple below. Override to build one:
@@ -90,7 +97,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build run dev css test lint deadcode hooks tidy rpcd clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-i18n apk-i18n-publish i18n-pot i18n-audit version
+.PHONY: all build dev css test lint deadcode hooks clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -122,19 +129,7 @@ build-%: css
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$* go build -trimpath -ldflags "$(LDFLAGS)" -o $(BUILDDIR)/$(BINARY)-$* $(CMD)
 	$(CARGO) build --locked --release --manifest-path $(RPCD_MANIFEST) --target $(rust_target_$*)
 	cp verso-rpcd/target/$(rust_target_$*)/release/verso-rpcd $(BUILDDIR)/verso-rpcd-$*
-	$(CARGO) build --locked --release --manifest-path $(INTERFACES_PLUGIN_MANIFEST) --target $(rust_target_$*)
-	cp plugins/verso-plugin-interfaces/target/$(rust_target_$*)/release/verso-plugin-interfaces $(BUILDDIR)/verso-plugin-interfaces-$*
-	$(CARGO) build --locked --release --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --target $(rust_target_$*)
-	cp plugins/verso-plugin-system/target/$(rust_target_$*)/release/verso-plugin-system $(BUILDDIR)/verso-plugin-system-$*
-	$(CARGO) build --locked --release --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --target $(rust_target_$*)
-	cp plugins/verso-plugin-firewall/target/$(rust_target_$*)/release/verso-plugin-firewall $(BUILDDIR)/verso-plugin-firewall-$*
-	$(CARGO) build --locked --release --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --target $(rust_target_$*)
-	cp plugins/verso-plugin-dnsdhcp/target/$(rust_target_$*)/release/verso-plugin-dnsdhcp $(BUILDDIR)/verso-plugin-dnsdhcp-$*
-	$(CARGO) build --locked --release --manifest-path $(QOS_PLUGIN_MANIFEST) --target $(rust_target_$*)
-	cp plugins/verso-plugin-qos/target/$(rust_target_$*)/release/verso-plugin-qos $(BUILDDIR)/verso-plugin-qos-$*
-
-run:
-	go run $(CMD)
+	$(foreach p,$(PLUGINS),$(call cargo_plugin,$(p),$*))
 
 # dev: component-aware hot-reload loop — update only the shell, helper, bundled
 # plugin, ACL, or CSS that changed. Starts the container when needed.
@@ -143,13 +138,8 @@ dev:
 
 test:
 	go test ./...
-	$(CARGO) test --locked --manifest-path $(RPCD_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(SDK_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(INTERFACES_PLUGIN_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST)
-	$(CARGO) test --locked --manifest-path $(QOS_PLUGIN_MANIFEST)
+	set -e; for m in $(CRATES); do $(CARGO) test --locked --manifest-path $$m; done
+	node --test scripts/*.test.cjs
 
 # lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
 # defaults: no custom config, golangci-lint's default linter set.
@@ -179,24 +169,11 @@ deadcode: $(DEADCODE)
 lint: deadcode $(GOLANGCI)
 	@fmt_drift=$$(gofmt -l cmd internal); if [ -n "$$fmt_drift" ]; then echo "gofmt drift:"; echo "$$fmt_drift"; exit 1; fi
 	$(GOLANGCI) run ./...
-	$(CARGO) clippy --locked --manifest-path $(RPCD_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(SDK_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(INTERFACES_PLUGIN_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(SYSTEM_PLUGIN_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(FIREWALL_PLUGIN_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(DNSDHCP_PLUGIN_MANIFEST) --all-targets -- -D warnings
-	$(CARGO) clippy --locked --manifest-path $(QOS_PLUGIN_MANIFEST) --all-targets -- -D warnings
+	set -e; for m in $(CRATES); do $(CARGO) clippy --locked --manifest-path $$m --all-targets -- -D warnings; done
 
 # hooks points git at the tracked pre-commit hook so commits are gated on lint.
 hooks:
 	git config core.hooksPath scripts/hooks
-
-tidy:
-	go mod tidy
-
-# Native helper build for the Docker/dev loop (host arch, no cross-target).
-rpcd:
-	$(CARGO) build --locked --release --manifest-path $(RPCD_MANIFEST)
 
 clean:
 	rm -rf $(BUILDDIR)
@@ -395,31 +372,9 @@ apk-i18n-publish: apk-i18n
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(I18N_OUT))  (index rebuilt)"
 
-# i18n-pot emits the source strings wrapped by the explicit localization seams —
-# every {{ t "…" }} in a template and every t("…")/tr("…") STRING LITERAL in Go —
-# sorted and de-duplicated, so a catalog can be diffed against those (ADR-012).
-#
-# It is a partial extractor, not the authoritative source-string set. Two large
-# classes of translated strings are NOT listed, because they are not literal
-# arguments to a t()/{{ t }} call:
-#   1. Strings the render walk (translateSchema) translates in place — authored
-#      widget struct fields (Section titles/subs, Callout bodies, Form submits,
-#      table column labels, …). These are the bulk of a page's prose.
-#   2. Strings translated centrally on a VARIABLE — renderPage's tr(hdr.Subheading)
-#      / tr(flashMessage) / tr(p.Label), buildSidebar's tr(sec.Title), renderLogin's
-#      tr(errMsg), services' tr(lifecycleWord(...)) — where the English lives in a
-#      struct field or a bare argument elsewhere, not inside the tr(...) call.
-# Author the catalog from the code and the shipped sl.json, using this only to spot
-# drift in the explicit-seam subset.
 # i18n-audit renders every page reachable from / and /login in each installed
-# language and reports the source strings that fell back to
-# English plus the catalog keys no render requested. The translators record
-# their own misses (i18n.Bundle.Recorded), so the report is exact for
-# everything the crawl renders; i18n-pot below stays the quick partial grep.
+# language and reports the source strings that fell back to English plus the
+# catalog keys no render requested. The translators record their own misses
+# (i18n.Bundle.Recorded), so the report is exact for everything the crawl renders.
 i18n-audit:
 	@VERSO_I18N_AUDIT=1 go test ./internal/server -run TestI18nAudit -count=1 -v
-
-i18n-pot:
-	@{ grep -rhoE '\{\{[ ]*t "([^"]+)"' internal --include='*.tmpl' | sed -E 's/^\{\{[ ]*t "//; s/"$$//'; \
-	   grep -rhoE '\btr?\("([^"]+)"' internal cmd --include='*.go' | grep -v '_test.go' | sed -E 's/^\btr?\("//; s/"$$//'; \
-	 } | sort -u
