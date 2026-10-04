@@ -6,8 +6,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    uci_text, ActionTab, Envelope, Property, RowDrawer, TableAction, TableCell, TableChip,
-    TableColumn, TableRow, TableRowAct, Tone, Widget,
+    uci_text, ActionBar, ActionTab, Envelope, Grid, Property, RowDrawer, SectionWidget, Table,
+    TableAction, TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -53,14 +53,12 @@ fn prose(label: &str, value: &str) -> Property {
 // drawer that edits it shows what it writes.
 fn facts(mut facts: Vec<Property>) -> Widget {
     let right = facts.split_off(facts.len().div_ceil(2));
-    Widget::Grid {
+    Widget::Grid(Grid {
         columns: 2,
         style: "facts".into(),
-        label: String::new(),
-        help: String::new(),
-        join: String::new(),
         children: vec![Widget::properties(facts), Widget::properties(right)],
-    }
+        ..Default::default()
+    })
 }
 // part is one uci section an expanded row reads, on its own ledger line: the
 // glyph of its kind, the kind of section, its name as the config names it,
@@ -73,12 +71,12 @@ fn part(
     edit: Option<Widget>,
 ) -> Widget {
     let mut section = Widget::section(title, "", children);
-    if let Widget::Section {
+    if let Widget::Section(SectionWidget {
         icon,
         meta,
         control,
         ..
-    } = &mut section
+    }) = &mut section
     {
         *icon = glyph.into();
         *meta = name.into();
@@ -138,7 +136,7 @@ fn destination(label: &str, kind: &str, description: &str, key: &str, glyph: &st
 }
 fn category(title: &str, children: Vec<Widget>) -> Widget {
     let mut section = Widget::section(title, "", children);
-    if let Widget::Section { kicker, flush, .. } = &mut section {
+    if let Widget::Section(SectionWidget { kicker, flush, .. }) = &mut section {
         *kicker = true;
         *flush = true;
     }
@@ -429,7 +427,7 @@ fn details(
     }
     // One frame holds the parts, so each stands on its own ledger line.
     let mut frame = Widget::section("", "", out);
-    if let Widget::Section { flush, .. } = &mut frame {
+    if let Widget::Section(SectionWidget { flush, .. }) = &mut frame {
         *flush = true;
     }
     vec![frame]
@@ -775,7 +773,7 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
             ..Default::default()
         });
     }
-    let toolbar = Widget::ActionBar {
+    let toolbar = Widget::ActionBar(ActionBar {
         style: "interfaces".into(),
         tabs: vec![ActionTab {
             label: "Problems".into(),
@@ -784,7 +782,6 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
             ..Default::default()
         }],
         filter: "Find an interface".into(),
-        live: String::new(),
         action: Some(TableAction {
             label: "Add interface".into(),
             href: format!("{ROOT}?new=1"),
@@ -793,7 +790,8 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         }),
         opens_panel: true,
         drawer: Some(drawer),
-    };
+        ..Default::default()
+    });
     let columns = [
         ("Device · network", "reference"),
         ("Type", "keyword"),
@@ -809,23 +807,13 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         ..TableColumn::default()
     })
     .collect();
-    let table = Widget::Table {
+    let table = Widget::Table(Table {
         style: "interfaces".into(),
-        title: String::new(),
-        detail: String::new(),
-        dense: false,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
         columns,
         rows,
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: "No interfaces are configured or reported by the router.".into(),
-        add_label: String::new(),
-        add_href: String::new(),
-        note: String::new(),
-        stream: None,
-    };
+        ..Default::default()
+    });
     let page = Envelope::page("Interfaces", Widget::stack(vec![toolbar, table])).with_width("wide");
     if m.live.get("interfaces").is_none() {
         page.with_notice(

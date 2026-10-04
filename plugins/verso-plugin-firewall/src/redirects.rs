@@ -13,8 +13,8 @@
 //! panel survives a reload and travels in a link.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, RowDrawer, Snapshot,
-    TableAction, TableColumn, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ActionBar, ColumnWidth, Envelope, Form, RowDrawer, Snapshot,
+    Table, TableAction, TableColumn, TableRow, Tone, Widget,
 };
 
 use crate::counters::Counters;
@@ -172,11 +172,8 @@ fn listing(
 /// forward is editing one that does not exist yet, so the act opens the same
 /// panel a row's name opens.
 fn bar(blank: Option<RowDrawer>) -> Widget {
-    Widget::ActionBar {
-        style: String::new(),
-        tabs: Vec::new(),
+    Widget::ActionBar(ActionBar {
         filter: "Find a forward".into(),
-        live: String::new(),
         action: Some(TableAction {
             label: "Add forward".into(),
             href: redirect_drawer::new_href(),
@@ -184,7 +181,8 @@ fn bar(blank: Option<RowDrawer>) -> Widget {
         }),
         opens_panel: true,
         drawer: blank,
-    }
+        ..Default::default()
+    })
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -211,26 +209,17 @@ fn table(
     counters: &Counters,
     open: Option<&Open>,
 ) -> Widget {
-    Widget::Table {
-        style: String::new(),
-        title: String::new(),
-        detail: String::new(),
+    Widget::Table(Table {
         dense: true,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
         columns: columns(),
         rows: forwards
             .iter()
             .map(|redirect| row(model, redirect, counters, open))
             .collect(),
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: EMPTY.into(),
-        add_label: String::new(),
-        add_href: String::new(),
         note: NOTE.into(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 /// row is one forward. Its name and its edit act both open the forward's panel

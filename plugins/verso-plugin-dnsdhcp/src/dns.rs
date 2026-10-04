@@ -15,7 +15,7 @@
 //! applied together. The drawers are their own forms: a record and an upstream
 //! are objects, and each is saved on its own.
 
-use verso_plugin::{Envelope, Tone, Widget};
+use verso_plugin::{Envelope, Settings, Tone, Widget};
 
 use crate::model::{Dnsdhcp, CONFIG, DAEMON_TYPE};
 use crate::options::{self, on, on_by_default, paired, read, value, Changes, Check, Row};
@@ -250,14 +250,12 @@ fn render(model: &Dnsdhcp, refused: &str) -> Envelope {
 
 /// block renders one catalogue against the daemon section.
 fn block(model: &Dnsdhcp, title: &str, rows: &[Row], folded: &[Row], lead: &str) -> Widget {
-    Widget::Settings {
-        condensed: false,
-        style: String::new(),
+    Widget::Settings(Settings {
         title: title.into(),
-        meta: String::new(),
         items: options::items(rows, &model.daemon, ""),
         seam: options::fold(lead, options::items(folded, &model.daemon, "")),
-    }
+        ..Default::default()
+    })
 }
 
 /// post answers the DNS page's submission. The only thing this page draws that

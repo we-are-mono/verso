@@ -5,7 +5,8 @@ use crate::model::Options;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::IpAddr;
 use verso_plugin::{
-    commit, commit_new, json, CommitOp, Envelope, Form, Request, SelectOption, Value, Widget,
+    commit, commit_new, json, CommitOp, Envelope, Field, Form, Grid, List, Request, SectionWidget,
+    SelectOption, Switch, Value, Widget,
 };
 
 const FLAGS: &[(&str, &str, bool)] = &[
@@ -199,7 +200,7 @@ impl Settings {
     }
     fn check(&self, key: &str, label: &str, option: &str) -> Widget {
         let mut w = Widget::switch_keyed(key, label, option, "", self.v(key) == "1");
-        if let Widget::Switch { style, .. } = &mut w {
+        if let Widget::Switch(Switch { style, .. }) = &mut w {
             *style = "checkbox".into();
         }
         w
@@ -209,9 +210,9 @@ impl Settings {
     }
     fn field(&self, e: &Errors, key: &str, label: &str, hint: &str) -> Widget {
         let mut w = Widget::field(key, label, self.v(key), "", "").writes(key);
-        if let Widget::Field {
+        if let Widget::Field(Field {
             placeholder, error, ..
-        } = &mut w
+        }) = &mut w
         {
             *placeholder = hint.into();
             *error = e.get(key).cloned().unwrap_or_default();
@@ -228,12 +229,12 @@ impl Settings {
         datatype: &str,
     ) -> Widget {
         let mut w = Widget::list(key, label, datatype, &self.list(key), "").writes(option);
-        if let Widget::List {
+        if let Widget::List(List {
             style,
             prompt,
             errors,
             ..
-        } = &mut w
+        }) = &mut w
         {
             *style = "rows".into();
             *prompt = hint.into();
@@ -366,7 +367,9 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
     };
     if s.resolver {
         let mut dnssec = s.flag("dnssec");
-        if let (Widget::Switch { error, .. }, Some(refused)) = (&mut dnssec, e.get("dnssec")) {
+        if let (Widget::Switch(Switch { error, .. }), Some(refused)) =
+            (&mut dnssec, e.get("dnssec"))
+        {
             *error = refused.clone();
         }
         privacy.push(dnssec);
@@ -414,7 +417,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
     let anchors = sections
         .iter()
         .filter_map(|w| {
-            if let Widget::Section { title, anchor, .. } = w {
+            if let Widget::Section(SectionWidget { title, anchor, .. }) = w {
                 Some(Widget::link(
                     if title.is_empty() { "Upstream" } else { title },
                     &format!("#{anchor}"),
@@ -427,12 +430,9 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         .collect();
     Envelope::page(
         "DNS & DHCP",
-        Widget::Grid {
+        Widget::Grid(Grid {
             style: "settings".into(),
             columns: 2,
-            label: String::new(),
-            help: String::new(),
-            join: String::new(),
             children: vec![
                 // Most of what this form writes is the daemon's own section, so
                 // that is where its controls' options live unless they say
@@ -452,7 +452,8 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                     .kicker()
                     .flush(),
             ],
-        },
+            ..Default::default()
+        }),
     )
     .with_width("wide")
 }

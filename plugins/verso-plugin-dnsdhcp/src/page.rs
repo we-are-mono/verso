@@ -13,7 +13,7 @@
 //! on every listing; a page that spelled one of them differently would read as a
 //! different kind of thing.
 
-use verso_plugin::{Envelope, TableCell, TableColumn, TableRow, Widget};
+use verso_plugin::{Envelope, Table, TableCell, TableColumn, TableRow, Widget};
 
 use crate::format::EM_DASH;
 
@@ -180,23 +180,14 @@ pub fn listing(
     add_label: &str,
     add_href: &str,
 ) -> Widget {
-    Widget::Table {
-        style: String::new(),
-        title: String::new(),
-        detail: String::new(),
-        dense: false,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
+    Widget::Table(Table {
         columns,
         rows,
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: empty.into(),
         add_label: add_label.into(),
         add_href: add_href.into(),
-        note: String::new(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 /// name_cell is the row's identity, with the network it sits on riding inline as

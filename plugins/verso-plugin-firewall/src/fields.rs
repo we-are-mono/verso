@@ -12,7 +12,7 @@
 //! and the same value typed into a zone are the same control. A panel composes
 //! these; it does not spell its own.
 
-use verso_plugin::{Form, SelectOption, Widget};
+use verso_plugin::{Field, Form, List, SelectOption, Widget};
 
 use crate::rule_form::{Errors, RuleForm};
 
@@ -90,25 +90,15 @@ pub fn row_group(children: Vec<Widget>) -> Widget {
 /// text_field is one typed value, carrying whatever the last submission got
 /// wrong about it.
 pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
-        options: Vec::new(),
         error: errors.get(name).into(),
         help: help.into(),
-        key: String::new(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        style: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 /// select_field is one choice over a closed set.
@@ -132,20 +122,15 @@ pub fn token_list(
     items: &[String],
     errors: &Errors,
 ) -> Widget {
-    Widget::List {
+    Widget::List(List {
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
         style: "tokens".into(),
         prompt: prompt.into(),
-        datatype: String::new(),
         items: items.to_vec(),
         errors: errors.list(name),
         help: help.into(),
-        key: String::new(),
-        tip: String::new(),
-        options: Vec::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }

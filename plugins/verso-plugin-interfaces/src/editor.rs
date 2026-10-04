@@ -5,8 +5,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Envelope, Form, RowDrawer, SelectOption,
-    Tone, Widget,
+    commit, commit_delete, commit_new, json, CommitOp, Envelope, Field, Form, List, RowDrawer,
+    SectionWidget, SelectOption, Switch, Tone, Widget,
 };
 
 type Errors = BTreeMap<String, String>;
@@ -243,7 +243,7 @@ fn field(v: &Values, e: &Errors, key: &str, label: &str, datatype: &str) -> Widg
         "",
     )
     .writes(key);
-    if let Widget::Field { error, .. } = &mut w {
+    if let Widget::Field(Field { error, .. }) = &mut w {
         *error = e.get(key).cloned().unwrap_or_default();
     }
     w
@@ -266,14 +266,14 @@ fn check(v: &Values, key: &str, label: &str) -> Widget {
 }
 fn checkbox(v: &Values, key: &str, label: &str) -> Widget {
     let mut w = check(v, key, label);
-    if let Widget::Switch { style, .. } = &mut w {
+    if let Widget::Switch(Switch { style, .. }) = &mut w {
         *style = "checkbox".into();
     }
     w
 }
 fn list(v: &Values, e: &Errors, key: &str, label: &str, datatype: &str) -> Widget {
     let mut w = Widget::list(key, label, datatype, &v.list(key), "").writes(key);
-    if let Widget::List { style, errors, .. } = &mut w {
+    if let Widget::List(List { style, errors, .. }) = &mut w {
         *style = "rows".into();
         if let Some(e) = e.get(key) {
             errors.insert("0".into(), e.clone());
@@ -283,7 +283,7 @@ fn list(v: &Values, e: &Errors, key: &str, label: &str, datatype: &str) -> Widge
 }
 fn section(title: &str, sub: &str, anchor: &str, children: Vec<Widget>) -> Widget {
     let mut w = Widget::section(title, sub, children).ruled();
-    if let Widget::Section { anchor: a, .. } = &mut w {
+    if let Widget::Section(SectionWidget { anchor: a, .. }) = &mut w {
         *a = anchor.into();
     }
     w
@@ -373,7 +373,7 @@ fn page(
             .map(|n| SelectOption::new(&n, &n))
             .collect();
         let mut ports = Widget::checks("ports", "Ports", &v.list("ports"), choices).writes("ports");
-        if let Widget::Field { error, .. } = &mut ports {
+        if let Widget::Field(Field { error, .. }) = &mut ports {
             *error = e.get("ports").cloned().unwrap_or_default();
         }
         identity.extend([
@@ -392,9 +392,9 @@ fn page(
         "identity",
         identity,
     )];
-    if let Some(Widget::Section {
+    if let Some(Widget::Section(SectionWidget {
         hairline, flush, ..
-    }) = sections.first_mut()
+    })) = sections.first_mut()
     {
         *hairline = false;
         *flush = e.is_empty() && error.is_empty();
@@ -482,9 +482,9 @@ fn page(
             ));
         }
         let mut password = field(v, e, "password", "Password", "");
-        if let Widget::Field {
+        if let Widget::Field(Field {
             kind, value, help, ..
-        } = &mut password
+        }) = &mut password
         {
             *kind = "password".into();
             value.clear();

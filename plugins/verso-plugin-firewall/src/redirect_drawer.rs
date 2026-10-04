@@ -24,7 +24,7 @@
 //! carries them (`conditions::for_redirect`), and the few that say what happens
 //! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{uci_text, Map, RowDrawer, SelectOption, Widget};
+use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Switch, Widget};
 
 use crate::conditions;
 use crate::fields;
@@ -123,32 +123,17 @@ fn title(name: &str) -> String {
 /// switch rides the heading rather than the body: it is the state of the whole
 /// object, not one of its settings.
 fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
-    Widget::Section {
+    Widget::Section(SectionWidget {
         title: "Port forward".into(),
-        icon: String::new(),
-        anchor: String::new(),
-        kicker: false,
-        sub: String::new(),
-        meta: String::new(),
-        meta_icon: String::new(),
-        meta_position: String::new(),
         flush: true,
-        hairline: false,
-        target: String::new(),
-        control: Some(Box::new(Widget::Switch {
+        control: Some(Box::new(Widget::Switch(Switch {
             name: "enabled".into(),
             label: "Enabled".into(),
             off_label: "Disabled".into(),
-            help: String::new(),
             style: "inline".into(),
             on: redirect.enabled,
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            verbatim: false,
-            error: String::new(),
-            target: String::new(),
-        })),
+            ..Default::default()
+        }))),
         children: vec![fields::row_group(vec![fields::text_field(
             "name",
             "Comment",
@@ -156,7 +141,8 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
             "Identifies the forward in listings, hit counts, and the system log.",
             errors,
         )])],
-    }
+        ..Default::default()
+    })
 }
 
 /// incoming is the traffic the forward catches. The zone is a closed choice over

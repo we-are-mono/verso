@@ -14,7 +14,7 @@
 //! this router is the client there, so the card offers the one thing that can
 //! honestly be said about it.
 
-use verso_plugin::{Envelope, Form, SettingsItem, Tone, Widget};
+use verso_plugin::{Envelope, Form, Settings, SettingsItem, Tone, Widget};
 
 use crate::format::{self, Subnet};
 use crate::hosts;
@@ -159,14 +159,13 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
     let subnet = subnet_of(model, pool);
     let mut items = options::items(&HANDOUT, pool, &prefix);
     let Some(subnet) = subnet else {
-        return Widget::Settings {
-            condensed: false,
+        return Widget::Settings(Settings {
             style: "card".into(),
             title: name.into(),
             meta: UPLINK_META.into(),
             items,
-            seam: None,
-        };
+            ..Default::default()
+        });
     };
     items.push(SettingsItem {
         title: "Address range".into(),
@@ -176,8 +175,7 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
         ..SettingsItem::default()
     });
     items.extend(options::items(&LEASE, pool, &prefix));
-    Widget::Settings {
-        condensed: false,
+    Widget::Settings(Settings {
         style: "card".into(),
         title: name.into(),
         meta: format!(
@@ -190,7 +188,8 @@ fn card(model: &Dnsdhcp, leases: &Leases, pool: &Options) -> Widget {
             "IPv6 & advanced — ",
             options::items(&POOL_FOLDED, pool, &prefix),
         ),
-    }
+        ..Default::default()
+    })
 }
 
 /// extras is the daemon-wide block. The last two rows are sections rather than
@@ -210,14 +209,11 @@ fn extras(model: &Dnsdhcp) -> Widget {
         "config boot",
         model.boots,
     ));
-    Widget::Settings {
-        condensed: false,
-        style: String::new(),
-        title: String::new(),
-        meta: String::new(),
+    Widget::Settings(Settings {
         items: options::items(&DAEMON, &model.daemon, ""),
         seam: options::fold("", folded),
-    }
+        ..Default::default()
+    })
 }
 
 /// present states whether a whole feature is configured, without offering to

@@ -17,8 +17,8 @@
 //! an empty table that reads like calm.
 
 use verso_plugin::{
-    ActionTab, ColumnWidth, Envelope, Section, Snapshot, TableAction, TableColumn, TableStream,
-    Widget, STREAM_FIREWALL_LOG,
+    ActionBar, ActionTab, ColumnWidth, Envelope, Section, Snapshot, Table, TableAction,
+    TableColumn, TableStream, Widget, STREAM_FIREWALL_LOG,
 };
 
 use crate::model;
@@ -69,8 +69,7 @@ fn live() -> Widget {
 /// control that holds the stream still. The counts are what the browser has, so
 /// the page states none — the shell keeps them in step as events arrive.
 fn bar() -> Widget {
-    Widget::ActionBar {
-        style: String::new(),
+    Widget::ActionBar(ActionBar {
         tabs: ["All traffic", "Blocked", "Allowed"]
             .into_iter()
             .zip(["", TAG_BLOCKED, TAG_ALLOWED])
@@ -92,9 +91,8 @@ fn bar() -> Widget {
             icon: String::new(),
             style: "quiet".into(),
         }),
-        opens_panel: false,
-        drawer: None,
-    }
+        ..Default::default()
+    })
 }
 
 /// DOWNLOAD is the sub-path the buffer is fetched from.
@@ -127,26 +125,17 @@ fn teaching() -> Widget {
 /// arrive afterwards, newest on top. The columns are still declared, because
 /// they are what a line is made of even where no heading names them.
 fn console() -> Widget {
-    Widget::Table {
+    Widget::Table(Table {
         style: "console".into(),
-        title: String::new(),
-        detail: String::new(),
         dense: true,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
         columns: columns(),
-        rows: Vec::new(),
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: EMPTY_TEXT.into(),
-        add_label: String::new(),
-        add_href: String::new(),
-        note: String::new(),
         stream: Some(TableStream {
             source: STREAM_FIREWALL_LOG.into(),
             ring: RING,
         }),
-    }
+        ..Default::default()
+    })
 }
 
 /// columns are the facts a verdict carries, in the order a person reads them:

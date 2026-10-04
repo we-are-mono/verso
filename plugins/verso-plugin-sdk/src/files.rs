@@ -8,8 +8,8 @@
 //! file journal (the `config-file-stage` command) and applied, checked and
 //! rolled back with everything else on the stage.
 use crate::{
-    ApplyAction, Form, RowDrawer, TableCell, TableColumn, TableGroup, TableRow, TableRowAct, Value,
-    Widget,
+    ApplyAction, Field, Form, RowDrawer, Table, TableCell, TableColumn, TableGroup, TableRow,
+    TableRowAct, Value, Widget,
 };
 
 /// NEW_FILE_VERSION is the version the helper gives a file that does not exist
@@ -168,9 +168,9 @@ impl FileSet {
         let mut fields = vec![Widget::hidden("expected", expected)];
         if path.is_empty() {
             let mut filename = Widget::field("filename", "File name", name, "", "");
-            if let Widget::Field {
+            if let Widget::Field(Field {
                 unit, placeholder, ..
-            } = &mut filename
+            }) = &mut filename
             {
                 *unit = self.suffix.into();
                 *placeholder = self.placeholder.into();
@@ -178,7 +178,7 @@ impl FileSet {
             fields.push(filename);
         }
         let mut body = Widget::field("content", "Contents", content, "", "");
-        if let Widget::Field { kind, style, .. } = &mut body {
+        if let Widget::Field(Field { kind, style, .. }) = &mut body {
             *kind = "textarea".into();
             *style = "code".into();
         }
@@ -287,13 +287,7 @@ pub fn valid_name(s: &str) -> bool {
 }
 
 fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>, empty: &str, drawer: &str) -> Widget {
-    Widget::Table {
-        style: String::new(),
-        title: String::new(),
-        detail: String::new(),
-        dense: false,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
+    Widget::Table(Table {
         columns,
         rows,
         drawer_label: drawer.into(),
@@ -302,11 +296,8 @@ fn table(columns: Vec<TableColumn>, rows: Vec<TableRow>, empty: &str, drawer: &s
             false => EDIT_ICON.into(),
         },
         empty_text: empty.into(),
-        add_label: String::new(),
-        add_href: String::new(),
-        note: String::new(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]

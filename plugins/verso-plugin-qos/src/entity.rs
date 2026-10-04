@@ -8,7 +8,7 @@
 //! this one knows nothing about. The Edit limits action asks whether a device reaches the
 //! internet, when, and how fast.
 
-use verso_plugin::{Envelope, Form, SelectOption, Tone, Widget};
+use verso_plugin::{Envelope, Field, Form, SelectOption, Tone, Widget};
 
 use crate::form::{self, Errors};
 use crate::leases::Leases;
@@ -125,25 +125,14 @@ fn hours(policy: &Policy, errors: &Errors) -> Widget {
 /// clock is one edge of the curfew, in the native time control.
 fn clock(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
     field(
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
             label: label.into(),
             kind: "time".into(),
             value: value.into(),
-            values: Vec::new(),
-            placeholder: String::new(),
-            datatype: String::new(),
-            options: Vec::new(),
-            error: String::new(),
-            help: String::new(),
             key: name.into(),
-            tip: String::new(),
-            source: String::new(),
-            unit: String::new(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        },
+            ..Default::default()
+        }),
         name,
         errors,
     )
@@ -153,25 +142,16 @@ fn clock(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
 /// box and "No limit" standing where a number is not.
 fn cap(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
     field(
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
             value: value.into(),
-            values: Vec::new(),
             placeholder: "No limit".into(),
-            datatype: String::new(),
-            options: Vec::new(),
-            error: String::new(),
-            help: String::new(),
             key: name.into(),
-            tip: String::new(),
-            source: String::new(),
             unit: "Mbit/s".into(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        },
+            ..Default::default()
+        }),
         name,
         errors,
     )
@@ -181,7 +161,7 @@ fn cap(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
 /// it, wherever that control was built.
 fn field(widget: Widget, name: &str, errors: &Errors) -> Widget {
     let mut widget = widget;
-    if let Widget::Field { error, .. } = &mut widget {
+    if let Widget::Field(Field { error, .. }) = &mut widget {
         *error = errors.get(name).into();
     }
     widget

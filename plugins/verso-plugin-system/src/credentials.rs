@@ -3,8 +3,8 @@
 use crate::sshkey;
 use std::collections::BTreeMap;
 use verso_plugin::{
-    ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Form, Property,
-    RemoveConfirm, Request, RowDrawer, Tone, Widget,
+    ActionBar, ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Field, Form,
+    Property, RemoveConfirm, Request, RowDrawer, Tone, Widget,
 };
 // An artifact is a document the router holds — a certificate — and reads like
 // one: named, with what it is for, then each fact's value beside its label,
@@ -240,7 +240,7 @@ pub fn certificate(r: &Request) -> Widget {
 // A PEM block is text the machine wrote, so it is typed in the code box.
 fn textarea(name: &str, label: &str, value: &str) -> Widget {
     let mut field = Widget::field(name, label, value, "", "");
-    if let Widget::Field { kind, style, .. } = &mut field {
+    if let Widget::Field(Field { kind, style, .. }) = &mut field {
         *kind = "textarea".into();
         *style = "code".into();
     }
@@ -328,15 +328,10 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
         }],
         ..Default::default()
     };
-    let host = Widget::ActionBar {
-        style: String::new(),
-        tabs: vec![],
-        filter: String::new(),
-        live: String::new(),
-        action: None,
-        opens_panel: false,
+    let host = Widget::ActionBar(ActionBar {
         drawer: Some(drawer),
-    };
+        ..Default::default()
+    });
     let mut result = Envelope::page(title, host).with_back("Access", "/system/access");
     if let Some(command) = command {
         result.commands = vec![command];

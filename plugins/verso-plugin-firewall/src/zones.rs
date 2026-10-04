@@ -20,9 +20,9 @@
 //! page posts on their own, one switch at a time.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, RowDrawer, SettingsItem,
-    SettingsPill, SettingsToggle, Snapshot, TableAction, TableCell, TableColumn, TableRow, Tone,
-    Widget,
+    commit, commit_delete, commit_new, ActionBar, ColumnWidth, Envelope, Form, RowDrawer, Settings,
+    SettingsItem, SettingsPill, SettingsToggle, Snapshot, Table, TableAction, TableCell,
+    TableColumn, TableRow, Tone, Widget,
 };
 
 use crate::crossings::Crossings;
@@ -273,11 +273,8 @@ fn opened_blank(
 /// zone is editing one that does not exist yet, so the act opens the same panel a
 /// row's name opens rather than a page of its own.
 fn bar(blank: Option<RowDrawer>) -> Widget {
-    Widget::ActionBar {
-        style: String::new(),
-        tabs: Vec::new(),
+    Widget::ActionBar(ActionBar {
         filter: "Find a zone".into(),
-        live: String::new(),
         action: Some(TableAction {
             label: "Add zone".into(),
             href: zone_drawer::new_href(),
@@ -285,7 +282,8 @@ fn bar(blank: Option<RowDrawer>) -> Widget {
         }),
         opens_panel: true,
         drawer: blank,
-    }
+        ..Default::default()
+    })
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -309,27 +307,18 @@ fn columns() -> Vec<TableColumn> {
 }
 
 fn table(model: &Firewall, open: Option<&Open>) -> Widget {
-    Widget::Table {
-        style: String::new(),
-        title: String::new(),
-        detail: String::new(),
+    Widget::Table(Table {
         dense: true,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
         columns: columns(),
         rows: model
             .zones
             .iter()
             .map(|zone| row(model, zone, open))
             .collect(),
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: EMPTY.into(),
-        add_label: String::new(),
-        add_href: String::new(),
         note: NOTE.into(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 /// row is one zone. Its name and its edit act both lead to the zone's own panel
@@ -437,14 +426,10 @@ fn defaults(model: &Firewall) -> Widget {
                 ..SettingsItem::default()
             }),
     );
-    Widget::Settings {
-        style: String::new(),
-        title: String::new(),
-        meta: String::new(),
-        condensed: false,
+    Widget::Settings(Settings {
         items,
-        seam: None,
-    }
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]

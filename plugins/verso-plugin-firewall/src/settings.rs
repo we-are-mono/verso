@@ -15,7 +15,8 @@
 //! knows the config and wants the line.
 
 use verso_plugin::{
-    commit, commit_new, json, CommitOp, Envelope, Form, Map, SelectOption, Tone, Value, Widget,
+    commit, commit_new, json, CommitOp, Envelope, Field, Form, Grid, Map, SelectOption, Switch,
+    Tone, Value, Widget,
 };
 
 use verso_plugin::files::FileSet;
@@ -209,12 +210,9 @@ pub fn page(model: &Firewall) -> Envelope {
     page::envelope(
         HEADING,
         "",
-        Widget::Grid {
+        Widget::Grid(Grid {
             style: "rail".into(),
             columns: 2,
-            label: String::new(),
-            help: String::new(),
-            join: String::new(),
             children: vec![
                 Widget::Form {
                     style: "page".into(),
@@ -250,7 +248,8 @@ pub fn page(model: &Firewall) -> Envelope {
                 .at(model::CONFIG, &d.section),
                 rail(),
             ],
-        },
+            ..Default::default()
+        }),
     )
 }
 
@@ -383,54 +382,36 @@ router's own services.";
 /// person would use. A drop-down rather than a segmented strip: five answers is
 /// more than a strip reads at a glance, and only one of them is ever in force.
 fn choice(name: &str, label: &str, help: &str, value: &str, options: &[(&str, &str)]) -> Widget {
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
         kind: "select".into(),
-        style: String::new(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
         options: options
             .iter()
             .map(|(value, label)| SelectOption::new(value, label))
             .collect(),
-        error: String::new(),
         help: help.into(),
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 /// policy is one verdict choice; the shell chooses its control by option count.
 fn policy(name: &str, label: &str, help: &str, value: &str) -> Widget {
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
         kind: "select".into(),
-        style: String::new(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
         options: POLICIES
             .iter()
             .map(|policy| SelectOption::new(policy, policy))
             .collect(),
-        error: String::new(),
         help: help.into(),
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 fn protection(d: &Defaults) -> Widget {
@@ -638,7 +619,7 @@ pub fn save_file(model: &Firewall, name: &str, form: &Form) -> Envelope {
 
 /// with_editor opens an editor's drawer over the page, outside its form.
 fn with_editor(mut envelope: Envelope, editor: Widget) -> Envelope {
-    if let Widget::Grid { children, .. } = &mut envelope.widget {
+    if let Widget::Grid(Grid { children, .. }) = &mut envelope.widget {
         children.push(editor);
     }
     envelope.with_back("Cancel", RULE_FILES.page)
@@ -653,20 +634,15 @@ fn include_switch(include: &Include) -> Widget {
         format!("nftables · {}", include.hook)
     };
     // The label is the file's path, set verbatim.
-    Widget::Switch {
+    Widget::Switch(Switch {
         name: include_field(include),
         label: include.path.clone(),
-        off_label: String::new(),
         help: detail,
-        style: String::new(),
         on: include.enabled,
         key: "enabled".into(),
-        tip: String::new(),
-        source: String::new(),
         verbatim: true,
-        error: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
     .at(model::CONFIG, &include.section)
 }
 
@@ -679,44 +655,28 @@ fn include_field(include: &Include) -> String {
 /// beside its label, as every other row here does — the switch is the control,
 /// not a different kind of row.
 fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
-    Widget::Switch {
+    Widget::Switch(Switch {
         name: name.into(),
         label: label.into(),
-        off_label: String::new(),
         help: help.into(),
-        style: String::new(),
         on,
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
-        verbatim: false,
-        error: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 /// field is one typed value of this page, with the unit riding inside the box's
 /// trailing edge so the number and what it counts read as one thing.
 fn field(name: &str, label: &str, help: &str, value: &str, unit: &str) -> Widget {
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
-        kind: String::new(),
-        style: String::new(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
-        options: Vec::new(),
-        error: String::new(),
         help: help.into(),
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
         unit: unit.into(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]

@@ -19,7 +19,7 @@
 //! the list it belongs to is worth more than a page of its own. A zone is the
 //! stronger case of the two, since it reads against the zones it can reach.
 
-use verso_plugin::{uci_text, DrawerTab, Map, Property, RowDrawer, SelectOption, Widget};
+use verso_plugin::{uci_text, DrawerTab, Field, Map, Property, RowDrawer, SelectOption, Widget};
 
 use crate::crossings::{self, Crossings};
 use crate::fields;
@@ -350,25 +350,16 @@ fn traffic_fields(
         Some(_) => RENAME_HELP,
     };
     out.push(fields::text_field("name", "Name", &form.name, name_help, errors).writes("name"));
-    out.push(Widget::Field {
+    out.push(Widget::Field(Field {
         name: "network".into(),
         label: "Networks".into(),
         kind: "checks".into(),
-        value: String::new(),
         values: form.networks.clone(),
-        placeholder: String::new(),
-        datatype: String::new(),
         options: network_options(model, &allowed, &form.networks),
         error: errors.get("network").into(),
-        help: String::new(),
         key: "network".into(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        style: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    });
+        ..Default::default()
+    }));
     // The two other ways a zone covers something. A network is what the rest of the
     // config names; these are for what it does not — a kernel device the network
     // config never declared, and an address range that is not an interface at all.
@@ -743,25 +734,17 @@ fn policy_field(
     options: Vec<SelectOption>,
     errors: &Errors,
 ) -> Widget {
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
         kind: "select".into(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
         options,
         error: errors.get(name).into(),
         help: help.into(),
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        style: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 /// count is a fact whose value is a number: data set in sans, so the shell's

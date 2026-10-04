@@ -534,48 +534,7 @@ pub enum Widget {
     /// position refine it). Control is one compact widget placed beside the
     /// title — an object's enabled switch belongs there, not in the body.
     /// Flush drops the region's own top inset where the parent already pads.
-    Section {
-        title: String,
-        /// The glyph of what the section is, by Lucide name, leading its
-        /// title on a part's ledger line (an expanded row's network, its DHCP
-        /// server, the bridge under them), so parts of one kind are told
-        /// apart from parts of another at a glance. Identity, never state.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        icon: String,
-        /// The name this section is addressed by, so a link elsewhere on the page
-        /// can bring it into view. A page long enough to be worth listing the
-        /// parts of needs them addressable.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        anchor: String,
-        /// Sets the title as a small label over a group rather than a heading
-        /// over a subject — a rail's "On this page", whose words name the list
-        /// beneath them and must not compete with the headings it points at.
-        #[serde(skip_serializing_if = "is_false")]
-        kicker: bool,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        sub: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        meta: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        meta_icon: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        meta_position: String,
-        #[serde(skip_serializing_if = "is_false")]
-        flush: bool,
-        /// Rule this section off from whatever precedes it. It is the only rule
-        /// a form draws, which is what makes it read as a boundary: fields
-        /// inside a section are separated by space, sections by a hairline.
-        #[serde(skip_serializing_if = "is_false")]
-        hairline: bool,
-        /// Where the options this section's controls write live,
-        /// "config.section", when they all live in one place — said once here
-        /// rather than on each control. Set it through `at`.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        target: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        control: Option<Box<Widget>>,
-        children: Vec<Widget>,
-    },
+    Section(SectionWidget),
     /// Vertical rhythm for its children; draws nothing itself. Width "compact"
     /// narrows the run for a short form column; Compact tightens the rhythm,
     /// Divided draws a hairline between entries, and Inline forms a wrapping
@@ -609,18 +568,7 @@ pub enum Widget {
     /// them ("to"), for parts that read as one sentence: typed values stay one
     /// box with the word in its frame, dropdowns stand side by side with the
     /// word between them.
-    Grid {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        columns: u32,
-        children: Vec<Widget>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        label: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        help: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        join: String,
-    },
+    Grid(Grid),
     /// A submittable set of fields; the shell threads CSRF and posts back here.
     /// Style "page" stages its submission through the shell. Error is a
     /// refusal that belongs to the whole submission rather than to one control —
@@ -652,69 +600,7 @@ pub enum Widget {
     /// "datetime-local", …); options feed a select or a set of checks, values
     /// are the checked members of that set; placeholder hints at the shape of a
     /// text value; error is the inline validation message (422).
-    Field {
-        name: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        label: String,
-        kind: String,
-        value: String,
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        values: Vec<String>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        placeholder: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        datatype: String,
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        options: Vec<SelectOption>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        error: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        help: String,
-        /// The option this field writes, verbatim — "ipaddr", "leasetime". The
-        /// shell sets it as a mono chip beside the label, so someone who knows
-        /// the config can see which line they are editing without leaving the
-        /// form, and someone who does not can ignore it.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        key: String,
-        /// Where `key` lives, "config.section", when the form or section around
-        /// the field does not already say it. With `key` it is the option's full
-        /// address, which is how the shell marks a field whose change waits on
-        /// the stage, on every visit. Set it through `at`.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        target: String,
-        /// What the field is, for someone meeting it for the first time — raised
-        /// from the label rather than kept on screen, because `help` already
-        /// says what to put in the control and a paragraph beside every row
-        /// would drown it. Set both through `explained`.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        tip: String,
-        /// What reads the option — "dhcp host", "ip route". The shell pairs it
-        /// with `key` to close the tip, placing the setting in the config it
-        /// belongs to.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        source: String,
-        /// What the number in the box is counted in — "Mbit/s", "seconds". The
-        /// shell sets it inside the field's trailing edge, so the value and what
-        /// it means read as one thing.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        unit: String,
-        /// The row's trailing remove affordance, for a form whose rows are a set
-        /// someone adds to and takes from rather than a fixed list of settings:
-        /// "yes" draws the glyph that clears this row, "lane" reserves its width
-        /// on a row that cannot be removed, "" draws neither. Set "lane" on the
-        /// fixed rows of such a form — without it their controls sit 28px left
-        /// of the removable ones.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        remove: String,
-        /// The control's compact face where its option set is short enough to
-        /// show whole: "segmented" draws a `checks` field as one strip of
-        /// togglable chips rather than a grid of boxes. A set long enough to
-        /// wrap belongs in the grid. For single-choice `select` fields the
-        /// shell chooses radios or a native dropdown by option count,
-        /// including when this style is supplied.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-    },
+    Field(Field),
     /// One persistent on/off setting, sharing its control with table toggle
     /// cells so a thing's enabled state looks the same in a listing and in its
     /// editor. Style "inline" sits it beside a section heading; style "locked"
@@ -724,43 +610,7 @@ pub enum Widget {
     /// Switches alone in a labelled form grid are one setting asked of several
     /// things: the shell draws the grid's label once, with the options named
     /// once, and a checkbox row per switch, its `help` kept in view.
-    Switch {
-        name: String,
-        label: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        off_label: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        help: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        /// The option this switch writes, verbatim — "drop_invalid". It rides
-        /// beside the label as a mono chip exactly as a field's does: a state to
-        /// flip is as much a line of the config as a value to type.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        key: String,
-        /// Where `key` lives, as a field's `target`. Set it through `at`.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        target: String,
-        /// The longer answer to "what even is this", raised onto the label. Help
-        /// is the same sentence said as a plugin already wrote it; where both
-        /// are set the label raises this one.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        tip: String,
-        /// What reads the option — "firewall defaults". With `key` it makes the
-        /// tip's footer, placing the option in the config it belongs to.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        source: String,
-        /// The label is a machine string — a path — rather than words: set in
-        /// mono and never looked up in a catalog.
-        #[serde(skip_serializing_if = "is_false")]
-        verbatim: bool,
-        /// The refusal of the state the switch was set to, drawn as a field's
-        /// is: the band under the label, named by the checkbox.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        error: String,
-        #[serde(skip_serializing_if = "is_false")]
-        on: bool,
-    },
+    Switch(Switch),
     /// The optional-match builder: the plugin declares the complete catalogue of
     /// conditions and which of them the object currently carries; the shell
     /// renders the active ones and keeps the rest in its Add-condition picker.
@@ -834,41 +684,7 @@ pub enum Widget {
     /// on its own, with Prompt as the add-field's hint. Errors are keyed by an
     /// item's index as a string, which is how a repeating control says which row
     /// failed. An empty list posts nothing under its name.
-    List {
-        name: String,
-        label: String,
-        kind: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        prompt: String,
-        datatype: String,
-        items: Vec<String>,
-        #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-        errors: std::collections::BTreeMap<String, String>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        help: String,
-        /// The option this list writes, verbatim, for the mono chip beside the
-        /// label — a list of values is as much a line of the config as one value.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        key: String,
-        /// Where `key` lives, as a field's `target`. Set it through `at`.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        target: String,
-        /// The longer explanation, raised onto the label as a field's is.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        tip: String,
-        /// The values worth offering. The control suggests them as it is typed in
-        /// and takes as many as are wanted, while still accepting anything the
-        /// config accepts — a closed choice would be wrong where the daemon reads
-        /// more than anyone would think to list.
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        options: Vec<SelectOption>,
-        /// The row's trailing remove affordance, as a field's: "yes" draws the
-        /// glyph that clears the row, "lane" reserves its width.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        remove: String,
-    },
+    List(List),
     /// A boxed contextual notice beside content, toned by intent. An action's
     /// *outcome* belongs in the envelope's notice, not here.
     Callout {
@@ -941,48 +757,7 @@ pub enum Widget {
     /// A listing that is a run of events rather than a state of the config sets
     /// `stream` (see [`TableStream`]): it renders with no rows and the shell
     /// fills it as events arrive.
-    Table {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        title: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        detail: String,
-        /// Pulls the row's edge inset in for a listing carrying many columns: the
-        /// same rows at the same height, with less of the measure spent holding
-        /// values off the table's edge. A judgement about horizontal room, so the
-        /// listing that knows how many columns it has is the one that says it.
-        #[serde(skip_serializing_if = "is_false")]
-        dense: bool,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        reorder_config: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        reorder_label: String,
-        columns: Vec<TableColumn>,
-        rows: Vec<TableRow>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        drawer_label: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        drawer_icon: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        empty_text: String,
-        /// A quiet add affordance the shell renders after the last row — the
-        /// next entry of the listing, where it will land. For a grouped table,
-        /// prefer per-lane adds on [`TableGroup`]. Empty renders no tail row.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        add_label: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        add_href: String,
-        /// The one caveat or reading note about the listing, set under the last
-        /// row: what the order means, what the listing leaves out. Below the
-        /// grid rather than above it, because it is a caption for something the
-        /// reader has already seen rather than a paragraph to get past first.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        note: String,
-        /// The live source this listing's rows arrive from, if any.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        stream: Option<TableStream>,
-    },
+    Table(Table),
     /// The listing's own controls, between a page's heading and its rows: which
     /// slice you are looking at, how to narrow it, and the one thing to do here.
     /// Everything on it acts on the rows below and nothing else, and all of it
@@ -990,35 +765,7 @@ pub enum Widget {
     /// fail. Tabs are the coarse cut, each priced with its own count and matched
     /// against a row's `tags`; `filter` is the free-text one; `action` is the
     /// single forward act and the only denim on the bar.
-    ActionBar {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        tabs: Vec<ActionTab>,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        filter: String,
-        /// The label of the control that holds a running listing still —
-        /// "Live" — which the shell turns to Paused and back as it is
-        /// pressed. It is the one thing on the bar that is not a narrowing,
-        /// and it belongs here because what it governs is the rows.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        live: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        action: Option<TableAction>,
-        /// Declares the act's own address a panel rather than a page: making one
-        /// is editing one that does not exist yet, so it opens in the same
-        /// surface and the listing stays where it is. The href remains what a
-        /// browser with no script follows.
-        #[serde(skip_serializing_if = "is_false")]
-        opens_panel: bool,
-        /// The panel the act opens, where making a new object belongs in the
-        /// same surface that edits an existing one. It carries its own `open`,
-        /// so an address asking for a new object arrives with the panel already
-        /// in front of the operator; the action's href stays the fallback for a
-        /// browser with no script.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        drawer: Option<RowDrawer>,
-    },
+    ActionBar(ActionBar),
     /// A direct action. Without `name` the button is inert — which is what a
     /// control the shell drives (a live listing's pause) wants. `live` says
     /// that the thing this button governs is running: the spinner turns beside
@@ -1050,21 +797,7 @@ pub enum Widget {
     /// state the tail as it is, and the shell folds it only once there are
     /// three rows to fold: below that the fold's own line costs the height it
     /// would save, so those rows render on the block.
-    Settings {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        title: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        meta: String,
-        /// Lowers the row padding only — same anatomy, tighter, for a list of
-        /// many short facts.
-        #[serde(skip_serializing_if = "is_false")]
-        condensed: bool,
-        items: Vec<SettingsItem>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        seam: Option<SettingsSeam>,
-    },
+    Settings(Settings),
     /// The page-wide lens: one field that narrows every listing on the page at
     /// once. The plugin declares only the placeholder; the shell owns the
     /// behaviour — and whether the lens renders at all. A page carrying twenty
@@ -1115,6 +848,308 @@ pub enum Widget {
     Raw { markdown: String },
 }
 
+/// SectionWidget is the body of [`Widget::Section`]; set what differs from the
+/// default.
+#[derive(Serialize, Debug, Default)]
+pub struct SectionWidget {
+    pub title: String,
+    /// The glyph of what the section is, by Lucide name, leading its
+    /// title on a part's ledger line (an expanded row's network, its DHCP
+    /// server, the bridge under them), so parts of one kind are told
+    /// apart from parts of another at a glance. Identity, never state.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub icon: String,
+    /// The name this section is addressed by, so a link elsewhere on the page
+    /// can bring it into view. A page long enough to be worth listing the
+    /// parts of needs them addressable.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub anchor: String,
+    /// Sets the title as a small label over a group rather than a heading
+    /// over a subject — a rail's "On this page", whose words name the list
+    /// beneath them and must not compete with the headings it points at.
+    #[serde(skip_serializing_if = "is_false")]
+    pub kicker: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub sub: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub meta: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub meta_icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub meta_position: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub flush: bool,
+    /// Rule this section off from whatever precedes it. It is the only rule
+    /// a form draws, which is what makes it read as a boundary: fields
+    /// inside a section are separated by space, sections by a hairline.
+    #[serde(skip_serializing_if = "is_false")]
+    pub hairline: bool,
+    /// Where the options this section's controls write live,
+    /// "config.section", when they all live in one place — said once here
+    /// rather than on each control. Set it through `at`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub control: Option<Box<Widget>>,
+    pub children: Vec<Widget>,
+}
+
+/// Grid is the body of [`Widget::Grid`]; set what differs from the default.
+#[derive(Serialize, Debug, Default)]
+pub struct Grid {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    pub columns: u32,
+    pub children: Vec<Widget>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub join: String,
+}
+
+/// Field is the body of [`Widget::Field`]; set what differs from the default.
+#[derive(Serialize, Debug, Default)]
+pub struct Field {
+    pub name: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub label: String,
+    pub kind: String,
+    pub value: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub values: Vec<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub placeholder: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub datatype: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<SelectOption>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub error: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    /// The option this field writes, verbatim — "ipaddr", "leasetime". The
+    /// shell sets it as a mono chip beside the label, so someone who knows
+    /// the config can see which line they are editing without leaving the
+    /// form, and someone who does not can ignore it.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    /// Where `key` lives, "config.section", when the form or section around
+    /// the field does not already say it. With `key` it is the option's full
+    /// address, which is how the shell marks a field whose change waits on
+    /// the stage, on every visit. Set it through `at`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub target: String,
+    /// What the field is, for someone meeting it for the first time — raised
+    /// from the label rather than kept on screen, because `help` already
+    /// says what to put in the control and a paragraph beside every row
+    /// would drown it. Set both through `explained`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tip: String,
+    /// What reads the option — "dhcp host", "ip route". The shell pairs it
+    /// with `key` to close the tip, placing the setting in the config it
+    /// belongs to.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub source: String,
+    /// What the number in the box is counted in — "Mbit/s", "seconds". The
+    /// shell sets it inside the field's trailing edge, so the value and what
+    /// it means read as one thing.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+    /// The row's trailing remove affordance, for a form whose rows are a set
+    /// someone adds to and takes from rather than a fixed list of settings:
+    /// "yes" draws the glyph that clears this row, "lane" reserves its width
+    /// on a row that cannot be removed, "" draws neither. Set "lane" on the
+    /// fixed rows of such a form — without it their controls sit 28px left
+    /// of the removable ones.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub remove: String,
+    /// The control's compact face where its option set is short enough to
+    /// show whole: "segmented" draws a `checks` field as one strip of
+    /// togglable chips rather than a grid of boxes. A set long enough to
+    /// wrap belongs in the grid. For single-choice `select` fields the
+    /// shell chooses radios or a native dropdown by option count,
+    /// including when this style is supplied.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+}
+
+/// Switch is the body of [`Widget::Switch`]; set what differs from the default.
+#[derive(Serialize, Debug, Default)]
+pub struct Switch {
+    pub name: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub off_label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    /// The option this switch writes, verbatim — "drop_invalid". It rides
+    /// beside the label as a mono chip exactly as a field's does: a state to
+    /// flip is as much a line of the config as a value to type.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    /// Where `key` lives, as a field's `target`. Set it through `at`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub target: String,
+    /// The longer answer to "what even is this", raised onto the label. Help
+    /// is the same sentence said as a plugin already wrote it; where both
+    /// are set the label raises this one.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tip: String,
+    /// What reads the option — "firewall defaults". With `key` it makes the
+    /// tip's footer, placing the option in the config it belongs to.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub source: String,
+    /// The label is a machine string — a path — rather than words: set in
+    /// mono and never looked up in a catalog.
+    #[serde(skip_serializing_if = "is_false")]
+    pub verbatim: bool,
+    /// The refusal of the state the switch was set to, drawn as a field's
+    /// is: the band under the label, named by the checkbox.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub error: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub on: bool,
+}
+
+/// List is the body of [`Widget::List`]; set what differs from the default.
+#[derive(Serialize, Debug, Default)]
+pub struct List {
+    pub name: String,
+    pub label: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub prompt: String,
+    pub datatype: String,
+    pub items: Vec<String>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub errors: std::collections::BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub help: String,
+    /// The option this list writes, verbatim, for the mono chip beside the
+    /// label — a list of values is as much a line of the config as one value.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    /// Where `key` lives, as a field's `target`. Set it through `at`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub target: String,
+    /// The longer explanation, raised onto the label as a field's is.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tip: String,
+    /// The values worth offering. The control suggests them as it is typed in
+    /// and takes as many as are wanted, while still accepting anything the
+    /// config accepts — a closed choice would be wrong where the daemon reads
+    /// more than anyone would think to list.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<SelectOption>,
+    /// The row's trailing remove affordance, as a field's: "yes" draws the
+    /// glyph that clears the row, "lane" reserves its width.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub remove: String,
+}
+
+/// Table is the body of [`Widget::Table`]; set what differs from the default.
+#[derive(Serialize, Debug, Default)]
+pub struct Table {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub detail: String,
+    /// Pulls the row's edge inset in for a listing carrying many columns: the
+    /// same rows at the same height, with less of the measure spent holding
+    /// values off the table's edge. A judgement about horizontal room, so the
+    /// listing that knows how many columns it has is the one that says it.
+    #[serde(skip_serializing_if = "is_false")]
+    pub dense: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub reorder_config: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub reorder_label: String,
+    pub columns: Vec<TableColumn>,
+    pub rows: Vec<TableRow>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub drawer_label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub drawer_icon: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub empty_text: String,
+    /// A quiet add affordance the shell renders after the last row — the
+    /// next entry of the listing, where it will land. For a grouped table,
+    /// prefer per-lane adds on [`TableGroup`]. Empty renders no tail row.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub add_label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub add_href: String,
+    /// The one caveat or reading note about the listing, set under the last
+    /// row: what the order means, what the listing leaves out. Below the
+    /// grid rather than above it, because it is a caption for something the
+    /// reader has already seen rather than a paragraph to get past first.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub note: String,
+    /// The live source this listing's rows arrive from, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<TableStream>,
+}
+
+/// ActionBar is the body of [`Widget::ActionBar`]; set what differs from the
+/// default.
+#[derive(Serialize, Debug, Default)]
+pub struct ActionBar {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tabs: Vec<ActionTab>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub filter: String,
+    /// The label of the control that holds a running listing still —
+    /// "Live" — which the shell turns to Paused and back as it is
+    /// pressed. It is the one thing on the bar that is not a narrowing,
+    /// and it belongs here because what it governs is the rows.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub live: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<TableAction>,
+    /// Declares the act's own address a panel rather than a page: making one
+    /// is editing one that does not exist yet, so it opens in the same
+    /// surface and the listing stays where it is. The href remains what a
+    /// browser with no script follows.
+    #[serde(skip_serializing_if = "is_false")]
+    pub opens_panel: bool,
+    /// The panel the act opens, where making a new object belongs in the
+    /// same surface that edits an existing one. It carries its own `open`,
+    /// so an address asking for a new object arrives with the panel already
+    /// in front of the operator; the action's href stays the fallback for a
+    /// browser with no script.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drawer: Option<RowDrawer>,
+}
+
+/// Settings is the body of [`Widget::Settings`]; set what differs from the
+/// default.
+#[derive(Serialize, Debug, Default)]
+pub struct Settings {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub style: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub meta: String,
+    /// Lowers the row padding only — same anatomy, tighter, for a list of
+    /// many short facts.
+    #[serde(skip_serializing_if = "is_false")]
+    pub condensed: bool,
+    pub items: Vec<SettingsItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seam: Option<SettingsSeam>,
+}
+
 impl Widget {
     /// refusal is a form's `error` from a submission's refusals keyed by
     /// control name: the first one no control among `fields` draws, however
@@ -1133,20 +1168,19 @@ impl Widget {
     }
     fn draws_refusal(&self, key: &str) -> bool {
         match self {
-            Widget::Field { name, error, .. } | Widget::Switch { name, error, .. } => {
-                name == key && !error.is_empty()
-            }
+            Widget::Field(Field { name, error, .. })
+            | Widget::Switch(Switch { name, error, .. }) => name == key && !error.is_empty(),
             // A list's refusals ride its rows, keyed by row, so it draws the
             // refusal named for the list when any row carries one.
-            Widget::List { name, errors, .. } => name == key && !errors.is_empty(),
+            Widget::List(List { name, errors, .. }) => name == key && !errors.is_empty(),
             Widget::Conditional {
                 fields, otherwise, ..
             } => fields.iter().chain(otherwise).any(|w| w.draws_refusal(key)),
             Widget::When { children, .. }
             | Widget::Card { children, .. }
-            | Widget::Section { children, .. }
+            | Widget::Section(SectionWidget { children, .. })
             | Widget::Stack { children, .. }
-            | Widget::Grid { children, .. }
+            | Widget::Grid(Grid { children, .. })
             | Widget::Disclosure { children, .. }
             | Widget::Empty { children, .. } => children.iter().any(|w| w.draws_refusal(key)),
             _ => false,
@@ -1164,28 +1198,19 @@ impl Widget {
 
     /// section is a titled region of the page.
     pub fn section(title: &str, sub: &str, children: Vec<Widget>) -> Widget {
-        Widget::Section {
+        Widget::Section(SectionWidget {
             title: title.into(),
-            icon: String::new(),
-            anchor: String::new(),
-            kicker: false,
             sub: sub.into(),
-            meta: String::new(),
-            meta_icon: String::new(),
-            meta_position: String::new(),
-            flush: false,
-            hairline: false,
-            target: String::new(),
-            control: None,
             children,
-        }
+            ..Default::default()
+        })
     }
 
     /// ruled draws this section off from whatever precedes it — the boundary a
     /// form's continuation needs when the fields above it carry no rules of
     /// their own.
     pub fn ruled(mut self) -> Widget {
-        if let Widget::Section { hairline, .. } = &mut self {
+        if let Widget::Section(SectionWidget { hairline, .. }) = &mut self {
             *hairline = true;
         }
         self
@@ -1195,7 +1220,7 @@ impl Widget {
     /// into view. The name is the page's to choose and has to match what the link
     /// points at, so keep the two in one list rather than spelling each twice.
     pub fn addressed_as(mut self, anchor: &str) -> Widget {
-        if let Widget::Section { anchor: a, .. } = &mut self {
+        if let Widget::Section(SectionWidget { anchor: a, .. }) = &mut self {
             *a = anchor.into();
         }
         self
@@ -1204,7 +1229,7 @@ impl Widget {
     /// kicker sets this section's title as the small label over a list rather
     /// than a heading over a subject — what a rail's "On this page" is.
     pub fn kicker(mut self) -> Widget {
-        if let Widget::Section { kicker, .. } = &mut self {
+        if let Widget::Section(SectionWidget { kicker, .. }) = &mut self {
             *kicker = true;
         }
         self
@@ -1219,7 +1244,9 @@ impl Widget {
     /// is one continuous column rather than several separate lines.
     pub fn flush(mut self) -> Widget {
         match &mut self {
-            Widget::Section { flush, .. } | Widget::Stack { flush, .. } => *flush = true,
+            Widget::Section(SectionWidget { flush, .. }) | Widget::Stack { flush, .. } => {
+                *flush = true
+            }
             _ => {}
         }
         self
@@ -1229,9 +1256,9 @@ impl Widget {
     /// than as a new subject: a rule directly under the last row, and only the
     /// air a control needs. It is what the one act that adds another row wears.
     pub fn continues(mut self) -> Widget {
-        if let Widget::Section {
+        if let Widget::Section(SectionWidget {
             hairline, flush, ..
-        } = &mut self
+        }) = &mut self
         {
             *hairline = true;
             *flush = true;
@@ -1247,7 +1274,7 @@ impl Widget {
     /// plain word for the thing. Only a field carries one; anything else comes
     /// back as it was.
     pub fn explained(mut self, what: &str, source: &str) -> Widget {
-        if let Widget::Field { tip, source: s, .. } = &mut self {
+        if let Widget::Field(Field { tip, source: s, .. }) = &mut self {
             *tip = what.into();
             *s = source.into();
         }
@@ -1259,7 +1286,7 @@ impl Widget {
     /// field whose value is a bare number; a value that carries its own unit
     /// ("12h") states it already.
     pub fn counted_in(mut self, unit: &str) -> Widget {
-        if let Widget::Field { unit: u, .. } = &mut self {
+        if let Widget::Field(Field { unit: u, .. }) = &mut self {
             *u = unit.into();
         }
         self
@@ -1270,7 +1297,7 @@ impl Widget {
     /// machine string it is, at the measure it needs, and refuses a value
     /// that does not read as one.
     pub fn typed(mut self, grammar: &str) -> Widget {
-        if let Widget::Field { datatype, .. } = &mut self {
+        if let Widget::Field(Field { datatype, .. }) = &mut self {
             *datatype = grammar.into();
         }
         self
@@ -1280,7 +1307,7 @@ impl Widget {
     /// field's own row, a quiet box with a padlock, the reason it cannot
     /// change raised on its label, and posts nothing.
     pub fn locked(mut self, reason: &str) -> Widget {
-        if let Widget::Field { style, help, .. } = &mut self {
+        if let Widget::Field(Field { style, help, .. }) = &mut self {
             *style = "locked".into();
             *help = reason.into();
         }
@@ -1292,7 +1319,9 @@ impl Widget {
     /// the setting is worth showing to someone who already knows it.
     pub fn writes(mut self, key: &str) -> Widget {
         match &mut self {
-            Widget::Field { key: k, .. } | Widget::List { key: k, .. } => *k = key.into(),
+            Widget::Field(Field { key: k, .. }) | Widget::List(List { key: k, .. }) => {
+                *k = key.into()
+            }
             _ => {}
         }
         self
@@ -1302,9 +1331,9 @@ impl Widget {
     /// control: the words covering every part, and optionally what the group
     /// is. Each field keeps its own label as its part's name.
     pub fn labelled(mut self, label: &str, help: &str) -> Widget {
-        if let Widget::Grid {
+        if let Widget::Grid(Grid {
             label: l, help: h, ..
-        } = &mut self
+        }) = &mut self
         {
             *l = label.into();
             *h = help.into();
@@ -1315,7 +1344,7 @@ impl Widget {
     /// joined names the word that joins a form group's parts ("to"), for
     /// parts that read as one sentence — a path from one zone to another.
     pub fn joined(mut self, word: &str) -> Widget {
-        if let Widget::Grid { join, .. } = &mut self {
+        if let Widget::Grid(Grid { join, .. }) = &mut self {
             *join = word.into();
         }
         self
@@ -1334,10 +1363,10 @@ impl Widget {
         }
         match &mut self {
             Widget::Form { target, .. }
-            | Widget::Section { target, .. }
-            | Widget::Field { target, .. }
-            | Widget::Switch { target, .. }
-            | Widget::List { target, .. } => *target = format!("{config}.{section}"),
+            | Widget::Section(SectionWidget { target, .. })
+            | Widget::Field(Field { target, .. })
+            | Widget::Switch(Switch { target, .. })
+            | Widget::List(List { target, .. }) => *target = format!("{config}.{section}"),
             _ => {}
         }
         self
@@ -1347,7 +1376,7 @@ impl Widget {
     /// typed in. It is a suggestion and not a restriction: whatever the config
     /// accepts can still be typed.
     pub fn suggesting(mut self, options: Vec<SelectOption>) -> Widget {
-        if let Widget::List { options: o, .. } = &mut self {
+        if let Widget::List(List { options: o, .. }) = &mut self {
             *o = options;
         }
         self
@@ -1358,7 +1387,9 @@ impl Widget {
     /// needs [`Widget::in_lane`], or their controls sit where the glyph is.
     pub fn removable(mut self) -> Widget {
         match &mut self {
-            Widget::Field { remove, .. } | Widget::List { remove, .. } => *remove = "yes".into(),
+            Widget::Field(Field { remove, .. }) | Widget::List(List { remove, .. }) => {
+                *remove = "yes".into()
+            }
             _ => {}
         }
         self
@@ -1368,7 +1399,9 @@ impl Widget {
     /// so a form mixing fixed and removable rows keeps one control column.
     pub fn in_lane(mut self) -> Widget {
         match &mut self {
-            Widget::Field { remove, .. } | Widget::List { remove, .. } => *remove = "lane".into(),
+            Widget::Field(Field { remove, .. }) | Widget::List(List { remove, .. }) => {
+                *remove = "lane".into()
+            }
             _ => {}
         }
         self
@@ -1378,7 +1411,7 @@ impl Widget {
     /// of a grid of boxes — for a set short enough to show whole, where which
     /// members are on is a shape rather than a list to read.
     pub fn segmented(mut self) -> Widget {
-        if let Widget::Field { style, .. } = &mut self {
+        if let Widget::Field(Field { style, .. }) = &mut self {
             *style = "segmented".into();
         }
         self
@@ -1421,27 +1454,22 @@ impl Widget {
 
     /// grid lays children out across columns.
     pub fn grid(columns: u32, children: Vec<Widget>) -> Widget {
-        Widget::Grid {
-            style: String::new(),
+        Widget::Grid(Grid {
             columns,
             children,
-            label: String::new(),
-            help: String::new(),
-            join: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// form_grid groups related fields in reading order. The shell owns their
     /// spacing and collapses the columns when the containing form is narrow.
     pub fn form_grid(columns: u32, children: Vec<Widget>) -> Widget {
-        Widget::Grid {
+        Widget::Grid(Grid {
             style: "form".into(),
             columns,
             children,
-            label: String::new(),
-            help: String::new(),
-            join: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// disclosure folds detail away behind a summary line.
@@ -1489,20 +1517,14 @@ impl Widget {
     /// what the option is for: the same row a keyed field draws, with a switch
     /// where the box would be.
     pub fn switch_keyed(name: &str, label: &str, key: &str, tip: &str, on: bool) -> Widget {
-        Widget::Switch {
+        Widget::Switch(Switch {
             name: name.into(),
             label: label.into(),
-            off_label: String::new(),
-            help: String::new(),
-            style: String::new(),
             key: key.into(),
             tip: tip.into(),
-            source: String::new(),
-            verbatim: false,
-            error: String::new(),
-            target: String::new(),
             on,
-        }
+            ..Default::default()
+        })
     }
 
     /// form is a submittable set of fields with the given submit label.
@@ -1519,25 +1541,15 @@ impl Widget {
 
     /// field is a single text input carrying a datatype the shell enforces.
     pub fn field(name: &str, label: &str, value: &str, datatype: &str, help: &str) -> Widget {
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
             value: value.into(),
-            values: Vec::new(),
-            placeholder: String::new(),
             datatype: datatype.into(),
-            options: Vec::new(),
-            error: String::new(),
             help: help.into(),
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            unit: String::new(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// select is a single-choice field over a closed option set.
@@ -1548,25 +1560,15 @@ impl Widget {
         options: Vec<SelectOption>,
         error: &str,
     ) -> Widget {
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
             label: label.into(),
             kind: "select".into(),
             value: value.into(),
-            values: Vec::new(),
-            placeholder: String::new(),
-            datatype: String::new(),
             options,
             error: error.into(),
-            help: String::new(),
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            unit: String::new(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// checks is membership in a set: each option is included or not, and the
@@ -1577,89 +1579,52 @@ impl Widget {
         values: &[String],
         options: Vec<SelectOption>,
     ) -> Widget {
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
             label: label.into(),
             kind: "checks".into(),
-            value: String::new(),
             values: values.to_vec(),
-            placeholder: String::new(),
-            datatype: String::new(),
             options,
-            error: String::new(),
-            help: String::new(),
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            unit: String::new(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// hidden is the bare value carrier a form posts but a person never edits.
     pub fn hidden(name: &str, value: &str) -> Widget {
-        Widget::Field {
+        Widget::Field(Field {
             name: name.into(),
-            label: String::new(),
             kind: "hidden".into(),
             value: value.into(),
-            values: Vec::new(),
-            placeholder: String::new(),
-            datatype: String::new(),
-            options: Vec::new(),
-            error: String::new(),
-            help: String::new(),
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            unit: String::new(),
-            style: String::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// list is a repeatable text input (one value per row) of one datatype.
     pub fn list(name: &str, label: &str, datatype: &str, items: &[String], help: &str) -> Widget {
-        Widget::List {
+        Widget::List(List {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
-            style: String::new(),
-            prompt: String::new(),
             datatype: datatype.into(),
             items: items.to_vec(),
-            errors: std::collections::BTreeMap::new(),
             help: help.into(),
-            key: String::new(),
-            tip: String::new(),
-            options: Vec::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// tokens is the compact list style: many short values, each removable, with
     /// Prompt hinting what one looks like.
     pub fn tokens(name: &str, label: &str, prompt: &str, items: &[String], help: &str) -> Widget {
-        Widget::List {
+        Widget::List(List {
             name: name.into(),
             label: label.into(),
             kind: "text".into(),
             style: "tokens".into(),
             prompt: prompt.into(),
-            datatype: String::new(),
             items: items.to_vec(),
-            errors: std::collections::BTreeMap::new(),
             help: help.into(),
-            key: String::new(),
-            tip: String::new(),
-            options: Vec::new(),
-            remove: String::new(),
-            target: String::new(),
-        }
+            ..Default::default()
+        })
     }
 
     /// callout is a boxed contextual notice beside content.
@@ -2861,9 +2826,9 @@ fn hex(c: u8) -> Option<u8> {
 mod tests {
     use super::{
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
-        ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Form,
-        PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
-        TableCell, TableRow, Tone, Ubus, Widget,
+        ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Field,
+        Form, List, PageTab, RowDrawer, SectionWidget, SelectOption, Settings, SettingsItem,
+        SettingsPill, SettingsSeam, Snapshot, Switch, TableCell, TableRow, Tone, Ubus, Widget,
     };
     use super::{json, uci_text, Map, Value};
 
@@ -2873,11 +2838,11 @@ mod tests {
     #[test]
     fn a_form_refuses_only_what_no_control_says() {
         let mut port = Widget::field("https_port", "HTTPS port", "99999", "", "");
-        if let Widget::Field { error, .. } = &mut port {
+        if let Widget::Field(Field { error, .. }) = &mut port {
             *error = "Enter a port from 1 to 65535.".into();
         }
         let mut redirect = Widget::switch_keyed("redirect", "Redirect", "redirect", "", true);
-        if let Widget::Switch { error, .. } = &mut redirect {
+        if let Widget::Switch(Switch { error, .. }) = &mut redirect {
             *error = "Add an HTTPS listener first.".into();
         }
         let fields = vec![
@@ -2910,7 +2875,7 @@ mod tests {
         );
         // A list carries its refusal on a row, under the list's own name.
         let mut servers = Widget::list("server", "Time servers", "host", &["x!".into()], "");
-        if let Widget::List { errors, .. } = &mut servers {
+        if let Widget::List(List { errors, .. }) = &mut servers {
             errors.insert("0".into(), "Enter valid hostnames.".into());
         }
         let listed: std::collections::BTreeMap<String, String> =
@@ -3254,20 +3219,14 @@ mod tests {
             serde_json::to_value(&plain).unwrap(),
             serde_json::json!({"type": "switch", "name": "enabled", "label": "Enabled", "on": true})
         );
-        let off = Widget::Switch {
+        let off = Widget::Switch(Switch {
             name: "counter".into(),
             label: "Count matching packets".into(),
             off_label: "Not counted".into(),
             help: "Hit counts come from the kernel.".into(),
             style: "inline".into(),
-            key: String::new(),
-            tip: String::new(),
-            source: String::new(),
-            verbatim: false,
-            error: String::new(),
-            target: String::new(),
-            on: false,
-        };
+            ..Default::default()
+        });
         assert_eq!(
             serde_json::to_value(&off).unwrap(),
             serde_json::json!({
@@ -3336,21 +3295,12 @@ mod tests {
 
     #[test]
     fn a_section_carries_its_control_beside_the_title() {
-        let widget = Widget::Section {
+        let widget = Widget::Section(SectionWidget {
             title: "Rule".into(),
-            icon: String::new(),
-            anchor: String::new(),
-            kicker: false,
-            sub: String::new(),
-            meta: String::new(),
-            meta_icon: String::new(),
-            meta_position: String::new(),
             flush: true,
-            hairline: false,
-            target: String::new(),
             control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
-            children: vec![],
-        };
+            ..Default::default()
+        });
         let json = serde_json::to_value(&widget).unwrap();
         assert_eq!(json["flush"], true);
         assert_eq!(json["control"]["type"], "switch");
@@ -3458,11 +3408,7 @@ mod tests {
 
     #[test]
     fn a_settings_seam_folds_its_own_rows() {
-        let block = Widget::Settings {
-            condensed: false,
-            style: String::new(),
-            title: String::new(),
-            meta: String::new(),
+        let block = Widget::Settings(Settings {
             items: vec![SettingsItem {
                 title: "Expand hosts".into(),
                 ..SettingsItem::default()
@@ -3474,19 +3420,13 @@ mod tests {
                     ..SettingsItem::default()
                 }],
             }),
-        };
+            ..Default::default()
+        });
         let json = serde_json::to_value(&block).unwrap();
         assert_eq!(json["seam"]["summary"], "1 more option");
         assert_eq!(json["seam"]["items"][0]["title"], "Skip /etc/hosts");
 
-        let plain = Widget::Settings {
-            condensed: false,
-            style: String::new(),
-            title: String::new(),
-            meta: String::new(),
-            items: Vec::new(),
-            seam: None,
-        };
+        let plain = Widget::Settings(Settings::default());
         assert!(serde_json::to_value(&plain).unwrap().get("seam").is_none());
     }
 

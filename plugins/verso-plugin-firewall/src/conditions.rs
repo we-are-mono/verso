@@ -29,7 +29,7 @@
 //! Only firewall4's own options appear. A condition it cannot express would be a
 //! control that changes nothing, which is worse than a control that is missing.
 
-use verso_plugin::{ConditionItem, SelectOption, Widget};
+use verso_plugin::{ConditionItem, List, SelectOption, Widget};
 
 use crate::fields::{select_field, text_field, token_list};
 use crate::model::Firewall;
@@ -424,7 +424,7 @@ fn ports(
 /// open whenever the condition already excludes something — or whenever the
 /// last submission refused an exclusion, so the refusal is never folded away.
 fn exceptions(exclude: Widget, tokens: &Tokens) -> Widget {
-    let refused = matches!(&exclude, Widget::List { errors, .. } if !errors.is_empty());
+    let refused = matches!(&exclude, Widget::List(List { errors, .. }) if !errors.is_empty());
     Widget::reveal(
         "Exclude some",
         !tokens.exclude.is_empty() || refused,

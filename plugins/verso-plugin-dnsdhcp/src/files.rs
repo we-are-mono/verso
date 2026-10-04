@@ -4,7 +4,7 @@
 //! is (verso_plugin::files): the page names where they live and what they are
 //! called, the SDK draws them.
 use verso_plugin::files::{self, FileSet};
-use verso_plugin::{Envelope, Form, Request, Tone, Value, Widget};
+use verso_plugin::{Envelope, Form, Grid, Request, Tone, Value, Widget};
 
 const ROOT: &str = "/plugins/dnsdhcp/";
 
@@ -36,7 +36,7 @@ pub fn listing(r: &Request) -> Widget {
 /// with_editor is the settings page with a file's editor open over it.
 fn with_editor(r: &Request, editor: Widget) -> Envelope {
     let mut result = crate::settings::page(r);
-    if let Widget::Grid { children, .. } = &mut result.widget {
+    if let Widget::Grid(Grid { children, .. }) = &mut result.widget {
         children.push(editor);
     }
     result.with_back("Cancel", ROOT)

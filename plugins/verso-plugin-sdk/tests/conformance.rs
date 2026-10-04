@@ -10,10 +10,11 @@
 use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
-    ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth, ConditionItem,
-    Property, RemoveConfirm, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam,
-    SettingsToggle, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow,
-    TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
+    ActionBar, ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth,
+    ConditionItem, Field, Grid, List, Property, RemoveConfirm, RowDrawer, SectionWidget,
+    SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam, SettingsToggle, Switch,
+    Table, TableAction, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow, TableRowAct,
+    TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
@@ -40,21 +41,19 @@ fn write_widget_fixtures() {
         ),
         (
             "section",
-            Widget::Section {
+            Widget::Section(SectionWidget {
                 title: "Rule".into(),
-                icon: String::new(),
                 anchor: "rule".into(),
-                kicker: false,
                 sub: "Devices that may connect.".into(),
                 meta: "3 peers".into(),
                 meta_icon: "shield".into(),
                 meta_position: "inline".into(),
                 flush: true,
-                hairline: false,
                 target: "firewall.cfg0a1b2c".into(),
                 control: Some(Box::new(Widget::switch("enabled", "Enabled", true))),
                 children: vec![Widget::text("body")],
-            },
+                ..Default::default()
+            }),
         ),
         (
             "stack",
@@ -108,31 +107,24 @@ fn write_widget_fixtures() {
         ),
         (
             "grid",
-            Widget::Grid {
+            Widget::Grid(Grid {
                 style: "form".into(),
                 columns: 2,
                 children: vec![Widget::text("a"), Widget::text("b")],
-                label: String::new(),
-                help: String::new(),
-                join: String::new(),
-            },
+                ..Default::default()
+            }),
         ),
         (
             "switch",
-            Widget::Switch {
+            Widget::Switch(Switch {
                 name: "enabled".into(),
                 label: "Enabled".into(),
                 off_label: "Disabled".into(),
                 help: "A disabled rule is kept but never evaluated.".into(),
                 style: "inline".into(),
                 on: true,
-                key: String::new(),
-                tip: String::new(),
-                source: String::new(),
-                verbatim: false,
-                error: String::new(),
-                target: String::new(),
-            },
+                ..Default::default()
+            }),
         ),
         (
             "conditions",
@@ -214,29 +206,25 @@ fn write_widget_fixtures() {
         ),
         (
             "field",
-            Widget::Field {
+            Widget::Field(Field {
                 name: "hostname".into(),
                 label: "Hostname".into(),
                 kind: "text".into(),
                 value: "router.lan".into(),
-                values: Vec::new(),
                 placeholder: "router.lan".into(),
                 datatype: "fqdn".into(),
-                options: Vec::new(),
                 error: "must be a fully-qualified domain name".into(),
                 help: "The device's name.".into(),
                 key: "hostname".into(),
                 tip: "The name this router answers to on the local network.".into(),
                 source: "system system".into(),
-                unit: String::new(),
                 style: "segmented".into(),
-                remove: String::new(),
-                target: String::new(),
-            },
+                ..Default::default()
+            }),
         ),
         (
             "list",
-            Widget::List {
+            Widget::List(List {
                 name: "server".into(),
                 label: "NTP servers".into(),
                 kind: "text".into(),
@@ -250,8 +238,8 @@ fn write_widget_fixtures() {
                 tip: "The clocks this router asks for the time.".into(),
                 options: vec![SelectOption::new("0.openwrt.pool.ntp.org", "OpenWrt pool")],
                 remove: "yes".into(),
-                target: String::new(),
-            },
+                ..Default::default()
+            }),
         ),
         (
             "callout",
@@ -360,8 +348,7 @@ fn write_widget_fixtures() {
         ("table", listing()),
         (
             "settings",
-            Widget::Settings {
-                condensed: false,
+            Widget::Settings(Settings {
                 style: "card".into(),
                 title: "Global defaults".into(),
                 meta: "firewall.@defaults[0]".into(),
@@ -426,7 +413,8 @@ fn write_widget_fixtures() {
                         },
                     ],
                 }),
-            },
+                ..Default::default()
+            }),
         ),
         (
             "filter",
@@ -436,8 +424,7 @@ fn write_widget_fixtures() {
         ),
         (
             "actionbar",
-            Widget::ActionBar {
-                style: String::new(),
+            Widget::ActionBar(ActionBar {
                 tabs: vec![
                     ActionTab {
                         label: "All".into(),
@@ -459,9 +446,8 @@ fn write_widget_fixtures() {
                     href: "/plugins/firewall/rules/new".into(),
                     ..TableAction::default()
                 }),
-                opens_panel: false,
-                drawer: None,
-            },
+                ..Default::default()
+            }),
         ),
         ("stream-table", live_listing()),
         (
@@ -494,7 +480,7 @@ fn write_widget_fixtures() {
 // field appears on a cell whose column kind actually reads it, so no field can
 // be renamed on either side of the wire without this pin failing.
 fn listing() -> Widget {
-    Widget::Table {
+    Widget::Table(Table {
         style: "flat".into(),
         title: "Zones".into(),
         detail: "4 zones · 2 forwardings".into(),
@@ -734,24 +720,18 @@ fn listing() -> Widget {
         drawer_label: "Edit".into(),
         drawer_icon: "pencil".into(),
         empty_text: "No zones yet.".into(),
-        add_label: String::new(),
-        add_href: String::new(),
         note: "Source rewrites are not listed here.".into(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 // live_listing is the streaming table fixture: the same vocabulary declared as
 // a run of events rather than a state of the config, so the stream's own wire
 // shape is pinned to the shell's decoder like every other field.
 fn live_listing() -> Widget {
-    Widget::Table {
+    Widget::Table(Table {
         style: "lined".into(),
-        title: String::new(),
-        detail: String::new(),
         dense: true,
-        reorder_config: String::new(),
-        reorder_label: String::new(),
         columns: vec![
             TableColumn {
                 label: "When".into(),
@@ -769,16 +749,11 @@ fn live_listing() -> Widget {
                 ..TableColumn::default()
             },
         ],
-        rows: vec![],
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: "Waiting for the first logged event…".into(),
-        add_label: String::new(),
-        add_href: String::new(),
-        note: String::new(),
         stream: Some(TableStream {
             source: STREAM_FIREWALL_LOG.into(),
             ring: 200,
         }),
-    }
+        ..Default::default()
+    })
 }

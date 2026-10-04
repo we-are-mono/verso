@@ -17,7 +17,7 @@
 
 use std::collections::BTreeMap;
 
-use verso_plugin::{Form, SelectOption, Widget};
+use verso_plugin::{Field, Form, SelectOption, Widget};
 
 /// DELETE marks a submission that removes its subject rather than saving it — the
 /// one thing a save and a delete need told apart when both post to the edit
@@ -69,25 +69,16 @@ pub const UNKNOWN: &str = "That change wasn’t recognized, so nothing was saved
 pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
     // The field's own name is the option it writes, so the chip beside the label
     // needs nothing else stated.
-    Widget::Field {
+    Widget::Field(Field {
         name: name.into(),
         label: label.into(),
         kind: "text".into(),
         value: value.into(),
-        values: Vec::new(),
-        placeholder: String::new(),
-        datatype: String::new(),
-        options: Vec::new(),
         error: errors.get(name).into(),
         help: help.into(),
         key: name.into(),
-        tip: String::new(),
-        source: String::new(),
-        unit: String::new(),
-        style: String::new(),
-        remove: String::new(),
-        target: String::new(),
-    }
+        ..Default::default()
+    })
 }
 
 /// select_field is one choice over a closed set.

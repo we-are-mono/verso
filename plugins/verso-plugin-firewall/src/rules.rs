@@ -15,8 +15,9 @@
 //! between chains would change which packets it sees rather than when.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ActionTab, ColumnWidth, Envelope, Form, RowDrawer, Snapshot,
-    TableAction, TableCell, TableColumn, TableGroup, TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ActionBar, ActionTab, ColumnWidth, Envelope, Form,
+    RowDrawer, Snapshot, Table, TableAction, TableCell, TableColumn, TableGroup, TableRow, Tone,
+    Widget,
 };
 
 use crate::counters::Counters;
@@ -229,8 +230,7 @@ fn opened_blank(
 fn bar(rules: &[Rule], blank: Option<RowDrawer>) -> Widget {
     let ipv4 = rules.iter().filter(|rule| families(rule).0).count() as u32;
     let ipv6 = rules.iter().filter(|rule| families(rule).1).count() as u32;
-    Widget::ActionBar {
-        style: String::new(),
+    Widget::ActionBar(ActionBar {
         tabs: vec![
             ActionTab {
                 label: "All families".into(),
@@ -252,7 +252,6 @@ fn bar(rules: &[Rule], blank: Option<RowDrawer>) -> Widget {
             },
         ],
         filter: "Find a rule".into(),
-        live: String::new(),
         // Making a rule is editing one that does not exist yet, so the act opens
         // the same panel a row's name opens rather than a page of its own.
         action: Some(TableAction {
@@ -262,7 +261,8 @@ fn bar(rules: &[Rule], blank: Option<RowDrawer>) -> Widget {
         }),
         opens_panel: true,
         drawer: blank,
-    }
+        ..Default::default()
+    })
 }
 
 /// The tags a family tab cuts by. A rule that names no family covers both, and
@@ -325,23 +325,16 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
             rows.push(row);
         }
     }
-    Widget::Table {
-        style: String::new(),
-        title: String::new(),
-        detail: String::new(),
+    Widget::Table(Table {
         dense: true,
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
         columns: columns(),
         rows,
-        drawer_label: String::new(),
-        drawer_icon: String::new(),
         empty_text: EMPTY.into(),
-        add_label: String::new(),
-        add_href: String::new(),
         note: NOTE.into(),
-        stream: None,
-    }
+        ..Default::default()
+    })
 }
 
 /// row is one rule. Its name and its edit act both lead to the rule's own panel

@@ -5,8 +5,8 @@ use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv6Addr};
 use std::time::{SystemTime, UNIX_EPOCH};
 use verso_plugin::{
-    commit, commit_new, json, serve_described, ApplyAction, Envelope, Form, Request, SelectOption,
-    Snapshot, Tone, Widget,
+    commit, commit_new, json, serve_described, ApplyAction, Envelope, Field, Form, List, Request,
+    SectionWidget, SelectOption, Snapshot, Tone, Widget,
 };
 mod access;
 mod credentials;
@@ -235,7 +235,7 @@ fn keyed(
     errors: &BTreeMap<String, String>,
 ) -> Widget {
     let mut w = Widget::field(name, label, value, "", "").writes(key);
-    if let Widget::Field { error, .. } = &mut w {
+    if let Widget::Field(Field { error, .. }) = &mut w {
         *error = errors.get(name).cloned().unwrap_or_default();
     }
     w
@@ -248,12 +248,12 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
     }
     let mut servers =
         Widget::list("server", "Time servers", "host", &v.servers, "").writes("server");
-    if let Widget::List {
+    if let Widget::List(List {
         style,
         prompt,
         errors,
         ..
-    } = &mut servers
+    }) = &mut servers
     {
         *style = "rows".into();
         *prompt = "Add a server".into();
@@ -305,12 +305,12 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
     )
     .ruled()
     .at("system", &v.ntp_section);
-    if let Widget::Section {
+    if let Widget::Section(SectionWidget {
         meta,
         meta_position,
         control,
         ..
-    } = &mut time
+    }) = &mut time
     {
         *meta = clock;
         *meta_position = "inline".into();

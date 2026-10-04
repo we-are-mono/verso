@@ -3,7 +3,10 @@
 use super::credentials::{key_command, ADD_KEY, REMOVE_KEY};
 use super::sshkey;
 use std::collections::BTreeMap;
-use verso_plugin::{commit, json, Envelope, Form, Request, Section, SelectOption, Tone, Widget};
+use verso_plugin::{
+    commit, json, Envelope, Form, List, Request, Section, SectionWidget, SelectOption, Switch,
+    Tone, Widget,
+};
 type Errors = BTreeMap<String, String>;
 fn field(name: &str, label: &str, key: &str, value: &str, e: &Errors) -> Widget {
     super::keyed(name, label, key, value, e)
@@ -20,7 +23,7 @@ fn value(s: &Section<'_>, f: Option<&Form>, key: &str, default: &str) -> String 
 }
 fn switch(name: &str, label: &str, help: &str, on: bool, e: &Errors) -> Widget {
     let mut w = Widget::switch_keyed(name, label, name, "", on);
-    if let Widget::Switch { help: h, error, .. } = &mut w {
+    if let Widget::Switch(Switch { help: h, error, .. }) = &mut w {
         *h = help.into();
         *error = e.get(name).cloned().unwrap_or_default();
     }
@@ -105,7 +108,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
         }
         let mut section = Widget::section("SSH", "", children).ruled();
         if ssh.len() > 1 {
-            if let Widget::Section { meta, .. } = &mut section {
+            if let Widget::Section(SectionWidget { meta, .. }) = &mut section {
                 *meta = s.name();
             }
         }
@@ -168,7 +171,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
                     })
                     .unwrap_or_else(|| s.list(key));
                 let mut list = Widget::list(key, label, "", &items, "").writes(key);
-                if let Widget::List { style, prompt, .. } = &mut list {
+                if let Widget::List(List { style, prompt, .. }) = &mut list {
                     *style = "rows".into();
                     *prompt = "Address:port".into();
                 }
@@ -176,7 +179,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
             }
         }
         // Scalar ports are one short pair; listener lists need their own rows.
-        if listeners.iter().all(|w| matches!(w, Widget::Field { .. })) {
+        if listeners.iter().all(|w| matches!(w, Widget::Field(_))) {
             fields.push(Widget::form_grid(2, listeners).labelled("Web ports", ""));
         } else {
             fields.extend(listeners);
@@ -192,7 +195,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
         )
         .ruled();
         if web.len() > 1 {
-            if let Widget::Section { meta, .. } = &mut section {
+            if let Widget::Section(SectionWidget { meta, .. }) = &mut section {
                 *meta = s.name();
             }
         }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
-use verso_plugin::{dhcp, Request, TableCell, TableRow, TableRowAct, Widget};
+use verso_plugin::{dhcp, Request, Table, TableCell, TableRow, TableRowAct, Widget};
 
 pub fn listing(r: &Request) -> Widget {
     let rows = dhcp::servers(&r.snapshot, &r.ubus)
@@ -49,7 +49,7 @@ pub fn listing(r: &Request) -> Widget {
         rows,
         "No networks configured. Add a network in Interfaces to configure its DHCP server.",
     );
-    if let Widget::Table { style, .. } = &mut table {
+    if let Widget::Table(Table { style, .. }) = &mut table {
         *style = "live".into();
     }
     table
