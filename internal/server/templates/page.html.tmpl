@@ -83,8 +83,10 @@
     <button type="button" @click="close" x-ref="railClose" aria-label="{{ t "Close menu" }}" class="grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink">{{icon "x" "size-5"}}</button>
   </div>
   {{/* One flat list of destinations — no titles, no rules. The row you are in
-       opens its subpages beneath it, so the rail carries the whole path. */}}
-  <nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4">
+       opens its subpages beneath it, so the rail carries the whole path.
+       Beside the page its first row reads on the h1's baseline: 19px above
+       the rows, against the masthead's 16px and its 36px heading line. */}}
+  <nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4 md:pt-4.75">
     <ul data-verso-nav-rows class="flex flex-col gap-0.5">
       {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
     </ul>

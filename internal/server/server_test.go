@@ -630,6 +630,17 @@ func postPluginRequest(t *testing.T, srv *Server, path string, form url.Values, 
 	return rec, token
 }
 
+// TestTheRailStandsOnTheTitlesBaseline: beside the page, the rail's first row
+// reads on the h1's baseline — 19px of air above the rows, against the
+// masthead's 16px and its 36px heading line — while the phone's drawer keeps
+// its own 28px under the close button.
+func TestTheRailStandsOnTheTitlesBaseline(t *testing.T) {
+	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
+	if !strings.Contains(body, `<nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4 md:pt-4.75">`) {
+		t.Error("the rail's rows do not stand on the title's baseline")
+	}
+}
+
 // TestTopBarCarriesTheNameplateAndTheWayOut: the bar across the top holds the
 // device's identity on the left — the hostname, the way home — and the way out
 // on the right, aligned to the content column rather than to the bar's edge.
