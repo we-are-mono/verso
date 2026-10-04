@@ -17,7 +17,7 @@
 //! same field builders, so a rule edited here and a rule edited there post
 //! identical forms and can never drift into two spellings of one setting.
 
-use verso_plugin::{DrawerTab, RowDrawer, SelectOption, Tone, Value, Widget};
+use verso_plugin::{uci_text, DrawerTab, Map, RowDrawer, SelectOption, Tone, Widget};
 
 use crate::conditions;
 use crate::fields;
@@ -672,36 +672,13 @@ fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
     conditions::schedule_fields(&form.schedule, errors)
 }
 
-/// uci_block renders the rule as the config file will hold it: the section it
-/// writes, then one line per option in the order uci itself lists them. A list
-/// option writes one line per value, the way the file does.
+/// uci_block renders the rule as the config file will hold it.
 fn uci_block(section: &str, form: &RuleForm) -> String {
-    let mut out = format!("config rule '{section}'\n");
-    let Value::Object(values) = form.values(true) else {
-        return out;
-    };
-    for (option, value) in &values {
-        match value {
-            Value::Array(items) => {
-                for item in items {
-                    out.push_str(&format!("\tlist {option} '{}'\n", scalar(item)));
-                }
-            }
-            Value::Null => {}
-            other => out.push_str(&format!("\toption {option} '{}'\n", scalar(other))),
-        }
-    }
-    out
-}
-
-/// scalar is one uci value as the file spells it — uci holds strings, so a
-/// number or a flag is written as the characters it is stored as rather than as
-/// JSON would quote it.
-fn scalar(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
+    uci_text(
+        "rule",
+        section,
+        form.values(true).as_object().unwrap_or(&Map::new()),
+    )
 }
 #[cfg(test)]
 mod tests {

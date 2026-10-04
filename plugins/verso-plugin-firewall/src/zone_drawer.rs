@@ -19,7 +19,7 @@
 //! the list it belongs to is worth more than a page of its own. A zone is the
 //! stronger case of the two, since it reads against the zones it can reach.
 
-use verso_plugin::{DrawerTab, Property, RowDrawer, SelectOption, Value, Widget};
+use verso_plugin::{uci_text, DrawerTab, Map, Property, RowDrawer, SelectOption, Widget};
 
 use crate::crossings::{self, Crossings};
 use crate::fields;
@@ -682,30 +682,12 @@ fn flag(on: bool) -> String {
 /// section, and the crossings out of it — which are sections of their own and
 /// are shown as such, because that is the fact about them worth knowing.
 fn uci_block(section: &str, form: &ZoneForm, reaches: &Crossings, existing: bool) -> String {
-    let mut out = format!("config zone '{section}'\n");
-    let Value::Object(values) = form.values(existing) else {
-        return out;
-    };
-    for (option, value) in &values {
-        match value {
-            Value::Array(items) => {
-                for item in items {
-                    out.push_str(&format!("\tlist {option} '{}'\n", scalar(item)));
-                }
-            }
-            Value::Null => {}
-            other => out.push_str(&format!("\toption {option} '{}'\n", scalar(other))),
-        }
-    }
-    out.push_str(&reaches.uci_block(&form.name));
-    out
-}
-
-fn scalar(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
+    let values = form.values(existing);
+    let zone = uci_text("zone", section, values.as_object().unwrap_or(&Map::new()));
+    std::iter::once(zone)
+        .chain(reaches.uci_blocks(&form.name))
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 /// allowed_networks is the set a zone may cover: every network this router

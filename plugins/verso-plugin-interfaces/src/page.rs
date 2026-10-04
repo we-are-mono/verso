@@ -6,8 +6,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    ActionTab, Envelope, Property, RowDrawer, TableAction, TableCell, TableChip, TableColumn,
-    TableRow, TableRowAct, Tone, Widget,
+    uci_text, ActionTab, Envelope, Property, RowDrawer, TableAction, TableCell, TableChip,
+    TableColumn, TableRow, TableRowAct, Tone, Widget,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -163,33 +163,11 @@ fn chooser(open: bool) -> RowDrawer {
             destination("A VLAN", "vlan", "Tags the traffic on a port with a number, so one cable carries several networks — your ISP’s VLAN 3900, or a managed switch downstairs.", "config device", "tag"), vpn,
             destination("Another kind of tunnel", "tunnel", "IPv6 over an IPv4 line, GRE or VXLAN.", "config interface", "git-branch")])], ..Default::default() }
 }
+/// config_text is one section as the file will hold it, its secrets left out.
 pub(crate) fn config_text(typ: &str, id: &str, values: &serde_json::Map<String, Value>) -> String {
-    let quote = |s: &str| {
-        s.replace('\\', "\\\\")
-            .replace('\'', "'\\''")
-            .replace('\n', "\\n")
-            .replace('\r', "\\r")
-    };
-    let mut lines = vec![if id.is_empty() {
-        format!("config {typ}")
-    } else {
-        format!("config {typ} '{}'", quote(id))
-    }];
-    for (k, v) in values {
-        if k == "password" || k == "private_key" {
-            continue;
-        }
-        match v {
-            Value::String(s) => lines.push(format!("\toption {k} '{}'", quote(s))),
-            Value::Array(a) => {
-                for s in a.iter().filter_map(Value::as_str) {
-                    lines.push(format!("\tlist {k} '{}'", quote(s)));
-                }
-            }
-            _ => {}
-        }
-    }
-    lines.join("\n")
+    let mut shown = values.clone();
+    shown.retain(|k, _| k != "password" && k != "private_key");
+    uci_text(typ, id, &shown)
 }
 fn addresses(live: Option<&Value>, family: &str) -> Vec<String> {
     let Some(live) = live else { return vec![] };

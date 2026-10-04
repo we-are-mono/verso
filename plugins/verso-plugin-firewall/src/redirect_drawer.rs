@@ -24,7 +24,7 @@
 //! carries them (`conditions::for_redirect`), and the few that say what happens
 //! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{RowDrawer, SelectOption, Value, Widget};
+use verso_plugin::{uci_text, Map, RowDrawer, SelectOption, Widget};
 
 use crate::conditions;
 use crate::fields;
@@ -249,29 +249,12 @@ const NEW_SECTION: &str = "new";
 /// — the preview is what the file will hold, not the operations that get it
 /// there.
 fn uci_block(section: &str, redirect: &RedirectForm) -> String {
-    let mut out = format!("config redirect '{section}'\n");
-    let Value::Object(values) = redirect.values(section != NEW_SECTION) else {
-        return out;
-    };
-    for (option, value) in &values {
-        match value {
-            Value::Array(items) => {
-                for item in items {
-                    out.push_str(&format!("\tlist {option} '{}'\n", scalar(item)));
-                }
-            }
-            Value::Null => {}
-            other => out.push_str(&format!("\toption {option} '{}'\n", scalar(other))),
-        }
-    }
-    out
-}
-
-fn scalar(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
+    let values = redirect.values(section != NEW_SECTION);
+    uci_text(
+        "redirect",
+        section,
+        values.as_object().unwrap_or(&Map::new()),
+    )
 }
 
 /// zone_options is a choice over this config's zones, led by what an empty value

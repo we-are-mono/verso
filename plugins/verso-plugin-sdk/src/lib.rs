@@ -2475,6 +2475,37 @@ pub struct CommitOp {
     pub values: Value,
 }
 
+/// uci_text spells one section as `uci export` prints it, for a
+/// [`Widget::config_preview`]: the `config` line, then an `option` line per
+/// value and a `list` line per list item, each quoted the way uci quotes (a `'`
+/// becomes `'\''`). A null is an option being removed and prints nothing; uci
+/// holds strings, so a number or flag prints as its characters. An empty name is
+/// a section not created yet.
+pub fn uci_text(typ: &str, name: &str, values: &Map<String, Value>) -> String {
+    let quote = |text: &str| format!("'{}'", text.replace('\'', r"'\''"));
+    let scalar = |value: &Value| match value {
+        Value::String(text) => quote(text),
+        other => quote(&other.to_string()),
+    };
+    let mut lines = vec![if name.is_empty() {
+        format!("config {typ}")
+    } else {
+        format!("config {typ} {}", quote(name))
+    }];
+    for (option, value) in values {
+        match value {
+            Value::Null => {}
+            Value::Array(items) => lines.extend(
+                items
+                    .iter()
+                    .map(|item| format!("\tlist {option} {}", scalar(item))),
+            ),
+            other => lines.push(format!("\toption {option} {}", scalar(other))),
+        }
+    }
+    lines.join("\n")
+}
+
 /// commit is one declarative uci write for [`Envelope::with_commit`].
 pub fn commit(config: &str, section: &str, values: Value) -> CommitOp {
     CommitOp {
@@ -2869,6 +2900,7 @@ mod tests {
         PageTab, RowDrawer, SelectOption, SettingsItem, SettingsPill, SettingsSeam, Snapshot,
         TableCell, TableRow, Tone, Ubus, Widget,
     };
+    use super::{json, uci_text, Map, Value};
 
     // A form's refusal is only what no control of it says: a field's refusal
     // rides the field, however deep in the form it stands, and is never said
@@ -3357,6 +3389,27 @@ mod tests {
         let json = serde_json::to_value(&widget).unwrap();
         assert_eq!(json["flush"], true);
         assert_eq!(json["control"]["type"], "switch");
+    }
+
+    #[test]
+    fn uci_text_spells_a_section_as_uci_export_does() {
+        let values = json!({
+            "name": "Allow Bob's NAS",
+            "proto": ["tcp", "udp"],
+            "dest_port": 445,
+            "enabled": Value::Null,
+        });
+        let text = uci_text("rule", "cfg01", values.as_object().unwrap());
+        assert_eq!(
+            text,
+            "config rule 'cfg01'\n\
+             \toption dest_port '445'\n\
+             \toption name 'Allow Bob'\\''s NAS'\n\
+             \tlist proto 'tcp'\n\
+             \tlist proto 'udp'"
+        );
+        // A section not yet created has no name to print.
+        assert_eq!(uci_text("forwarding", "", &Map::new()), "config forwarding");
     }
 
     #[test]

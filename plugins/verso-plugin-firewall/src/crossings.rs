@@ -21,7 +21,9 @@
 //! naming that zone again switches the section back on rather than writing a
 //! second one beside it.
 
-use verso_plugin::{commit, commit_delete, commit_new, json, CommitOp, Form, SelectOption, Widget};
+use verso_plugin::{
+    commit, commit_delete, commit_new, json, uci_text, CommitOp, Form, Map, SelectOption, Widget,
+};
 
 use crate::fields;
 use crate::model::{Firewall, Zone, CONFIG};
@@ -155,16 +157,14 @@ impl Crossings {
             .collect()
     }
 
-    /// uci_block is the sections this panel writes for the crossings, as the
+    /// uci_blocks is the sections this panel writes for the crossings, as the
     /// file spells them — beneath the zone's own block, because a save from this
     /// reading writes both.
-    pub fn uci_block(&self, zone: &str) -> String {
-        self.reaches
-            .iter()
-            .map(|dest| {
-                format!("\nconfig forwarding\n\toption src '{zone}'\n\toption dest '{dest}'\n")
-            })
-            .collect()
+    pub fn uci_blocks<'a>(&'a self, zone: &'a str) -> impl Iterator<Item = String> + 'a {
+        self.reaches.iter().map(move |dest| {
+            let values = json!({"src": zone, "dest": dest});
+            uci_text("forwarding", "", values.as_object().unwrap_or(&Map::new()))
+        })
     }
 }
 
