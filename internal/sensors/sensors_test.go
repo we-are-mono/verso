@@ -81,30 +81,33 @@ func TestResolveProfiled(t *testing.T) {
 		Power:   []Entry{{Path: "i2c-mux@70/i2c@0/power_sensor@41", Name: "5V PSU", Main: true}, {Path: "i2c-mux@70/i2c@0/power_sensor@42", Name: "1V"}},
 		Thermal: []Entry{{Path: "cluster-thermal", Name: "cluster", CPU: true}},
 	}
-	f := Resolve(p, &Reader{Root: filepath.Join(root, "sys")})
+	inv := ResolveAll(p, &Reader{Root: filepath.Join(root, "sys")})
 
-	if f.CPUTemp == nil || f.CPUTemp.MilliC != 52000 {
-		t.Fatalf("cpu temp: %+v", f.CPUTemp)
+	if cpu := inv.CPUTemp(); cpu == nil || cpu.MilliC != 52000 || cpu.Level != "nominal" {
+		t.Fatalf("cpu temp: %+v", cpu)
 	}
-	if f.CPUTemp.Status != "Normal" || f.CPUTemp.Level != "success" {
-		t.Fatalf("cpu status: %+v", f.CPUTemp)
+	if fan := inv.MainFan(); fan == nil || fan.RPM != 3630 { // the primary channel, not the fastest
+		t.Fatalf("fan: %+v", fan)
 	}
-	if f.Fan == nil || f.Fan.RPM != 3630 { // the primary channel, not the fastest
-		t.Fatalf("fan: %+v", f.Fan)
-	}
-	if f.Power == nil || f.Power.MicroW != 12400000 { // the main rail, not summed
-		t.Fatalf("power: %+v", f.Power)
+	if power := inv.MainPower(); power == nil || power.MicroW != 12400000 { // the main rail, not summed
+		t.Fatalf("power: %+v", power)
 	}
 }
 
-// A hot reading past the passive trip grades Warm/warning.
-func TestResolveWarm(t *testing.T) {
+// A hot reading past the passive trip grades warn, and a zone with no trips is
+// not graded against a guess.
+func TestResolveGradesOnlyAgainstOwnTrips(t *testing.T) {
 	root := t.TempDir()
 	zone(t, root, 0, "cluster-thermal", 88000, [][2]string{{"passive", "85000"}, {"critical", "95000"}})
 	p := &Profile{Thermal: []Entry{{Path: "cluster-thermal", CPU: true}}}
-	f := Resolve(p, &Reader{Root: filepath.Join(root, "sys")})
-	if f.CPUTemp == nil || f.CPUTemp.Status != "Warm" || f.CPUTemp.Level != "warning" {
-		t.Fatalf("expected warm/warning: %+v", f.CPUTemp)
+	if cpu := ResolveAll(p, &Reader{Root: filepath.Join(root, "sys")}).CPUTemp(); cpu == nil || cpu.Level != "warn" {
+		t.Fatalf("expected warn: %+v", cpu)
+	}
+
+	bare := t.TempDir()
+	zone(t, bare, 0, "cluster-thermal", 88000, nil)
+	if cpu := ResolveAll(p, &Reader{Root: filepath.Join(bare, "sys")}).CPUTemp(); cpu == nil || cpu.Level != "" {
+		t.Fatalf("a zone without trips carries no grade: %+v", cpu)
 	}
 }
 
@@ -119,15 +122,12 @@ func TestResolveGeneric(t *testing.T) {
 	nct := hwmon(t, root, 1, "nct6775", "")
 	write(t, filepath.Join(nct, "fan1_input"), "900")
 
-	f := Resolve(nil, &Reader{Root: filepath.Join(root, "sys")})
-	if f.CPUTemp == nil || f.CPUTemp.MilliC != 45000 {
-		t.Fatalf("generic cpu temp: %+v", f.CPUTemp)
+	inv := ResolveAll(nil, &Reader{Root: filepath.Join(root, "sys")})
+	if cpu := inv.CPUTemp(); cpu == nil || cpu.MilliC != 45000 {
+		t.Fatalf("generic cpu temp: %+v", cpu)
 	}
-	if f.Fan != nil {
-		t.Fatalf("generic fan must not be selected without a profile: %+v", f.Fan)
-	}
-	if f.Power != nil {
-		t.Fatalf("generic power must remain unavailable, got %+v", f.Power)
+	if inv.MainPower() != nil {
+		t.Fatalf("generic power must remain unavailable, got %+v", inv.MainPower())
 	}
 }
 
@@ -156,12 +156,12 @@ func TestResolvePrimaryMissingAndTemperatureFallback(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := Resolve(tc.profile, &Reader{Root: filepath.Join(root, "sys")})
-			if f.CPUTemp == nil || f.CPUTemp.MilliC != 47000 {
-				t.Fatalf("generic temperature fallback: %+v", f.CPUTemp)
+			inv := ResolveAll(tc.profile, &Reader{Root: filepath.Join(root, "sys")})
+			if cpu := inv.CPUTemp(); cpu == nil || cpu.MilliC != 47000 {
+				t.Fatalf("generic temperature fallback: %+v", cpu)
 			}
-			if f.Fan != nil || f.Power != nil {
-				t.Fatalf("unselected fan/power must be unavailable: %+v", f)
+			if inv.MainPower() != nil {
+				t.Fatalf("an unselected rail must not stand in for the total: %+v", inv.MainPower())
 			}
 		})
 	}
@@ -182,24 +182,30 @@ func TestResolveGatewayReadFailuresAndZero(t *testing.T) {
 	power := hwmon(t, root, 2, "ina234", "board/i2c-mux@70/i2c@0/power_sensor@40")
 	write(t, filepath.Join(power, "power1_input"), "12400000")
 	reader := &Reader{Root: filepath.Join(root, "sys")}
-	f := Resolve(p, reader)
-	if f.CPUTemp == nil || f.CPUTemp.MilliC != 52000 || f.Fan == nil || f.Fan.RPM != 3630 || f.Power == nil || f.Power.MicroW != 12400000 {
-		t.Fatalf("Gateway primary selections: %+v", f)
+	inv := ResolveAll(p, reader)
+	if cpu, f, pw := inv.CPUTemp(), inv.MainFan(), inv.MainPower(); cpu == nil || cpu.MilliC != 52000 || f == nil || f.RPM != 3630 || pw == nil || pw.MicroW != 12400000 {
+		t.Fatalf("Gateway primary selections: cpu=%+v fan=%+v power=%+v", cpu, f, pw)
 	}
 	// Failed sysfs reads must not turn into a healthy zero. CPU falls back;
-	// the other two stay unavailable rather than substituting another channel.
+	// the main rail stays unavailable rather than substituting another channel.
 	write(t, filepath.Join(root, "sys/class/thermal/thermal_zone0/temp"), "unreadable")
 	write(t, filepath.Join(fan, "fan1_input"), "unreadable")
 	write(t, filepath.Join(power, "power1_input"), "unreadable")
-	f = Resolve(p, reader)
-	if f.CPUTemp == nil || f.CPUTemp.MilliC != 45000 || f.Fan != nil || f.Power != nil {
-		t.Fatalf("failed primary readings: %+v", f)
+	inv = ResolveAll(p, reader)
+	if cpu := inv.CPUTemp(); cpu == nil || cpu.MilliC != 45000 {
+		t.Fatalf("failed CPU reading must fall back: %+v", cpu)
+	}
+	if f := inv.MainFan(); f != nil && f.RPM == 0 && f.Kernel == "fan1" {
+		t.Fatalf("an unreadable fan must not read as a stopped one: %+v", f)
+	}
+	if pw := inv.MainPower(); pw != nil {
+		t.Fatalf("an unreadable rail must not read as zero: %+v", pw)
 	}
 	write(t, filepath.Join(fan, "fan1_input"), "0")
 	write(t, filepath.Join(power, "power1_input"), "0")
-	f = Resolve(p, reader)
-	if f.Fan == nil || f.Fan.RPM != 0 || f.Power == nil || f.Power.MicroW != 0 {
-		t.Fatalf("valid zero readings must remain available: %+v", f)
+	inv = ResolveAll(p, reader)
+	if f, pw := inv.MainFan(), inv.MainPower(); f == nil || f.RPM != 0 || pw == nil || pw.MicroW != 0 {
+		t.Fatalf("valid zero readings must remain available: fan=%+v power=%+v", f, pw)
 	}
 }
 

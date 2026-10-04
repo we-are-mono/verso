@@ -13,10 +13,10 @@ import (
 func TestFormatSensors(t *testing.T) {
 	// A fully-instrumented board: temperature rounds from milli-°C, power from
 	// micro-watts.
-	v := formatSensors(identityTranslator, "Mono Gateway Development Kit", sensors.Facts{
-		CPUTemp: &sensors.Temp{MilliC: 75750, Status: "Warm", Level: "warning"},
-		Fan:     &sensors.Fan{RPM: 3630},
-		Power:   &sensors.Power{MicroW: 12400000},
+	v := formatSensors(identityTranslator, "Mono Gateway Development Kit", sensors.Inventory{
+		Temps:  []sensors.TempReading{{MilliC: 75750, Warn: 75000, Crit: 95000, Level: "warn", CPU: true}},
+		Fans:   []sensors.FanReading{{RPM: 3630, State: "running", Main: true}},
+		Powers: []sensors.PowerReading{{MicroW: 12400000, Main: true}},
 	})
 	if v.Model != "Mono Gateway Development Kit" {
 		t.Errorf("model: %q", v.Model)
@@ -32,10 +32,37 @@ func TestFormatSensors(t *testing.T) {
 	}
 }
 
+// The overview grades the CPU temperature exactly as the Hardware page does:
+// against the sensor's own limits, and not at all when it has none — never
+// against a guessed threshold the Hardware page would not show.
+func TestFormatSensorsGradesLikeTheHardwarePage(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		temp  sensors.TempReading
+		value string
+		tone  string
+	}{
+		{"no limits", sensors.TempReading{MilliC: 80000, CPU: true}, "80 °C", "neutral"},
+		{"under its warn trip", sensors.TempReading{MilliC: 80000, Warn: 85000, Crit: 95000, Level: "nominal", CPU: true}, "80 °C · Normal", "success"},
+		{"past its warn trip", sensors.TempReading{MilliC: 88000, Warn: 85000, Crit: 95000, Level: "warn", CPU: true}, "88 °C · Warm", "warning"},
+		{"past critical", sensors.TempReading{MilliC: 96000, Warn: 85000, Crit: 95000, Level: "critical", CPU: true}, "96 °C · Critical", "danger"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := formatSensors(identityTranslator, "", sensors.Inventory{Temps: []sensors.TempReading{tc.temp}})
+			if v.Temperature != tc.value || v.TempLevel != tc.tone {
+				t.Errorf("got %q / %q, want %q / %q", v.Temperature, v.TempLevel, tc.value, tc.tone)
+			}
+			if hw := tempVariant(tc.temp.Level); hw != tc.tone {
+				t.Errorf("the Hardware page tones it %q, the overview %q", hw, tc.tone)
+			}
+		})
+	}
+}
+
 func TestFormatSensorsAbsent(t *testing.T) {
 	// An unprofiled PC keeps its system temperature and shows N/A for the rest.
-	v := formatSensors(identityTranslator, "", sensors.Facts{
-		CPUTemp: &sensors.Temp{MilliC: 45000, Status: "Normal", Level: "success"},
+	v := formatSensors(identityTranslator, "", sensors.Inventory{
+		Temps: []sensors.TempReading{{MilliC: 45000, Warn: 80000, Level: "nominal", CPU: true}},
 	})
 	if v.Temperature != "45 °C · Normal" {
 		t.Errorf("temperature: %q", v.Temperature)
@@ -45,7 +72,7 @@ func TestFormatSensorsAbsent(t *testing.T) {
 	}
 	// A missing tick must send all three values and a neutral temperature tone,
 	// so a browser clears readings that were present on the preceding tick.
-	payload, err := json.Marshal(formatSensors(identityTranslator, "", sensors.Facts{}))
+	payload, err := json.Marshal(formatSensors(identityTranslator, "", sensors.Inventory{}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,6 +86,6 @@ func TestFormatSensorsAbsent(t *testing.T) {
 		}
 	}
 	if fields["tempLevel"] != "neutral" {
-		t.Errorf("absent temperature must clear its status: %s", payload)
+		t.Errorf("absent temperature tone: %s", payload)
 	}
 }

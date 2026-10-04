@@ -23,35 +23,41 @@ type sensorView struct {
 	Power       string `json:"power"`
 }
 
-// resolveSensors reads local sysfs and resolves it through the board's profile
-// (generic temperature when unprofiled), formatting the home-dashboard sensor
-// facts. Fan and power are profile-only. Reads the local kernel, so
-// it needs no sid — the same call serves the page render and each stream tick.
+// resolveSensors reads local sysfs through the board's profile — the same
+// inventory the Hardware page reads, so the two pages pick and grade the same
+// sensors. Reads the local kernel, so it needs no sid — the same call serves the
+// page render and each stream tick.
 func resolveSensors(tr func(string) string, boardName string) sensorView {
 	profile, _ := sensors.LoadProfile(profiles.FS, boardName)
-	f := sensors.Resolve(profile, &sensors.Reader{})
 	model := ""
 	if profile != nil {
 		model = profile.Name
 	}
-	return formatSensors(tr, model, f)
+	return formatSensors(tr, model, sensors.ResolveAll(profile, &sensors.Reader{}))
 }
 
-// formatSensors renders resolved facts into display strings — °C rounded from
-// milli, watts from micro, RPM as-is — using N/A when a reading is absent.
-// The temperature's status is translated before composing its value so the
-// initial page and the live stream share the same wording.
-func formatSensors(tr func(string) string, model string, f sensors.Facts) sensorView {
+// tempWords names a temperature's grade for the overview, in the Hardware page's
+// levels; a reading with no limits of its own carries no grade.
+var tempWords = map[string]string{"nominal": "Normal", "warn": "Warm", "critical": "Critical"}
+
+// formatSensors renders the inventory's headline readings into display strings —
+// °C rounded from milli, watts from micro, RPM as-is — using N/A when a reading
+// is absent. The temperature's grade is translated before composing its value so
+// the initial page and the live stream share the same wording.
+func formatSensors(tr func(string) string, model string, inv sensors.Inventory) sensorView {
 	v := sensorView{Model: model, Temperature: "N/A", TempLevel: "neutral", Fan: "N/A", Power: "N/A"}
-	if f.CPUTemp != nil {
-		v.Temperature = fmt.Sprintf("%d °C · %s", (f.CPUTemp.MilliC+500)/1000, tr(f.CPUTemp.Status))
-		v.TempLevel = f.CPUTemp.Level
+	if t := inv.CPUTemp(); t != nil {
+		v.Temperature = fmt.Sprintf("%d °C", (t.MilliC+500)/1000)
+		if word, graded := tempWords[t.Level]; graded {
+			v.Temperature += " · " + tr(word)
+		}
+		v.TempLevel = tempVariant(t.Level)
 	}
-	if f.Fan != nil {
-		v.Fan = fmt.Sprintf("%d rpm", f.Fan.RPM)
+	if f := inv.MainFan(); f != nil {
+		v.Fan = fmt.Sprintf("%d rpm", f.RPM)
 	}
-	if f.Power != nil {
-		v.Power = fmt.Sprintf("%.1f W", float64(f.Power.MicroW)/1e6)
+	if p := inv.MainPower(); p != nil {
+		v.Power = fmt.Sprintf("%.1f W", float64(p.MicroW)/1e6)
 	}
 	return v
 }

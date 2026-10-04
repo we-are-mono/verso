@@ -12,8 +12,8 @@ import (
 
 // Inventory is the box's complete sensor enumeration — every temperature, power
 // rail, fan, and fibre module the kernel exposes, resolved through the board
-// profile where one exists. It is the Hardware page's source of truth, alongside
-// (never replacing) the home dashboard's headline Facts. Readings carry raw units
+// profile where one exists. It is the one source of truth for the Hardware page
+// and the overview's headline readings alike. Readings carry raw units
 // (milli-°C, milli-volt, milli-amp, micro-watt, RPM); the presentation layer
 // formats them, so the resolution contract stays unit-tested against sysfs.
 type Inventory struct {
@@ -120,8 +120,7 @@ type FiberModule struct {
 // ResolveAll reads the box's sensors and enumerates all of them, resolving names
 // and headline picks through the profile when one matches. It reads local sysfs
 // only, so it needs no session and blocks on nothing — the Hardware page calls it
-// fresh on each load. It leaves Resolve/Facts untouched; the home page keeps its
-// own lean path.
+// fresh on each load, and the overview on each render and stream tick.
 func ResolveAll(p *Profile, r *Reader) Inventory {
 	zones := r.Zones()
 	hwmons := r.Hwmons()
@@ -221,8 +220,11 @@ func tempFromHwmon(h Hwmon, ch int, ambiguous bool) TempReading {
 // curateProfileTemps lifts the profile's thermal entries onto the matching
 // readings: each entry's chosen name, its place in the curated section, and the
 // one entry flagged the CPU. An entry keyed with a :tempN selector matches a
-// specific hwmon channel; a bare zone type matches a zone.
+// specific hwmon channel; a bare zone type matches a zone. A profile whose CPU
+// pick is absent or unreadable falls back to the generic detection an unprofiled
+// board gets, so the grid never loses its temperature to a stale profile.
 func curateProfileTemps(temps []TempReading, p *Profile) {
+	cpu := false
 	for rank, e := range p.Thermal {
 		i := matchThermalEntry(temps, e.Path)
 		if i < 0 {
@@ -230,11 +232,16 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 		}
 		temps[i].Name = e.Name
 		if e.CPU {
-			temps[i].CPU = true
+			temps[i].CPU, cpu = true, true
 			continue // the CPU pick leads the grid, not the curated list
 		}
 		temps[i].Curated = true
 		temps[i].Rank = rank
+	}
+	if !cpu {
+		if i := genericCPUIndex(temps); i >= 0 {
+			temps[i].CPU, temps[i].Curated = true, false
+		}
 	}
 }
 
