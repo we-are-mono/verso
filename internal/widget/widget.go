@@ -160,12 +160,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode stack: %w", err)
 		}
 		return &st, nil
-	case "drawer":
-		var d Drawer
-		if err := json.Unmarshal(data, &d); err != nil {
-			return nil, fmt.Errorf("widget: decode drawer: %w", err)
-		}
-		return &d, nil
 	case "empty":
 		var e Empty
 		if err := json.Unmarshal(data, &e); err != nil {

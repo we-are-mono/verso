@@ -307,35 +307,6 @@ func TestRenderMultipleChoiceChips(t *testing.T) {
 	}
 }
 
-func TestRenderDrawer(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Drawer{
-		Title:    "My Phone",
-		Trigger:  []Widget{&Row{Icon: "phone", Title: "My Phone", Meta: "My whole home network"}},
-		Children: []Widget{&Badge{Text: "Connected"}, &Text{Markdown: "**Added** · 2 weeks ago"}},
-	})
-
-	for _, want := range []string{
-		`x-data="modal"`,    // reuses the shell-owned modal component
-		`@click="show"`,     // the trigger opens it
-		`x-teleport="body"`, // panel escapes the content flow
-		`role="dialog"`,
-		"translate-x-full", // slides in from the right
-		"bg-ink/18",        // the canvas scrim: ink at 18% over a 2px blur
-		"My Phone",         // trigger + title
-		"Connected",        // badge child rendered in the body
-		"Added",            // text child rendered in the body
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("drawer missing %q in: %s", want, got)
-		}
-	}
-	// Plugins ship no JS: the markup carries only directives, never a script.
-	if strings.Contains(got, "<script") {
-		t.Errorf("drawer must not emit a script tag: %s", got)
-	}
-}
-
 func TestRenderEmpty(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Empty{

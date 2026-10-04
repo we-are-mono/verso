@@ -4,76 +4,9 @@
 package widget
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
 )
-
-// Drawer reveals detail for one item without leaving the page: tapping its trigger
-// (typically the item's row) slides a panel in from the edge. It is the natural
-// companion to a list — the row shows the summary, the drawer the full story. An
-// object lives in its drawer (ADR-005 §8): the panel holds its facts, its form
-// and its acts, and a Save inside it stages like any other write. Like
-// modal it is shell-owned behaviour (ADR-005 §7) realized with Alpine (ADR-004),
-// and it reuses the very same open/close/focus-trap component; only the layout
-// differs. The plugin declares the trigger, a title, and the panel body; the shell
-// owns every pixel and interaction. Plugins ship no JS.
-type Drawer struct {
-	Title    string   // panel heading
-	Trigger  []Widget // what opens the drawer (e.g. a row)
-	Children []Widget // panel body
-	// Style dresses the trigger: "" wraps it as a framed card button; "bare"
-	// leaves it an unstyled block with the row hover tint — for triggers that
-	// live inside a hairline-divided list; "button" wears the primary action
-	// button — for an affordance whose detail panel is the drawer.
-	Style string `json:"style,omitempty"`
-	// Deprecated: Dot and Tag are accepted for wire compatibility. Drawer
-	// headings contain only the title; status belongs in the body.
-	Dot string `json:"dot,omitempty"`
-	Tag string `json:"tag,omitempty"`
-}
-
-func (*Drawer) isWidget() {}
-
-func (d *Drawer) children() []Widget {
-	return append(append([]Widget{}, d.Trigger...), d.Children...)
-}
-
-func (d *Drawer) prune(keep func(Widget) bool) {
-	d.Trigger = pruneList(d.Trigger, keep)
-	d.Children = pruneList(d.Children, keep)
-}
-
-// UnmarshalJSON decodes the trigger and body recursively through Decode, so an
-// unknown child type fails loudly rather than vanishing (as modal does).
-func (d *Drawer) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Title    string            `json:"title"`
-		Style    string            `json:"style"`
-		Dot      string            `json:"dot"`
-		Tag      string            `json:"tag"`
-		Trigger  []json.RawMessage `json:"trigger"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	d.Title = raw.Title
-	d.Style = raw.Style
-	d.Dot = raw.Dot
-	d.Tag = raw.Tag
-	trigger, err := decodeChildren(raw.Trigger, "drawer trigger")
-	if err != nil {
-		return err
-	}
-	d.Trigger = trigger
-	children, err := decodeChildren(raw.Children, "drawer child")
-	if err != nil {
-		return err
-	}
-	d.Children = children
-	return nil
-}
 
 // Flash is a one-shot outcome as the flash slot draws it — a confirmation, a
 // plugin envelope's notice — toned by the tone vocabulary. The page carries one
@@ -136,36 +69,6 @@ func drawerPanel(d *RowDrawer, body []template.HTML) drawerPanelView {
 		panel.Tabs = append(panel.Tabs, tab)
 	}
 	return panel
-}
-
-// drawerView is the drawer template's model: the rendered trigger and its
-// dress, plus the shared panel.
-type drawerView struct {
-	Bare    bool
-	Button  bool
-	Trigger template.HTML
-	Panel   drawerPanelView
-}
-
-// renderInto renders the trigger and the panel body through the renderer, then hands
-// the template the slide-in chrome. The behaviour is the shell's modal component
-// (ADR-004); the plugin supplied only the trigger, title, and body (ADR-005 §7).
-func (d *Drawer) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	trigger, err := r.renderChildren(d.Trigger, csrf)
-	if err != nil {
-		return err
-	}
-	children, err := r.drawer().renderChildren(d.Children, csrf)
-	if err != nil {
-		return err
-	}
-	return r.execute(out, "drawer.html.tmpl", drawerView{
-		Bare: d.Style == "bare", Button: d.Style == "button",
-		Trigger: joinHTML(trigger),
-		Panel: drawerPanelView{
-			Title: d.Title, Body: children,
-		},
-	})
 }
 
 // RenderOpenPanelWithToken renders only the contents of whichever panel the tree

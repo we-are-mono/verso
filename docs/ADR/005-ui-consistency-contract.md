@@ -71,7 +71,7 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    (`:has()`) rather than a round-trip, because show/hide has no state to persist —
    the shell still owns every line of it, and the plugin still only declares the
    intent. Behavioural widgets whose interaction never touches the server are realized
-   without a round-trip: `modal` and `drawer` in **shell-owned client JS** (Alpine's CSP
+   without a round-trip: `modal` and a row's `drawer` in **shell-owned client JS** (Alpine's CSP
    build, ADR-004) — the plugin emits only `{type:"modal", …}` and the shell owns the
    open/close, focus-trap, and transition — while `conditional` needs no JS at all, a
    pure-CSS `:has()` rule driving which fields show. Pure CSS, a round-trip,
@@ -83,8 +83,8 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    round-trip's
    *mechanics* are the mechanical contract's (ADR-006); what a plugin may *emit* is
    this ADR's.
-8. **An object lives in its drawer.** The slide-in surfaces — the `drawer`
-   widget, a table row's `drawer`, and the entity panel — are where an object is
+8. **An object lives in its drawer.** The slide-in surfaces — a table row's
+   `drawer`, an action bar's, and the entity panel — are where an object is
    read, made and edited without leaving the listing it belongs to: the row
    opens it filled, the listing's add opens it blank, and both draw one form
    from one set of field builders, so an object never has two spellings of one

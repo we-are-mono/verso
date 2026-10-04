@@ -8,19 +8,6 @@ import (
 	"testing"
 )
 
-// TestDrawerDefaults: the drawer's one width and the framed card trigger.
-func TestDrawerDefaults(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Drawer{Title: "Detail", Trigger: []Widget{&Row{Title: "open me"}}})
-	// The framed trigger wears the app's one radius, the same 2px every other
-	// boxed surface takes.
-	for _, want := range []string{"max-w-3xl", "rounded-xs border border-rule", "open me", "Detail", "verso-drawer-scrollbar"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("drawer missing %q:\n%s", want, got)
-		}
-	}
-}
-
 // TestDrawerOneWidth: every drawer stands at the same 768px, whatever it
 // holds — a form, a chooser or a reading — so the frame never changes size
 // from one object to the next.
@@ -40,22 +27,6 @@ func TestDrawerOneWidth(t *testing.T) {
 				t.Errorf("drawer size %q carries a second width %q", size, other)
 			}
 		}
-	}
-}
-
-// TestDrawerBare: the bare trigger for rows living in a hairline-divided
-// list — no card frame, the row hover tint.
-func TestDrawerBare(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Drawer{Title: "Device", Style: "bare",
-		Trigger: []Widget{&Row{Title: "family-laptop", Chevron: true}}})
-	for _, want := range []string{"hover:bg-quiet", chevronPath} {
-		if !strings.Contains(got, want) {
-			t.Errorf("bare drawer missing %q:\n%s", want, got)
-		}
-	}
-	if strings.Contains(got, "border border-rule bg-ground px-4") {
-		t.Error("bare trigger must not wear the card frame")
 	}
 }
 

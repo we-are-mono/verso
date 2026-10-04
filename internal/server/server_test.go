@@ -2492,7 +2492,6 @@ func TestValidateSchemaCoversNestedContainers(t *testing.T) {
 	}{
 		{"modal", &widget.Modal{Children: []widget.Widget{bad()}}},
 		{"conditions", &widget.Conditions{Items: []widget.ConditionItem{{Key: "k", Children: []widget.Widget{bad()}}}}},
-		{"drawer", &widget.Drawer{Children: []widget.Widget{bad()}}},
 		{"table row drawer", &widget.Table{Rows: []widget.TableRow{{Drawer: &widget.RowDrawer{Children: []widget.Widget{bad()}}}}}},
 	}
 	for _, tc := range cases {

@@ -200,16 +200,6 @@ func (r *Renderer) renderChildren(children []Widget, csrf string) ([]template.HT
 	return out, nil
 }
 
-// joinHTML concatenates rendered fragments into one — for containers whose template
-// takes a single body blob (a drawer's trigger) rather than ranging a slice.
-func joinHTML(parts []template.HTML) template.HTML {
-	var b strings.Builder
-	for _, p := range parts {
-		b.WriteString(string(p))
-	}
-	return template.HTML(b.String())
-}
-
 func (r *Renderer) execute(out io.Writer, name string, data any) error {
 	if err := r.tmpl.ExecuteTemplate(out, name, data); err != nil {
 		return fmt.Errorf("widget: render %s: %w", name, err)
