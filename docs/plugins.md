@@ -1539,9 +1539,13 @@ identity, device type, IPv4 address, MAC, operational state, and actions. Identi
 cells use `lead_icon:"physical"` or `"software"` for the topology mark and `chips`
 for logical network references. State remains plain text with a square mark.
 `depth` describes a transport dependency (VLAN or PPP), not bridge membership.
-Its envelope `act` is the add act, carrying the panel open over the listing (the
-chooser, or an object's editor); the page has no control band. A chooser uses drawer `size:"choices"`, kicker
-sections, and icon-bearing choice links. Expanded details use `grid` styles
+Its envelope `act` is the add act at `new`: on the listing it carries no panel,
+so the shell fetches a new network's drawer from that address and its form posts
+back there; at `new` or an object's editor address it carries that panel open.
+The new drawer opens on a `Type` select marked `reshapes` (Network, Internet
+connection, Bridge, VLAN, Tunnel); changing it draws the drawer for that kind,
+keeping the name, device, MTU and MAC override. The page has no control band.
+Expanded details use `grid` styles
 `facts` and `configurations`; an editor rail may use `card` style `preview` with
 an unlabeled live code block.
 

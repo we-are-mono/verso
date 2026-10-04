@@ -15,7 +15,7 @@ fn main() {
 fn get(r: &Request) -> Envelope {
     let m = Model::read(r);
     match r.path.trim_end_matches('/') {
-        "" => page::listing(&m, r.query.get("new") == "1"),
+        "" => page::listing(&m),
         "/new" => editor::new(&m, &r.query.get("kind")),
         "/edit" => editor::edit(&m, &r.query.get("network"), &r.query.get("device")),
         "/delete" => editor::delete_page(&m, &r.query.get("network"), &r.query.get("device")),
@@ -33,7 +33,7 @@ fn get(r: &Request) -> Envelope {
 fn post(r: &Request, f: &Form) -> Envelope {
     let m = Model::read(r);
     match r.path.trim_end_matches('/') {
-        "/new" => editor::save(&m, &r.query.get("kind"), "", "", f),
+        "/new" => editor::save(&m, &editor::new_kind(f, &r.query), "", "", f),
         "/edit" => editor::save(&m, "", &r.query.get("network"), &r.query.get("device"), f),
         "/delete" => editor::delete(&m, &r.query.get("network"), &r.query.get("device"), f),
         "/routes" => routes::post(&m, &r.query.get("open"), f),

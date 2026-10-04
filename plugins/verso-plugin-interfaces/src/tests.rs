@@ -152,17 +152,104 @@ fn deletion_refuses_devices_still_in_use() {
     .commit
     .is_empty());
 }
+// the_type is the drawer's Type choice: the one control a new interface opens
+// with, which decides which fields the rest of the form has.
+fn the_type(drawer: &serde_json::Value) -> serde_json::Value {
+    let form = &drawer["children"][0];
+    form["fields"][0]["children"][0].clone()
+}
 #[test]
-fn chooser_and_editor_have_no_navigation_subpages() {
-    let e = get(&request("/", "new=1"));
-    assert!(e.pages.is_empty());
-    let j = serde_json::to_string(&e).unwrap();
-    for kind in ["network", "wan", "bridge", "vlan", "tunnel"] {
-        assert!(j.contains(&format!("new?kind={kind}")));
-        assert!(get(&request("/new", &format!("kind={kind}")))
-            .pages
-            .is_empty());
+fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
+    let listing = serde_json::to_value(get(&request("/", ""))).unwrap();
+    let act = &listing["act"];
+    assert_eq!(act["label"], "Add interface");
+    assert_eq!(act["href"], format!("{ROOT}new"));
+    // The listing carries no drawer for it: the shell fetches the drawer from
+    // the act's address, so the drawer's form posts to the address that makes
+    // an interface rather than to the listing.
+    assert_eq!(act["opens_panel"], true, "{act}");
+    assert!(act.get("drawer").is_none(), "{act}");
+    let opened = get(&request("/new", ""));
+    assert!(opened.pages.is_empty());
+    let drawer = open_drawer(&opened);
+    assert_eq!(drawer["title"], "New network");
+    let kind = the_type(&drawer);
+    assert_eq!(kind["name"], "kind", "{drawer}");
+    assert_eq!(kind["kind"], "select");
+    assert_eq!(kind["value"], "network");
+    assert_eq!(kind["reshapes"], true);
+    let values: Vec<&str> = kind["options"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o["value"].as_str().unwrap())
+        .collect();
+    assert_eq!(values, ["network", "wan", "bridge", "vlan", "tunnel"]);
+    // A VPN is made on the tunnels' own page, and the drawer says where.
+    assert!(drawer.to_string().contains(&format!("{ROOT}vpn")), "{drawer}");
+    // Editing an interface is not choosing one: an existing object's kind is
+    // what it is.
+    let lan = open_drawer(&get(&request("/edit", "network=lan")));
+    assert_ne!(the_type(&lan)["name"], "kind", "{lan}");
+    // The drawer's title already names what it is; its opening fields stand
+    // under it without a heading or a lede of their own.
+    for d in [&drawer, &lan, &open_drawer(&get(&request("/edit", "network=&device=br-lan")))] {
+        let opening = &d["children"][0]["fields"][0];
+        let said = |k: &str| opening.get(k).and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        assert!(said("title").is_empty() && said("sub").is_empty(), "{opening}");
+        // It is one of the drawer's subjects like the rest: ruled, so it keeps
+        // its air before the next section's rule (the first one draws none
+        // above itself), never a bare block that adds none.
+        assert_eq!(opening["hairline"], true, "{opening}");
+        assert!(opening.get("flush").is_none(), "{opening}");
     }
+}
+#[test]
+fn changing_the_type_reshapes_the_drawer_and_keeps_what_still_applies() {
+    let e = post(
+        &request("/new", ""),
+        &Form::parse("_action=reshape&kind=bridge&name=guest&device=eth2&mtu=1400&proto=static&ipaddr=10.0."),
+    );
+    assert!(e.commit.is_empty(), "a reshape stages nothing: {e:?}");
+    let drawer = open_drawer(&e);
+    assert_eq!(drawer["title"], "New bridge");
+    assert_eq!(the_type(&drawer)["value"], "bridge");
+    let j = drawer.to_string();
+    assert!(!j.contains("\"error\":\""), "a reshape refuses nothing: {j}");
+    assert!(j.contains("\"value\":\"guest\""), "the name carries over: {j}");
+    assert!(j.contains("\"value\":\"1400\""), "the MTU carries over: {j}");
+    assert!(!j.contains("\"value\":\"10.0.\""), "a network's address is no bridge's: {j}");
+    // A line to the internet starts as one, whatever the network was set to.
+    let wan = open_drawer(&post(
+        &request("/new", ""),
+        &Form::parse("_action=reshape&kind=wan&name=wan2&device=eth2&proto=static&zone=lan"),
+    ));
+    assert_eq!(wan["title"], "New internet connection");
+    assert_eq!(value_of(&wan, "proto"), "dhcp", "{wan}");
+    assert_eq!(value_of(&wan, "zone"), "wan", "{wan}");
+    assert_eq!(value_of(&wan, "device"), "eth2", "the device it runs on carries over: {wan}");
+}
+// value_of is the value of the first control named name anywhere in v.
+fn value_of(v: &serde_json::Value, name: &str) -> String {
+    match v {
+        serde_json::Value::Object(o) if o.get("name").and_then(|n| n.as_str()) == Some(name) => {
+            o.get("value").and_then(|x| x.as_str()).unwrap_or_default().into()
+        }
+        serde_json::Value::Object(o) => o.values().map(|x| value_of(x, name)).find(|s| !s.is_empty()).unwrap_or_default(),
+        serde_json::Value::Array(a) => a.iter().map(|x| value_of(x, name)).find(|s| !s.is_empty()).unwrap_or_default(),
+        _ => String::new(),
+    }
+}
+#[test]
+fn a_new_interface_saves_as_the_type_chosen() {
+    let e = post(
+        &request("/new", ""),
+        &Form::parse("kind=bridge&name=br_guest&ports=eth2&stp=1"),
+    );
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(j["commit"][0]["type"], "device", "{j}");
+    assert_eq!(j["commit"][0]["values"]["type"], "bridge");
+    assert!(post(&request("/new", ""), &Form::parse("kind=vpn&name=x")).commit.is_empty());
 }
 #[test]
 fn listing_uses_live_addresses_and_expandable_details() {
@@ -254,7 +341,7 @@ fn inventory_row(m: &Model, id: &str) -> serde_json::Value {
             _ => None,
         }
     }
-    find(&serde_json::to_value(page::listing(m, false)).unwrap(), id).unwrap()
+    find(&serde_json::to_value(page::listing(m)).unwrap(), id).unwrap()
 }
 #[test]
 fn runtime_flags_win_over_staged_autostart_and_device_state() {

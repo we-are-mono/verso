@@ -162,8 +162,40 @@ fn kind_of(m: &Model, network: &str, device: &str) -> Option<String> {
         .into(),
     )
 }
+// KINDS are what a new interface can be, in the order the Type choice offers
+// them; a network first, because a new network is what Add interface most
+// often makes.
+const KINDS: [(&str, &str); 5] = [
+    ("network", "Network"),
+    ("wan", "Internet connection"),
+    ("bridge", "Bridge"),
+    ("vlan", "VLAN"),
+    ("tunnel", "Tunnel"),
+];
+fn creatable(kind: &str) -> bool {
+    KINDS.iter().any(|(k, _)| *k == kind)
+}
+// about is what the kind chosen is for, raised from the Type choice's label.
+fn about(kind: &str) -> &'static str {
+    match kind {
+        "wan" => "A second line, or a replacement for the one you have: DHCP, PPPoE or a static address.",
+        "bridge" => "Joins ports and Wi-Fi into one network, as though they were one switch. Split it into VLANs to run several networks over the same cables.",
+        "vlan" => "Tags the traffic on a port with a number, so one cable carries several networks — your ISP’s VLAN 3900, or a managed switch downstairs.",
+        "tunnel" => "IPv6 over an IPv4 line, GRE or VXLAN.",
+        _ => "Its own address range, firewall zone and DHCP server — a guest network, one for the smart-home gadgets, a lab. Runs on a bridge, a VLAN or a single port.",
+    }
+}
+// new_kind is the kind a new interface's form is for: the Type chosen on it,
+// else the one its address names, else a network.
+pub fn new_kind(f: &Form, query: &Form) -> String {
+    [f.get("kind"), query.get("kind")]
+        .into_iter()
+        .find(|k| !k.is_empty())
+        .unwrap_or_else(|| "network".into())
+}
 pub fn new(m: &Model, kind: &str) -> Envelope {
-    if !matches!(kind, "network" | "wan" | "bridge" | "vlan" | "tunnel") {
+    let kind = if kind.is_empty() { "network" } else { kind };
+    if !creatable(kind) {
         return crate::missing();
     }
     page(
@@ -175,6 +207,26 @@ pub fn new(m: &Model, kind: &str) -> Envelope {
         &Errors::new(),
         "",
     )
+}
+// reshaped is the new interface's drawer drawn again for the Type just chosen:
+// that kind's own defaults, with what the form already said kept wherever it
+// still means the same thing — the name, and the device a network, a line or
+// a VLAN runs on, and the link's size and address. Nothing is refused: what
+// was typed for the old kind is still being typed.
+fn reshaped(m: &Model, kind: &str, f: &Form) -> Envelope {
+    let posted = Values::posted(f);
+    let mut v = defaults(m, kind, "", "");
+    let mut kept = vec!["name", "mtu", "macaddr"];
+    if matches!(kind, "network" | "wan" | "vlan") {
+        kept.push("device");
+    }
+    for k in kept {
+        let value = posted.get(k);
+        if !value.is_empty() {
+            v.set(k, value);
+        }
+    }
+    page(m, kind, "", "", &v, &Errors::new(), "")
 }
 pub fn edit(m: &Model, network: &str, device: &str) -> Envelope {
     let Some(kind) = kind_of(m, network, device) else {
@@ -246,6 +298,9 @@ fn when(v: &Values, proto: &str, children: Vec<Widget>) -> Widget {
         children,
     }
 }
+// page is an interface's drawer open over the listing: an address naming it
+// shows the listing with the drawer open, a request for the panel alone is
+// answered from the same tree, and a save returns to the listing.
 fn page(
     m: &Model,
     kind: &str,
@@ -255,6 +310,18 @@ fn page(
     e: &Errors,
     error: &str,
 ) -> Envelope {
+    crate::page::with_drawer(m, drawer(m, kind, network, device, v, e, error))
+        .with_back("Interfaces", ROOT)
+}
+fn drawer(
+    m: &Model,
+    kind: &str,
+    network: &str,
+    device: &str,
+    v: &Values,
+    e: &Errors,
+    error: &str,
+) -> RowDrawer {
     let creating = network.is_empty() && device.is_empty();
     let is_device = matches!(kind, "bridge" | "vlan" | "device");
     let title = if !creating {
@@ -278,7 +345,22 @@ fn page(
             "Use a unique name without spaces. Other settings refer to this name.",
             "network",
         );
-    let mut identity = vec![name];
+    let mut identity = vec![];
+    // A new interface opens as a network, and its Type is the one choice that
+    // decides which fields the rest of the drawer has, so changing it draws
+    // the drawer again for that kind (reshaped). A tunnel to another site is
+    // not one of them: WireGuard and OpenVPN have their own page.
+    if creating {
+        identity.push(
+            Widget::select("kind", "Type", kind, opts(&KINDS), "")
+                .reshapes()
+                .explained(about(kind), ""),
+        );
+        identity.push(Widget::text(&format!(
+            "A VPN tunnel is set up on [its own page]({ROOT}vpn)."
+        )));
+    }
+    identity.push(name);
     let devices: Vec<SelectOption> = std::iter::once(SelectOption::new("", "Choose a device"))
         .chain(
             m.names()
@@ -332,23 +414,11 @@ fn page(
             check(v, "igmp_snooping", "IGMP snooping"),
         ]);
     }
-    let mut sections = vec![section(
-        "What it is",
-        if is_device {
-            "The device other networks run on."
-        } else {
-            "The name fw4 and dnsmasq will use for it, and the device it runs on."
-        },
-        "identity",
-        identity,
-    )];
-    if let Some(Widget::Section(SectionWidget {
-        hairline, flush, ..
-    })) = sections.first_mut()
-    {
-        *hairline = false;
-        *flush = e.is_empty() && error.is_empty();
-    }
+    // The drawer's title names the object, so its opening fields stand under
+    // it with no heading of their own. It is ruled like every other subject:
+    // the first draws no rule above itself, and it keeps its air before the
+    // next one's.
+    let mut sections = vec![section("", "", "identity", identity)];
     if kind == "tunnel" {
         let protocols = opts(&[
             ("gre", "GRE over IPv4"),
@@ -530,21 +600,15 @@ fn page(
         target: String::new(),
         fields: sections,
     };
-    // The editor is the object's drawer, open over the listing: an address
-    // naming it shows the listing with the drawer open, a request for the
-    // panel alone is answered from the same tree, and closing it leaves the
-    // listing's own address.
-    crate::page::with_drawer(
-        m,
-        RowDrawer {
-            title: title.into(),
-            open: true,
-            closed: ROOT.into(),
-            children: vec![form],
-            ..Default::default()
-        },
-    )
-    .with_back("Interfaces", ROOT)
+    // The editor is the object's drawer; closing it leaves the listing's own
+    // address.
+    RowDrawer {
+        title: title.into(),
+        open: true,
+        closed: ROOT.into(),
+        children: vec![form],
+        ..Default::default()
+    }
 }
 fn err(e: &mut Errors, k: &str, msg: &str) {
     e.entry(k.into()).or_insert(msg.into());
@@ -950,8 +1014,11 @@ fn relationships(m: &Model, old: &str, name: &str, zone: &str, ops: &mut Vec<Com
 pub fn save(m: &Model, kind: &str, network: &str, device: &str, f: &Form) -> Envelope {
     let creating = network.is_empty() && device.is_empty();
     let kind = if creating {
-        if !matches!(kind, "network" | "wan" | "bridge" | "vlan" | "tunnel") {
+        if !creatable(kind) {
             return crate::missing();
+        }
+        if f.get("_action") == "reshape" {
+            return reshaped(m, kind, f);
         }
         kind.into()
     } else {
@@ -1179,7 +1246,7 @@ pub fn action(m: &Model, f: &Form) -> Envelope {
         if m.network(&id).is_none() || id == "loopback" || m.live_network(&id).is_none() {
             return crate::missing();
         }
-        let mut page = crate::page::listing(m, false)
+        let mut page = crate::page::listing(m)
             .with_back("Interfaces", ROOT)
             .with_notice(Tone::Success, notice);
         page.commands = vec![verso_plugin::ApplyAction {

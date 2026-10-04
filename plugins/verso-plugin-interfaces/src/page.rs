@@ -116,45 +116,6 @@ fn act(label: &str, href: &str) -> Widget {
     }
     link
 }
-fn destination(label: &str, kind: &str, description: &str, key: &str, glyph: &str) -> Widget {
-    let mut link = Widget::link(label, &format!("{ROOT}new?kind={kind}"), "choice");
-    if let Widget::Link {
-        desc, code, icon, ..
-    } = &mut link
-    {
-        *desc = description.into();
-        *code = key.into();
-        *icon = glyph.into();
-    }
-    link
-}
-fn category(title: &str, children: Vec<Widget>) -> Widget {
-    let mut section = Widget::section(title, "", children);
-    if let Widget::Section(SectionWidget { kicker, flush, .. }) = &mut section {
-        *kicker = true;
-        *flush = true;
-    }
-    section
-}
-fn chooser(open: bool) -> RowDrawer {
-    let mut vpn = Widget::link("A VPN tunnel", &format!("{ROOT}vpn"), "choice");
-    if let Widget::Link {
-        desc, code, icon, ..
-    } = &mut vpn
-    {
-        *desc = "WireGuard and OpenVPN are set up on their own page, with keys, peers and codes to scan.".into();
-        *code = "Tunnels page".into();
-        *icon = "lock".into();
-    }
-    RowDrawer { title: "New interface".into(), size: "choices".into(), open, closed: ROOT.into(), children: vec![
-        category("Networks", vec![
-            destination("A network", "network", "Its own address range, firewall zone and DHCP server — a guest network, one for the smart-home gadgets, a lab. Runs on a bridge, a VLAN or a single port.", "config interface", "network"),
-            destination("An internet connection", "wan", "A second line, or a replacement for the one you have: DHCP, PPPoE or a static address.", "config interface", "globe")]),
-        category("Devices", vec![
-            destination("A bridge", "bridge", "Joins ports and Wi-Fi into one network, as though they were one switch. Split it into VLANs to run several networks over the same cables.", "config device", "git-merge"),
-            destination("A VLAN", "vlan", "Tags the traffic on a port with a number, so one cable carries several networks — your ISP’s VLAN 3900, or a managed switch downstairs.", "config device", "tag"), vpn,
-            destination("Another kind of tunnel", "tunnel", "IPv6 over an IPv4 line, GRE or VXLAN.", "config interface", "git-branch")])], ..Default::default() }
-}
 /// config_text is one section as the file will hold it, its secrets left out.
 pub(crate) fn config_text(typ: &str, id: &str, values: &serde_json::Map<String, Value>) -> String {
     let mut shown = values.clone();
@@ -551,16 +512,20 @@ fn pool(m: &Model, net: &str, server: &verso_plugin::dhcp::Server) -> Property {
     }
 }
 
-// listing is the inventory with the chooser for a new interface on its bar,
-// open when the address asked for it.
-pub fn listing(m: &Model, open: bool) -> Envelope {
-    with_drawer(m, chooser(open))
+// listing is the inventory alone. Its act names a new interface's address, and
+// the shell fetches the drawer from there, so the drawer's form posts back to
+// the address that makes one.
+pub fn listing(m: &Model) -> Envelope {
+    inventory(m, None)
 }
-// with_drawer is the inventory with the given panel on its bar: the chooser,
-// or an object's editor open over the listing (editor.rs), so that the
-// editor's address shows the listing with the drawer open, and a request for
-// the panel alone is answered from the same tree.
+// with_drawer is the inventory with a panel open on its bar: a new
+// interface's, or an object's editor (editor.rs), so that the editor's address
+// shows the listing with the drawer open, and a request for the panel alone is
+// answered from the same tree.
 pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
+    inventory(m, Some(drawer))
+}
+fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     let parents = m.parents();
     let mut names = m.names();
     names.extend(parents.keys().cloned());
@@ -761,14 +726,15 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
         });
     }
     // The page's one act, on its heading line. It carries the panel open over
-    // the listing — the chooser, or an object's editor — so an address naming
-    // either arrives with it in front of the operator.
+    // the listing — a new interface's, or an object's editor — so an address
+    // naming either arrives with it in front of the operator; with none open,
+    // the drawer is fetched from the act's own address.
     let act = HeadingAct {
         label: "Add interface".into(),
-        href: format!("{ROOT}?new=1"),
+        href: format!("{ROOT}new"),
         icon: "plus".into(),
         opens_panel: true,
-        drawer: Some(drawer),
+        drawer,
         ..Default::default()
     };
     let columns = [
