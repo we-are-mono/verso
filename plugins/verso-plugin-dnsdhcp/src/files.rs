@@ -6,11 +6,15 @@
 use verso_plugin::files::{self, FileSet};
 use verso_plugin::{Envelope, Form, Grid, Request, Tone, Value, Widget};
 
-const ROOT: &str = "/plugins/dnsdhcp/";
+const ROOT: &str = "/plugins/dnsdhcp/dns";
+
+/// PREFIX is the sub-path a file's editor lives under: on the DNS page, whose
+/// custom options they are.
+pub const PREFIX: &str = "dns/files/";
 
 const SET: FileSet = FileSet {
     page: ROOT,
-    editors: "/plugins/dnsdhcp/files/",
+    editors: "/plugins/dnsdhcp/dns/files/",
     dir: "/etc/dnsmasq.d/",
     suffix: ".conf",
     main: Some("/etc/dnsmasq.conf"),
@@ -24,18 +28,18 @@ fn listed(r: &Request) -> Vec<Value> {
     files::files(r.ubus.get("dnsState"))
 }
 
-/// name is the file an editor's address names, after "files/".
+/// name is the file an editor's address names, after its prefix.
 fn name(r: &Request) -> Option<&str> {
-    r.path.trim_matches('/').strip_prefix("files/")
+    r.path.trim_matches('/').strip_prefix(PREFIX)
 }
 
 pub fn listing(r: &Request) -> Widget {
     SET.listing(&listed(r))
 }
 
-/// with_editor is the settings page with a file's editor open over it.
+/// with_editor is the DNS page with a file's editor open over it.
 fn with_editor(r: &Request, editor: Widget) -> Envelope {
-    let mut result = crate::settings::page(r);
+    let mut result = crate::dns::page(r);
     if let Widget::Grid(Grid { children, .. }) = &mut result.widget {
         children.push(editor);
     }
@@ -44,17 +48,17 @@ fn with_editor(r: &Request, editor: Widget) -> Envelope {
 
 pub fn get(r: &Request) -> Envelope {
     let Some(name) = name(r) else {
-        return crate::settings::page(r);
+        return crate::dns::page(r);
     };
     match SET.open(&listed(r), name) {
         Ok(editor) => with_editor(r, editor),
-        Err(why) => crate::settings::page(r).with_notice(Tone::Danger, &why),
+        Err(why) => crate::dns::page(r).with_notice(Tone::Danger, &why),
     }
 }
 
 pub fn post(r: &Request, f: &Form) -> Envelope {
     let Some((editor, command)) = name(r).and_then(|name| SET.save(&listed(r), name, f)) else {
-        return crate::settings::page(r);
+        return crate::dns::page(r);
     };
     let mut result = with_editor(r, editor);
     result.commands.extend(command);

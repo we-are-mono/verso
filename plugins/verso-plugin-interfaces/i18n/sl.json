@@ -249,5 +249,11 @@
   "DHCP is disabled. Apply the staged changes to enable it.": "DHCP je onemogočen. Za omogočanje uveljavite pripravljene spremembe.",
   "Disabling DHCP is staged. Apply the changes to stop serving this network.": "Onemogočanje DHCP je pripravljeno. Uveljavite spremembe, da ustavite dodeljevanje naslovov v tem omrežju.",
   "DHCP server status could not be verified.": "Stanja strežnika DHCP ni bilo mogoče preveriti.",
-  "No networks configured. Add a network in Interfaces to configure its DHCP server.": "Ni nastavljenih omrežij. Dodajte omrežje na strani Vmesniki in nastavite njegov strežnik DHCP."
+  "No networks configured. Add a network in Interfaces to configure its DHCP server.": "Ni nastavljenih omrežij. Dodajte omrežje na strani Vmesniki in nastavite njegov strežnik DHCP.",
+  "Serving": "Dodeljuje",
+  "Off": "Izklopljeno",
+  "On": "Vklopljeno",
+  "Pool": "Nabor",
+  "Network device": "Omrežna naprava",
+  "This network hands out addresses. Turn its DHCP server off on the DHCP page first.": "To omrežje dodeljuje naslove. Najprej izklopite njegov strežnik DHCP na strani DHCP."
 }

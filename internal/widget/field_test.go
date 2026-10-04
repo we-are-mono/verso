@@ -90,7 +90,7 @@ func TestHiddenFieldWithAutocompleteNamesTheAccount(t *testing.T) {
 // digit pad; any other field keeps the full keyboard.
 func TestNumberFieldsAskForTheDigitPad(t *testing.T) {
 	r := newRenderer(t)
-	for _, f := range []*Field{{Name: "p", Key: "Port"}, {Name: "q", Datatype: "port"}, {Name: "m", Key: "mtu"}, {Name: "cache", Key: "cachesize"}} {
+	for _, f := range []*Field{{Name: "p", Key: "Port"}, {Name: "q", Datatype: "port"}, {Name: "m", Key: "mtu"}, {Name: "cache", Key: "cachesize"}, {Name: "leases", Key: "dhcpleasemax"}} {
 		if got := render(t, r, f); !strings.Contains(got, `inputmode="numeric"`) {
 			t.Errorf("%s: want the digit pad:\n%s", f.Name, got)
 		}

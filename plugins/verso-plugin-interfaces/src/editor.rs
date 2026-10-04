@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use verso_plugin::{
     commit, commit_delete, commit_new, json, CommitOp, Envelope, Field, Form, List, RowDrawer,
-    SectionWidget, SelectOption, Switch, Tone, Widget,
+    SectionWidget, SelectOption, Tone, Widget,
 };
 
 type Errors = BTreeMap<String, String>;
@@ -26,7 +26,7 @@ impl Values {
         self.scalar.insert(k.into(), v.into());
     }
     fn posted(f: &Form) -> Self {
-        let keys="name device zone proto ipaddr netmask gateway hostname peerdns defaultroute username password ac service keepalive ip6assign ra dhcpv6 dhcp start limit leasetime announced_gateway reservations_only force auto mtu metric macaddr vid vlan_protocol stp igmp_snooping peeraddr ip6addr ip6prefix ttl port tunlink";
+        let keys="name device zone proto ipaddr netmask gateway hostname peerdns defaultroute username password ac service keepalive ip6assign auto mtu metric macaddr vid vlan_protocol stp igmp_snooping peeraddr ip6addr ip6prefix ttl port tunlink";
         let mut v = Self::default();
         for k in keys.split_whitespace() {
             v.set(
@@ -38,7 +38,7 @@ impl Values {
                 },
             );
         }
-        for k in ["dns", "ports", "announced_dns"] {
+        for k in ["dns", "ports"] {
             let mut seen = BTreeSet::new();
             v.lists.insert(
                 k.into(),
@@ -87,21 +87,6 @@ fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
         ("auto", "1"),
         ("peerdns", "1"),
         ("defaultroute", "1"),
-        ("dhcp", if kind == "network" { "1" } else { "0" }),
-        ("start", "100"),
-        ("limit", "150"),
-        ("leasetime", "12h"),
-        (
-            "reservations_only",
-            if network.is_empty() && m.reservation_default {
-                "1"
-            } else {
-                "0"
-            },
-        ),
-        ("force", "0"),
-        ("ra", "disabled"),
-        ("dhcpv6", "disabled"),
         ("vlan_protocol", "8021q"),
         ("stp", "1"),
     ] {
@@ -133,35 +118,7 @@ fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
                 v.set("peeraddr", r.get("peer6addr"));
             }
             v.set("zone", m.zone(network));
-            v.set("dhcp", "0");
             v.set("auto", if r.get("auto") == "0" { "0" } else { "1" });
-            if let Some(d) = m.dhcp(network) {
-                for (k, x) in &d.values {
-                    if let Some(s) = x.as_str() {
-                        v.set(k, s);
-                    }
-                }
-                v.set("dhcp", if d.get("ignore") == "1" { "0" } else { "1" });
-                v.set(
-                    "reservations_only",
-                    if d.get("dynamicdhcp") == "0" {
-                        "1"
-                    } else {
-                        "0"
-                    },
-                );
-                for option in d.list("dhcp_option") {
-                    if let Some(gateway) = option.strip_prefix("3,") {
-                        v.set("announced_gateway", gateway);
-                    }
-                    if let Some(dns) = option.strip_prefix("6,") {
-                        v.lists
-                            .entry("announced_dns".into())
-                            .or_default()
-                            .extend(dns.split(',').map(String::from));
-                    }
-                }
-            }
         } else {
             v.set("device", r.get("ifname"));
             v.set("vlan_protocol", r.get("type"));
@@ -263,13 +220,6 @@ fn opts(items: &[(&str, &str)]) -> Vec<SelectOption> {
 }
 fn check(v: &Values, key: &str, label: &str) -> Widget {
     Widget::switch_keyed(key, label, key, "", v.get(key) == "1")
-}
-fn checkbox(v: &Values, key: &str, label: &str) -> Widget {
-    let mut w = check(v, key, label);
-    if let Widget::Switch(Switch { style, .. }) = &mut w {
-        *style = "checkbox".into();
-    }
-    w
 }
 fn list(v: &Values, e: &Errors, key: &str, label: &str, datatype: &str) -> Widget {
     let mut w = Widget::list(key, label, datatype, &v.list(key), "").writes(key);
@@ -511,76 +461,24 @@ fn page(
             "IPv6",
             "",
             "ipv6",
-            vec![
-                select(
-                    v,
-                    e,
-                    "ip6assign",
-                    "Delegated prefix",
-                    opts(&[
-                        ("", "No prefix"),
-                        ("60", "60-bit"),
-                        ("62", "62-bit"),
-                        ("64", "64-bit"),
-                    ]),
-                ),
-                select(
-                    v,
-                    e,
-                    "ra",
-                    "Router advertisements",
-                    opts(&[
-                        ("disabled", "Disabled"),
-                        ("server", "Server"),
-                        ("relay", "Relay"),
-                        ("hybrid", "Hybrid"),
-                    ]),
-                ),
-                select(
-                    v,
-                    e,
-                    "dhcpv6",
-                    "DHCPv6",
-                    opts(&[
-                        ("disabled", "Disabled"),
-                        ("server", "Server"),
-                        ("relay", "Relay"),
-                        ("hybrid", "Hybrid"),
-                    ]),
-                ),
-            ],
+            vec![select(
+                v,
+                e,
+                "ip6assign",
+                "Delegated prefix",
+                opts(&[
+                    ("", "No prefix"),
+                    ("60", "60-bit"),
+                    ("62", "62-bit"),
+                    ("64", "64-bit"),
+                ]),
+            )],
         ));
-        sections.push(section(
-            "DHCP server",
-            "Addresses for whatever joins this network. Reservations live on the Devices page.",
-            "dhcp-server",
-            vec![
-                checkbox(v, "dhcp", "Run a DHCP server").writes("ignore"),
-                Widget::When {
-                    name: "dhcp".into(),
-                    value: "1".into(),
-                    active: v.get("dhcp") == "1",
-                    children: vec![
-                        Widget::form_grid(
-                            2,
-                            vec![
-                                field(v, e, "start", "First address", ""),
-                                field(v, e, "limit", "How many", ""),
-                            ],
-                        )
-                        .labelled("Address pool", ""),
-                        field(v, e, "leasetime", "Lease time", ""),
-                        field(v, e, "announced_gateway", "Announced gateway", "")
-                            .writes("dhcp_option"),
-                        list(v, e, "announced_dns", "Announced DNS", "ip4addr")
-                            .writes("dhcp_option"),
-                        checkbox(v, "reservations_only", "Only devices with a reservation")
-                            .writes("dynamicdhcp"),
-                        checkbox(v, "force", "Serve even if another DHCP server is seen"),
-                    ],
-                },
-            ],
-        ));
+        // The network's DHCP server is its own object, edited on the DHCP
+        // page; here it is stated as it stands, with the way there.
+        if let Some(server) = crate::page::dhcp_part(m, network, false) {
+            sections.push(section("", "", "dhcp-server", vec![server]));
+        }
     }
     let mut advanced = vec![];
     if !is_device {
@@ -933,22 +831,6 @@ fn validate(m: &Model, kind: &str, network: &str, device: &str, v: &Values) -> E
                     ),
                 }
             }
-            if v.get("dhcp") == "1" {
-                let start = v.get("start").parse::<u32>();
-                let limit = v.get("limit").parse::<u32>();
-                match (start, limit) {
-                    (Ok(a), Ok(b))
-                        if a > 0
-                            && b > 0
-                            && a.checked_add(b).is_some_and(|end| end <= !mask)
-                            && !(a <= host && host < a.saturating_add(b)) => {}
-                    _ => err(
-                        &mut e,
-                        "start",
-                        "The DHCP range must fit the subnet and exclude the router address.",
-                    ),
-                }
-            }
         }
         for dns in v.list("dns") {
             if dns.parse::<IpAddr>().is_err() {
@@ -992,54 +874,17 @@ fn validate(m: &Model, kind: &str, network: &str, device: &str, v: &Values) -> E
             );
         }
     }
-    if v.get("dhcp") == "1" {
-        if !v.get("announced_gateway").is_empty()
-            && v.get("announced_gateway")
-                .split(',')
-                .any(|ip| ip.parse::<Ipv4Addr>().is_err())
-        {
-            err(
-                &mut e,
-                "announced_gateway",
-                "Enter valid IPv4 addresses, separated by commas.",
-            );
-        }
-        if v.list("announced_dns")
-            .iter()
-            .any(|ip| ip.parse::<Ipv4Addr>().is_err())
-        {
-            err(
-                &mut e,
-                "announced_dns",
-                "Enter valid IPv4 addresses for announced DNS servers.",
-            );
-        }
-        if proto != "static" {
-            err(&mut e, "proto", "The DHCP server needs a static address.");
-        }
-        let lease = v.get("leasetime");
-        if lease != "infinite"
-            && !lease
-                .strip_suffix(['s', 'm', 'h', 'd', 'w'])
-                .is_some_and(|n| uint(n, 1, u32::MAX))
-        {
-            err(
-                &mut e,
-                "leasetime",
-                "Use a duration such as 12h, 30m or 7d, or infinite.",
-            );
-        }
+    // A network handing out addresses needs one of its own to hand out from;
+    // turning the server off is the DHCP page's.
+    if proto != "static" && m.dhcp(network).is_some_and(|d| d.get("ignore") != "1") {
+        err(
+            &mut e,
+            "proto",
+            "This network hands out addresses. Turn its DHCP server off on the DHCP page first.",
+        );
     }
     if !matches!(v.get("ip6assign").as_str(), "" | "60" | "62" | "64") {
         err(&mut e, "ip6assign", "Choose a delegated prefix length.");
-    }
-    for key in ["ra", "dhcpv6"] {
-        if !matches!(
-            v.get(key).as_str(),
-            "server" | "relay" | "hybrid" | "disabled"
-        ) {
-            err(&mut e, key, "Choose an IPv6 service mode.");
-        }
     }
     e
 }
@@ -1252,61 +1097,19 @@ fn operations(m: &Model, kind: &str, network: &str, device: &str, v: &Values) ->
             ops.push(commit("network", network, json!(values)));
         }
         relationships(m, network, &name, &v.get("zone"), &mut ops);
-        if kind != "tunnel" {
-            let old = m.dhcp(network);
-            let mut d = old.map(|d| d.values.clone()).unwrap_or_default();
-            d.insert("interface".into(), json!(name));
-            d.insert(
-                "ignore".into(),
-                json!(if v.get("dhcp") == "1" { "0" } else { "1" }),
-            );
-            for k in ["ra", "dhcpv6"] {
-                d.insert(k.into(), json!(v.get(k)));
-            }
-            if v.get("dhcp") == "1" {
-                d.insert(
-                    "dynamicdhcp".into(),
-                    json!(if v.get("reservations_only") == "1" {
-                        "0"
-                    } else {
-                        "1"
-                    }),
-                );
-                d.insert(
-                    "force".into(),
-                    json!(if v.get("force") == "1" { "1" } else { "0" }),
-                );
-                let mut options = old.map(|d| d.list("dhcp_option")).unwrap_or_default();
-                options.retain(|o| !o.starts_with("3,") && !o.starts_with("6,"));
-                if !v.get("announced_gateway").is_empty() {
-                    options.push(format!("3,{}", v.get("announced_gateway")));
-                }
-                if !v.list("announced_dns").is_empty() {
-                    options.push(format!("6,{}", v.list("announced_dns").join(",")));
-                }
-                d.insert(
-                    "dhcp_option".into(),
-                    if options.is_empty() {
-                        Value::Null
-                    } else {
-                        json!(options)
-                    },
-                );
-                for k in ["start", "limit", "leasetime"] {
-                    d.insert(k.into(), json!(v.get(k)));
-                }
-            }
-            if old.is_some()
-                || v.get("dhcp") == "1"
-                || v.get("ra") != "disabled"
-                || v.get("dhcpv6") != "disabled"
-            {
-                ops.push(if let Some(old) = old {
-                    commit("dhcp", &old.id, json!(d))
-                } else {
-                    commit_new("dhcp", "dhcp", json!(d))
-                });
-            }
+        // A new network starts with a DHCP server of the daemon's defaults,
+        // named after it as OpenWrt names its own; one renamed keeps its
+        // server, which follows the new name. Editing the server is the DHCP
+        // page's.
+        if creating && kind == "network" {
+            ops.push(named(
+                "dhcp",
+                "dhcp",
+                &name,
+                json!({"interface": name, "start": "100", "limit": "150", "leasetime": "12h"}),
+            ));
+        } else if let Some(old) = m.dhcp(network).filter(|_| name != network) {
+            ops.push(commit("dhcp", &old.id, json!({"interface": name})));
         }
         if !creating && name != network {
             ops.push(commit_delete("network", network));

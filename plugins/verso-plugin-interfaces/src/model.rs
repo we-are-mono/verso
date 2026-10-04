@@ -57,7 +57,6 @@ pub struct Model {
     pub zones: Vec<Record>,
     pub dhcp: Vec<Record>,
     pub dhcp_servers: Vec<verso_plugin::dhcp::Server>,
-    pub reservation_default: bool,
     pub live: Value,
     pub wireless: Vec<Record>,
     pub routes: Vec<Record>,
@@ -92,11 +91,6 @@ impl Model {
             zones: records(&r.snapshot, "firewall", "zone"),
             dhcp: records(&r.snapshot, "dhcp", "dhcp"),
             dhcp_servers: verso_plugin::dhcp::servers(&r.snapshot, &r.ubus),
-            reservation_default: r
-                .snapshot
-                .sections_of_type("dhcp", "verso_defaults")
-                .first()
-                .is_some_and(|s| s.scalar("dynamicdhcp") == "0"),
             wireless: records(&r.snapshot, "wireless", "wifi-iface"),
             routes,
             live: r.ubus.get("networkState").cloned().unwrap_or(Value::Null),

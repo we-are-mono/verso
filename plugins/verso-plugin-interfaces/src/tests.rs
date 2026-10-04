@@ -21,7 +21,7 @@ fn request(path: &str, query: &str) -> Request {
     }
 }
 fn form(extra: &str) -> Form {
-    Form::parse(&format!("name=guest&device=eth2&proto=static&ipaddr=192.168.20.1&netmask=255.255.255.0&zone=lan&auto=1&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled&{extra}"))
+    Form::parse(&format!("name=guest&device=eth2&proto=static&ipaddr=192.168.20.1&netmask=255.255.255.0&zone=lan&auto=1&{extra}"))
 }
 #[test]
 fn new_network_stages_named_section_and_references() {
@@ -34,9 +34,55 @@ fn new_network_stages_named_section_and_references() {
     assert!(e.commands.is_empty());
     assert_eq!(j["back"]["href"], ROOT);
 }
+// A new network starts with a DHCP server of the daemon's defaults, named after
+// it; a line to the internet starts with none. Editing either is the DHCP
+// page's.
+#[test]
+fn a_new_network_starts_with_a_default_dhcp_server() {
+    let e = post(&request("/new", "kind=network"), &form(""));
+    let j = serde_json::to_value(&e).unwrap();
+    let pool = j["commit"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["config"] == "dhcp")
+        .expect("a pool");
+    assert_eq!(pool["section"], "guest");
+    assert_eq!(pool["type"], "dhcp");
+    assert_eq!(
+        pool["values"],
+        json!({"interface": "guest", "start": "100", "limit": "150", "leasetime": "12h"})
+    );
+    let wan = post(
+        &request("/new", "kind=wan"),
+        &Form::parse("name=wan2&device=eth2&proto=dhcp&auto=1"),
+    );
+    assert!(wan.commit.iter().all(|o| o.config != "dhcp"));
+}
+// Saving a network leaves its DHCP server alone: the server is edited on the
+// DHCP page, and the editor posts nothing about it.
+#[test]
+fn saving_a_network_writes_nothing_to_its_dhcp_server() {
+    let e = post(
+        &request("/edit", "network=lan"),
+        &Form::parse("name=lan&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&zone=lan&auto=1&mtu=1400"),
+    );
+    assert!(!e.commit.is_empty());
+    assert!(e.commit.iter().all(|o| o.config != "dhcp"), "{:?}", e.commit);
+}
+// A network that hands out addresses keeps a static one to hand out from.
+#[test]
+fn a_serving_network_keeps_its_static_address() {
+    let e = post(
+        &request("/edit", "network=lan"),
+        &Form::parse("name=lan&device=br-lan&proto=dhcp&zone=lan&auto=1"),
+    );
+    assert!(e.commit.is_empty());
+    assert!(serde_json::to_string(&e).unwrap().contains("Turn its DHCP server off"));
+}
 #[test]
 fn invalid_posts_never_stage() {
-    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.255.255.0&dhcp=1&start=1&limit=200&leasetime=12h","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("\"error\":\""),"no refusal for {body}");}
+    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("\"error\":\""),"no refusal for {body}");}
 }
 #[test]
 fn device_kinds_write_device_sections() {
@@ -76,7 +122,7 @@ fn rejects_bridge_and_vlan_conflicts() {
 }
 #[test]
 fn network_rename_updates_all_owners() {
-    let e=post(&request("/edit","network=lan"),&Form::parse("name=home&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&zone=lan&auto=1&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled"));
+    let e=post(&request("/edit","network=lan"),&Form::parse("name=home&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&zone=lan&auto=1"));
     let j = serde_json::to_value(&e).unwrap();
     assert!(!e.commit.is_empty(), "{j}");
     let ops = &j["commit"];
@@ -89,7 +135,8 @@ fn network_rename_updates_all_owners() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|o| o["config"] == "dhcp" && o["values"]["interface"] == "home"));
+        .any(|o| o["config"] == "dhcp"
+            && o["values"] == json!({"interface": "home"})));
     assert!(ops
         .as_array()
         .unwrap()
@@ -336,27 +383,34 @@ fn docker_bridge_connects_only_its_observed_virtual_member() {
     assert!(m.names().contains("tap-only"));
 }
 
+// The interface's drawer states its DHCP server as it stands and links to its
+// drawer on the DHCP page; it carries none of the server's own controls.
 #[test]
-fn dhcp_announcements_preserve_other_options_and_validate_addresses() {
-    let mut r = request("/edit", "network=lan");
-    r.snapshot = Snapshot::from_value(
-        json!({"network":{"lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static","ipaddr":"192.168.1.1","netmask":"255.255.255.0"}},"dhcp":{"lan":{".name":"lan",".type":"dhcp","interface":"lan","dhcp_option":["42,192.168.1.9","3,192.168.1.1","6,192.168.1.1"],"dhcp_option_force":["66,boot.example"]}}}),
-    );
-    let f=Form::parse("name=lan&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&dhcp=1&start=100&limit=100&leasetime=12h&ra=disabled&dhcpv6=disabled&announced_gateway=192.168.1.2&announced_dns=9.9.9.9&announced_dns=1.1.1.1&reservations_only=1&force=1");
-    let e = post(&r, &f);
-    let dhcp = e.commit.iter().find(|o| o.config == "dhcp").unwrap();
-    assert_eq!(
-        dhcp.values["dhcp_option"],
-        json!(["42,192.168.1.9", "3,192.168.1.2", "6,9.9.9.9,1.1.1.1"])
-    );
-    assert_eq!(dhcp.values["dhcp_option_force"], json!(["66,boot.example"]));
-    assert_eq!(dhcp.values["dynamicdhcp"], "0");
-    assert_eq!(dhcp.values["force"], "1");
-    let r = request("/new", "kind=network");
-    assert!(post(&r, &form("announced_dns=999.1.1.1")).commit.is_empty());
-    assert!(post(&r, &form("announced_gateway=invalid"))
-        .commit
-        .is_empty());
+fn the_interface_drawer_states_its_dhcp_server_and_leads_to_it() {
+    let e = get(&request("/edit", "network=lan"));
+    let body = serde_json::to_string(&e).unwrap();
+    for gone in [
+        "\"name\":\"start\"",
+        "\"name\":\"leasetime\"",
+        "\"name\":\"ra\"",
+        "\"name\":\"dhcpv6\"",
+    ] {
+        assert!(!body.contains(gone), "{gone}");
+    }
+    let j = serde_json::to_value(&e).unwrap();
+    fn find(v: &serde_json::Value, title: &str) -> Option<serde_json::Value> {
+        if v["title"] == title && v["type"] == "section" {
+            return Some(v.clone());
+        }
+        match v {
+            serde_json::Value::Object(m) => m.values().find_map(|c| find(c, title)),
+            serde_json::Value::Array(a) => a.iter().find_map(|c| find(c, title)),
+            _ => None,
+        }
+    }
+    let server = find(&j, "DHCP server").expect("the DHCP server part");
+    assert_eq!(server["control"]["href"], "/plugins/dnsdhcp/?open=lan");
+    assert!(server["control"].get("panel").is_none(), "{server}");
 }
 // groups are the parts an expanded row is made of: one per uci section it
 // reads, each a section on its own ledger line.
@@ -438,7 +492,7 @@ fn an_expanded_row_reads_as_the_uci_sections_behind_it() {
         (
             &parts[1],
             "Configure DHCP",
-            "/plugins/interfaces/edit?network=lan#dhcp-server",
+            "/plugins/dnsdhcp/?open=lan",
         ),
         (
             &parts[2],
@@ -465,7 +519,7 @@ fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
     let items = |column: usize| parts[1]["children"][0]["children"][column]["items"].clone();
     // The server's state is said once, with its mark.
     assert_eq!(items(0)[0]["label"], "Server");
-    assert_eq!(items(0)[0]["value"], "Running");
+    assert_eq!(items(0)[0]["value"], "Serving");
     assert_eq!(items(0)[0]["dot"], "success");
     // The pool is the stretch from its first address to its last, filled by
     // the share of its 150 addresses that are leased.
@@ -570,7 +624,7 @@ fn a_disabled_dhcp_server_says_so_once() {
     assert_eq!(labels(server), ["Server"]);
     assert_eq!(
         server["children"][0]["children"][0]["items"][0]["value"],
-        "Disabled"
+        "Off"
     );
     // Disabled is still where it is turned on.
     assert_eq!(server["control"]["label"], "Configure DHCP");

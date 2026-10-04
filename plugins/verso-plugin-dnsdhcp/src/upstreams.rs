@@ -1,74 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! Where a question goes when this router cannot answer it — one listing, and a
-//! page apiece for editing one entry.
+//! A page apiece for editing one place a question goes when this router cannot
+//! answer it.
 //!
 //! These are not sections: they are entries of one `list server` on the daemon,
 //! and dnsmasq writes a domain-limited upstream as `/domain/server` — one string
-//! doing two jobs. So a row is addressed by its position in the list, the page
+//! doing two jobs. So an entry is addressed by its position in the list, the page
 //! edits the two halves separately, and any save rewrites the whole list in one
 //! operation, which is the only way uci can state a change to a list.
 
-use verso_plugin::{commit, CommitOp, Envelope, Form, TableRow, Tone, Widget};
+use verso_plugin::{commit, CommitOp, Envelope, Form, Request, Tone, Widget};
 
 use crate::dns;
 use crate::form::{self, Errors};
 use crate::model::{Dnsdhcp, Upstream, CONFIG};
 use crate::page;
 
-const SUB: &str = "Questions not answered locally go upstream — `list server`. \
-A domain-limited entry routes only that domain.";
-
 const NEW_SUB: &str = "Add a resolver this router asks when it cannot answer a name itself.";
 
 const MISSING: &str = "That server isn’t here any more, so here is the DNS page instead.";
-
-/// What an empty list means depends on one other option: with `noresolv` off,
-/// dnsmasq falls back to the resolvers the internet connection handed this
-/// router, so nothing listed is a working state; with it on, that fallback is
-/// refused and there is nowhere left to ask.
-const EMPTY_FALLBACK: &str = "No servers listed — lookups follow what the internet connection \
-suggested.";
-
-const EMPTY_NOWHERE: &str = "No servers listed, and the connection's own resolvers are ignored — \
-nothing outside this network can be looked up.";
-
-/// section renders the upstream listing that sits on the DNS page, plus the block
-/// of options that govern how they are asked. Each row opens the entry's own
-/// page; the tail adds a new one.
-pub fn section(model: &Dnsdhcp, settings: Widget) -> Widget {
-    let rows = model.upstreams.iter().map(row).collect();
-    Widget::section(
-        "Where lookups go",
-        SUB,
-        vec![
-            page::listing(
-                page::columns(&[("Server", "mono"), ("Limited to", "mono"), ("", "link")]),
-                rows,
-                match model.daemon.flag("noresolv", false) {
-                    true => EMPTY_NOWHERE,
-                    false => EMPTY_FALLBACK,
-                },
-                "New server",
-                &page::new_server_href(),
-            ),
-            settings,
-        ],
-    )
-}
-
-fn row(upstream: &Upstream) -> TableRow {
-    TableRow {
-        id: format!("server-{}", upstream.index),
-        cells: vec![
-            page::address_cell(&upstream.server),
-            page::mono_cell(&upstream.domain),
-            page::edit_link_cell(page::server_href(upstream.index)),
-        ],
-        ..TableRow::default()
-    }
-}
 
 /// blank answers a visit to the new-server page: an entry with nothing filled in.
 pub fn blank() -> Envelope {
@@ -93,13 +44,13 @@ pub fn edit(model: &Dnsdhcp, index: &str) -> Option<Envelope> {
 
 /// missing states that the sub-path names no entry — a stale link, or one someone
 /// else removed — and answers with the DNS page.
-pub fn missing(model: &Dnsdhcp) -> Envelope {
-    dns::page(model).with_notice(Tone::Danger, MISSING)
+pub fn missing(r: &Request) -> Envelope {
+    dns::page(r).with_notice(Tone::Danger, MISSING)
 }
 
 /// create answers the new-server page's submission: the entry is appended and the
 /// whole list rewritten, and the listing answers with it staged.
-pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
+pub fn create(r: &Request, model: &mut Dnsdhcp, form: &Form) -> Envelope {
     let stated = submitted(model.upstreams.len(), form);
     let errors = validate(&stated);
     if !errors.is_empty() {
@@ -107,7 +58,7 @@ pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
     }
     model.upstreams.push(stated);
     let ops = rewrite(model);
-    dns::page(model)
+    dns::page(r)
         .with_notice(Tone::Success, "Server added.")
         .with_commit(ops)
 }
@@ -115,7 +66,7 @@ pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
 /// save answers one entry's page. A delete removes it and rewrites the list;
 /// anything else is the page's own submission — refused onto the page, or saved
 /// and answered with the listing.
-pub fn save(model: &mut Dnsdhcp, index: &str, form: &Form) -> Option<Envelope> {
+pub fn save(r: &Request, model: &mut Dnsdhcp, index: &str, form: &Form) -> Option<Envelope> {
     let index = index.parse::<usize>().ok()?;
     if index >= model.upstreams.len() {
         return None;
@@ -124,7 +75,7 @@ pub fn save(model: &mut Dnsdhcp, index: &str, form: &Form) -> Option<Envelope> {
         model.upstreams.remove(index);
         let ops = rewrite(model);
         return Some(
-            dns::page(model)
+            dns::page(r)
                 .with_notice(Tone::Success, "Server deleted.")
                 .with_commit(ops),
         );
@@ -140,7 +91,7 @@ pub fn save(model: &mut Dnsdhcp, index: &str, form: &Form) -> Option<Envelope> {
     model.upstreams[index] = stated;
     let ops = rewrite(model);
     Some(
-        dns::page(model)
+        dns::page(r)
             .with_notice(Tone::Success, "Server saved.")
             .with_commit(ops),
     )
@@ -273,12 +224,8 @@ mod tests {
         serde_json::to_value(&env).expect("serialize")
     }
 
-    fn listing_rows(model: &Dnsdhcp) -> Vec<Json> {
-        let json = serde_json::to_value(section(model, Widget::text(""))).expect("serialize");
-        json["children"][0]["rows"]
-            .as_array()
-            .expect("rows")
-            .clone()
+    fn request() -> Request {
+        fixture::request("/dns")
     }
 
     fn control(env: &Json, name: &str) -> Json {
@@ -293,44 +240,9 @@ mod tests {
 
     fn saved(index: &str, body_str: &str) -> (Dnsdhcp, Json) {
         let mut model = fixture::dnsdhcp();
-        let env =
-            save(&mut model, index, &Form::parse(body_str)).expect("the fixture holds this entry");
+        let env = save(&request(), &mut model, index, &Form::parse(body_str))
+            .expect("the fixture holds this entry");
         (model, body(env))
-    }
-
-    #[test]
-    fn every_row_leads_to_its_own_page_and_the_tail_leads_to_a_new_one() {
-        let rows = listing_rows(&fixture::dnsdhcp());
-        assert_eq!(rows[0]["cells"][0]["text"], "1.1.1.1");
-        assert_eq!(
-            rows[0]["cells"][1],
-            serde_json::json!({"text": "—", "muted": true})
-        );
-        assert_eq!(rows[2]["cells"][0]["text"], "10.66.0.53");
-        assert_eq!(rows[2]["cells"][1]["text"], "corp.example.com");
-        for (index, row) in rows.iter().enumerate() {
-            assert!(row.get("drawer").is_none(), "{row}");
-            assert_eq!(
-                row["cells"][2],
-                serde_json::json!({"text": "Edit", "href": page::server_href(index)})
-            );
-        }
-    }
-
-    #[test]
-    fn an_empty_list_says_which_of_the_two_silences_it_is() {
-        let empty = |noresolv: bool| {
-            let mut model = fixture::dnsdhcp();
-            model.upstreams.clear();
-            model.daemon.set("noresolv", noresolv.then_some("1"));
-            let json = serde_json::to_value(section(&model, Widget::text(""))).expect("serialize");
-            json["children"][0]["empty_text"]
-                .as_str()
-                .unwrap_or("")
-                .to_string()
-        };
-        assert_eq!(empty(false), EMPTY_FALLBACK);
-        assert_eq!(empty(true), EMPTY_NOWHERE);
     }
 
     #[test]
@@ -363,7 +275,7 @@ mod tests {
     #[test]
     fn creating_an_entry_appends_it_and_rewrites_the_list() {
         let mut model = fixture::dnsdhcp();
-        let body = body(create(&mut model, &Form::parse("server=8.8.8.8")));
+        let body = body(create(&request(), &mut model, &Form::parse("server=8.8.8.8")));
         assert_eq!(body["title"], "DNS");
         assert_eq!(body["notice"]["text"], "Server added.");
         assert_eq!(
@@ -410,7 +322,7 @@ mod tests {
     fn deleting_the_last_entry_clears_the_list() {
         let mut model = fixture::dnsdhcp();
         model.upstreams.truncate(1);
-        let body = body(save(&mut model, "0", &Form::parse("_delete=1")).expect("entry"));
+        let body = body(save(&request(), &mut model, "0", &Form::parse("_delete=1")).expect("entry"));
         assert_eq!(
             body["commit"][0]["values"],
             serde_json::json!({"server": null})
@@ -449,7 +361,7 @@ mod tests {
     #[test]
     fn a_refused_new_entry_comes_back_on_the_new_page_carrying_what_was_typed() {
         let mut model = fixture::dnsdhcp();
-        let body = body(create(&mut model, &Form::parse("server=nowhere")));
+        let body = body(create(&request(), &mut model, &Form::parse("server=nowhere")));
         assert_eq!(body["title"], "New server");
         assert!(body.get("commit").is_none());
         assert_eq!(control(&body, "server")["value"], "nowhere");
@@ -466,6 +378,6 @@ mod tests {
             assert!(edit(&model, index).is_none(), "{index}");
         }
         let mut model = fixture::dnsdhcp();
-        assert!(save(&mut model, "9", &Form::parse("server=1.1.1.1")).is_none());
+        assert!(save(&request(), &mut model, "9", &Form::parse("server=1.1.1.1")).is_none());
     }
 }

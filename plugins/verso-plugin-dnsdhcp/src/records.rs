@@ -1,88 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The extra names this router answers, as one flat table — and a page apiece for
-//! editing one.
+//! A page apiece for editing one of the extra names this router answers.
 //!
 //! dnsmasq spells four kinds of extra name in four section types, and an A record
 //! and an AAAA record are the same type told apart by the address in it. An
 //! operator does not think in section types — they think "the name backup.lan
-//! should resolve to that box" — so the table is one listing of typed rows and
-//! each row opens the record's own page. A record is a type, a name, an answer
-//! and a couple of qualifiers, all seen at once — a page, not a panel beside the
-//! listing.
+//! should resolve to that box" — so the page asks for a type, a name, an answer
+//! and a couple of qualifiers, all seen at once.
 //!
 //! The type is the page's first control. Changing it moves the record between
 //! section types, which is a section removed and a section created; both are
 //! staged together, so the record is never briefly gone.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, Envelope, Form, Map, TableRow, Tone, Value, Widget,
+    commit, commit_delete, commit_new, json, Envelope, Form, Map, Request, Tone, Value, Widget,
 };
 
 use crate::dns;
 use crate::form::{self, Errors};
-use crate::format;
 use crate::model::{Dnsdhcp, Record, RecordKind, CONFIG};
 use crate::page;
-
-const SUB: &str = "Extra names answered locally — `config domain`, `config cname`, \
-`config srvhost`, `config mxhost`. Reserved devices already resolve; these are the names on top.";
-
-const EMPTY: &str = "No extra names yet — reserved devices already answer by name.";
 
 const NEW_SUB: &str = "Add a name this router answers, and what it answers with.";
 
 const MISSING: &str = "That record isn’t here any more, so here is the DNS page instead.";
-
-/// section renders the records listing that leads the DNS page, plus the block of
-/// options that govern how local names are answered. Each row opens the record's
-/// own page; the tail adds a new one.
-pub fn section(model: &Dnsdhcp, settings: Widget) -> Widget {
-    let rows = model.records.iter().map(row).collect();
-    Widget::section(
-        "Names on your network",
-        SUB,
-        vec![
-            page::listing(
-                page::columns(&[
-                    ("Type", "keyword"),
-                    ("Name", "mono"),
-                    ("Points to", "mono"),
-                    ("", "link"),
-                ]),
-                rows,
-                EMPTY,
-                "New record",
-                &page::new_record_href(),
-            ),
-            settings,
-        ],
-    )
-}
-
-fn row(record: &Record) -> TableRow {
-    TableRow {
-        id: record.section.clone(),
-        cells: vec![
-            page::text_cell(record.kind.label()),
-            page::mono_cell(&record.name),
-            page::mono_cell(&format::points_to(&record.target, &qualifier(record))),
-            page::edit_link_cell(page::record_href(&record.section)),
-        ],
-        ..TableRow::default()
-    }
-}
-
-/// qualifier is the number that ranks or completes a record's answer: an SRV's
-/// port, an MX's preference. The kinds without one answer with a name alone.
-fn qualifier(record: &Record) -> String {
-    match record.kind {
-        RecordKind::Srv => record.port.clone(),
-        RecordKind::Mx => record.priority.clone(),
-        _ => String::new(),
-    }
-}
 
 /// blank answers a visit to the new-record page: an A record with nothing filled
 /// in, the everyday kind an operator reaches for first.
@@ -103,14 +45,14 @@ pub fn edit(model: &Dnsdhcp, section: &str) -> Option<Envelope> {
 
 /// missing states that the sub-path names no record — a stale link, or a record
 /// someone else removed — and answers with the DNS page, which is somewhere real.
-pub fn missing(model: &Dnsdhcp) -> Envelope {
-    dns::page(model).with_notice(Tone::Danger, MISSING)
+pub fn missing(r: &Request) -> Envelope {
+    dns::page(r).with_notice(Tone::Danger, MISSING)
 }
 
 /// create answers the new-record page's submission. A record dnsmasq would not
 /// read is refused with the offending controls marked; one it would is stated as
 /// the section to add, and the listing answers with it staged.
-pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
+pub fn create(r: &Request, model: &mut Dnsdhcp, form: &Form) -> Envelope {
     let Some(kind) = RecordKind::of(&form.get("kind")) else {
         // The type is a closed choice, so a value outside it is not something
         // this page offered — the blank page, so the operator can start again.
@@ -123,7 +65,7 @@ pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
     }
     let op = commit_new(CONFIG, kind.section_type(), values(&stated, false));
     model.records.push(stated);
-    dns::page(model)
+    dns::page(r)
         .with_notice(Tone::Success, "Record added.")
         .with_commit(vec![op])
 }
@@ -132,19 +74,19 @@ pub fn create(model: &mut Dnsdhcp, form: &Form) -> Envelope {
 /// record and answers with the DNS page; anything else is the page's own
 /// submission — refused onto the page with the offending controls marked, or
 /// saved and answered with the listing.
-pub fn save(model: &mut Dnsdhcp, section: &str, form: &Form) -> Option<Envelope> {
+pub fn save(r: &Request, model: &mut Dnsdhcp, section: &str, form: &Form) -> Option<Envelope> {
     let index = model.record_index(section)?;
     if form::deletes(form) {
         let removed = model.records.remove(index);
         return Some(
-            dns::page(model)
+            dns::page(r)
                 .with_notice(Tone::Success, "Record deleted.")
                 .with_commit(vec![commit_delete(CONFIG, &removed.section)]),
         );
     }
 
     let Some(kind) = RecordKind::of(&form.get("kind")) else {
-        return Some(missing(model));
+        return Some(missing(r));
     };
     let stated = submitted(section, kind, form);
     let errors = validate(&stated);
@@ -166,7 +108,7 @@ pub fn save(model: &mut Dnsdhcp, section: &str, form: &Form) -> Option<Envelope>
     };
     model.records[index] = stated;
     Some(
-        dns::page(model)
+        dns::page(r)
             .with_notice(Tone::Success, "Record saved.")
             .with_commit(ops),
     )
@@ -208,7 +150,7 @@ fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
             ),
             Widget::disclosure(
                 "Advanced — 3 more options",
-                vec![page::form_grid(
+                vec![Widget::form_grid(
                     3,
                     vec![
                         form::text_field("port", "Port", &record.port, "SRV only.", errors),
@@ -364,15 +306,6 @@ mod tests {
         serde_json::to_value(&env).expect("serialize")
     }
 
-    fn listing_rows() -> Vec<Json> {
-        let model = fixture::dnsdhcp();
-        let json = serde_json::to_value(section(&model, Widget::text(""))).expect("serialize");
-        json["children"][0]["rows"]
-            .as_array()
-            .expect("rows")
-            .clone()
-    }
-
     fn edited(section: &str) -> Json {
         let model = fixture::dnsdhcp();
         body(edit(&model, section).expect("the fixture holds this record"))
@@ -403,55 +336,19 @@ mod tests {
 
     fn saved(section: &str, body_str: &str) -> (Dnsdhcp, Json) {
         let mut model = fixture::dnsdhcp();
-        let env = save(&mut model, section, &Form::parse(body_str))
+        let env = save(&request(), &mut model, section, &Form::parse(body_str))
             .expect("the fixture holds this record");
         (model, body(env))
     }
 
     fn created(body_str: &str) -> (Dnsdhcp, Json) {
         let mut model = fixture::dnsdhcp();
-        let env = create(&mut model, &Form::parse(body_str));
+        let env = create(&request(), &mut model, &Form::parse(body_str));
         (model, body(env))
     }
 
-    #[test]
-    fn every_row_leads_to_its_own_page_and_the_tail_leads_to_a_new_one() {
-        let rows = listing_rows();
-        let typed: Vec<(&str, &str, &str)> = rows
-            .iter()
-            .map(|row| {
-                (
-                    row["cells"][0]["text"].as_str().unwrap_or(""),
-                    row["cells"][1]["text"].as_str().unwrap_or(""),
-                    row["cells"][2]["text"].as_str().unwrap_or(""),
-                )
-            })
-            .collect();
-        assert_eq!(
-            typed,
-            vec![
-                ("A", "backup.lan", "10.0.0.31"),
-                ("AAAA", "backup.lan", "2a00:ee2:2d00:2e00::31"),
-                ("CNAME", "photos.lan", "nas.lan"),
-                ("CNAME", "cloud.lan", "nas.lan"),
-                ("SRV", "_matrix._tcp.lan", "nas.lan · 8448"),
-                ("MX", "lan", "nas.lan · 10"),
-            ]
-        );
-        // No row opens a panel; each leads to a page, and none carries a drawer.
-        for row in &rows {
-            assert!(row.get("drawer").is_none(), "{row}");
-            let last = row["cells"]
-                .as_array()
-                .expect("cells")
-                .last()
-                .expect("cell");
-            let section = row["id"].as_str().expect("id");
-            assert_eq!(
-                last,
-                &serde_json::json!({"text": "Edit", "href": page::record_href(section)})
-            );
-        }
+    fn request() -> Request {
+        fixture::request("/dns")
     }
 
     #[test]
@@ -629,13 +526,14 @@ mod tests {
 
         let mut model = fixture::dnsdhcp();
         assert!(save(
+            &request(),
             &mut model,
             "no_such_record",
             &Form::parse("kind=A&name=a.lan&target=10.0.0.1")
         )
         .is_none());
 
-        let body = body(missing(&fixture::dnsdhcp()));
+        let body = body(missing(&request()));
         assert_eq!(body["title"], "DNS");
         assert_eq!(body["notice"]["level"], "danger");
     }

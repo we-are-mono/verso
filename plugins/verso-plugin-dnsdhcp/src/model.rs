@@ -20,6 +20,8 @@ use std::collections::BTreeMap;
 
 use verso_plugin::{Section, Snapshot};
 
+use crate::format::Subnet;
+
 /// CONFIG is the uci config this plugin reads and writes.
 pub const CONFIG: &str = "dhcp";
 
@@ -95,18 +97,21 @@ impl Options {
         boolean(self.scalar(option)).unwrap_or(fallback)
     }
 
-    /// set writes a value into the model so a page can render the change it just
-    /// accepted; None clears the option, the way a `null` clears it on disk.
-    pub fn set(&mut self, option: &str, value: Option<&str>) {
-        self.lists.remove(option);
-        match value {
-            Some(value) => {
-                self.scalars.insert(option.to_string(), value.to_string());
-            }
-            None => {
-                self.scalars.remove(option);
-            }
-        }
+    /// entries is every option the section carries, scalars and lists alike, by
+    /// option name — what a preview of the whole section starts from.
+    pub fn entries(&self) -> Vec<(String, verso_plugin::Value)> {
+        let mut entries: Vec<(String, verso_plugin::Value)> = self
+            .scalars
+            .iter()
+            .map(|(option, value)| (option.clone(), verso_plugin::json!(value)))
+            .chain(
+                self.lists
+                    .iter()
+                    .map(|(option, items)| (option.clone(), verso_plugin::json!(items))),
+            )
+            .collect();
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        entries
     }
 
     /// set_list writes a list option into the model; an empty list clears it.
@@ -331,11 +336,6 @@ pub struct Dnsdhcp {
     pub networks: Vec<Options>,
     pub hosts: Vec<Options>,
     pub interfaces: Vec<Interface>,
-    /// How many `config relay` and `config boot` sections the config carries.
-    /// Both are rare enough to be stated rather than edited, and stating them
-    /// truthfully needs only the count.
-    pub relays: usize,
-    pub boots: usize,
 }
 
 impl Dnsdhcp {
@@ -361,8 +361,6 @@ impl Dnsdhcp {
                 .iter()
                 .map(Interface::read)
                 .collect(),
-            relays: snapshot.sections_of_type(CONFIG, "relay").len(),
-            boots: snapshot.sections_of_type(CONFIG, "boot").len(),
             daemon,
         }
     }
@@ -372,6 +370,33 @@ impl Dnsdhcp {
         self.interfaces
             .iter()
             .find(|interface| interface.name == name)
+    }
+
+    /// pool is the `config dhcp` section serving one network, if it has one.
+    pub fn pool(&self, network: &str) -> Option<&Options> {
+        self.networks
+            .iter()
+            .find(|pool| pool.scalar("interface") == network)
+    }
+
+    /// subnet is the address space a network commits to. An interface that
+    /// learns its address at runtime commits to none, and that is an uplink.
+    pub fn subnet(&self, network: &str) -> Option<Subnet> {
+        let interface = self.interface(network)?;
+        Subnet::read(&interface.ipaddr, &interface.netmask)
+    }
+
+    /// network_of names the network an address sits on, matched against the
+    /// interfaces' own subnets.
+    pub fn network_of(&self, ipv4: &str) -> &str {
+        self.interfaces
+            .iter()
+            .find(|interface| {
+                Subnet::read(&interface.ipaddr, &interface.netmask)
+                    .is_some_and(|subnet| subnet.holds(ipv4))
+            })
+            .map(|interface| interface.name.as_str())
+            .unwrap_or("")
     }
 
     /// host_index and record_index find one object by its uci section name. They

@@ -72,12 +72,20 @@ fn describe_section(
 
 /// subject names the object a sentence is about, by its uci section type, or None
 /// for a type the drawer has no sentence for. It names only the *items* a person
-/// lists and edits — a reservation, a DNS record — and deliberately not the pool
-/// (`dhcp`) or daemon (`dnsmasq`) sections: those are settings pages, where each
-/// option a person changes is its own change and stays on its own line. Returning
-/// None leaves each such write to its raw line, so it counts on its own.
-fn subject(typ: &str, _section: &str, sec: Option<&Section>) -> Option<String> {
+/// lists and edits in a drawer — a DHCP server, a reservation, a DNS record — and
+/// deliberately not the daemon (`dnsmasq`) section: that is a settings page,
+/// where each option a person changes is its own change and stays on its own
+/// line. Returning None leaves each such write to its raw line, so it counts on
+/// its own.
+fn subject(typ: &str, section: &str, sec: Option<&Section>) -> Option<String> {
     match typ {
+        "dhcp" => {
+            let network = sec
+                .map(|s| s.scalar("interface"))
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| section.to_string());
+            Some(format!("the DHCP server on \u{201c}{network}\u{201d}"))
+        }
         "host" => {
             let name = sec.map(|s| s.scalar("name")).unwrap_or_default();
             let ip = sec.map(|s| s.scalar("ip")).unwrap_or_default();
@@ -133,21 +141,26 @@ mod tests {
     }
 
     #[test]
-    fn pool_settings_are_not_grouped_so_each_counts() {
-        // A DHCP pool is a settings page, not an item: each option a person
-        // changes stays on its own raw line and counts on its own (the shell
-        // renders the raw uci). So the describer names none of them.
+    fn a_pool_saved_from_its_drawer_reads_as_one_change_to_its_network() {
+        // A DHCP server is an object edited in its own drawer, so a save is one
+        // thing a person did, named by the network it serves, however many of
+        // its options changed.
         let snap = snapshot(json!({
-            "dhcp": { "lan": { ".type": "dhcp", ".name": "lan", "start": "100" } }
+            "dhcp": { "cfg07": { ".type": "dhcp", ".name": "cfg07", "interface": "lan", "start": "100" } }
         }));
         let out = describe(
             &[
-                change("set", "lan", "start", "50"),
-                change("set", "lan", "leasetime", "24h"),
+                change("set", "cfg07", "start", "50"),
+                change("set", "cfg07", "leasetime", "24h"),
             ],
             &snap,
         );
-        assert!(out.is_empty());
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].plain,
+            "Edited the DHCP server on \u{201c}lan\u{201d}."
+        );
+        assert_eq!(out[0].covers, vec![0, 1]);
     }
 
     #[test]

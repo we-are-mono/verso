@@ -325,7 +325,7 @@ func (f *Field) Measure() string {
 		return "short"
 	}
 	switch f.Key {
-	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "synflood_rate", "synflood_burst", "limit_burst":
+	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "dhcpleasemax", "synflood_rate", "synflood_burst", "limit_burst":
 		return "number"
 	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime":
 		return "address"

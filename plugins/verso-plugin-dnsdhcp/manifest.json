@@ -6,8 +6,13 @@
   "nav": [
     {
       "section": "Network",
-      "label": "DNS & DHCP",
+      "label": "DHCP",
       "path": "/"
+    },
+    {
+      "section": "Network",
+      "label": "DNS",
+      "path": "/dns"
     }
   ],
   "entity_tabs": [
@@ -21,12 +26,12 @@
     {
       "entity": "device",
       "slot": "unreserve",
-      "path": "/config/reservations/{id}/delete"
+      "path": "/?open={id}"
     },
     {
       "entity": "device",
       "slot": "add",
-      "path": "/config/reservations/new"
+      "path": "/?open=new"
     }
   ],
   "acl": {

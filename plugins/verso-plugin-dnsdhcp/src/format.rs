@@ -50,17 +50,24 @@ impl Subnet {
         })
     }
 
-    /// cidr states the network the way an operator writes it.
-    pub fn cidr(&self) -> String {
-        format!("{}/{}", address_label(self.network), self.prefix)
-    }
-
     /// holds reports whether an address sits on this network — how a lease finds
     /// the pool it came from.
     pub fn holds(&self, addr: &str) -> bool {
         octets(addr.trim())
             .map(|octets| u32::from_be_bytes(octets) & mask_of(self.prefix) == self.network)
             .unwrap_or(false)
+    }
+
+    /// fits reports whether a pool's offsets name a span wholly inside this
+    /// network that leaves the router's own address out of it — the range an
+    /// operator meant, rather than one dnsmasq would quietly clip.
+    pub fn fits(&self, start: u32, limit: u32) -> bool {
+        let hostmask = !mask_of(self.prefix);
+        let router = self.address & hostmask;
+        start > 0
+            && limit > 0
+            && start.checked_add(limit).is_some_and(|end| end <= hostmask)
+            && !(start <= router && router < start + limit)
     }
 
     /// range is the span of addresses this pool hands out, computed the way
@@ -163,26 +170,6 @@ pub fn device_name(hostname: &str, mac: &str) -> String {
     }
 }
 
-/// devices_label counts what is on a network right now, in words rather than in
-/// a bare number — a card's meta line is read, not scanned.
-pub fn devices_label(count: usize) -> String {
-    match count {
-        0 => "nobody right now".to_string(),
-        1 => "1 device right now".to_string(),
-        count => format!("{count} devices right now"),
-    }
-}
-
-/// points_to is what a record answers with, as one line: the address or name it
-/// resolves to, and the number that qualifies it where the kind has one.
-pub fn points_to(target: &str, qualifier: &str) -> String {
-    match (target.is_empty(), qualifier.is_empty()) {
-        (true, _) => EM_DASH.to_string(),
-        (false, true) => target.to_string(),
-        (false, false) => format!("{target} · {qualifier}"),
-    }
-}
-
 fn address_label(value: u32) -> String {
     let octets = value.to_be_bytes();
     format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
@@ -217,9 +204,9 @@ mod tests {
 
     #[test]
     fn a_subnet_is_derived_only_where_the_config_states_one() {
-        assert_eq!(subnet("10.0.0.1", "255.255.255.0").cidr(), "10.0.0.0/24");
-        assert_eq!(subnet("192.168.77.1/24", "").cidr(), "192.168.77.0/24");
-        assert_eq!(subnet("172.20.0.10", "255.255.0.0").cidr(), "172.20.0.0/16");
+        assert!(subnet("10.0.0.1", "255.255.255.0").holds("10.0.0.254"));
+        assert!(subnet("192.168.77.1/24", "").holds("192.168.77.9"));
+        assert!(subnet("172.20.0.10", "255.255.0.0").holds("172.20.9.9"));
         // An uplink that learns its address states nothing to derive.
         assert!(Subnet::read("", "").is_none());
         assert!(Subnet::read("10.0.0.1", "").is_none());
@@ -309,16 +296,15 @@ mod tests {
     }
 
     #[test]
-    fn a_count_reads_as_words() {
-        assert_eq!(devices_label(0), "nobody right now");
-        assert_eq!(devices_label(1), "1 device right now");
-        assert_eq!(devices_label(4), "4 devices right now");
-    }
-
-    #[test]
-    fn a_record_states_what_qualifies_its_answer() {
-        assert_eq!(points_to("nas.lan", "8448"), "nas.lan · 8448");
-        assert_eq!(points_to("10.0.0.31", ""), "10.0.0.31");
-        assert_eq!(points_to("", "8448"), EM_DASH);
+    fn a_range_fits_when_it_is_inside_the_network_and_leaves_the_router_out() {
+        let lan = subnet("10.0.0.1", "255.255.255.0");
+        assert!(lan.fits(100, 150));
+        assert!(lan.fits(2, 253));
+        // Past the broadcast address, over the router, or empty.
+        assert!(!lan.fits(100, 200));
+        assert!(!lan.fits(1, 10));
+        assert!(!lan.fits(0, 10));
+        assert!(!lan.fits(100, 0));
+        assert!(!lan.fits(u32::MAX, u32::MAX));
     }
 }

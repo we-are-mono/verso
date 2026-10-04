@@ -407,7 +407,7 @@ fn details(
         let edit = (several && m.network(net).is_some())
             .then(|| act("Edit network", &url(net, "", "edit")));
         out.push(part(mark, "Network", net, body, edit));
-        if let Some(server) = dhcp_part(m, net) {
+        if let Some(server) = dhcp_part(m, net, true) {
             out.push(server);
         }
     }
@@ -475,8 +475,9 @@ fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> V
 }
 // dhcp_part is a network's DHCP server: how it stands and, while it serves,
 // what it hands out. A disabled server says so once; configuring it is still
-// where it is turned on.
-fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
+// where it is turned on — the server's drawer on the DHCP page, opened over the
+// listing (`over`) or reached by its address from inside another drawer.
+pub fn dhcp_part(m: &Model, net: &str, over: bool) -> Option<Widget> {
     let server = m.dhcp_servers.iter().find(|s| s.network == net);
     if server.is_none() && m.dhcp(net).is_none() {
         return None;
@@ -512,7 +513,13 @@ fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
         "DHCP server",
         net,
         vec![facts(read)],
-        server.map(|s| act("Configure DHCP", &s.href())),
+        server.map(|s| {
+            let mut link = act("Configure DHCP", &s.href());
+            if let Widget::Link { panel, .. } = &mut link {
+                *panel = over;
+            }
+            link
+        }),
     ))
 }
 // pool is the addresses a server hands out, as the stretch from its first to

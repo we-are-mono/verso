@@ -39,3 +39,13 @@ pub fn ubus() -> Ubus {
 pub fn leases() -> Leases {
     Leases::read(&ubus())
 }
+
+/// request is a visit to one path of this router's pages.
+pub fn request(path: &str) -> verso_plugin::Request {
+    verso_plugin::Request {
+        path: path.into(),
+        query: verso_plugin::Form::default(),
+        snapshot: snapshot(),
+        ubus: ubus(),
+    }
+}

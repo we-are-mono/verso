@@ -4,15 +4,14 @@
 //! The live lease table, as the shell brokers it.
 //!
 //! Config says which addresses may be handed out; only this says which ones are.
-//! It is the whole of the Leases face, the "online" state of a reservation, and
-//! the count on each network's card — and it is a read this plugin cannot make
-//! itself (ADR-007), so its absence is a page without live state rather than an
-//! error: no leases read is the same to every caller here as no leases held.
+//! It is the Leases listing and the count on each server's row — and it is a
+//! read this plugin cannot make itself (ADR-007), so its absence is a page
+//! without live state rather than an error: no leases read is the same to every
+//! caller here as no leases held.
 
 use verso_plugin::{Ubus, Value};
 
 use crate::format::Subnet;
-use crate::model::same_mac;
 
 /// FUNCTION is the brokered read this plugin declares in its manifest.
 pub const FUNCTION: &str = "dhcpLeases";
@@ -22,7 +21,6 @@ pub struct Lease {
     pub hostname: String,
     pub mac: String,
     pub ipv4: String,
-    pub ipv6s: Vec<String>,
     pub expires_at: i64,
 }
 
@@ -63,12 +61,6 @@ impl Leases {
         self.read
     }
 
-    /// holder is the lease a MAC holds right now, which is what makes a
-    /// reservation "online".
-    pub fn holder(&self, mac: &str) -> Option<&Lease> {
-        self.entries.iter().find(|lease| same_mac(&lease.mac, mac))
-    }
-
     /// on counts the devices holding an address on one network.
     pub fn on(&self, subnet: &Subnet) -> usize {
         self.entries
@@ -91,16 +83,6 @@ impl Lease {
             hostname: text("hostname"),
             mac: text("mac"),
             ipv4: text("ipv4"),
-            ipv6s: value
-                .get("ipv6s")
-                .and_then(Value::as_array)
-                .map(|addrs| {
-                    addrs
-                        .iter()
-                        .filter_map(|addr| addr.as_str().map(String::from))
-                        .collect()
-                })
-                .unwrap_or_default(),
             expires_at: value
                 .get("expires_at")
                 .and_then(Value::as_i64)
@@ -124,13 +106,7 @@ mod tests {
             .map(|lease| lease.hostname.as_str())
             .collect();
         assert_eq!(names, vec!["toms-iphone", "", "nas", "guest-tablet"]);
-
-        let nas = leases
-            .holder("30:9C:23:5E:88:01")
-            .expect("nas holds a lease");
-        assert_eq!(nas.ipv4, "10.0.0.30");
-        assert_eq!(nas.ipv6s, vec!["2a00:ee2:2d00:2e00::30".to_string()]);
-        assert!(leases.holder("b0:02:47:aa:c3:19").is_none());
+        assert_eq!(leases.all()[2].ipv4, "10.0.0.30");
     }
 
     #[test]
@@ -147,7 +123,6 @@ mod tests {
         let leases = Leases::read(&Ubus::from_value(Value::Null));
         assert!(!leases.known());
         assert!(leases.all().is_empty());
-        assert!(leases.holder("30:9c:23:5e:88:01").is_none());
 
         // A read that answered with nothing is an answer.
         let empty = Leases::read(&Ubus::from_value(

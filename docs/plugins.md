@@ -163,7 +163,7 @@ plugin simply has no limits tab, with no shell change anywhere.
   { "entity": "device", "slot": "shape", "label": "Limits", "summaries": true }
 ],
 "entity_acts": [
-  { "entity": "device", "slot": "unreserve", "path": "/config/reservations/{id}/delete" }
+  { "entity": "device", "slot": "unreserve", "path": "/?open={id}" }
 ]
 ```
 
@@ -300,7 +300,7 @@ request path like any HTTP server. You may likewise serve several contribution p
 
 The query string never selects the page — it addresses something *within* the page
 the path named, so a link from elsewhere in the shell can arrive with a row already
-open (`/plugins/dnsdhcp/?reserve=<mac>` opens that device's panel). Read it beside
+open (`/plugins/dnsdhcp/?open=<mac>` opens that device's reservation). Read it beside
 the path (`request.query`), and let a value that names nothing you have change
 nothing: a link written for a device that has since left must still render the page.
 
@@ -892,7 +892,7 @@ supplies the outer top inset instead of stacking two layers of padding.
 
 Set `open:true` to render the panel already open — how a link from elsewhere in
 the shell arrives with the row's panel already in front of the operator
-(`/plugins/dnsdhcp/?reserve=<mac>` opens that device's panel).
+(`/plugins/dnsdhcp/?open=lan` opens lan's DHCP server).
 
 ```json
 { "id": "lease-iphone", "cells": [ /* … */ ],
@@ -1552,16 +1552,26 @@ dnsmasq's; each lists only its own family.
 A page lists and edits its family with the SDK's `verso_plugin::files::FileSet`:
 the Files band with its count and New file, a row per file (folder, name, lines
 that set something, the pen that opens its editor), and an editor drawer whose
-save is the `config-file-stage` command. DNS & DHCP and Firewall declare only
+save is the `config-file-stage` command. DNS and Firewall declare only
 their folder, suffix and words, so the two listings cannot drift apart.
 
-### DNS settings and custom option files
+### DHCP and DNS pages, and custom option files
 
-The DNS/DHCP plugin serves one settings page at `/plugins/dnsdhcp/`. Interface
-DHCP pools are edited by the Interfaces plugin; reservations remain device
-contributions. `dhcp` sections of type `verso_defaults` hold the reservation-only
-default for new networks and the ordinary upstreams retained while encryption is
-selected. Existing pools are never rewritten by that default.
+The DNS/DHCP plugin serves two pages under Network, both over `/etc/config/dhcp`.
+**DHCP** (`/plugins/dnsdhcp/`, also where any other sub-path lands) lists the
+servers (one per network's `config dhcp`, each edited in its drawer: pool, lease
+time, what devices are told, IPv6 announcement), the reservations (`config host`,
+each in its drawer; New opens it blank, a lease's Reserve opens it filled from
+the lease, and the device panel's Reserved address tab is the same form), the
+live leases, and the `config dnsmasq` options about DHCP, edited on the page.
+`?open=` names the open drawer: a network, a reservation's section or its
+device's MAC, or `new` (with `reserve=<mac>` to fill it from a lease). **DNS**
+(`/plugins/dnsdhcp/dns`) is the resolver's settings form; its record and
+upstream editors live under `dns/records/` and `dns/servers/`, its custom option
+files under `dns/files/`. The Interfaces plugin creates a default server with a
+new network and renames it with the network; editing it is the DHCP page's.
+`dhcp` sections of type `verso_defaults` hold the ordinary upstreams retained
+while encryption is selected.
 
 The shell brokers `verso.dnsState` for installed DNS capabilities and custom file
 contents. The `config-file-stage` command takes `path`, `expected` (the version
@@ -1586,10 +1596,11 @@ fields, `path`/`count` table columns, and `form` drawers keep their rendering in
 Tailwind templates owned by the shell.
 
 
-DHCP service visibility is shared by the Interfaces and DNS & DHCP plugins via
+DHCP service visibility is shared by the Interfaces and DNS/DHCP plugins via
 `verso_plugin::dhcp`. The SDK merges applied observations with each plugin's
-staged snapshot, labels pending enable/disable changes explicitly, and provides
-links to `/plugins/interfaces/edit?network=…#dhcp-server`. The interface identity
+staged snapshot, labels pending enable/disable changes explicitly, and links each
+server to its drawer on the DHCP page (`/plugins/dnsdhcp/?open=<network>`),
+which the interface listing opens over itself. The interface identity
 carries one DHCP chip per configured network: success, warning or danger, with a
 neutral disabled state. The DHCP broker obtains protected include directives through a bounded helper read; handwritten exclusions are included in its service assessment. Chip `title` is localized independently of its verbatim
 identity label. Expanded network facts show the observed pool, lease duration and

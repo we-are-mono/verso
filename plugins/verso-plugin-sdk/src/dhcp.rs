@@ -16,6 +16,8 @@ pub struct Server {
     pub configured: bool,
 }
 impl Server {
+    /// href is where this server is edited: its row on the DHCP page, with its
+    /// drawer open.
     pub fn href(&self) -> String {
         let network: String = self
             .network
@@ -28,7 +30,7 @@ impl Server {
                 }
             })
             .collect();
-        format!("/plugins/interfaces/edit?network={network}#dhcp-server")
+        format!("/plugins/dnsdhcp/?open={network}")
     }
     pub fn tone(&self) -> &'static str {
         match self.state.as_str() {
@@ -40,10 +42,10 @@ impl Server {
     }
     pub fn label(&self) -> &'static str {
         match self.state.as_str() {
-            "running" => "Running",
+            "running" => "Serving",
             "stopped" if self.reason == "failed" => "Failed",
             "stopped" => "Stopped",
-            "disabled" => "Disabled",
+            "disabled" => "Off",
             _ => match self.reason.as_str() {
                 "interface-down" => "Interface down",
                 "interface-unavailable" => "Interface unavailable",
@@ -59,10 +61,10 @@ impl Server {
     }
     pub fn title(&self) -> &'static str {
         match self.label() {
-            "Running" => "DHCP server is running.",
+            "Serving" => "DHCP server is running.",
             "Failed" => "DHCP server failed. Check System → Logs.",
             "Stopped" => "DHCP server is enabled but stopped.",
-            "Disabled" => "DHCP server is disabled on this network.",
+            "Off" => "DHCP server is disabled on this network.",
             "Interface down" => "DHCP cannot serve clients while this interface is down.",
             "Interface unavailable" => {
                 "DHCP cannot serve clients because this interface is unavailable."
@@ -194,10 +196,8 @@ mod tests {
         let running = servers(&snapshot("0"), &live);
         assert_eq!(running[0].tone(), "success");
         assert_eq!(running[0].leases, Some(0));
-        assert_eq!(
-            running[0].href(),
-            "/plugins/interfaces/edit?network=lan#dhcp-server"
-        );
+        assert_eq!(running[0].label(), "Serving");
+        assert_eq!(running[0].href(), "/plugins/dnsdhcp/?open=lan");
         assert_eq!(servers(&snapshot("1"), &live)[0].label(), "Pending disable");
     }
 }

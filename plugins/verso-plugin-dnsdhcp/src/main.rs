@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! DNS settings, with device reservation contributions and legacy editor URLs.
-//! Reads and mutations are brokered by the shell; the plugin has no privileges.
+//! DNS and DHCP: two pages over one config file, one daemon and one ACL, plus
+//! the reservation tab of the shell's device panel. Reads and mutations are
+//! brokered by the shell; the plugin has no privileges.
 
 use verso_plugin::{serve_described, Envelope, Form, Request};
 
-mod config;
 mod describe;
+mod dhcp;
 mod dns;
 mod files;
 mod form;
@@ -16,11 +17,8 @@ mod hosts;
 mod leases;
 mod live;
 mod model;
-mod options;
 mod page;
 mod records;
-mod servers;
-mod settings;
 mod upstreams;
 
 #[cfg(test)]
@@ -34,109 +32,56 @@ fn main() {
 }
 
 fn get(request: &Request) -> Envelope {
-    if request.path.trim_matches('/').starts_with("files/") {
-        return files::get(request);
-    }
-    if matches!(
-        request.path.trim_matches('/'),
-        "" | "config" | "dns" | "leases"
-    ) {
-        return settings::page(request);
-    }
     let model = Dnsdhcp::read(&request.snapshot);
-    let leases = Leases::read(&request.ubus);
-    let answer = match Route::of(&request.path) {
-        Route::Dns => dns::page(&model),
-        Route::Config => config::page(&model, &leases),
-        Route::Leases => leases::page(&model, &leases),
+    match Route::of(&request.path) {
+        Route::Dhcp => dhcp::get(request),
+        Route::Dns => dns::page(request),
+        Route::Files => files::get(request),
         Route::NewRecord => records::blank(),
         Route::EditRecord(section) => {
-            records::edit(&model, &section).unwrap_or_else(|| records::missing(&model))
+            records::edit(&model, &section).unwrap_or_else(|| records::missing(request))
         }
         Route::NewServer => upstreams::blank(),
         Route::EditServer(index) => {
-            upstreams::edit(&model, &index).unwrap_or_else(|| upstreams::missing(&model))
+            upstreams::edit(&model, &index).unwrap_or_else(|| upstreams::missing(request))
         }
-        Route::NewReservation => hosts::blank(&leases, &request.query),
-        Route::EntityDevice(mac) => hosts::entity_tab(&model, &leases, &mac),
-        Route::EditReservation(section) => {
-            hosts::edit(&model, &section).unwrap_or_else(|| hosts::missing(&model, &leases))
+        Route::EntityDevice(mac) => {
+            hosts::entity_tab(&model, &Leases::read(&request.ubus), &mac)
         }
-    };
-    current_page(request, answer)
+    }
 }
 
 fn post(request: &Request, form: &Form) -> Envelope {
-    if request.path.trim_matches('/').starts_with("files/") {
-        return files::post(request, form);
-    }
-    if matches!(
-        request.path.trim_matches('/'),
-        "" | "config" | "dns" | "leases"
-    ) {
-        return settings::post(request, form);
-    }
     let mut model = Dnsdhcp::read(&request.snapshot);
-    let leases = Leases::read(&request.ubus);
-    let answer =
-        match Route::of(&request.path) {
-            Route::Dns => dns::post(&mut model, form),
-            Route::Config => config::post(&mut model, &leases, form),
-            Route::Leases => leases::post(&model, &leases),
-            Route::NewRecord => records::create(&mut model, form),
-            Route::EditRecord(section) => records::save(&mut model, &section, form)
-                .unwrap_or_else(|| records::missing(&model)),
-            Route::NewServer => upstreams::create(&mut model, form),
-            Route::EditServer(index) => upstreams::save(&mut model, &index, form)
-                .unwrap_or_else(|| upstreams::missing(&model)),
-            Route::NewReservation => hosts::create(&mut model, &leases, form),
-            Route::EditReservation(section) => hosts::save(&mut model, &leases, &section, form)
-                .unwrap_or_else(|| hosts::missing(&model, &leases)),
-            // A submitted tab saves into the reservation the device already has, or
-            // creates the one it does not — the same form either way, so the panel
-            // never asks which it is.
-            Route::EntityDevice(mac) => match hosts::entity_section(&model, &mac) {
-                Some(section) => hosts::save(&mut model, &leases, &section, form)
-                    .unwrap_or_else(|| hosts::missing(&model, &leases)),
-                None => hosts::create(&mut model, &leases, form),
-            },
-        };
-    current_page(request, answer)
-}
-
-// Existing deep links remain usable; every completed edit returns to the new
-// settings page, while reservations return to the Devices page that owns them.
-fn current_page(request: &Request, mut answer: Envelope) -> Envelope {
-    if matches!(answer.title.as_str(), "DNS" | "DHCP") {
-        let mut current = settings::page(request);
-        current.commit = answer.commit;
-        current.notice = answer.notice;
-        if request.path.contains("reservations/") {
-            current = current.with_back("Devices", "/devices");
+    match Route::of(&request.path) {
+        Route::Dhcp => dhcp::post(request, form),
+        Route::Dns => dns::post(request, form),
+        Route::Files => files::post(request, form),
+        Route::NewRecord => records::create(request, &mut model, form),
+        Route::EditRecord(section) => records::save(request, &mut model, &section, form)
+            .unwrap_or_else(|| records::missing(request)),
+        Route::NewServer => upstreams::create(request, &mut model, form),
+        Route::EditServer(index) => upstreams::save(request, &mut model, &index, form)
+            .unwrap_or_else(|| upstreams::missing(request)),
+        Route::EntityDevice(mac) => {
+            hosts::entity_save(&model, &Leases::read(&request.ubus), &mac, form)
         }
-        return current;
     }
-    if request.path.contains("reservations/") {
-        answer = answer.with_back("Devices", "/devices");
-    }
-    answer
 }
 
-/// Route is what a request's sub-path asks for: one of the three pages, or one of
-/// the three editors below two of them. A sub-path this plugin does not publish
-/// answers with the page it leads with, so a stale link lands somewhere real; an
-/// editor's own root (`dns/records` with no section) is the listing it belongs
-/// to, and a sub-path naming no object there is that editor's to answer.
+/// Route is what a request's sub-path asks for: one of the two pages, a DNS
+/// object's own page, a custom options file, or the device panel's tab. A
+/// sub-path this plugin does not publish answers with the DHCP page, so a stale
+/// link lands somewhere real; an editor's own root (`dns/records` with no
+/// section) is the DNS page it belongs to.
 enum Route {
-    Leases,
-    Config,
+    Dhcp,
     Dns,
+    Files,
     NewRecord,
     EditRecord(String),
     NewServer,
     EditServer(String),
-    NewReservation,
-    EditReservation(String),
     /// This plugin's say about one device, for the shell's device panel. It
     /// answers with a tab, not a page: the panel around it is the shell's, and
     /// the other tabs in it belong to plugins this one knows nothing about.
@@ -146,6 +91,9 @@ enum Route {
 impl Route {
     fn of(path: &str) -> Route {
         let path = path.trim_matches('/');
+        if path.starts_with(files::PREFIX) {
+            return Route::Files;
+        }
         if let Some(rest) = sub_path(path, page::RECORDS) {
             return match rest {
                 "" => Route::Dns,
@@ -160,20 +108,12 @@ impl Route {
                 index => Route::EditServer(index.to_string()),
             };
         }
-        if let Some(rest) = sub_path(path, page::RESERVATIONS) {
-            return match rest {
-                "" => Route::Config,
-                page::NEW => Route::NewReservation,
-                section => Route::EditReservation(section.to_string()),
-            };
-        }
         if let Some(mac) = path.strip_prefix("entity/device/") {
             return Route::EntityDevice(mac.to_string());
         }
         match path {
             page::DNS => Route::Dns,
-            page::CONFIG => Route::Config,
-            _ => Route::Leases,
+            _ => Route::Dhcp,
         }
     }
 }
@@ -196,131 +136,61 @@ mod tests {
     use serde_json::Value;
     use verso_plugin::{Snapshot, Ubus};
 
-    fn request(path: &str) -> Request {
-        Request {
-            path: path.into(),
-            query: Form::default(),
-            snapshot: fixture::snapshot(),
-            ubus: fixture::ubus(),
-        }
-    }
-
     fn read(path: &str) -> Value {
-        serde_json::to_value(get(&request(path))).expect("serialize")
-    }
-
-    fn answer(path: &str, body: &str) -> Value {
-        serde_json::to_value(post(&request(path), &Form::parse(body))).expect("serialize")
+        serde_json::to_value(get(&fixture::request(path))).expect("serialize")
     }
 
     #[test]
-    fn every_former_listing_lands_on_the_single_settings_page() {
-        for path in ["/", "/dns", "/config", "/leases", "/nowhere", "/config/lan"] {
-            let body = read(path);
-            assert_eq!(body["title"], "DNS & DHCP");
-            assert!(body.get("pages").is_none());
-            assert_eq!(body["widget"]["children"][0]["submit"], "Save settings");
-        }
-    }
-
-    // An editor is one form, so it keeps the form's measure: its fields, its
-    // Advanced disclosure and the rule its Save stands under all end at 640px,
-    // rather than the disclosure and the rule running a wider column the
-    // fields never reach.
-    #[test]
-    fn every_editor_keeps_the_forms_measure() {
-        for path in [
-            "/dns/records/new",
-            "/dns/records/domain_backup_v4",
-            "/dns/servers/new",
-            "/dns/servers/0",
-            "/config/reservations/new",
-            "/config/reservations/host_nas",
-        ] {
-            assert_eq!(read(path)["width"], "form", "{path}");
+    fn the_two_pages_have_two_addresses_and_every_other_lands_on_dhcp() {
+        assert_eq!(read("/")["title"], "DHCP");
+        assert_eq!(read("/dns")["title"], "DNS");
+        for stale in ["/config", "/leases", "/dhcp", "/nowhere", "/config/reservations/new"] {
+            assert_eq!(read(stale)["title"], "DHCP", "{stale}");
         }
     }
 
     #[test]
-    fn each_editor_sub_path_opens_its_own_page() {
+    fn each_dns_editor_keeps_its_own_page_and_its_root_is_the_dns_page() {
         for (path, title) in [
             ("/dns/records/new", "New record"),
             ("/dns/records/domain_backup_v4", "Edit record"),
             ("/dns/servers/new", "New server"),
             ("/dns/servers/0", "Edit server"),
-            ("/config/reservations/new", "New reservation"),
-            ("/config/reservations/host_nas", "Edit reservation"),
-        ] {
-            assert_eq!(read(path)["title"], title, "{path}");
-        }
-
-        // An editor's own root is the listing it belongs to.
-        assert_eq!(read("/dns/records")["title"], "DNS & DHCP");
-        assert_eq!(read("/dns/servers")["title"], "DNS & DHCP");
-        assert_eq!(read("/config/reservations")["title"], "DNS & DHCP");
-    }
-
-    #[test]
-    fn a_stale_editor_sub_path_lands_on_the_listing_it_belongs_to() {
-        for (path, title) in [
-            ("/dns/records/no_such_record", "DNS & DHCP"),
-            ("/dns/servers/9", "DNS & DHCP"),
-            ("/config/reservations/no_such_host", "DNS & DHCP"),
         ] {
             let body = read(path);
             assert_eq!(body["title"], title, "{path}");
-            assert_eq!(body["notice"]["level"], "danger", "{path}");
-            assert!(body.get("commit").is_none(), "{path}");
+            assert_eq!(body["width"], "form", "{path}");
         }
+        assert_eq!(read("/dns/records")["title"], "DNS");
+        assert_eq!(read("/dns/servers")["title"], "DNS");
+        // A stale editor address lands on the DNS page and says why.
+        let stale = read("/dns/records/no_such_record");
+        assert_eq!(stale["title"], "DNS");
+        assert_eq!(stale["notice"]["level"], "danger");
     }
 
     #[test]
-    fn a_read_without_brokered_leases_still_renders_every_page() {
-        for path in ["/", "/config", "/dns"] {
-            let request = Request {
-                path: path.into(),
-                query: Form::default(),
-                snapshot: fixture::snapshot(),
-                ubus: Ubus::from_value(Value::Null),
-            };
+    fn the_device_panel_asks_for_its_tab() {
+        assert_eq!(read("/entity/device/30:9C:23:5E:88:01")["title"], "Reserved address");
+    }
+
+    #[test]
+    fn a_read_without_brokered_leases_still_renders_both_pages() {
+        for path in ["/", "/dns"] {
+            let mut request = fixture::request(path);
+            request.ubus = Ubus::from_value(Value::Null);
             let body = serde_json::to_value(get(&request)).expect("serialize");
             assert_eq!(body["schema_version"], 1, "{path}");
         }
     }
 
     #[test]
-    fn an_editor_submission_is_answered_by_its_own_route() {
-        // A record posts to its own page, which answers with the DNS listing.
-        let record = answer(
-            "/dns/records/cname_photos",
-            "kind=CNAME&name=photos.lan&target=nas.lan",
-        );
-        assert_eq!(record["title"], "DNS & DHCP");
-        assert_eq!(record["notice"]["level"], "success");
-        assert_eq!(record["commit"][0]["section"], "cname_photos");
-
-        // A reservation posts to its own page, which answers with the DHCP
-        // configuration.
-        let reservation = answer(
-            "/config/reservations/new",
-            "name=iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142",
-        );
-        assert_eq!(reservation["title"], "DNS & DHCP");
-        assert_eq!(reservation["notice"]["text"], "Address reserved.");
-        assert_eq!(reservation["commit"][0]["type"], "host");
-    }
-
-    #[test]
-    fn an_empty_config_still_answers_every_page() {
-        let request = Request {
-            path: page::CONFIG.into(),
-            query: Form::default(),
-            snapshot: Snapshot::from_value(serde_json::json!({"dhcp": {}, "network": {}})),
-            ubus: fixture::ubus(),
-        };
-        let body = serde_json::to_value(get(&request)).expect("serialize");
-        assert_eq!(body["title"], "DNS & DHCP");
-        let body = serde_json::to_value(post(&request, &Form::parse("logdhcp=1"))).unwrap();
-        assert!(body.get("commit").is_none());
+    fn an_empty_config_still_answers_both_pages() {
+        for path in ["/", "/dns"] {
+            let mut request = fixture::request(path);
+            request.snapshot =
+                Snapshot::from_value(serde_json::json!({"dhcp": {}, "network": {}}));
+            assert_eq!(get(&request).schema_version, 1, "{path}");
+        }
     }
 }
