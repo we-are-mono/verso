@@ -73,22 +73,6 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 	}
 }
 
-// chevronPath is the chevron-right icon's path data — the icon renders as
-// inline SVG, so its name never appears in output.
-const chevronPath = "m9 18 6-6-6-6"
-
-// TestRowChevronIsOptIn: a plain informational row carries no "this opens"
-// cue; a trigger row asks for it explicitly.
-func TestRowChevronIsOptIn(t *testing.T) {
-	r := newRenderer(t)
-	if got := render(t, r, &Row{Title: "plain"}); strings.Contains(got, chevronPath) {
-		t.Errorf("plain row must not render a chevron:\n%s", got)
-	}
-	if got := render(t, r, &Row{Title: "opens", Chevron: true}); !strings.Contains(got, chevronPath) {
-		t.Errorf("trigger row missing its chevron:\n%s", got)
-	}
-}
-
 // TestRenderOpenPanelWithToken: a request that is not asking for a page gets the
 // open panel's contents and nothing around them — the frame is already on screen
 // and only what it holds is being replaced. A tree with no open panel reports so

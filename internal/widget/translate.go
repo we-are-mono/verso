@@ -172,8 +172,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.Markdown = t(n.Markdown)
 	case *Repeater:
 		n.AddLabel = t(n.AddLabel)
-	case *Row:
-		n.Title = t(n.Title)
 	case *Section:
 		n.Title = t(n.Title)
 		n.Sub = t(n.Sub)

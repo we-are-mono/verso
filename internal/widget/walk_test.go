@@ -70,8 +70,6 @@ func TestWalkReachesAttachedWidgets(t *testing.T) {
 			func(w Widget) bool { _, ok := w.(*Switch); return ok }, 1},
 		{"callout link", &Callout{Link: &Link{Label: "More"}},
 			func(w Widget) bool { _, ok := w.(*Link); return ok }, 1},
-		{"row status", &Row{Status: &Badge{Text: "up"}},
-			func(w Widget) bool { _, ok := w.(*Badge); return ok }, 1},
 		{"property status", &Properties{Items: []Property{{Status: &Badge{Text: "up"}}}},
 			func(w Widget) bool { _, ok := w.(*Badge); return ok }, 1},
 		{"settings pills", &Settings{
