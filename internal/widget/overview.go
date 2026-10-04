@@ -217,9 +217,6 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
 	chart := &Chart{
-		Size:      "panel",
-		Notebook:  true,
-		Axis:      true,
 		Unit:      "Mbit/s",
 		AxisStart: "60 s ago",
 		AxisEnd:   "now",

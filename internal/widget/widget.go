@@ -244,12 +244,6 @@ func Decode(data []byte) (Widget, error) {
 			return nil, fmt.Errorf("widget: decode ports: %w", err)
 		}
 		return &p, nil
-	case "chart":
-		var c Chart
-		if err := json.Unmarshal(data, &c); err != nil {
-			return nil, fmt.Errorf("widget: decode chart: %w", err)
-		}
-		return &c, nil
 	case "settings":
 		var s Settings
 		if err := json.Unmarshal(data, &s); err != nil {

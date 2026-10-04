@@ -1,58 +1,26 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* chart: a generic time-series plot, drawn server-side to static SVG from the
-     supplied values. Powers both the hero throughput graph (size "full": faint value
-     gridlines, an endpoint dot, and an optional status/rates readout) and the per-port
-     sparklines (size "spark": bare). Colours live in the .verso-chart-* classes
-     (input.css), never in SVG presentation attributes — var() resolves in CSS properties
-     but not inside SVG attrs. Geometry (viewBox, d, cx/cy) stays here.
+{{/* chart: the overview's traffic plot, drawn server-side to static SVG edge to
+     edge on the notebook grid. Colours live in the .verso-chart-* classes
+     (input.css), never in SVG presentation attributes — var() resolves in CSS
+     properties but not inside SVG attrs. Geometry (viewBox, d) stays here.
 
      Axis labels are HTML overlaid on the plot, not SVG <text>: text inside a viewBox
-     scales with the graph, so a nominal 11px renders far bigger on a wide plot. The HTML
-     spans render at a true, fixed size. This SVG is the first paint; the live layer
-     hydrates the same series without touching the schema. */}}
-{{define "verso-chart-svg"}}<svg class="verso-chart {{.Class}} block {{if .Notebook}}h-60! w-full overflow-hidden{{else}}{{if .Stretch}}w-full{{else}}h-auto w-full{{end}} overflow-visible{{end}}" viewBox="0 0 {{.W}} {{.H}}"{{if .Stretch}} preserveAspectRatio="none"{{end}} role="img" aria-label="{{.Label}}"{{if .Notebook}} data-chart-padding="0"{{end}}{{if .Name}} data-verso-chart="{{.Name}}"{{end}}>
-  {{if not .Notebook}}{{if .GridYs}}<g class="verso-chart-grid">{{range .GridYs}}<line x1="0" y1="{{.}}" x2="{{$.W}}" y2="{{.}}"/>{{end}}</g>{{end}}
-  {{if .Baseline}}<line class="verso-chart-baseline" x1="0" y1="{{.Baseline}}" x2="{{.W}}" y2="{{.Baseline}}" vector-effect="non-scaling-stroke"/>{{end}}{{end}}
-  {{range .Series}}
-  <g class="verso-chart-series verso-chart--{{.RoleClass}}" data-verso-chart-role="{{.Role}}">
-    {{if .Area}}
-    <defs><linearGradient id="{{.GradID}}" x1="0" y1="0" x2="0" y2="1"><stop class="verso-chart-fill-0" offset="0"/><stop class="verso-chart-fill-1" offset="1"/></linearGradient></defs>
-    <path class="verso-chart-area" fill="url(#{{.GradID}})" d="{{.Area}}"/>
-    {{end}}
-    <path class="verso-chart-line{{if $.Notebook}} {{if eq .Role "violet"}}stroke-[1.5]!{{else}}stroke-2!{{end}}{{end}}" d="{{.Line}}"{{if $.Notebook}} vector-effect="non-scaling-stroke"{{end}}/>
-    {{if .DotR}}<circle class="verso-chart-dot" cx="{{.DotX}}" cy="{{.DotY}}" r="{{.DotR}}"/>{{end}}
-  </g>
-  {{end}}
-</svg>{{end}}
-{{define "verso-chart-plot"}}{{$times := and .Stretch (or .XStart .XEnd)}}{{if $times}}<div>{{end}}<div class="verso-chart-plot{{if and .YLabels (not .Stretch)}} verso-chart-plot--gutter{{end}}">
-  {{template "verso-chart-svg" .}}
-  {{range .YLabels}}<span class="verso-chart-yl{{if .Mid}} verso-chart-yl--mid{{end}}" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
-  {{range .HTMLDots}}<span class="verso-chart-dot-html verso-chart--{{.RoleClass}}" style="top:{{printf "%.1f" .TopPct}}%"></span>{{end}}
-  {{/* The window captions: a stretched (panel) plot carries them in their own
-       row hugging the baseline — wrapped with the plot in one block, so a
-       parent stack's spacing lands around the pair, not between them. The
-       hero keeps them overlaid inside the corners. */}}
-  {{if not .Stretch}}{{if .XStart}}<span class="verso-chart-xl verso-chart-xl-start">{{.XStart}}</span>{{end}}{{if .XEnd}}<span class="verso-chart-xl verso-chart-xl-end">{{.XEnd}}</span>{{end}}{{end}}
-</div>{{if $times}}<div class="verso-chart-xrow"><span>{{.XStart}}</span><span>{{.XEnd}}</span></div></div>{{end}}{{end}}
-{{if .Notebook}}
+     scales with the graph. This SVG is the first paint; the live layer glides the
+     same series without touching the markup. */}}
 <div class="relative h-60 overflow-hidden">
-  {{template "verso-chart-svg" .}}
+  <svg class="verso-chart block h-60! w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
+    {{range .Series}}
+    <g class="verso-chart-series verso-chart--{{.Role}}">
+      {{if .Area}}
+      <defs><linearGradient id="{{.GradID}}" x1="0" y1="0" x2="0" y2="1"><stop class="verso-chart-fill-0" offset="0"/><stop class="verso-chart-fill-1" offset="1"/></linearGradient></defs>
+      <path class="verso-chart-area" fill="url(#{{.GradID}})" d="{{.Area}}"/>
+      {{end}}
+      <path class="verso-chart-line {{if eq .Role "violet"}}stroke-[1.5]!{{else}}stroke-2!{{end}}" d="{{.Line}}" vector-effect="non-scaling-stroke"/>
+    </g>
+    {{end}}
+  </svg>
   {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-4.75 {{if eq $i 0}}min-w-29.75{{else}}min-w-14.75{{end}} items-center bg-quiet/85 px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
   <span class="pointer-events-none absolute bottom-px left-0 flex h-4.75 min-w-24.75 items-center bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
   <span class="pointer-events-none absolute right-0 bottom-px flex h-4.75 min-w-14.75 items-center justify-end bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XEnd}}</span>
 </div>
-{{else if and .Readout .Stretch}}{{/* the panel: current values above the plot, labels riding below each number */}}<div{{if .Name}} data-verso-chart-block="{{.Name}}"{{end}}>
-  <div class="verso-chart-panel-head">
-    {{if .Rates}}<div class="verso-chart-rates">{{range .Rates}}<div class="verso-chart-rate verso-chart--{{.Role}}"><div class="verso-chart-rate-v"><span data-verso-chart-rate-v>{{.Value}}</span>{{if .Unit}} <small>{{.Unit}}</small>{{end}}</div><div class="verso-chart-rate-k"><span class="verso-chart-rate-sw"></span>{{.Label}}</div></div>{{end}}</div>{{end}}
-    {{if .Note}}<span class="verso-chart-panel-note">{{.Note}}</span>{{end}}
-  </div>
-  {{template "verso-chart-plot" .}}
-</div>{{else if .Readout}}<div class="verso-chart-hero">
-  <div class="verso-chart-readout">
-    {{if .Title}}<div class="verso-chart-status">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Title}}</div>{{end}}
-    {{if .Note}}<div class="verso-chart-meta">{{.Note}}</div>{{end}}
-    {{if .Rates}}<div class="verso-chart-rates">{{range .Rates}}<div class="verso-chart-rate verso-chart--{{.RoleClass}}"><div class="verso-chart-rate-v">{{.Value}}{{if .Unit}} <small>{{.Unit}}</small>{{end}}</div><div class="verso-chart-rate-k"><span class="verso-chart-rate-sw"></span>{{.Label}}</div></div>{{end}}</div>{{end}}
-  </div>
-  {{template "verso-chart-plot" .}}
-</div>{{else if .HasAxis}}{{template "verso-chart-plot" .}}{{else}}{{template "verso-chart-svg" .}}{{end}}

@@ -17,7 +17,7 @@
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector("[data-verso-chart]") && !document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-prop]")) return;
+  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") &&!document.querySelector("[data-verso-traffic-chart]") && !document.querySelector("[data-verso-prop]")) return;
   // The meter's bar tints by its health band (the tone vocabulary), in the classes
   // meter.html.tmpl renders — the live layer and the first paint have to name the
   // same colour or a reading changes shade the moment it updates, which it did:
@@ -99,98 +99,6 @@
     setText(root, '[data-verso-cell="rx-rate"]', iface.rx_rate);
     setText(root, '[data-verso-cell="tx-rate"]', iface.tx_rate);
   }
-  // applyChart redraws a named chart from fresh series — the same geometry
-  // the server drew (viewBox coordinates from the svg itself), so the live
-  // layer and the first paint never disagree. Series pair with the rendered
-  // groups by order; the role hook lets an idle-grey chart take its colours
-  // when traffic starts.
-  var CHART_ROLES = ["sky", "violet", "emerald", "amber", "idle"];
-  function applyChart(dev) {
-    var svg = document.querySelector('svg[data-verso-chart="' + CSS.escape(dev.key) + '"]');
-    if (!svg) return;
-    var vb = svg.viewBox.baseVal;
-    var W = vb.width, H = vb.height, PAD = 8;
-    var series = [dev.down || [], dev.up || []];
-    var max = 0;
-    series.forEach(function (vals) {
-      vals.forEach(function (v) {
-        if (v > max) max = v;
-      });
-    });
-    var active = max > 0.01;
-    max *= 1.15;
-    if (max <= 0) max = 1;
-    var y = function (v) {
-      return (H - PAD - (v / max) * (H - 2 * PAD)).toFixed(1);
-    };
-    svg.querySelectorAll("g.verso-chart-series").forEach(function (g, i) {
-      var vals = series[i];
-      if (!vals || vals.length < 2) return;
-      var pts = vals.map(function (v, j) {
-        return ((j / (vals.length - 1)) * W).toFixed(1) + " " + y(v);
-      });
-      var line = g.querySelector(".verso-chart-line");
-      if (line) line.setAttribute("d", "M" + pts.join(" L"));
-      var area = g.querySelector(".verso-chart-area");
-      if (area) area.setAttribute("d", "M0 " + H + " L" + pts.join(" L") + " L" + W + " " + H + " Z");
-      var dot = g.querySelector(".verso-chart-dot");
-      if (dot) dot.setAttribute("cy", y(vals[vals.length - 1]));
-      var role = g.getAttribute("data-verso-chart-role") || "sky";
-      CHART_ROLES.forEach(function (r) {
-        g.classList.remove("verso-chart--" + r);
-      });
-      g.classList.add("verso-chart--" + (active ? role : "idle"));
-    });
-    // The value labels ride their gridlines: quarters of the new range, the
-    // unit staying on the topmost (captured from the rendered text once).
-    var fmt = function (v) {
-      return v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
-    };
-    var labels = svg.parentElement.querySelectorAll(".verso-chart-yl");
-    labels.forEach(function (el, i) {
-      var frac = [1, 0.75, 0.5, 0.25][i];
-      if (frac === undefined) return;
-      if (el.dataset.unit === undefined) {
-        el.dataset.unit = (el.textContent.match(/[\d.]+\s*(.*)$/) || ["", ""])[1];
-      }
-      var v = max * frac;
-      el.textContent = el.dataset.unit ? fmt(v) + " " + el.dataset.unit : fmt(v);
-    });
-    // The readout above the plot shows each series' newest value — whole
-    // numbers only, the readout stays calm.
-    var block = document.querySelector('[data-verso-chart-block="' + CSS.escape(dev.key) + '"]');
-    if (block) {
-      block.querySelectorAll("[data-verso-chart-rate-v]").forEach(function (el, i) {
-        var vals = series[i];
-        if (vals && vals.length) el.textContent = String(Math.round(vals[vals.length - 1]));
-      });
-    }
-    // The running totals on the device's stat tiles.
-    setStat(dev.key + ":down", fmtBytes(dev.rx));
-    setStat(dev.key + ":up", fmtBytes(dev.tx));
-    setStat(dev.key + ":conns", [String(dev.conns || 0), ""]);
-  }
-  // fmtBytes mirrors the server's byte formatting: whole bytes, then one
-  // decimal per binary step.
-  function fmtBytes(n) {
-    n = n || 0;
-    if (n < 1024) return [String(n), "B"];
-    var units = ["KiB", "MiB", "GiB", "TiB", "PiB"];
-    var i = -1;
-    do {
-      n /= 1024;
-      i++;
-    } while (n >= 1024 && i < units.length - 1);
-    return [n.toFixed(1), units[i]];
-  }
-  function setStat(name, parts) {
-    var tile = document.querySelector('[data-verso-stat="' + CSS.escape(name) + '"]');
-    if (!tile) return;
-    var v = tile.querySelector("[data-verso-stat-v]");
-    if (v) v.textContent = parts[0];
-    var u = tile.querySelector("[data-verso-stat-u]");
-    if (u) u.textContent = parts[1];
-  }
   function listen(es, type, key, apply) {
     es.addEventListener(type, function (e) {
       var data;
@@ -267,7 +175,6 @@
     es.addEventListener("error", function () { live.classList.remove("bg-green"); live.classList.add("bg-faint"); if (pulse) pulse.cancel(); });
   }
   listen(es, "interfaces", "interfaces", applyInterface);
-  listen(es, "traffic", "devices", applyChart);
   // The WAN throughput sample hands off to the traffic-graph animator, if present.
   es.addEventListener("wan", function (e) {
     var d;
