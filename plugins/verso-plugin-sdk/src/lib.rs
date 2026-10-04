@@ -2082,37 +2082,13 @@ pub struct TableRow {
 /// form. Removal belongs to a separate confirmed action on its listing. A small
 /// object is edited here — one record, one host; an object with a page's worth of
 /// settings gets a page instead. Every panel stands at the one drawer width;
-/// size "choices" lays the body out as a chooser. HideTitle drops the heading
-/// where the first section already names the object, and Open renders the
+/// size "choices" lays the body out as a chooser, and Open renders the
 /// panel already open — which is how a submission the plugin refused comes
 /// back with the failed drawer in front of the operator rather than silently
 /// closed.
 #[derive(Serialize, Debug, Default)]
 pub struct RowDrawer {
     pub title: String,
-    /// What qualifies the title without competing with it, set after a faint
-    /// separator at the reading size.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub sub: String,
-    /// The machine-verbatim name of the thing the title names — the packet
-    /// filter's own chain, the section the config calls it. Mono and unboxed
-    /// beside the title, because it is the object's other name rather than a
-    /// category it belongs to.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub chain: String,
-    /// One chip beside the title: the network, the zone, the group it sits in.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub tag: String,
-    /// The pill the title wears — what this object decides, in the tone of that
-    /// decision. The same badge the row shows in the listing, repeated so
-    /// opening the panel does not lose the answer the row gave.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verdict: Option<DrawerVerdict>,
-    /// The line under the title: where the object sits and what it has done, as
-    /// separate statements. The shell joins them with the faint dot it joins
-    /// machine words with everywhere, so never punctuate these.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub lede: Vec<String>,
     /// The address this page has when no panel is open. A panel the address
     /// opened is a place, so closing it has to leave that place — the shell
     /// rewrites the address to this one, and a reload then shows the listing
@@ -2128,19 +2104,8 @@ pub struct RowDrawer {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub size: String,
     #[serde(skip_serializing_if = "is_false")]
-    pub hide_title: bool,
-    #[serde(skip_serializing_if = "is_false")]
     pub open: bool,
     pub children: Vec<Widget>,
-}
-
-/// DrawerVerdict is the pill a panel's title wears. It is a badge with nothing
-/// but its tone and its word: the panel head has no room for a dot or an icon,
-/// and the decision is the only thing being repeated from the row.
-#[derive(Serialize, Debug)]
-pub struct DrawerVerdict {
-    pub variant: Tone,
-    pub text: String,
 }
 
 /// DrawerTab is one heading in a panel's strip: what it is called, where the
@@ -3476,13 +3441,11 @@ mod tests {
         // A refused submission comes back with its drawer already open.
         let refused = RowDrawer {
             title: "Edit record — nas.lan".into(),
-            hide_title: true,
             open: true,
             children: Vec::new(),
             ..RowDrawer::default()
         };
         let json = serde_json::to_value(&refused).unwrap();
-        assert_eq!(json["hide_title"], true);
         assert_eq!(json["open"], true);
 
         // A row without one says nothing about drawers at all.

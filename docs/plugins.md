@@ -886,11 +886,8 @@ one set of fields, and a Save inside the panel stages like any other write (see
 tabs, in the address (`?open=<section>&tab=<name>`): the panel then survives a
 reload, a back button and a shared link without client state. The row gets a
 trailing chevron and the pointer; controls inside the row (toggles) keep their
-own meaning. Set `hide_title:true` when the selected row
-and first section already establish the panel's identity; the title remains
-available to assistive technology and the close control remains visible. That
-first section may set `flush:true` so the drawer supplies the outer top inset
-instead of stacking two layers of padding.
+own meaning. The panel's first section may set `flush:true` so the drawer
+supplies the outer top inset instead of stacking two layers of padding.
 
 Set `open:true` to render the panel already open — how a link from elsewhere in
 the shell arrives with the row's panel already in front of the operator

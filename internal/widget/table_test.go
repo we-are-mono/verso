@@ -577,18 +577,15 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	}
 }
 
-func TestRenderTableRowDrawerKeepsLegacyHiddenTitleVisible(t *testing.T) {
+func TestRenderTableRowDrawerTitleBand(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
-	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect", HideTitle: true}
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect"}
 	got := render(t, r, tbl)
 	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-10", "pt-8", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
-	}
-	if strings.Contains(got, `<h2 class="sr-only">Edit redirect</h2>`) {
-		t.Errorf("legacy hide_title must not remove the title band:\n%s", got)
 	}
 }
 
@@ -633,13 +630,13 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 		"type": "table",
 		"columns": [{"label":"A"}],
 		"rows": [{"id":"r1","group":{"label":"WAN","to":"Router","chain":"input_wan","tally":"2 rules"},"cells":[{"text":"1"}],
-			"drawer": {"title":"Edit","hide_title":true,"open":true,"children":[{"type":"text","markdown":"body"}]}}]
+			"drawer": {"title":"Edit","open":true,"children":[{"type":"text","markdown":"body"}]}}]
 	}`))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	tb := w.(*Table)
-	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.HideTitle || !tb.Rows[0].Drawer.Open || len(tb.Rows[0].Drawer.Children) != 1 {
+	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.Open || len(tb.Rows[0].Drawer.Children) != 1 {
 		t.Errorf("row drawer not decoded: %+v", tb.Rows[0].Drawer)
 	}
 	if tb.Rows[0].Group == nil || tb.Rows[0].Group.To != "Router" || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Tally != "2 rules" {
@@ -1158,10 +1155,7 @@ func TestDecodeTableRowCarriesEveryField(t *testing.T) {
 func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
 		"id":"allow_ping","cells":[{"text":"Allow-Ping"}],
-		"drawer":{"title":"Allow-Ping","verbatim":true,"sub":"from the installer",
-			"chain":"input_wan","tag":"guest","open":true,
-			"verdict":{"type":"badge","text":"accept","variant":"success"},
-			"lede":["Rule 1 of 22","0 matches since boot"],
+		"drawer":{"title":"Allow-Ping","verbatim":true,"closed":"/x","size":"choices","open":true,
 			"tabs":[{"label":"Match","state":"5 conditions","href":"/x?tab=match","active":true},
 				{"label":"Action","state":"accept","href":"/x?tab=action"}],
 			"children":[{"type":"form","submit":"Save","fields":[{"type":"field","name":"n","label":"Name"}]}]}}]}`))
@@ -1172,29 +1166,20 @@ func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
 	if d == nil {
 		t.Fatal("drawer lost in decode")
 	}
-	if !d.Verbatim || d.Sub != "from the installer" || d.Chain != "input_wan" || d.Tag != "guest" {
-		t.Errorf("nameplate lost in decode: %#v", d)
-	}
-	if d.Verdict == nil || d.Verdict.Text != "accept" || d.Verdict.Variant != "success" {
-		t.Errorf("verdict lost in decode: %#v", d.Verdict)
-	}
-	if strings.Join(d.Lede, "|") != "Rule 1 of 22|0 matches since boot" {
-		t.Errorf("lede lost in decode: %#v", d.Lede)
+	if !d.Verbatim || d.Closed != "/x" || d.Size != "choices" || !d.Open || len(d.Children) != 1 {
+		t.Errorf("drawer fields lost in decode: %#v", d)
 	}
 	if len(d.Tabs) != 2 || d.Tabs[0].State != "5 conditions" || !d.Tabs[0].Active || d.Tabs[1].Href != "/x?tab=action" {
 		t.Errorf("tabs lost in decode: %#v", d.Tabs)
 	}
 }
 
-// Legacy decoration fields must not reintroduce subtitles or badges into the
-// title band. Tabs and the form remain available below it.
+// The title band carries the title alone; tabs and the form sit below it.
 func TestRenderRowDrawerTitleBand(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{
-		Title: "Allow-DHCP-Renew", Chain: "input_wan",
-		Verdict: &Badge{Text: "accept", Variant: "success"},
-		Lede:    []string{"Rule 1 of 22", "0 matches since boot"},
+		Title: "Allow-DHCP-Renew",
 		Tabs: []DrawerTab{
 			{Label: "Match", State: "5 conditions", Href: "/plugins/firewall/?open=r1&tab=match", Active: true},
 			{Label: "Action", State: "accept", Href: "/plugins/firewall/?open=r1&tab=action"},
@@ -1218,11 +1203,6 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
-		}
-	}
-	for _, stale := range []string{"input_wan", "Rule 1 of 22", "0 matches since boot", "border-green-line bg-green-soft text-green-deep"} {
-		if strings.Contains(got, stale) {
-			t.Errorf("drawer retained legacy header decoration %q", stale)
 		}
 	}
 }

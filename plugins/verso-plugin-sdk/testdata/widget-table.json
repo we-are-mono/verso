@@ -152,7 +152,6 @@
       ],
       "drawer": {
         "title": "Edit zone — lan",
-        "hide_title": true,
         "open": true,
         "children": [
           {

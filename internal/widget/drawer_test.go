@@ -42,8 +42,7 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 	}
 	for _, existing := range []bool{false, true} {
 		d := &RowDrawer{
-			Title: "New rule", Open: true, HideTitle: true,
-			Sub: "obsolete subtitle", Lede: []string{"obsolete recap"},
+			Title: "New rule", Open: true,
 			Tabs:     []DrawerTab{{Label: "Match", State: "Any", Href: "/panel?tab=match", Active: true}},
 			Children: []Widget{&Form{Fields: []Widget{&Field{Name: "name", Label: "Name", Value: "name-from-config"}}}},
 		}
@@ -65,7 +64,7 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 				t.Errorf("existing=%v: localized drawer missing %q", existing, want)
 			}
 		}
-		for _, obsolete := range []string{"obsolete subtitle", "obsolete recap", `class="sr-only"`, "must not translate an identity"} {
+		for _, obsolete := range []string{`class="sr-only"`, "must not translate an identity"} {
 			if strings.Contains(html, obsolete) {
 				t.Errorf("existing=%v: drawer contains %q", existing, obsolete)
 			}

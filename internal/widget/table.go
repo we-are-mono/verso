@@ -401,13 +401,6 @@ type RowDrawer struct {
 	// device the drawer opens on) — data the localization walk leaves exactly
 	// as authored. A prose title stays undeclared and translates.
 	Verbatim bool `json:"verbatim,omitempty"`
-	// Deprecated: these former header decorations are accepted for wire
-	// compatibility but are not rendered. Details belong in Children.
-	Sub     string   `json:"sub,omitempty"`
-	Chain   string   `json:"chain,omitempty"`
-	Tag     string   `json:"tag,omitempty"`
-	Verdict *Badge   `json:"verdict,omitempty"`
-	Lede    []string `json:"lede,omitempty"`
 	// Closed is the address this page has when no panel is open. A panel the
 	// address opened is a place, so closing it has to leave that place — the
 	// shell rewrites the address to this one, and a reload then shows the
@@ -418,12 +411,10 @@ type RowDrawer struct {
 	// rule matches, what it then does, when it applies. Each carries the state
 	// the object is in under that heading, so the strip answers before a tab is
 	// chosen. A panel with one thing to say sends none and shows its body whole.
-	Tabs []DrawerTab `json:"tabs,omitempty"`
-	Size string      `json:"size,omitempty"`
-	// Deprecated: drawer headings are always visible.
-	HideTitle bool     `json:"hide_title,omitempty"`
-	Open      bool     `json:"open,omitempty"`
-	Children  []Widget `json:"children"`
+	Tabs     []DrawerTab `json:"tabs,omitempty"`
+	Size     string      `json:"size,omitempty"`
+	Open     bool        `json:"open,omitempty"`
+	Children []Widget    `json:"children"`
 }
 
 // DrawerTab is one heading in a panel's strip: what it is called, where the
@@ -447,19 +438,13 @@ func (d *RowDrawer) UnmarshalJSON(data []byte) error {
 	// shape is silently dropped on the way in — the panel renders without it and
 	// nothing fails — so the list has to stay complete as RowDrawer grows.
 	var raw struct {
-		Title     string            `json:"title"`
-		Verbatim  bool              `json:"verbatim"`
-		Sub       string            `json:"sub"`
-		Chain     string            `json:"chain"`
-		Tag       string            `json:"tag"`
-		Verdict   *Badge            `json:"verdict"`
-		Lede      []string          `json:"lede"`
-		Closed    string            `json:"closed"`
-		Tabs      []DrawerTab       `json:"tabs"`
-		Size      string            `json:"size"`
-		HideTitle bool              `json:"hide_title"`
-		Open      bool              `json:"open"`
-		Children  []json.RawMessage `json:"children"`
+		Title    string            `json:"title"`
+		Verbatim bool              `json:"verbatim"`
+		Closed   string            `json:"closed"`
+		Tabs     []DrawerTab       `json:"tabs"`
+		Size     string            `json:"size"`
+		Open     bool              `json:"open"`
+		Children []json.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -469,11 +454,8 @@ func (d *RowDrawer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*d = RowDrawer{
-		Title: raw.Title, Verbatim: raw.Verbatim,
-		Sub: raw.Sub, Chain: raw.Chain, Tag: raw.Tag,
-		Verdict: raw.Verdict, Lede: raw.Lede, Closed: raw.Closed, Tabs: raw.Tabs,
-		Size: raw.Size, HideTitle: raw.HideTitle, Open: raw.Open,
-		Children: children,
+		Title: raw.Title, Verbatim: raw.Verbatim, Closed: raw.Closed, Tabs: raw.Tabs,
+		Size: raw.Size, Open: raw.Open, Children: children,
 	}
 	return nil
 }
