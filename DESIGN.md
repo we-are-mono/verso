@@ -308,7 +308,7 @@ The page is left-aligned against a 288px rail, never centred. The frame keeps 40
 
 | Kind | What it is | Air and rule |
 |---|---|---|
-| ruled | one of the surface's subjects | 24px, hairline, 24px (32px under the first rule of a page form); with a heading the band carries the rule (above); 32px before the next rule when headless; the surface's first draws no rule |
+| ruled | one of the surface's subjects | 24px, hairline, 24px; with a heading the band carries the rule (above); 32px before the next rule when headless; the surface's first draws no rule, a page form's included, since it opens under the masthead's hairline |
 | part | a ruled section inside a section | 24px, hairline, 24px, kept to the content's inset |
 | continued | more of the rows above (the add act) | hairline always, 16px under it, nothing above |
 | plain | an unruled block | 24px above (none on a page's own stack, which spaces its blocks 40px) |

@@ -91,6 +91,11 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) {
 		t.Error("the masthead opens onto the first section from its hairline")
 	}
+	// With nothing to say, nothing stands before Firmware: the section opens
+	// the page right under the masthead's line.
+	if !regexp.MustCompile(`max-w-form shrink-0">\s*<section data-verso-section="ruled" id="firmware">`).MatchString(body) {
+		t.Error("an empty notice block stands before Firmware")
+	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
 		// The same ruled section the widget draws; its air is sections.css's.
 		want := `<section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="` + id + `">`

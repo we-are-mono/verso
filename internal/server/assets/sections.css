@@ -75,13 +75,10 @@
   .verso-page-body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"]) { padding-top: 0; }
   .verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 6); }
 
-  /* A headless subject keeps the heading band's 32px before the next rule;
-     a page form that opens on one keeps the first rule and its 32px too. */
+  /* A headless subject keeps the heading band's 32px before the next rule. A
+     page form that opens on one opens under the masthead's own hairline, so
+     like any surface's first section it draws no rule above it. */
   [data-verso-section="ruled"][data-verso-headless] { padding-bottom: calc(var(--spacing) * 8); }
-  :is(.verso-page-body, [data-verso-form-column]) > [data-verso-page-form] > [data-verso-section="ruled"][data-verso-headless]:first-of-type {
-    border-top-width: 1px;
-    padding-top: calc(var(--spacing) * 8);
-  }
 
   /* The heading band carries its section's rule: the rule, 32px, the title. */
   [data-verso-section-band] {
@@ -106,16 +103,29 @@
      on: a band with nothing visible before it draws none of its own, and the
      body gives back its top padding, so the title stands the band's 32px
      under the chrome as it stands under any rule. A body that opens on
-     anything else keeps its padding. */
+     anything else keeps its padding. Hidden carriers and elements with
+     nothing in them (a notice block with no notice) are not something
+     before it, so no surface has to take care not to render them. */
   [data-verso-drawer-body] [data-verso-section-band]:not(
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ * [data-verso-section-band],
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ [data-verso-section-band]
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
   ) {
     border-top-width: 0;
   }
+  /* A page opens under the masthead's hairline the same way: a heading band
+     with nothing visible before it in the page draws no rule of its own, and
+     its title stands the band's 32px under the masthead's line (its 24px of
+     air, then 8px of the band's). */
+  .verso-page-body [data-verso-section-band]:not(
+    .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
+    .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
+  ) {
+    border-top-width: 0;
+    padding-top: calc(var(--spacing) * 2);
+  }
   [data-verso-drawer-body]:has([data-verso-section-band]:not(
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ * [data-verso-section-band],
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden]) ~ [data-verso-section-band]
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
+    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
   )) {
     padding-top: 0;
   }

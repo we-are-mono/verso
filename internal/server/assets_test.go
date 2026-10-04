@@ -351,6 +351,39 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	}
 }
 
+// TestAPageFormOpensUnderTheMastheadsRule: a page form opens right under the
+// heading, whose bar already ends on a hairline, so its first section draws no
+// rule of its own above it — one line, not two.
+func TestAPageFormOpensUnderTheMastheadsRule(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	if strings.Contains(string(css), "[data-verso-page-form]>[data-verso-section=ruled][data-verso-headless]:first-of-type{") {
+		t.Error("a page form's first section draws a rule under the masthead's own")
+	}
+}
+
+// TestAPageOpeningOnAHeadingDrawsOneRule: a page whose first content is a
+// section's heading band opens under the masthead's hairline, as a drawer's
+// opens under its chrome's: the band draws no rule of its own, and its title
+// stands the band's 32px under the masthead's line. An element with nothing in
+// it (a notice block with no notice) is not content before the band, so no
+// page has to take care not to render one.
+func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	for _, want := range []string{
+		".verso-page-body [data-verso-section-band]:not(.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){padding-top:calc(var(--spacing) * 2);border-top-width:0}",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("stylesheet is missing %s", want)
+		}
+	}
+}
+
 // TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
 // masthead's hairline runs from the rail to the window's right edge, while the
 // title keeps to the page's column and the page's acts end at the right edge

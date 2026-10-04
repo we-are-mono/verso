@@ -121,9 +121,11 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	if ledger.NeedsOwut {
 		owut = render(&widget.Link{Style: "button", Label: "Install owut", Icon: "download", Href: packagesPath + "/discover?q=owut"})
 	}
-	var notices []widget.Widget
+	// A failed check is said above Firmware; with nothing to say, nothing
+	// stands there, and the section opens the page under the masthead's line.
+	notices := template.HTML("")
 	if err := updateChecks.takeFailure(); err != nil {
-		notices = append(notices, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
+		notices = render(&widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
 	}
 	// Packages are a band here only while there is something newer: the list and
 	// the act that updates it are Packages', and so is what became of an update.
@@ -154,7 +156,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		CSRFToken, Checked, Uptime, Hostname, StageLabel                     string
 		Checking, Staged                                                     bool
 	}{ledger, install, owut, render(s.autocheckLane(r.Context(), sid)), render(manual),
-		render(s.restoreModal(restore)), packages, render(&widget.Stack{Children: notices}), reboot,
+		render(s.restoreModal(restore)), packages, notices, reboot,
 		s.sessionCSRF(r), checked, uptime, s.nameplate(r), stage.Label, checking, stage.Count > 0}
 	if renderErr != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
