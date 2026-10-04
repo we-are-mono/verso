@@ -187,7 +187,7 @@ independent firewall4 upgrades and custom nft include considerations.
 | 012 | Localization: the English source is the key |
 | 013 | Verso's own settings live in uci |
 | 014 | Unattended update checks |
-| 015 | Basic and Advanced: an app-wide reader mode |
+| 015 | Basic and Advanced: an app-wide reader mode (deferred) |
 | 016 | Firewall packet logs: NFLOG isolation from kernel/system diagnostics |
 
 ## Caveats

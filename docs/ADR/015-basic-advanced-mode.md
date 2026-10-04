@@ -1,6 +1,7 @@
 # ADR-015 — Basic and Advanced: an app-wide reader mode
 
-- **Status:** Accepted
+- **Status:** Deferred — Verso has no reader mode; every surface renders in
+  full. This design returns once the core pages are complete.
 - **Date:** 2026-09-01
 - **Deciders:** tomaz@zaman.io
 - **Relates to:** ADR-005 (the widget vocabulary carries the visibility

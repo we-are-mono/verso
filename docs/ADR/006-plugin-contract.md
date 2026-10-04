@@ -6,8 +6,7 @@
 - **Relates to:** ADR-001 (single static binary, crash isolation motive), ADR-003
   (the transport is a test seam), ADR-004 (stdlib `net/http`), ADR-005 (the
   *visual* contract — this ADR is its mechanical half: how schema gets from a
-  plugin to the renderer), ADR-015 (the reader mode `nav` and `pages` entries
-  declare visibility for).
+  plugin to the renderer).
 
 ## Context
 
@@ -67,9 +66,7 @@ over a local socket**, exchanging *data*, not markup.
      pages in the shell's navigation; `path` is relative to the plugin mount. A
      plugin may contribute several entries (each auto-grouped under its section),
      and the shell builds the nav tree from manifests, so a plugin appears in the
-     chrome without touching shell code. An entry may carry `mode`
-     (`"basic"` | `"advanced"`, ADR-015): the shell renders it only in that
-     reader mode; absent means both.
+     chrome without touching shell code.
    - `entity_tabs` — optional `{entity, slot, label, summaries}` contributions to
      shell-owned entity drawers. A plugin may omit navigation when it contributes
      entity tabs, entity actions, or System Access content. A tab with `summaries:
@@ -125,8 +122,7 @@ over a local socket**, exchanging *data*, not markup.
    and `immediate` (the page's actions apply at once; nothing on it stages —
    ADR-010). `pages` is the **third navigation tier**: a domain's subpages
    rendered as the shell's top bar (sidebar → domain, top bar → kind of visit). Each
-   entry is `{label, path}` relative to the plugin's mount, plus an optional `mode`
-   filtered exactly like a manifest `nav` entry (ADR-015); the shell builds the href
+   entry is `{label, path}` relative to the plugin's mount; the shell builds the href
    and marks the active tab, so a plugin cannot aim the bar outside itself. `banner`
    is a full-width `{variant, title, body}` notice the shell renders at the navigation
    seam — standing page state, visible above the heading. `notice` is the *outcome*

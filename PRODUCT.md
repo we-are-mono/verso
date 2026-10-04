@@ -15,9 +15,8 @@ to configure and inspect a router they run themselves.
 Also served:
 
 - **Less technical owners** doing one task (share a port, pause a device,
-  change the Wi-Fi password). Basic is the default reader mode and hides the
-  tuning fields; Advanced shows everything (ADR-015). Mode belongs to the reader,
-  not to a page.
+  change the Wi-Fi password). A reader mode that hides the tuning from them
+  is deferred (ADR-015); every page renders in full.
 - **Plugin authors**: third parties who ship pages into Verso as a widget
   schema (ADR-005, ADR-006).
 
@@ -100,12 +99,12 @@ like part of the shell.
 3. **Every change is reversible until applied.** Stage, review, apply, with
    rollback on the router. Nothing is live by surprise.
 4. **Depth follows the reader.** The machinery is all there for the power user,
-   and Basic mode keeps it out of a one-task visit.
+   and plain-language grouping keeps a one-task visit readable.
 5. **UCI translated, not transcribed.** The screen maps one-to-one onto UCI
    (sections, options, lists), with each option's key shown as a chip, so a
    power user can predict `uci show` from the page. Labels, grouping, order and
-   verdicts are in plain words, and Basic mode hides the tuning so a less savvy
-   user never faces a wall of options.
+   verdicts are in plain words, so a less savvy user never faces a wall of
+   bare options.
 
 ## Accessibility & Inclusion
 

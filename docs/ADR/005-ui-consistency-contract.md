@@ -3,8 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-23
 - **Deciders:** tomaz@zaman.io
-- **Relates to:** ADR-001 (single static binary), ADR-004 (frontend stack),
-  ADR-015 (the reader mode the vocabulary's visibility props declare). The
+- **Relates to:** ADR-001 (single static binary), ADR-004 (frontend stack). The
   *mechanical* plugin contract (manifest format, socket protocol, schema versioning)
   is a separate, later ADR — this one governs only the visual/consistency model.
 
@@ -26,11 +25,6 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    A size is intent too: a table column's `width` names what the column holds
    (`address`, `count`, `name`, …, a closed set) and the shell owns the length, so
    every listing's address column is the same width; a CSS length fails the decode.
-   Reader-mode visibility is part of this vocabulary: a `section` carries an
-   optional `mode` (`"basic"` | `"advanced"`), a `field` an optional
-   `advanced: true` — the author declares which reading a thing belongs to, and
-   the shell filters at render, under ADR-015's invariant that mode hides
-   capability, never state.
 2. **The shell owns all appearance, via the design palette.** Plugins emit semantic
    schema; the shell renders it to HTML styled with the palette — denim for action,
    sand for neutrals, green/marigold/crimson for states. The consistency
