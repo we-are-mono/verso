@@ -6,7 +6,6 @@
       "value": "203.0.113.7:51820",
       "mono": true,
       "copy": true,
-      "variant": "success",
       "help": "Reached over the internet.",
       "dot": "success"
     },

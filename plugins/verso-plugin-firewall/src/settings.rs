@@ -674,9 +674,9 @@ fn field(name: &str, label: &str, help: &str, value: &str, unit: &str) -> Widget
         value: value.into(),
         help: help.into(),
         key: name.into(),
-        unit: unit.into(),
         ..Default::default()
     })
+    .counted_in(unit)
 }
 
 #[cfg(test)]

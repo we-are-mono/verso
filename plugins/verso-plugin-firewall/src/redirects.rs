@@ -18,7 +18,7 @@ use verso_plugin::{
 };
 
 use crate::counters::Counters;
-use crate::fields::{DELETE_FIELD, REMOVE_FIELD};
+use crate::fields::REMOVE_FIELD;
 use crate::format;
 use crate::model::{Firewall, Redirect, CONFIG};
 use crate::page;
@@ -108,7 +108,7 @@ pub fn save(model: &mut Firewall, counters: &Counters, query: &Form, form: &Form
     else {
         return page(model, counters).with_notice(Tone::Danger, GONE);
     };
-    if !removal.is_empty() || form.get(DELETE_FIELD) == "1" {
+    if !removal.is_empty() {
         let removed = model.redirects.remove(index);
         return page(model, counters)
             .with_notice(Tone::Success, "Port forward deleted.")

@@ -254,7 +254,7 @@ fn write_widget_fixtures() {
         // current as the form is edited, so the flag has to survive the decoder.
         (
             "code-live",
-            Widget::preview(
+            Widget::config_preview(
                 "/etc/config/firewall",
                 "config zone 'lan'\n\toption input 'ACCEPT'\n",
             ),
@@ -280,7 +280,6 @@ fn write_widget_fixtures() {
                         copy: true,
                         ..Property::default()
                     }
-                    .toned(Tone::Success)
                     .marked(Tone::Success)
                     .noted("Reached over the internet."),
                     Property {
@@ -290,14 +289,6 @@ fn write_widget_fixtures() {
                     .spanning("2026-08-31", "2027-10-02", 6, Tone::Success),
                 ],
                 align: "left".into(),
-            },
-        ),
-        (
-            "badge",
-            Widget::Badge {
-                variant: Tone::Success,
-                text: "up".into(),
-                dot: true,
             },
         ),
         ("text", Widget::text("A short explanatory line.")),
@@ -334,7 +325,13 @@ fn write_widget_fixtures() {
                     label: "Add a key".into(),
                     name: "authorized_key".into(),
                     submit: "Add key".into(),
-                    preview: Some(Box::new(Widget::preview("Reads as", ""))),
+                    preview: Some(Box::new(Widget::Code {
+                        label: "Reads as".into(),
+                        value: String::new(),
+                        copy: true,
+                        live: true,
+                        grammar: String::new(),
+                    })),
                     ..CollectionAdd::default()
                 }),
             },

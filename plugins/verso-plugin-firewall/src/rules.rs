@@ -160,7 +160,7 @@ pub fn save(
     // Removing is the one act here that cannot be undone, which is why it is
     // asked for separately and answers with the listing the rule is leaving
     // rather than with a panel about something that no longer exists.
-    if !removal.is_empty() || form.get(fields::DELETE_FIELD) == "1" {
+    if !removal.is_empty() {
         let removed = model.rules.remove(index);
         return page(model, counters)
             .with_notice(Tone::Success, "Rule deleted.")

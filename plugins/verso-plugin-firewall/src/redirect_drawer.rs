@@ -990,8 +990,8 @@ mod tests {
         assert_eq!(trash["confirm_title"], DELETE_QUESTION);
         assert_eq!(trash["confirm"], DELETE_MESSAGE);
         assert!(
-            fixture::find_with(&panel(&body), &|v| v["name"] == fields::DELETE_FIELD).is_none(),
-            "the panel carries no delete form"
+            fixture::find_with(&panel(&body), &|v| v["name"] == fields::REMOVE_FIELD).is_none(),
+            "the panel carries no removal; that belongs to its row"
         );
     }
 

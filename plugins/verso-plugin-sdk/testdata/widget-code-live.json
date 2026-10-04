@@ -3,5 +3,6 @@
   "label": "/etc/config/firewall",
   "value": "config zone 'lan'\n\toption input 'ACCEPT'\n",
   "copy": true,
-  "live": true
+  "live": true,
+  "grammar": "uci"
 }

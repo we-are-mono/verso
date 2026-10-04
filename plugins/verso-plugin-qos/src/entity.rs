@@ -149,9 +149,9 @@ fn cap(name: &str, label: &str, value: &str, errors: &Errors) -> Widget {
             value: value.into(),
             placeholder: "No limit".into(),
             key: name.into(),
-            unit: "Mbit/s".into(),
             ..Default::default()
-        }),
+        })
+        .counted_in("Mbit/s"),
         name,
         errors,
     )

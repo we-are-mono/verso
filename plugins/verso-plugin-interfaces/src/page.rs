@@ -13,13 +13,8 @@ use verso_plugin::{
 fn text(v: Option<&Value>) -> String {
     v.and_then(Value::as_str).unwrap_or("").into()
 }
-// Accept old native payloads too during shell/plugin rolling upgrades.
 fn flag(v: Option<&Value>) -> Option<bool> {
-    match v {
-        Some(Value::Bool(b)) => Some(*b),
-        Some(Value::Number(n)) => n.as_i64().map(|n| n != 0),
-        _ => None,
-    }
+    v.and_then(Value::as_bool)
 }
 fn cell(s: impl Into<String>) -> TableCell {
     TableCell {

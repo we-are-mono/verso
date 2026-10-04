@@ -19,23 +19,19 @@ use crate::rule_form::{Errors, RuleForm};
 /// REMOVE_FIELD names the subject of a confirmed act from a listing.
 pub const REMOVE_FIELD: &str = "_remove";
 
-/// DELETE_FIELD marks a legacy delete form rather than an editor submission.
-pub const DELETE_FIELD: &str = "_delete";
-
 /// PANEL_FIELD marks a submission as the open panel's own. A panel is edited at
 /// its listing's address, and a row's power act posts to that same address while
 /// the panel is open, so the address cannot say which of the two arrived: read
 /// by the address, the act came in as the panel's form and wrote a rule stripped
-/// of everything but its switch. The panel's form says what it is itself, the
-/// way the delete form does with DELETE_FIELD, and a submission carrying neither
-/// is never read as a save, whatever the address names.
+/// of everything but its switch. The panel's form says what it is itself, and a
+/// submission without it is never read as a save, whatever the address names.
 pub const PANEL_FIELD: &str = "_panel";
 
-/// from_panel reports whether a submission is the open panel's — its editing
-/// form or its delete form — rather than something posted to the panel's address
-/// from the listing behind it.
+/// from_panel reports whether a submission is the open panel's editing form
+/// rather than something posted to the panel's address from the listing behind
+/// it.
 pub fn from_panel(form: &Form) -> bool {
-    form.get(PANEL_FIELD) == "1" || form.get(DELETE_FIELD) == "1"
+    form.get(PANEL_FIELD) == "1"
 }
 
 /// panel_form is a panel's editing form: the controls, the one act that submits

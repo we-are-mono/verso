@@ -479,15 +479,14 @@ mod tests {
     /// does not is a switch someone flipped on the listing where it stands.
     #[test]
     fn a_zone_panel_submission_is_the_panels_and_not_a_switchs() {
-        let body = answer_asking("/zones", "open=guest_zone", "_delete=1");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "guest_zone",
-                "delete": true
-            }])
+        let body = answer_asking(
+            "/zones",
+            "open=guest_zone",
+            "_panel=1&name=guest&input=ACCEPT",
         );
+        assert_eq!(body["notice"]["level"], "success", "{body}");
+        assert_eq!(body["commit"][0]["section"], "guest_zone", "{body}");
+        assert!(body["commit"][0].get("delete").is_none(), "{body}");
         // A zone the config does not hold has nothing to save, and says so rather
         // than writing anything.
         let body = answer_asking("/zones", "open=no_such_zone", "_panel=1&input=ACCEPT");

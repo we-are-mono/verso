@@ -31,7 +31,6 @@ fn new_network_stages_named_section_and_references() {
     let j = serde_json::to_value(&e).unwrap();
     assert_eq!(j["commit"][0]["type"], "interface");
     assert_eq!(j["commit"][0]["section"], "guest");
-    assert!(e.apply.is_empty());
     assert!(e.commands.is_empty());
     assert_eq!(j["back"]["href"], ROOT);
 }
@@ -219,18 +218,18 @@ fn runtime_flags_win_over_staged_autostart_and_device_state() {
         .unwrap()
         .values
         .insert("auto".into(), json!("0"));
-    m.live["interfaces"][0]["up"] = json!(1);
-    m.live["devices"]["br-lan"]["up"] = json!(1);
-    m.live["devices"]["br-lan"]["carrier"] = json!(1);
+    m.live["interfaces"][0]["up"] = json!(true);
+    m.live["devices"]["br-lan"]["up"] = json!(true);
+    m.live["devices"]["br-lan"]["carrier"] = json!(true);
     let row = inventory_row(&m, "br-lan");
     assert_eq!(row["cells"][4]["text"], "up");
     assert_eq!(row["cells"][5]["actions"][1]["name"], "down");
-    m.live["interfaces"][0]["up"] = json!(0);
+    m.live["interfaces"][0]["up"] = json!(false);
     assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "down");
-    m.live["interfaces"][0]["pending"] = json!(1);
+    m.live["interfaces"][0]["pending"] = json!(true);
     assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "pending");
-    m.live["interfaces"][0]["pending"] = json!(0);
-    m.live["devices"]["br-lan"]["carrier"] = json!(0);
+    m.live["interfaces"][0]["pending"] = json!(false);
+    m.live["devices"]["br-lan"]["carrier"] = json!(false);
     assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "no link");
 }
 #[test]

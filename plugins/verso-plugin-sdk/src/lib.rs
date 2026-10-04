@@ -729,7 +729,7 @@ pub enum Widget {
         icon: String,
         title: String,
         body: String,
-        /// Tones the icon by the badge vocabulary ("success" for a state that
+        /// Tones the icon by the tone vocabulary ("success" for a state that
         /// has arrived); empty wears the accent.
         #[serde(skip_serializing_if = "String::is_empty")]
         variant: String,
@@ -811,13 +811,6 @@ pub enum Widget {
     Filter {
         #[serde(skip_serializing_if = "String::is_empty")]
         placeholder: String,
-    },
-    /// A status pill.
-    Badge {
-        variant: Tone,
-        text: String,
-        #[serde(skip_serializing_if = "is_false")]
-        dot: bool,
     },
     /// A short run of styled prose (Markdown), inline in a composition.
     Text { markdown: String },
@@ -1256,20 +1249,6 @@ impl Widget {
         self
     }
 
-    /// continues draws this block as a continuation of the rows above it rather
-    /// than as a new subject: a rule directly under the last row, and only the
-    /// air a control needs. It is what the one act that adds another row wears.
-    pub fn continues(mut self) -> Widget {
-        if let Widget::Section(SectionWidget {
-            hairline, flush, ..
-        }) = &mut self
-        {
-            *hairline = true;
-            *flush = true;
-        }
-        self
-    }
-
     /// explained hangs the answer to "what even is this" off a field's label:
     /// `what` is the sentence, `source` names what reads the option, and the
     /// shell closes the tip with that beside the option's own name. Reach for it
@@ -1388,23 +1367,11 @@ impl Widget {
 
     /// removable makes this row one someone can take out of the set — the shell
     /// ends it with the glyph that clears it. Every other row in the same group
-    /// needs [`Widget::in_lane`], or their controls sit where the glyph is.
+    /// sets its `remove` to "lane", or their controls sit where the glyph is.
     pub fn removable(mut self) -> Widget {
         match &mut self {
             Widget::Field(Field { remove, .. }) | Widget::List(List { remove, .. }) => {
                 *remove = "yes".into()
-            }
-            _ => {}
-        }
-        self
-    }
-
-    /// in_lane reserves the remove glyph's width on a row that cannot be removed,
-    /// so a form mixing fixed and removable rows keeps one control column.
-    pub fn in_lane(mut self) -> Widget {
-        match &mut self {
-            Widget::Field(Field { remove, .. }) | Widget::List(List { remove, .. }) => {
-                *remove = "lane".into()
             }
             _ => {}
         }
@@ -1664,8 +1631,12 @@ impl Widget {
         }
     }
 
-    /// config_preview is a [`Widget::preview`] of the uci sections the form
-    /// around it writes, read line by line as [`Widget::config`] is.
+    /// config_preview is a code block that previews the uci sections the form
+    /// around it writes, read line by line as [`Widget::config`] is: the same
+    /// block, declared as the answer to "what will this write" so the shell
+    /// keeps it current while the form is edited. Compose it inside the form it
+    /// describes — one per form, since the form is what the answer is computed
+    /// from.
     pub fn config_preview(label: &str, value: &str) -> Widget {
         Widget::Code {
             label: label.into(),
@@ -1673,20 +1644,6 @@ impl Widget {
             copy: true,
             live: true,
             grammar: "uci".into(),
-        }
-    }
-
-    /// preview is a code block that previews the form around it: the same block,
-    /// declared as the answer to "what will this write" so the shell keeps it
-    /// current while the form is edited. Compose it inside the form it describes
-    /// — one per form, since the form is what the answer is computed from.
-    pub fn preview(label: &str, value: &str) -> Widget {
-        Widget::Code {
-            label: label.into(),
-            value: value.into(),
-            copy: true,
-            live: true,
-            grammar: String::new(),
         }
     }
 
@@ -1805,12 +1762,6 @@ pub struct ConditionItem {
 /// without the mono treatment — a size, a rate, an identity set in sans — so
 /// the shell's localization leaves it exactly as authored. Declare one of them
 /// on every value that is data, not words.
-///
-/// `variant` tones a value whose reading is also a verdict — one of `success`,
-/// `warning`, `danger`, `info`, the same vocabulary a [`Widget::Badge`] speaks.
-/// It names a meaning, never a colour (ADR-005): the shell picks the ink, in
-/// both themes, and a word outside the vocabulary tones nothing. Set it with
-/// [`Property::toned`].
 #[derive(Serialize, Debug, Default)]
 pub struct Property {
     pub label: String,
@@ -1821,8 +1772,6 @@ pub struct Property {
     pub verbatim: bool,
     #[serde(skip_serializing_if = "is_false")]
     pub copy: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub variant: String,
     /// A note under the value, in the value's column: what the fact means for
     /// the reader. Set it with [`Property::noted`].
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -1874,7 +1823,7 @@ pub struct RemoveConfirm {
 
 /// CollectionAdd is the slot a [`Widget::Collection`]'s next item is added
 /// from: the act's name at rest; open, the box `name` posts, a live
-/// [`Widget::preview`] of what was typed, and `submit`. A refused paste is
+/// [`Widget::Code`] of what was typed, and `submit`. A refused paste is
 /// answered with `value` kept and `error` set; the slot comes back open.
 #[derive(Serialize, Debug, Default)]
 pub struct CollectionAdd {
@@ -1906,12 +1855,6 @@ pub struct PropertySpan {
 }
 
 impl Property {
-    /// toned gives this fact's value a semantic tone from the badge vocabulary.
-    pub fn toned(mut self, variant: Tone) -> Property {
-        self.variant = variant.as_str().into();
-        self
-    }
-
     /// noted sets the sentence under the value that says what it means.
     pub fn noted(mut self, help: &str) -> Property {
         self.help = help.into();
@@ -2492,17 +2435,13 @@ pub struct PageTab {
     pub path: String,
 }
 
-/// PageAction is the page's one primary doorway — "New rule", "Add forward" —
-/// which the shell renders as a button hard right on the heading row. A page has
-/// at most one: it is the thing to do here, not a menu. Href is a route through
-/// the shell, exactly like a link widget's, so it addresses the plugin's mount
-/// in full.
+/// PageAction is a link the masthead carries — the envelope's `back`. Href is a
+/// route through the shell, exactly like a link widget's, so it addresses the
+/// plugin's mount in full.
 #[derive(Serialize, Debug)]
 pub struct PageAction {
     pub label: String,
     pub href: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub icon: String,
 }
 
 /// A configured subject contributed to the shell roster by an entity tab.
@@ -2538,14 +2477,11 @@ pub struct Envelope {
     pub width: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pages: Vec<PageTab>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub action: Option<PageAction>,
     /// An edit page's quiet way home: the shell renders it as a "← Cancel"
     /// back-link in the masthead, above the heading, so a page reached to edit
-    /// one record can return to the listing it came from. It rides the
-    /// [`PageAction`] shape, but the shell fixes the arrow-left glyph and
-    /// defaults the label to "Cancel", so a page sets only the href and, if it
-    /// wants other words, the label — never the icon.
+    /// one record can return to the listing it came from. The shell fixes the
+    /// arrow-left glyph and defaults the label to "Cancel", so a page sets only
+    /// the href and, if it wants other words, the label.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub back: Option<PageAction>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2580,21 +2516,12 @@ pub struct Envelope {
     pub widget: Widget,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub commit: Vec<CommitOp>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub apply: Vec<ApplyAction>,
     /// Immediate, explicitly brokered commands; never arbitrary shell code.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub commands: Vec<ApplyAction>,
 }
 
 impl Envelope {
-    /// with_title renames the envelope — a page's heading, or, when the shell
-    /// frames this as one tab of an entity panel, that tab's own label.
-    pub fn with_title(mut self, title: &str) -> Envelope {
-        self.title = title.into();
-        self
-    }
-
     /// with_commit_row states the verb this envelope's commit row carries when
     /// the shell frames it as one tab of an entity panel. An envelope that sets
     /// none gets no commit row.
@@ -2621,7 +2548,6 @@ impl Envelope {
             subheading: String::new(),
             width: String::new(),
             pages: Vec::new(),
-            action: None,
             back: None,
             notice: None,
             cta: String::new(),
@@ -2630,7 +2556,6 @@ impl Envelope {
             tone: String::new(),
             widget,
             commit: Vec::new(),
-            apply: Vec::new(),
             commands: Vec::new(),
         }
     }
@@ -2669,16 +2594,6 @@ impl Envelope {
         self
     }
 
-    /// with_action gives the page its one primary doorway, beside the heading.
-    pub fn with_action(mut self, label: &str, href: &str, icon: &str) -> Envelope {
-        self.action = Some(PageAction {
-            label: label.into(),
-            href: href.into(),
-            icon: icon.into(),
-        });
-        self
-    }
-
     /// with_back gives the page a "← Cancel" back-link in the masthead — an edit
     /// page's way home to the listing it came from. The shell fixes the arrow-left
     /// glyph and defaults an empty label to "Cancel", so a page passes only the
@@ -2687,7 +2602,6 @@ impl Envelope {
         self.back = Some(PageAction {
             label: label.into(),
             href: href.into(),
-            icon: String::new(),
         });
         self
     }
@@ -2704,12 +2618,6 @@ impl Envelope {
     /// with_commit attaches the declarative writes the shell applies.
     pub fn with_commit(mut self, ops: Vec<CommitOp>) -> Envelope {
         self.commit = ops;
-        self
-    }
-
-    /// with_apply attaches the typed post-apply operations.
-    pub fn with_apply(mut self, ops: Vec<ApplyAction>) -> Envelope {
-        self.apply = ops;
         self
     }
 }
@@ -3135,36 +3043,8 @@ mod tests {
         );
     }
 
-    /// The page action rides the envelope rather than the widget tree, so it has
-    /// no conformance fixture; this pins its wire shape instead.
-    #[test]
-    fn the_page_action_serializes_only_once_declared() {
-        let bare = Envelope::page("Firewall", Widget::text("body"));
-        let json = serde_json::to_value(&bare).unwrap();
-        assert!(json.get("action").is_none());
-
-        let with_action = Envelope::page("Firewall", Widget::text("body")).with_action(
-            "New rule",
-            "/plugins/firewall/rules/new",
-            "plus",
-        );
-        let json = serde_json::to_value(&with_action).unwrap();
-        assert_eq!(
-            json["action"],
-            serde_json::json!({"label": "New rule", "href": "/plugins/firewall/rules/new", "icon": "plus"})
-        );
-
-        let iconless =
-            Envelope::page("Firewall", Widget::text("body")).with_action("New rule", "/x", "");
-        let json = serde_json::to_value(&iconless).unwrap();
-        assert!(
-            json["action"].get("icon").is_none(),
-            "an action without an icon carries no icon"
-        );
-    }
-
-    /// The masthead back-link rides the envelope like the page action, so it has
-    /// no conformance fixture; this pins its wire shape. The plugin never sends a
+    /// The masthead back-link rides the envelope rather than the widget tree, so
+    /// it has no conformance fixture; this pins its wire shape. The plugin never sends a
     /// glyph — the shell fixes arrow-left — so `back` carries only label and href.
     #[test]
     fn the_back_link_serializes_only_once_declared() {

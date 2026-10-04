@@ -684,7 +684,6 @@ fn uci_block(section: &str, form: &RuleForm) -> String {
 mod tests {
     use super::*;
     use crate::counters::Counters;
-    use crate::fields::DELETE_FIELD;
     use crate::fixture;
     use serde_json::Value;
     use verso_plugin::Form;
@@ -1001,12 +1000,6 @@ mod tests {
         assert_eq!(control(&body, "name")["value"], "");
         // The panel opens over the listing page as it is: no lede under its heading.
         assert!(body.get("subheading").is_none());
-        assert!(
-            fixture::find_with(&body, &|value| value["type"] == "form"
-                && value["fields"][0]["name"] == DELETE_FIELD)
-            .is_none(),
-            "a rule that does not exist yet cannot be deleted"
-        );
     }
 
     #[test]
@@ -1497,8 +1490,8 @@ mod tests {
             &fixture::snapshot(),
             &mut model,
             &Counters::default(),
-            &Form::parse("open=allow_ping"),
-            &Form::parse("_delete=1"),
+            &Form::parse(""),
+            &Form::parse("_remove=allow_ping"),
         );
         let body = serde_json::to_value(&envelope).expect("serialize");
 
@@ -1532,7 +1525,6 @@ mod tests {
             .expect("the opened drawer");
             assert!(
                 fixture::find_with(&drawer, &|value| value["type"] == "confirm"
-                    || value["name"] == DELETE_FIELD
                     || value["name"] == fields::REMOVE_FIELD)
                 .is_none(),
                 "an edit drawer only edits; removal belongs to its row action"
