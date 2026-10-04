@@ -90,14 +90,8 @@ func TestPasswordRejectsIncorrectCurrentPassword(t *testing.T) {
 
 func TestAccessListsAndEndsOtherSessionWithoutExposingBearer(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
-	currentToken, err := s.sessions.CreateWithMetadata("sid-current", "root", "10.0.0.232", "Mozilla/5.0 (X11; Linux x86_64) Firefox/142.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	otherToken, err := s.sessions.CreateWithMetadata("sid-other", "root", "10.0.10.117", "Mozilla/5.0 (iPhone) Version/18.0 Safari/605.1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	currentToken := s.sessions.CreateWithMetadata("sid-current", "root", "10.0.0.232", "Mozilla/5.0 (X11; Linux x86_64) Firefox/142.0")
+	otherToken := s.sessions.CreateWithMetadata("sid-other", "root", "10.0.10.117", "Mozilla/5.0 (iPhone) Version/18.0 Safari/605.1")
 	current, _ := s.sessions.get(currentToken)
 	other, _ := s.sessions.get(otherToken)
 
@@ -249,23 +243,17 @@ func TestPasswordNeverEchoed(t *testing.T) {
 // The password page is reachable in the nav even with zero plugins, so a fresh
 // (passwordless) device can set its first password.
 func TestPasswordLinkAlwaysInNav(t *testing.T) {
-	sections := passwordServer(t, fakeBackend{}).buildNav("/")
-	var system *navSection
-	for i := range sections {
-		if sections[i].Title == "System" {
-			system = &sections[i]
-		}
-	}
-	if system == nil {
-		t.Fatal("System section missing from nav")
+	s := passwordServer(t, fakeBackend{})
+	if row := railRow(t, sidebar(s, "/"), "System"); !row.Opens {
+		t.Fatalf("System row = %+v, want it to open into its pages", row)
 	}
 	found := false
-	for _, l := range system.Links {
-		if l.Href == "/system/access" && l.Label == "Access" {
+	for _, page := range s.systemPages("/") {
+		if page.Href == "/system/access" && page.Label == "Access" {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("Access link missing from System section")
+		t.Error("Access page missing from System pages")
 	}
 }

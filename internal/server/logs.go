@@ -4,7 +4,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net"
@@ -13,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -66,7 +64,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 
 // Reuse the authenticated listing stream route and sampling clock. IDs are
 // logd's cursor, including zero; a restarted ring explicitly replaces history.
-func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush http.Flusher) {
+func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request) {
 	cursor := int64(-1)
 	systemCursor, firewallCursor, _ := strings.Cut(r.Header.Get("Last-Event-ID"), "|")
 	includeFirewall := r.URL.Query().Get("firewall") == "1"
@@ -77,13 +75,10 @@ func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush h
 	if last, err := strconv.ParseInt(systemCursor, 10, 64); err == nil && last >= 0 {
 		cursor = last
 	}
-	ticker := time.NewTicker(s.eventInterval)
-	defer ticker.Stop()
-	send := func() bool {
+	s.serveSSE(w, r, func() bool {
 		entries, err := s.backend.LogRead(r.Context(), s.sessionSID(r), systemLogLimit)
 		if err != nil {
-			_, err = fmt.Fprint(w, "event: unavailable\ndata: {}\n\n")
-			return err == nil
+			return writeEvent(w, "", "unavailable", struct{}{}) == nil
 		}
 		reset := len(entries) > 0 && highestID(entries) < cursor
 		var packets openwrt.FirewallLogBatch
@@ -133,36 +128,16 @@ func (s *Server) streamSystemLog(w http.ResponseWriter, r *http.Request, flush h
 			rows = append(rows, row)
 		}
 		sort.SliceStable(rows, func(i, j int) bool { return rows[i].At < rows[j].At })
-		frame, err := json.Marshal(struct {
-			Rows                []systemLogEvent `json:"rows"`
-			Reset               bool             `json:"reset"`
-			FirewallUnavailable bool             `json:"firewall_unavailable"`
-		}{rows, reset, firewallUnavailable})
-		if err != nil {
-			return false
-		}
 		id := strconv.FormatInt(cursor, 10)
 		if includeFirewall && generation != "" {
 			id += "|" + generation + ":" + strconv.FormatInt(after, 10)
 		}
-		_, err = fmt.Fprintf(w, "id: %s\nevent: stream\ndata: %s\n\n", id, frame)
-		return err == nil
-	}
-	if !send() {
-		return
-	}
-	flush.Flush()
-	for {
-		select {
-		case <-r.Context().Done():
-			return
-		case <-ticker.C:
-			if !s.sessionAlive(r) || !send() {
-				return
-			}
-			flush.Flush()
-		}
-	}
+		return writeEvent(w, id, "stream", struct {
+			Rows                []systemLogEvent `json:"rows"`
+			Reset               bool             `json:"reset"`
+			FirewallUnavailable bool             `json:"firewall_unavailable"`
+		}{rows, reset, firewallUnavailable}) == nil
+	})
 }
 
 func systemLogSection(config map[string]any) (string, map[string]any) {

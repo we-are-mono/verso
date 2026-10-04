@@ -233,7 +233,7 @@ deploy_shell() {
 	# wears the bare version, an unstamped one plain "dev".
 	local dev_version
 	dev_version="$(scripts/version.sh)-dev"
-	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/we-are-mono/verso/internal/version.Version=$dev_version" -o "$BIN" "$CMD" 2>&1; then
+	if ! CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X github.com/we-are-mono/verso/internal/server.Version=$dev_version" -o "$BIN" "$CMD" 2>&1; then
 		log "build failed — keeping the running binary"
 		return 0
 	fi

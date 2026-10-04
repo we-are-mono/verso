@@ -51,10 +51,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	defer cancel()
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
-	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/overview/events", nil)
 	req.Header.Set("Accept-Language", "sl-SI")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
@@ -83,7 +80,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if meters[0].Label != "Obremenitev" || !strings.Contains(meters[0].Detail, "1-minutno povprečje") {
 				t.Errorf("untranslated meters: %+v", meters)
 			}
-			if meters[1].Band != "danger" || meters[1].Role != "" {
+			if meters[1].Band != "danger" || strings.Contains(payload, `"role"`) {
 				t.Errorf("CPU should keep critical band in stream: %+v", meters[1])
 			}
 		case "interfaces":

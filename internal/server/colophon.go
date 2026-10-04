@@ -7,9 +7,17 @@ import (
 	"os"
 	"strings"
 	"sync"
-
-	"github.com/we-are-mono/verso/internal/version"
 )
+
+// Version is the build's release string, stamped into the binary at link time:
+//
+//	-ldflags "-X github.com/we-are-mono/verso/internal/server.Version=<ver>"
+//
+// (see the Makefile). A build with no stamp — `go run`, `go test` — reports
+// "dev"; the `make dev` hot-reload loop stamps "<ver>-dev", so a working build
+// states both its lineage and its nature, and a bare version means a packaged
+// (apk) build.
+var Version = "dev"
 
 // colophon is the last line of every page: what runs this router, the release
 // with its revision and target, and the Verso build drawing it. Report is the
@@ -19,7 +27,7 @@ type colophon struct {
 	Release  string // "OpenWrt 25.12.4"
 	Revision string // "r32933-4ccb782af7"
 	Target   string // "layerscape/armv8_64b"
-	Verso    string // the running build, as version.Version states it
+	Verso    string // the running build, as Version states it
 	Report   string
 }
 
@@ -29,7 +37,7 @@ type colophon struct {
 var pageColophon = sync.OnceValue(func() colophon {
 	release, _ := os.ReadFile("/etc/openwrt_release")
 	kernel, _ := os.ReadFile("/proc/sys/kernel/osrelease")
-	return newColophon(release, kernel, board(), version.Version)
+	return newColophon(release, kernel, board(), Version)
 })
 
 // newColophon composes the colophon from /etc/openwrt_release, the kernel's

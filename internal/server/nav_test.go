@@ -69,91 +69,48 @@ func nav(section, label, path string) plugin.NavEntry {
 	return plugin.NavEntry{Section: section, Label: label, Path: path}
 }
 
-func sectionTitles(sections []navSection) []string {
-	titles := make([]string, len(sections))
-	for i, s := range sections {
-		titles[i] = s.Title
-	}
-	return titles
-}
-
-func assertTitles(t *testing.T, got []navSection, want ...string) {
-	t.Helper()
-	titles := sectionTitles(got)
-	if len(titles) != len(want) {
-		t.Fatalf("section order = %v, want %v", titles, want)
-	}
-	for i := range want {
-		if titles[i] != want[i] {
-			t.Fatalf("section order = %v, want %v", titles, want)
-		}
-	}
-}
-
-// Core sections render in the fixed taxonomy order no matter what order the
-// plugins are discovered in — the whole point of the shell owning the taxonomy.
-func TestBuildNavCoreOrderIsFixed(t *testing.T) {
-	s := navServer(
-		manifest("sys", nav("System", "General", "/")),
-		manifest("fw", nav("Security", "Firewall", "/")),
-		manifest("net", nav("Network", "Interfaces", "/")),
-	)
-	assertTitles(t, s.buildNav("/"), "Status", "Network", "Security", "System")
-}
-
-// The System frame exists with zero plugins, but contains only pages the shell
-// owns. General must be contributed by a plugin manifest.
-func TestBuildNavShellOwnedPagesAreBuiltIn(t *testing.T) {
-	sections := navServer().buildNav("/")
-	assertTitles(t, sections, "Status", "System")
-	if got := sections[0].Links; len(got) != 1 || got[0].Label != "Overview" || got[0].Href != "/" {
-		t.Fatalf("Status links = %+v, want single Overview -> /", got)
-	}
-	if got := sections[1].Links; len(got) != 4 ||
-		got[0].Label != "Access" || got[0].Href != "/system/access" ||
-		got[1].Label != "Packages" || got[1].Href != "/system/packages" ||
-		got[2].Label != "Services" || got[2].Href != "/system/services" ||
-		got[3].Label != "Maintenance" || got[3].Href != "/system/maintenance" {
-		t.Fatalf("System links = %+v, want [Access, Packages, Services, Maintenance]", got)
-	}
-}
-
-// Plugin-introduced (non-core) sections sort after every core section, by title.
-func TestBuildNavExtensionSectionsAfterCoreByTitle(t *testing.T) {
+// Destinations the canvas does not name follow the core taxonomy's order of the
+// sections they are filed under, no matter what order the plugins are
+// discovered in — the whole point of the shell owning the taxonomy — and
+// plugin-introduced sections come after every core one, by title.
+func TestBuildSidebarUnnamedRowsFollowSectionOrder(t *testing.T) {
 	s := navServer(
 		manifest("vpn", nav("VPN", "WireGuard", "/")),
-		manifest("net", nav("Network", "Interfaces", "/")),
+		manifest("guard", nav("Security", "Guard", "/")),
+		manifest("links", nav("Network", "Links", "/")),
 		manifest("stats", nav("Statistics", "Graphs", "/")),
 	)
-	// Core sections (Status, Network, System — System from the built-in Password)
-	// precede the extension sections; Statistics before VPN.
-	assertTitles(t, s.buildNav("/"), "Status", "Network", "System", "Statistics", "VPN")
+	want := []string{"Overview", "Devices", "System", "Links", "Guard", "Graphs", "WireGuard"}
+	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
+		t.Fatalf("rail = %v, want %v", got, want)
+	}
 }
 
-// Several plugins filing into one section keep their links in discovery
-// (id-sorted) order; the stable sort must not disturb within-section order.
-func TestBuildNavLinksGroupInDiscoveryOrder(t *testing.T) {
+// The rail exists with zero plugins: Overview, Devices and the System row,
+// which leads into the pages the shell owns.
+func TestBuildSidebarShellOwnedRowsAreBuiltIn(t *testing.T) {
+	model := sidebar(navServer(), "/")
+	if got, want := railLabels(model), []string{"Overview", "Devices", "System"}; !slices.Equal(got, want) {
+		t.Fatalf("rail = %v, want %v", got, want)
+	}
+	if row := railRow(t, model, "Overview"); row.Href != "/" || !row.Active {
+		t.Errorf("Overview row = %+v, want the active row leading home", row)
+	}
+	if row := railRow(t, model, "System"); row.Href != "/system/hardware" || !row.Opens || row.Active {
+		t.Errorf("System row = %+v, want an inactive row opening into the shell's first System page", row)
+	}
+}
+
+// Several plugins filing into one section keep their rows in discovery
+// (id-sorted) order; the stable sorts must not disturb within-section order.
+func TestBuildSidebarRowsKeepDiscoveryOrder(t *testing.T) {
 	s := navServer(
-		manifest("hostname", nav("System", "General", "/")),
-		manifest("time", nav("System", "Time", "/")),
+		manifest("alpha", nav("Extra", "Zulu", "/")),
+		manifest("beta", nav("Extra", "Alpha", "/")),
 	)
-	sections := s.buildNav("/")
-	var system *navSection
-	for i := range sections {
-		if sections[i].Title == "System" {
-			system = &sections[i]
-		}
-	}
-	if system == nil {
-		t.Fatal("System section missing")
-	}
-	// Shell-owned entries come first in this grouped navigation model, followed
-	// by manifest registrations in discovery order.
-	if len(system.Links) != 6 || system.Links[0].Label != "Access" ||
-		system.Links[1].Label != "Packages" || system.Links[2].Label != "Services" ||
-		system.Links[3].Label != "Maintenance" || system.Links[4].Label != "General" ||
-		system.Links[5].Label != "Time" {
-		t.Fatalf("System links = %+v, want shell pages followed by plugin registrations", system.Links)
+	want := []string{"Overview", "Devices", "System", "Zulu", "Alpha"}
+	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
+		t.Fatalf("rail = %v, want %v", got, want)
 	}
 }
 
@@ -417,47 +374,45 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	}
 }
 
-// A plugin may contribute several entries across sections; the active path marks
-// exactly its section open, others stay collapsed.
-func TestBuildNavActiveSectionExpands(t *testing.T) {
+// The active path lights exactly the row it belongs to; the others stay dark.
+func TestBuildSidebarLightsOnlyTheActiveRow(t *testing.T) {
 	s := navServer(
 		manifest("net", nav("Network", "Interfaces", "/")),
 		manifest("fw", nav("Security", "Firewall", "/")),
 	)
-	sections := s.buildNav("/plugins/fw/")
-	for _, sec := range sections {
-		wantOpen := sec.Title == "Security" // only the section holding the active page is open
-		if sec.Open != wantOpen {
-			t.Fatalf("section %q open = %v, want %v", sec.Title, sec.Open, wantOpen)
-		}
-		for _, l := range sec.Links {
-			if l.Active != (sec.Title == "Security") {
-				t.Fatalf("link %q active = %v, want %v", l.Label, l.Active, sec.Title == "Security")
-			}
+	for _, row := range sidebar(s, "/plugins/fw/").Rows {
+		if row.Active != (row.Label == "Firewall") {
+			t.Fatalf("row %q active = %v, want only Firewall lit", row.Label, row.Active)
 		}
 	}
 }
 
-// On a deep subpage, only that subpage's link lights up — not the plugin's root
-// link, whose href (…/) prefixes every sibling. Regression: the Zones (root) link
+// On a deep subpage, only that subpage's row lights up — not the plugin's root
+// row, whose href (…/) prefixes every sibling. Regression: the Zones (root) link
 // used to stay active on Redirects/Rules because it prefix-matched their URLs.
-func TestBuildNavDeepSubpageMarksOnlyItself(t *testing.T) {
+func TestBuildSidebarDeepSubpageMarksOnlyItself(t *testing.T) {
 	s := navServer(manifest("firewall",
 		nav("Security", "Zones", "/"),
 		nav("Security", "Redirects", "/redirects"),
 		nav("Security", "Traffic rules", "/rules"),
 	))
-	sections := s.buildNav("/plugins/firewall/redirects")
-	var fw navSection
-	for _, sec := range sections {
-		if sec.Title == "Security" {
-			fw = sec
+	for _, row := range sidebar(s, "/plugins/firewall/redirects").Rows {
+		if row.Active != (row.Label == "Redirects") {
+			t.Errorf("row %q active = %v, want only Redirects lit", row.Label, row.Active)
 		}
 	}
-	for _, l := range fw.Links {
-		want := l.Label == "Redirects"
-		if l.Active != want {
-			t.Errorf("link %q active = %v, want %v", l.Label, l.Active, want)
+}
+
+// A page filed under System lights the System row and no plugin row, even when
+// a sibling registration's shorter path also holds it.
+func TestBuildSidebarSystemPageLightsOnlySystem(t *testing.T) {
+	s := navServer(manifest("tools",
+		nav("Network", "Tools", "/"),
+		nav("System", "Schedule", "/schedule"),
+	))
+	for _, row := range sidebar(s, "/plugins/tools/schedule").Rows {
+		if row.Active != (row.Label == "System") {
+			t.Errorf("row %q active = %v, want only System lit", row.Label, row.Active)
 		}
 	}
 }
@@ -466,7 +421,7 @@ func TestBuildNavDeepSubpageMarksOnlyItself(t *testing.T) {
 // that leads to "unavailable" is a dead door; the plugin stays reachable by
 // URL and through the management page (ADR-011). Shell-owned rows are
 // unaffected.
-func TestBuildNavHidesDeadPlugins(t *testing.T) {
+func TestBuildSidebarHidesDeadPlugins(t *testing.T) {
 	s := navServer(
 		manifest("fw", nav("Security", "Firewall", "/")),
 		manifest("vpn", nav("VPN", "WireGuard", "/")),
@@ -475,11 +430,8 @@ func TestBuildNavHidesDeadPlugins(t *testing.T) {
 	s.manifests[1].Socket = "/live/vpn.sock"
 	s.probe = func(path string) bool { return path == "/live/vpn.sock" }
 
-	sections := s.buildNav("/")
-	assertTitles(t, sections, "Status", "System", "VPN")
-	for _, sec := range sections {
-		if sec.Title == "Security" {
-			t.Fatalf("dead plugin still contributes section %q", sec.Title)
-		}
+	want := []string{"Overview", "Devices", "System", "WireGuard"}
+	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
+		t.Fatalf("rail = %v, want %v", got, want)
 	}
 }

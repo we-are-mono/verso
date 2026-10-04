@@ -5,8 +5,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -50,11 +48,6 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-		return
-	}
 	stream := s.streamHandler(source)
 	if stream == nil {
 		// The widget's set said this name may be asked for and nothing here
@@ -65,16 +58,14 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "stream unavailable", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-store")
-	stream(w, r, flusher)
+	stream(w, r)
 }
 
 // streamHandler is the other half of the closed source set: StreamSourceKnown
 // says which names may be asked for, this says what answers each one. A name
 // with no answer returns nil rather than falling through, so the two halves
 // cannot drift into a stream that serves nothing.
-func (s *Server) streamHandler(source string) func(http.ResponseWriter, *http.Request, http.Flusher) {
+func (s *Server) streamHandler(source string) http.HandlerFunc {
 	switch source {
 	case systemLogSource:
 		return s.streamSystemLog
@@ -86,17 +77,9 @@ func (s *Server) streamHandler(source string) func(http.ResponseWriter, *http.Re
 
 // streamFirewallLog reads the dedicated NFLOG buffer on the sampling clock,
 // resolves packet metadata into rows, and reports collector health separately.
-//
-// The session is re-checked every tick, exactly as the overview stream does: a
-// connection the browser holds open must not outlive the sign-in, and holding
-// it open must not extend the sign-in either — this is the page working, not a
-// person. When the session ends, EventSource's reconnect lands on the login
-// redirect instead of a stream, which closes the client for good.
-func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request, flusher http.Flusher) {
+// Like the overview stream it lives only as long as the session (serveSSE).
+func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
-	ticker := time.NewTicker(s.eventInterval)
-	defer ticker.Stop()
-
 	reader := &fwLogReader{backend: s.backend, sid: sid, limit: fwLogBacklog}
 	// A dropped connection is reconnected by the browser on its own, and it
 	// hands back the id of the last event it saw. Resuming there is what keeps
@@ -105,36 +88,15 @@ func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request, flush
 	if epoch, cursor, ok := parseFirewallCursor(r.Header.Get("Last-Event-ID")); ok {
 		reader.generation, reader.cursor, reader.started = epoch, cursor, true
 	}
-	send := func() bool {
+	s.serveSSE(w, r, func() bool {
 		rows := reader.poll(r.Context())
-		payload, err := json.Marshal(map[string]any{"rows": rows, "reset": reader.reset, "available": reader.available, "lost": reader.lost})
-		if err != nil {
-			return false
-		}
 		// Epoch plus ID prevents a restarted collector from replaying old row IDs.
+		id := ""
 		if reader.generation != "" {
-			if _, err = fmt.Fprintf(w, "id: %s:%d\n", reader.generation, reader.cursor); err != nil {
-				return false
-			}
+			id = reader.generation + ":" + strconv.FormatInt(reader.cursor, 10)
 		}
-		_, err = fmt.Fprintf(w, "event: stream\ndata: %s\n\n", payload)
-		return err == nil
-	}
-	if !send() {
-		return
-	}
-	flusher.Flush()
-	for {
-		select {
-		case <-r.Context().Done(): // the browser went away
-			return
-		case <-ticker.C:
-			if !s.sessionAlive(r) || !send() {
-				return
-			}
-			flusher.Flush()
-		}
-	}
+		return writeEvent(w, id, "stream", map[string]any{"rows": rows, "reset": reader.reset, "available": reader.available, "lost": reader.lost}) == nil
+	})
 }
 
 // fwLogReader is one connection's view of the log ring: how far it has read,

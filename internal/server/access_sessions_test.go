@@ -60,10 +60,7 @@ func TestSessionsFoldIntoSourceAndLastSeen(t *testing.T) {
 // cookie goes, and the browser lands on sign-in.
 func TestRevokingOwnSessionLogsOut(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
-	token, err := s.sessions.CreateWithMetadata("sid-current", "root", "10.0.0.232", "Firefox/142.0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := s.sessions.CreateWithMetadata("sid-current", "root", "10.0.0.232", "Firefox/142.0")
 	current, _ := s.sessions.get(token)
 	form := url.Values{"_csrf": {current.csrf}, "_action": {"end-session:" + current.id}}
 	post := httptest.NewRequest(http.MethodPost, "/system/access", strings.NewReader(form.Encode()))

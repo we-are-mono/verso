@@ -74,10 +74,7 @@ func TestOverviewEventsStream(t *testing.T) {
 
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/overview/events", nil)

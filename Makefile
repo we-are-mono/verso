@@ -42,7 +42,7 @@ rust_target_arm64 := aarch64-unknown-linux-musl
 # (below), where the login page and the colophon state it, and into every
 # package's version. An un-stamped build (go run, go test) reports "dev".
 VER      := $(shell scripts/version.sh)
-VERSION_PKG := github.com/we-are-mono/verso/internal/version.Version
+VERSION_PKG := github.com/we-are-mono/verso/internal/server.Version
 
 # Strip the symbol table (-s) and DWARF debug info (-w): a shipped runtime binary
 # needs neither, and dropping them cuts ~25-30% off its size. -X stamps the

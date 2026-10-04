@@ -46,7 +46,7 @@ func (k *fakeKeeper) counts() (renewed, destroyed []string) {
 func TestSessionIdleExpiry(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	tok, _ := s.CreateWithMetadata("sid", "root", "", "")
+	tok := s.CreateWithMetadata("sid", "root", "", "")
 
 	clk.advance(s.idle - time.Second) // just inside the idle window
 	if _, ok := s.get(tok); !ok {
@@ -61,7 +61,7 @@ func TestSessionIdleExpiry(t *testing.T) {
 func TestSessionAbsoluteExpiry(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	tok, _ := s.CreateWithMetadata("sid", "root", "", "")
+	tok := s.CreateWithMetadata("sid", "root", "", "")
 
 	// Keep touching within the idle window; the absolute cap must still fire.
 	expired := false
@@ -102,7 +102,7 @@ func TestSessionExpiresAtNearerBound(t *testing.T) {
 func TestSessionAliveDoesNotSlideIdle(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	tok, _ := s.CreateWithMetadata("sid", "root", "", "")
+	tok := s.CreateWithMetadata("sid", "root", "", "")
 
 	clk.advance(s.idle - time.Minute)
 	if !s.alive(tok) {
@@ -123,7 +123,7 @@ func TestRenewerKeepsSIDWarmThenReleasesIt(t *testing.T) {
 	s := newSessionsClock(clk.now)
 	k := &fakeKeeper{alive: true}
 	s.keeper = k
-	tok, _ := s.CreateWithMetadata("SID", "root", "", "")
+	tok := s.CreateWithMetadata("SID", "root", "", "")
 
 	// Six minutes of inactivity — well past rpcd's 300 s — with the renewer
 	// ticking. The old bug: the sid would be dead here. Now it is renewed.
@@ -155,7 +155,7 @@ func TestRenewerEvictsUnknownSID(t *testing.T) {
 	s := newSessionsClock(clk.now)
 	k := &fakeKeeper{alive: false} // rpcd no longer knows this sid
 	s.keeper = k
-	tok, _ := s.CreateWithMetadata("SID", "root", "", "")
+	tok := s.CreateWithMetadata("SID", "root", "", "")
 
 	s.renewTick(context.Background())
 	if s.alive(tok) {
@@ -173,7 +173,7 @@ func TestRenewerDestroysLoggedOutSID(t *testing.T) {
 	s := newSessionsClock(clk.now)
 	k := &fakeKeeper{alive: true}
 	s.keeper = k
-	tok, _ := s.CreateWithMetadata("SID", "root", "", "")
+	tok := s.CreateWithMetadata("SID", "root", "", "")
 
 	s.destroy(tok) // logout
 	s.renewTick(context.Background())
@@ -224,12 +224,10 @@ func TestRenewerStopBeforeStart(t *testing.T) {
 func TestSessionSweepOnCreate(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)
-	old, _ := s.CreateWithMetadata("a", "root", "", "")
+	old := s.CreateWithMetadata("a", "root", "", "")
 
-	clk.advance(s.absolute + time.Hour) // old is now well past the absolute cap
-	if _, err := s.CreateWithMetadata("b", "root", "", ""); err != nil {
-		t.Fatalf("Create: %v", err) // Create sweeps expired entries
-	}
+	clk.advance(s.absolute + time.Hour)       // old is now well past the absolute cap
+	s.CreateWithMetadata("b", "root", "", "") // Create sweeps expired entries
 
 	s.mu.Lock()
 	n := len(s.items)

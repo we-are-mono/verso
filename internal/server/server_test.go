@@ -427,6 +427,54 @@ func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
 	return nil
 }
 
+// errNoHelper answers the helper's raw reads and writes a test does not stand
+// in for: a test that needs one embeds fakeBackend and overrides that method.
+var errNoHelper = errors.New("fakeBackend: helper call not provided")
+
+func (fakeBackend) DHCPState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
+func (fakeBackend) DNSState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
+func (fakeBackend) FirewallFiles(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
+func (fakeBackend) NetworkState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
+func (fakeBackend) WirelessState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
+func (fakeBackend) StageConfigFile(context.Context, string, string, string, string) error {
+	return errNoHelper
+}
+
+func (fakeBackend) NetworkSetUp(context.Context, string, string, bool) error {
+	return errNoHelper
+}
+
+func (fakeBackend) NetworkRestart(context.Context, string, string) error {
+	return errNoHelper
+}
+
+func (fakeBackend) AccessCredentials(context.Context, string) (openwrt.AccessCredentials, error) {
+	return openwrt.AccessCredentials{}, errNoHelper
+}
+
+func (fakeBackend) SetAuthorizedKeys(context.Context, string, string, string) error {
+	return errNoHelper
+}
+
+func (fakeBackend) SetWebCertificate(context.Context, string, string, string) error {
+	return errNoHelper
+}
+
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a
 // canned envelope or error and records the request the gateway forwarded, so the
 // gateway is testable with no plugin process and no socket.
@@ -514,10 +562,7 @@ func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	// Authenticate by default: mint a session and attach its cookie, so the
 	// behavior tests exercise the page rather than the login redirect.
-	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
@@ -568,10 +613,7 @@ func postPluginFromPanel(t *testing.T, srv *Server, path string, form url.Values
 // CSRF-valid, and marked by mark before it is sent (nil sends it plain).
 func postPluginRequest(t *testing.T, srv *Server, path string, form url.Values, mark func(*http.Request)) (*httptest.ResponseRecorder, string) {
 	t.Helper()
-	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := srv.sessions.get(token)
 	if form == nil {
 		form = url.Values{}
@@ -2391,29 +2433,6 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 	}
 }
 
-// TestPluginActionRendersBesideTheHeading: the envelope's one primary doorway is
-// a button on the heading row, in both masthead shapes — the kicker/lede one and
-// the bare heading — and its label is localized with the plugin's own catalog.
-func TestPluginActionRendersBesideTheHeading(t *testing.T) {
-	for _, sub := range []string{"", "Say which traffic this is about."} {
-		tr := &fakeTransport{env: &plugin.Envelope{
-			SchemaVersion: 1, Status: http.StatusOK,
-			Title:      "Firewall",
-			Subheading: sub,
-			Action:     &plugin.PageAction{Label: "New rule", Href: "/plugins/demo/rules/new"},
-			Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
-		}}
-		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
-
-		body := get(t, s, "/plugins/demo/").Body.String()
-		for _, want := range []string{`href="/plugins/demo/rules/new"`, ">New rule</a>", "bg-denim"} {
-			if !strings.Contains(body, want) {
-				t.Errorf("page action missing %q (subheading %q):\n%s", want, sub, body)
-			}
-		}
-	}
-}
-
 // TestEveryMastheadHasNoDivider: every page's title, with or without a lede,
 // stands 32px under the page's top edge and has no dividing line. A page that
 // opens on a control band keeps the band's own top edge 32px under the title.
@@ -2549,7 +2568,7 @@ func TestHostGuardRejectsUnknownHost(t *testing.T) {
 func TestHostGuardAllowsConfiguredHost(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	srv.SetAllowedHosts([]string{"verso.lan"})
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Host = "verso.lan:8080" // port is stripped before the check
@@ -2609,12 +2628,12 @@ func TestExpiredSessionRedirectsAnnotated(t *testing.T) {
 		cookie func(srv *Server, clk *fakeClock) string
 	}{
 		{"expired GET", http.MethodGet, func(srv *Server, clk *fakeClock) string {
-			token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+			token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 			clk.advance(sessionIdleTimeout + time.Minute)
 			return token
 		}},
 		{"expired POST", http.MethodPost, func(srv *Server, clk *fakeClock) string {
-			token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+			token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 			clk.advance(sessionIdleTimeout + time.Minute)
 			return token
 		}},
@@ -2759,7 +2778,7 @@ func TestLoginThrottled(t *testing.T) {
 
 func TestLogoutClearsSession(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 	sess, _ := srv.sessions.get(token)
 
 	form := url.Values{"_csrf": {sess.csrf}}
@@ -2789,7 +2808,7 @@ func TestSessionExpiryMeta(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	srv.sessions = newSessionsClock(clk.now)
-	token, _ := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
@@ -2807,7 +2826,7 @@ func TestSessionExpiryMeta(t *testing.T) {
 // CSRF token is refused (VS-04).
 func TestCSRFRejectsPostWithoutToken(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil) // no _csrf
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})

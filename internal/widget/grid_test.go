@@ -85,7 +85,7 @@ func TestDecodeGridChildren(t *testing.T) {
 	r := newRenderer(t)
 	w, err := Decode([]byte(`{"type":"grid","columns":3,"children":[
 		{"type":"stat","label":"Devices","value":"9"},
-		{"type":"badge","variant":"success","text":"up"}
+		{"type":"stat","label":"Uplink","value":"up"}
 	]}`))
 	if err != nil {
 		t.Fatalf("decode grid: %v", err)

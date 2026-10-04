@@ -42,7 +42,7 @@ func TestSessionStateLooksWithoutTouching(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	srv.sessions = newSessionsClock(clk.now)
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 	clk.advance(29 * time.Minute)
 
 	req := httptest.NewRequest(http.MethodGet, "/session", nil)
@@ -67,7 +67,7 @@ func TestStayingSignedInSlidesTheSession(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	srv.sessions = newSessionsClock(clk.now)
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 	sess, _ := srv.sessions.peek(token)
 	clk.advance(29 * time.Minute)
 
@@ -90,7 +90,7 @@ func TestSessionAtItsCapCannotBeExtended(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	srv.sessions = newSessionsClock(clk.now)
-	token, _ := srv.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := srv.sessions.CreateWithMetadata("sid", "root", "", "")
 	sess, _ := srv.sessions.peek(token)
 	// Kept busy until a minute short of the cap.
 	for elapsed := time.Duration(0); elapsed < sessionAbsoluteTimeout-time.Minute; elapsed += 20 * time.Minute {

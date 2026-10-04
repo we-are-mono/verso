@@ -4,12 +4,12 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -20,41 +20,22 @@ import (
 // this connection without creating a sampler per
 // browser tab.
 
-// handleOverviewEvents serves the stream. The session is re-checked every
-// tick: a stream must not outlive its session the way a one-shot poll could
-// not have. The check leaves the idle clock where it is — a page holding this
-// connection open is the browser working, not a person, and it must not keep
-// the router signed in past the expiry the page itself states. When the session
-// ends, EventSource's reconnect lands on the login redirect — not an event
-// stream — which closes the client for good.
+// handleOverviewEvents serves the stream on the sampling clock (serveSSE): a
+// stream must not outlive its session the way a one-shot poll could not have.
 func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-store")
-
 	sid := s.sessionSID(r)
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	liveOverview := &widget.Overview{SecurityHref: s.navLabelHref("Firewall")}
-	meters := time.NewTicker(s.eventInterval)
-	defer meters.Stop()
 
 	sendMeters := func() bool {
 		now := time.Now()
-		payload, err := json.Marshal(map[string]string{"clock": now.Format("15:04:05"), "uptime": loginDuration(tr, loginUptime())})
-		if err != nil {
-			return false
-		}
-		if _, err := fmt.Fprintf(w, "event: clock\ndata: %s\n\n", payload); err != nil {
+		if writeEvent(w, "", "clock", map[string]string{"clock": now.Format("15:04:05"), "uptime": loginDuration(tr, loginUptime())}) != nil {
 			return false
 		}
 		readings := s.systemMeters(r.Context(), sid, tr)
 		liveOverview.SysMetrics = sysMetricsToWidget(readings)
-		return writeMetersEvent(w, readings) == nil
+		return writeEvent(w, "", "meters", map[string]any{"meters": readings}) == nil
 	}
 	sendInterfaces := func() bool {
 		snapshot, ok := s.telemetrySnapshot(r.Context())
@@ -71,12 +52,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		for i := range readings {
 			readings[i].State = tr(readings[i].State)
 		}
-		payload, err := json.Marshal(map[string]any{"interfaces": readings})
-		if err != nil {
-			return true
-		}
-		_, err = fmt.Fprintf(w, "event: interfaces\ndata: %s\n\n", payload)
-		return err == nil
+		return writeEvent(w, "", "interfaces", map[string]any{"interfaces": readings}) == nil
 	}
 	// The WAN throughput frame: sample the uplink device's counters once a
 	// second, fold them into the minute-long history the overview graph draws,
@@ -97,12 +73,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 			if found {
 				caption = fmt.Sprintf(tr("for %s"), loginDuration(tr, primary.Uptime))
 			}
-			payload, marshalErr := json.Marshal(map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "uptime_label": caption})
-			if marshalErr != nil {
-				return false
-			}
-			_, err = fmt.Fprintf(w, "event: wan\ndata: %s\n\n", payload)
-			return err == nil
+			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "uptime_label": caption}) == nil
 		}
 		if !found || primary.Device == "" {
 			return write(0, 0)
@@ -113,7 +84,13 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 				return write(rateMbps(point.RxBPS), rateMbps(point.TxBPS))
 			}
 		}
-		st := s.deviceStats(r.Context(), sid, primary.Device)
+		// Without a telemetry sample, read the uplink's byte counters directly;
+		// an unreadable device counts as zero rather than failing the frame.
+		st, err := s.backend.DeviceStats(r.Context(), sid, primary.Device)
+		if err != nil {
+			log.Printf("verso: device %s stats unavailable: %v", primary.Device, err)
+			st = openwrt.DeviceStats{}
+		}
 		s.wanHist.Observe(st.RxBytes, st.TxBytes)
 		down, up := s.wanHist.Latest()
 		return write(down, up)
@@ -127,46 +104,13 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		boardName = b.BoardName
 	}
 	sendSensors := func() bool {
-		payload, err := json.Marshal(resolveSensors(tr, boardName))
-		if err != nil {
-			return true // a formatting slip is not a stream killer
-		}
-		_, err = fmt.Fprintf(w, "event: sensors\ndata: %s\n\n", payload)
-		return err == nil
+		return writeEvent(w, "", "sensors", resolveSensors(tr, boardName)) == nil
 	}
 	sendOverview := func() bool {
 		s.applyFirewallStatus(r.Context(), sid, liveOverview)
-		payload, err := json.Marshal(liveOverview.LiveStatus(tr))
-		if err != nil {
-			return false
-		}
-		_, err = fmt.Fprintf(w, "event: overview\ndata: %s\n\n", payload)
-		return err == nil
+		return writeEvent(w, "", "overview", liveOverview.LiveStatus(tr)) == nil
 	}
-	if !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() || !sendOverview() {
-		return
-	}
-	flusher.Flush()
-	for {
-		select {
-		case <-r.Context().Done(): // the browser went away
-			return
-		case <-meters.C:
-			if !s.sessionAlive(r) || !sendMeters() || !sendInterfaces() || !sendWan() || !sendSensors() || !sendOverview() {
-				return
-			}
-			flusher.Flush()
-		}
-	}
-}
-
-// writeMetersEvent frames one readings snapshot as an SSE `meters` event:
-// `event:` names the type, `data:` carries the JSON, the blank line ends it.
-func writeMetersEvent(w io.Writer, readings []meterReading) error {
-	payload, err := json.Marshal(map[string]any{"meters": readings})
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w, "event: meters\ndata: %s\n\n", payload)
-	return err
+	s.serveSSE(w, r, func() bool {
+		return sendMeters() && sendInterfaces() && sendWan() && sendSensors() && sendOverview()
+	})
 }

@@ -7,8 +7,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
@@ -21,7 +19,6 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
-	"github.com/we-are-mono/verso/internal/version"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -30,12 +27,10 @@ const (
 	restoreLifetime = 15 * time.Minute
 )
 
-type pendingRestore struct {
-	sid     string
-	path    string
+// restoreUpload is what the confirmation shows about a verified backup.
+type restoreUpload struct {
 	name    string
 	entries int
-	created time.Time
 }
 
 type restoreState struct {
@@ -112,7 +107,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	}
 	truth, known := s.updateTruth()
 	checking := updateChecks.running()
-	ledger := firmwareLedgerView(tr, truth, known, board, version.Version)
+	ledger := firmwareLedgerView(tr, truth, known, board, Version)
 	// The custom image is the floor under every verdict: the way in when no
 	// server can build for this router. Beside an offered build it recedes to a
 	// quiet link; on every other verdict it is the act, and stands as a button.
@@ -300,13 +295,9 @@ func (s *Server) handleRestoreInspect(w http.ResponseWriter, r *http.Request) {
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The selected file is not a readable OpenWrt backup archive. Choose another file and try again."})
 		return
 	}
-	token, err := randomRestoreToken()
-	if err != nil {
-		http.Error(w, "Could not prepare the restore.", http.StatusInternalServerError)
-		return
-	}
+	token := randomToken()
 	keep = true
-	s.putPendingRestore(token, pendingRestore{sid: s.sessionSID(r), path: tempPath, name: path.Base(header.Filename), entries: entries, created: time.Now()})
+	s.pendingRestores.put(token, pendingUpload[restoreUpload]{sid: s.sessionSID(r), path: tempPath, created: time.Now(), data: restoreUpload{name: path.Base(header.Filename), entries: entries}})
 	s.renderMaintenance(w, r, http.StatusOK, restoreState{open: true, verified: true, token: token, name: path.Base(header.Filename), entries: entries})
 }
 
@@ -350,83 +341,37 @@ func inspectBackup(filename string) (int, error) {
 	return count, nil
 }
 
-func randomRestoreToken() (string, error) {
-	data := make([]byte, 24)
-	if _, err := rand.Read(data); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(data), nil
-}
-
-func (s *Server) putPendingRestore(token string, pending pendingRestore) {
-	s.pendingRestoreMu.Lock()
-	defer s.pendingRestoreMu.Unlock()
-	now := time.Now()
-	for key, old := range s.pendingRestores {
-		if old.sid == pending.sid || now.Sub(old.created) > restoreLifetime {
-			_ = os.Remove(old.path)
-			delete(s.pendingRestores, key)
-		}
-	}
-	s.pendingRestores[token] = pending
-}
-
-func (s *Server) pendingRestore(token, sid string) (pendingRestore, bool) {
-	s.pendingRestoreMu.Lock()
-	defer s.pendingRestoreMu.Unlock()
-	pending, ok := s.pendingRestores[token]
-	if !ok || pending.sid != sid || time.Since(pending.created) > restoreLifetime {
-		if ok {
-			_ = os.Remove(pending.path)
-			delete(s.pendingRestores, token)
-		}
-		return pendingRestore{}, false
-	}
-	return pending, true
-}
-
-// consumePendingRestore claims the token — removing it under the lock and
-// reporting whether it was present — so two racing applies of one verified
-// upload cannot both run the privileged restore.
-func (s *Server) consumePendingRestore(token string) bool {
-	s.pendingRestoreMu.Lock()
-	defer s.pendingRestoreMu.Unlock()
-	_, ok := s.pendingRestores[token]
-	delete(s.pendingRestores, token)
-	return ok
-}
-
 func (s *Server) handleRestoreApply(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
 	token := r.FormValue("restore_token")
-	pending, ok := s.pendingRestore(token, s.sessionSID(r))
+	pending, ok := s.pendingRestores.get(token, s.sessionSID(r))
 	if !ok {
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "That verified backup has expired. Choose it again."})
 		return
 	}
 	verifier, ok := s.auth.(credentialVerifier)
 	if !ok || verifier.Verify(r.Context(), s.sessionUser(r), r.FormValue("password")) != nil {
-		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, verified: true, token: token, name: pending.name, entries: pending.entries, passwordError: "The current password is incorrect."})
+		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, verified: true, token: token, name: pending.data.name, entries: pending.data.entries, passwordError: "The current password is incorrect."})
 		return
 	}
-	if !s.consumePendingRestore(token) {
+	if !s.pendingRestores.consume(token) {
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "That verified backup was already used. Upload it again to restore once more."})
 		return
 	}
 	_, t := s.localize(r)
 	page, err := s.restartingPage(r, restorePlan(translatorOrIdentity(t)))
 	if err != nil {
-		s.putPendingRestore(token, pending)
+		s.pendingRestores.put(token, pending)
 		http.Error(w, "restarting page error", http.StatusInternalServerError)
 		return
 	}
 	if err := s.backend.RestoreBackup(r.Context(), s.sessionSID(r), pending.path); err != nil {
 		log.Printf("verso: restore backup: %v", err)
-		s.putPendingRestore(token, pending) // re-stage so the operator can retry the same verified upload
-		s.renderMaintenance(w, r, http.StatusBadGateway, restoreState{open: true, verified: true, token: token, name: pending.name, entries: pending.entries, restoreError: "OpenWrt could not complete the restore. The saved archive is still available to retry."})
+		s.pendingRestores.put(token, pending) // re-stage so the operator can retry the same verified upload
+		s.renderMaintenance(w, r, http.StatusBadGateway, restoreState{open: true, verified: true, token: token, name: pending.data.name, entries: pending.data.entries, restoreError: "OpenWrt could not complete the restore. The saved archive is still available to retry."})
 		return
 	}
 	_ = os.Remove(pending.path)

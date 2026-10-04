@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"log"
-	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -46,8 +45,7 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 	// The interface a device sits on — the finer segment label the row shows,
 	// derived from its address the same way the zone is.
 	var nets []ifaceNet
-	var zones []zoneNet
-	zoneOfDevice := map[string]string{}
+	zoneOf, zoneOfDevice := map[string]string{}, map[string]string{}
 	netCfg, netErr := s.backend.UCIConfig(ctx, sid, "network")
 	fwCfg, fwErr := s.backend.UCIConfig(ctx, sid, "firewall")
 	if netErr == nil {
@@ -59,7 +57,7 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 		log.Printf("verso: devices: firewall config unavailable: %v", fwErr)
 	}
 	if netErr == nil && fwErr == nil {
-		zones = zoneNets(netCfg, fwCfg)
+		zoneOf = networkZones(fwCfg)
 		zoneOfDevice = zonesByDevice(netCfg, fwCfg)
 	}
 
@@ -111,18 +109,24 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 		if hasLease {
 			host = l.host
 		}
-		iface := neighborInterface(entries, zoneAddr)
-		if iface == "" {
-			iface = ifaceForAddr(nets, zoneAddr)
-		}
-		zone := zoneForAddr(zones, zoneAddr)
-		if zone == "" {
-			zone = zoneOfDevice[iface]
-		}
 		// The network is how the listing groups a device, so it is always the
 		// configured one — the kernel interface a neighbour entry names is the
 		// device it attaches through, a finer fact that belongs in the row.
-		network, cidr := netForAddr(nets, zoneAddr)
+		configured, covered := netForAddr(nets, zoneAddr)
+		network, cidr, zone := "", "", ""
+		if covered {
+			network, cidr, zone = configured.name, configured.cidr.String(), zoneOf[configured.name]
+		}
+		iface := neighborInterface(entries, zoneAddr)
+		if iface == "" {
+			iface = configured.device
+			if iface == "" {
+				iface = network
+			}
+		}
+		if zone == "" {
+			zone = zoneOfDevice[iface]
+		}
 		out = append(out, widget.Device{
 			Name:        deviceName(host, mac),
 			Maker:       deviceicon.Maker(mac),
@@ -194,22 +198,6 @@ func networkRank(name string) string {
 		return "\x00" // home first
 	}
 	return name
-}
-
-// netForAddr names the configured network an address belongs to, and the subnet
-// that name resolves to. Empty for an address no configured network covers — a
-// device on a segment this router only routes for.
-func netForAddr(nets []ifaceNet, addr string) (name, cidr string) {
-	ip := net.ParseIP(addr)
-	if ip == nil {
-		return "", ""
-	}
-	for _, n := range nets {
-		if n.cidr != nil && n.cidr.Contains(ip) {
-			return n.name, n.cidr.String()
-		}
-	}
-	return "", ""
 }
 
 // neighborInterface returns the kernel interface that owns a device's primary

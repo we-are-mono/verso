@@ -68,10 +68,7 @@ func TestI18nAudit(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	srv.SetBundle(recorded)
 
-	token, err := srv.sessions.CreateWithMetadata("audit-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := srv.sessions.CreateWithMetadata("audit-sid", "root", "", "")
 
 	href := regexp.MustCompile(`href="(/[^"#]*)`)
 	for _, code := range bundle.Codes() {

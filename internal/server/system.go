@@ -5,9 +5,6 @@ package server
 
 import (
 	"net/http"
-	"strings"
-
-	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // systemPages assembles the mixed-ownership System frame.
@@ -41,7 +38,13 @@ func (s *Server) systemPages(active string) []pageTab {
 	} {
 		tabs = append(tabs, pageTab{Label: item.label, Href: item.href})
 	}
-	markActiveTab(tabs, active)
+	hrefs := make([]string, len(tabs))
+	for i, tab := range tabs {
+		hrefs[i] = tab.Href
+	}
+	if i := bestHref(active, hrefs); i >= 0 {
+		tabs[i].Active = true
+	}
 	return tabs
 }
 
@@ -54,31 +57,4 @@ func (s *Server) handleSystemRoot(w http.ResponseWriter, r *http.Request) {
 		destination = pages[0].Href
 	}
 	http.Redirect(w, r, destination, http.StatusSeeOther)
-}
-
-// pluginNavSectionAt resolves the section owning a plugin path. The most
-// specific registered path wins, matching the active-link rule in nav.go.
-func pluginNavSectionAt(m plugin.Manifest, pluginPath string) string {
-	current := strings.Trim(pluginPath, "/")
-	section, best := "", -1
-	for _, entry := range m.Nav {
-		path := strings.Trim(entry.Path, "/")
-		matches := path == "" || current == path || strings.HasPrefix(current, path+"/")
-		if matches && len(path) > best {
-			section, best = entry.Section, len(path)
-		}
-	}
-	return section
-}
-
-func markActiveTab(tabs []pageTab, active string) {
-	best, bestLen := -1, -1
-	for i := range tabs {
-		if isActive(active, tabs[i].Href) && len(tabs[i].Href) > bestLen {
-			best, bestLen = i, len(tabs[i].Href)
-		}
-	}
-	if best >= 0 {
-		tabs[best].Active = true
-	}
 }

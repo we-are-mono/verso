@@ -53,10 +53,7 @@ func openStream(t *testing.T, s *Server, source string) (*http.Response, string)
 	t.Helper()
 	ts := httptest.NewServer(s.Handler())
 	t.Cleanup(ts.Close)
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	t.Cleanup(cancel)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/streams/"+source, nil)
@@ -197,10 +194,7 @@ func TestFirewallLogStreamResumesWhereTheBrowserLeftOff(t *testing.T) {
 	s.eventInterval = 5 * time.Millisecond
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	read := func(lastEventID string) string {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()

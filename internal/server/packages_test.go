@@ -236,7 +236,7 @@ func TestPackagePanelActionsReturnOutcomes(t *testing.T) {
 func TestAllPackagesIsAPaginatedListingFragment(t *testing.T) {
 	s := pluginsServer(t, fakeBackend{access: true, pkgTotal: 75, pkgFound: []openwrt.Package{{Name: "available-package", Description: "Available"}}}, true)
 	req := httptest.NewRequest("GET", "/system/packages?tab=all&offset=30", nil)
-	token, _ := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	req.Header.Set("X-Verso-Interaction", "packages")
 	res := httptest.NewRecorder()
@@ -274,10 +274,7 @@ func TestFlashConfirmsActions(t *testing.T) {
 	s := pluginsServer(t, b, true, mgmtManifest())
 
 	// One session across POST and the two GETs, unlike the per-call helpers.
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := s.sessions.get(token)
 	do := func(method, path string, form url.Values) *httptest.ResponseRecorder {
 		var req *http.Request
@@ -558,10 +555,7 @@ func TestInstallWaitsForTheRefresh(t *testing.T) {
 	b := newRefreshBackend()
 	s := refreshServer(t, b)
 
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := s.sessions.get(token)
 	do := func(path string, form url.Values) *httptest.ResponseRecorder {
 		var req *http.Request
@@ -643,10 +637,7 @@ func TestFeedRefreshRefusesASecondRun(t *testing.T) {
 	b := newRefreshBackend()
 	s := refreshServer(t, b)
 
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := s.sessions.get(token)
 	do := func(method string, form url.Values) *httptest.ResponseRecorder {
 		var req *http.Request

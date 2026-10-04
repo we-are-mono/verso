@@ -88,25 +88,14 @@ func newSessionsClock(now func() time.Time) *Sessions {
 // opportunistically sweeping expired entries. It records the browser and peer
 // address shown on System → Access; the separate management id can end a session
 // without ever exposing its bearer cookie or rpcd sid to another browser.
-func (s *Sessions) CreateWithMetadata(sid, username, address, agent string) (string, error) {
-	token, err := randomToken()
-	if err != nil {
-		return "", err
-	}
-	csrf, err := randomToken()
-	if err != nil {
-		return "", err
-	}
-	id, err := randomToken()
-	if err != nil {
-		return "", err
-	}
+func (s *Sessions) CreateWithMetadata(sid, username, address, agent string) string {
+	token := randomToken()
 	now := s.now()
 	s.mu.Lock()
 	s.sweep(now)
-	s.items[token] = session{id: id, sid: sid, username: username, csrf: csrf, created: now, lastSeen: now, address: address, agent: agent}
+	s.items[token] = session{id: randomToken(), sid: sid, username: username, csrf: randomToken(), created: now, lastSeen: now, address: address, agent: agent}
 	s.mu.Unlock()
-	return token, nil
+	return token
 }
 
 // get returns a live session, sliding its idle window. An expired session is
@@ -363,11 +352,10 @@ func (s *Sessions) evictBySID(sid string) {
 	}
 }
 
-// randomToken returns 256 bits of hex-encoded entropy — the opaque cookie value.
-func randomToken() (string, error) {
+// randomToken returns 256 bits of hex-encoded entropy — an opaque cookie, form
+// or management value. crypto/rand.Read never fails (it crashes instead).
+func randomToken() string {
 	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }

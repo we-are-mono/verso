@@ -77,7 +77,7 @@ func TestInterfacePowerCommandsRequireTheirOwnGrant(t *testing.T) {
 func TestInventoryRefreshPreservesIdleTimeoutAndFlash(t *testing.T) {
 	clock := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := &Server{sessions: newSessionsClock(clock.now)}
-	token, _ := s.sessions.CreateWithMetadata("sid", "root", "", "")
+	token := s.sessions.CreateWithMetadata("sid", "root", "", "")
 	s.sessions.SetFlash(token, "success", "Saved.")
 	r := httptest.NewRequest(http.MethodGet, "/plugins/interfaces/", nil)
 	r.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})

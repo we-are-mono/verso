@@ -96,12 +96,6 @@ type Server struct {
 	telemetryAt   time.Time
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
-	// pendingApply is the non-UCI tail a plugin POST prepares, keyed by the
-	// operator's session. The apply drains and clears the session's entry only
-	// after rpcd applies the UCI stage, so one operator's tail can never fire under
-	// another operator's apply, and a drained or failed action never lingers.
-	pendingApplyMu sync.Mutex
-	pendingApply   map[string][]plugin.ApplyAction
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors
@@ -152,13 +146,11 @@ type Server struct {
 	// wanHist accumulates the WAN device's throughput history from the same
 	// stream's once-a-second counter observations (wan_history.go).
 	wanHist *wanHistory
-	// pendingRestores bind a verified, private upload to the session that chose
-	// it. Browser forms carry only the opaque token, never a server path.
-	pendingRestoreMu  sync.Mutex
-	pendingRestores   map[string]pendingRestore
-	pendingFirmwareMu sync.Mutex
-	pendingFirmwares  map[string]pendingFirmware
-	maintenanceDir    string
+	// pendingRestores and pendingFirmwares bind a verified, private upload to the
+	// session that chose it (pending_uploads.go).
+	pendingRestores  pendingUploads[restoreUpload]
+	pendingFirmwares pendingUploads[firmwareUpload]
+	maintenanceDir   string
 	// stateDir is where the update check's answer is recorded and read back
 	// (ADR-014 §5). The daily cron run writes the same file, so this is a shared
 	// location on the device rather than anything this process owns; tests point
@@ -188,30 +180,28 @@ func New(
 	interfaceSampler := telemetry.NewSampler()
 	interfaceSampler.Start()
 	s := &Server{
-		mux:              http.NewServeMux(),
-		widgets:          widgets,
-		backend:          backend,
-		transport:        transport,
-		manifests:        manifests,
-		pluginByID:       indexByID(manifests),
-		auth:             auth,
-		sessions:         newSessions(),
-		loginLimiter:     newLoginLimiter(time.Now),
-		loginInternet:    openwrt.InternetAvailable,
-		css:              template.CSS(cssText),
-		probe:            probeSocket,
-		stats:            sysstat.New(),
-		telemetry:        interfaceSampler,
-		telemetryStop:    interfaceSampler.Stop,
-		eventInterval:    time.Second,
-		readLeases:       func() ([]byte, error) { return os.ReadFile(leasesPath) },
-		neighbors:        sysstat.Neighbors,
-		bridgePorts:      sysstat.BridgePorts,
-		wanHist:          newWanHistory(time.Now),
-		pendingRestores:  make(map[string]pendingRestore),
-		pendingFirmwares: make(map[string]pendingFirmware),
-		maintenanceDir:   "/var/run/verso",
-		stateDir:         updatecheck.DefaultDir,
+		mux:            http.NewServeMux(),
+		widgets:        widgets,
+		backend:        backend,
+		transport:      transport,
+		manifests:      manifests,
+		pluginByID:     indexByID(manifests),
+		auth:           auth,
+		sessions:       newSessions(),
+		loginLimiter:   newLoginLimiter(time.Now),
+		loginInternet:  openwrt.InternetAvailable,
+		css:            template.CSS(cssText),
+		probe:          probeSocket,
+		stats:          sysstat.New(),
+		telemetry:      interfaceSampler,
+		telemetryStop:  interfaceSampler.Stop,
+		eventInterval:  time.Second,
+		readLeases:     func() ([]byte, error) { return os.ReadFile(leasesPath) },
+		neighbors:      sysstat.Neighbors,
+		bridgePorts:    sysstat.BridgePorts,
+		wanHist:        newWanHistory(time.Now),
+		maintenanceDir: "/var/run/verso",
+		stateDir:       updatecheck.DefaultDir,
 	}
 	// Start English-only: the page cache holds just the identity set and the
 	// bundle stays nil (English) until SetBundle — wired by cmd/verso once the
@@ -301,15 +291,22 @@ func (s *Server) pageSet(lang string) *template.Template {
 // no installed match, or no catalogs — is ("", nil): the caller then renders the
 // English template set and the render skips the translation walk.
 func (s *Server) localize(r *http.Request) (lang string, t func(string) string) {
-	b := s.bundle.Load()
-	if b == nil {
-		return "", nil
-	}
-	lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
+	b, lang := s.negotiate(r)
 	if lang == "" {
 		return "", nil
 	}
 	return lang, b.Translator(lang)
+}
+
+// negotiate picks the request's language from Accept-Language against the
+// installed catalogs: the bundle and the code, or "" for English — no installed
+// match, or no catalogs at all.
+func (s *Server) negotiate(r *http.Request) (*i18n.Bundle, string) {
+	b := s.bundle.Load()
+	if b == nil {
+		return nil, ""
+	}
+	return b, i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
 }
 
 // headingAct renders a listing's forward act for the heading line, where every
@@ -377,18 +374,6 @@ func localizeNotice(n *plugin.Notice, tr func(string) string) *plugin.Notice {
 	return &c
 }
 
-// localizeAction returns a copy of the page action with its label localized, or
-// nil for no action. The href and the icon name are addresses, not words.
-func localizeAction(a *plugin.PageAction, tr func(string) string) *plugin.PageAction {
-	if a == nil {
-		return nil
-	}
-	c := *a
-	c.Label = tr(c.Label)
-	c.Href = widget.SafeHref(c.Href)
-	return &c
-}
-
 // localizeBack returns a copy of the masthead back-link with its label localized
 // and its glyph fixed, or nil for none. An empty label becomes "Cancel" — the
 // quiet default an edit page leans on — and the icon is always the left arrow,
@@ -413,11 +398,7 @@ func localizeBack(a *plugin.PageAction, tr func(string) string) *plugin.PageActi
 // from its own catalog while shell-owned widget defaults fall through to base
 // (ADR-012 §5). English (nil t) when no language is negotiated.
 func (s *Server) pluginLocalize(r *http.Request, pluginID string) (lang string, t func(string) string) {
-	b := s.bundle.Load()
-	if b == nil {
-		return "", nil
-	}
-	lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
+	b, lang := s.negotiate(r)
 	if lang == "" {
 		return "", nil
 	}
@@ -428,12 +409,8 @@ func (s *Server) pluginLocalize(r *http.Request, pluginID string) (lang string, 
 // translator for the request's negotiated language, so the nav can localize each
 // plugin's label from that plugin's catalog (ADR-012 §5). Identity for English.
 func (s *Server) pluginTranslators(r *http.Request) func(pluginID string) func(string) string {
-	b := s.bundle.Load()
-	lang := ""
-	if b != nil {
-		lang = i18n.Negotiate(r.Header.Get("Accept-Language"), b.Codes())
-	}
-	if b == nil || lang == "" {
+	b, lang := s.negotiate(r)
+	if lang == "" {
 		return func(string) func(string) string { return identityTranslator }
 	}
 	return func(pluginID string) func(string) string {
@@ -453,18 +430,8 @@ func (s *Server) Close() {
 	if s.telemetryStop != nil {
 		s.telemetryStop()
 	}
-	s.pendingRestoreMu.Lock()
-	for token, pending := range s.pendingRestores {
-		_ = os.Remove(pending.path)
-		delete(s.pendingRestores, token)
-	}
-	s.pendingRestoreMu.Unlock()
-	s.pendingFirmwareMu.Lock()
-	for token, pending := range s.pendingFirmwares {
-		_ = os.Remove(pending.path)
-		delete(s.pendingFirmwares, token)
-	}
-	s.pendingFirmwareMu.Unlock()
+	s.pendingRestores.clear()
+	s.pendingFirmwares.clear()
 }
 
 // currentCSS is the stylesheet to inline: the live dev file (read fresh each render) in
@@ -685,11 +652,10 @@ type pageHeader struct {
 	// page can show.
 	StagedStructure bool
 	Subheading      string
-	Action          *plugin.PageAction // the page's one primary doorway, hard right on the heading row
 	// HeadingAct is a listing's forward act lifted off its control band
-	// (widget.TakeHeadingAct), already rendered (Server.headingAct): it takes
-	// the Action's place on the heading row and opens what the bar's act would
-	// have opened.
+	// (widget.TakeHeadingAct), already rendered (Server.headingAct): it stands
+	// hard right on the heading row and opens what the bar's act would have
+	// opened.
 	HeadingAct template.HTML
 	// Back is an edit page's way home: the shell renders it as a quiet "← Cancel"
 	// back-link in the masthead above the heading. The plugin supplies the Href and
@@ -861,7 +827,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
 		Subheading:    tr(hdr.Subheading),
-		Action:        localizeAction(hdr.Action, tr),
 		HeadingAct:    hdr.HeadingAct,
 		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
@@ -962,12 +927,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// addresses, gateways and lease times behind the internet tile's verdict.
 	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
 		ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
-		ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn)
-		for i := range ov.V6 {
-			if ov.V6[i].Label == "Expires" {
-				ov.V6[i].Value = loginDuration(tr, conn.V6Valid)
-			}
-		}
+		ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn, tr)
 	} else {
 		log.Printf("verso: overview: wan connection unavailable: %v", err)
 		unavailable := []widget.OverviewFact{{Label: "Status", Value: "unavailable"}}
@@ -1034,7 +994,7 @@ func wanFactsV4(c openwrt.WANConn) []widget.OverviewFact {
 	return f
 }
 
-func wanFactsV6(c openwrt.WANConn) []widget.OverviewFact {
+func wanFactsV6(c openwrt.WANConn, tr func(string) string) []widget.OverviewFact {
 	var f []widget.OverviewFact
 	if c.V6Prefix != "" {
 		f = append(f, widget.OverviewFact{Label: "Prefix", Value: c.V6Prefix, Copy: true})
@@ -1049,7 +1009,7 @@ func wanFactsV6(c openwrt.WANConn) []widget.OverviewFact {
 		f = append(f, widget.OverviewFact{Label: "DNS", Value: d, Copy: true})
 	}
 	if c.V6Valid > 0 {
-		f = append(f, widget.OverviewFact{Label: "Expires", Value: formatUptime(c.V6Valid)})
+		f = append(f, widget.OverviewFact{Label: "Expires", Value: loginDuration(tr, c.V6Valid)})
 	}
 	if len(f) == 0 {
 		return []widget.OverviewFact{{Label: "Status", Value: "Not configured"}}

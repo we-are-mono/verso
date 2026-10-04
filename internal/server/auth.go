@@ -17,8 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/we-are-mono/verso/internal/version"
 )
 
 // Authenticator verifies credentials and returns an rpcd session id. Injected
@@ -380,11 +378,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginLimiter.success(key)
-	token, err := s.sessions.CreateWithMetadata(sid, username, clientIP(r), r.UserAgent())
-	if err != nil {
-		http.Error(w, "session error", http.StatusInternalServerError)
-		return
-	}
+	token := s.sessions.CreateWithMetadata(sid, username, clientIP(r), r.UserAgent())
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    token,
@@ -422,7 +416,7 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
 		Lang: langAttr(lang), CSS: s.currentCSS(), Error: tr(errMsg), Notice: tr(expiryNotice(r)),
-		Version: version.Version, Firmware: loginFirmware(),
+		Version: Version, Firmware: loginFirmware(),
 		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
 		Status: s.readLoginStatus(tr), Username: username,
 		VisitorIP: clientIP(r), VisitorNetwork: visitorNetwork(clientIP(r)),

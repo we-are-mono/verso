@@ -72,10 +72,7 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 	defer cancel()
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
-	token, err := srv.sessions.CreateWithMetadata("firewall-reader", "root", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := srv.sessions.CreateWithMetadata("firewall-reader", "root", "", "")
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/overview/events", nil)
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	res, err := http.DefaultClient.Do(req)

@@ -24,8 +24,8 @@ import (
 // across pages: what networks exist, on which ports, behind which wall, with how
 // many devices.
 
-// ifaceNet is one interface's subnet and the interface name that owns it — the
-// finer-grained twin of zoneNet, used to name the network a device sits on.
+// ifaceNet is one interface's subnet and the network name that owns it, used to
+// name the network — and through networkZones, the zone — a device sits on.
 type ifaceNet struct {
 	cidr   *net.IPNet
 	name   string
@@ -52,21 +52,19 @@ func interfaceNets(cfg map[string]any) []ifaceNet {
 	return out
 }
 
-// ifaceForAddr names the interface whose subnet holds addr, or "".
-func ifaceForAddr(nets []ifaceNet, addr string) string {
+// netForAddr returns the configured interface whose subnet holds addr. None
+// covers an address on a segment this router only routes for.
+func netForAddr(nets []ifaceNet, addr string) (ifaceNet, bool) {
 	ip := net.ParseIP(addr)
 	if ip == nil {
-		return ""
+		return ifaceNet{}, false
 	}
 	for _, n := range nets {
 		if n.cidr.Contains(ip) {
-			if n.device != "" {
-				return n.device
-			}
-			return n.name
+			return n, true
 		}
 	}
-	return ""
+	return ifaceNet{}, false
 }
 
 // deviceVLAN splits an interface's device into its bridge and VLAN id: "br-lan.20"

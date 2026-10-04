@@ -20,13 +20,11 @@ import (
 
 const maxFirmwareSize = 128 << 20
 
-type pendingFirmware struct {
-	sid     string
-	path    string
-	name    string
-	info    openwrt.FirmwareInfo
-	model   string
-	created time.Time
+// firmwareUpload is what the confirmation shows about a verified image.
+type firmwareUpload struct {
+	name  string
+	info  openwrt.FirmwareInfo
+	model string
 }
 
 type firmwareState struct {
@@ -175,20 +173,16 @@ func (s *Server) handleFirmwareInspect(w http.ResponseWriter, r *http.Request) {
 		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "The image is damaged, unsigned where signatures are required, or intended for a different device. Choose another sysupgrade image and try again."})
 		return
 	}
-	token, err := randomRestoreToken()
-	if err != nil {
-		http.Error(w, "Could not prepare the firmware upgrade.", http.StatusInternalServerError)
-		return
-	}
+	token := randomToken()
 	board, _ := s.backend.Board(r.Context(), s.sessionSID(r))
 	model := board.Model
 	if model == "" {
 		model = "this device"
 	}
 	keep = true
-	pending := pendingFirmware{sid: s.sessionSID(r), path: tempPath, name: path.Base(header.Filename), info: info, model: model, created: time.Now()}
-	s.putPendingFirmware(token, pending)
-	s.renderMaintenanceFirmware(w, r, http.StatusOK, firmwareState{open: true, verified: true, token: token, name: pending.name, info: info, model: model})
+	name := path.Base(header.Filename)
+	s.pendingFirmwares.put(token, pendingUpload[firmwareUpload]{sid: s.sessionSID(r), path: tempPath, created: time.Now(), data: firmwareUpload{name: name, info: info, model: model}})
+	s.renderMaintenanceFirmware(w, r, http.StatusOK, firmwareState{open: true, verified: true, token: token, name: name, info: info, model: model})
 }
 
 func (s *Server) handleFirmwareApply(w http.ResponseWriter, r *http.Request) {
@@ -197,65 +191,28 @@ func (s *Server) handleFirmwareApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := r.FormValue("firmware_token")
-	pending, ok := s.pendingFirmware(token, s.sessionSID(r))
+	pending, ok := s.pendingFirmwares.get(token, s.sessionSID(r))
 	if !ok {
 		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "That verified firmware image has expired. Choose it again."})
 		return
 	}
 	verifier, ok := s.auth.(credentialVerifier)
 	if !ok || verifier.Verify(r.Context(), s.sessionUser(r), r.FormValue("password")) != nil {
-		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, verified: true, token: token, name: pending.name, info: pending.info, model: pending.model, passwordError: "The current password is incorrect."})
+		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, verified: true, token: token, name: pending.data.name, info: pending.data.info, model: pending.data.model, passwordError: "The current password is incorrect."})
 		return
 	}
-	if !s.consumePendingFirmware(token) {
+	if !s.pendingFirmwares.consume(token) {
 		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "That verified image was already used. Upload it again to install once more."})
 		return
 	}
 	if err := s.backend.InstallFirmware(r.Context(), s.sessionSID(r), pending.path); err != nil {
 		log.Printf("verso: install firmware: %v", err)
-		s.putPendingFirmware(token, pending) // re-stage so the operator can retry the same verified image
-		s.renderMaintenanceFirmware(w, r, http.StatusBadGateway, firmwareState{open: true, verified: true, token: token, name: pending.name, info: pending.info, model: pending.model, installError: "OpenWrt could not start the firmware upgrade. The verified image is still available to retry."})
+		s.pendingFirmwares.put(token, pending) // re-stage so the operator can retry the same verified image
+		s.renderMaintenanceFirmware(w, r, http.StatusBadGateway, firmwareState{open: true, verified: true, token: token, name: pending.data.name, info: pending.data.info, model: pending.data.model, installError: "OpenWrt could not start the firmware upgrade. The verified image is still available to retry."})
 		return
 	}
 	_ = os.Remove(pending.path)
 	s.renderFirmwareStarted(w, r)
-}
-
-func (s *Server) putPendingFirmware(token string, pending pendingFirmware) {
-	s.pendingFirmwareMu.Lock()
-	defer s.pendingFirmwareMu.Unlock()
-	now := time.Now()
-	for key, old := range s.pendingFirmwares {
-		if old.sid == pending.sid || now.Sub(old.created) > restoreLifetime {
-			_ = os.Remove(old.path)
-			delete(s.pendingFirmwares, key)
-		}
-	}
-	s.pendingFirmwares[token] = pending
-}
-
-func (s *Server) pendingFirmware(token, sid string) (pendingFirmware, bool) {
-	s.pendingFirmwareMu.Lock()
-	defer s.pendingFirmwareMu.Unlock()
-	pending, ok := s.pendingFirmwares[token]
-	if !ok || pending.sid != sid || time.Since(pending.created) > restoreLifetime {
-		if ok {
-			_ = os.Remove(pending.path)
-			delete(s.pendingFirmwares, token)
-		}
-		return pendingFirmware{}, false
-	}
-	return pending, true
-}
-
-// consumePendingFirmware claims the token under the lock and reports whether it
-// was present, so two racing applies of one verified image cannot both flash.
-func (s *Server) consumePendingFirmware(token string) bool {
-	s.pendingFirmwareMu.Lock()
-	defer s.pendingFirmwareMu.Unlock()
-	_, ok := s.pendingFirmwares[token]
-	delete(s.pendingFirmwares, token)
-	return ok
 }
 
 func (s *Server) renderFirmwareStarted(w http.ResponseWriter, r *http.Request) {

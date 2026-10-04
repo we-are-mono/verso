@@ -23,10 +23,7 @@ import (
 
 func maintenanceSession(t *testing.T, srv *Server) (string, session) {
 	t.Helper()
-	token, err := srv.sessions.CreateWithMetadata("maintenance-sid", "root", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := srv.sessions.CreateWithMetadata("maintenance-sid", "root", "", "")
 	sess, ok := srv.sessions.get(token)
 	if !ok {
 		t.Fatal("created session disappeared")

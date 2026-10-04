@@ -77,10 +77,7 @@ func TestBundledPluginPages(t *testing.T) {
 		"dhcp":    {"dnsmasq": map[string]any{".name": "dnsmasq", ".type": "dnsmasq"}},
 	}}
 	srv := newServerWith(t, backend, plugin.NewSocketTransport(), installed)
-	token, err := srv.sessions.CreateWithMetadata("smoke", "root", "127.0.0.1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := srv.sessions.CreateWithMetadata("smoke", "root", "127.0.0.1", "")
 	paths := []string{"/", "/devices", "/system/access", "/system/packages", "/system/services", "/system/maintenance", "/system/logs"}
 	for _, m := range installed {
 		for _, n := range m.Nav {

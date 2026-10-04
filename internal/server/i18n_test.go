@@ -35,10 +35,7 @@ func getLang(t *testing.T, srv *Server, path, acceptLanguage string) string {
 	if acceptLanguage != "" {
 		req.Header.Set("Accept-Language", acceptLanguage)
 	}
-	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)

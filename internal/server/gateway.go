@@ -131,7 +131,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// System frame. The manifest registration, not a shell route, supplies the
 	// page and its label; stopped plugins disappear through the ordinary live
 	// registration filter used by every other plugin page.
-	if pluginNavSectionAt(m, r.PathValue("path")) == "System" {
+	if entry, _ := navEntryAt(m, r.PathValue("path")); entry.Section == "System" {
 		if hdr.Tone != "neutral" {
 			hdr.Heading = "System"
 		}
@@ -384,13 +384,8 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		if validateSchema(wdg) || status == http.StatusUnprocessableEntity {
 			status = http.StatusUnprocessableEntity
 		} else {
-			if err := validateApplyActions(m, env.Apply); err != nil {
-				log.Printf("verso: plugin %q returned an invalid apply action: %v", m.ID, err)
-				return s.notice(tr("Not permitted"), fmt.Sprintf(
-					tr("%s tried to perform an operation it did not declare."), m.Name)), http.StatusForbidden
-			}
 			if len(env.Commands) > 0 {
-				if len(env.Commit) > 0 || len(env.Apply) > 0 {
+				if len(env.Commit) > 0 {
 					return s.notice(tr("Not permitted"), tr("Commands cannot be combined with staged changes.")), http.StatusForbidden
 				}
 				if err := s.runPluginCommands(r.Context(), m, s.sessionSID(r), env.Commands); err != nil {
@@ -421,7 +416,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 				hdr.StagedCommit = true
 				hdr.StagedStructure = restructures(env.Commit)
 			}
-			s.setPendingApply(s.sessionSID(r), env.Apply)
 		}
 	}
 
@@ -522,7 +516,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Live = env.Live
 	hdr.Tone = env.Tone
 	hdr.Subheading = tr(env.Subheading)
-	hdr.Action = localizeAction(env.Action, tr)
 	hdr.Back = localizeBack(env.Back, tr)
 	hdr.Banner = localizeBanner(env.Banner, tr)
 	*width = env.Width
@@ -612,8 +605,8 @@ func validateSchema(w widget.Widget) bool {
 	return found
 }
 
-// validateApplyActions bounds the privileged tail of a plugin transaction to
-// named operations and to scopes the plugin declared in its manifest. Adding a
+// validateApplyActions bounds a plugin's privileged helper commands to named
+// operations and to scopes the plugin declared in its manifest. Adding a
 // helper method is not enough: a plugin must opt into its exact permission.
 func validateApplyActions(m plugin.Manifest, actions []plugin.ApplyAction) error {
 	if len(actions) > 1 {
@@ -630,65 +623,11 @@ func validateApplyActions(m plugin.Manifest, actions []plugin.ApplyAction) error
 		default:
 			return fmt.Errorf("unknown action %q", action.Name)
 		}
-		declared := false
-		for _, scope := range m.ACL.Write {
-			if scope == required {
-				declared = true
-				break
-			}
-		}
-		if !declared {
+		if !slices.Contains(m.ACL.Write, required) {
 			return fmt.Errorf("action %q lacks declared scope", action.Name)
 		}
 	}
 	return nil
-}
-
-// setPendingApply records the non-UCI apply tail a plugin POST prepared, keyed by
-// the operator's session so one operator's tail can never fire under another's
-// the apply. Actions merge by name within the session (a re-save replaces its
-// own), and an empty set is a no-op — an unrelated save on another page must not
-// wipe a tail already armed for this session.
-func (s *Server) setPendingApply(sid string, actions []plugin.ApplyAction) {
-	if sid == "" || len(actions) == 0 {
-		return
-	}
-	s.pendingApplyMu.Lock()
-	defer s.pendingApplyMu.Unlock()
-	if s.pendingApply == nil {
-		s.pendingApply = make(map[string][]plugin.ApplyAction)
-	}
-	merged := s.pendingApply[sid]
-	for _, action := range actions {
-		replaced := false
-		for i := range merged {
-			if merged[i].Name == action.Name {
-				merged[i] = action
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			merged = append(merged, action)
-		}
-	}
-	s.pendingApply[sid] = merged
-}
-
-// takePendingApply returns the session's apply tail and clears it in one step, so
-// a drained (or failed) action can never linger to fire on a later, unrelated apply.
-func (s *Server) takePendingApply(sid string) []plugin.ApplyAction {
-	s.pendingApplyMu.Lock()
-	defer s.pendingApplyMu.Unlock()
-	actions := s.pendingApply[sid]
-	delete(s.pendingApply, sid)
-	return actions
-}
-
-func (s *Server) clearPendingApply(sid string) {
-	s.pendingApplyMu.Lock()
-	defer s.pendingApplyMu.Unlock()
-	delete(s.pendingApply, sid)
 }
 
 type noticeData struct {
@@ -1161,61 +1100,35 @@ func (s *Server) readUbus(ctx context.Context, m plugin.Manifest, sid string) pl
 // know the function, so a manifest cannot name its way to an arbitrary helper verb.
 // It reports whether the function is one the shell brokers at all.
 func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (json.RawMessage, bool, error) {
+	var read func(context.Context, string) (json.RawMessage, error)
 	switch function {
 	case "dhcpState":
-		if backend, ok := s.backend.(interface {
-			DHCPState(context.Context, string) (json.RawMessage, error)
-		}); ok {
-			result, err := backend.DHCPState(ctx, sid)
-			return result, true, err
-		}
-		return nil, true, fmt.Errorf("DHCP state unavailable")
+		read = s.backend.DHCPState
 	case "dnsState":
-		if backend, ok := s.backend.(interface {
-			DNSState(context.Context, string) (json.RawMessage, error)
-		}); ok {
-			result, err := backend.DNSState(ctx, sid)
-			return result, true, err
-		}
-		return nil, true, fmt.Errorf("DNS state unavailable")
+		read = s.backend.DNSState
 	case "firewallFiles":
-		if backend, ok := s.backend.(interface {
-			FirewallFiles(context.Context, string) (json.RawMessage, error)
-		}); ok {
-			result, err := backend.FirewallFiles(ctx, sid)
-			return result, true, err
-		}
-		return nil, true, fmt.Errorf("firewall rule files unavailable")
+		read = s.backend.FirewallFiles
 	case "accessCredentials":
-		result, err := s.readAccessCredentials(ctx, sid)
-		return result, true, err
+		read = s.readAccessCredentials
 	case "firewallCounters":
-		result, err := s.backend.FirewallCounters(ctx, sid)
-		return result, true, err
+		read = s.backend.FirewallCounters
 	case "dhcpLeases":
-		result, err := s.dhcpLeases(ctx, sid)
-		return result, true, err
+		read = s.dhcpLeases
 	case "networkState":
-		if backend, ok := s.backend.(interface {
-			NetworkState(context.Context, string) (json.RawMessage, error)
-		}); ok {
-			result, err := backend.NetworkState(ctx, sid)
+		read = func(ctx context.Context, sid string) (json.RawMessage, error) {
+			result, err := s.backend.NetworkState(ctx, sid)
 			if err == nil {
 				result = s.networkTopology(ctx, result)
 			}
-			return result, true, err
+			return result, err
 		}
-		return nil, true, fmt.Errorf("network state unavailable")
 	case "wirelessState":
-		if backend, ok := s.backend.(interface {
-			WirelessState(context.Context, string) (json.RawMessage, error)
-		}); ok {
-			result, err := backend.WirelessState(ctx, sid)
-			return result, true, err
-		}
-		return nil, true, fmt.Errorf("wireless state unavailable")
+		read = s.backend.WirelessState
+	default:
+		return nil, false, nil
 	}
-	return nil, false, nil
+	result, err := read(ctx, sid)
+	return result, true, err
 }
 
 // declaredUbusReadFunctions is the ordered, de-duplicated set of Verso helper

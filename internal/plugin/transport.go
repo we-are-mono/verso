@@ -80,17 +80,16 @@ type Envelope struct {
 	// list means the read succeeded and no subjects have configuration.
 	Entities *[]EntitySummary `json:"entities,omitempty"`
 
-	SchemaVersion int         `json:"schema_version"`
-	Title         string      `json:"title"`
-	Kicker        string      `json:"kicker"`        // optional eyebrow above the heading, e.g. "System"
-	KickerStatus  string      `json:"kicker_status"` // optional emerald completion/state label beside the kicker
-	Immediate     bool        `json:"immediate"`     // page actions are immediate: nothing on the page stages
-	Live          bool        `json:"live"`          // optional pulsing dot on the kicker
-	Tone          string      `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
-	Subheading    string      `json:"subheading"`    // optional lede under the heading
-	Width         string      `json:"width"`         // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
-	Pages         []PageTab   `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
-	Action        *PageAction `json:"action"`        // optional primary doorway for the whole page, rendered beside the heading
+	SchemaVersion int       `json:"schema_version"`
+	Title         string    `json:"title"`
+	Kicker        string    `json:"kicker"`        // optional eyebrow above the heading, e.g. "System"
+	KickerStatus  string    `json:"kicker_status"` // optional emerald completion/state label beside the kicker
+	Immediate     bool      `json:"immediate"`     // page actions are immediate: nothing on the page stages
+	Live          bool      `json:"live"`          // optional pulsing dot on the kicker
+	Tone          string    `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
+	Subheading    string    `json:"subheading"`    // optional lede under the heading
+	Width         string    `json:"width"`         // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
+	Pages         []PageTab `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
 	// Back is an edit page's quiet way home: the shell renders it as a "← Cancel"
 	// back-link in the masthead, above the heading, so a page reached to edit one
 	// record can return to the listing it came from. It reuses the PageAction shape,
@@ -114,10 +113,9 @@ type Envelope struct {
 	// the strip answers the question the panel was opened to ask before anything
 	// is clicked. Only the plugin knows it; a tab that has no state to state
 	// sets none and wears no chip.
-	State  string        `json:"state,omitempty"`
-	Commit []CommitOp    `json:"commit"`
-	Apply  []ApplyAction `json:"apply"`
-	Status int           `json:"-"`
+	State  string     `json:"state,omitempty"`
+	Commit []CommitOp `json:"commit"`
+	Status int        `json:"-"`
 }
 
 // EntitySummary keeps configured subjects findable in the shell's roster.
@@ -156,11 +154,9 @@ type Notice struct {
 	Text  string `json:"text"`
 }
 
-// PageAction is a page's one primary doorway — "New rule", "Add forward" —
-// rendered as a button hard right on the heading row. A page has at most one:
-// it is the thing to do here, not a menu, so a second affordance belongs beside
-// the content it acts on. Href is a route through the shell, like a link
-// widget's, so a plugin points it at its own mount.
+// PageAction is a link the masthead carries — an edit page's way back (Back).
+// Href is a route through the shell, like a link widget's, so a plugin points
+// it at its own mount.
 type PageAction struct {
 	Label string `json:"label"`
 	Href  string `json:"href"`
@@ -190,8 +186,8 @@ type CommitOp struct {
 	Values  map[string]any `json:"values"`           // option → value: a string, a list of strings (uci list option), or null to clear the option
 }
 
-// ApplyAction is one tightly typed non-UCI operation a plugin asks the shell to
-// perform after its staged UCI writes have been applied. The shell accepts only
+// ApplyAction is one tightly typed non-UCI operation — a command — a plugin
+// asks the shell to perform immediately, never staged. The shell accepts only
 // known names, verifies the plugin declared the matching rpcd scope, and sends
 // structured arguments to the persistent privileged helper; it is never a
 // command-execution escape hatch.

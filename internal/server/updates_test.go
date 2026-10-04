@@ -813,10 +813,7 @@ func TestAutocheckSaveSpeaksOnce(t *testing.T) {
 // one-shot flash set by a POST is observable on the render that follows it.
 func sameSession(t *testing.T, s *Server) func(method, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := s.sessions.get(token)
 	return func(method, path string, form url.Values) *httptest.ResponseRecorder {
 		var req *http.Request

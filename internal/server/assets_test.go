@@ -23,10 +23,7 @@ var scriptTag = regexp.MustCompile(`<script src="(/assets/[^"]+)"`)
 // the test that notices.
 func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
-	token, err := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	rec := httptest.NewRecorder()

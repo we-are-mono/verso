@@ -12,39 +12,9 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/we-are-mono/verso/internal/plugin"
 )
-
-// stageMemo holds one request's read of the stage. A page asks the stage twice
-// — for the marks on the controls whose options wait, and for the chip — and
-// both must read the same stage, once: a ubus round trip is the router's CPU,
-// which is the budget a LAN page spends. The memo is installed where a page is
-// answered, after anything that request stages has been written.
-type stageMemo struct {
-	once    sync.Once
-	changes map[string][][]string
-	err     error
-}
-
-type stageMemoKey struct{}
-
-// withStageMemo gives a request's context one shared read of the stage.
-func withStageMemo(r *http.Request) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), stageMemoKey{}, &stageMemo{}))
-}
-
-// stageChanges reads the pending changes, once per request where a memo is
-// installed.
-func (s *Server) stageChanges(ctx context.Context, sid string) (map[string][][]string, error) {
-	memo, ok := ctx.Value(stageMemoKey{}).(*stageMemo)
-	if !ok {
-		return s.backend.UCIChanges(ctx, sid)
-	}
-	memo.once.Do(func() { memo.changes, memo.err = s.backend.UCIChanges(ctx, sid) })
-	return memo.changes, memo.err
-}
 
 // waitingOptions is the set of options that wait on the stage, by their full
 // address "config.section.option", for the configs the shell manages — what
@@ -610,26 +580,7 @@ func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
-	// The staged UCI is applied; drain and clear this session's paired non-UCI
-	// tail atomically, so a failed action cannot linger to fire on an unrelated
-	// later apply — this session's or any other's.
-	for _, action := range s.takePendingApply(sid) {
-		if err := s.executeApplyAction(r.Context(), sid, action); err != nil {
-			log.Printf("verso: post-apply action %q failed: %v", action.Name, err)
-			http.Error(w, "apply action failed", http.StatusBadGateway)
-			return
-		}
-	}
 	writeOK(w)
-}
-
-func (s *Server) executeApplyAction(ctx context.Context, sid string, action plugin.ApplyAction) error {
-	switch action.Name {
-	case "set-system-time":
-		return s.backend.SetSystemTime(ctx, sid, action.Args["datetime"], action.Args["timezone"])
-	default:
-		return fmt.Errorf("unsupported apply action %q", action.Name)
-	}
 }
 
 // handleUCIConfirm disarms the pending rollback, keeping the applied
@@ -667,7 +618,6 @@ func (s *Server) handleUCIDiscard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.clearPendingApply(sid)
 	s.authors.forget(sid)
 	writeOK(w)
 }

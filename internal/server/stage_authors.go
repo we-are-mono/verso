@@ -30,16 +30,10 @@ func pageLabel(m plugin.Manifest, pluginPath string) string {
 	if accessPart(m, pluginPath) {
 		return "Access"
 	}
-	current := strings.Trim(pluginPath, "/")
-	label, best := m.Name, -1
-	for _, entry := range m.Nav {
-		path := strings.Trim(entry.Path, "/")
-		matches := path == "" || current == path || strings.HasPrefix(current, path+"/")
-		if matches && len(path) > best {
-			label, best = entry.Label, len(path)
-		}
+	if entry, ok := navEntryAt(m, pluginPath); ok {
+		return entry.Label
 	}
-	return label
+	return m.Name
 }
 
 // accessPart reports whether a plugin path is the plugin's part of Access.

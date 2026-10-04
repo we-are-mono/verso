@@ -82,7 +82,6 @@ var catalog = map[string]func() Widget{
 	"conditions":  func() Widget { return new(Conditions) },
 	"switch":      func() Widget { return new(Switch) },
 	"modal":       func() Widget { return new(Modal) },
-	"badge":       func() Widget { return new(Badge) },
 	"text":        func() Widget { return new(Text) },
 	"stack":       func() Widget { return new(Stack) },
 	"empty":       func() Widget { return new(Empty) },

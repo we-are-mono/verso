@@ -216,6 +216,28 @@ type Backend interface {
 	// line says eth0, the firewall config says "wan", and only netifd knows they
 	// are the same thing right now.
 	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
+	// The helper's raw state reads the shell brokers to a declaring plugin
+	// (ADR-007), sid-gated: DHCP and DNS service state, fw4's rule files,
+	// netifd's network state and what the radios are doing. Each stays raw JSON;
+	// the plugin, not the shell, owns what it means.
+	DHCPState(ctx context.Context, sid string) (json.RawMessage, error)
+	DNSState(ctx context.Context, sid string) (json.RawMessage, error)
+	FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error)
+	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
+	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
+	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
+	// through the helper, refusing it unless the file still holds expected.
+	StageConfigFile(ctx context.Context, sid, path, expected, content string) error
+	// NetworkSetUp brings one logical interface up or down; NetworkRestart
+	// restarts it. Both ride netifd's network.interface object, sid-gated.
+	NetworkSetUp(ctx context.Context, sid, name string, up bool) error
+	NetworkRestart(ctx context.Context, sid, name string) error
+	// AccessCredentials reads the SSH authorized keys and the web certificate;
+	// SetAuthorizedKeys replaces the keys unless they changed from expected, and
+	// SetWebCertificate installs a certificate and its key. All ride the helper.
+	AccessCredentials(ctx context.Context, sid string) (AccessCredentials, error)
+	SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error
+	SetWebCertificate(ctx context.Context, sid, cert, key string) error
 }
 
 // LogEntry is one record from the device's log ring. ID is logd's monotonic

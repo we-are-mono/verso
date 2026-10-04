@@ -33,15 +33,13 @@ type statSource interface {
 // the live-update JSON (the band rides along so the client never re-derives
 // the colour rule).
 type meterReading struct {
-	Name    string `json:"name"`
-	Label   string `json:"label"`
-	Value   string `json:"value"`
-	Unit    string `json:"unit"`
-	Fill    int    `json:"fill"`
-	Band    string `json:"band"`
-	Detail  string `json:"detail"`
-	Variant string `json:"-"`              // widget variant ("info" for a rate); the JSON carries its band instead
-	Role    string `json:"role,omitempty"` // decorative bar accent (sky|violet|emerald|amber); the client keeps it instead of a health band
+	Name   string `json:"name"`
+	Label  string `json:"label"`
+	Value  string `json:"value"`
+	Unit   string `json:"unit"`
+	Fill   int    `json:"fill"`
+	Band   string `json:"band"`
+	Detail string `json:"detail"`
 }
 
 // systemMeters assembles the System panel's four bar gauges — load, CPU,
@@ -108,15 +106,7 @@ func systemMeterBand(fill, warning, critical int) string {
 	return "success"
 }
 
-func clampPct(p int) int {
-	if p < 0 {
-		return 0
-	}
-	if p > 100 {
-		return 100
-	}
-	return p
-}
+func clampPct(p int) int { return min(max(p, 0), 100) }
 
 // gb renders a byte count as gigabytes the way a person says them — one
 // decimal, trimmed when whole ("23", "1.2", "0.8").

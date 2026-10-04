@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"maps"
 	"net/url"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -631,21 +631,6 @@ type tableView struct {
 // template.
 type tableFacetView struct{ Key, Value string }
 
-// sortedKeys is a map's keys in a fixed order, so the same row renders the same
-// attributes every time — a rendered page that differs run to run is a page no
-// test can pin.
-func sortedKeys(m map[string]string) []string {
-	if len(m) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 type tableRowView struct {
 	Expanded         []template.HTML
 	TreeNodeX        int
@@ -1107,7 +1092,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			return nil, expandErr
 		}
 		rv.Tags = strings.Join(row.Tags, " ")
-		for _, key := range sortedKeys(row.Facet) {
+		// Keys in a fixed order, so the same row renders the same attributes
+		// every time — a page that differs run to run is a page no test can pin.
+		for _, key := range slices.Sorted(maps.Keys(row.Facet)) {
 			rv.Facets = append(rv.Facets, tableFacetView{Key: key, Value: row.Facet[key]})
 		}
 		switch {

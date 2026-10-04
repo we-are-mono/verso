@@ -4,8 +4,11 @@
 package server
 
 import (
+	"slices"
 	"sort"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // coreSectionOrder is the shell-owned core taxonomy (ADR-009 §2): these sections
@@ -15,44 +18,18 @@ import (
 // a mechanism — every configuring section is still an ADR-006 plugin.
 var coreSectionOrder = []string{"Status", "Network", "Security", "System"}
 
-// coreRank returns a section title's position in the core taxonomy, and whether
-// it is a core section at all. Non-core (plugin-introduced) sections sort after
-// all core sections, by title (ADR-009 §5).
-func coreRank(title string) (int, bool) {
-	for i, t := range coreSectionOrder {
-		if t == title {
-			return i, true
-		}
+// sectionLess orders the sections destinations are filed under: core sections
+// first in canonical order, plugin-introduced sections after all of them, by
+// title (ADR-009 §5) — deterministic regardless of plugin discovery order.
+func sectionLess(a, b string) bool {
+	ra, rb := slices.Index(coreSectionOrder, a), slices.Index(coreSectionOrder, b)
+	if (ra >= 0) != (rb >= 0) {
+		return ra >= 0
 	}
-	return 0, false
-}
-
-// navSection is one collapsible group in the sidebar; navLink is one entry. The
-// nav is built from discovered plugin manifests plus the built-in Status group,
-// so a plugin appears in the chrome without any shell change (ADR-006 §2).
-type navSection struct {
-	Title string
-	Links []navLink
-	Open  bool
-}
-
-type navLink struct {
-	Label  string
-	Href   string
-	Icon   string
-	Active bool
-	// PluginID names the plugin that authored this entry's label ("" for a
-	// shell-owned link), so the label is localized from that plugin's catalog
-	// rather than the shell's base (ADR-012 §5).
-	PluginID string
-	// Optional trailing detail on the right of a basic row — a short word or count with an
-	// optional leading dot; Variant tints it (the tone vocabulary, "success" = green).
-	// A couple of examples today; any row can grow one later.
-	Detail  string
-	Dot     bool
-	Variant string
-	// Pages says the destination opens into subpages (its manifest's word).
-	Pages bool
+	if ra >= 0 {
+		return ra < rb
+	}
+	return a < b
 }
 
 // railTransition names a rail part for the browser's page-change transition
@@ -137,25 +114,13 @@ type navRow struct {
 
 // railOrder is the order the design canvas gives the rail. Matching on the
 // English label is what lets a plugin land in its designed place without the
-// shell knowing anything about that plugin: the labels buildNav carries are
-// still English at this point, localized only at the display edge below. A
-// destination the canvas does not name follows these, keeping the core section
-// order buildNav already sorted it into (ADR-009 §5), so a new plugin appears in
-// the rail with no shell change.
+// shell knowing anything about that plugin: the labels are still English at
+// this point, localized only at the display edge. A destination the canvas does
+// not name follows these, in the order of the section it is filed under
+// (sectionLess), so a new plugin appears in the rail with no shell change.
 var railOrder = []string{
 	"Overview", "Devices", "Traffic", "Journal", "Interfaces", "Wireless",
 	"Firewall", "DNS & DHCP", "Routing", "Tunnels", "Storage", "System",
-}
-
-// railRank returns a label's position in the designed order, and whether the
-// canvas names it at all.
-func railRank(label string) (int, bool) {
-	for i, l := range railOrder {
-		if l == label {
-			return i, true
-		}
-	}
-	return 0, false
 }
 
 // navIcon chooses a shell-owned glyph before labels are localized. Designed
@@ -208,52 +173,80 @@ func navIcon(label, section string) string {
 // from base (tr), each plugin's from that plugin's catalog (pluginTr(id)), which
 // is why the ordering above happens while they are still English.
 func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
-	rows := []navRow{{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")}}
+	// Every section the manifests register becomes rows — no titles between
+	// them, because the rail is a list of places and not a taxonomy. Status is
+	// served by Overview; System collapses to one row whose subpages are the
+	// shell-owned pages and the plugin-owned ones together (systemPages).
+	//
+	// Only plugins whose socket answers contribute rows: a row that leads to
+	// "unavailable" is a dead door, and an installed-but-off plugin is the
+	// management page's business (ADR-011). Direct URLs still answer — with the
+	// notice and its way back on — so nothing is unreachable, just unlisted.
+	type filed struct {
+		section string
+		row     navRow
+	}
+	var places []filed
+	var hrefs []string // every live registration, rail row or not
+	for _, m := range s.manifestList() {
+		if !s.probe(m.Socket) {
+			continue
+		}
+		for _, entry := range m.Nav {
+			href := pluginHref(m.ID, entry.Path)
+			hrefs = append(hrefs, href)
+			if entry.Section == "Status" || entry.Section == "System" {
+				continue
+			}
+			icon := entry.Icon
+			if icon == "" {
+				icon = navIcon(entry.Label, entry.Section)
+			}
+			places = append(places, filed{entry.Section, navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages}})
+		}
+	}
+	system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
+	if sysPages := s.systemPages(active); len(sysPages) > 0 {
+		system.Href, system.Opens = sysPages[0].Href, true
+	}
+	// What System has waiting for you is what it has to install.
+	if truth, ok := s.updateTruth(); ok {
+		if system.Detail, system.Hint = waitingToInstall(truth, tr); system.Detail != "" {
+			system.Dot, system.Variant = true, "info"
+		}
+	}
+	places = append(places, filed{"System", system})
+	// Stable, so a section's rows keep discovery (id-sorted) order.
+	sort.SliceStable(places, func(a, b int) bool { return sectionLess(places[a].section, places[b].section) })
 
 	// A row says nothing of how things are — the homepage does — so Devices
 	// is its name alone.
-	rows = append(rows, navRow{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)})
-
-	// Every section the manifests register becomes rows here — no titles between
-	// them, because the rail is a list of places and not a taxonomy. Status is
-	// already served by Overview above; System collapses to one row whose
-	// subpages are the shell-owned pages and the plugin-owned ones together.
-	for _, sec := range s.buildNav(active) {
-		if sec.Title == "Status" {
-			continue
+	rows := []navRow{
+		{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")},
+		{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)},
+	}
+	// Only the most specific registration lights its row; one filed under System
+	// or Status lights none here (System's row is lit by its domain).
+	lit := ""
+	if i := bestHref(active, hrefs); i >= 0 {
+		lit = hrefs[i]
+	}
+	for _, p := range places {
+		if lit != "" && p.row.PluginID != "" && p.row.Href == lit {
+			p.row.Active, lit = true, ""
 		}
-		if sec.Title == "System" {
-			system := navRow{Label: "System", Href: "/system", Icon: navIcon("System", "System"), Active: s.isSystemPath(active)}
-			if sysPages := s.systemPages(active); len(sysPages) > 0 {
-				system.Href, system.Opens = sysPages[0].Href, true
-			}
-			// What System has waiting for you is what it has to install.
-			if truth, ok := s.updateTruth(); ok {
-				if system.Detail, system.Hint = waitingToInstall(truth, tr); system.Detail != "" {
-					system.Dot, system.Variant = true, "info"
-				}
-			}
-			rows = append(rows, system)
-			continue
-		}
-		for _, l := range sec.Links {
-			rows = append(rows, navRow{Label: l.Label, Href: l.Href, Icon: l.Icon, Active: l.Active, PluginID: l.PluginID, Opens: l.Pages})
-		}
+		rows = append(rows, p.row)
 	}
 
-	// The designed order, with anything the canvas does not name kept in the
-	// order buildNav produced. Stable, so discovery order still decides between
-	// two rows the canvas is silent about.
+	// The designed order, with anything the canvas does not name kept in
+	// section order. Stable, so discovery order still decides between two rows
+	// the canvas is silent about.
 	sort.SliceStable(rows, func(a, b int) bool {
-		ra, oka := railRank(rows[a].Label)
-		rb, okb := railRank(rows[b].Label)
-		if oka != okb {
-			return oka
+		ra, rb := slices.Index(railOrder, rows[a].Label), slices.Index(railOrder, rows[b].Label)
+		if (ra >= 0) != (rb >= 0) {
+			return ra >= 0
 		}
-		if !oka {
-			return false
-		}
-		return ra < rb
+		return ra >= 0 && ra < rb
 	})
 
 	// The one open row carries the subpages, and it is the only row that can:
@@ -272,95 +265,6 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		}
 	}
 	return navModel{Rows: rows}
-}
-
-// buildNav assembles the sidebar for the current path. The shell's own pages come
-// first (ADR-009 §3): the Status baseline and the auth surface (Password), which
-// exist without any plugin — so a fresh device can always reach them. Plugins are
-// then grouped under their manifest's nav.section. Sections are ordered by the
-// core taxonomy (ADR-009 §2, §5): core sections first in canonical order,
-// plugin-introduced sections after by title — deterministic regardless of plugin
-// discovery order. The section containing the active page is marked Open — the
-// top nav highlights it (and marks its active dropdown entry).
-func (s *Server) buildNav(active string) []navSection {
-	sections := make([]navSection, 0, len(coreSectionOrder))
-	index := map[string]int{}
-	// A link's PluginID is "" for a shell-owned page and the plugin id for a
-	// plugin's, so buildSidebar localizes each label from the right catalog
-	// (ADR-012 §5).
-	add := func(section string, link navLink) {
-		if link.Icon == "" {
-			link.Icon = navIcon(link.Label, section)
-		}
-		i, ok := index[section]
-		if !ok {
-			i = len(sections)
-			index[section] = i
-			sections = append(sections, navSection{Title: section})
-		}
-		sections[i].Links = append(sections[i].Links, link)
-	}
-
-	// Shell-owned pages (ADR-009 §3): the read-only baseline, the auth surface,
-	// and the plugin-management surface (ADR-011). Plugin-owned System pages are
-	// added below from their manifests; General is not a shell-owned slot.
-	add("Status", navLink{Label: "Overview", Href: "/"})
-	add("System", navLink{Label: "Access", Href: "/system/access"})
-	add("System", navLink{Label: "Packages", Href: "/system/packages"})
-	add("System", navLink{Label: "Services", Href: "/system/services"})
-	add("System", navLink{Label: "Maintenance", Href: "/system/maintenance"})
-
-	// Plugin-contributed pages, in discovery (id-sorted) order. Only plugins
-	// whose socket answers contribute rows: a menu entry that leads to
-	// "unavailable" is a dead door, and an installed-but-off plugin is the
-	// management page's business (ADR-011). Direct URLs still answer — with
-	// the notice and its way back on — so nothing is unreachable, just unlisted.
-	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
-			continue
-		}
-		for _, entry := range m.Nav {
-			add(entry.Section, navLink{
-				Label:    entry.Label,
-				Href:     pluginHref(m.ID, entry.Path),
-				Icon:     entry.Icon,
-				PluginID: m.ID,
-				Pages:    entry.Pages,
-			})
-		}
-	}
-
-	// Core sections first in canonical order, extension sections after by title.
-	// Stable so link order within a section (built-ins first, then id-sorted
-	// discovery order) is kept.
-	sort.SliceStable(sections, func(a, b int) bool {
-		ra, ca := coreRank(sections[a].Title)
-		rb, cb := coreRank(sections[b].Title)
-		if ca != cb {
-			return ca // a core, b not → a first
-		}
-		if ca {
-			return ra < rb
-		}
-		return sections[a].Title < sections[b].Title
-	})
-
-	// Only the most specific match lights up. A plugin's root link (…/, its index
-	// subpage) is a prefix of every sibling subpage, so on a deeper page several
-	// links match; the longest matching href is the real destination.
-	bestSi, bestLi, bestLen := -1, -1, -1
-	for si := range sections {
-		for li := range sections[si].Links {
-			if h := sections[si].Links[li].Href; isActive(active, h) && len(h) > bestLen {
-				bestSi, bestLi, bestLen = si, li, len(h)
-			}
-		}
-	}
-	if bestSi >= 0 {
-		sections[bestSi].Links[bestLi].Active = true
-		sections[bestSi].Open = true
-	}
-	return sections
 }
 
 // isSystemPath reports whether a request belongs to either a shell-owned
@@ -398,6 +302,36 @@ func isActive(current, href string) bool {
 		return current == "/"
 	}
 	return current == href || strings.HasPrefix(current, href)
+}
+
+// bestHref returns the index of the most specific href the current path sits
+// under, or -1. A plugin's root (…/, its index subpage) prefixes every sibling
+// subpage, so on a deeper page several match; the longest is the destination,
+// and of equal ones the first.
+func bestHref(current string, hrefs []string) int {
+	best := -1
+	for i, h := range hrefs {
+		if isActive(current, h) && (best < 0 || len(h) > len(hrefs[best])) {
+			best = i
+		}
+	}
+	return best
+}
+
+// navEntryAt returns the manifest's nav entry a plugin path sits under: the most
+// specific registered path that holds it, whole segments only.
+func navEntryAt(m plugin.Manifest, pluginPath string) (plugin.NavEntry, bool) {
+	current := strings.Trim(pluginPath, "/")
+	var found plugin.NavEntry
+	best := -1
+	for _, entry := range m.Nav {
+		path := strings.Trim(entry.Path, "/")
+		matches := path == "" || current == path || strings.HasPrefix(current, path+"/")
+		if matches && len(path) > best {
+			found, best = entry, len(path)
+		}
+	}
+	return found, best >= 0
 }
 
 // navLabelHref resolves a particular destination without confusing it with

@@ -226,10 +226,7 @@ func TestServicesSwitchCouplesBothFacts(t *testing.T) {
 func TestServicesSwitchFetchAvoidsRedirectRender(t *testing.T) {
 	var inits []string
 	s := pluginsServer(t, fakeBackend{access: true, rcInits: &inits}, true, mgmtManifest())
-	token, err := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatalf("session: %v", err)
-	}
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	sess, _ := s.sessions.get(token)
 	form := url.Values{"svc:dnsmasq": {"off"}, "_csrf": {sess.csrf}}
 	req := httptest.NewRequest(http.MethodPost, "/system/services", strings.NewReader(form.Encode()))

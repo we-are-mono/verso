@@ -20,10 +20,7 @@ import (
 func TestASessionKeptAcrossARestartIsTheSameSession(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	before := newSessionsClock(clk.now)
-	token, err := before.CreateWithMetadata("sid-1", "root", "10.0.0.2", "Firefox")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := before.CreateWithMetadata("sid-1", "root", "10.0.0.2", "Firefox")
 	clk.advance(10 * time.Minute)
 	was, _ := before.get(token)
 
@@ -60,7 +57,7 @@ func TestASessionKeptAcrossARestartIsTheSameSession(t *testing.T) {
 func TestARestoredStoreKeepsNoSessionPastItsEnd(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	before := newSessionsClock(clk.now)
-	token, _ := before.CreateWithMetadata("sid-1", "root", "", "")
+	token := before.CreateWithMetadata("sid-1", "root", "", "")
 	path := filepath.Join(t.TempDir(), "sessions.json")
 	if err := before.keep(path); err != nil {
 		t.Fatal(err)
@@ -87,10 +84,7 @@ func TestADevShellHandsItsSessionsToTheNext(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "dev-sessions.json")
 	before := newServer(t, &fakeBackend{})
 	before.keptSessions = path
-	token, err := before.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	token := before.sessions.CreateWithMetadata("test-sid", "root", "", "")
 	before.Close()
 
 	after := newServer(t, &fakeBackend{})

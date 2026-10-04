@@ -15,16 +15,18 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"math/big"
+	"net"
+	"net/http"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"golang.org/x/crypto/ssh"
-	"math/big"
-	"net"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // commandValidationError is safe, authored feedback for the form. Backend
@@ -33,18 +35,8 @@ type commandValidationError string
 
 func (e commandValidationError) Error() string { return string(e) }
 
-type credentialBackend interface {
-	AccessCredentials(context.Context, string) (openwrt.AccessCredentials, error)
-	SetAuthorizedKeys(context.Context, string, string, string) error
-	SetWebCertificate(context.Context, string, string, string) error
-}
-
 func (s *Server) readAccessCredentials(ctx context.Context, sid string) (json.RawMessage, error) {
-	backend, ok := s.backend.(credentialBackend)
-	if !ok {
-		return nil, fmt.Errorf("credential service unavailable")
-	}
-	data, err := backend.AccessCredentials(ctx, sid)
+	data, err := s.backend.AccessCredentials(ctx, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -105,22 +97,12 @@ func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid s
 	if strings.HasPrefix(cmd.Name, "certificate-") {
 		function = "setWebCertificate"
 	}
-	allowed := false
-	for _, a := range m.ACL.Write {
-		if a.Scope == "ubus" && a.Object == "verso" && a.Function == function {
-			allowed = true
-		}
-	}
-	if !allowed {
+	if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: function}) {
 		return fmt.Errorf("undeclared credential write")
-	}
-	backend, ok := s.backend.(credentialBackend)
-	if !ok {
-		return fmt.Errorf("credential service unavailable")
 	}
 	switch cmd.Name {
 	case "ssh-key-add", "ssh-key-remove":
-		current, err := backend.AccessCredentials(ctx, sid)
+		current, err := s.backend.AccessCredentials(ctx, sid)
 		if err != nil {
 			return err
 		}
@@ -156,19 +138,19 @@ func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid s
 			}
 			next = strings.Join(lines, "\n")
 		}
-		return backend.SetAuthorizedKeys(ctx, sid, current.AuthorizedKeys, next)
+		return s.backend.SetAuthorizedKeys(ctx, sid, current.AuthorizedKeys, next)
 	case "certificate-generate":
 		cert, key, err := generateWebCertificate(cmd.Args["hostname"])
 		if err != nil {
 			return err
 		}
-		return backend.SetWebCertificate(ctx, sid, cert, key)
+		return s.backend.SetWebCertificate(ctx, sid, cert, key)
 	case "certificate-install":
 		cert, key, err := validateWebCertificate(cmd.Args["certificate"], cmd.Args["key"])
 		if err != nil {
 			return err
 		}
-		return backend.SetWebCertificate(ctx, sid, cert, key)
+		return s.backend.SetWebCertificate(ctx, sid, cert, key)
 	}
 	return fmt.Errorf("unknown credential command")
 }
@@ -220,12 +202,7 @@ func validateWebCertificate(cert, key string) (string, string, error) {
 	return strings.TrimSpace(cert) + "\n", string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pk})), nil
 }
 func (s *Server) handleCertificateDownload(w http.ResponseWriter, r *http.Request) {
-	backend, ok := s.backend.(credentialBackend)
-	if !ok {
-		http.Error(w, "Certificate unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	data, err := backend.AccessCredentials(r.Context(), s.sessionSID(r))
+	data, err := s.backend.AccessCredentials(r.Context(), s.sessionSID(r))
 	data.Certificate = certificatePEM(data)
 	if err != nil || data.Certificate == "" {
 		http.NotFound(w, r)
