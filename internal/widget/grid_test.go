@@ -128,6 +128,24 @@ func TestGridRail(t *testing.T) {
 	}
 }
 
+// TestASideColumnStaysInView: beside a long form, the side column (a rail, or
+// a settings page's) stays in view as the form scrolls, 32px under the top
+// bar's 56px, rather than under the bar. It only does while the columns stand
+// side by side.
+func TestASideColumnStaysInView(t *testing.T) {
+	for _, style := range []string{"rail", "settings"} {
+		got := render(t, newRenderer(t), &Grid{
+			Style: style, Columns: 2,
+			Children: []Widget{&Callout{Body: "the work"}, &Callout{Body: "the side"}},
+		})
+		for _, want := range []string{"[&>div:last-child]:self-start", "@6xl:[&>div:last-child]:sticky", "@6xl:[&>div:last-child]:top-22"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s grid: the side column is missing %q:\n%s", style, want, got)
+			}
+		}
+	}
+}
+
 // TestGridColumnsReachTheStylesheet: every column class a grid can render is a
 // rule in the built stylesheet. The stylesheet is compiled from the templates
 // alone, so a class that only Go named was never compiled — and a grid whose
