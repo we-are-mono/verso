@@ -133,7 +133,7 @@
          verdict keeps the full 40px, as far from the top as from the left. */}}
     <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10 pt-8{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pt-8 pb-10{{end}}">
     <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
-    {{if or .Kicker .Subheading .Display}}
+    {{if or .Kicker .Display}}
     {{/* Page titles and ledes have no divider. Their 32px bottom padding
          separates them from the content; a control band keeps its own 32px
          gap. Whatever measure the column keeps, the stylesheet ends
@@ -143,10 +143,9 @@
       {{if .Back}}{{template "verso-page-back" .Back}}{{end}}
       {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
-           each other; the lede reads under the line, so the act centres on the
-           heading, not on the heading and its lede together. The line is an
-           act's height whether it holds one or not, so moving between pages
-           never shifts the heading or what sits under it. */}}
+           each other. The line is an act's height whether it holds one or
+           not, so moving between pages never shifts the heading or what sits
+           under it. */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
         {{/* A Display masthead's heading is the page's own subject (the device
              name), so it carries no "— <tab>" detail — that suffix labels a
@@ -166,7 +165,6 @@
         {{end}}
         {{if .HeadingAct}}{{.HeadingAct}}{{end}}
       </div>
-      {{if .Subheading}}<p class="verso-lede">{{.Subheading}}</p>{{end}}
     </div>
     {{else if .Heading}}
     <div data-verso-masthead class="pb-8">

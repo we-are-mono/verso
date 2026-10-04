@@ -37,9 +37,6 @@ use crate::zone_form::ZoneForm;
 
 pub const HEADING: &str = "Zones";
 
-pub const SUBHEADING: &str =
-    "Group networks under shared policy and define the firewall's baseline behavior.";
-
 /// NOTE is the one sentence the grid owes its reader, under the last row:
 /// which policy answers which question, so the three verdict columns can be
 /// read without a legend above them.
@@ -97,7 +94,7 @@ fn frame(model: &Firewall, open: Option<&Open>, blank: Option<RowDrawer>) -> Env
         table(model, open),
         Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
     ];
-    page::envelope(HEADING, SUBHEADING, Widget::stack(children)).with_act(act(blank))
+    page::envelope(HEADING, Widget::stack(children)).with_act(act(blank))
 }
 
 /// page_open is the listing with one zone's panel already in front of the
@@ -577,7 +574,6 @@ mod tests {
         let body = body();
         assert_eq!(body["title"], HEADING);
         assert_eq!(body["width"], "wide");
-        assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][2]["path"], "zones");
         // Making a zone opens the panel that edits one, at the listing's own
         // address: the page's act, on its heading line.

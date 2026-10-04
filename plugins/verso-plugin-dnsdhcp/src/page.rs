@@ -63,12 +63,11 @@ fn encode(value: &str) -> String {
 }
 
 /// dns_editor frames one DNS object's page. The title is a fixed label — "Edit
-/// record", "New upstream" — so it stays translatable, and the object's own name
-/// rides the subheading rather than being composed into the title. The column is
-/// the form's 640px, because one object is a form.
-pub fn dns_editor(title: &str, subheading: &str, widget: Widget) -> verso_plugin::Envelope {
+/// record", "New upstream" — so it stays translatable; the object's own name is
+/// the form's first value. The column is the form's 640px, because one object is
+/// a form.
+pub fn dns_editor(title: &str, widget: Widget) -> verso_plugin::Envelope {
     verso_plugin::Envelope::page(title, widget)
-        .with_subheading(subheading)
         .with_width("form")
         // Cancel and a completed save both return to the DNS page.
         .with_back("Cancel", &dns_href())

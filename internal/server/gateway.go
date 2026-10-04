@@ -535,7 +535,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	hdr.Immediate = env.Immediate
 	hdr.Live = env.Live
 	hdr.Tone = env.Tone
-	hdr.Subheading = tr(env.Subheading)
 	hdr.Back = localizeBack(env.Back, tr)
 	hdr.Banner = localizeBanner(env.Banner, tr)
 	*width = env.Width

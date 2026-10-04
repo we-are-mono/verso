@@ -22,8 +22,6 @@ use crate::form::{self, Errors};
 use crate::model::{Dnsdhcp, Record, RecordKind, CONFIG};
 use crate::page;
 
-const NEW_SUB: &str = "Add a name this router answers, and what it answers with.";
-
 const MISSING: &str = "That record isn’t here any more, so here is the DNS page instead.";
 
 /// blank answers a visit to the new-record page: an A record with nothing filled
@@ -118,9 +116,9 @@ pub fn save(r: &Request, model: &mut Dnsdhcp, section: &str, form: &Form) -> Opt
 /// for a new one — which is also what decides whether the delete form is there at
 /// all. The new page and the edit page are one screen.
 fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
-    let (title, subheading) = match section {
-        Some(_) => ("Edit record", heading(&record.name)),
-        None => ("New record", NEW_SUB.to_string()),
+    let title = match section {
+        Some(_) => "Edit record",
+        None => "New record",
     };
     let mut children = vec![Widget::Form {
         style: "page".into(),
@@ -173,16 +171,7 @@ fn editor(section: Option<&str>, record: &Record, errors: &Errors) -> Envelope {
     if section.is_some() {
         children.push(record_delete_form(record));
     }
-    page::dns_editor(title, &subheading, Widget::stack(children))
-}
-
-/// heading names the record the page is about, falling back to its own words when
-/// the record carries no name yet.
-fn heading(name: &str) -> String {
-    match name.is_empty() {
-        true => "An unnamed record.".to_string(),
-        false => name.to_string(),
-    }
+    page::dns_editor(title, Widget::stack(children))
 }
 
 /// record_delete_form is the record page's one irreversible action.
@@ -355,7 +344,7 @@ mod tests {
     fn the_edit_page_carries_the_record_and_the_new_page_starts_empty() {
         let srv = edited("srv_matrix");
         assert_eq!(srv["title"], "Edit record");
-        assert_eq!(srv["subheading"], "_matrix._tcp.lan");
+        assert_eq!(control(&srv, "name")["value"], "_matrix._tcp.lan");
         assert!(srv.get("pages").is_none(), "DNS declares no top bar");
         assert_eq!(control(&srv, "kind")["value"], "SRV");
         assert_eq!(control(&srv, "kind")["kind"], "select");
@@ -372,7 +361,6 @@ mod tests {
 
         let blank = body(blank());
         assert_eq!(blank["title"], "New record");
-        assert_eq!(blank["subheading"], NEW_SUB);
         assert_eq!(control(&blank, "kind")["value"], "A");
         assert_eq!(control(&blank, "name")["value"], "");
         assert_eq!(

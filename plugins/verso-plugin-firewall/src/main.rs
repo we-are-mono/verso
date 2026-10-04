@@ -395,25 +395,15 @@ mod tests {
 
     /// Each listing page IS its grid, so a test names the listing it expects by
     /// the heading that page carries rather than by a titled region inside it.
-    /// The rules page carries no lede: its toolbar sits straight under the
-    /// heading.
     #[test]
     fn each_sub_path_answers_with_its_own_listing() {
-        for (path, heading, subheading) in [
-            ("/", crate::rules::HEADING, ""),
-            (
-                "/port-forwards",
-                crate::redirects::HEADING,
-                crate::redirects::SUBHEADING,
-            ),
-            ("/zones", crate::zones::HEADING, crate::zones::SUBHEADING),
+        for (path, heading) in [
+            ("/", crate::rules::HEADING),
+            ("/port-forwards", crate::redirects::HEADING),
+            ("/zones", crate::zones::HEADING),
         ] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], heading, "{path}");
-            match subheading {
-                "" => assert!(body.get("subheading").is_none(), "{path}"),
-                lede => assert_eq!(body["subheading"], lede, "{path}"),
-            }
             assert_eq!(fixture::listing(&body)["type"], "table", "{path}");
         }
     }
@@ -467,7 +457,6 @@ mod tests {
         ] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], crate::zones::HEADING, "{path}");
-            assert_eq!(body["subheading"], crate::zones::SUBHEADING, "{path}");
             // No panel opens: a path is not how a zone is addressed.
             for row in fixture::listing(&body)["rows"].as_array().expect("rows") {
                 assert!(row.get("drawer").is_none(), "{path}");
@@ -735,7 +724,6 @@ mod tests {
         ] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], crate::redirects::HEADING, "{path}");
-            assert_eq!(body["subheading"], crate::redirects::SUBHEADING, "{path}");
             assert!(
                 fixture::find_with(&body, &|v| v.get("drawer").is_some_and(|d| d.is_object()))
                     .is_none(),

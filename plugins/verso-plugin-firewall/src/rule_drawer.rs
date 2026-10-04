@@ -998,8 +998,6 @@ mod tests {
             serde_json::json!(["tcp", "udp"])
         );
         assert_eq!(control(&body, "name")["value"], "");
-        // The panel opens over the listing page as it is: no lede under its heading.
-        assert!(body.get("subheading").is_none());
     }
 
     #[test]

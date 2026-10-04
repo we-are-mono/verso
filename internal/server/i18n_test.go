@@ -126,9 +126,8 @@ func TestLoginNegotiatesLanguage(t *testing.T) {
 // leak into the shell's base translator.
 func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 	env := &plugin.Envelope{
-		Title:      "Demo",
-		Subheading: "A demo page",
-		Widget:     json.RawMessage(`{"type":"form","submit":"Save","fields":[{"type":"field","name":"h","label":"Hostname"}]}`),
+		Title:  "Demo",
+		Widget: json.RawMessage(`{"type":"form","submit":"Save","fields":[{"type":"field","name":"h","label":"Hostname"}]}`),
 	}
 	m := plugin.Manifest{
 		ID: "demo", Name: "Demo", Socket: "/demo.sock", SchemaVersion: 1,
@@ -139,7 +138,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 
 	bundle, problems := i18n.Load(fstest.MapFS{
 		"sl/base.json": {Data: []byte(`{"Save":"Shrani","Overview":"Pregled","Hostname":"BASE-WRONG"}`)},
-		"sl/demo.json": {Data: []byte(`{"Hostname":"Ime gostitelja","Demo":"Predstavitev","A demo page":"Predstavitvena stran","Widgets":"Gradniki"}`)},
+		"sl/demo.json": {Data: []byte(`{"Hostname":"Ime gostitelja","Demo":"Predstavitev","Widgets":"Gradniki"}`)},
 	}, "*/*.json")
 	if len(problems) != 0 {
 		t.Fatalf("catalog problems: %v", problems)
@@ -148,12 +147,11 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 
 	body := getLang(t, srv, "/plugins/demo/", "sl")
 	for _, want := range []string{
-		"Ime gostitelja",       // the plugin's field label, from the plugin catalog (wins over base)
-		"Predstavitev",         // the plugin page heading (env.Title), from the plugin catalog
-		"Predstavitvena stran", // the plugin subheading, from the plugin catalog
-		"Gradniki",             // the plugin's nav label, from the plugin catalog
-		">Shrani<",             // shell-owned widget default, from base via base⊕plugin fallthrough
-		">Pregled<",            // a shell-owned rail row, from base, beside the plugin's own
+		"Ime gostitelja", // the plugin's field label, from the plugin catalog (wins over base)
+		"Predstavitev",   // the plugin page heading (env.Title), from the plugin catalog
+		"Gradniki",       // the plugin's nav label, from the plugin catalog
+		">Shrani<",       // shell-owned widget default, from base via base⊕plugin fallthrough
+		">Pregled<",      // a shell-owned rail row, from base, beside the plugin's own
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("plugin render missing %q:\n%s", want, body)

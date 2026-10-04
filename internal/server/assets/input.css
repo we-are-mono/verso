@@ -616,8 +616,9 @@ html {
     100% { transform: scale(1.5); opacity: 0; }
   }
 
-  /* page masthead: the artifact-style header a page opts into (kicker + serif headline +
-     lede), rendered by the shell chrome. Sizes live here so they hot-reload. */
+  /* page masthead: the header the shell chrome renders over every page (an
+     optional kicker over the headline). Sizes live here so they hot-reload.
+     The lede is the takeover's sentence under its title. */
   /* The kicker is the canvas's one kicker, wherever it sits: 12px at 500,
      uppercase at .08em, in the meta ink. Denim is for what leads somewhere, and
      a kicker leads nowhere. */
@@ -807,7 +808,7 @@ html {
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
   }
 
-  /* Page and section ledes share one reading role, including inside drawers.
+  /* Takeover and section ledes share one reading role, including inside drawers.
      Relative type and unitless leading let enlarged text and spacing overrides
      grow the content naturally. */
   .verso-lede,

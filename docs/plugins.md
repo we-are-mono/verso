@@ -1395,7 +1395,7 @@ requests against your repository, not files someone installs beside your
 plugin.
 
 **What your catalog covers.** The shell translates your envelope's prose: the
-page `title` and `subheading`, `pages` and manifest `nav` labels, and every
+page `title`, `pages` and manifest `nav` labels, and every
 prose field of every widget — section titles and subs, field labels, help and
 placeholder text, option labels, form submits, callout and empty-state bodies,
 table column labels and prose cells, confirm messages, `raw` Markdown. It

@@ -39,7 +39,7 @@ pub const HEADING: &str = "Firewall rules";
 /// frame is the Rules page: the listing, and the act that adds to it on the
 /// heading line, carrying the blank rule's panel when an address asks for one.
 fn frame(listing: Widget, blank: Option<RowDrawer>) -> Envelope {
-    page::envelope(HEADING, "", listing).with_act(act(blank))
+    page::envelope(HEADING, listing).with_act(act(blank))
 }
 
 /// NOTE is the one sentence the listing owes its reader, under the last row
@@ -446,8 +446,6 @@ mod tests {
         let body = body(&Counters::default());
         assert_eq!(body["title"], HEADING);
         assert_eq!(body["width"], "wide");
-        // No lede under the heading: the listing's own controls follow it.
-        assert!(body.get("subheading").is_none());
         assert_eq!(
             body["pages"],
             serde_json::json!([

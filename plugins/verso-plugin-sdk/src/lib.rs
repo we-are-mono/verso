@@ -2485,8 +2485,6 @@ pub struct Envelope {
     pub schema_version: u32,
     pub title: String,
     #[serde(skip_serializing_if = "String::is_empty")]
-    pub subheading: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub width: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pages: Vec<PageTab>,
@@ -2561,7 +2559,6 @@ impl Envelope {
             entities: None,
             schema_version: 1,
             title: title.into(),
-            subheading: String::new(),
             width: String::new(),
             pages: Vec::new(),
             back: None,
@@ -2588,12 +2585,6 @@ impl Envelope {
     /// heading by the closed tone vocabulary and drops the navigation suffix.
     pub fn with_tone(mut self, tone: &str) -> Envelope {
         self.tone = tone.into();
-        self
-    }
-
-    /// with_subheading sets the lede under the page heading.
-    pub fn with_subheading(mut self, sub: &str) -> Envelope {
-        self.subheading = sub.into();
         self
     }
 

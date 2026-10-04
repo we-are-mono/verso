@@ -17,8 +17,6 @@ use crate::form::{self, Errors};
 use crate::model::{Dnsdhcp, Upstream, CONFIG};
 use crate::page;
 
-const NEW_SUB: &str = "Add a resolver this router asks when it cannot answer a name itself.";
-
 const MISSING: &str = "That server isn’t here any more, so here is the DNS page instead.";
 
 /// blank answers a visit to the new-server page: an entry with nothing filled in.
@@ -108,9 +106,9 @@ fn submitted(index: usize, form: &Form) -> Upstream {
 
 /// editor composes the server page — the new page and the edit page, one screen.
 fn editor(index: Option<usize>, upstream: &Upstream, errors: &Errors) -> Envelope {
-    let (title, subheading) = match index {
-        Some(_) => ("Edit server", heading(&upstream.server)),
-        None => ("New server", NEW_SUB.to_string()),
+    let title = match index {
+        Some(_) => "Edit server",
+        None => "New server",
     };
     let mut children = vec![Widget::Form {
         style: "page".into(),
@@ -144,16 +142,7 @@ fn editor(index: Option<usize>, upstream: &Upstream, errors: &Errors) -> Envelop
             ),
         ));
     }
-    page::dns_editor(title, &subheading, Widget::stack(children))
-}
-
-/// heading names the entry the page is about — the resolver's address, or its own
-/// words when the entry carries none yet.
-fn heading(server: &str) -> String {
-    match server.is_empty() {
-        true => "An unnamed server.".to_string(),
-        false => server.to_string(),
-    }
+    page::dns_editor(title, Widget::stack(children))
 }
 
 fn subject(server: &str) -> String {
@@ -250,7 +239,6 @@ mod tests {
         let model = fixture::dnsdhcp();
         let scoped = body(edit(&model, "2").expect("entry"));
         assert_eq!(scoped["title"], "Edit server");
-        assert_eq!(scoped["subheading"], "10.66.0.53");
         assert!(scoped.get("pages").is_none());
         assert_eq!(control(&scoped, "server")["value"], "10.66.0.53");
         assert_eq!(control(&scoped, "domain")["value"], "corp.example.com");

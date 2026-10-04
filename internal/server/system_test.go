@@ -27,8 +27,7 @@ func systemManifest() plugin.Manifest {
 func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "General", Status: http.StatusOK,
-		Subheading: "The name, place, and clock shared by everything on this router.",
-		Width:      "narrow",
+		Width: "narrow",
 		Widget: json.RawMessage(`{
 			"type":"form","style":"page","fields":[
 				{"type":"field","name":"hostname","label":"Hostname","value":"router"}

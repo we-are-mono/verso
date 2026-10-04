@@ -75,9 +75,8 @@ pub fn tabs() -> Vec<PageTab> {
 /// envelope wraps one page's content in the shared firewall frame. The listings
 /// are wide: they carry a full traffic path per row and nothing about them reads
 /// better in a reading column.
-pub fn envelope(heading: &str, subheading: &str, widget: Widget) -> Envelope {
+pub fn envelope(heading: &str, widget: Widget) -> Envelope {
     Envelope::page(heading, widget)
-        .with_subheading(subheading)
         .with_width("wide")
         .with_pages(tabs())
         // Each page says what it is about in its own words, so the shell's

@@ -28,8 +28,6 @@ use crate::rule_form::Errors;
 
 pub const HEADING: &str = "Port forwards";
 
-pub const SUBHEADING: &str = "Send matching traffic to the router itself or to a device behind it.";
-
 /// NOTE is what the listing leaves out, said once under the last row: a source
 /// rewrite is a different question on a different chain, and a reader who knows
 /// their config has one is owed the reason it is not here.
@@ -164,12 +162,7 @@ fn listing(
         .iter()
         .filter(|redirect| redirect.is_port_forward())
         .collect();
-    page::envelope(
-        HEADING,
-        SUBHEADING,
-        table(model, &forwards, counters, open),
-    )
-    .with_act(act(blank))
+    page::envelope(HEADING, table(model, &forwards, counters, open)).with_act(act(blank))
 }
 
 /// act is the page's one forward act. Making a forward is editing one that
@@ -324,7 +317,6 @@ mod tests {
         let body = body(&Counters::default());
         assert_eq!(body["title"], HEADING);
         assert_eq!(body["width"], "wide");
-        assert_eq!(body["subheading"], SUBHEADING);
         assert_eq!(body["pages"][1]["path"], "port-forwards");
         // The page's one act stands on its heading line, and opens the panel
         // rather than a page; nothing narrows a still listing.

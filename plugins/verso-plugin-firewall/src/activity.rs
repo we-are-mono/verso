@@ -28,9 +28,6 @@ use crate::zone_form;
 
 const HEADING: &str = "Activity";
 
-const SUBHEADING: &str = "What the firewall is deciding, as it decides it. Only rules that log \
-appear here — turn logging on where you're curious.";
-
 const EMPTY_TEXT: &str = "Waiting for the first logged event…";
 
 const NOTHING_LOGGED: &str = "Nothing is being logged";
@@ -48,12 +45,12 @@ const RING: u32 = 200;
 /// the envelope is immediate: nothing on it stages.
 pub fn page(snapshot: &Snapshot) -> Envelope {
     if !logging_configured(snapshot) {
-        return page::envelope(HEADING, SUBHEADING, teaching()).immediate();
+        return page::envelope(HEADING, teaching()).immediate();
     }
     // The stream is the page, so the page is the window: it fills the height,
     // scrolls inside itself, and runs to the right and bottom edges. A log has
     // no natural end, and a margin under one would say otherwise.
-    page::envelope(HEADING, SUBHEADING, live())
+    page::envelope(HEADING, live())
         .with_act(download())
         .with_width("full")
         .immediate()

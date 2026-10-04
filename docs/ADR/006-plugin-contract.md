@@ -114,8 +114,7 @@ over a local socket**, exchanging *data*, not markup.
    Beyond `widget`, the envelope carries optional page chrome the shell owns and
    the plugin only requests: `kicker` (an eyebrow above the heading) with
    `kicker_status` and `live` (a state label and a pulsing dot beside it),
-   `subheading` (a lede under the heading), `width` (`narrow` | `normal` | `wide`),
-   and `immediate` (the page's actions apply at once; nothing on it stages —
+   `width` (`narrow` | `normal` | `wide`), and `immediate` (the page's actions apply at once; nothing on it stages —
    ADR-010). `pages` is the **third navigation tier**: a domain's subpages
    rendered as the shell's top bar (sidebar → domain, top bar → kind of visit). Each
    entry is `{label, path}` relative to the plugin's mount; the shell builds the href

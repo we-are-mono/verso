@@ -2441,9 +2441,8 @@ func TestEveryMastheadHasNoDivider(t *testing.T) {
 	for _, sub := range []string{"The baseline every zone falls back to.", ""} {
 		tr := &fakeTransport{env: &plugin.Envelope{
 			SchemaVersion: 1, Status: http.StatusOK,
-			Title:      "Firewall settings",
-			Subheading: sub,
-			Widget:     json.RawMessage(`{"type":"text","markdown":"body"}`),
+			Title:  "Firewall settings",
+			Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
 		}}
 		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 		body := get(t, s, "/plugins/demo/").Body.String()

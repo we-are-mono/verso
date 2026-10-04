@@ -557,9 +557,8 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
-	Display       bool               // opt into the display masthead without a kicker or lede
+	Display       bool               // opt into the display masthead without a kicker
 	Tone          string             // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
-	Subheading    string             // optional lede under the heading
 	HeadingAct    template.HTML      // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
 	Back          *plugin.PageAction // an edit page's quiet "← Cancel" back-link, rendered in the masthead above the heading
 	Width         string             // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
@@ -614,17 +613,16 @@ type pageTab struct {
 }
 
 // pageHeader is the masthead the shell renders above a page body. Heading is always
-// shown; a page may also declare a kicker (an eyebrow, optionally with a live dot) and a
-// lede subheading to get the fuller "your connection, live" header, otherwise it stays a
-// plain heading.
+// shown; a page may also declare a kicker (an eyebrow, optionally with a live dot) to get
+// the fuller "your connection, live" header, otherwise it stays a plain heading.
 type pageHeader struct {
 	Heading      string
 	Kicker       string
 	KickerStatus string
 	Immediate    bool
 	Live         bool
-	// Display opts a page into the display masthead even without a kicker or
-	// lede — for a page whose heading is its own subject (the device's name on the
+	// Display opts a page into the display masthead even without a kicker —
+	// for a page whose heading is its own subject (the device's name on the
 	// Hardware page), not a section label.
 	Display bool
 	// Tone declares the heading a message about now rather than a place-label:
@@ -650,7 +648,6 @@ type pageHeader struct {
 	// had. The listing drawn from it gains or loses a row, which only a fresh
 	// page can show.
 	StagedStructure bool
-	Subheading      string
 	// HeadingAct is the page's one act (the envelope's act, widget.HeadingAct),
 	// with a live log's live control beside it (widget.TakeLive), already
 	// rendered (Server.headingAct): it stands hard right on the heading row.
@@ -823,7 +820,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Tone:          pageTone(hdr.Tone),
 		KickerStatus:  tr(hdr.KickerStatus),
 		Live:          hdr.Live,
-		Subheading:    tr(hdr.Subheading),
 		HeadingAct:    hdr.HeadingAct,
 		Back:          localizeBack(hdr.Back, tr),
 		Width:         width,
