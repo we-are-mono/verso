@@ -1,5 +1,4 @@
 {
-  "manifest_version": 1,
   "id": "firewall",
   "name": "Firewall",
   "socket": "/var/run/verso/firewall.sock",

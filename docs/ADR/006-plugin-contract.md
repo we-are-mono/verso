@@ -46,7 +46,6 @@ over a local socket**, exchanging *data*, not markup.
 
    ```json
    {
-     "manifest_version": 1,
      "id": "system",
      "name": "System — General",
      "socket": "/var/run/verso/system.sock",
@@ -80,9 +79,6 @@ over a local socket**, exchanging *data*, not markup.
      `state` describes configuration, not live enforcement. An empty array means
      no configured subjects; an omitted/null array means the read was unavailable.
      The shell owns how summaries appear and where their editors open.
-   - `manifest_version` — the manifest *format* version, distinct from
-     `schema_version`; lets the manifest shape evolve independently of the widget
-     vocabulary.
    - `acl` — the rpcd access scopes the plugin's writes need, as a `write` list of
      `{scope, object, function}` triples mirroring `session.access` (added for
      ADR-007, see Neutral below). Optional; a display-only plugin declares none.
@@ -147,11 +143,9 @@ over a local socket**, exchanging *data*, not markup.
    (declarative `datatype`) validation is expressed in the schema and can be
    checked on both ends.
 
-6. **Two independent version numbers.** `schema_version` (widget vocabulary) and
-   `manifest_version` (manifest format) evolve separately. `schema_version` is the
-   enforced gate: a version the shell does not support yields a **degradation card
-   in the chrome** ("plugin needs a newer Verso"), never a load failure or a 500.
-   `manifest_version` is carried for the same purpose as the manifest shape grows.
+6. **One version number.** `schema_version` (widget vocabulary) is the enforced
+   gate: a version the shell does not support yields a **degradation card in the
+   chrome** ("plugin needs a newer Verso"), never a load failure or a 500.
    Additive vocabulary changes bump a minor; removals/renames bump a major.
 
 7. **Crash isolation is a contract, not a hope.** Any transport failure — dial

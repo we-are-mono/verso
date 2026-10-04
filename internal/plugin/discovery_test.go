@@ -19,7 +19,7 @@ func mapFS(files map[string]string) fstest.MapFS {
 }
 
 func validManifest(id string) string {
-	return `{"manifest_version":1,"id":"` + id + `","name":"Name ` + id +
+	return `{"id":"` + id + `","name":"Name ` + id +
 		`","socket":"/run/verso/` + id + `.sock","schema_version":1,` +
 		`"nav":[{"section":"System","label":"Label","path":"/"}]}`
 }
@@ -66,7 +66,7 @@ func TestDiscoverSkipsMalformedButKeepsRest(t *testing.T) {
 func TestDiscoverSkipsMissingRequiredField(t *testing.T) {
 	fsys := mapFS(map[string]string{
 		// no name, socket, or nav
-		"plugins/x/manifest.json": `{"manifest_version":1,"id":"x","schema_version":1}`,
+		"plugins/x/manifest.json": `{"id":"x","schema_version":1}`,
 	})
 
 	got, problems := Discover(fsys, testGlob)
@@ -97,7 +97,7 @@ func TestDiscoverRejectsDuplicateID(t *testing.T) {
 // namespace: an id with path characters could escape either.
 func TestDiscoverRejectsUnsafeID(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/x/manifest.json": `{"manifest_version":1,"id":"../etc","name":"N",` +
+		"plugins/x/manifest.json": `{"id":"../etc","name":"N",` +
 			`"socket":"/s","schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}]}`,
 	})
 
@@ -111,9 +111,9 @@ func TestDiscoverRejectsUnsafeID(t *testing.T) {
 // traversal path is rejected (VS-09).
 func TestDiscoverRejectsBadSocketPath(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/rel/manifest.json": `{"manifest_version":1,"id":"rel","name":"N","socket":"relative.sock",` +
+		"plugins/rel/manifest.json": `{"id":"rel","name":"N","socket":"relative.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}]}`,
-		"plugins/dot/manifest.json": `{"manifest_version":1,"id":"dot","name":"N","socket":"/var/run/../etc/x.sock",` +
+		"plugins/dot/manifest.json": `{"id":"dot","name":"N","socket":"/var/run/../etc/x.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}]}`,
 	})
 
@@ -128,7 +128,7 @@ func TestDiscoverRejectsBadSocketPath(t *testing.T) {
 
 func TestDiscoverRejectsEmptyNav(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/x/manifest.json": `{"manifest_version":1,"id":"x","name":"N",` +
+		"plugins/x/manifest.json": `{"id":"x","name":"N",` +
 			`"socket":"/s","schema_version":1,"nav":[]}`,
 	})
 
@@ -149,7 +149,7 @@ func TestDiscoverNoPluginsIsClean(t *testing.T) {
 // into structured ACL entries the shell gates on (ADR-007).
 func TestDiscoverParsesACL(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/w/manifest.json": `{"manifest_version":1,"id":"w","name":"N","socket":"/run/verso/w.sock",` +
+		"plugins/w/manifest.json": `{"id":"w","name":"N","socket":"/run/verso/w.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
 			`"acl":{"write":[{"scope":"uci","object":"system","function":"write"}]}}`,
 	})
@@ -168,7 +168,7 @@ func TestDiscoverParsesACL(t *testing.T) {
 // not a silently-ignored (and therefore ungated) grant.
 func TestDiscoverRejectsIncompleteACL(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/x/manifest.json": `{"manifest_version":1,"id":"x","name":"N","socket":"/run/verso/x.sock",` +
+		"plugins/x/manifest.json": `{"id":"x","name":"N","socket":"/run/verso/x.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
 			`"acl":{"write":[{"scope":"uci","object":"system"}]}}`,
 	})
@@ -183,7 +183,7 @@ func TestDiscoverRejectsIncompleteACL(t *testing.T) {
 // structured acl.read entries the shell pre-reads and brokers as a snapshot (ADR-007).
 func TestDiscoverParsesReadACL(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/r/manifest.json": `{"manifest_version":1,"id":"r","name":"N","socket":"/run/verso/r.sock",` +
+		"plugins/r/manifest.json": `{"id":"r","name":"N","socket":"/run/verso/r.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
 			`"acl":{"read":[{"scope":"uci","object":"network","function":"read"}]}}`,
 	})
@@ -202,7 +202,7 @@ func TestDiscoverParsesReadACL(t *testing.T) {
 // config to fetch, so it is a load error rather than a silently-carried grant.
 func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/y/manifest.json": `{"manifest_version":1,"id":"y","name":"N","socket":"/run/verso/y.sock",` +
+		"plugins/y/manifest.json": `{"id":"y","name":"N","socket":"/run/verso/y.sock",` +
 			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
 			`"acl":{"read":[{"scope":"uci","object":"network"}]}}`,
 	})
@@ -218,7 +218,7 @@ func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
 // declaring neither is the ordinary case and parses to empty.
 func TestDiscoverParsesNavIconAndPages(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/n/manifest.json": `{"manifest_version":1,"id":"n","name":"N","socket":"/run/verso/n.sock",` +
+		"plugins/n/manifest.json": `{"id":"n","name":"N","socket":"/run/verso/n.sock",` +
 			`"schema_version":1,"nav":[` +
 			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","pages":true},` +
 			`{"section":"Network","label":"DHCP","path":"/"}]}`,
@@ -239,7 +239,7 @@ func TestDiscoverParsesNavIconAndPages(t *testing.T) {
 
 func TestDiscoverEntityOnlyPlugin(t *testing.T) {
 	fsys := mapFS(map[string]string{
-		"plugins/qos/manifest.json": `{"manifest_version":1,"id":"qos","name":"Device limits","socket":"/s","schema_version":1,"nav":[],"entity_tabs":[{"entity":"device","slot":"shape","label":"Limits","summaries":true}]}`,
+		"plugins/qos/manifest.json": `{"id":"qos","name":"Device limits","socket":"/s","schema_version":1,"nav":[],"entity_tabs":[{"entity":"device","slot":"shape","label":"Limits","summaries":true}]}`,
 	})
 	got, problems := Discover(fsys, testGlob)
 	if len(got) != 1 || len(problems) != 0 {

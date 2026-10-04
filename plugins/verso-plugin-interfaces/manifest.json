@@ -1,5 +1,4 @@
 {
-  "manifest_version": 1,
   "id": "interfaces",
   "name": "Interfaces",
   "socket": "/var/run/verso/interfaces.sock",

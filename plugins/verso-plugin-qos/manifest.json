@@ -1,5 +1,4 @@
 {
-  "manifest_version": 1,
   "id": "qos",
   "name": "Device limits",
   "socket": "/var/run/verso/qos.sock",

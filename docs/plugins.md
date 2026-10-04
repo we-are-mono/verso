@@ -38,7 +38,6 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 
 ```json
 {
-  "manifest_version": 2,
   "id": "ntp",
   "name": "Time synchronization",
   "socket": "/var/run/verso/ntp.sock",
@@ -64,7 +63,6 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 
 | field | meaning |
 |---|---|
-| `manifest_version` | manifest format version: `1` for whole-page plugins; `2` adds contributions |
 | `id` | stable, URL-safe; mounts your plugin at `/plugins/<id>/` |
 | `name` | display name |
 | `socket` | absolute path your process listens on |

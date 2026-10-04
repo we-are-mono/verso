@@ -1,5 +1,4 @@
 {
-  "manifest_version": 1,
   "id": "system",
   "name": "System",
   "socket": "/var/run/verso/system.sock",

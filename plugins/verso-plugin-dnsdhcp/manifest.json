@@ -1,5 +1,4 @@
 {
-  "manifest_version": 1,
   "id": "dnsdhcp",
   "name": "DNS and DHCP",
   "socket": "/var/run/verso/dnsdhcp.sock",
