@@ -300,17 +300,6 @@
      because what it states is a machine string someone could type elsewhere. */}}
 {{define "verso-chip-class"}}{{template "verso-chip-mono"}} border-rule bg-quiet text-meta{{end}}
 
-{{/* verso-chip-accent-class: the same chip where what it states is the action
-     colour's business — an address pinned by a reservation, say. Denim on its
-     own soft ground, so it reads as a decision someone made rather than as one
-     more fact about the row. */}}
-{{define "verso-chip-accent-class"}}{{template "verso-chip-mono"}} border-denim-line bg-denim-soft text-denim-deep{{end}}
-
-{{/* verso-chip-raised: the neutral chip on a surface that is itself quiet — a
-     table's group band — where the chip has to sit a step above its ground
-     rather than on it. */}}
-{{define "verso-chip-raised"}}{{template "verso-chip-mono"}} border-rule bg-ground text-meta{{end}}
-
 {{/* verso-token-chip: the one chip that is not a citation. Every chip above
      states a fact somewhere in the page's prose and is sized to the words around
      it; this one is a value a person put inside a control and can take back out,
@@ -421,11 +410,6 @@
      text treatment, light and dark. A tone outside the vocabulary emits nothing,
      so the element keeps whatever colour it already carries. */}}
 {{define "verso-tone-text"}}{{if eq . "success"}}text-green-deep{{else if eq . "warning"}}text-marigold-deep{{else if eq . "danger"}}text-crimson-deep{{else if eq . "info"}}text-denim-deep{{end}}{{end}}
-
-{{/* verso-card-frame: the card's edge — one hairline border on white, no
-     shadow — shared by card, settings, and table so every boxed surface
-     speaks one card language. */}}
-{{define "verso-card-frame"}}rounded-xs border border-rule bg-ground{{end}}
 
 {{/* verso-overlay-backdrop: the click-to-close layer behind an open modal,
      drawer, or confirm dialog. Ink at 18% over a 2px blur, so what it covers
