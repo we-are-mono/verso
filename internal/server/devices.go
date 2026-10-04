@@ -38,9 +38,6 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 
 	var body strings.Builder
 	lang, t := s.localize(r)
-	// The bar belongs to the listing, so the two render together: the cuts it
-	// offers are priced from the same roster the rows come from.
-	bar := widget.DevicesBar(roster)
 	act := widget.DevicesAct(roster, s.EntityListingAct("device"), func(mac string) string {
 		if mac == "" {
 			return widget.EntityPath("device", "new")
@@ -50,12 +47,12 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	table := widget.DevicesTable(roster, func(d widget.Device) []widget.TableRowAct {
 		return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles(d))
 	})
-	page := &widget.Stack{Children: []widget.Widget{bar, table}}
+	// The roster is read whole, banded by network: no bar cuts or narrows it.
+	page := &widget.Stack{Children: []widget.Widget{table}}
 	if !limitsAvailable {
-		bar.Tabs = bar.Tabs[:len(bar.Tabs)-1]
 		table.Note = "Offline devices stay listed until their lease expires."
 		if limitsOffered {
-			page.Children = []widget.Widget{bar, &widget.Callout{
+			page.Children = []widget.Widget{&widget.Callout{
 				Variant: "warning", Compact: true,
 				Body: "Device limits couldn’t be loaded. Some offline devices may be missing. Reload to try again.",
 			}, table}

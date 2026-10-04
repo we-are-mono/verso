@@ -55,7 +55,7 @@ func TestDeviceLimitsStayFindableWithoutRuntimePresence(t *testing.T) {
 	tr := &limitSummaryTransport{tabTransport: twoTabs(), summaries: &entries}
 	s := limitRosterServer(t, tr)
 	body := get(t, s, "/devices").Body.String()
-	for _, want := range []string{"With limits", "Hours (router time): 21:00–07:00", "Download: 25 Mbit/s", "Internet block", "Old tablet", `limited`, `data-verso-entity-url="/entity/device/02:11:22:33:44:55"`} {
+	for _, want := range []string{"Hours (router time): 21:00–07:00", "Download: 25 Mbit/s", "Internet block", "Old tablet", `data-verso-entity-url="/entity/device/02:11:22:33:44:55"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("roster missing %q", want)
 		}
@@ -83,14 +83,14 @@ func TestDeviceLimitsStayFindableWithoutRuntimePresence(t *testing.T) {
 func TestDeviceLimitsUnavailableIsNotNoLimits(t *testing.T) {
 	tr := &limitSummaryTransport{tabTransport: twoTabs()}
 	body := get(t, limitRosterServer(t, tr), "/devices").Body.String()
-	if !strings.Contains(body, "Some offline devices may be missing") || strings.Contains(body, "With limits") {
-		t.Fatal("an unavailable read must show a notice, not a zero-count limits filter")
+	if !strings.Contains(body, "Some offline devices may be missing") {
+		t.Fatal("an unavailable read must show a notice")
 	}
 	entries := []plugin.EntitySummary{}
 	tr.summaries = &entries
 	body = get(t, limitRosterServer(t, tr), "/devices").Body.String()
-	if strings.Contains(body, "Some offline devices may be missing") || !strings.Contains(body, "With limits") {
-		t.Fatal("a successful empty read must keep the limits filter without a failure notice")
+	if strings.Contains(body, "Some offline devices may be missing") {
+		t.Fatal("a successful empty read must not show a failure notice")
 	}
 }
 

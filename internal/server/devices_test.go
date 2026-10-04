@@ -119,6 +119,13 @@ func TestDevicesPageRendersTheRoster(t *testing.T) {
 	if strings.Contains(body, "fd42:7ea:aa00:0:1::66") {
 		t.Error("a device's panel facts must not ride along with the listing")
 	}
+	// The roster is read whole, banded by network: no bar cuts or narrows it.
+	markup := body[strings.LastIndex(body, "</style>"):]
+	for _, never := range []string{"data-verso-actionbar", "data-verso-listing-cut", "data-verso-listing-select", "data-verso-tags"} {
+		if strings.Contains(markup, never) {
+			t.Errorf("GET /devices: the roster carries a filter bar's %q", never)
+		}
+	}
 }
 
 // The drawer's body belongs to the active plugin form; no duplicate device recap.
@@ -409,9 +416,8 @@ func TestEntityPanelMarksWhatWaits(t *testing.T) {
 	}
 }
 
-// TestReserveSitsOnTheHeadingLine: the roster's forward act leaves its
-// control band for the heading line, as every listing's does, while the band
-// keeps the cuts it narrows by.
+// TestReserveSitsOnTheHeadingLine: the roster's forward act stands on the
+// heading line, as every listing's does, and the roster runs under it.
 func TestReserveSitsOnTheHeadingLine(t *testing.T) {
 	m := reservingManifest()
 	m.EntityActs = []plugin.EntityAct{{Entity: "device", Slot: "add", Path: "/reserve/{id}"}}
@@ -423,12 +429,12 @@ func TestReserveSitsOnTheHeadingLine(t *testing.T) {
 	whole := get(t, s, "/devices").Body.String()
 	body := whole[strings.LastIndex(whole, "</style>"):]
 	heading, act := strings.Index(body, `verso-page-heading">Devices`), strings.Index(body, "Reserve an address")
-	bar := strings.Index(body, "data-verso-actionbar")
-	if heading < 0 || act < 0 || bar < 0 {
-		t.Fatalf("roster is missing its heading, act or band:\n%s", body)
+	roster := strings.Index(body, "<table")
+	if heading < 0 || act < 0 || roster < 0 {
+		t.Fatalf("roster is missing its heading, act or table:\n%s", body)
 	}
-	if !(heading < act && act < bar) {
-		t.Errorf("reserve should sit on the heading line, before the band (h1 %d, act %d, band %d)", heading, act, bar)
+	if !(heading < act && act < roster) {
+		t.Errorf("reserve should sit on the heading line, over the roster (h1 %d, act %d, table %d)", heading, act, roster)
 	}
 }
 

@@ -111,8 +111,6 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 			// A device that is not here reads at the secondary step, all of it:
 			// the values stay exact, the row stops competing for the eye.
 			Muted: d.Presence != "online",
-			Tags:  deviceTags(d),
-			Facet: map[string]string{"network": d.Network},
 			Cells: []TableCell{
 				{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d)},
 				{Text: d.Port},
@@ -156,61 +154,6 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}
-}
-
-// deviceTags are the flags the action bar's tabs cut this listing by. They are
-// not exclusive on purpose: a reserved device that is not here right now carries
-// both "offline" and "reserved", and each tab finds it.
-func deviceTags(d Device) []string {
-	tags := []string{"offline"}
-	if d.Presence == "online" {
-		tags = []string{"online"}
-	}
-	if d.Reserved {
-		tags = append(tags, "reserved")
-	}
-	if d.Limit != "" {
-		tags = append(tags, "limited")
-	}
-	return tags
-}
-
-// DevicesBar is the roster's own controls: the cuts a person makes on a list of
-// devices — which are here, which are pinned — and the network to look at.
-func DevicesBar(devices []Device) *ActionBar {
-	online, offline, reserved, limited := 0, 0, 0, 0
-	for _, d := range devices {
-		if d.Presence == "online" {
-			online++
-		} else {
-			offline++
-		}
-		if d.Reserved {
-			reserved++
-		}
-		if d.Limit != "" {
-			limited++
-		}
-	}
-	bar := &ActionBar{
-		Tabs: []ActionTab{
-			{Label: "All devices", Count: len(devices), Active: true},
-			{Label: "Online", Count: online, Match: "online"},
-			{Label: "Offline", Count: offline, Match: "offline"},
-			{Label: "Reserved", Count: reserved, Match: "reserved"},
-			{Label: "With limits", Count: limited, Match: "limited"},
-		},
-		Select: &ActionPick{Key: "network", Options: []ActionOption{{Label: "All networks"}}},
-	}
-	seen := map[string]bool{}
-	for _, d := range devices {
-		if d.Network == "" || seen[d.Network] {
-			continue
-		}
-		seen[d.Network] = true
-		bar.Select.Options = append(bar.Select.Options, ActionOption{Label: networkLabel(d.Network), Value: d.Network})
-	}
-	return bar
 }
 
 // DevicesAct is the roster's act on its heading line. It is offered only where
