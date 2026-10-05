@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-<div data-verso-packages data-package-all="{{.All}}"{{if .Busy}} data-verso-package-busy{{end}}>
+{{/* The listing carries the index's age, so a listing read in place brings
+     the heading's note up to date (packages-refresh). */}}
+<div data-verso-packages data-package-all="{{.All}}" data-package-index-note="{{.Note}}"{{if .Busy}} data-verso-package-busy{{end}}>
 {{/* The listing's control band, as every table has it. The cut is one
      dropdown: Installed and Upgradable narrow the inventory on screen, and All
      is a different listing — the cached index, paged by the router — so its
@@ -24,15 +26,20 @@
     </select>
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
-  <div class="ml-auto flex flex-wrap items-center gap-3">
-    <span data-package-note class="text-sm text-meta" aria-live="polite">{{.Note}}</span>
-    <form data-package-refresh method="post" action="/system/packages/discover">
-      {{template "verso-csrf" .CSRFToken}}<input type="hidden" name="return_to" value="/system/packages">
-      <button type="submit" name="_action" value="refresh"{{if .Busy}} disabled aria-disabled="true" aria-busy="true"{{end}} class="flex h-9 items-center gap-2.5 rounded-xs border px-4 text-sm font-semibold {{if .Busy}}pointer-events-none border-rule-strong bg-quiet text-glyph{{else}}{{template "verso-btn-secondary"}}{{end}}">{{if .Busy}}{{template "verso-waiting" ""}}{{t "Refreshing index…"}}{{else}}{{t "Refresh index"}}{{end}}</button>
-    </form>
-  </div>
 </div>
 {{.Body}}
 {{if .All}}<nav aria-label="{{t "Package pages"}}" class="mt-5 flex items-center gap-4 text-sm"><span class="text-meta">{{printf (t "%d matches") .Total}}</span>{{if .Previous}}<a data-package-page href="{{.Previous}}" class="text-denim-deep hover:underline">{{t "Previous"}}</a>{{end}}{{if .Next}}<a data-package-page href="{{.Next}}" class="text-denim-deep hover:underline">{{t "Next"}}</a>{{end}}</nav>{{end}}
 <p data-package-error role="alert" hidden class="mt-5 {{template "verso-error-line"}}"></p>
 </div>
+{{/* packages.acts: Refresh index acts, so it stands on the heading line with
+     the page's other acts, the index's age before it. While the index
+     refreshes, the busy button says so and the note says nothing: the index
+     has no age until the refresh ends. The page's script keeps both in step
+     with the listing (verso-packages.js). */}}
+{{define "packages.acts"}}
+<span data-package-note class="text-sm text-meta" aria-live="polite">{{.Note}}</span>
+<form data-package-refresh method="post" action="/system/packages/discover">
+  {{template "verso-csrf" .CSRFToken}}<input type="hidden" name="return_to" value="/system/packages">
+  <button type="submit" name="_action" value="refresh"{{if .Busy}} disabled aria-disabled="true" aria-busy="true"{{end}} class="flex h-9 items-center gap-2.5 rounded-xs border px-4 text-sm font-semibold {{if .Busy}}pointer-events-none border-rule-strong bg-quiet text-glyph{{else}}{{template "verso-btn-secondary"}}{{end}}">{{if .Busy}}{{template "verso-waiting" ""}}{{t "Refreshing index…"}}{{else}}{{t "Refresh index"}}{{end}}</button>
+</form>
+{{end}}

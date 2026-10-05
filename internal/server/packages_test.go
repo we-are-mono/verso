@@ -95,6 +95,35 @@ func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
 	}
 }
 
+// TestPackageRefreshIsAHeadingAct: Refresh index acts, so it stands on the
+// heading line beside the page's other acts, its note before it, and the
+// control band keeps only what narrows. The listing carries the index's age,
+// so a listing read in place can bring the heading's note up to date.
+func TestPackageRefreshIsAHeadingAct(t *testing.T) {
+	b := fakeBackend{access: true, pkgInstalledList: []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Installed: true}}}
+	body := get(t, pluginsServer(t, b, true, mgmtManifest()), "/system/packages").Body.String()
+	masthead, listing := strings.Index(body, "data-verso-masthead"), strings.Index(body, "<div data-verso-packages")
+	note, refresh, install := strings.Index(body, "<span data-package-note"), strings.Index(body, "<form data-package-refresh"), strings.Index(body, ">Install</")
+	if masthead < 0 || listing < 0 || note < 0 || refresh < 0 || install < 0 {
+		t.Fatalf("page is missing its masthead, listing, note, refresh or install:\n%s", body)
+	}
+	if !(masthead < note && note < refresh && refresh < install && install < listing) {
+		t.Errorf("the heading line reads note, Refresh index, Install, before the listing: masthead=%d note=%d refresh=%d install=%d listing=%d", masthead, note, refresh, install, listing)
+	}
+	if !strings.Contains(body, "<div data-verso-packages data-package-all=\"false\" data-package-index-note=") {
+		t.Error("the listing does not carry the index's age")
+	}
+	s := pluginsServer(t, b, true, mgmtManifest())
+	fragment := httptest.NewRequest(http.MethodGet, "/system/packages", nil)
+	fragment.AddCookie(&http.Cookie{Name: sessionCookie, Value: s.sessions.CreateWithMetadata("test-sid", "root", "", "")})
+	fragment.Header.Set("X-Verso-Interaction", "packages")
+	res := httptest.NewRecorder()
+	s.Handler().ServeHTTP(res, fragment)
+	if got := res.Body.String(); strings.Contains(got, "<main") || strings.Contains(got, "data-package-refresh") {
+		t.Error("the listing read in place carries no act of the heading's")
+	}
+}
+
 func TestPackageSearchStaysInItsPanel(t *testing.T) {
 	s := pluginsServer(t, fakeBackend{access: true, pkgFound: []openwrt.Package{{Name: "htop", Description: "Process viewer"}}, pkgTotal: 1}, true)
 	res, _ := postPluginFromPanel(t, s, "/system/packages/discover", url.Values{"_primary": {"search"}, "q": {"htop"}})

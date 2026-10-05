@@ -167,15 +167,21 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	// Install is the page's forward act, so it sits on the heading line where
 	// every listing keeps its primary, and opens the search panel in place. While
 	// anything installed has a newer version, the act that updates them all
-	// stands beside it: this is where the upgradable list is.
-	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
-	acts := s.headingAct(r, install, lang, t)
+	// stands beside it: this is where the upgradable list is. Refresh index
+	// leads the line, the index's age before it.
+	var lead strings.Builder
+	if err := s.pageSet(lang).ExecuteTemplate(&lead, "packages.acts", data); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
 	if n := len(truth.Packages); n > 0 || packageUpgrade.running() {
 		var update strings.Builder
 		if err := s.widgets.RenderWithToken(&update, packagesUpdateAct(n), s.sessionCSRF(r), lang, t); err == nil {
-			acts = template.HTML(`<div class="flex flex-wrap items-center gap-3">`) + template.HTML(update.String()) + acts + template.HTML(`</div>`) //nolint:gosec // rendered by the shell's own templates
+			lead.WriteString(update.String())
 		}
 	}
+	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
+	acts := template.HTML(`<div class="flex flex-wrap items-center gap-3">`) + template.HTML(lead.String()) + s.headingAct(r, install, lang, t) + template.HTML(`</div>`) //nolint:gosec // rendered by the shell's own templates
 	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: acts}
 	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.sectionPages("System", r.URL.Path), template.HTML(page.String()))
 }

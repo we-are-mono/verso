@@ -80,6 +80,9 @@
       if (fresh.hasAttribute("data-verso-package-busy")) { refreshStarted(); return; }
       fresh = document.importNode(fresh, true);
       swap(root, fresh); root = fresh;
+      // The heading's note follows the index's age the listing carries.
+      var note = document.querySelector("[data-package-note]");
+      if (note) note.textContent = root.dataset.packageIndexNote;
       pageURL = new URL(url, window.location.origin);
       if (!keepQuery) state.query = pageURL.searchParams.get("q") || "";
       restore(state, pageURL);
@@ -92,18 +95,19 @@
     if (refreshing) return;
     refreshing = true;
     if (request) request.abort();
-    if (root) {
-      var button = root.querySelector("[data-package-refresh] button");
+    // Refresh and its note stand on the heading line, outside the listing.
+    var button = document.querySelector("[data-package-refresh] button");
+    if (button) {
       versoButtons.start(button, T("Refreshing index…"));
       // The button says it; the note beside it waits for the index's new age.
-      root.querySelector("[data-package-note]").textContent = "";
+      document.querySelector("[data-package-note]").textContent = "";
     }
     pollTimer = setTimeout(poll, 500);
   }
   function refreshStopped() {
     refreshing = false;
-    if (!root) return;
-    var button = root.querySelector("[data-package-refresh] button");
+    var button = document.querySelector("[data-package-refresh] button");
+    if (!button) return;
     versoButtons.finish(button);
     button.disabled = false; button.removeAttribute("aria-disabled");
     button.removeAttribute("aria-busy");
