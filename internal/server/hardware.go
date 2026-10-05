@@ -380,10 +380,13 @@ func fibreCard(f *sensors.FiberModule) widget.Widget {
 	if f.HasBias {
 		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d mA", f.BiasMilliA), Mono: true})
 	}
+	// The card Access gives its HTTPS certificate: a thing the box holds, its
+	// facts set left under its title.
 	return &widget.Card{
+		Style:    "artifact",
 		Title:    "SFP+ module",
 		Subtitle: f.Cage,
-		Children: []widget.Widget{&widget.Properties{Items: items}},
+		Children: []widget.Widget{&widget.Properties{Align: "left", Items: items}},
 	}
 }
 

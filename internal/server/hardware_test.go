@@ -161,6 +161,27 @@ func TestOnlyAProfileEarnsTheVitals(t *testing.T) {
 	}
 }
 
+// TestAFibreModuleIsAnArtifactCard: an SFP module is a thing the box holds,
+// read as one, so it wears the card Access gives its HTTPS certificate — the
+// sand frame, the title over its line, the facts set left under it.
+func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	inv := dkInventory()
+	var buf strings.Builder
+	if err := s.widgets.RenderWithToken(&buf, fibreCard(&inv.Fibers[0]), "", "en", nil); err != nil {
+		t.Fatal(err)
+	}
+	body := buf.String()
+	for _, want := range []string{
+		`<section class="rounded-xs border border-rule bg-quiet px-5">`,
+		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("an SFP module is not the certificate's card; missing %s:\n%s", want, body)
+		}
+	}
+}
+
 // The DK's rear-panel art is embedded in the binary and loads as trusted content.
 func TestHardwarePanelArtEmbedded(t *testing.T) {
 	svg := readPanel("mono_gateway-dk", "back.svg")
