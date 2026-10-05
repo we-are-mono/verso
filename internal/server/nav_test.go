@@ -261,11 +261,13 @@ func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
 	wireless.Socket = "/wireless.sock"
 	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
 	firewall.Socket = "/firewall.sock"
-	// Discovery is id-sorted, so the manifests arrive dnsdhcp, firewall,
+	vpn := manifest("vpn", nav("VPN", "VPN", "/"))
+	vpn.Socket = "/vpn.sock"
+	// Discovery is id-sorted, so the manifests arrive dnsdhcp, firewall, vpn,
 	// wireless — nothing like the order the rail must draw them in.
-	s := navServer(dns, firewall, wireless)
+	s := navServer(dns, firewall, vpn, wireless)
 
-	want := []string{"Overview", "Devices", "Network", "Wireless", "Firewall", "System"}
+	want := []string{"Overview", "Devices", "Network", "Wireless", "VPN", "Firewall", "System"}
 	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
 		t.Fatalf("rail = %v, want %v", got, want)
 	}

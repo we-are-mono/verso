@@ -119,8 +119,8 @@ type navRow struct {
 // name follows these, in the order of the section it is filed under
 // (sectionLess), so a new plugin appears in the rail with no shell change.
 var railOrder = []string{
-	"Overview", "Devices", "Traffic", "Journal", "Network", "Wireless",
-	"Firewall", "Routing", "Tunnels", "Storage", "System",
+	"Overview", "Devices", "Traffic", "Journal", "Network", "Wireless", "VPN",
+	"Firewall", "Routing", "Storage", "System",
 }
 
 // navIcon chooses a shell-owned glyph before labels are localized. Designed
@@ -142,8 +142,8 @@ func navIcon(label, section string) string {
 		return "zone"
 	case "Routing":
 		return "route"
-	case "Tunnels":
-		return "network"
+	case "VPN":
+		return "lock"
 	case "Storage":
 		return "hard-drive"
 	case "System":

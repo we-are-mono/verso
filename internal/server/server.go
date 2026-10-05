@@ -912,7 +912,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// unlinked while no running plugin serves its destination.
 	ov.SecurityHref = s.navLabelHref("Firewall")
 	s.applyFirewallStatus(r.Context(), sid, ov)
-	ov.TunnelsHref = s.navLabelHref("Tunnels")
+	ov.TunnelsHref = s.navLabelHref("VPN")
 	ov.InterfacesHref = s.navLabelHref("Interfaces")
 
 	var body strings.Builder
