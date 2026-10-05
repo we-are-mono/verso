@@ -33,11 +33,14 @@
      the top while the page scrolls under it. On a phone it also holds the
      hamburger that opens the rail. Only the home page adds app-wide warnings
      here. */}}
-<header class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-rule bg-canvas px-6">
+{{/* The bar is its 36px line (the name, and the phone's menu button) with
+     10px above and below: 56px, the hairline drawn inside it so the rail and
+     every sticky offset under it can count on the 56. */}}
+<header class="sticky top-0 z-30 flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
   <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
   {{/* One line whatever the name's length; where the bar has to cut it, the
        whole name is a hover away. */}}
-  <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
+  <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-9 font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
   {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
   <span class="hidden min-w-0 truncate text-sm font-light text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
   {{/* The stage's chip: how many changes wait on the router and that nothing

@@ -843,6 +843,34 @@ func TestARailRowIsFetchedAsItIsPressed(t *testing.T) {
 	}
 }
 
+// TestTheTopBarIsItsLineAndItsAir: the top bar is 56px built the way every
+// row is — its 36px line (the name, and the phone's menu button) with 10px
+// above and below — never a fixed height; its hairline is drawn inside it, so
+// the bar stays the 56px the rail and every sticky offset under it count on.
+// The sign-in page's bar is the same bar.
+func TestTheTopBarIsItsLineAndItsAir(t *testing.T) {
+	const bar = `flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]`
+	app := get(t, newServer(t, fakeBackend{}), "/").Body.String()
+	if !strings.Contains(app, `<header class="sticky top-0 z-30 `+bar+`">`) {
+		t.Errorf("the app's top bar is not its line and its air:\n%s", app[:min(len(app), 4000)])
+	}
+	if !strings.Contains(app, `font-mono text-xl leading-9 font-bold`) {
+		t.Error("the bar's name does not stand on the 36px line")
+	}
+	// Signed out: a signed-in visit to /login is sent on.
+	rec := httptest.NewRecorder()
+	newServer(t, fakeBackend{}).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login", nil))
+	login := rec.Body.String()
+	if !strings.Contains(login, `<header class="`+bar+`">`) {
+		t.Errorf("the sign-in page's top bar is not the app's:\n%s", login[:min(len(login), 4000)])
+	}
+	for _, page := range []string{app, login} {
+		if strings.Contains(page, "<header class=\"flex h-14") || strings.Contains(page, "z-30 flex h-14") {
+			t.Error("a top bar keeps a fixed height")
+		}
+	}
+}
+
 // TestEveryPageWearsTheOneMasthead: the shell draws one masthead — the sand
 // bar, the heading and what acts on the page — for its own pages and a
 // plugin's alike, with no second shape (an eyebrow over the heading, a

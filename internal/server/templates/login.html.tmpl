@@ -13,8 +13,8 @@
 <script src="/assets/verso-login.js" defer></script>
 </head>
 <body class="m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink">
-  <header class="flex h-14 shrink-0 items-center gap-4 border-b border-rule bg-white px-6">
-    <span class="truncate font-mono text-xl leading-none font-bold">{{if .Hostname}}{{ .Hostname }}{{else}}{{ t "This device" }}{{end}}</span>
+  <header class="flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
+    <span class="truncate font-mono text-xl leading-9 font-bold">{{if .Hostname}}{{ .Hostname }}{{else}}{{ t "This device" }}{{end}}</span>
     {{if or .Maker .Model}}
     <span class="h-5 w-px shrink-0 bg-rule-strong" aria-hidden="true"></span>
     <span class="min-w-0 truncate font-light text-body"><span class="font-semibold text-ink">{{ .Maker }}</span>{{if and .Maker .Model}} · {{end}}{{ .Model }}</span>
