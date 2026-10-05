@@ -763,7 +763,7 @@
   "Host or address": "Gostitelj ali naslov",
   "any interface": "katerikoli vmesnik",
   "IP family": "Družina IP",
-  "any": "katerakoli",
+  "IPv4 or IPv6": "IPv4 ali IPv6",
   "Run": "Zaženi",
   "Nothing run yet.": "Nič še ni bilo zagnano.",
   "The router could not start the run.": "Usmerjevalnik zagona ni mogel začeti.",

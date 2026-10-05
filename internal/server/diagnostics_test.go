@@ -43,7 +43,7 @@ func TestDiagnosticsPage(t *testing.T) {
 		// Each device is offered once, under the names netifd gives it; the
 		// loopback and an interface with no device are not ways out.
 		`<option value="" selected>any interface</option>`, `<option value="br-lan">lan</option>`, `<option value="wan0">wan, wan6</option>`,
-		`type="radio" name="family" value="" checked`, `type="radio" name="family" value="4"`, `type="radio" name="family" value="6"`,
+		`<select name="family"`, `<option value="" selected>IPv4 or IPv6</option>`, `<option value="4">IPv4</option>`, `<option value="6">IPv6</option>`,
 		">Run</button>", ">Stop</button>",
 		// Each tool's glyph rides in the tool's field, the first one showing;
 		// the target offers back what was reached for before.

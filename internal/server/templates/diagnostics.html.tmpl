@@ -48,17 +48,12 @@
     </select>
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
-  {{/* The family is one pick of three, short enough to show whole: the
-       segmented strip, radios underneath. A checked chip's word goes
-       semibold, which is wider; its hidden semibold twin holds that width
-       from the start, so picking one never nudges the chips after it. */}}
-  <div role="radiogroup" aria-label="{{t "IP family"}}" class="inline-flex gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
-    {{range $i, $family := .Families}}
-    <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
-      <input type="radio" name="family" value="{{.Value}}"{{if not $i}} checked{{end}} class="sr-only">
-      <span class="grid"><span class="col-start-1 row-start-1">{{.Label}}</span><span aria-hidden="true" class="invisible col-start-1 row-start-1 font-semibold">{{.Label}}</span></span>
-    </label>
-    {{end}}
+  {{/* The family is a cut, so a dropdown like its neighbours. */}}
+  <div class="relative w-36">
+    <select name="family" aria-label="{{t "IP family"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-3">
+      {{range $i, $family := .Families}}<option value="{{.Value}}"{{if not $i}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{/* Run leads with play, the act naming its own glyph. Stop carries the
        waiting mark turning while the router answers, as a log's Live does

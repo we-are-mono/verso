@@ -89,12 +89,12 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	// The family strip's choices, the first the one in force: "any" lets the
-	// name decide, as the helper does with no family.
+	// The family's choices, the first the one in force: either lets the name
+	// decide, as the helper does with no family.
 	row := struct {
 		Interfaces []diagnosticChoice
 		Families   []diagnosticChoice
-	}{s.diagnosticChoices(r), []diagnosticChoice{{"", tr("any")}, {"4", "IPv4"}, {"6", "IPv6"}}}
+	}{s.diagnosticChoices(r), []diagnosticChoice{{"", tr("IPv4 or IPv6")}, {"4", "IPv4"}, {"6", "IPv6"}}}
 	if err := set.ExecuteTemplate(&acts, "diagnostics.acts", row); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
