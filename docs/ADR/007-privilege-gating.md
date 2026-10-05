@@ -81,8 +81,11 @@ broken socket.**
 5. **A first-party persistent helper performs privileged root actions that are not uci
    config.** The operations the shell owns but must not perform itself include
    setting the root password, setting the kernel clock, apk package operations (index refresh,
-   search, list-installed, install, remove), and privileged reads such as listing fw4's
-   nftables ruleset for its per-rule counters. procd service lifecycle is *not* one of them —
+   search, list-installed, install, remove), privileged reads such as listing fw4's
+   nftables ruleset for its per-rule counters, and network diagnostics (ping,
+   traceroute, a DNS lookup) — fixed programs whose arguments the helper builds from a
+   validated tool, target, device and IP family, each run a job only the session that
+   started it can read back by cursor or stop. procd service lifecycle is *not* one of them —
    it rides rpcd's native `rc` object, sid-gated like `uci` (the `rc` grant in the shell's
    `acl.d`). Rather than depend
    on `rpcd-mod-luci` (a LuCI component this shell

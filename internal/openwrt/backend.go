@@ -238,6 +238,13 @@ type Backend interface {
 	AccessCredentials(ctx context.Context, sid string) (AccessCredentials, error)
 	SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error
 	SetWebCertificate(ctx context.Context, sid, cert, key string) error
+	// DiagStart starts a network diagnostic on the router and names the run;
+	// DiagRead reads what it has written past a cursor, and DiagStop ends it.
+	// A run is its operator's alone: the helper answers another session's read
+	// or stop as if it did not exist.
+	DiagStart(ctx context.Context, sid string, run DiagnosticRun) (string, error)
+	DiagRead(ctx context.Context, sid, job string, after int) (DiagnosticOutput, error)
+	DiagStop(ctx context.Context, sid, job string) error
 }
 
 // LogEntry is one record from the device's log ring. ID is logd's monotonic
@@ -554,6 +561,9 @@ type NativeBackend struct {
 	firewallLog    firewallLogFn
 	logRead        logReadFn
 	netIfaces      netIfacesFn
+	diagStart      diagStartFn
+	diagRead       diagReadFn
+	diagStop       diagStopFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
@@ -613,6 +623,9 @@ func NewNativeBackend() *NativeBackend {
 		firewallLog:    dialFirewallLog(""),
 		logRead:        dialLogRead(""),
 		netIfaces:      dialNetworkInterfaces(""),
+		diagStart:      dialDiagStart(""),
+		diagRead:       dialDiagRead(""),
+		diagStop:       dialDiagStop(""),
 	}
 }
 

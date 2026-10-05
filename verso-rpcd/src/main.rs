@@ -12,6 +12,7 @@ mod access;
 mod arrival;
 mod config_files;
 mod dhcp;
+mod diagnostics;
 mod firewall;
 mod firewall_log;
 mod firmware;
@@ -54,6 +55,7 @@ const STATUS_UNKNOWN_ERROR: i32 = 9;
 
 struct State {
     firewall_log: firewall_log::Collector,
+    diagnostics: diagnostics::Jobs,
     packages: Mutex<()>,
     maintenance: Mutex<()>,
 }
@@ -149,6 +151,7 @@ fn serve(socket: &Path) -> Result<(), String> {
     collector.start();
     let state = Arc::new(State {
         firewall_log: collector,
+        diagnostics: diagnostics::Jobs::default(),
         packages: Mutex::new(()),
         maintenance: Mutex::new(()),
     });
@@ -451,6 +454,28 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "firewallCounters" => firewall_counters(),
         "firewallStatus" => firewall_status(),
         "firewallLog" => state.firewall_log.read(&request["args"]),
+        // A run belongs to the session that started it: its sid is the owner,
+        // so another operator's read or stop answers as if no run existed.
+        "diagStart" => {
+            let interface = optional_argument(request, "interface");
+            let argv = diagnostics::command(
+                argument(request, "tool")?,
+                argument(request, "target")?,
+                interface,
+                optional_argument(request, "family"),
+                diagnostics::interface_exists,
+            )?;
+            state.diagnostics.start(sid, &argv)
+        }
+        "diagRead" => {
+            let after = optional_argument(request, "after")
+                .parse::<usize>()
+                .unwrap_or(0);
+            state
+                .diagnostics
+                .read(sid, argument(request, "job")?, after)
+        }
+        "diagStop" => state.diagnostics.stop(sid, argument(request, "job")?),
         "createBackup" | "restoreBackup" | "validateFirmware" | "installFirmware" => {
             let path = argument(request, "path")?;
             let _guard = state
@@ -1116,6 +1141,16 @@ fn text_argument<'a>(request: &'a Value, name: &str) -> Result<&'a str, Failure>
         .ok_or_else(|| Failure::invalid(format!("{name} is required")))
 }
 
+// optional_argument is a choice whose absence is itself the answer: no
+// interface binds a run to none, no family lets the name decide.
+fn optional_argument<'a>(request: &'a Value, name: &str) -> &'a str {
+    request
+        .get("args")
+        .and_then(|args| args.get(name))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+}
+
 fn set_password(username: &str, password: &str) -> Result<(), Failure> {
     // A control character (newline especially) can't survive passwd's two-line
     // stdin protocol, so reject it up front rather than silently fail to set it.
@@ -1278,6 +1313,9 @@ mod tests {
         "installFirmware",
         "restart",
         "factoryReset",
+        "diagStart",
+        "diagRead",
+        "diagStop",
     ];
 
     #[test]
@@ -1319,6 +1357,7 @@ mod tests {
         // session lookup, which is exactly what makes this bound the helper's own.
         let state = State {
             firewall_log: firewall_log::Collector::new(),
+            diagnostics: diagnostics::Jobs::default(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
         };
@@ -1335,6 +1374,7 @@ mod tests {
     fn the_zero_session_refuses_a_read_verb_from_the_shell() {
         let state = State {
             firewall_log: firewall_log::Collector::new(),
+            diagnostics: diagnostics::Jobs::default(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
         };

@@ -122,6 +122,45 @@ type fakeBackend struct {
 	logReads           *int
 	netIfaces          []openwrt.NetIface
 	netIfErr           error
+	// The helper's diagnostic runs: what the shell started and stopped, and
+	// the output each read returns in turn (pointer: fakeBackend is by value).
+	diag *fakeDiag
+}
+
+type fakeDiag struct {
+	starts   []openwrt.DiagnosticRun
+	sids     []string
+	startErr error
+	reads    []openwrt.DiagnosticOutput // popped one per read; the last repeats
+	afters   []int
+	stops    []string
+}
+
+func (f fakeBackend) DiagStart(_ context.Context, sid string, run openwrt.DiagnosticRun) (string, error) {
+	if f.diag == nil {
+		return "", errors.New("no helper")
+	}
+	f.diag.starts, f.diag.sids = append(f.diag.starts, run), append(f.diag.sids, sid)
+	return "job1", f.diag.startErr
+}
+
+func (f fakeBackend) DiagRead(_ context.Context, _, _ string, after int) (openwrt.DiagnosticOutput, error) {
+	if f.diag == nil || len(f.diag.reads) == 0 {
+		return openwrt.DiagnosticOutput{}, errors.New("no such run")
+	}
+	f.diag.afters = append(f.diag.afters, after)
+	out := f.diag.reads[0]
+	if len(f.diag.reads) > 1 {
+		f.diag.reads = f.diag.reads[1:]
+	}
+	return out, nil
+}
+
+func (f fakeBackend) DiagStop(_ context.Context, _, job string) error {
+	if f.diag != nil {
+		f.diag.stops = append(f.diag.stops, job)
+	}
+	return nil
 }
 
 func (f fakeBackend) WANStatus(context.Context, string) (openwrt.WANState, error) {

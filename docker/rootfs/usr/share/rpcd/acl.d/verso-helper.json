@@ -10,7 +10,8 @@
           "pkgUpgradable",
           "firmwareCheck",
           "configFiles",
-          "firewallFiles"
+          "firewallFiles",
+          "diagRead"
         ]
       }
     },
@@ -38,7 +39,9 @@
           "pkgUpgrade",
           "firmwareUpgrade",
           "applyConfigFiles",
-          "stageConfigFile"
+          "stageConfigFile",
+          "diagStart",
+          "diagStop"
         ]
       }
     }
