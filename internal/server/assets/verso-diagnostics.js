@@ -15,6 +15,9 @@
   var run = form.querySelector("[data-verso-diag-run]");
   var stop = form.querySelector("[data-verso-diag-stop]");
   var error = form.querySelector("[data-verso-diag-error]");
+  var waiting = stop.querySelector("[data-verso-wait]");
+  var glyphs = form.querySelectorAll("[data-verso-diag-glyph]");
+  var recent = form.querySelector("[data-verso-diag-recent]");
   var el = versoEl;
   var job = "", stream = null;
   // The stream reads each line into tokens (diagnostics.go); they wear the
@@ -27,9 +30,37 @@
   function sync() {
     run.hidden = running(); stop.hidden = !running();
     run.disabled = target.value.trim() === "";
+    if (!running()) {
+      stop.disabled = false;
+      if (waiting) waiting.removeAttribute("data-verso-wait-paused");
+    }
     // A DNS lookup asks the resolver, which no interface binds; a disabled
     // choice is not sent.
     via.disabled = tool.value === "nslookup";
+    glyphs.forEach(function (glyph) { glyph.hidden = glyph.dataset.versoDiagGlyph !== tool.value; });
+    // "any interface" is words; a picked interface is its name, verbatim.
+    var named = via.value !== "";
+    via.classList.toggle("font-mono", named); via.classList.toggle("text-base", named);
+    via.classList.toggle("font-sans", !named); via.classList.toggle("text-sm", !named);
+  }
+
+  // What this browser reached for before comes back as the target's
+  // suggestions, newest first. It is a convenience of this browser alone, so
+  // storage that is missing or refused only leaves the list empty.
+  var RECENT = "verso.diagnostics.targets";
+  function remembered() {
+    try {
+      var list = JSON.parse(localStorage.getItem(RECENT) || "[]");
+      return Array.isArray(list) ? list.filter(function (t) { return typeof t === "string"; }) : [];
+    } catch (_) { return []; }
+  }
+  function offer(list) {
+    if (recent) recent.replaceChildren.apply(recent, list.map(function (t) { var o = document.createElement("option"); o.value = t; return o; }));
+  }
+  function remember(value) {
+    var list = [value].concat(remembered().filter(function (t) { return t !== value; })).slice(0, 8);
+    try { localStorage.setItem(RECENT, JSON.stringify(list)); } catch (_) { /* this browser keeps nothing */ }
+    offer(list);
   }
   // A refusal is said on the line under the row. The row is not a settings
   // form, so it marks no field refused: the page's refusal navigator counts
@@ -92,14 +123,20 @@
     // The program's own first line says what it is doing; the run needs no
     // head of the page's.
     output.replaceChildren();
+    remember(target.value.trim());
     job = answer.job; sync();
     read(job);
   });
+  // Stop is asked once; its mark holds still until the run's ending lands.
   stop.addEventListener("click", function () {
-    if (running()) versoPost("/system/diagnostics/stop", versoBody({ job: job }));
+    if (!running() || stop.disabled) return;
+    stop.disabled = true;
+    if (waiting) waiting.setAttribute("data-verso-wait-paused", "");
+    versoPost("/system/diagnostics/stop", versoBody({ job: job }));
   });
   target.addEventListener("input", function () { refuse(""); sync(); });
-  tool.addEventListener("change", sync);
+  tool.addEventListener("change", function () { form.setAttribute("data-verso-diag-picked", ""); sync(); });
+  via.addEventListener("change", sync);
   // Leaving the page ends the run it started rather than leave it running on
   // the router with no one reading it.
   window.addEventListener("pagehide", function () {
@@ -107,5 +144,10 @@
     if (stream) stream.close();
     navigator.sendBeacon("/system/diagnostics/stop", versoBody({ job: job }));
   });
+  offer(remembered());
   sync();
+  // The page is here to be asked something: with a keyboard at hand, the
+  // caret waits in the target. A touch screen keeps its keyboard down until
+  // the reader taps.
+  if (window.matchMedia("(pointer: fine)").matches && document.activeElement === document.body) target.focus();
 })();

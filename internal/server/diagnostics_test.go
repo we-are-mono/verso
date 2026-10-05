@@ -45,6 +45,10 @@ func TestDiagnosticsPage(t *testing.T) {
 		`<option value="" selected>any interface</option>`, `<option value="br-lan">lan</option>`, `<option value="wan0">wan, wan6</option>`,
 		`type="radio" name="family" value="" checked`, `type="radio" name="family" value="4"`, `type="radio" name="family" value="6"`,
 		">Run</button>", ">Stop</button>",
+		// Each tool's glyph rides in the tool's field, the first one showing;
+		// the target offers back what was reached for before.
+		`data-verso-diag-glyph="ping" class`, `data-verso-diag-glyph="traceroute" hidden`, `data-verso-diag-glyph="nslookup" hidden`,
+		`list="verso-diag-recent"`, `<datalist id="verso-diag-recent"`,
 		"Nothing run yet.",
 	} {
 		if !strings.Contains(body, want) {

@@ -15,19 +15,34 @@
      (verso-diagnostics.js). */}}
 {{define "diagnostics.acts"}}
 <form data-verso-diag-form novalidate class="flex min-w-0 basis-full flex-wrap items-center gap-2">
-  <div class="relative w-40">
-    <select name="tool" aria-label="{{t "Tool"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9">
+  {{/* Each tool leads with its own glyph, the one the pick swaps in: ping's
+       echo, traceroute's path, the lookup's search. */}}
+  <div class="relative w-44">
+    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-glyph">
+      <span data-verso-diag-glyph="ping" class="flex">{{icon "radio" "size-4"}}</span>
+      <span data-verso-diag-glyph="traceroute" hidden class="flex">{{icon "route" "size-4"}}</span>
+      <span data-verso-diag-glyph="nslookup" hidden class="flex">{{icon "search" "size-4"}}</span>
+    </span>
+    <select name="tool" aria-label="{{t "Tool"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5">
       <option value="ping" selected>{{t "Ping"}}</option>
       <option value="traceroute">{{t "Traceroute"}}</option>
       <option value="nslookup">{{t "DNS lookup"}}</option>
     </select>
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
+  {{/* The target offers back what this browser reached for before, newest
+       first, as it is typed into (verso-diagnostics.js); the browser's own
+       drop arrow stays off, so it reads as the field it is. */}}
   <div class="w-100 max-w-full">
-    <input type="text" name="target" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="{{t "example.com or 1.1.1.1"}}" aria-label="{{t "Host or address"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}}">
+    <input type="text" name="target" list="verso-diag-recent" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="{{t "example.com or 1.1.1.1"}}" aria-label="{{t "Host or address"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}} [&::-webkit-calendar-picker-indicator]:hidden!">
+    <datalist id="verso-diag-recent" data-verso-diag-recent></datalist>
   </div>
-  <div class="relative w-44">
-    <select name="interface" aria-label="{{t "Interface"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 disabled:cursor-default disabled:bg-quiet disabled:text-meta">
+  {{/* The way out wears the interface's glyph, as an interface cited anywhere
+       does. "any interface" is words and reads in the sans; a picked
+       interface is its name, verbatim, in mono (verso-diagnostics.js). */}}
+  <div class="relative w-48">
+    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-glyph">{{icon "network" "size-4"}}</span>
+    <select name="interface" aria-label="{{t "Interface"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5 disabled:cursor-default disabled:bg-quiet disabled:text-meta">
       <option value="" selected>{{t "any interface"}}</option>
       {{range .Interfaces}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
     </select>
@@ -45,8 +60,12 @@
     </label>
     {{end}}
   </div>
-  <button type="submit" data-verso-diag-run disabled class="ml-auto {{template "verso-btn-box"}} {{template "verso-btn-primary"}} {{template "verso-btn-waiting"}} focus-visible:outline-denim-deep">{{t "Run"}}</button>
-  <button type="button" data-verso-diag-stop hidden class="ml-auto {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{t "Stop"}}</button>
+  {{/* Run leads with play, the act naming its own glyph. Stop carries the
+       waiting mark turning while the router answers, as a log's Live does
+       while lines arrive; pressed, the mark holds still until the run's
+       ending lands. */}}
+  <button type="submit" data-verso-diag-run disabled class="ml-auto {{template "verso-btn-box"}} {{template "verso-btn-primary"}} {{template "verso-btn-waiting"}} focus-visible:outline-denim-deep">{{icon "play" "size-4"}}{{t "Run"}}</button>
+  <button type="button" data-verso-diag-stop hidden class="ml-auto {{template "verso-btn-box"}} gap-2.5 border {{template "verso-btn-secondary"}} disabled:pointer-events-none focus-visible:outline-denim">{{template "verso-waiting" ""}}{{t "Stop"}}</button>
   <p data-verso-diag-error hidden role="alert" class="basis-full {{template "verso-error-line"}}"></p>
 </form>
 {{end}}

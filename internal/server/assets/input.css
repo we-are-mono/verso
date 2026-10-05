@@ -1004,6 +1004,18 @@ html {
   66.64%, 74.97%, 83.3% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
 }
 
+/* Diagnostics' tool glyph: a pick swaps the glyph, and the new one settles in
+   from a little smaller, so the field answers the pick where the eye is. Only
+   a pick plays it (data-verso-diag-picked), never the page's arrival. */
+@layer components {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-verso-diag-form][data-verso-diag-picked] [data-verso-diag-glyph] {
+      animation: verso-diag-glyph 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
+}
+@keyframes verso-diag-glyph { from { opacity: 0; transform: scale(0.6); } }
+
 /* The live console (verso-listing.js opens the stream, builds the lines). */
 @layer components {
   /* A value in the stream is its own control: point at a verdict, a zone, an

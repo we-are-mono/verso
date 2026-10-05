@@ -88,6 +88,7 @@ var lucideIcons = map[string]string{
 	"arrow-right":       `<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />`,
 	"corner-down-right": `<path d="m15 10 5 5-5 5" /><path d="M4 4v7a4 4 0 0 0 4 4h12" />`,
 	"plus":              `<path d="M5 12h14" /><path d="M12 5v14" />`,
+	"play":              `<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />`,
 	"wifi":              `<path d="M12 20h.01" /><path d="M2 8.82a15 15 0 0 1 20 0" /><path d="M5 12.859a10 10 0 0 1 14 0" /><path d="M8.5 16.429a5 5 0 0 1 7 0" />`,
 	"tv":                `<path d="m17 2-5 5-5-5" /><rect width="20" height="15" x="2" y="7" rx="2" />`,
 	"key":               `<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" /><path d="m21 2-9.6 9.6" /><circle cx="7.5" cy="15.5" r="5.5" />`,
