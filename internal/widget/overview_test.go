@@ -21,8 +21,8 @@ func TestRenderOverview(t *testing.T) {
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
 		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
-			{Name: "eth0", Kind: "port", State: "up", Physical: true, RxRate: "18.4 Mbps", TxRate: "2.1 Mbps"},
-			{Name: "wg-home", Kind: "tunnel", State: "up", Proto: "wireguard", Subnet: "10.200.0.1/24"},
+			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxRate: "18.4 Mbps", TxRate: "2.1 Mbps"},
+			{Name: "wg-home", Kind: "tunnel", State: "up", Networks: []string{"home"}, Proto: "wireguard", Subnet: "10.200.0.1/24"},
 		},
 	})
 	for _, want := range []string{
@@ -69,7 +69,7 @@ func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 	if !strings.Contains(down, "Your network is offline") || !strings.Contains(down, `data-tone="danger"`) {
 		t.Error("offline WAN must change the verdict and tile")
 	}
-	unknown := render(t, r, &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "wg0", Kind: "tunnel", State: "unknown", Proto: "wireguard"}}})
+	unknown := render(t, r, &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "wg0", Kind: "tunnel", State: "unknown", Networks: []string{"vpn"}, Proto: "wireguard"}}})
 	if !strings.Contains(unknown, "State unknown") || strings.Contains(unknown, "All interfaces up") {
 		t.Error("a tunnel's unknown kernel state is not a connected peer")
 	}
@@ -93,7 +93,7 @@ func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 
 func TestOverviewStatusFollowsReadings(t *testing.T) {
 	tr := func(s string) string { return s }
-	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up"}, {Name: "wg0", Kind: "tunnel", State: "up"}}}
+	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}}, {Name: "wg0", Kind: "tunnel", State: "up", Networks: []string{"vpn"}}}}
 	status := o.LiveStatus(tr)
 	if status.Tone != "success" || status.Accent != "online" {
 		t.Fatalf("up = %+v", status)
@@ -119,6 +119,29 @@ func TestOverviewStatusFollowsReadings(t *testing.T) {
 	o.Interfaces[0].State = "unknown"
 	if tile := o.interfacesTile(tr); tile.Status == "All ports linked" {
 		t.Fatal("unknown link state claimed connected")
+	}
+}
+
+// The kernel brings sit0 and ip6tnl0 up on its own, and a spare port has no
+// cable: down, but no network asked for them, so nothing needs attention.
+func TestOverviewStatusIgnoresUnusedInterfaces(t *testing.T) {
+	tr := func(s string) string { return s }
+	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{
+		{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}},
+		{Name: "lan1", Physical: true, State: "down", Relations: []OverviewInterfaceRelation{{Name: "br-lan"}}},
+		{Name: "lan4", Physical: true, State: "down"},
+		{Name: "sit0", Kind: "tunnel", State: "down"},
+		{Name: "ip6tnl0", Kind: "tunnel", State: "down"},
+	}}
+	status := o.LiveStatus(tr)
+	if status.Kicker != "1 needs attention" {
+		t.Fatalf("kicker = %q, want only the bridged lan1 counted", status.Kicker)
+	}
+	if tile := o.tunnelTile(tr); tile.Status != "None observed" {
+		t.Fatalf("tunnel tile = %+v, want unused tunnels left out", tile)
+	}
+	if tile := o.interfacesTile(tr); tile.Identity != "lan1" {
+		t.Fatalf("interfaces tile = %+v, want lan1 named, not the spare lan4", tile)
 	}
 }
 

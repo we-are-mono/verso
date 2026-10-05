@@ -96,6 +96,13 @@ type OverviewInterface struct {
 	TxPackets string
 }
 
+// inUse is whether anything asked for the interface: a network sits on it, or
+// it is a bridge's member or a VLAN's parent. The kernel's own sit0 and a spare
+// port are neither, so their state is nobody's concern.
+func (n OverviewInterface) inUse() bool {
+	return len(n.Networks) > 0 || len(n.Relations) > 0
+}
+
 // OverviewInterfaceRelation is a parent or member shown in the topology cell.
 type OverviewInterfaceRelation struct {
 	Name     string

@@ -73,7 +73,7 @@ func (o *Overview) interfacesTile(tr func(string) string) ohTile {
 	}
 	ports, down, unknown := 0, 0, 0
 	for _, n := range o.Interfaces {
-		if !n.Physical {
+		if !n.Physical || !n.inUse() {
 			continue
 		}
 		ports++
@@ -106,7 +106,7 @@ type overviewTunnel struct{ Name, Tone string }
 func (o *Overview) tunnels() []overviewTunnel {
 	var rows []overviewTunnel
 	for _, n := range o.Interfaces {
-		if n.Kind != "tunnel" {
+		if n.Kind != "tunnel" || !n.inUse() {
 			continue
 		}
 		row := overviewTunnel{Name: n.Name, Tone: "neutral"}
@@ -176,7 +176,7 @@ func (o *Overview) masthead(tr func(string) string) overviewMastheadView {
 		issues++
 	}
 	for _, n := range o.Interfaces {
-		if (n.Physical || n.Kind == "tunnel") && (n.State == "down" || n.State == "lowerlayerdown") {
+		if (n.Physical || n.Kind == "tunnel") && n.inUse() && (n.State == "down" || n.State == "lowerlayerdown") {
 			issues++
 		}
 	}
