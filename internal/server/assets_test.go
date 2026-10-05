@@ -186,6 +186,19 @@ func TestAConsoleLineIsARowOfItsGrid(t *testing.T) {
 	}
 }
 
+// TestABusyButtonTakesItsLabelsWidth: a button waiting on its act holds the
+// spinner and its busy words at their own width, as a busy button the server
+// draws does — never pinned to the width its resting label had.
+func TestABusyButtonTakesItsLabelsWidth(t *testing.T) {
+	src, err := scriptFS.ReadFile("assets/verso-buttons.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "minWidth") {
+		t.Error("verso-buttons.js pins a busy button to its resting width")
+	}
+}
+
 // TestAPackageDrawerShowsItsFilesAsItOpens: the files a package installed are
 // always visible in its drawer — read in when the drawer opens (the link comes
 // into view), not on a click, and never for every row at page load. The link

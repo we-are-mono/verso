@@ -13,12 +13,12 @@ var versoButtons = (function () {
       disabled: button.disabled,
       ariaDisabled: button.getAttribute("aria-disabled"),
       ariaBusy: button.getAttribute("aria-busy"),
-      minWidth: button.style.minWidth,
     });
     button.disabled = true;
     button.setAttribute("aria-disabled", "true");
+    // The busy words and spinner take their own width, as a busy button the
+    // server draws does.
     if (label) {
-      button.style.minWidth = button.getBoundingClientRect().width + "px";
       button.setAttribute("aria-busy", "true");
       button.classList.add("verso-button-waiting");
       var mark = document.querySelector("[data-verso-button-waiting]");
@@ -35,7 +35,6 @@ var versoButtons = (function () {
       if (attribute[1] === null) button.removeAttribute(attribute[0]);
       else button.setAttribute(attribute[0], attribute[1]);
     });
-    button.style.minWidth = saved.minWidth;
     button.classList.remove("verso-button-waiting");
     waiting.delete(button);
   }
