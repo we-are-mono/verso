@@ -41,10 +41,8 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{
-		Heading: hardwareModel(board, profile),
-		Display: true,
-	}, "narrow", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Hardware", Tone: "neutral"},
+		"narrow", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
 // hardwareBody composes the page's widget tree: the panel, the vitals grid, the
@@ -78,21 +76,6 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 	}
 	out = append(out, hardwareReadings(inv)...)
 	return out
-}
-
-// hardwareModel names the box: the profile's chosen name, else the board's human
-// model string, else its board_name, else a plain fallback.
-func hardwareModel(board openwrt.Board, profile *sensors.Profile) string {
-	switch {
-	case profile != nil && profile.Name != "":
-		return profile.Name
-	case board.Model != "":
-		return board.Model
-	case board.BoardName != "":
-		return board.BoardName
-	default:
-		return "This device"
-	}
 }
 
 // hardwarePanel renders the rear panel: the profile's own back.svg (lit from live

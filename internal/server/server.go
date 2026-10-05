@@ -549,7 +549,6 @@ type pageData struct {
 	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
 	KickerStatus  string // optional emerald status beside the kicker
 	Live          bool
-	Display       bool          // opt into the display masthead without a kicker
 	Tone          string        // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Light         bool          // the light masthead, on the page's own ground (pageHeader.Light)
 	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
@@ -613,10 +612,6 @@ type pageHeader struct {
 	KickerStatus string
 	Immediate    bool
 	Live         bool
-	// Display opts a page into the display masthead even without a kicker —
-	// for a page whose heading is its own subject (the device's name on the
-	// Hardware page), not a section label.
-	Display bool
 	// Tone declares the heading a message about now rather than a place-label:
 	// it tints in the closed tone vocabulary ("info" | "success" | "warning" |
 	// "danger" | "neutral" — never a colour) and the " — <tab>" navigation
@@ -811,7 +806,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
 		Kicker:        tr(hdr.Kicker),
-		Display:       hdr.Display,
 		Tone:          pageTone(hdr.Tone),
 		Light:         hdr.Light,
 		KickerStatus:  tr(hdr.KickerStatus),

@@ -99,20 +99,24 @@ func TestHardwarePanelArtEmbedded(t *testing.T) {
 	}
 }
 
-// The Hardware page names the box in its display masthead (no eyebrow), and
-// appears as the first System tab, active on its own page.
+// The Hardware page wears every page's masthead — the sand bar, its title
+// the page's name — and appears as the first System tab, active on its own
+// page. The box's own name is the top bar's, so the title does not repeat it.
 func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
-		"Supermicro H13SAE-MF",                           // the model is the headline
-		"verso-page-heading",                             // rendered as the display masthead (no kicker)
+		`<div data-verso-masthead class="mb-6 py-4">`,    // every page's sand bar
+		`<h1 class="verso-page-heading">Hardware</h1>`,   // titled as the page
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
 		"All sensors", // the full instrument panel
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Hardware page missing %q", want)
 		}
+	}
+	if strings.Contains(body, `verso-page-heading">Supermicro H13SAE-MF`) {
+		t.Error("the page's title repeats the box's name the top bar already carries")
 	}
 	// Hardware leads the shell's System tabs, before Access.
 	if i, j := strings.Index(body, `href="/system/hardware"`), strings.Index(body, `href="/system/access"`); i < 0 || j < 0 || i > j {
