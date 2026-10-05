@@ -75,8 +75,21 @@ func TestSnapshotFreshness(t *testing.T) {
 
 func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 	root := t.TempDir()
-	for _, name := range []string{"br-lan", "eth0", "eth0.10", "lo", "pppoe-wan", "sit0", "tailscale0", "wlan0", "uap0"} {
+	for _, name := range []string{"br-lan", "eth0", "eth0.10", "lo", "pppoe-wan", "sit0", "tailscale0", "wlan0", "uap0", "vpn", "ovpn", "dummy0"} {
 		writeInterface(t, root, name, "up", 1, 2, 3, 4)
+	}
+	// A tunnel goes by what the kernel says it is, not by its name: WireGuard
+	// named for its uci section has no link layer (type 65534), and a tun
+	// device carries tun_flags whatever it is called.
+	for path, value := range map[string]string{
+		filepath.Join(root, "vpn", "type"):       "65534\n",
+		filepath.Join(root, "ovpn", "type"):      "65534\n",
+		filepath.Join(root, "ovpn", "tun_flags"): "0x1001\n",
+		filepath.Join(root, "dummy0", "type"):    "1\n",
+	} {
+		if err := os.WriteFile(path, []byte(value), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, path := range []string{
 		filepath.Join(root, "eth0", "device"),
@@ -106,6 +119,9 @@ func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 		"eth0.10": {kind: "vlan", parent: "eth0"}, "lo": {kind: "loopback"},
 		"pppoe-wan": {kind: "pppoe"}, "sit0": {kind: "tunnel"},
 		"tailscale0": {kind: "tunnel"},
+		"vpn":        {kind: "tunnel"},
+		"ovpn":       {kind: "tunnel"},
+		"dummy0":     {kind: "virtual"},
 		"wlan0":      {kind: "wifi"},
 		"uap0":       {kind: "wifi"},
 	}

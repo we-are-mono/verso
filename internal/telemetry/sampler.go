@@ -268,7 +268,7 @@ func readInterfaceMetadata(root, name string, names map[string]bool, indexNames 
 		return "vlan", false, parent, members
 	case strings.HasPrefix(name, "pppoe-"):
 		return "pppoe", false, parent, members
-	case strings.HasPrefix(name, "tun"), strings.HasPrefix(name, "tap"),
+	case tunnelDevice(base), strings.HasPrefix(name, "tun"), strings.HasPrefix(name, "tap"),
 		strings.HasPrefix(name, "tailscale"), strings.HasPrefix(name, "wg"),
 		strings.HasPrefix(name, "ip6tnl"), strings.HasPrefix(name, "sit"),
 		strings.HasPrefix(name, "gre"):
@@ -297,6 +297,24 @@ func vlanParent(name string) (string, bool) {
 func isVLANName(name string) bool {
 	_, ok := vlanParent(name)
 	return ok
+}
+
+// tunnelDevice is whether the kernel says the device is a tunnel, whatever it
+// is called: a tun or tap carries tun_flags, and WireGuard and the IP tunnels
+// report a tunnel link type (none, ipip, ip6tnl, sit, gre, ip6gre).
+func tunnelDevice(base string) bool {
+	if pathExists(filepath.Join(base, "tun_flags")) {
+		return true
+	}
+	linkType, err := readCounter(filepath.Join(base, "type"))
+	if err != nil {
+		return false
+	}
+	switch linkType {
+	case 65534, 768, 769, 776, 778, 823:
+		return true
+	}
+	return false
 }
 
 func readCounter(path string) (uint64, error) {
