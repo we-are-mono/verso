@@ -987,6 +987,31 @@ func TestRenderStreamTableWiresItsSource(t *testing.T) {
 	}
 }
 
+// consoleColumns is the firewall log's one grid: the mark (with the line's
+// inset, which an auto track takes in), the clock, the verdict, each end of
+// the path as wide as the longest address the log holds where the window has
+// room and wrapping where it has not, the arrow between them, the protocol,
+// and the rule taking whatever is left, never less than 10rem of words (the
+// track also takes in the line's 2.75rem right inset).
+const consoleColumns = "grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)]"
+
+// TestAConsoleLaysItsLinesOnOneGrid: every line of a console shares one set of
+// columns, so an end of the path is as wide as the longest address the log
+// holds — an IPv6 address shows whole and no longer spills over the columns
+// after it — and the rule takes the rest of a log that runs the window's full
+// width, as the system log's message does. The waiting line spans them all.
+func TestAConsoleLaysItsLinesOnOneGrid(t *testing.T) {
+	tbl := streamTable()
+	tbl.Style = "console"
+	got := render(t, newRenderer(t), tbl)
+	if !strings.Contains(got, "grid content-start "+consoleColumns+" gap-x-3") {
+		t.Errorf("console rows are not one grid:\n%s", got)
+	}
+	if !strings.Contains(got, `<div data-verso-stream-empty class="col-span-full`) {
+		t.Errorf("the waiting line does not span the console:\n%s", got)
+	}
+}
+
 // TestRenderStreamTableKeepsItsHeadWhileWaiting: an ordinary empty table drops
 // its column heads (chrome over no data); a live one keeps them, because they
 // name what is about to arrive and the first event must not shift the layout.

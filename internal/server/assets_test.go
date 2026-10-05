@@ -145,6 +145,47 @@ func TestEveryBehaviourFileIsEmbedded(t *testing.T) {
 	}
 }
 
+// TestAConsoleLineIsARowOfItsGrid: a firewall log line takes its columns from
+// the console's one grid (a subgrid row), so no end of the path carries a
+// width of its own that a long IPv6 address could spill out of.
+func TestAConsoleLineIsARowOfItsGrid(t *testing.T) {
+	src, err := scriptFS.ReadFile("assets/verso-listing.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(src)
+	start := strings.Index(js, "var CONSOLE = {")
+	if start < 0 {
+		t.Fatal("verso-listing.js has no CONSOLE line shape")
+	}
+	shape := js[start : start+strings.Index(js[start:], "};")]
+	if !strings.Contains(shape, `row: "group col-span-full grid grid-cols-subgrid `) {
+		t.Errorf("a console line is not a row of the console's grid:\n%s", shape)
+	}
+	for _, fixed := range []string{"w-66", "w-18 ", "w-22 ", "w-24 ", "flex-1"} {
+		if strings.Contains(shape, fixed) {
+			t.Errorf("a console column still sizes itself (%q):\n%s", fixed, shape)
+		}
+	}
+	// Nothing on a line is cut short, as nothing on the system log's is: an
+	// address shows whole, and a rule's name wraps rather than ending in an
+	// ellipsis.
+	build := js[strings.Index(js, "function build(ev)"):]
+	build = build[:strings.Index(build, "\n    }\n")]
+	if strings.Contains(shape, "truncate") || strings.Contains(build, "truncate") {
+		t.Errorf("a console line cuts a value short:\n%s\n%s", shape, build)
+	}
+	if !strings.Contains(build, "wrap-break-word") {
+		t.Errorf("a rule's name does not wrap:\n%s", build)
+	}
+	// An address that the window cannot hold whole wraps at its own
+	// separators — a break after each ":" or "." — never mid-group, and a
+	// copy of it is still the plain string.
+	if !strings.Contains(js, `document.createElement("wbr")`) || strings.Contains(shape, "whitespace-nowrap") {
+		t.Errorf("an address cannot wrap at its separators:\n%s", shape)
+	}
+}
+
 // TestAPackageDrawerShowsItsFilesAsItOpens: the files a package installed are
 // always visible in its drawer — read in when the drawer opens (the link comes
 // into view), not on a click, and never for every row at page load. The link

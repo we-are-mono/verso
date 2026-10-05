@@ -482,14 +482,24 @@
      a log has no natural end, so a margin under it would be a lie.
 
      Rows arrive from the shell's stream client, which builds them in this same
-     shape; nothing is server-rendered here but the waiting line. */}}
+     shape; nothing is server-rendered here but the waiting line.
+
+     Every line is a row of one grid (verso-listing.js lays each as a subgrid),
+     so the columns hold down the whole log: the mark in an auto track that
+     takes the line's inset in, the clock, the verdict, the arrow and the
+     protocol at their fixed measures, each end of the path as wide as the
+     longest address the log holds, and the rule taking whatever the window
+     has left — never under 10rem of words (12.75rem with the line's own right
+     inset, which the last track takes in). Nothing on a line is cut short: where the
+     window cannot hold a line whole, an address wraps at its separators and
+     a rule's name at its words, as the system log's message does. */}}
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
 <div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
-  <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
-    <div data-verso-stream-empty class="px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>
+  <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6 grid content-start grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)] gap-x-3">
+    <div data-verso-stream-empty class="col-span-full px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>
   </div>
 </div>
 {{else}}

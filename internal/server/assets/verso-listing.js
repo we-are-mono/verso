@@ -179,21 +179,24 @@ function versoConsole(o) {
     reject: "text-marigold-deep",
     drop: "text-crimson-deep",
   };
-  // One console line. Fixed columns so the eye reads down one without a rule to
-  // guide it; everything in mono at the reading size, because every value on
-  // the line is a machine string.
+  // One console line: a row of the console's one grid (table.html.tmpl), so
+  // the columns hold down the whole log and the eye reads down one without a
+  // rule to guide it. The grid gives each column its measure — an end of the
+  // path as wide as the longest address the log holds, the rule the rest —
+  // and nothing here sizes itself or is cut short: an address shows whole and
+  // a rule's name wraps, as the system log's message does. Everything in mono
+  // at the reading size, because every value on the line is a machine string.
   var CONSOLE = {
-    row: "group flex cursor-pointer items-stretch gap-3 py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
-    mark: "my-0.5 w-0.75 shrink-0 rounded-full ",
-    time: "w-18 shrink-0 font-mono text-base font-medium text-body",
-    verdict: "w-22 shrink-0 font-mono text-base font-medium ",
-    path: "flex w-66 shrink-0 items-baseline gap-2 font-mono text-base font-medium",
-    arrow: "flex w-6 shrink-0 justify-center text-faint",
-    proto: "flex w-24 shrink-0 items-baseline gap-1.5 font-mono text-base font-medium text-body",
-    rule: "flex min-w-0 flex-1 items-baseline gap-2 pr-3",
+    row: "group col-span-full grid grid-cols-subgrid cursor-pointer items-stretch py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
+    mark: "my-0.5 w-0.75 rounded-full ",
+    time: "font-mono text-base font-medium text-body",
+    verdict: "font-mono text-base font-medium ",
+    path: "flex self-start items-baseline gap-2 font-mono text-base font-medium",
+    arrow: "flex justify-center text-faint",
+    proto: "flex items-baseline gap-1.5 font-mono text-base font-medium text-body",
+    rule: "flex min-w-0 items-baseline gap-2 pr-3",
     zone: "shrink-0 text-meta",
-    addr: "min-w-0 truncate",
-    port: "shrink-0 text-glyph",
+    port: "shrink-0 self-baseline-last text-glyph",
     count: "shrink-0 font-mono text-sm text-meta",
   };
   var TIMES = "×";
@@ -282,12 +285,33 @@ function versoConsole(o) {
     // endpoint is one end of a path on a console line: where it is, what it is,
     // which port, and the service that port is usually. Each part is its own
     // step of ink, so the address reads first and the rest sits behind it.
+    // An address the column cannot hold wraps at its separators, the zone
+    // standing on its first line and the port on its last, after its end.
     function consoleEnd(zone, addr, port, ink) {
       var span = el("div", CONSOLE.path);
       if (zone) span.appendChild(pluckable("from", zone, el("span", CONSOLE.zone, zone)));
-      if (addr) span.appendChild(pluckable("src", addr, el("span", CONSOLE.addr + (ink ? " " + ink : ""), addr)));
+      if (addr) {
+        var shown = el("span", ink);
+        shown.appendChild(separable(addr));
+        span.appendChild(pluckable("src", addr, shown));
+      }
       if (port) span.appendChild(el("span", CONSOLE.port, port));
       return span;
+    }
+
+    // separable is an address that may wrap where the window cannot hold it
+    // whole: a break offered after each ":", "::" and ".", never inside a
+    // group of digits nor between the two colons of "::". <wbr> offers the
+    // break without adding a character, so a copy of the address is still the
+    // address.
+    function separable(addr) {
+      var parts = addr.match(/[^:.]+(?:::|[:.])?|::|[:.]/g) || [addr];
+      var out = document.createDocumentFragment();
+      parts.forEach(function (part, i) {
+        if (i) out.appendChild(document.createElement("wbr"));
+        out.appendChild(document.createTextNode(part));
+      });
+      return out;
     }
 
     // build renders one event as a line of the log: a mark in the verdict's
@@ -315,11 +339,11 @@ function versoConsole(o) {
       row.appendChild(el("div", CONSOLE.proto, ev.proto || ""));
       var rule = el("div", CONSOLE.rule);
       if (ev.rule && typeof ev.rule_href === "string" && SAFE_HREF.test(ev.rule_href)) {
-        var link = el("a", "min-w-0 truncate text-sm text-ink transition-colors hover:text-denim-deep", ev.rule);
+        var link = el("a", "min-w-0 wrap-break-word text-sm text-ink transition-colors hover:text-denim-deep", ev.rule);
         link.setAttribute("href", ev.rule_href);
         rule.appendChild(link);
       } else if (ev.rule) {
-        rule.appendChild(el("span", "min-w-0 truncate text-sm text-body", ev.rule));
+        rule.appendChild(el("span", "min-w-0 wrap-break-word text-sm text-body", ev.rule));
       }
       rule.appendChild(el("span", CONSOLE.count));
       row.appendChild(rule);
