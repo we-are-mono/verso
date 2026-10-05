@@ -24,7 +24,7 @@
 <div class="grid grid-cols-[9.5rem_1fr_6.5rem] items-center gap-5 border-b border-rule py-2.5 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
-  <span class="text-xs text-meta">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
+  <span class="flex items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span>{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
   {{else}}
   <span class="relative h-1.5 rounded-full bg-rule">
     <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>

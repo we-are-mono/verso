@@ -104,6 +104,50 @@ func TestReadingsKeepTheirCellsApart(t *testing.T) {
 	}
 }
 
+// unprofiledInventory is the dev container's box: no profile, two drives that
+// both call their reading "Composite", a GPU edge with no limits, a drive's
+// extra sensor whose limit was a sentinel, and no fans or main power rail.
+func unprofiledInventory() sensors.Inventory {
+	return sensors.Inventory{
+		Temps: []sensors.TempReading{
+			{Name: "Composite", Kernel: "Composite", Source: "nvme · 05:00", Kind: "hwmon", MilliC: 46900, Warn: 81000, Crit: 85000, HasLimits: true, Level: "nominal", Curated: true},
+			{Name: "Composite", Kernel: "Composite", Source: "nvme · 0e:00", Kind: "hwmon", MilliC: 44900, Warn: 81000, Crit: 85000, HasLimits: true, Level: "nominal", Curated: true, Rank: 1},
+			{Name: "edge", Kernel: "edge", Source: "amdgpu", Kind: "hwmon", MilliC: 71000, Curated: true, Rank: 2},
+			{Name: "Sensor 1", Kernel: "Sensor 1", Source: "nvme · 05:00", Kind: "hwmon", MilliC: 46900, SentinelDiscarded: true},
+		},
+	}
+}
+
+// TestAnUnprofiledBoxSaysOnlyWhatItHas: a box with no profile shows what the
+// kernel reports and says nothing about what it lacks — no notice that it has
+// no fans, no note restating that bars need limits, no driver jargon, and no
+// line of bus addresses under a reading's name.
+func TestAnUnprofiledBoxSaysOnlyWhatItHas(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	inv := unprofiledInventory()
+	live := append([]widget.Widget{hardwareTemps(identityTranslator, nil, inv)}, hardwareReadings(inv)...)
+	var buf strings.Builder
+	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: live}, "", "en", nil); err != nil {
+		t.Fatal(err)
+	}
+	body := buf.String()
+	for _, never := range []string{"No fans or curated power rails", "bars drawn only where", "sentinel"} {
+		if strings.Contains(body, never) {
+			t.Errorf("the page says %q", never)
+		}
+	}
+	temps := body[strings.Index(body, "Temperatures"):strings.Index(body, "All sensors")]
+	if strings.Contains(temps, "nvme · 05:00") {
+		t.Errorf("Temperatures prints a reading's bus address under its name:\n%s", temps)
+	}
+	// The readings are rows, each with its own air above and below its
+	// hairline; a spaced stack would add a gap under each hairline that the
+	// row's other side does not have.
+	if strings.Contains(temps, "verso-stack space-y-4") || !strings.Contains(temps, "data-verso-rows") {
+		t.Errorf("Temperatures spaces its rows apart instead of letting each keep its own air:\n%s", temps)
+	}
+}
+
 // The DK's rear-panel art is embedded in the binary and loads as trusted content.
 func TestHardwarePanelArtEmbedded(t *testing.T) {
 	svg := readPanel("mono_gateway-dk", "back.svg")

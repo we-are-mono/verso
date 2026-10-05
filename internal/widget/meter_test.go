@@ -132,6 +132,11 @@ func TestMeterCompactNoTrack(t *testing.T) {
 			t.Errorf("no-track meter missing %q:\n%s", want, got)
 		}
 	}
+	// Where the track would be, the reason there is none reads at the row's
+	// 14px, led by the hollow square: a state with no hue of its own.
+	if !strings.Contains(got, `<span class="flex items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span>no limits reported</span>`) {
+		t.Errorf("the missing track is not said at 14px behind a hollow square:\n%s", got)
+	}
 }
 
 // TestMeterCompactWarnTone: a reading over its warn trip turns marigold, fill and

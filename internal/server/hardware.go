@@ -71,9 +71,6 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 	if fibre := hardwareFibre(inv); fibre != nil {
 		out = append(out, fibre)
 	}
-	if note := hardwareAbsenceNote(inv); note != nil {
-		out = append(out, note)
-	}
 	out = append(out, hardwareReadings(inv)...)
 	return out
 }
@@ -271,9 +268,11 @@ func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors
 	for i := range curated {
 		rows = append(rows, tempRow(&curated[i]))
 	}
+	// A run of rows: each reading keeps its own air above and below its
+	// hairline, so the stack adds none between them.
 	sec := &widget.Section{
 		Title:    "Temperatures",
-		Children: []widget.Widget{&widget.Stack{Children: rows}},
+		Children: []widget.Widget{&widget.Stack{Flush: true, Children: rows}},
 	}
 	if profile != nil {
 		sec.Sub = "Each bar runs to the point where the hardware would protect itself."
@@ -283,7 +282,6 @@ func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors
 		}
 	} else {
 		sec.Sub = "No profile exists for this board, so this page shows whatever the kernel exposes, under the kernel's own names."
-		sec.Meta = "bars drawn only where the hardware reports sane limits"
 	}
 	return sec
 }
@@ -431,19 +429,6 @@ func fibreCard(f *sensors.FiberModule) widget.Widget {
 	}
 }
 
-// hardwareAbsenceNote states plainly, on a box that reports no fans and no curated
-// power rail, that those sections appear only where the hardware and a profile
-// provide them. It keys on whether the sections have anything to show — a stray
-// power channel with no input rail (an iGPU's package-power reading) is not a
-// curated rail and must not silence the note; that channel still lists in the table.
-func hardwareAbsenceNote(inv sensors.Inventory) widget.Widget {
-	if inv.MainPower() != nil || len(inv.Fans) > 0 {
-		return nil
-	}
-	return &widget.Callout{Variant: "info", Compact: true,
-		Body: "No fans or curated power rails are reported on this board — the Fans and Power sections appear only where the hardware and a profile provide them."}
-}
-
 // hardwareReadings is the full instrument panel: every reading the kernel exposes,
 // by its own name, in one table banded by kind — a subsection title row spanning the
 // columns before each run, the way the firewall listing bands its rules.
@@ -572,9 +557,9 @@ func tempLimitText(t *sensors.TempReading) string {
 		return fmt.Sprintf("warn %s · crit %s", celsiusRound(t.Warn), celsiusRound(t.Crit))
 	case t.HasLimits:
 		return fmt.Sprintf("high %s · crit %s", celsiusRound(t.Warn), celsiusRound(t.Crit))
-	case t.SentinelDiscarded:
-		return "unset — sentinel discarded"
 	default:
+		// A driver's sentinel standing in for a limit is no limit, and reads
+		// as one.
 		return "no limits reported"
 	}
 }
