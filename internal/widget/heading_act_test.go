@@ -147,12 +147,13 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 }
 
 // TestControlBandIsTheListingsSurface: the band that narrows a listing is its
-// one filled surface — the quiet sand between two hairlines, every control 16px
-// from its edges — and it sits flush on the listing's column heads.
+// one filled surface — a mid sand box in a strong hairline, a step darker
+// than the masthead's quiet sand, every control 12px from its edges — and it
+// sits flush on the listing's column heads.
 func TestControlBandIsTheListingsSurface(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
 	// mb-0 outranks a nested stack's space-y, which would part band and table.
-	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4"`) {
+	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 rounded-xs border border-rule-strong bg-mid p-3"`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {

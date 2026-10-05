@@ -178,8 +178,9 @@ components:
     rounded: "{rounded.xs}"
     padding: "2px 6px"
   control-band:
-    backgroundColor: "{colors.quiet}"
-    padding: "16px 40px"
+    backgroundColor: "{colors.mid}"
+    rounded: "{rounded.xs}"
+    padding: "12px"
   section-band:
     backgroundColor: "{colors.quiet}"
     textColor: "{colors.ink}"
@@ -230,7 +231,7 @@ The system is flat and dense enough for a power user, never cramped. Surfaces se
 - Flat surfaces, hairline borders, 2px corners, 1px for marks.
 - A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 16px vertical padding.
 - Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.
-- A full-width sand control band is the seam between a page's heading and its content.
+- A Mid Sand control band, boxed in the page's column, sits on the listing it narrows.
 
 ## Colors
 
@@ -252,9 +253,9 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 ### Neutral
 - **Paper** (#faf9f7): the page and every card.
 - **White** (#ffffff): the one surface a step above the page — the top bar, input fills, a takeover's backdrop.
-- **Quiet Sand** (#f5f2ec): every quiet surface — control bands, section bands, chips, row hover.
-- **Mid Sand** (#ece8e0): the only mid ground — icon-button hover, the gateway card.
-- **Hairline** (#e4e0d8): hairlines inside a card, between rows, around a control band.
+- **Quiet Sand** (#f5f2ec): every quiet surface — the masthead, section bands, chips, row hover.
+- **Mid Sand** (#ece8e0): the only mid ground — the control band, icon-button hover, the gateway card.
+- **Hairline** (#e4e0d8): hairlines inside a card, between rows.
 - **Strong Hairline** (#d2ccc2): subsection ledger lines, the line under a lane, every input border.
 - **Inert** (#c9c3b8) and **Parked** (#c1bab0): an off switch track, an empty port; the waiting mark's parked squares.
 - **Faint** (#a09a8e) and **Glyph** (#8b857a): decorative and action icons. Never text.
@@ -318,13 +319,13 @@ A surface differs only in its reach, how far its rules and bands run past the co
 
 Untitled sections, the page Save's rule and plugin seams retain their hairlines and 24px of air on either side. A plugin contribution that opens with a section band, as SSH does on Access, needs only the 24px gap before that band, with no extra hairline or padding. Section separation is measured from the field row's box. Stacked fields grow with their label, control and errors; checkbox rows follow their label's natural height. Sections give back their first and last rows' unnecessary padding; a titled section keeps its first row's padding under the band. A rule runs out by 40px to the rail on the left and stops where the column ends on the right, clear of a sidebar beside it. On page forms, section content keeps 40px of inset from both ends of these rules. Apply the right inset once inside the 768px form column; full-section headings, configuration dividers and Save rules reach through it, while nested content shares the same alignment. Heading bands follow the same horizontal reach, keeping their words aligned with the content. A drawer's section bands and configuration dividers span its full width; subsection and list rules keep the content inset.
 
-The h1 stands alone: a page carries no lede, because the reader already knows where they are. The masthead is a Quiet Sand bar, the colophon's ground, from the rail to the window's right edge, ending on a Hairline. The heading line stands 16px inside the bar at top and bottom, so an act on it sits in the bar's middle, and the content starts 24px under the Hairline. Page acts end where Log out does, whatever measure the content column keeps. On a list, the bar runs on into the control band: the masthead draws no hairline, and the band's top edge is the seam, 16px below the title, as far as the title stands from the top bar. A live log has no band: its search and acts stand on the heading line, and its masthead is the light one, the same bar on the page's own ground (Paper, as the rail is), so the Quiet Sand log under it, the sand bar's own ground, is the page's one darker surface. The home page's sentence keeps the full 40px above it and stands unruled.
+The h1 stands alone: a page carries no lede, because the reader already knows where they are. The masthead is a Quiet Sand bar, the colophon's ground, from the rail to the window's right edge, ending on a Hairline. The heading line stands 16px inside the bar at top and bottom, so an act on it sits in the bar's middle, and the content starts 24px under the Hairline. Page acts end where Log out does, whatever measure the content column keeps. On a list too the bar ends on its Hairline, and the control band is a box 24px under it, inside the page's column: the bar is the page's, the box belongs to the listing. A live log has no band: its search and acts stand on the heading line, and its masthead is the light one, the same bar on the page's own ground (Paper, as the rail is), so the Quiet Sand log under it, the sand bar's own ground, is the page's one darker surface. The home page's sentence keeps the full 40px above it and stands unruled.
 
 Inside a group (heading to toolbar to table) the step is 20px. Rows are 44px (a 24px line plus 10px above and below), drawer headers are 52px, controls are 36px, and a control inside a row is 28px. Section bands grow with wrapped headings, ledes and controls; their vertical padding stays 16px in every case.
 
 Acts sit at the level they act on. A page's acts stand on its heading line. A form that is the whole page commits every section on it, so it closes on a section rule of the page's (40px either side, run out to the rail) with its Save under it. Whenever a form has a configuration card, on a page or in a drawer, the card sits immediately above Save; the actions finish that card without another rule. A drawer form without a configuration card closes on its own inset hairline. A form that commits one section draws no hairline: its Save stands 20px under its last field, and the next section's band identifies the next subject. Within a section, its settings and their Save come first, then what the section holds (keys, a certificate), with that thing's own acts 16px under it.
 
-Every list page reads top to bottom as: the heading line (h1 left, page acts right), then the **control band**, then the content flush beneath it. The band spans the full page width, from the rail to the window edge, while its controls stay in the page's column, level with the h1. It is the seam between "the page" and "the thing on the page".
+Every list page reads top to bottom as: the heading line (h1 left, page acts right), then the **control band**, then the content beneath it. The band is a box in the page's column, its edges level with the h1 and the page acts, so it reads as part of the thing on the page, never as more of the page's bar.
 
 Grouped listings split into lanes: each lane head is a 44px row on a strong hairline, and every lane after the first stands 40px off the one before, so each chain reads as its own small table.
 
@@ -411,11 +412,11 @@ A warning (marigold) or an error (crimson) said in place, on the tone's Wash, ev
 - **One mark or none:** a chip leads with nothing, a 14px Lucide icon, or the 6px packet square in its hue (hollow when the chip has none, the packet absent). Never two; an icon wins. The packet in a chip is still: a chip states a fact, and the only pulse is the page's live mark. A firewall verdict (`accept`, `reject`, `drop`, `mark`) always leads with its packet, and `drop`'s is hollow. On a 20px detail line the chip overhangs by a pixel either side rather than making the line taller. The removable token inside a list control is not a citation and keeps its control-sized box.
 
 ### Control Band
-The signature seam of every list and log page.
-- **Surface:** Quiet Sand, a Hairline above and below, 16px vertical padding, spanning the page from rail to window edge. It stands 16px under the title. These borders belong to the control band; the masthead has no divider.
+What narrows a listing, boxed on top of it.
+- **Surface:** the empty state's box drawn solid and a step darker: Mid Sand in a Strong Hairline, 2px corners, 12px padding on every side, the width of the page's column. It stands 24px under the masthead's Hairline, which the masthead keeps. The bar and the box tell apart by shape and by tone: the bar runs edge to edge in Quiet Sand, the box holds to the column in Mid Sand. On a phone its controls stack inside it at the same inset.
 - **Contents:** only what narrows the content, side by side from the left, 16px apart — over a live listing a search first (the app's field treatment), then counted dropdowns ("IPv4 · 14", "All families · 22"), then the dimension the listing is sliced along ("All networks"); never segmented switches, and no dropdown strays to the band's far end. Everything that acts (primary add, Live, Download, Settings) goes on the heading line instead.
 - **No search over a still listing:** a listing that holds what it has, however long, is scrolled and searched with the browser's own find; a search field over it is a second, weaker find, and a cut by a word on the rows (a family, a network, a kind) is the same find again. Only a live listing (the firewall's activity, a log) carries a search, because its rows arrive while it is read. A still listing keeps a cut only where it sorts by a state no word on the row spells out (Devices: online, offline, reserved, with limits). A band left with nothing to narrow with is not drawn, so most pages run from the heading straight into their table.
-- **Below it:** the table stands 32px under the band, its 44px column-head row first, so the band sits evenly between the heading and the listing; a log sits flush on Paper.
+- **Below it:** the table stands 24px under the band, its 44px column-head row first, so the band sits evenly between the masthead's Hairline and the listing; a log sits flush on Paper.
 
 ### Tables
 - **Rows:** 44px, Paper, one Hairline between rows, no stripes. Rows are inert, and so is the name: it is words, never a control, and never turns denim under the pointer, because a reader cannot tell what pressing a name would do. The row's acts open it, saying what they do with their glyph: the edit pencil for an editor, Details for a drawer to read. A row whose name a plugin pointed somewhere is given that act by the shell when it lacks one, or the trailing Details link when it has no acts at all. Only an expandable row's name is a control, and its chevron says so. A table closes on a Hairline under its last row, except when it ends its section: then it ends on its last row, and the section's rule (or the page's end) is the only line under it.
@@ -514,7 +515,7 @@ Save stages a change; nothing happens on the router until it is applied from the
 
 ### Do:
 - **Do** keep one denim primary per page, on the heading line, with the plus glyph.
-- **Do** put everything that narrows a list or log on the full-width Quiet Sand control band, and everything that acts on the page on the heading line.
+- **Do** put everything that narrows a list or log on the boxed Mid Sand control band, and everything that acts on the page on the heading line.
 - **Do** use a counted `<select>` for every cut ("IPv6 · 19"), naming the whole set in its first option ("All devices", not "All").
 - **Do** space blocks 40px apart and give a section hairline 40px on both sides; step 20px inside a group.
 - **Do** build rows from a 24px line plus padding (44px), bands at 52px, controls at 36px (28px inside a row).

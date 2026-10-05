@@ -14,7 +14,7 @@
      and what the log offers stand together as equals, and the group is the
      log's bar, which its search narrows the log from. */}}
 {{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
-<div data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 border-y border-rule bg-quiet p-4">
+<div data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 rounded-xs border border-rule-strong bg-mid p-3">
   {{if .Filter}}{{template "verso-listing-search" .}}{{end}}
   {{if .Tabs}}
   {{/* The coarse cuts are one dropdown beside the search, each option priced

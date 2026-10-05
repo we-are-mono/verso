@@ -781,32 +781,21 @@ html {
      2.5rem — the gap the page keeps from the window's top and left edge. The
      page's root stack carries it; a section on it takes its standoff from the
      rhythm instead of adding its own padding on top (a ruled one keeps its
-     2.5rem under the rule). A control band is the seam between the page's
-     heading and its listing, so the listing stands the same 2rem under it
-     that the band stands under the heading: the band sits evenly between the
-     two, not as a block of its own at the page's 2.5rem. A log stays flush on
+     2.5rem under the rule). A control band belongs to its listing, so the
+     listing stands the same 1.5rem under it that the band stands under the
+     masthead's hairline: the band sits evenly between the two, not as a block
+     of its own at the page's 2.5rem. A log stays flush on
      its bar; the pinned lens holds to its listing with its own padding. In
      utilities because the stack's space-y utility sets every child's margins
      and only a utilities-layer rule outranks it; before the dock's rules,
      which must still win their pull-up. */
   .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
   .verso-page-body > .verso-stack > [data-verso-actionbar] + *,
-  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] + * { margin-top: calc(var(--spacing) * 8); }
+  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] + * { margin-top: calc(var(--spacing) * 6); }
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   /* Sections, their air and their rules: sections.css. */
-
-  /* A page's control band spans the page, from the rail to the window's edge,
-     while its controls keep to the page's column, level with the heading. The
-     page (main) is the size container: the band reaches out past the frame's
-     2.5rem and the column's end, and pads back in by the same, so its content
-     box is the column whatever measure the page declares. */
-  .verso-page-body > .verso-stack > [data-verso-actionbar],
-  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] {
-    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
-    padding-inline: calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10);
-  }
 
   /* Takeover and section ledes share one reading role, including inside drawers.
      Relative type and unitless leading let enlarged text and spacing overrides
@@ -845,18 +834,10 @@ html {
   main [data-verso-masthead="light"] {
     background-color: var(--color-ground);
   }
-
-  /* A page that opens on a control band runs the bar on into the band: the
-     band's own top edge is the seam, so the masthead draws no hairline of its
-     own. */
-  main:has([data-verso-actionbar]) [data-verso-masthead] {
-    margin-bottom: 0;
-    border-bottom: 0;
-  }
-  /* A live log has no band: its bar is the group on the heading line, and the
-     masthead keeps its hairline over the log. */
+  /* A live log sits flush on the masthead's hairline: the log is the page's
+     darker surface, and the hairline is its one edge. */
   main:has([data-verso-actionbar="log"]) [data-verso-masthead] {
-    border-bottom: 1px solid var(--color-rule);
+    margin-bottom: 0;
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

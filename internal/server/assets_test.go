@@ -261,9 +261,9 @@ func TestStylesheetTypeSystem(t *testing.T) {
 
 // TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
 // own inset, 2.5rem — the gap the page keeps from the window's top and left
-// edge — and a control band's listing stands 2rem under it, the same air the
-// band keeps under the page's heading, so the band sits evenly between the
-// two. A log stays flush on its bar. A section on the page takes its standoff from that
+// edge — and a control band's listing stands 1.5rem under it, the same air the
+// band keeps under the masthead's hairline, so the band sits evenly between
+// the two. A log stays flush on its bar. A section on the page takes its standoff from that
 // rhythm rather than adding its own on top, and blocks inside a section keep
 // the same 2.5rem.
 func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
@@ -273,18 +273,21 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	}
 	for _, want := range []string{
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
-		// the listing stands 32px under its band, as the band does under the heading
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>[data-verso-packages]>[data-verso-actionbar]+*{margin-top:calc(var(--spacing) * 8)}",
+		// the listing stands 24px under its band, as the band does under the masthead
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>[data-verso-packages]>[data-verso-actionbar]+*{margin-top:calc(var(--spacing) * 6)}",
 		// a log (and its notice) sits flush on its bar
 		".verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
-		// a page's control band spans the page, its controls in the column
-		".verso-page-body>.verso-stack>[data-verso-actionbar],.verso-page-body>[data-verso-packages]>[data-verso-actionbar]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - 100% - var(--spacing) * 10)}",
 		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
 		}
+	}
+	// a page's control band is a box in the page's column, never a bar
+	// reaching to the rail and the window's edge
+	if strings.Contains(string(css), "[data-verso-actionbar]{margin-inline") {
+		t.Error("the control band reaches past the page's column")
 	}
 }
 
