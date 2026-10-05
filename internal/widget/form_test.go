@@ -186,22 +186,29 @@ func TestPageFormWithLabelCarriesOwnSubmit(t *testing.T) {
 	}
 }
 
-func TestSearchFormRendersSubmitInsideInputOutline(t *testing.T) {
+// TestSearchFormSetsSubmitBesideItsField: a search and its act stand side by
+// side, 8px apart, each control whole with its own corners and border, as
+// Factory reset's confirm row does; the button never sits inside the field.
+func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	f := &Form{
 		Style: "search", Icon: "search", Submit: "Search",
 		Fields: []Widget{&Field{Name: "q", Placeholder: "Package name"}},
 	}
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
-		"relative w-full max-w-sm",
-		"[&_input[type=text]]:pr-28",
-		"absolute inset-y-1 right-1",
-		"bg-denim",
+		`<div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
+		`<button type="submit" class="inline-flex h-9 cursor-pointer`,
+		"shrink-0 border border-denim bg-denim",
 		`placeholder="Package name"`,
 		">Search</button>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("search form render missing %q: %s", want, got)
+		}
+	}
+	for _, never := range []string{"absolute inset-y-1", "pr-28"} {
+		if strings.Contains(got, never) {
+			t.Errorf("the search button sits inside its field (%q): %s", never, got)
 		}
 	}
 }

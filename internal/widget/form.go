@@ -30,7 +30,7 @@ type Form struct {
 	Multipart  bool   `json:"-"`               // shell-owned file-transfer encoding
 	NoSubmit   bool   `json:"-"`               // shell-owned forms may be driven by a child control
 	AutoSubmit bool   `json:"-"`               // submit when a file is selected
-	Style      string `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one compound search field + inset submit) | "page"
+	Style      string `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one search field, its submit beside it) | "page"
 	Icon       string `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
 	Note       string `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
 	// Target is where the options this form's controls write live,

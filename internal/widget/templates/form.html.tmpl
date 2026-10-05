@@ -34,14 +34,15 @@
   </div>
   {{end}}
   {{if .Search}}
-  {{/* A search and its action are one compound control. The input owns the
-       complete outline/focus halo; right padding reserves the space occupied
-       by the inset button, so typed text can never run underneath it. Search
-       forms intentionally contain one unlabelled text field plus hidden
-       carriers; secondary actions remain separate controls alongside it. */}}
-  <div class="relative w-full max-w-sm [&_input[type=text]]:pr-28">
+  {{/* A search and its act stand side by side, 8px apart, each control whole
+       with its own corners and border, as Factory reset's confirm row does:
+       the field at the 320px a page's find field keeps, the button after it,
+       never inside it. Search forms intentionally contain one unlabelled text
+       field plus hidden carriers; secondary actions remain separate controls
+       alongside it. */}}
+  <div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
     {{range .Fields}}{{.}}{{end}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="absolute inset-y-1 right-1{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
   <div class="flex flex-wrap items-center gap-3">

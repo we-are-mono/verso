@@ -348,15 +348,12 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	if !strings.Contains(body, "max-w-6xl") {
 		t.Error("Available must use the narrow package-management width")
 	}
-	if !strings.Contains(body, "max-w-sm") {
-		t.Error("Available's search field should use the compound search width")
-	}
 	// bg-denim, not a stock ramp: the page inlines the whole stylesheet, so asking
 	// for a colour the app does not use still found it — Tailwind had compiled the
 	// class because this line named it.
-	for _, want := range []string{"[&_input[type=text]]:pr-28", "absolute inset-y-1 right-1", "bg-denim"} {
+	for _, want := range []string{"[&>.verso-field-row]:w-80", "shrink-0 border border-denim bg-denim"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("Available's compound search control missing %q", want)
+			t.Errorf("Available's search and its button missing %q", want)
 		}
 	}
 	for _, want := range []string{
