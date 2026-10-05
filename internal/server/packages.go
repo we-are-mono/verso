@@ -675,15 +675,15 @@ func packageIndexNote(checkedAt int64, err error, tr func(string) string) string
 	}
 }
 
-// discoverTable lists Available matches: name, what it does, version, feed origin,
-// installed state — the drawer carries the description and the act.
+// discoverTable lists Available matches at the drawer's width: name, version,
+// installed state, and Details (the shell's act for a name that opens) — the
+// drawer carries what it does, where it is from, and the act.
 func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 	cols := []widget.TableColumn{
 		{Label: "Package", Kind: "name"},
-		{Label: "Does", Kind: "comment"},
-		{Label: "Version", Kind: "mono"},
-		{Label: "Feed", Kind: "keyword"},
-		{Label: "State", Kind: "pill"},
+		{Label: "Version", Kind: "mono", Width: widget.MeasureWord},
+		{Label: "State", Kind: "pill", Width: widget.MeasureShort},
+		{Kind: "actions", Width: widget.MeasureShort},
 	}
 	rows := make([]widget.TableRow, 0, len(pkgs))
 	for _, p := range pkgs {
@@ -693,13 +693,12 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 		}
 		rows = append(rows, widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
 			{Text: p.Name, Opens: true},
-			{Text: p.Description},
 			{Text: p.Version, Emphasis: true},
-			{Text: p.Feed},
 			state,
+			{},
 		}, Drawer: discoverDrawer(p, q)})
 	}
-	return &widget.Table{Columns: cols, Rows: rows}
+	return &widget.Table{Style: "flat", Columns: cols, Rows: rows}
 }
 
 // discoverDrawer is the act: what it is, where it is from, then Install — or

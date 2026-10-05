@@ -17,6 +17,7 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/updatecheck"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // mgmtManifest is an installed plugin with declared powers, as the management
@@ -369,6 +370,27 @@ func TestDiscoverSearchRenders(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("discover missing %q", want)
 		}
+	}
+}
+
+// TestDiscoverResultsFitTheDrawer: a search's results are the drawer's width
+// and no wider — the package, its version, its state, and Details as the
+// row's one act; what it does and where it is from are the drawer's to tell.
+func TestDiscoverResultsFitTheDrawer(t *testing.T) {
+	table := discoverTable([]openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer"}}, "htop").(*widget.Table)
+	var labels []string
+	for _, c := range table.Columns {
+		labels = append(labels, c.Label+":"+c.Kind)
+	}
+	if got, want := strings.Join(labels, " "), "Package:name Version:mono State:pill :actions"; got != want {
+		t.Errorf("columns = %q, want %q", got, want)
+	}
+	var html strings.Builder
+	if err := newServer(t, fakeBackend{}).widgets.RenderWithToken(&html, table, "", "en", func(s string) string { return s }); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html.String(), `aria-label="Details htop"`) {
+		t.Errorf("a result opens its drawer by the Details act:\n%s", html.String())
 	}
 }
 
