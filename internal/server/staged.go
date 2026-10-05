@@ -444,6 +444,16 @@ func (s *Server) configOwner(config string) (plugin.Manifest, bool) {
 // humanizeChange renders one uci change tuple ([op, section, option?, value?])
 // as a plain line. Mechanical on purpose (ADR-010): config, section, option,
 // value — no per-plugin interpretation.
+// shownValue is an option's value as the review shows it: a secret (a
+// password, a private or preshared key, Wi-Fi's key) is staged like any value
+// but stands masked, so a shared screen never carries it.
+func shownValue(option, value string) string {
+	if option == "key" || strings.HasSuffix(option, "password") || strings.HasSuffix(option, "_key") {
+		return "••••••••"
+	}
+	return value
+}
+
 func humanizeChange(config string, ch []string) string {
 	if len(ch) < 2 {
 		return config + ": " + strings.Join(ch, " ")
@@ -453,7 +463,7 @@ func humanizeChange(config string, ch []string) string {
 	case op == "file" && len(ch) == 3:
 		return section
 	case op == "set" && len(ch) == 4:
-		return fmt.Sprintf("%s: %s.%s = %s", config, section, ch[2], ch[3])
+		return fmt.Sprintf("%s: %s.%s = %s", config, section, ch[2], shownValue(ch[2], ch[3]))
 	case op == "set" && len(ch) == 3:
 		return fmt.Sprintf("%s: new %s section %s", config, ch[2], section)
 	case op == "add" && len(ch) == 3:

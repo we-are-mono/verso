@@ -593,6 +593,10 @@ func TestHumanizeChange(t *testing.T) {
 		{[]string{"remove", "lan"}, "network: remove lan"},
 		{[]string{"list-add", "ntp", "server", "a.pool"}, "network: ntp.server += a.pool"},
 		{[]string{"rename", "lan", "trusted"}, "network: rename lan trusted"},
+		// A secret is staged like any value but never read back onto a screen.
+		{[]string{"set", "wan", "password", "hunter2"}, "network: wan.password = ••••••••"},
+		{[]string{"set", "wg0", "private_key", "aGVsbG8="}, "network: wg0.private_key = ••••••••"},
+		{[]string{"set", "proton", "cert_password", "x"}, "network: proton.cert_password = ••••••••"},
 	}
 	for _, c := range cases {
 		if got := humanizeChange("network", c.ch); got != c.want {
