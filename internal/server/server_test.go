@@ -2567,6 +2567,20 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 	}
 }
 
+// TestTheHeadingKeepsItsLineWhenItsActsWrapUnder: the h1 stands on the 36px
+// line itself, centred on it, so a page whose acts take a line of their own
+// under the heading (Diagnostics) sets its title exactly where a page with an
+// act beside it, or none, does.
+func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
+	css, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), ".verso-page-heading { min-height: 2.25rem; align-content: center;") {
+		t.Error("the page heading does not keep its 36px line on its own")
+	}
+}
+
 // TestEveryMastheadStandsOnAHairline: every page's title stands in a sand bar,
 // the colophon's ground, alone on its line — no lede under it — with 16px
 // above and below the line, so an act on it sits in the bar's middle; the bar

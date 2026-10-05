@@ -641,7 +641,10 @@ html {
      uppercase at .08em, in the meta ink. Denim is for what leads somewhere, and
      a kicker leads nowhere. */
   .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
-  .verso-page-heading { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
+  /* The heading keeps the masthead's 36px line on its own, centred on it, so
+     it stands at one height whether an act shares its line or the acts wrap
+     to a line of their own under it. */
+  .verso-page-heading { min-height: 2.25rem; align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; color: var(--color-body); }
 
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
