@@ -15,7 +15,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use verso_plugin::{serve, Envelope, Form, Request};
+use verso_plugin::{serve, Envelope, Errors, Form, Request, Tone};
 
 mod drawer;
 mod listing;
@@ -24,6 +24,7 @@ mod model;
 #[cfg(test)]
 mod fixture;
 
+use drawer::Stated;
 use model::Vpn;
 
 fn main() {
@@ -33,23 +34,38 @@ fn main() {
 fn get(request: &Request) -> Envelope {
     let vpn = Vpn::read(request);
     let open = request.query.get(listing::OPEN);
-    let panel = vpn
-        .instance(&open)
-        .map(|instance| (open.as_str(), drawer::drawer(instance, now())));
+    let panel = vpn.instance(&open).map(|instance| {
+        let stated = Stated::of(instance);
+        (
+            open.as_str(),
+            drawer::drawer(instance, now(), &stated, &Errors::default()),
+        )
+    });
     listing::page(&vpn, panel)
 }
 
+/// post answers the panel's own form — saved, or given back with what is
+/// missing, and in either case drawn again from what was typed, which is what
+/// keeps its preview current while it is edited — or a row's start or stop.
 fn post(request: &Request, form: &Form) -> Envelope {
     let vpn = Vpn::read(request);
     let open = request.query.get(listing::OPEN);
-    let op = match (vpn.instance(&open), form.get(drawer::PANEL).is_empty()) {
-        (Some(instance), false) => Some(drawer::save(instance, form)),
-        _ => listing::switch(&vpn, form),
-    };
-    let page = listing::page(&vpn, None);
-    match op {
-        Some(op) => page.with_commit(vec![op]),
-        None => page,
+    if let (Some(instance), false) = (vpn.instance(&open), form.get(drawer::PANEL).is_empty()) {
+        let stated = Stated::submitted(form);
+        return match drawer::save(instance, form) {
+            Ok(op) => {
+                let panel = drawer::drawer(instance, now(), &stated, &Errors::default());
+                listing::page(&vpn, Some((&open, panel))).with_commit(vec![op])
+            }
+            Err((stated, errors)) => {
+                let panel = drawer::drawer(instance, now(), &stated, &errors);
+                listing::page(&vpn, Some((&open, panel))).with_notice(Tone::Danger, drawer::REFUSED)
+            }
+        };
+    }
+    match listing::switch(&vpn, form) {
+        Some(op) => listing::page(&vpn, None).with_commit(vec![op]),
+        None => listing::page(&vpn, None),
     }
 }
 

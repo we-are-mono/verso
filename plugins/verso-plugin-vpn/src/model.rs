@@ -53,6 +53,7 @@ pub struct Profile {
     pub random: bool,
     pub cipher: String,
     pub verify: String,
+    pub asks_sign_in: bool,
     pub redirect: bool,
     pub nopull: bool,
     pub blocks: Vec<String>,
@@ -196,6 +197,7 @@ fn profile(v: &Value) -> Profile {
         random: flag("random"),
         cipher: text(v, "cipher"),
         verify: text(v, "verify"),
+        asks_sign_in: flag("asks_sign_in"),
         redirect: flag("redirect"),
         nopull: flag("nopull"),
         blocks: v["blocks"]
