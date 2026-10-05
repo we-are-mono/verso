@@ -285,6 +285,8 @@
   "Outside this window the rule is skipped entirely, as though it were not in the chain.": "Zunaj tega okna se pravilo povsem preskoči, kot da ga v verigi ne bi bilo.",
   "An unnamed rule": "Neimenovano pravilo",
   "Rule is active": "Pravilo je dejavno",
+  "Forward is active": "Posredovanje je dejavno",
+  "A forward that is off stays in the config and reflects nothing — traffic to its port meets the zone's own policy.": "Izklopljeno posredovanje ostane v konfiguraciji in ničesar ne preusmeri — o prometu na njegova vrata odloči politika območja.",
   "Download": "Prenesi",
   "On this page": "Na tej strani",
   "Coming from": "Prihaja iz",

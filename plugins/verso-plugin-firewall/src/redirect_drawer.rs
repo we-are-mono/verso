@@ -24,7 +24,7 @@
 //! carries them (`conditions::for_redirect`), and the few that say what happens
 //! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Switch, Widget};
+use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Widget};
 
 use crate::conditions;
 use crate::fields;
@@ -119,31 +119,36 @@ fn title(name: &str) -> String {
     }
 }
 
-/// identity is what the forward is called and whether it is live at all. The
-/// switch rides the heading rather than the body: it is the state of the whole
-/// object, not one of its settings.
+/// identity is whether the forward is live at all, then what it is called.
+/// Whether it is in force comes first, as a zone's does, because nothing below
+/// it means anything when it is off.
 fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::Section(SectionWidget {
         title: "Port forward".into(),
         flush: true,
-        control: Some(Box::new(Widget::Switch(Switch {
-            name: "enabled".into(),
-            label: "Enabled".into(),
-            off_label: "Disabled".into(),
-            style: "inline".into(),
-            on: redirect.enabled,
-            ..Default::default()
-        }))),
-        children: vec![fields::row_group(vec![fields::text_field(
-            "name",
-            "Comment",
-            &redirect.name,
-            "Identifies the forward in listings, hit counts, and the system log.",
-            errors,
-        )])],
+        children: vec![fields::row_group(vec![
+            Widget::switch_keyed(
+                "enabled",
+                "Forward is active",
+                "enabled",
+                ENABLED_TIP,
+                redirect.enabled,
+            ),
+            fields::text_field(
+                "name",
+                "Name",
+                &redirect.name,
+                "Identifies the forward in listings, hit counts, and the system log.",
+                errors,
+            )
+            .writes("name"),
+        ])],
         ..Default::default()
     })
 }
+
+const ENABLED_TIP: &str = "A forward that is off stays in the config and reflects nothing — \
+traffic to its port meets the zone's own policy.";
 
 /// incoming is the traffic the forward catches. The zone is a closed choice over
 /// the zones this config defines: firewall4 skips a port forward whose source is
@@ -455,6 +460,31 @@ mod tests {
 
     fn values(body: &Value) -> Value {
         body["commit"][0]["values"].clone()
+    }
+
+    /// The panel opens on whether the forward is in force, a row like any
+    /// other rather than a switch on the heading, then on its name, labelled
+    /// as the config spells the option.
+    #[test]
+    fn a_forward_opens_on_its_state_then_its_name() {
+        let body = panel(&open("https_to_nas"));
+        let first = fixture::find_with(&body, &|v| v["type"] == "section").expect("a section");
+        assert!(
+            first.get("control").is_none_or(Value::is_null),
+            "nothing rides the heading: {first}"
+        );
+        let rows = serde_json::to_string(&first["children"]).expect("serialize");
+        let (enabled, name) = (
+            rows.find(r#""name":"enabled""#).expect("enabled row"),
+            rows.find(r#""name":"name""#).expect("name row"),
+        );
+        assert!(enabled < name, "state first, then the name: {rows}");
+        let state = control(&body, "enabled");
+        assert_eq!(state["label"], "Forward is active");
+        assert_eq!(state["key"], "enabled");
+        let named = control(&body, "name");
+        assert_eq!(named["label"], "Name");
+        assert_eq!(named["key"], "name");
     }
 
     /// A forward opens in its row's panel on the listing, not on a page of its
