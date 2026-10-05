@@ -49,6 +49,14 @@ func (*NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage
 	return state, err
 }
 
+// VPNState is each OpenVPN instance's profile, process and last word, and
+// every tunnel device's counters, read by the helper with nothing secret in it.
+func (*NativeBackend) VPNState(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, "", "vpnState", sid, nil, &state)
+	return state, err
+}
+
 // FirewallFiles is the rule files fw4 reads from its own folder, as they will
 // read once staged changes are applied.
 func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {

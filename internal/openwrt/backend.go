@@ -218,13 +218,15 @@ type Backend interface {
 	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
 	// The helper's raw state reads the shell brokers to a declaring plugin
 	// (ADR-007), sid-gated: DHCP and DNS service state, fw4's rule files,
-	// netifd's network state and what the radios are doing. Each stays raw JSON;
-	// the plugin, not the shell, owns what it means.
+	// netifd's network state, what the radios are doing and what the tunnels
+	// are doing. Each stays raw JSON; the plugin, not the shell, owns what it
+	// means.
 	DHCPState(ctx context.Context, sid string) (json.RawMessage, error)
 	DNSState(ctx context.Context, sid string) (json.RawMessage, error)
 	FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
+	VPNState(ctx context.Context, sid string) (json.RawMessage, error)
 	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
 	// through the helper, refusing it unless the file still holds expected.
 	StageConfigFile(ctx context.Context, sid, path, expected, content string) error

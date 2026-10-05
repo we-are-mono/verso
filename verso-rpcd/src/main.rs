@@ -16,6 +16,7 @@ mod diagnostics;
 mod firewall;
 mod firewall_log;
 mod firmware;
+mod openvpn;
 mod packages;
 mod ubus;
 
@@ -315,6 +316,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             },
         ),
         "accessCredentials" => access::state(),
+        "vpnState" => openvpn::state(),
         "setAuthorizedKeys" => {
             let _guard = state
                 .maintenance

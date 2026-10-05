@@ -1169,6 +1169,8 @@ func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (js
 		}
 	case "wirelessState":
 		read = s.backend.WirelessState
+	case "vpnState":
+		read = s.backend.VPNState
 	default:
 		return nil, false, nil
 	}

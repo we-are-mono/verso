@@ -490,6 +490,10 @@ func (fakeBackend) WirelessState(context.Context, string) (json.RawMessage, erro
 	return nil, errNoHelper
 }
 
+func (fakeBackend) VPNState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
 func (fakeBackend) StageConfigFile(context.Context, string, string, string, string) error {
 	return errNoHelper
 }
