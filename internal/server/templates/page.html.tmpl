@@ -23,6 +23,7 @@
 <script src="/assets/verso-boot.js"></script>
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xs focus:bg-canvas focus:px-4 focus:py-2 focus:font-semibold focus:outline-2 focus:outline-denim">{{ t "Skip to content" }}</a>
 {{/* The top bar: the device's nameplate on the left — the hostname in mono,
      then who built the board and what they call it; a fresh box with no
      readable name says what it is instead — with what waits on its stage
@@ -103,7 +104,7 @@
 {{/* Every other page is a column too, at least as tall as what the bar leaves
      of the screen, so its colophon stands at the bottom of a short page and
      under the last of a long one. */}}
-<main class="@container flex min-w-0 flex-1 flex-col{{if eq .Width "full"}} h-[calc(100vh-3.5rem)] min-h-0{{end}}">
+<main id="main" tabindex="-1" class="@container outline-none flex min-w-0 flex-1 flex-col{{if eq .Width "full"}} h-[calc(100vh-3.5rem)] min-h-0{{end}}">
   {{/* Subpages are the rail's business — the active row opens them beneath
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
