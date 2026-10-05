@@ -28,8 +28,8 @@
   {{else}}
   <span class="relative h-1.5 rounded-full bg-rule">
     <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
-    {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-marigold-deep" style="left: {{.WarnMark}}"></span>{{end}}
-    {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-sm bg-crimson" style="left: calc({{.CritMark}} - 0.125rem)"></span>{{end}}
+    {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold-deep" style="left: {{.WarnMark}}"></span>{{end}}
+    {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritMark}} - 0.125rem)"></span>{{end}}
   </span>
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">

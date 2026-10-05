@@ -1032,7 +1032,7 @@ html {
     color: inherit;
     text-align: inherit;
     cursor: pointer;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-xs);
     transition: opacity 0.15s ease;
   }
   .verso-pluck:hover { opacity: 0.65; }
