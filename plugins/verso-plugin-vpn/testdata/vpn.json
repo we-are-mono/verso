@@ -1,0 +1,34 @@
+{
+  "vpnState": {
+    "instances": {
+      "proton": {
+        "config": "/etc/openvpn/proton.ovpn", "running": true, "state": "connected", "since": 1791295321,
+        "server": "185.107.56.234:1194", "address": "10.96.0.14/16", "device": "tun0",
+        "profile": {
+          "client": true, "dev": "tun", "proto": "udp", "random": true, "cipher": "AES-256-GCM", "verify": "server",
+          "asks_sign_in": true, "auth": "", "redirect": true,
+          "remotes": [
+            {"host": "185.107.56.234", "port": "1194", "proto": ""},
+            {"host": "185.107.56.234", "port": "80", "proto": ""},
+            {"host": "185.107.56.234", "port": "4569", "proto": ""}
+          ],
+          "blocks": ["ca", "tls-crypt"],
+          "text": "client\ndev tun\nproto udp\nremote 185.107.56.234 1194\nremote 185.107.56.234 80\nremote 185.107.56.234 4569\nremote-random\ndata-ciphers AES-256-GCM\nremote-cert-tls server\nauth-user-pass\nredirect-gateway def1\n<ca> … 31 lines … </ca>\n<tls-crypt> … 18 lines … </tls-crypt>"
+        }
+      },
+      "work": {
+        "config": "/etc/openvpn/work.ovpn", "running": false, "state": "stopped",
+        "profile": {
+          "client": true, "dev": "tun", "proto": "tcp", "asks_sign_in": false,
+          "remotes": [{"host": "vpn.example.com", "port": "443", "proto": "tcp"}],
+          "blocks": ["ca", "cert", "key"], "text": "client\ndev tun\nproto tcp\nremote vpn.example.com 443 tcp\n<ca> … 20 lines … </ca>\n<cert> … 20 lines … </cert>\n<key> … 28 lines … </key>"
+        }
+      },
+      "custom_config": {"config": "/etc/openvpn/my-vpn.conf", "running": false, "state": "stopped"}
+    },
+    "tunnels": [
+      {"device": "tailscale0", "kind": "tailscale", "instance": null, "up": true, "rx": 92274688, "tx": 42991616, "addresses": ["100.101.12.7/32", "fd7a:115c:a1e0::1/128"]},
+      {"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true, "rx": 1331439862, "tx": 190840832, "addresses": ["10.96.0.14/16"]}
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 /sources/
 
 # Most first-party plugin sources are independent reference repos. The plugin
-# SDK and bundled DNS/DHCP, Firewall, System, Interfaces and QoS plugins are
+# SDK and bundled DNS/DHCP, Firewall, System, Interfaces, QoS and VPN plugins are
 # exceptions: the build and tests require their sources in a clean checkout.
 /plugins/*
 !/plugins/verso-plugin-sdk/
@@ -17,6 +17,8 @@
 !/plugins/verso-plugin-interfaces/**
 !/plugins/verso-plugin-qos/
 !/plugins/verso-plugin-qos/**
+!/plugins/verso-plugin-vpn/
+!/plugins/verso-plugin-vpn/**
 /plugins/**/target/
 
 # Scratch research notes — not part of the project

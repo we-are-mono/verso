@@ -1,0 +1,12 @@
+{
+  "openvpn": {
+    "proton": {".type": "openvpn", ".name": "proton", ".index": 0, "enabled": "1", "config": "/etc/openvpn/proton.ovpn"},
+    "work": {".type": "openvpn", ".name": "work", ".index": 1, "enabled": "0", "config": "/etc/openvpn/work.ovpn"},
+    "custom_config": {".type": "openvpn", ".name": "custom_config", ".index": 2, "enabled": "0", "config": "/etc/openvpn/my-vpn.conf"},
+    "sample_client": {".type": "openvpn", ".name": "sample_client", ".index": 3, "enabled": "0", "client": "1", "dev": "tun", "proto": "udp", "remote": ["my_server_1 1194"]}
+  },
+  "network": {
+    "lan": {".type": "interface", ".name": "lan", ".index": 0, "device": "br-lan", "proto": "static"},
+    "vpn": {".type": "interface", ".name": "vpn", ".index": 1, "device": "tun0", "proto": "none"}
+  }
+}

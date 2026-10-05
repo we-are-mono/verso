@@ -1,0 +1,19 @@
+{
+  "id": "vpn",
+  "name": "VPN",
+  "socket": "/var/run/verso/vpn.sock",
+  "schema_version": 1,
+  "nav": [
+    { "section": "VPN", "label": "VPN", "path": "/" }
+  ],
+  "acl": {
+    "read": [
+      { "scope": "uci", "object": "openvpn", "function": "read" },
+      { "scope": "uci", "object": "network", "function": "read" },
+      { "scope": "ubus", "object": "verso", "function": "vpnState" }
+    ],
+    "write": [
+      { "scope": "uci", "object": "openvpn", "function": "write" }
+    ]
+  }
+}
