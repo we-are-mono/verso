@@ -55,6 +55,17 @@ func TestConditionalKeepsARowsAir(t *testing.T) {
 	}
 }
 
+// TestAGateWithNothingToRevealIsJustARow: a gate whose switch reveals no
+// fields draws no reveal under it, which would hang its 20px standoff under
+// the row when switched on and push the section's end away (a zone's
+// Advanced reading, ending on automatic helpers).
+func TestAGateWithNothingToRevealIsJustARow(t *testing.T) {
+	got := render(t, newRenderer(t), &Conditional{Name: "auto_helper", Label: "Assign connection helpers automatically", Checked: true})
+	if strings.Contains(got, "verso-conditional-body") {
+		t.Errorf("a gate with nothing to reveal draws an empty reveal: %s", got)
+	}
+}
+
 func TestConditionalUnknownOtherwiseFieldFails(t *testing.T) {
 	js := `{"type":"conditional","name":"t","label":"L","fields":[],"otherwise":[{"type":"bogus"}]}`
 	if _, err := Decode([]byte(js)); err == nil {

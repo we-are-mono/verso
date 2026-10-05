@@ -20,6 +20,8 @@
   {{.Gate}}
   {{/* A revealed field-set carries its own rows, and a field row zeroes its top
        padding when it is first — so the standing-off is this block's to state. */}}
-  <div class="verso-conditional-body verso-rhythm mt-5">{{range .Fields}}{{.}}{{end}}</div>
+  {{/* A gate with nothing to reveal is just its row: an empty reveal would
+       still hang its standoff under the row when switched on. */}}
+  {{if .Fields}}<div class="verso-conditional-body verso-rhythm mt-5">{{range .Fields}}{{.}}{{end}}</div>{{end}}
   {{if .Otherwise}}<div class="verso-conditional-otherwise verso-rhythm mt-2">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
 </div>
