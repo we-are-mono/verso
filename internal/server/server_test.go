@@ -2599,7 +2599,7 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	}
 	for _, want := range []string{
 		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-quiet);",
-		"main [data-verso-masthead=\"light\"] {\n    background-color: var(--color-ground);",
+		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
@@ -2634,13 +2634,14 @@ func TestALiveLogsMastheadIsLight(t *testing.T) {
 	if strings.Contains(plain, `data-verso-masthead="light"`) {
 		t.Error("a page without a live log keeps the sand bar")
 	}
-	// the log sits flush on the masthead's hairline: one line, no air above it
+	// the log sits flush on the masthead's hairline: one line, no air above
+	// it — as every darker body under a light masthead does
 	css, err := os.ReadFile("assets/input.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "main:has([data-verso-actionbar=\"log\"]) [data-verso-masthead] {\n    margin-bottom: 0;") {
-		t.Error("a live log's masthead keeps air between its hairline and the log")
+	if !strings.Contains(string(css), "main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;") {
+		t.Error("a light masthead keeps air between its hairline and the surface under it")
 	}
 }
 

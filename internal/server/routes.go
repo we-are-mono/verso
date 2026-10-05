@@ -61,6 +61,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/logs", s.handleLogs)
 	s.mux.HandleFunc("GET /system/logs/settings", s.handleLogSettings)
 	s.mux.HandleFunc("POST /system/logs/settings", s.handleLogSettings)
+	// Diagnostics: a run starts in the helper, its output is read back over
+	// its own stream until it ends, and it can be stopped before it does.
+	s.mux.HandleFunc("GET /system/diagnostics", s.handleDiagnostics)
+	s.mux.HandleFunc("POST /system/diagnostics/run", s.handleDiagnosticsRun)
+	s.mux.HandleFunc("GET /system/diagnostics/run", s.handleDiagnosticsStream)
+	s.mux.HandleFunc("POST /system/diagnostics/stop", s.handleDiagnosticsStop)
 	s.mux.HandleFunc("GET /system/packages/status", s.handlePackageStatus)
 	s.mux.HandleFunc("GET /system/packages/files", s.handlePackageFiles)
 	s.mux.HandleFunc("GET /system/packages/package", s.handlePackagePanel)

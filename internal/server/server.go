@@ -57,7 +57,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js assets/verso-boot.js
 //go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
 //go:embed assets/verso-packages.js assets/verso-buttons.js
-//go:embed assets/verso-system.js
+//go:embed assets/verso-system.js assets/verso-diagnostics.js
 //go:embed assets/verso-stream.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
 //go:embed assets/verso-login.js
 //go:embed assets/fonts
@@ -708,6 +708,8 @@ func jsCatalog(tr func(string) string) template.JS {
 		// System logs and staged reboot controls.
 		"Paused", "Firewall logs unavailable", "Some firewall events were lost.", "Logs unavailable", "Live", "Connecting…", "Nothing matches.",
 		"The operation could not be completed. Review staged changes before retrying.",
+		// A diagnostic run the router would not start, with no words of its own.
+		"The router could not start the run.",
 	}
 	m := make(map[string]string, len(keys))
 	for _, k := range keys {

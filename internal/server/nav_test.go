@@ -389,8 +389,8 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	s.probe = func(path string) bool { return path == "/live/system.sock" }
 
 	pages := s.sectionPages("System", "/plugins/system/")
-	if len(pages) != 7 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
-		t.Fatalf("System pages = %+v, want live General followed by six shell pages", pages)
+	if len(pages) != 8 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
+		t.Fatalf("System pages = %+v, want live General followed by seven shell pages", pages)
 	}
 	for _, page := range pages {
 		if page.Label == "VPN" {

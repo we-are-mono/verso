@@ -848,14 +848,12 @@ html {
     background-color: var(--color-quiet);
   }
   /* The light masthead stands on the page's own ground, as the rail does, for
-     a page whose body is itself the darker surface (a live log). */
+     a page whose body is itself the darker surface (a live log, a run's
+     output). That surface sits flush on the masthead's hairline, which is its
+     one edge. */
   main [data-verso-masthead="light"] {
-    background-color: var(--color-ground);
-  }
-  /* A live log sits flush on the masthead's hairline: the log is the page's
-     darker surface, and the hairline is its one edge. */
-  main:has([data-verso-actionbar="log"]) [data-verso-masthead] {
     margin-bottom: 0;
+    background-color: var(--color-ground);
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

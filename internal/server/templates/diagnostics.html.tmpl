@@ -1,0 +1,52 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+<div data-verso-diagnostics class="contents">
+  {{/* The run's output fills the sand under the heading as a log does, each
+       line as the router wrote it; until something runs, it says so. */}}
+  <div data-verso-diag-output data-scroll="sand" role="log" class="verso-drawer-scrollbar -mx-10 min-h-0 flex-1 overflow-y-auto bg-quiet pt-3 pb-6 shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]">
+    <p data-verso-diag-empty class="px-10 py-6 text-sm text-meta">{{t "Nothing run yet."}}</p>
+  </div>
+</div>
+{{/* diagnostics.acts: what to run, on a line of its own under the heading —
+     the tool, what it reaches for, the way out it leaves by and the IP family,
+     then the act at the right, where Log out ends. Run rests until there is a
+     target; while a run goes, Stop stands in its place. A DNS lookup is not
+     bound to an interface, so the page puts that choice to rest for it
+     (verso-diagnostics.js). */}}
+{{define "diagnostics.acts"}}
+<form data-verso-diag-form novalidate class="flex min-w-0 basis-full flex-wrap items-center gap-2">
+  <div class="relative w-40">
+    <select name="tool" aria-label="{{t "Tool"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9">
+      <option value="ping" selected>{{t "Ping"}}</option>
+      <option value="traceroute">{{t "Traceroute"}}</option>
+      <option value="nslookup">{{t "DNS lookup"}}</option>
+    </select>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+  </div>
+  <div class="w-100 max-w-full">
+    <input type="text" name="target" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="{{t "example.com or 1.1.1.1"}}" aria-label="{{t "Host or address"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}}">
+  </div>
+  <div class="relative w-44">
+    <select name="interface" aria-label="{{t "Interface"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 disabled:cursor-default disabled:bg-quiet disabled:text-meta">
+      <option value="" selected>{{t "any interface"}}</option>
+      {{range .Interfaces}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+    </select>
+    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+  </div>
+  {{/* The family is one pick of three, short enough to show whole: the
+       segmented strip, radios underneath. A checked chip's word goes
+       semibold, which is wider; its hidden semibold twin holds that width
+       from the start, so picking one never nudges the chips after it. */}}
+  <div role="radiogroup" aria-label="{{t "IP family"}}" class="inline-flex gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
+    {{range $i, $family := .Families}}
+    <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
+      <input type="radio" name="family" value="{{.Value}}"{{if not $i}} checked{{end}} class="sr-only">
+      <span class="grid"><span class="col-start-1 row-start-1">{{.Label}}</span><span aria-hidden="true" class="invisible col-start-1 row-start-1 font-semibold">{{.Label}}</span></span>
+    </label>
+    {{end}}
+  </div>
+  <button type="submit" data-verso-diag-run disabled class="ml-auto {{template "verso-btn-box"}} {{template "verso-btn-primary"}} {{template "verso-btn-waiting"}} focus-visible:outline-denim-deep">{{t "Run"}}</button>
+  <button type="button" data-verso-diag-stop hidden class="ml-auto {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{t "Stop"}}</button>
+  <p data-verso-diag-error hidden role="alert" class="basis-full {{template "verso-error-line"}}"></p>
+</form>
+{{end}}

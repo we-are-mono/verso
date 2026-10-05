@@ -36,6 +36,13 @@ func writeEvent(w io.Writer, id, name string, v any) error {
 // session ends, EventSource's reconnect lands on the login redirect instead of a
 // stream, which closes the client for good.
 func (s *Server) serveSSE(w http.ResponseWriter, r *http.Request, send func() bool) {
+	s.serveSSEEvery(w, r, s.eventInterval, send)
+}
+
+// serveSSEEvery is serveSSE at a pace of the caller's: a stream someone is
+// watching line by line, as a run's output is, ticks faster than a reading
+// that only moves on.
+func (s *Server) serveSSEEvery(w http.ResponseWriter, r *http.Request, every time.Duration, send func() bool) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -43,7 +50,7 @@ func (s *Server) serveSSE(w http.ResponseWriter, r *http.Request, send func() bo
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
-	ticker := time.NewTicker(s.eventInterval)
+	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	if !send() {
 		return
