@@ -441,13 +441,19 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 // under the last control, the same as a section's rule stands under the one
 // before it: the section's own air is the air before any rule that follows
 // it, and the ruled block adds none of its own on top. The forward drawer's
-// card stood 60px under "Counting and logging" before this.
+// card stood 60px under "Counting and logging" before this. A section that
+// ends on its own card gives its air up so Save stands 20px under the card
+// (the rule drawer's): that Save keeps its standoff, or it lies on the card.
 func TestASectionsAirIsTheNextRulesToo(t *testing.T) {
 	css, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "[data-verso-section] + :is([data-verso-code-divider], [data-verso-form-actions]),\n  [data-verso-section] + input[type=\"hidden\"] + :is([data-verso-code-divider], [data-verso-form-actions]) { margin-top: 0; }"
+	endsOnCard := `:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"])))`
+	want := "[data-verso-section] + [data-verso-code-divider],\n" +
+		"  [data-verso-section] + input[type=\"hidden\"] + [data-verso-code-divider],\n" +
+		"  [data-verso-section]:not(" + endsOnCard + ") + [data-verso-form-actions],\n" +
+		"  [data-verso-section]:not(" + endsOnCard + ") + input[type=\"hidden\"] + [data-verso-form-actions] { margin-top: 0; }"
 	if !strings.Contains(string(css), want) {
 		t.Errorf("sections.css is missing %s", want)
 	}
