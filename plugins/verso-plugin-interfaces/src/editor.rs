@@ -521,12 +521,7 @@ fn drawer(
                 field(v, e, "keepalive", "Keepalive", ""),
             ],
         ));
-        sections.push(section(
-            "Addressing",
-            "How it gets its address. Changing this changes the fields below it.",
-            "addressing",
-            addressing,
-        ));
+        sections.push(section("Addressing", "", "addressing", addressing));
         sections.push(section(
             "IPv6",
             "",

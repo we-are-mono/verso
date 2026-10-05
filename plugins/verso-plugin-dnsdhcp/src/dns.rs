@@ -261,8 +261,8 @@ fn missing(label: &str, desc: &str, package: &str) -> Widget {
         panel: true,
     }
 }
-fn part(title: &str, lede: &str, anchor: &str, fields: Vec<Widget>) -> Widget {
-    Widget::section(title, lede, fields)
+fn part(title: &str, anchor: &str, fields: Vec<Widget>) -> Widget {
+    Widget::section(title, "", fields)
         .ruled()
         .addressed_as(anchor)
 }
@@ -271,7 +271,6 @@ pub fn page(r: &Request) -> Envelope {
 }
 fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
     let mut sections = vec![part(
-        "",
         "",
         "upstream",
         vec![
@@ -288,7 +287,6 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
     )];
     sections.push(part(
         "Local names",
-        "",
         "local-names",
         if s.resolver {
             vec![
@@ -367,17 +365,22 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         }
         privacy.push(dnssec);
     }
-    sections.push(part(
-        "Privacy",
-        "Whether queries leave the router readable, and whether answers are checked for tampering.",
-        "privacy",
-        privacy,
-    ));
+    sections.push(part("Privacy", "privacy", privacy));
     if s.resolver {
-        sections.push(part("Forwarding", "Domains that should be answered by a server other than the upstream ones — a VPN, an office.", "forwarding", vec![s.rows(e, "forwarding", "Send these domains to a specific server", "server", "/corp.example/10.1.0.53", "dnsforward")]));
+        sections.push(part(
+            "Forwarding",
+            "forwarding",
+            vec![s.rows(
+                e,
+                "forwarding",
+                "Send these domains to a specific server",
+                "server",
+                "/corp.example/10.1.0.53",
+                "dnsforward",
+            )],
+        ));
         sections.push(part(
             "Blocking",
-            "Names that are refused before any device sees them.",
             "blocking",
             if s.blocking {
                 vec![s.check("adblock", "Block ads and trackers", "adblock")]
@@ -391,7 +394,6 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         ));
         sections.push(part(
             "Behaviour",
-            "Who the resolver answers, how much it remembers, and whether it keeps a record.",
             "behaviour",
             vec![
                 s.flag("localservice"),
@@ -401,7 +403,6 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         ));
         sections.push(part(
             "Custom options",
-            "Anything dnsmasq accepts that has no field above.",
             "custom-options",
             vec![crate::files::listing(r)],
         ));
@@ -557,11 +558,10 @@ pub fn post(r: &Request, f: &Form) -> Envelope {
     for key in ["domain", "cachesize", "provider", "resolver_url"] {
         s.values.insert(key.into(), f.get(key).trim().into());
     }
-    for key in
-        FLAGS
-            .iter()
-            .map(|f| f.0)
-            .chain(["peerdns", "encrypted", "adblock"])
+    for key in FLAGS
+        .iter()
+        .map(|f| f.0)
+        .chain(["peerdns", "encrypted", "adblock"])
     {
         s.values
             .insert(key.into(), yes(matches!(f.get(key).as_str(), "1" | "on")));

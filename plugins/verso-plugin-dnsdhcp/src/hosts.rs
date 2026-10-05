@@ -100,19 +100,22 @@ impl Host {
             false => self.name.clone(),
         }
     }
-
 }
 
 /// find is the reservation an address names: its uci section, or the MAC of the
 /// device it pins — the device panel and the Devices page know a device by its
 /// MAC alone.
 pub fn find<'a>(model: &'a Dnsdhcp, key: &str) -> Option<&'a Options> {
-    model.hosts.iter().find(|host| host.section == key).or_else(|| {
-        model
-            .hosts
-            .iter()
-            .find(|host| host.list("mac").iter().any(|mac| same_mac(mac, key)))
-    })
+    model
+        .hosts
+        .iter()
+        .find(|host| host.section == key)
+        .or_else(|| {
+            model
+                .hosts
+                .iter()
+                .find(|host| host.list("mac").iter().any(|mac| same_mac(mac, key)))
+        })
 }
 
 /// table is the reservations listing. Each row opens its own drawer where it
@@ -319,7 +322,7 @@ fn controls(host: &Host, errors: &Errors, subject: Subject) -> Vec<Widget> {
         // boundary is what says the rest is optional.
         Widget::section(
             "Advanced",
-            "Leave these unless something specific asks for them.",
+            "",
             vec![
                 form::text_field(
                     "duid",
@@ -589,7 +592,9 @@ mod tests {
         assert_eq!(remove["icon"], "pin-off");
         assert_eq!(remove["name"], REMOVE);
         assert_eq!(remove["value"], "host_nas");
-        assert!(remove["confirm_title"].as_str().is_some_and(|t| !t.is_empty()));
+        assert!(remove["confirm_title"]
+            .as_str()
+            .is_some_and(|t| !t.is_empty()));
         // A listing with nothing open carries no rendered panel.
         assert!(rows.iter().all(|row| row.get("drawer").is_none()));
     }
@@ -610,7 +615,10 @@ mod tests {
     fn a_reservation_is_found_by_its_section_or_by_its_devices_mac() {
         let model = fixture::dnsdhcp();
         assert_eq!(find(&model, "host_nas").unwrap().section, "host_nas");
-        assert_eq!(find(&model, "30-9c-23-5e-88-01").unwrap().section, "host_nas");
+        assert_eq!(
+            find(&model, "30-9c-23-5e-88-01").unwrap().section,
+            "host_nas"
+        );
         assert!(find(&model, "42:e6:ad:ff:b7:af").is_none());
     }
 
@@ -680,7 +688,10 @@ mod tests {
             ("mac=30:9c:23:5e:88:01&ip=10.0.0.256", "ip"),
             ("mac=30:9c:23:5e:88:01&ip=10.0.0.9&name=not+a+name", "name"),
             ("mac=30:9c:23:5e:88:01&ip=10.0.0.9&hostid=::zz", "hostid"),
-            ("mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever", "leasetime"),
+            (
+                "mac=30:9c:23:5e:88:01&ip=10.0.0.9&leasetime=forever",
+                "leasetime",
+            ),
             // A reservation that matches a device and then hands it nothing.
             ("mac=30:9c:23:5e:88:01", "ip"),
         ] {
@@ -688,12 +699,16 @@ mod tests {
             assert!(refused.commit.is_none(), "{body}");
             let drawer = json_of!(refused.drawer);
             assert!(
-                !control(&drawer, field)["error"].as_str().unwrap_or("").is_empty(),
+                !control(&drawer, field)["error"]
+                    .as_str()
+                    .unwrap_or("")
+                    .is_empty(),
                 "{body}: {field} carries no error"
             );
         }
         // What was typed comes back as typed.
-        let refused = json_of!(submit(Some("host_nas"), &Form::parse("mac=nope&ip=10.0.0.30")).drawer);
+        let refused =
+            json_of!(submit(Some("host_nas"), &Form::parse("mac=nope&ip=10.0.0.30")).drawer);
         assert_eq!(control(&refused, "mac")["value"], "nope");
     }
 
@@ -759,7 +774,10 @@ mod tests {
             &Form::parse("mac=42:e6:ad:ff:b7:af&ip=nope"),
         ));
         assert!(refused.get("commit").is_none());
-        assert!(!control(&refused, "ip")["error"].as_str().unwrap_or("").is_empty());
+        assert!(!control(&refused, "ip")["error"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty());
     }
 
     #[test]
@@ -769,7 +787,10 @@ mod tests {
         let drawer = json_of!(drawer(Some("host_nas"), &nas, &Errors::default()));
         for name in ["ip", "hostid", "duid"] {
             let field = control(&drawer, name);
-            assert!(field["tip"].as_str().is_some_and(|tip| !tip.is_empty()), "{name}");
+            assert!(
+                field["tip"].as_str().is_some_and(|tip| !tip.is_empty()),
+                "{name}"
+            );
             assert_eq!(field["source"], "dhcp host", "{name}");
         }
         for name in ["name", "leasetime", "tag"] {

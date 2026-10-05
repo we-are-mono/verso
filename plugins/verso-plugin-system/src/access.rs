@@ -188,12 +188,7 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
         if index == 0 {
             children.push(super::credentials::certificate(r));
         }
-        let mut section = Widget::section(
-            "Web interface",
-            "These settings control the router's uhttpd web server.",
-            children,
-        )
-        .ruled();
+        let mut section = Widget::section("Web interface", "", children).ruled();
         if web.len() > 1 {
             if let Widget::Section(SectionWidget { meta, .. }) = &mut section {
                 *meta = s.name();

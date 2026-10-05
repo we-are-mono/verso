@@ -293,7 +293,7 @@ func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors
 		Children: []widget.Widget{&widget.Stack{Children: rows}},
 	}
 	if profile != nil {
-		sec.Sub = "The processor's temperature leads the grid above; these are the other places the board measures itself. Each bar runs to the point where the hardware would protect itself."
+		sec.Sub = "Each bar runs to the point where the hardware would protect itself."
 		if cpu := inv.CPUTemp(); cpu != nil && cpu.Crit > 0 {
 			sec.Meta = fmt.Sprintf(tr("warns at %s"), celsiusRound(cpu.Warn)) + " · " + fmt.Sprintf(tr("protects at %s"), celsiusRound(cpu.Crit))
 			sec.MetaVerbatim = true
@@ -367,7 +367,6 @@ func hardwarePower(tr func(string) string, inv sensors.Inventory) widget.Widget 
 	return &widget.Section{
 		Title: "Power", Hairline: true,
 		Meta: meta, MetaVerbatim: true,
-		Sub:      "Voltage is each rail's design point and barely moves; the current is the load, so watts is the number that changes. The system input is the figure in the grid above — these are the rails it feeds.",
 		Children: []widget.Widget{table},
 	}
 }
@@ -477,7 +476,6 @@ func hardwareReadings(inv sensors.Inventory) []widget.Widget {
 	section := &widget.Section{
 		Title:    "All sensors",
 		Hairline: true,
-		Sub:      "Every temperature, power rail, fan, and fibre reading this router exposes — each by its own kernel name.",
 		Children: []widget.Widget{&widget.Table{Dense: true, Columns: readingColumns(), Rows: rows}},
 	}
 	return []widget.Widget{section}

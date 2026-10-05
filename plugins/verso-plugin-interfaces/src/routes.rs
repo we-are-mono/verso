@@ -525,7 +525,7 @@ fn drawer(m: &Model, existing: Option<&Record>, route: &Route, e: &Errors) -> Ro
         Widget::switch_keyed("enabled", "Enabled", "disabled", "", route.enabled),
         Widget::section(
             "Further options",
-            "Leave these unless something specific asks for them.",
+            "",
             vec![
                 field(route, e, "table", "Table", "A routing table number or name. Empty is the main table."),
                 field(route, e, "source", "Source address", "The address traffic on this route is sent from."),
@@ -906,7 +906,10 @@ mod tests {
         let view = json_of(page(&model(), "", ""));
         assert_eq!(view["act"]["label"], "New route");
         assert_eq!(view["act"]["href"], "/plugins/interfaces/routes?open=new");
-        assert!(find(&view, &|v| v["type"] == "actionbar").is_none(), "{view}");
+        assert!(
+            find(&view, &|v| v["type"] == "actionbar").is_none(),
+            "{view}"
+        );
     }
 
     #[test]

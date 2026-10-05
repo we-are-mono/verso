@@ -39,15 +39,10 @@ pub const OPEN: &str = "open";
 pub const TAB: &str = "tab";
 
 const MATCH_TITLE: &str = "What this rule matches";
-const MATCH_SUB: &str = "Traffic has to satisfy everything below.";
 
 const ACTION_TITLE: &str = "What happens to it";
-const ACTION_SUB: &str =
-    "The first rule in the chain that matches decides, and nothing after it is consulted.";
 
 const WHEN_TITLE: &str = "When it applies";
-const WHEN_SUB: &str =
-    "Outside this window the rule is skipped entirely, as though it were not in the chain.";
 
 /// CONFIG_PATH is the file the panel previews, named as the operator would type
 /// it.
@@ -85,7 +80,7 @@ pub fn new_href(src: &str, dest: &str) -> String {
 /// blank builds the panel for a rule that does not exist yet: the same three
 /// readings, the same rows, and a commit that adds rather than saves.
 pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> RowDrawer {
-    let (title, sub, mut fields) = tab_body(model, form, errors, tab);
+    let (title, mut fields) = tab_body(model, form, errors, tab);
     // A rule that does not exist yet has no config to preview and no hits to
     // count: the panel states what it will be, not what it is.
     fields.extend(carried(form, tab));
@@ -97,7 +92,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
         open: true,
         children: vec![fields::panel_form(
             "Add rule",
-            vec![Widget::section(title, sub, fields).flush()],
+            vec![Widget::section(title, "", fields).flush()],
         )],
         ..RowDrawer::default()
     }
@@ -220,7 +215,7 @@ fn schedule_state(form: &RuleForm) -> String {
 /// whole rule, and a tab that hid them would be a tab you could save from
 /// without seeing what you saved.
 fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &str) -> Vec<Widget> {
-    let (title, sub, mut fields) = tab_body(model, form, errors, tab);
+    let (title, mut fields) = tab_body(model, form, errors, tab);
     fields.extend(carried(form, tab));
     fields.push(Widget::config_preview(
         CONFIG_PATH,
@@ -233,7 +228,7 @@ fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &s
     // what it costs.
     vec![fields::panel_form(
         "Save rule",
-        vec![Widget::section(title, sub, fields).flush()],
+        vec![Widget::section(title, "", fields).flush()],
     )]
 }
 
@@ -526,19 +521,19 @@ fn clock(form: &RuleForm) -> &'static str {
     }
 }
 
-/// tab_body is one tab's heading, lede and rows. All three readings are the same
-/// flat set of rows — the panel asks a rule three questions and asks each of them
-/// the same way.
+/// tab_body is one tab's heading and rows. All three readings are the same flat
+/// set of rows — the panel asks a rule three questions and asks each of them the
+/// same way.
 fn tab_body(
     model: &Firewall,
     form: &RuleForm,
     errors: &Errors,
     tab: &str,
-) -> (&'static str, &'static str, Vec<Widget>) {
+) -> (&'static str, Vec<Widget>) {
     match tab {
-        ACTION => (ACTION_TITLE, ACTION_SUB, action_fields(form, errors)),
-        WHEN => (WHEN_TITLE, WHEN_SUB, when_fields(form, errors)),
-        _ => (MATCH_TITLE, MATCH_SUB, match_fields(model, form, errors)),
+        ACTION => (ACTION_TITLE, action_fields(form, errors)),
+        WHEN => (WHEN_TITLE, when_fields(form, errors)),
+        _ => (MATCH_TITLE, match_fields(model, form, errors)),
     }
 }
 

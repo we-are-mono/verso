@@ -28,24 +28,16 @@ use crate::page;
 const HEADING: &str = "Firewall settings";
 
 const ZONE_TITLE: &str = "When no zone applies";
-const ZONE_SUB: &str = "The policies for traffic on an interface that sits in no zone. Zones \
-carry their own; these catch what falls through.";
 
 const PROTECTION_TITLE: &str = "Protection";
-const PROTECTION_SUB: &str = "Against floods and stray packets. The defaults suit a home router.";
 
 const SPEED_TITLE: &str = "Speed";
-const SPEED_SUB: &str = "Let established connections skip the rules. The first packets of every \
-connection still pass them.";
 
 const TCP_TITLE: &str = "TCP and helpers";
-const TCP_SUB: &str = "Kernel-level knobs the firewall sets on the router's own stack. Leave \
-them alone unless you are chasing something specific.";
 
 const CUSTOM_TITLE: &str = "Custom rules";
-const CUSTOM_SUB: &str = "Rule files fw4 loads alongside the ruleset this page writes. Every \
-file in /etc/nftables.d/ loads; a change to one is checked with the whole ruleset when you \
-apply it.";
+const CUSTOM_SUB: &str = "Every file in /etc/nftables.d/ loads with the ruleset and is checked \
+with it when you apply.";
 
 const INCLUDES_LABEL: &str = "Files the config includes";
 
@@ -323,7 +315,7 @@ fn written(model: &Firewall) -> String {
 fn baseline(d: &Defaults) -> Widget {
     Widget::section(
         ZONE_TITLE,
-        ZONE_SUB,
+        "",
         vec![
             policy("input", "Traffic to this router", INPUT_HELP, &d.input),
             policy("output", "Traffic from this router", OUTPUT_HELP, &d.output),
@@ -416,7 +408,7 @@ fn policy(name: &str, label: &str, help: &str, value: &str) -> Widget {
 fn protection(d: &Defaults) -> Widget {
     Widget::section(
         PROTECTION_TITLE,
-        PROTECTION_SUB,
+        "",
         vec![
             switch(
                 "synflood_protect",
@@ -488,7 +480,7 @@ to reach places routing would not allow, which is why it is refused.";
 fn speed(d: &Defaults) -> Widget {
     Widget::section(
         SPEED_TITLE,
-        SPEED_SUB,
+        "",
         vec![Widget::Conditional {
             name: "flow_offloading".into(),
             label: "Shortcut established connections".into(),
@@ -516,7 +508,7 @@ on both interfaces.";
 fn tcp(d: &Defaults) -> Widget {
     Widget::section(
         TCP_TITLE,
-        TCP_SUB,
+        "",
         vec![
             switch("tcp_syncookies", "SYN cookies", COOKIES_HELP, d.syn_cookies),
             switch(

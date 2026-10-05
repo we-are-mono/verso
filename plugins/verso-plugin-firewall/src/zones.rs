@@ -44,8 +44,6 @@ const NOTE: &str = "Input decides traffic to the router itself, Output what the 
 into the zone, and Forward traffic between the zone's own networks. Reaching another zone is \
 decided by the forwardings under Reaches.";
 
-const DEFAULTS_SUB: &str = "The baseline applied before any zone or rule — `config defaults`.";
-
 const EMPTY: &str = "No zones yet — every network is governed by the defaults below.";
 
 const REFUSED: &str =
@@ -92,7 +90,7 @@ pub fn page(model: &Firewall) -> Envelope {
 fn frame(model: &Firewall, open: Option<&Open>, blank: Option<RowDrawer>) -> Envelope {
     let children = vec![
         table(model, open),
-        Widget::section("Global defaults", DEFAULTS_SUB, vec![defaults(model)]),
+        Widget::section("Global defaults", "", vec![defaults(model)]),
     ];
     page::envelope(HEADING, Widget::stack(children)).with_act(act(blank))
 }

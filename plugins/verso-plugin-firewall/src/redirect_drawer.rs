@@ -45,14 +45,6 @@ pub const DELETE_QUESTION: &str = "Delete port forward “%s”?";
 pub const DELETE_MESSAGE: &str = "Traffic arriving on that port stops being forwarded, and the \
 device behind it is no longer reachable from outside.";
 
-const INCOMING_SUB: &str = "The traffic the router picks up before it decides where it goes.";
-
-const DESTINATION_SUB: &str = "Where the router sends that traffic instead. Leave the address \
-blank to keep the traffic on the router itself.";
-
-const REACH_SUB: &str = "Whether your own devices can use the public address too, instead of \
-having to know the local one.";
-
 const REFLECTION_HELP: &str = "On, a device at home that asks for your public address still \
 reaches this forward. Off, it has to use the local address instead — the forward then works \
 only from the internet.";
@@ -164,7 +156,7 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
     }
     Widget::section(
         "Incoming traffic",
-        INCOMING_SUB,
+        "",
         vec![
             fields::row_group(vec![
                 fields::select_field("src", "Arrives from", &redirect.src, zones, errors),
@@ -196,7 +188,7 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
 fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::section(
         "Send it to",
-        DESTINATION_SUB,
+        "",
         vec![
             fields::row_group(vec![
                 fields::text_field(
@@ -274,7 +266,7 @@ fn zone_options(model: &Firewall, current: &str, blank: &str) -> Vec<SelectOptio
 fn reach(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::section(
         "Reaching it from home",
-        REACH_SUB,
+        "",
         vec![Widget::gate(
             "reflection",
             "Also works from inside your network",
@@ -324,7 +316,7 @@ routers need. Name zones to cover others as well.";
 fn handling(redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::section(
         "Counting and logging",
-        HANDLING_SUB,
+        "",
         vec![
             Widget::switch_keyed(
                 "counter",
@@ -372,8 +364,6 @@ fn handling(redirect: &RedirectForm, errors: &Errors) -> Widget {
         ],
     )
 }
-
-const HANDLING_SUB: &str = "What the forward does besides sending the traffic on.";
 
 const COUNTER_HELP: &str = "Keeps a packet and byte count on this forward, which is what the \
 listing's hit column reads. Off saves a little work per packet and leaves it blank.";
@@ -589,7 +579,11 @@ mod tests {
         assert_eq!(control(&drawer, "enabled")["on"], true);
         assert_eq!(control(&drawer, "proto")["value"], "tcp udp");
         assert_eq!(control(&drawer, "src")["value"], "");
-        assert_eq!(body["act"]["href"], new_href(), "the page's Add opens this panel");
+        assert_eq!(
+            body["act"]["href"],
+            new_href(),
+            "the page's Add opens this panel"
+        );
     }
 
     #[test]

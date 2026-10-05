@@ -11,12 +11,12 @@
 
 use verso_plugin::{
     commit, commit_new, dhcp, json, ColumnWidth, CommitOp, Envelope, Errors, Form, HeadingAct,
-    List, Map, Request, RowDrawer, SelectOption, Switch, Table, TableCell, TableColumn,
-    TableRow, TableRowAct, Tone, Value, Widget,
+    List, Map, Request, RowDrawer, SelectOption, Switch, Table, TableCell, TableColumn, TableRow,
+    TableRowAct, Tone, Value, Widget,
 };
 
-use crate::format::{self, Subnet, DEFAULT_LIMIT, DEFAULT_START};
 use crate::form;
+use crate::format::{self, Subnet, DEFAULT_LIMIT, DEFAULT_START};
 use crate::hosts;
 use crate::leases::{self, RESERVE};
 use crate::live::Leases;
@@ -136,7 +136,10 @@ impl State {
     fn opened(&self, key: &str) -> Open {
         if self.servers.iter().any(|server| server.network == key) {
             let pool = Pool::read(self.model.pool(key));
-            return Open::Server(key.into(), self.server_drawer(key, &pool, &Errors::default()));
+            return Open::Server(
+                key.into(),
+                self.server_drawer(key, &pool, &Errors::default()),
+            );
         }
         match hosts::find(&self.model, key) {
             Some(options) => {
@@ -198,7 +201,6 @@ impl State {
         };
         let reservations = Widget::Section(verso_plugin::SectionWidget {
             title: "Reservations".into(),
-            sub: "Devices that get the same address every time they ask.".into(),
             meta: self.model.hosts.len().to_string(),
             meta_position: "inline".into(),
             hairline: true,
@@ -210,21 +212,20 @@ impl State {
             Widget::stack(vec![
                 section(
                     "Servers",
-                    "One per network. Each hands out addresses from its own range.",
+                    "",
                     &self.servers.len().to_string(),
                     self.servers_table(server_open),
                 ),
                 reservations,
                 section(
                     "Leases",
-                    "Who holds an address right now, read live from the router.",
+                    "",
                     &self.leases.all().len().to_string(),
                     leases::table(&self.model, &self.leases),
                 ),
                 section(
                     "Settings",
-                    "How every network is served. These are dnsmasq’s own options, so they \
-                     apply to all of the servers above.",
+                    "These apply to every server above.",
                     "",
                     self.settings_form(settings),
                 ),
@@ -241,9 +242,7 @@ impl State {
             .iter()
             .map(|server| {
                 let drawer = match &open {
-                    Some((network, _)) if *network == server.network => {
-                        open.take().map(|(_, d)| d)
-                    }
+                    Some((network, _)) if *network == server.network => open.take().map(|(_, d)| d),
                     _ => None,
                 };
                 self.server_row(server, drawer)
@@ -388,8 +387,8 @@ impl State {
                 errors,
             ),
         ]);
-        let mut dns = Widget::list("dns", "DNS servers", "ip4addr", &pool.dns, "")
-            .writes("dhcp_option");
+        let mut dns =
+            Widget::list("dns", "DNS servers", "ip4addr", &pool.dns, "").writes("dhcp_option");
         if let Widget::List(List {
             style, errors: e, ..
         }) = &mut dns
@@ -412,7 +411,7 @@ impl State {
             .ruled(),
             Widget::section(
                 "IPv6",
-                "Served by odhcpd beside the IPv4 pool.",
+                "",
                 vec![
                     select("ra", "Router advertisements", &pool.ra, errors),
                     checkbox(
@@ -436,8 +435,10 @@ impl State {
             title: network.into(),
             closed: page::root_href(),
             open: true,
-            children: vec![page::panel_form("Save DHCP server", fields)
-                .at(CONFIG, self.model.pool(network).map_or(network, |p| &p.section))],
+            children: vec![page::panel_form("Save DHCP server", fields).at(
+                CONFIG,
+                self.model.pool(network).map_or(network, |p| &p.section),
+            )],
             ..RowDrawer::default()
         }
     }
@@ -518,7 +519,9 @@ impl State {
         let mut options: Vec<(String, Value)> = vec![("interface".into(), json!(network))];
         if let Some(old) = old {
             options.extend(old.entries().into_iter().filter(|(option, _)| {
-                option != "interface" && !OWNED.contains(&option.as_str()) && option != "dhcp_option"
+                option != "interface"
+                    && !OWNED.contains(&option.as_str())
+                    && option != "dhcp_option"
             }));
         }
         options.extend(pool.values(old));
@@ -538,7 +541,14 @@ impl State {
     fn settings_form(&self, errors: &Errors) -> Widget {
         let daemon = &self.model.daemon;
         let flag = |option: &str, label: &str, desc: &str, fallback: bool| {
-            checkbox(option, label, option, desc, daemon.flag(option, fallback), errors)
+            checkbox(
+                option,
+                label,
+                option,
+                desc,
+                daemon.flag(option, fallback),
+                errors,
+            )
         };
         Widget::Form {
             style: "settings".into(),
@@ -646,7 +656,6 @@ impl State {
             false => commit(CONFIG, &daemon.section, Value::Object(values)),
         }])
     }
-
 }
 
 /// Pool is one network's server as its drawer holds it, in the words the
@@ -908,7 +917,12 @@ ra=server&dhcpv6=server&ra_slaac=1";
     fn a_server_states_its_range_in_real_addresses_and_how_full_it_is() {
         let page = read("");
         let rows = sections(&page)[0]["children"][0]["rows"].clone();
-        let lan = rows.as_array().unwrap().iter().find(|r| r["id"] == "lan").unwrap();
+        let lan = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["id"] == "lan")
+            .unwrap();
         assert_eq!(lan["panel"], "/plugins/dnsdhcp/?open=lan");
         assert_eq!(lan["cells"][0]["href"], lan["panel"]);
         assert_eq!(lan["cells"][2]["text"], "10.0.0.100 – 10.0.0.249");
@@ -918,10 +932,20 @@ ra=server&dhcpv6=server&ra_slaac=1";
         assert_eq!(lan["cells"][4]["text"], "12h");
         assert_eq!(lan["cells"][5]["text"], "SLAAC and DHCPv6");
         // A pool that states no offsets still shows the span dnsmasq would use.
-        let guest = rows.as_array().unwrap().iter().find(|r| r["id"] == "guest").unwrap();
+        let guest = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["id"] == "guest")
+            .unwrap();
         assert_eq!(guest["cells"][2]["text"], "10.0.20.100 – 10.0.20.249");
         // The uplink is a client here, and says nothing else.
-        let wan = rows.as_array().unwrap().iter().find(|r| r["id"] == "wan").unwrap();
+        let wan = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["id"] == "wan")
+            .unwrap();
         assert_eq!(wan["cells"][1]["text"], "Client — uplink");
         assert_eq!(wan["cells"][2]["text"], "—");
     }
@@ -934,7 +958,10 @@ ra=server&dhcpv6=server&ra_slaac=1";
         assert_eq!(control(&lan, "serve")["on"], true);
         assert_eq!(control(&lan, "start")["value"], "100");
         assert_eq!(control(&lan, "ra")["value"], "server");
-        assert_eq!(control(&lan, "dns")["items"], serde_json::json!(["10.0.0.30"]));
+        assert_eq!(
+            control(&lan, "dns")["items"],
+            serde_json::json!(["10.0.0.30"])
+        );
         // A reservation by its section, or by its device's MAC.
         assert_eq!(open_drawer(&read("open=host_nas"))["title"], "nas");
         assert_eq!(open_drawer(&read("open=30:9c:23:5e:88:01"))["title"], "nas");
@@ -977,7 +1004,10 @@ ra=server&dhcpv6=server&ra_slaac=1";
 
     #[test]
     fn turning_a_server_off_keeps_its_pool_as_written() {
-        let off = answer("open=lan", "_panel=1&leasetime=12h&ra=server&dhcpv6=server&ra_slaac=1");
+        let off = answer(
+            "open=lan",
+            "_panel=1&leasetime=12h&ra=server&dhcpv6=server&ra_slaac=1",
+        );
         let values = &off["commit"][0]["values"];
         assert_eq!(values["ignore"], "1");
         assert!(values.get("start").is_none());
@@ -1001,7 +1031,10 @@ ra=server&dhcpv6=server&ra_slaac=1";
             );
         }
         // The uplink has no address of its own to hand out from.
-        let uplink = answer("open=wan", "_panel=1&serve=1&leasetime=8h&ra=disabled&dhcpv6=disabled");
+        let uplink = answer(
+            "open=wan",
+            "_panel=1&serve=1&leasetime=8h&ra=disabled&dhcpv6=disabled",
+        );
         assert!(uplink.get("commit").is_none());
         assert!(!control(&open_drawer(&uplink), "serve")["error"]
             .as_str()
@@ -1032,9 +1065,15 @@ ra=server&dhcpv6=server&ra_slaac=1";
 
     #[test]
     fn a_reservation_saves_from_its_drawer_and_removes_from_its_row() {
-        let made = answer("open=new", "_panel=1&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142");
+        let made = answer(
+            "open=new",
+            "_panel=1&name=toms-iphone&mac=42:e6:ad:ff:b7:af&ip=10.0.0.142",
+        );
         assert_eq!(made["commit"][0]["type"], "host");
-        let edited = answer("open=host_nas", "_panel=1&name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.31");
+        let edited = answer(
+            "open=host_nas",
+            "_panel=1&name=nas&mac=30:9C:23:5E:88:01&ip=10.0.0.31",
+        );
         assert_eq!(edited["commit"][0]["section"], "host_nas");
         let removed = answer("", "_remove=host_thermo");
         assert_eq!(
@@ -1056,7 +1095,10 @@ ra=server&dhcpv6=server&ra_slaac=1";
         );
         let refused = answer("", &format!("{standing}&dhcpleasemax=lots"));
         assert!(refused.get("commit").is_none());
-        assert!(!control(&refused, "dhcpleasemax")["error"].as_str().unwrap_or("").is_empty());
+        assert!(!control(&refused, "dhcpleasemax")["error"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty());
     }
 
     #[test]
@@ -1069,9 +1111,17 @@ ra=server&dhcpv6=server&ra_slaac=1";
         assert_eq!(page["act"]["label"], "New reservation");
         assert_eq!(page["act"]["href"], "/plugins/dnsdhcp/?open=new");
         assert_eq!(page["act"]["opens_panel"], true);
-        assert!(find(&page, &|v| v["type"] == "actionbar").is_none(), "{page}");
-        assert!(find(&page, &|v| v["label"] == "New reservation" && v["type"] == "link").is_none());
+        assert!(
+            find(&page, &|v| v["type"] == "actionbar").is_none(),
+            "{page}"
+        );
+        assert!(find(&page, &|v| v["label"] == "New reservation"
+            && v["type"] == "link")
+        .is_none());
         // An address asking for a new one arrives with its panel open.
-        assert_eq!(read("open=new")["act"]["drawer"]["title"], "New reservation");
+        assert_eq!(
+            read("open=new")["act"]["drawer"]["title"],
+            "New reservation"
+        );
     }
 }

@@ -95,7 +95,6 @@
   "The computer's time could not be read. Try again.": "Časa računalnika ni bilo mogoče prebrati. Poskusite znova.",
   "The router's system configuration could not be read.": "Sistemske konfiguracije usmerjevalnika ni bilo mogoče prebrati.",
   "The router itself": "Usmerjevalnik sam",
-  "These settings control the router's uhttpd web server.":"Te nastavitve upravljajo spletni strežnik uhttpd na usmerjevalniku.",
   "These settings no longer exist. Reload the page.": "Te nastavitve ne obstajajo več. Ponovno naložite stran.",
   "Time": "Čas",
   "Time left": "Preostali čas",

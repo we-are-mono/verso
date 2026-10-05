@@ -48,15 +48,12 @@ pub const TAB: &str = "tab";
 pub const NEW: &str = "new";
 
 const TRAFFIC_TITLE: &str = "What this zone allows";
-const TRAFFIC_SUB: &str = "These are the defaults for the zone. A rule can narrow them; nothing \
-can widen them.";
 
 const REACHES_TITLE: &str = "Where it may go";
-const REACHES_SUB: &str = "Each crossing is a `config forwarding` section. Without one, traffic \
-from this zone reaches no other zone at all — whatever the policies say.";
+const REACHES_SUB: &str = "Without a crossing, traffic from this zone reaches no other zone, \
+whatever the policies say.";
 
 const ADVANCED_TITLE: &str = "Advanced";
-const ADVANCED_SUB: &str = "Leave these unless something specific asks for them.";
 
 /// CONFIG_PATH is the file the panel previews, named as the operator would type
 /// it.
@@ -73,8 +70,8 @@ a new name. Custom nftables includes and other packages' settings keep the old o
 
 const NAMED_ELSEWHERE: &str = "Named elsewhere";
 
-const NAMED_ELSEWHERE_SUB: &str = "What else in the firewall config names this zone. A new name \
-carries to each of them; deleting the zone leaves them matching nothing.";
+const NAMED_ELSEWHERE_SUB: &str = "A new name carries to each of them; deleting the zone leaves \
+them matching nothing.";
 
 const ENABLED_HELP: &str = "Off, firewall4 skips this zone entirely — every rule that names it \
 stops applying, and the traffic it covered falls through to the global defaults. The section stays \
@@ -307,12 +304,8 @@ fn tab_body(
             REACHES_SUB,
             reaches_fields(model, zone, reaches, errors),
         ),
-        ADVANCED => (ADVANCED_TITLE, ADVANCED_SUB, advanced_fields(form, errors)),
-        _ => (
-            TRAFFIC_TITLE,
-            TRAFFIC_SUB,
-            traffic_fields(model, zone, form, errors),
-        ),
+        ADVANCED => (ADVANCED_TITLE, "", advanced_fields(form, errors)),
+        _ => (TRAFFIC_TITLE, "", traffic_fields(model, zone, form, errors)),
     }
 }
 
