@@ -91,7 +91,7 @@ func TestDrawerTabsAreTheirNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := b.String()
-	if n := strings.Count(got, "items-center whitespace-nowrap text-sm leading-5 transition"); n != 2 {
+	if n := strings.Count(got, "items-center py-3.5 text-sm leading-7 whitespace-nowrap transition"); n != 2 {
 		t.Errorf("want both tabs at the 14px label scale, found %d:\n%s", n, got)
 	}
 	if strings.Contains(got, "whitespace-nowrap text-base") {

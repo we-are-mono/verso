@@ -13,10 +13,10 @@
 {{template "verso-drawer-header" .Title}}
 
 {{if gt (len .Tabs) 1}}
-<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
+<nav class="flex flex-none gap-6 overflow-x-auto {{template "verso-drawer-inset"}} shadow-[inset_0_-1px_0_var(--color-rule)]" aria-label="{{ t "Sections" }}">
   {{range .Tabs}}
   <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"{{if .Active}} aria-current="page"{{end}}
-    class="flex shrink-0 items-center whitespace-nowrap text-sm leading-5 transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
+    class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
   {{end}}
 </nav>
 {{end}}

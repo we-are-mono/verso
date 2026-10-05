@@ -172,10 +172,11 @@
        router writes, and a footer would only be pushed away under it. The
        copy puts the facts on the clipboard as a bug report asks for them, and
        the line answers by washing what it copied, fact by fact, the way a
-       selection would (verso.css). */}}
+       selection would (verso.css). It is 56px as the top bar is: its 28px
+       copy and 14px of air either side, the hairline drawn inside it. */}}
   {{if ne .Width "full"}}{{with .Colophon}}
-  <footer data-verso-colophon x-data="copy" :data-copied="done" class="border-t border-rule bg-quiet">
-    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-10 py-3 font-mono text-base leading-6 text-meta">
+  <footer data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]">
+    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-10 py-3.5 font-mono text-base leading-6 text-meta">
       <p class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
         <span class="verso-colophon-fact font-medium">{{.Release}}</span>
         {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon-fact hidden [--fact:1] sm:inline">{{.Revision}}</span>{{end}}

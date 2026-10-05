@@ -182,6 +182,8 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		`id="verso-staged-review" data-count="2"`, ">2 staged changes</h2>",
+		// The review opens on the band every drawer opens with.
+		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
 		// The sentence is the row, at the words' weight; its verb leads it.
 		`text-sm font-semibold text-ink">Renamed the router.</span>`, ">changed</span>",
 		// Its raw line waits under the row, led by the glyph of a change.

@@ -65,3 +65,18 @@ func TestColophonClosesEveryPageButALog(t *testing.T) {
 		}
 	}
 }
+
+// The colophon is 56px as the top bar is: its 28px copy and 14px of air
+// either side, the hairline drawn inside the band, so no fixed height or
+// border adds to it.
+func TestColophonIsItsLineAndItsAir(t *testing.T) {
+	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
+	for _, want := range []string{
+		`data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]"`,
+		`items-center gap-4 px-10 py-3.5 font-mono text-base leading-6 text-meta`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("colophon missing %q", want)
+		}
+	}
+}

@@ -532,7 +532,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		// the panel is about is still on screen at the bottom of a long form.
 		"ml-auto h-full max-h-none w-full max-w-3xl flex-col open:flex",
 		"overflow-hidden",
-		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`, // the shared drawer panel's header
+		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // the shared drawer panel's header
 		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-10",
 	} {
 		if !strings.Contains(got, want) {
@@ -1189,11 +1189,15 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	}
 	got := render(t, r, tbl)
 	for _, want := range []string{
-		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`,
+		// The header and the strip are 56px as the top bar is: a 28px line
+		// and 14px of air either side, the hairline drawn inside the band.
+		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
 		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h2>`,
 		// The strip: the tab in force carries the action colour under it; the
-		// rest stay quiet.
-		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-10"`,
+		// rest stay quiet. The tabs are the air, so an underline stands on the
+		// strip's own hairline.
+		`<nav class="flex flex-none gap-6 overflow-x-auto px-10 shadow-[inset_0_-1px_0_var(--color-rule)]"`,
+		`class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition`,
 		`aria-current="page"`,
 		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
 		// A tabbed panel's body starts 32px under the strip, as a band's title

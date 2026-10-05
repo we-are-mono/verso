@@ -525,8 +525,10 @@
 {{define "verso-drawer-inset"}}px-10{{end}}
 {{define "verso-drawer-bleed"}}-mx-10{{end}}
 
+{{/* The band is 56px as the top bar is, and built the same way: its 28px
+     line and 14px of air either side, the hairline drawn inside it. */}}
 {{define "verso-drawer-header"}}
-<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet {{template "verso-drawer-inset"}}">
+<header class="flex flex-none items-center gap-4 bg-quiet {{template "verso-drawer-inset"}} py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
   <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
   <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </header>
@@ -542,9 +544,11 @@
            panel with one thing to say sends no tabs, and a strip that decides
            nothing is chrome. A tab names a reading as a label names a setting,
            so it is its name alone, set at the labels' 14px, and the section
-           heading under the strip stays the clear step up. */}}
+           heading under the strip stays the clear step up. The strip is 56px
+           as the header is, and its tabs are the air: each stands the full
+           height, so an underline sits on the strip's own hairline. */}}
       {{if .Tabs}}
-      <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
+      <nav class="flex flex-none gap-6 overflow-x-auto {{template "verso-drawer-inset"}} shadow-[inset_0_-1px_0_var(--color-rule)]" aria-label="{{ t "Sections" }}">
         {{range .Tabs}}
         {{/* A reading is swapped into the panel that is already open, never
              navigated to: the frame stays where it is, so it does not slide in
@@ -553,7 +557,7 @@
              script the link is simply followed and the page answers with the
              panel open on it. */}}
         <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-panel]" hx-swap="innerHTML" hx-replace-url="true"{{if .Active}} aria-current="page"{{end}}
-          class="flex shrink-0 items-center whitespace-nowrap text-sm leading-5 transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
+          class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
         {{end}}
       </nav>
       {{end}}

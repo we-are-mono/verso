@@ -41,12 +41,9 @@
      amethyst — and opens on the uci lines it stands for; a change no plugin
      described keeps its raw line as the row. */}}
 {{define "verso-staged-review"}}<div id="verso-staged-review" data-count="{{.Count}}" class="contents">
-  {{/* The header is the band every drawer opens with: a 28px line inset 12px,
-       the title in the band's voice, and the way out. */}}
-  <header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet {{template "verso-drawer-inset"}}">
-    <h2 class="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-body">{{.Label}}</h2>
-    <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
-  </header>
+  {{/* The header is the band every drawer opens with: the title in the
+       band's voice, and the way out. */}}
+  {{template "verso-drawer-header" .Label}}
   <div class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto {{template "verso-drawer-inset"}} pb-8">
     {{range .Groups}}
     {{/* the page's band, running edge to edge inside the inset: a 28px line

@@ -376,7 +376,7 @@ func TestEntityPanelTabsAreTheirNames(t *testing.T) {
 		"Reserved address",      // the other tab
 		"Limits &amp; schedule", // the tab in force
 		">Save limits<",         // its commit row's verb
-		"whitespace-nowrap text-sm leading-5 transition",
+		"items-center py-3.5 text-sm leading-7 whitespace-nowrap transition",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("entity panel missing %q:\n%s", want, body)
