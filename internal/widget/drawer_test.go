@@ -32,7 +32,7 @@ func TestDrawerOneWidth(t *testing.T) {
 
 func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 	tr := fakeCatalog(map[string]string{
-		"New rule": "Novo pravilo", "Match": "Ujemanje", "Any": "Karkoli",
+		"New rule": "Novo pravilo", "Match": "Ujemanje",
 		"Close": "Zapri", "Sections": "Razdelki", "Save changes": "Shrani spremembe",
 		"Name": "Ime", "name-from-config": "must not translate an identity",
 	})
@@ -43,7 +43,7 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 	for _, existing := range []bool{false, true} {
 		d := &RowDrawer{
 			Title: "New rule", Open: true,
-			Tabs:     []DrawerTab{{Label: "Match", State: "Any", Href: "/panel?tab=match", Active: true}},
+			Tabs:     []DrawerTab{{Label: "Match", Href: "/panel?tab=match", Active: true}},
 			Children: []Widget{&Form{Fields: []Widget{&Field{Name: "name", Label: "Name", Value: "name-from-config"}}}},
 		}
 		var tree Widget = &ActionBar{Drawer: d}
@@ -59,7 +59,7 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 			t.Fatalf("existing=%v: found=%v, err=%v", existing, found, err)
 		}
 		html := out.String()
-		for _, want := range []string{wantTitle + "</h2>", `aria-label="Zapri"`, `aria-label="Razdelki"`, "Ujemanje", "Karkoli", `value="name-from-config"`, `value="csrf-token"`, "Shrani spremembe", `hx-get="/panel?tab=match"`} {
+		for _, want := range []string{wantTitle + "</h2>", `aria-label="Zapri"`, `aria-label="Razdelki"`, "Ujemanje", `value="name-from-config"`, `value="csrf-token"`, "Shrani spremembe", `hx-get="/panel?tab=match"`} {
 			if !strings.Contains(html, want) {
 				t.Errorf("existing=%v: localized drawer missing %q", existing, want)
 			}
@@ -76,6 +76,33 @@ func TestDrawerHeadingAndTabsStayLocalized(t *testing.T) {
 // open panel's contents and nothing around them — the frame is already on screen
 // and only what it holds is being replaced. A tree with no open panel reports so
 // rather than inventing one, and the caller then renders the page.
+// TestDrawerTabsAreTheirNames: a tab names a reading, as a field's label names
+// a setting, so it is set at the drawer's 14px label scale, and it is its name
+// alone — no chip of where the object stands beside it; the 18px section
+// heading under the strip is the next step up, never a near neighbour.
+func TestDrawerTabsAreTheirNames(t *testing.T) {
+	tbl := &Table{Rows: []TableRow{{ID: "r", Cells: []TableCell{{Text: "lan"}}, Drawer: &RowDrawer{
+		Title: "lan", Open: true,
+		Tabs:     []DrawerTab{{Label: "Traffic", Active: true}, {Label: "Reaches"}},
+		Children: []Widget{&Callout{Body: "the reading"}},
+	}}}}
+	var b strings.Builder
+	if _, err := newRenderer(t).RenderOpenPanelWithToken(&b, tbl, "tok", "", nil, Flash{}); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if n := strings.Count(got, "items-center whitespace-nowrap text-sm leading-5 transition"); n != 2 {
+		t.Errorf("want both tabs at the 14px label scale, found %d:\n%s", n, got)
+	}
+	if strings.Contains(got, "whitespace-nowrap text-base") {
+		t.Error("a tab is set a step above the drawer's labels")
+	}
+	nav := got[strings.Index(got, "<nav"):strings.Index(got, "</nav>")]
+	if strings.Contains(nav, "<span") {
+		t.Errorf("a tab wears something beside its name: %s", nav)
+	}
+}
+
 func TestRenderOpenPanelWithToken(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{
@@ -84,7 +111,7 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 			{ID: "r1", Cells: []TableCell{{Text: "Allow-Ping"}}, Panel: "/x?open=r1"},
 			{ID: "r2", Cells: []TableCell{{Text: "Allow-DHCP"}}, Drawer: &RowDrawer{
 				Title: "Allow-DHCP", Open: true,
-				Tabs:     []DrawerTab{{Label: "Match", State: "5 conditions", Active: true}},
+				Tabs:     []DrawerTab{{Label: "Match", Active: true}},
 				Children: []Widget{&Callout{Body: "the reading"}},
 			}},
 		},
@@ -98,7 +125,7 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 		t.Fatal("the open panel was not found")
 	}
 	got := b.String()
-	for _, want := range []string{"Allow-DHCP", "the reading", `aria-label="Sections"`, "5 conditions"} {
+	for _, want := range []string{"Allow-DHCP", "the reading", `aria-label="Sections"`, ">Match</a>"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("panel contents missing %q:\n%s", want, got)
 		}

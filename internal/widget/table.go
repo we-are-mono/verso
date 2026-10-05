@@ -406,13 +406,10 @@ type RowDrawer struct {
 	Children Widgets     `json:"children"`
 }
 
-// DrawerTab is one heading in a panel's strip: what it is called, where the
-// object stands under it, and the address that opens it. State is the chip
-// beside the label — "5 conditions", "accept" — which takes the tab's own
-// weight, denim on the one in force and quiet on the rest.
+// DrawerTab is one heading in a panel's strip: what it is called and the
+// address that opens it. Its name is the whole tab.
 type DrawerTab struct {
 	Label  string `json:"label"`
-	State  string `json:"state,omitempty"`
 	Href   string `json:"href,omitempty"`
 	Active bool   `json:"active,omitempty"`
 }

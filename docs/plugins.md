@@ -200,10 +200,6 @@ differently:
 - `cta` and `consequence` are that commit row's words — the verb, and what
   applying it costs. Only you know; a tab that stages nothing sets neither and no
   row is drawn.
-- `state` is where the subject stands in a word or two — `"blocked"`, `"no
-  limit"`, an address. The shell wears it as a chip beside the tab's label, so a
-  panel with several tabs answers what it was opened to ask before a tab is
-  chosen.
 - `commit` stages as it does anywhere else; a submission you refuse answers 422
   with the offending controls marked and asks for no writes.
 

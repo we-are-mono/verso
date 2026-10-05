@@ -16,12 +16,7 @@
 <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
   {{range .Tabs}}
   <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-entity-body]" hx-swap="innerHTML"{{if .Active}} aria-current="page"{{end}}
-    class="flex shrink-0 items-center gap-2 whitespace-nowrap text-base transition-colors {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}
-    {{/* Where the subject stands under this tab, so the strip answers the
-         question the panel was opened to ask before a tab is chosen. The chip
-         takes the tab's own weight: denim on the one in force, quiet on the
-         rest. */}}
-    {{if .State}}<span class="{{template "verso-chip-box"}} {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
+    class="flex shrink-0 items-center whitespace-nowrap text-sm leading-5 transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
   {{end}}
 </nav>
 {{end}}

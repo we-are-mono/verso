@@ -2049,15 +2049,11 @@ pub struct RowDrawer {
     pub children: Vec<Widget>,
 }
 
-/// DrawerTab is one heading in a panel's strip: what it is called, where the
-/// object stands under it, and the address that opens it. `state` is the chip
-/// beside the label — "5 conditions", "accept" — which takes the tab's own
-/// weight, denim on the one in force and quiet on the rest.
+/// DrawerTab is one heading in a panel's strip: what it is called and the
+/// address that opens it. Its name is the whole tab.
 #[derive(Serialize, Debug, Default)]
 pub struct DrawerTab {
     pub label: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub state: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub href: String,
     #[serde(skip_serializing_if = "is_false")]
@@ -2521,13 +2517,6 @@ pub struct Envelope {
     /// the shell draws no commit row. Ignored on an ordinary page render.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub cta: String,
-    /// Where this tab's subject stands, in a word or two — "blocked", "no
-    /// limit", an address. The shell wears it as a chip beside the tab's label,
-    /// so a panel with several tabs answers what it was opened to ask before a
-    /// tab is chosen. Only the plugin knows it; a tab with no state to state
-    /// sets none and wears no chip. Ignored on an ordinary page render.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub state: String,
     /// A page made only of direct reads and commands, not staged configuration:
     /// nothing on it stages, though the staged-changes chip still shows what waits.
     /// Pending changes from elsewhere remain visible, and a `commit` still
@@ -2561,15 +2550,6 @@ impl Envelope {
         self
     }
 
-    /// with_tab_state says where this tab's subject stands, for the chip the
-    /// shell hangs beside the tab's label. Keep it to a word or two and make it
-    /// the answer someone opened the panel for — "blocked", "no limit", the
-    /// address a device is pinned to.
-    pub fn with_tab_state(mut self, state: &str) -> Envelope {
-        self.state = state.into();
-        self
-    }
-
     /// page wraps a widget as the reply for one page render.
     pub fn page(title: &str, widget: Widget) -> Envelope {
         Envelope {
@@ -2581,7 +2561,6 @@ impl Envelope {
             back: None,
             notice: None,
             cta: String::new(),
-            state: String::new(),
             immediate: false,
             tone: String::new(),
             widget,

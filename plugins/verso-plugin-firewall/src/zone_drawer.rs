@@ -163,7 +163,7 @@ pub fn blank(
     fields.extend(carried(form, reaches, tab));
     RowDrawer {
         title: "New zone".into(),
-        tabs: tabs(None, form, reaches, tab),
+        tabs: tabs(None, tab),
         closed: page::zones_href(),
         open: true,
         children: vec![fields::panel_form("Add zone", fields)],
@@ -183,7 +183,7 @@ pub fn drawer(
 ) -> RowDrawer {
     RowDrawer {
         title: title(&zone.name),
-        tabs: tabs(Some(zone), form, reaches, tab),
+        tabs: tabs(Some(zone), tab),
         closed: page::zones_href(),
         open: true,
         children: body(model, zone, form, reaches, errors, tab),
@@ -201,22 +201,16 @@ fn title(name: &str) -> String {
     }
 }
 
-/// tabs are the zone's three readings, each priced with where the zone stands
-/// under it — so the strip answers before a tab is chosen.
-fn tabs(zone: Option<&Zone>, form: &ZoneForm, reaches: &Crossings, active: &str) -> Vec<DrawerTab> {
+/// tabs are the zone's three readings.
+fn tabs(zone: Option<&Zone>, active: &str) -> Vec<DrawerTab> {
     [
-        (
-            TRAFFIC,
-            "Traffic",
-            format!("{} in", policy_state(&form.input)),
-        ),
-        (REACHES, "Reaches", reaches_state(reaches.reaches.len())),
-        (ADVANCED, "Advanced", advanced_state(form)),
+        (TRAFFIC, "Traffic"),
+        (REACHES, "Reaches"),
+        (ADVANCED, "Advanced"),
     ]
     .into_iter()
-    .map(|(key, label, state)| DrawerTab {
+    .map(|(key, label)| DrawerTab {
         label: label.into(),
-        state,
         href: match zone {
             Some(zone) => href(&zone.section, key),
             None => match key {
@@ -227,39 +221,6 @@ fn tabs(zone: Option<&Zone>, form: &ZoneForm, reaches: &Crossings, active: &str)
         active: key == active,
     })
     .collect()
-}
-
-/// policy_state is the verdict a zone takes on arriving traffic, as the strip
-/// spells it: a zone that states none follows the baseline, which is what the
-/// listing's own pill says too.
-///
-/// Lowercased, because fw4 reads ACCEPT and accept alike and a config may hold
-/// either — the strip is repeating the answer the row gave rather than quoting the
-/// file, and the row's pill is lowercase.
-fn policy_state(policy: &str) -> String {
-    match policy.is_empty() {
-        true => "default".to_string(),
-        false => policy.to_lowercase(),
-    }
-}
-
-fn reaches_state(count: usize) -> String {
-    match count {
-        0 => "nowhere".to_string(),
-        1 => "1 zone".to_string(),
-        n => format!("{n} zones"),
-    }
-}
-
-/// advanced_state says whether anything under Advanced is in force. A zone that
-/// logs its refusals or narrows its family carries live state, and the strip is
-/// where a reader learns that without opening the tab.
-fn advanced_state(form: &ZoneForm) -> String {
-    match (form.log, form.family.is_empty()) {
-        (true, _) => "logging".to_string(),
-        (false, false) => form.family.clone(),
-        (false, true) => "default".to_string(),
-    }
 }
 
 /// body is the reading itself: its heading and lede, its controls, and — on every

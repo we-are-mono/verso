@@ -107,13 +107,7 @@ type Envelope struct {
 	// explanation beside it. A tab that stages nothing sets none and no commit
 	// row is drawn. Ignored on an ordinary page render, where the form carries
 	// its own.
-	CTA string `json:"cta,omitempty"`
-	// State is where this tab's subject stands in one or two words — "blocked",
-	// "no limit", an address. It rides as a small chip beside the tab's label so
-	// the strip answers the question the panel was opened to ask before anything
-	// is clicked. Only the plugin knows it; a tab that has no state to state
-	// sets none and wears no chip.
-	State  string     `json:"state,omitempty"`
+	CTA    string     `json:"cta,omitempty"`
 	Commit []CommitOp `json:"commit"`
 	Status int        `json:"-"`
 }

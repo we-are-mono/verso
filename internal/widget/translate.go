@@ -323,6 +323,5 @@ func translateDrawer(d *RowDrawer, t func(string) string) {
 	}
 	for i := range d.Tabs {
 		d.Tabs[i].Label = t(d.Tabs[i].Label)
-		d.Tabs[i].State = t(d.Tabs[i].State)
 	}
 }

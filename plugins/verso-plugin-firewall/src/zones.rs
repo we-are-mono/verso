@@ -1075,56 +1075,29 @@ mod tests {
         }
     }
 
-    /// The three readings are the zone's, each priced with where it stands under
-    /// that reading — so the strip answers before a tab is chosen.
+    /// The three readings are the zone's, each its name and its address and
+    /// nothing more: the strip names the questions, the readings answer them.
     #[test]
-    fn the_readings_are_priced_on_the_strip() {
+    fn the_readings_are_named_on_the_strip() {
         let panel = panel_of(&opened("cfg02dc81", zone_drawer::TRAFFIC), "cfg02dc81");
-        let tabs = panel["tabs"].as_array().expect("tabs");
-        assert_eq!(tabs.len(), 3);
-        // The verdict as the listing spells it, not as the config happens to: fw4
-        // reads ACCEPT and accept alike.
-        assert_eq!(tabs[0]["label"], "Traffic");
-        assert_eq!(tabs[0]["state"], "accept in");
-        assert_eq!(tabs[0]["active"], true);
-        assert_eq!(tabs[0]["href"], "/plugins/firewall/zones?open=cfg02dc81");
-        assert_eq!(tabs[1]["label"], "Reaches");
-        assert_eq!(tabs[1]["state"], "1 zone");
         assert_eq!(
-            tabs[1]["href"],
-            "/plugins/firewall/zones?open=cfg02dc81&tab=reaches"
+            panel["tabs"],
+            serde_json::json!([
+                {
+                    "label": "Traffic",
+                    "href": "/plugins/firewall/zones?open=cfg02dc81",
+                    "active": true
+                },
+                {
+                    "label": "Reaches",
+                    "href": "/plugins/firewall/zones?open=cfg02dc81&tab=reaches"
+                },
+                {
+                    "label": "Advanced",
+                    "href": "/plugins/firewall/zones?open=cfg02dc81&tab=advanced"
+                }
+            ])
         );
-        assert_eq!(tabs[2]["state"], "default");
-
-        // A zone that logs its refusals says so on the strip, which is how a reader
-        // learns of live state without opening the tab. No fixture zone
-        // logs, so the form states it: the strip reads the zone, not the config.
-        let logging = serde_json::to_value(zone_drawer::blank(
-            &fixture::firewall(),
-            &ZoneForm {
-                log: true,
-                ..ZoneForm::default()
-            },
-            &Crossings::default(),
-            &Errors::default(),
-            zone_drawer::TRAFFIC,
-        ))
-        .expect("serialize");
-        assert_eq!(logging["tabs"][2]["state"], "logging");
-
-        // A zone that narrows its family says which one.
-        let narrowed = serde_json::to_value(zone_drawer::blank(
-            &fixture::firewall(),
-            &ZoneForm {
-                family: "ipv4".into(),
-                ..ZoneForm::default()
-            },
-            &Crossings::default(),
-            &Errors::default(),
-            zone_drawer::TRAFFIC,
-        ))
-        .expect("serialize");
-        assert_eq!(narrowed["tabs"][2]["state"], "ipv4");
     }
 
     /// A panel's heading names the zone; the form carries its settings.

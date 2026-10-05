@@ -1132,8 +1132,8 @@ func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
 		"id":"allow_ping","cells":[{"text":"Allow-Ping"}],
 		"drawer":{"title":"Allow-Ping","verbatim":true,"closed":"/x","size":"choices","open":true,
-			"tabs":[{"label":"Match","state":"5 conditions","href":"/x?tab=match","active":true},
-				{"label":"Action","state":"accept","href":"/x?tab=action"}],
+			"tabs":[{"label":"Match","href":"/x?tab=match","active":true},
+				{"label":"Action","href":"/x?tab=action"}],
 			"children":[{"type":"form","submit":"Save","fields":[{"type":"field","name":"n","label":"Name"}]}]}}]}`))
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
@@ -1145,7 +1145,7 @@ func TestDecodeRowDrawerCarriesEveryField(t *testing.T) {
 	if !d.Verbatim || d.Closed != "/x" || d.Size != "choices" || !d.Open || len(d.Children) != 1 {
 		t.Errorf("drawer fields lost in decode: %#v", d)
 	}
-	if len(d.Tabs) != 2 || d.Tabs[0].State != "5 conditions" || !d.Tabs[0].Active || d.Tabs[1].Href != "/x?tab=action" {
+	if len(d.Tabs) != 2 || d.Tabs[0].Label != "Match" || !d.Tabs[0].Active || d.Tabs[1].Href != "/x?tab=action" {
 		t.Errorf("tabs lost in decode: %#v", d.Tabs)
 	}
 }
@@ -1157,8 +1157,8 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	tbl.Rows[0].Drawer = &RowDrawer{
 		Title: "Allow-DHCP-Renew",
 		Tabs: []DrawerTab{
-			{Label: "Match", State: "5 conditions", Href: "/plugins/firewall/?open=r1&tab=match", Active: true},
-			{Label: "Action", State: "accept", Href: "/plugins/firewall/?open=r1&tab=action"},
+			{Label: "Match", Href: "/plugins/firewall/?open=r1&tab=match", Active: true},
+			{Label: "Action", Href: "/plugins/firewall/?open=r1&tab=action"},
 		},
 		Children: []Widget{&Form{Submit: "Save", Fields: []Widget{&Field{Name: "name", Label: "Name"}}}},
 	}
@@ -1166,13 +1166,11 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	for _, want := range []string{
 		`<header class="flex h-13 flex-none items-center gap-4 border-b border-rule bg-quiet px-10">`,
 		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h2>`,
-		// The strip: the tab in force carries the action colour under it and in
-		// its chip; the rest stay quiet.
+		// The strip: the tab in force carries the action colour under it; the
+		// rest stay quiet.
 		`<nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule px-10"`,
 		`aria-current="page"`,
 		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
-		"border-denim-line bg-denim-soft text-denim-deep\">5 conditions",
-		"border-rule bg-quiet text-meta\">accept",
 		// A tabbed panel's body starts 32px under the strip, as a band's title
 		// stands under its rule.
 		"overflow-y-auto px-10 pt-8 pb-8",

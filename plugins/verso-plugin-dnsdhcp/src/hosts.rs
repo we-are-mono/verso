@@ -524,21 +524,7 @@ fn tab(section: Option<&str>, host: &Host, subject: Subject, errors: &Errors) ->
         Some(_) => TAB_CTA_EDIT,
         None => TAB_CTA_NEW,
     };
-    Envelope::page(TAB_LABEL, body)
-        .with_commit_row(cta)
-        .with_tab_state(&tab_state(section, host))
-}
-
-/// tab_state is where this device stands on the question the tab answers, for
-/// the chip the shell hangs beside the label: the address it is pinned to, or
-/// that it is pinned to none. A reservation is *for* an address, so the address
-/// is the state — anything shorter would say less than the word it replaced.
-fn tab_state(section: Option<&str>, host: &Host) -> String {
-    match (section.is_some(), host.ip.is_empty()) {
-        (false, _) => "none".to_string(),
-        (true, true) => "reserved".to_string(),
-        (true, false) => host.ip.clone(),
-    }
+    Envelope::page(TAB_LABEL, body).with_commit_row(cta)
 }
 
 #[cfg(test)]
@@ -732,7 +718,6 @@ mod tests {
         let held = json_of!(entity_tab(&model, &leases, "30:9C:23:5E:88:01"));
         assert_eq!(held["title"], "Reserved address");
         assert_eq!(held["cta"], "Save reservation");
-        assert_eq!(held["state"], "10.0.0.30");
         assert_eq!(control(&held, "mac")["kind"], "hidden");
         // Removing is the listing row's act, so the tab is the controls and the
         // preview.

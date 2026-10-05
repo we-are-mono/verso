@@ -70,7 +70,7 @@ func TestABandWithNothingLeftGoes(t *testing.T) {
 func TestHeadingActCarriesItsPanel(t *testing.T) {
 	act, err := DecodeHeadingAct([]byte(`{"label":"Add rule","href":"/x?open=new",
 		"drawer":{"title":"New rule","open":true,"closed":"/x","lede":["Added to the end."],
-			"tabs":[{"label":"Match","state":"0 conditions","active":true}],
+			"tabs":[{"label":"Match","active":true}],
 			"children":[{"type":"form","submit":"Add rule","fields":[{"type":"field","name":"n","label":"Name"}]}]}}`))
 	if err != nil {
 		t.Fatalf("DecodeHeadingAct: %v", err)
@@ -81,7 +81,7 @@ func TestHeadingActCarriesItsPanel(t *testing.T) {
 	if act.Drawer.Title != "New rule" || !act.Drawer.Open || len(act.Drawer.Children) != 1 {
 		t.Errorf("panel lost in decode: %#v", act.Drawer)
 	}
-	if len(act.Drawer.Tabs) != 1 || act.Drawer.Tabs[0].State != "0 conditions" {
+	if len(act.Drawer.Tabs) != 1 || act.Drawer.Tabs[0].Label != "Match" {
 		t.Errorf("panel tabs lost in decode: %#v", act.Drawer.Tabs)
 	}
 	// And it renders: the act hosts the modal scope, arrives open, and carries

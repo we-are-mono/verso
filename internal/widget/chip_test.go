@@ -76,20 +76,12 @@ func renderTagCell(t *testing.T, r *Renderer, cell TableCell) string {
 }
 
 // TestEveryCitationChipIsOneBox: a chip is one size wherever it stands — the
-// masthead's protocol beside IPv4, a choice's config value, a panel tab's
-// state — the same box as a table's tag and an interface cited in a row.
+// masthead's protocol beside IPv4, a choice's config value — the same box as
+// a table's tag and an interface cited in a row.
 // Only the face follows what it says: mono for a string the machine wrote,
 // sans for words.
 func TestEveryCitationChipIsOneBox(t *testing.T) {
 	r := newRenderer(t)
-	act, err := DecodeHeadingAct([]byte(`{"label":"Add rule","href":"/x?open=new",
-		"drawer":{"title":"New rule","open":true,"closed":"/x",
-			"tabs":[{"label":"Match","state":"0 conditions","active":true},{"label":"Action","state":"accept"}],
-			"children":[{"type":"text","text":"."}]}}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	tabs := act.Bar()
 	for name, tc := range map[string]struct {
 		got  string
 		want []string
@@ -101,13 +93,6 @@ func TestEveryCitationChipIsOneBox(t *testing.T) {
 		"choice value": {
 			render(t, r, &Link{Style: "choice", Label: "WPA3", Code: "sae", Href: "/x"}),
 			[]string{chipMonoBox + " border-rule bg-quiet text-meta\">sae"},
-		},
-		"panel tab state": {
-			render(t, r, tabs),
-			[]string{
-				chipBox + " border-denim-line bg-denim-soft text-denim-deep\">0 conditions",
-				chipBox + " border-rule bg-quiet text-meta\">accept",
-			},
 		},
 	} {
 		for _, want := range tc.want {

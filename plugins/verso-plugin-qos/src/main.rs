@@ -114,7 +114,6 @@ mod tests {
     fn a_device_still_opens_its_editor() {
         let tab = get(&fixture::empty("/entity/device/00:11:22:33:44:55"));
         assert_eq!(tab.title, "Limits");
-        assert_eq!(tab.state, "no limit");
         assert!(tab.entities.is_none());
     }
 }

@@ -45,21 +45,7 @@ pub fn tab(policy: &Policy, leases: &Leases, errors: &Errors) -> Envelope {
         Widget::config("/etc/config/firewall", &form::rule_preview(policy, &name)),
         Widget::config("/etc/config/qos", &form::caps_preview(policy, &name)),
     ]);
-    Envelope::page(LABEL, body)
-        .with_commit_row(CTA)
-        .with_tab_state(state(policy))
-}
-
-/// state is where the device stands, for the chip the shell hangs beside this
-/// tab's label — the answer someone opened the panel for, before they read a
-/// single control.
-pub fn state(policy: &Policy) -> &'static str {
-    match (policy.allowed, policy.scheduled, policy.capped()) {
-        (false, _, _) => "blocked",
-        (true, true, _) => "on a schedule",
-        (true, false, true) => "limited",
-        (true, false, false) => "no limit",
-    }
+    Envelope::page(LABEL, body).with_commit_row(CTA)
 }
 
 /// controls is the tab's editing surface: access, then — only where access is
@@ -234,7 +220,6 @@ mod tests {
             &leases,
             &Errors::default(),
         ));
-        assert_eq!(blocked["state"], "blocked");
         assert_eq!(blocked["cta"], "Save limits");
         assert_eq!(gate(&blocked, "allowed")["checked"], false);
 
@@ -244,7 +229,6 @@ mod tests {
             &leases,
             &Errors::default(),
         ));
-        assert_eq!(curfew["state"], "on a schedule");
         assert_eq!(gate(&curfew, "allowed")["checked"], true);
         assert_eq!(gate(&curfew, "scheduled")["checked"], true);
         assert_eq!(control(&curfew, "start_time")["value"], "21:00");
@@ -275,7 +259,6 @@ mod tests {
             &leases,
             &Errors::default(),
         ));
-        assert_eq!(capped["state"], "limited");
         assert_eq!(control(&capped, "download")["value"], "50");
         assert_eq!(control(&capped, "download")["unit"], "Mbit/s");
         let previews = capped["widget"]["children"].as_array().expect("children");

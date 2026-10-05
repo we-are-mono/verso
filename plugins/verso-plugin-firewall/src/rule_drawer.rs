@@ -87,7 +87,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
     fields.push(Widget::config_preview(CONFIG_PATH, &uci_block(NEW, form)));
     RowDrawer {
         title: "New rule".into(),
-        tabs: new_tabs(form, model, tab),
+        tabs: new_tabs(form, tab),
         closed: page::rules_href(),
         open: true,
         children: vec![fields::panel_form(
@@ -100,25 +100,18 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
 
 /// new_tabs are the blank rule's readings. They address the same panel, so
 /// switching one before the rule exists keeps the blank panel open.
-fn new_tabs(form: &RuleForm, model: &Firewall, active: &str) -> Vec<DrawerTab> {
-    [
-        (MATCH, "Match", conditions_state(form, model)),
-        // fw4 reads ACCEPT and accept alike and its own default is the shouted
-        // one; the strip states the verdict the way every listing spells it.
-        (ACTION, "Action", form.target.to_lowercase()),
-        (WHEN, "When", schedule_state(form)),
-    ]
-    .into_iter()
-    .map(|(key, label, state)| DrawerTab {
-        label: label.into(),
-        state,
-        href: match key {
-            MATCH => new_href(&form.src, &form.dest),
-            _ => format!("{}&{TAB}={key}", new_href(&form.src, &form.dest)),
-        },
-        active: key == active,
-    })
-    .collect()
+fn new_tabs(form: &RuleForm, active: &str) -> Vec<DrawerTab> {
+    [(MATCH, "Match"), (ACTION, "Action"), (WHEN, "When")]
+        .into_iter()
+        .map(|(key, label)| DrawerTab {
+            label: label.into(),
+            href: match key {
+                MATCH => new_href(&form.src, &form.dest),
+                _ => format!("{}&{TAB}={key}", new_href(&form.src, &form.dest)),
+            },
+            active: key == active,
+        })
+        .collect()
 }
 
 /// reading is the tab a query asks for, falling back to the one a panel opens
@@ -149,7 +142,7 @@ pub fn drawer(
 ) -> RowDrawer {
     RowDrawer {
         title: title(&rule.name),
-        tabs: tabs(rule, form, model, tab),
+        tabs: tabs(rule, tab),
         closed: page::rules_href(),
         open: true,
         children: body(model, rule, form, errors, tab),
@@ -166,47 +159,16 @@ fn title(name: &str) -> String {
     }
 }
 
-/// tabs are the rule's three readings, each priced with where the rule stands
-/// under it — so the strip answers before a tab is chosen.
-fn tabs(rule: &Rule, form: &RuleForm, model: &Firewall, active: &str) -> Vec<DrawerTab> {
-    [
-        (MATCH, "Match", conditions_state(form, model)),
-        // The verdict as the listing spells it, not as the config happens to:
-        // fw4 reads ACCEPT and accept alike, and the strip is repeating the
-        // answer the row gave rather than quoting the file.
-        (ACTION, "Action", rule.target.clone()),
-        (WHEN, "When", schedule_state(form)),
-    ]
-    .into_iter()
-    .map(|(key, label, state)| DrawerTab {
-        label: label.into(),
-        state,
-        href: href(&rule.section, key),
-        active: key == active,
-    })
-    .collect()
-}
-
-/// conditions_state is how many narrowing conditions the rule carries beyond
-/// its path — the number that says whether Match holds a sentence or a page.
-fn conditions_state(form: &RuleForm, model: &Firewall) -> String {
-    let count = match conditions::for_rule(form, &Errors::default(), model) {
-        Widget::Conditions { items, .. } => items.iter().filter(|item| item.active).count(),
-        _ => 0,
-    };
-    match count {
-        1 => "1 condition".to_string(),
-        n => format!("{n} conditions"),
-    }
-}
-
-/// schedule_state is the window the rule keeps, as a word: a rule that names no
-/// window is in force always, which is what most rules are.
-fn schedule_state(form: &RuleForm) -> String {
-    match form.active("schedule") {
-        true => "restricted".to_string(),
-        false => "always".to_string(),
-    }
+/// tabs are the rule's three readings.
+fn tabs(rule: &Rule, active: &str) -> Vec<DrawerTab> {
+    [(MATCH, "Match"), (ACTION, "Action"), (WHEN, "When")]
+        .into_iter()
+        .map(|(key, label)| DrawerTab {
+            label: label.into(),
+            href: href(&rule.section, key),
+            active: key == active,
+        })
+        .collect()
 }
 
 /// body is the reading itself: its heading and lede, its controls, and — on

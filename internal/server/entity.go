@@ -83,10 +83,6 @@ type entityTab struct {
 	// only the plugin knows what its tab saves; a tab that stages nothing
 	// supplies none and the row is not drawn.
 	CTA string
-	// State is where this tab's subject stands, in a word or two, worn as a chip
-	// beside the label — so the strip answers what the panel was opened to ask
-	// before a tab is chosen.
-	State string
 }
 
 // entityClaim is one live plugin's claim on one slot.
@@ -245,7 +241,7 @@ func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, acti
 		out = append(out, entityTab{
 			Slot: claim.Slot, Label: tr(label), PluginID: claim.PluginID, Body: body,
 			Href: entityPath + kind + "/" + url.PathEscape(id) + "?tab=" + url.QueryEscape(claim.Slot),
-			CTA:  tr(env.CTA), State: tr(env.State),
+			CTA:  tr(env.CTA),
 		})
 	}
 	// The tab in force is the one asked for, else the first the design orders.
@@ -280,7 +276,6 @@ type entityPanelData struct {
 // entityTabView is one tab in the strip.
 type entityTabView struct {
 	Label  string
-	State  string
 	Href   string
 	Active bool
 }
@@ -361,7 +356,7 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 	// stage is marked on every opening, as it is on the plugin's own page.
 	waits := s.waitingOptions(r.Context(), s.sessionSID(r))
 	for _, tab := range tabs {
-		data.Tabs = append(data.Tabs, entityTabView{Label: tab.Label, State: tab.State, Href: tab.Href, Active: tab.Active})
+		data.Tabs = append(data.Tabs, entityTabView{Label: tab.Label, Href: tab.Href, Active: tab.Active})
 		if !tab.Active {
 			continue
 		}

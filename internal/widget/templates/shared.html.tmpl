@@ -538,9 +538,11 @@
      holds is replaced. */}}
 {{define "verso-drawer-contents"}}
       {{template "verso-drawer-header" .Title}}
-      {{/* The strip cuts the body into the questions the object answers, each
-           carrying where the object stands under it. A panel with one thing to
-           say sends no tabs, and a strip that decides nothing is chrome. */}}
+      {{/* The strip cuts the body into the questions the object answers. A
+           panel with one thing to say sends no tabs, and a strip that decides
+           nothing is chrome. A tab names a reading as a label names a setting,
+           so it is its name alone, set at the labels' 14px, and the section
+           heading under the strip stays the clear step up. */}}
       {{if .Tabs}}
       <nav class="flex h-13 flex-none gap-6 overflow-x-auto border-b border-rule {{template "verso-drawer-inset"}}" aria-label="{{ t "Sections" }}">
         {{range .Tabs}}
@@ -551,14 +553,7 @@
              script the link is simply followed and the page answers with the
              panel open on it. */}}
         <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-panel]" hx-swap="innerHTML" hx-replace-url="true"{{if .Active}} aria-current="page"{{end}}
-          class="flex shrink-0 items-center gap-2 whitespace-nowrap text-base leading-[1.3] transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}
-          {{/* The state chip takes the tab's own colour — denim on the one in
-               force, quiet on the rest — but never its weight: the tab's label
-               is what the weight marks, and a bolded chip beside a bolded word
-               says the same thing twice. Sans, because what it states is a count
-               or a plain word rather than a string someone would type. The one
-               chip box, as every chip is: the 52px tab strip holds it. */}}
-          {{if .State}}<span class="{{template "verso-chip-box"}} {{if .Active}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{.State}}</span>{{end}}</a>
+          class="flex shrink-0 items-center whitespace-nowrap text-sm leading-5 transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
         {{end}}
       </nav>
       {{end}}

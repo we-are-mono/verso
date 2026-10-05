@@ -153,7 +153,7 @@ func TestEntityPanelLocalizesFormWithoutDeviceDetails(t *testing.T) {
 	}
 	srv.SetBundle(bundle)
 	body := getLang(t, srv, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", "sl")
-	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "192.168.77.102", "bg-quiet px-10"} {
+	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "bg-quiet px-10"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("localized device drawer missing %q", want)
 		}
@@ -353,33 +353,38 @@ func twoTabs() *tabTransport {
 	body := json.RawMessage(`{"type":"form","style":"page","fields":[]}`)
 	return &tabTransport{bySocket: map[string]*plugin.Envelope{
 		"/run/verso/dnsdhcp.sock": {
-			SchemaVersion: 1, Title: "Reserved address", State: "192.168.77.102",
+			SchemaVersion: 1, Title: "Reserved address",
 			Status: http.StatusOK, CTA: "Save reservation", Widget: body,
 		},
 		"/run/verso/qos.sock": {
-			SchemaVersion: 1, Title: "Limits & schedule", State: "blocked", Status: http.StatusOK,
+			SchemaVersion: 1, Title: "Limits & schedule", Status: http.StatusOK,
 			CTA: "Save limits", Widget: body,
 		},
 	}}
 }
 
-// TestEntityPanelWearsEachTabsState: a panel with more than one tab answers the
-// question it was opened to ask before a tab is chosen — the state chip beside
-// each label. The words are the plugin's; the chip is the shell's.
-func TestEntityPanelWearsEachTabsState(t *testing.T) {
+// TestEntityPanelTabsAreTheirNames: a panel with more than one tab names each
+// reading and nothing more — set at the drawer's 14px label scale, as a row
+// panel's strip is, with no chip of where the subject stands beside it.
+func TestEntityPanelTabsAreTheirNames(t *testing.T) {
 	rec := get(t, shapingServer(t, twoTabs()), "/entity/device/42:e6:ad:ff:b7:af?tab=shape")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET the panel: status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Reserved address", ">192.168.77.102<", // the other tab, and where it stands
-		"Limits &amp; schedule", ">blocked<", // the tab in force, and where it stands
-		">Save limits<", // its commit row's verb
+		"Reserved address",      // the other tab
+		"Limits &amp; schedule", // the tab in force
+		">Save limits<",         // its commit row's verb
+		"whitespace-nowrap text-sm leading-5 transition",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("entity panel missing %q:\n%s", want, body)
 		}
+	}
+	nav := body[strings.Index(body, "<nav"):strings.Index(body, "</nav>")]
+	if strings.Contains(nav, "<span") || strings.Contains(nav, "text-base") {
+		t.Errorf("a tab is more than its name at the label scale: %s", nav)
 	}
 	// The act says what it does and carries no explanation beside it.
 	if strings.Contains(body, "ml-auto min-w-0 text-sm leading-snug text-meta") {

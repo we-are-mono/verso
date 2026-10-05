@@ -532,28 +532,25 @@ mod tests {
         }
     }
 
-    // The strip prices each reading before it is chosen, and the address says
-    // which one is in force.
+    // The strip names each reading, and the address says which one is in
+    // force.
     #[test]
-    fn the_panel_offers_three_readings_and_states_where_the_rule_stands() {
+    fn the_panel_offers_three_readings_by_name() {
         let drawer = drawer_of(&opened("allow_ping", rule_drawer::ACTION));
         assert_eq!(
             drawer["tabs"],
             serde_json::json!([
                 {
                     "label": "Match",
-                    "state": "1 condition",
                     "href": "/plugins/firewall/?open=allow_ping"
                 },
                 {
                     "label": "Action",
-                    "state": "accept",
                     "href": "/plugins/firewall/?open=allow_ping&tab=action",
                     "active": true
                 },
                 {
                     "label": "When",
-                    "state": "always",
                     "href": "/plugins/firewall/?open=allow_ping&tab=when"
                 }
             ])
