@@ -395,7 +395,7 @@
         {{else if eq .Kind "runtime"}}
         <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap tabular-nums text-meta group-last:border-b-0">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] truncate align-top text-meta group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] align-top text-meta group-last:border-b-0"><span class="line-clamp-1" title="{{.Text}}">{{.Text}}</span></td>
         {{else if eq .Kind "rate"}}
         <td class="w-32 min-w-32 max-w-32 border-b border-rule {{template "table.cellpad" .}} text-left align-top whitespace-nowrap tabular-nums text-meta group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "meter"}}
