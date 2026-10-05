@@ -107,15 +107,17 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 	rows := make([]TableRow, 0, len(devices))
 	network := ""
 	for i, d := range devices {
+		// A device that is not here reads at the secondary step, all of it:
+		// the values stay exact, the row stops competing for the eye. It is
+		// muted cell by cell, not as a row, since a muted row is one switched
+		// off and absent is not off.
+		away := d.Presence != "online"
 		row := TableRow{
-			// A device that is not here reads at the secondary step, all of it:
-			// the values stay exact, the row stops competing for the eye.
-			Muted: d.Presence != "online",
 			Cells: []TableCell{
-				{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d)},
-				{Text: d.Port},
-				{Text: d.V4, Copy: true, Emphasis: true},
-				{Text: d.MAC, Copy: true, Emphasis: true},
+				{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d), Muted: away},
+				{Text: d.Port, Muted: away},
+				{Text: d.V4, Copy: true, Emphasis: true, Muted: away},
+				{Text: d.MAC, Copy: true, Emphasis: true, Muted: away},
 				presenceCell(d.Presence),
 				{Actions: acts(d)},
 			},

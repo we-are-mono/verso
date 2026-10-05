@@ -82,6 +82,10 @@ func TestRenderDevicesTable(t *testing.T) {
 	if !strings.Contains(got, "text-meta") {
 		t.Error("an absent device's row should read muted")
 	}
+	// Absent is not switched off: the marker belongs to a subject not in force.
+	if strings.Contains(got, "data-verso-off") {
+		t.Error("an absent device's name should not be marked over")
+	}
 	// Idle is not a third state in this listing: the kernel confirms a device
 	// now, or it does not.
 	if strings.Contains(got, ">Idle<") {
