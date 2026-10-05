@@ -453,6 +453,46 @@ func TestASectionsAirIsTheNextRulesToo(t *testing.T) {
 	}
 }
 
+// TestASectionTrimsThroughARunOfRows: rows grouped in a flush stack are still
+// the section's rows, so an untitled section's first row and any section's
+// last row give their air back from inside the group too. A port forward's
+// panel opened 16px lower than a DHCP server's because its first rows stood
+// in one.
+func TestASectionTrimsThroughARunOfRows(t *testing.T) {
+	css, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"[data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }",
+		"[data-verso-section] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:has(~ :not(input[type=\"hidden\"], [hidden]))) > :not(input[type=\"hidden\"], [hidden]):not(:has(~ :not(input[type=\"hidden\"], [hidden]))) { padding-bottom: 0; }",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("sections.css is missing %s", want)
+		}
+	}
+}
+
+// TestAnUntitledOpeningClosesOnTheSameAir: a drawer's untitled opening block
+// (a forward's state and name, a DHCP server's addresses) keeps 32px before the
+// rule that follows it, as every section does; the band, card or Save after it
+// adds none of its own, so without this the rule lay on the last field.
+func TestAnUntitledOpeningClosesOnTheSameAir(t *testing.T) {
+	css, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "[data-verso-headless]:not([data-verso-section=\"ruled\"]):has(+ :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])),\n  [data-verso-headless]:not([data-verso-section=\"ruled\"]):has(+ input[type=\"hidden\"] + :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])) { padding-bottom: calc(var(--spacing) * 8); }"
+	// A :has inside a :has is dropped by the browser, which drops the case
+	// that held it: what the rule names after a section must be plain.
+	if strings.Contains(want, ":has(+ :is(section:has(") {
+		t.Fatal("a nested :has never matches")
+	}
+	if !strings.Contains(string(css), want) {
+		t.Errorf("sections.css is missing %s", want)
+	}
+}
+
 // TestTipsRiseAboveTheirLabel: an explanation opens above the label that
 // raises it, so the pointer on its way down to the control never meets it; a
 // pointer passing over the label raises nothing, because the tip waits for it

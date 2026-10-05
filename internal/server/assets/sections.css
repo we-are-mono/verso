@@ -80,6 +80,14 @@
      like any surface's first section it draws no rule above it. */
   [data-verso-section="ruled"][data-verso-headless] { padding-bottom: calc(var(--spacing) * 8); }
 
+  /* An untitled opening block that is no ruled subject (a drawer's state and
+     name, a server's addresses) keeps the same 32px before the rule after it:
+     the band, card or Save that follows adds none of its own. A titled
+     section is named as one that is not headless: a :has cannot stand inside
+     a :has, and the browser would drop the whole case. */
+  [data-verso-headless]:not([data-verso-section="ruled"]):has(+ :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])),
+  [data-verso-headless]:not([data-verso-section="ruled"]):has(+ input[type="hidden"] + :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])) { padding-bottom: calc(var(--spacing) * 8); }
+
   /* A section's 32px is the air before whatever rule follows it: the
      configuration card's divider and a form's own Save rule add none on top. */
   [data-verso-section] + :is([data-verso-code-divider], [data-verso-form-actions]),
@@ -168,4 +176,9 @@
   [data-verso-section] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
   [data-verso-section] > .verso-rhythm > [data-verso-when]:not([hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
   [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
+  /* Rows grouped in a run (a flush stack, data-verso-rows) are still the
+     section's rows: the group's own first and last give their air back the
+     same way. */
+  [data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
+  [data-verso-section] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
 }

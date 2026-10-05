@@ -113,10 +113,11 @@ fn title(name: &str) -> String {
 
 /// identity is whether the forward is live at all, then what it is called.
 /// Whether it is in force comes first, as a zone's does, because nothing below
-/// it means anything when it is off.
+/// it means anything when it is off. The two are the forward itself, which the
+/// panel's title already names, so they head the panel under no heading of
+/// their own.
 fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
     Widget::Section(SectionWidget {
-        title: "Port forward".into(),
         flush: true,
         children: vec![fields::row_group(vec![
             Widget::switch_keyed(
@@ -454,7 +455,8 @@ mod tests {
 
     /// The panel opens on whether the forward is in force, a row like any
     /// other rather than a switch on the heading, then on its name, labelled
-    /// as the config spells the option.
+    /// as the config spells the option. The two are the forward itself, which
+    /// the panel's title already names, so they stand under no heading.
     #[test]
     fn a_forward_opens_on_its_state_then_its_name() {
         let body = panel(&open("https_to_nas"));
@@ -462,6 +464,10 @@ mod tests {
         assert!(
             first.get("control").is_none_or(Value::is_null),
             "nothing rides the heading: {first}"
+        );
+        assert!(
+            first.get("title").is_none_or(|t| t.as_str() == Some("")),
+            "the forward's own name and state carry no heading: {first}"
         );
         let rows = serde_json::to_string(&first["children"]).expect("serialize");
         let (enabled, name) = (

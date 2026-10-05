@@ -73,6 +73,19 @@ func TestRenderTableEscapesCells(t *testing.T) {
 	}
 }
 
+// TestAFlushStackIsARunOfRows: a flush stack adds no rhythm of its own, so it
+// says it holds rows and nothing else, and a section gives back the air of the
+// first and last of them as if they stood in it directly (sections.css).
+func TestAFlushStackIsARunOfRows(t *testing.T) {
+	got := render(t, newRenderer(t), &Stack{Flush: true, Children: []Widget{&Badge{Text: "a"}}})
+	if !strings.HasPrefix(got, `<div data-verso-rows class="">`) {
+		t.Errorf("a flush stack does not say it is a run of rows: %s", got)
+	}
+	if plain := render(t, newRenderer(t), &Stack{Children: []Widget{&Badge{Text: "a"}}}); strings.Contains(plain, "data-verso-rows") {
+		t.Errorf("a spaced stack is blocks, not a run of rows: %s", plain)
+	}
+}
+
 func TestRenderStackDivided(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Stack{Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})

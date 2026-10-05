@@ -8,7 +8,6 @@
   "Rules": "Pravila",
   "Rule": "Pravilo",
   "Port forwards": "Posredovanja vrat",
-  "Port forward": "Posredovanje vrat",
   "Control which traffic the router accepts, rejects, or forwards, in evaluation order.": "Nadzirajte, kateri promet usmerjevalnik sprejme, zavrne ali posreduje, po vrstnem redu presoje.",
   "No port forwards yet — the internet cannot start a connection to anything on your network.": "Ni še posredovanj vrat — internet ne more začeti povezave z ničimer v vašem omrežju.",
   "Within a chain the first matching rule wins — drag the grip to reorder, or add to a chain from its header.": "Znotraj verige zmaga prvo ujemajoče se pravilo — povlecite prijemalo za prerazporeditev ali dodajte v verigo iz njene glave.",
