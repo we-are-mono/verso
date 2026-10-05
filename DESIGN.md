@@ -182,10 +182,10 @@ components:
     rounded: "{rounded.xs}"
     padding: "12px"
   section-band:
-    backgroundColor: "{colors.quiet}"
+    backgroundColor: "transparent"
     textColor: "{colors.ink}"
     typography: "{typography.section-heading}"
-    padding: "16px 0 16px 40px"
+    padding: "0"
   table-row:
     backgroundColor: "{colors.ground}"
     textColor: "{colors.ink}"
@@ -229,8 +229,8 @@ The system is flat and dense enough for a power user, never cramped. Surfaces se
 - One action colour (denim); four status hues used as marks, never as decoration.
 - Two faces only: Hanken Grotesk for words, Inconsolata for machine strings.
 - Flat surfaces, hairline borders, 2px corners, 1px for marks.
-- A 40px page rhythm; 44px rows, 36px controls, and section bands sized by their content with 16px vertical padding.
-- Quiet Sand section bands make subjects easy to scan, accepting a little more visual density for clearer grouping.
+- A 40px page rhythm; 44px rows, 36px controls.
+- Sections open on a Hairline with their heading under it, unfilled, so subjects scan by rule and size rather than by surface.
 - A Mid Sand control band, boxed in the page's column, sits on the listing it narrows.
 
 ## Colors
@@ -253,7 +253,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 ### Neutral
 - **Paper** (#faf9f7): the page and every card.
 - **White** (#ffffff): the one surface a step above the page — the top bar, input fills, a takeover's backdrop.
-- **Quiet Sand** (#f5f2ec): every quiet surface — the masthead, section bands, chips, row hover.
+- **Quiet Sand** (#f5f2ec): every quiet surface — the masthead, chips, row hover.
 - **Mid Sand** (#ece8e0): the only mid ground — the control band, icon-button hover, the gateway card.
 - **Hairline** (#e4e0d8): hairlines inside a card, between rows.
 - **Strong Hairline** (#d2ccc2): subsection ledger lines, the line under a lane, every input border.
@@ -282,7 +282,7 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Display** (600, 1.875rem/30px, 1.1): the home page's verdict heading only.
 - **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always 36px tall so pages never shift between each other.
 - **Title** (600, 1.125rem/18px, -0.025em): table and drawer titles, and the overview's traffic graph title, in Body ink on sand.
-- **Section heading** (600, 1.125rem/18px, 1.25, -0.025em): full-section h2s in Quiet Sand bands, in Ink. Page titles, dialog titles and the overview's graph title retain their own roles.
+- **Section heading** (600, 1.125rem/18px, 1.25, -0.025em): full-section h2s under the section's leading Hairline, in Ink. Page titles, dialog titles and the overview's graph title retain their own roles.
 - **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the glyph of what the part is, when it has one (16px Lucide in Glyph: a network, a DHCP server, a bridge), then the name, then how many things the part holds (500, Meta, tabular), then a Strong Hairline running on to the column's end, the line that stands between sections, so it reads as the start of a group and never as one more field label, and is told from the Hairlines between the rows under it. The count is the set's own length. When it differs from the last time the page was shown, the old number rolls out and the new one rolls in (up for more, down for fewer, 420ms exponential ease-out), arriving in Ink and settling to Meta. Under reduced motion it simply shows the number. The part's first box stands 24px under the name, as a form's rows stand apart (a set's first item gives up its own air above).
 - **Body** (400, 0.875rem/14px, 1.5): compact prose, labels (600), buttons (600), cells.
 - **Lede** (Hanken Grotesk 300, 1rem/16px, 1.5): section introductions throughout the UI, including nested sections and drawers, never a page's h1, capped at 60ch in Body ink. They wrap and grow with enlarged text and translations; labels and technical keys retain their compact roles and full contrast. Ledes stay Body gray while scrolling and focusing controls, with no color transition. Warning ledes retain their semantic warning color.
@@ -290,9 +290,10 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 - **Value** (Inconsolata 500, 1rem/16px): machine strings in rows — addresses, interface names, MACs, versions. Inputs for identifiers use Inconsolata 400 at 16px.
 - **Figure** (Inconsolata 700, 2.25rem/36px, -0.05em): big numbers.
 
-Full section headings and their ledes share a Quiet Sand band. The band has no
-decorative marker or border; its surface establishes the section's hierarchy.
-Smaller subsection headings retain their ledger lines; square marks carry state.
+Full section headings and their ledes stand under the section's leading
+Hairline, with no fill and no decorative marker; the rule and the heading's
+size establish the section's hierarchy. Smaller subsection headings retain
+their ledger lines; square marks carry state.
 
 ### Named Rules
 **The Verbatim Rule.** Mono is for strings the machine wrote and a user might copy: identifiers, addresses, versions, config keys. Never for a count, a duration or a sentence. Counts are sans with tabular figures.
@@ -392,7 +393,7 @@ How a consequential act asks first. The whole exchange is one hue, so the questi
 
 The anatomy is the same in both:
 - **In place:** the trigger gives way to the question where it stood. Nothing floats and nothing casts a shadow. Focus moves to the first answer; Escape and the way back return it to the trigger.
-- **One hue, every step of it:** the tone's Wash ground inside its Hairline, 2px corners, 16px padding, every word in its Deep step. Full chroma appears as a mark only: the 16px triangle-alert icon, and for danger the fill behind the act's white words. No sand, no Ink, no second border.
+- **One hue, every step of it:** the tone's Wash ground inside its Hairline, 2px corners, 16px padding, every word in its Deep step. Full chroma appears as a mark only: the 6px state square on the first line, and for danger the fill behind the act's white words. No sand, no Ink, no second border.
 - **Trigger:** the act's own name ("Reboot now", "Download and install 25.12.5") on the Wash with the Hairline, 14px/600 words in the Deep step, a 36px control like every other; the hairline turns full chroma on hover.
 - **Question:** a 16px/600 question ("Reboot the router now?") over one or two sentences of consequence at 14px/1.45. The icon leads on the question's first line.
 - **The answer pair:** the act (36px, named with the verb: "Reboot", "Install firmware"), then the way back as bare words in the Deep step ("Not now", "Not yet"): no border, no fill, 12px side padding, washing to the Hairline at half strength on hover. Danger's act is white on full Crimson. Caution's act is white on Deep Marigold, because white on full Marigold fails the 4.5 floor. The pair starts 24px below the message and indents 24px, so it lines up with the words, not the icon; 8px between the two. Never "OK" and "Cancel".
