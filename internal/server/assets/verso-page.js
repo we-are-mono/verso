@@ -2,20 +2,24 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // verso-page.js — the page's own furniture (ADR-004). Small things that
-// belong to a page rather than to anything on it: where an explanation hangs
-// when there is no room below the label that raised it, which section of a
+// belong to a page rather than to anything on it: where an explanation stands
+// beside the label that raised it, which section of a
 // long page the rail beside it should mark, where an act made in place says
 // how it went, and a ledger count that rolls when its number changed.
 
-// A wide tip hangs below the label that raises it, which is where it belongs on
-// a page: the label stays readable and the explanation follows the eye down.
-// Inside a drawer that scrolls, a label low in the panel has no room below and
-// the tip is cut off by the panel's own edge — so on raising one, measure the
-// room against whatever would clip it and flip the tip above when there is more
-// there. The placement is the shell's, as every behaviour is (ADR-005 §7): the
-// widget declares the tip and nothing about where it lands.
+// A tip rises above the label that raises it, clear of the control under it,
+// and stands where the pointer arrived along the label, as the system's own
+// tooltips do — then holds still, so it can be read and reached. It is placed
+// once, as the pointer comes onto the label (or focus does, at the label's
+// start); moving within the label or onto the tip leaves it where it is. A
+// label high in a panel that scrolls has no room above, and the tip would be
+// cut off by the panel's own edge — so measure the room against whatever would
+// clip it and drop the tip below when there is more there. The placement is
+// the shell's, as every behaviour is (ADR-005 §7): the widget declares the tip
+// and nothing about where it lands.
 (function () {
   var GAP = 8; // the tip's own offset from the label, both ways
+  var POINTER_LEAD = 12; // how far before the pointer the tip's corner stands
 
   // clipper is the box the tip has to fit inside: a drawer's scroll area or
   // a table's clipped overflow region, otherwise the viewport.
@@ -34,12 +38,15 @@
     return { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
   }
 
-  function place(label) {
+  // place sets the tip's corner a little before x, the pointer's place across
+  // the window (or at the label's start for focus, when x is null), kept
+  // inside whatever would clip it.
+  function place(label, x) {
     var tip = label.querySelector('[role="tooltip"]');
     if (!tip) return;
-    // Measure from the default placement, so a tip that has been flipped once
-    // can come back down when the panel is scrolled and the room returns.
-    label.removeAttribute("data-verso-tip-above");
+    // Measure from the default placement, so a tip that has been dropped once
+    // can rise again when the panel is scrolled and the room returns.
+    label.removeAttribute("data-verso-tip-below");
     tip.style.left = "0px";
     tip.style.maxWidth = "";
     var box = clipper(label);
@@ -48,21 +55,28 @@
     var left = Math.max(0, box.left);
     var right = Math.min(window.innerWidth, box.right);
     if (tip.offsetWidth > right - left) tip.style.maxWidth = Math.max(0, right - left) + "px";
-    var tipRect = tip.getBoundingClientRect();
-    tip.style.left = Math.max(left - tipRect.left, Math.min(0, right - tipRect.right)) + "px";
     var rect = label.getBoundingClientRect();
+    var at = x == null ? 0 : Math.max(0, x - rect.left - POINTER_LEAD);
+    tip.style.left = at + "px";
+    var tipRect = tip.getBoundingClientRect();
+    tip.style.left = at + Math.max(left - tipRect.left, Math.min(0, right - tipRect.right)) + "px";
     var height = tip.offsetHeight + GAP;
-    var below = Math.min(window.innerHeight, box.bottom) - rect.bottom;
     var above = rect.top - Math.max(0, box.top);
-    if (below < height && above > below) label.setAttribute("data-verso-tip-above", "");
+    var below = Math.min(window.innerHeight, box.bottom) - rect.bottom;
+    if (above < height && below > above) label.setAttribute("data-verso-tip-below", "");
   }
 
-  function raised(event) {
+  // A tip is placed as the pointer or focus arrives on its label, never as
+  // the pointer moves within it: pointerover also fires on the way onto the
+  // tip itself, which must not move away from the pointer reading it.
+  document.addEventListener("pointerover", function (event) {
     var label = event.target.closest && event.target.closest("[data-verso-tip]");
-    if (label) place(label);
-  }
-  document.addEventListener("pointerover", raised);
-  document.addEventListener("focusin", raised);
+    if (label && !label.contains(event.relatedTarget)) place(label, event.clientX);
+  });
+  document.addEventListener("focusin", function (event) {
+    var label = event.target.closest && event.target.closest("[data-verso-tip]");
+    if (label && !label.matches(":hover")) place(label, null);
+  });
 
   // Escape puts a showing tip away without the pointer or focus having to
   // move (WCAG 1.4.13), and does only that: caught before the window's own

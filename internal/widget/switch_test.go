@@ -26,7 +26,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4.5`,
 		// And its explanation is raised onto the label, as a field's is, rather
 		// than taking a paragraph indented under the control.
-		"group/tip", `aria-describedby="enabled-tip"`, "Applies immediately.",
+		"data-verso-tip", `aria-describedby="enabled-tip"`, "Applies immediately.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("switch missing %q:\n%s", want, got)

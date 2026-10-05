@@ -191,47 +191,65 @@ html {
     :is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop { opacity: 0; }
   }
 
-  /* A label's wide tip hangs below it, which is where it belongs on a page: the
-     label stays readable and the explanation follows the eye down. Low in a
-     drawer that scrolls there is no room below, so verso.js measures and marks
-     the label to flip it.
+  /* A tip rises above the label that raises it, the way the system's own
+     tooltips stand by the pointer: the pointer on its way down to the control
+     never meets it, and what it covers is what has been read. verso-page.js
+     sets it at the pointer's place along the label, once, as the pointer
+     arrives, and marks the label to drop it below only where there is no room
+     above (a panel's first field, under its title bar).
 
-     Both states live here rather than the first in utilities and the second as
-     an override: a utility outranks anything this layer says, so a half-stated
-     position would leave the flipped tip anchored top and bottom at once. */
+     A pointer passing over the label raises nothing: the tip waits 200ms for
+     the pointer to settle. Focus from the keyboard raises it at once. Until it
+     shows it is hidden outright, so a waiting tip never catches the pointer.
+
+     The states live here rather than in the template's utilities: a utility
+     outranks anything this layer says, so a half-stated position or reveal
+     would fight the other half. */
   [data-verso-tip] > [role="tooltip"] {
-    top: 100%;
-    margin-top: 0.5rem;
-    pointer-events: none;
-  }
-  [data-verso-tip-above] > [role="tooltip"] {
-    top: auto;
     bottom: 100%;
-    margin-top: 0;
     margin-bottom: 0.5rem;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out, visibility 0s linear 150ms;
+  }
+  [data-verso-tip]:hover > [role="tooltip"] {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 200ms;
+  }
+  [data-verso-tip]:focus-visible > [role="tooltip"] {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 0ms;
+  }
+  [data-verso-tip-below] > [role="tooltip"] {
+    top: 100%;
+    bottom: auto;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
   }
   /* While shown, the tip takes the pointer, and a strip the height of the gap
      joins it to its label, so moving from one to the other never passes
      through nothing and the tip stays up to be read (WCAG 1.4.13). */
-  [data-verso-tip]:hover > [role="tooltip"],
-  [data-verso-tip]:focus > [role="tooltip"] {
-    pointer-events: auto;
-  }
   [data-verso-tip] > [role="tooltip"]::before {
     content: "";
     position: absolute;
     inset-inline: 0;
-    top: -0.5rem;
+    bottom: -0.5rem;
     height: 0.5rem;
   }
-  [data-verso-tip-above] > [role="tooltip"]::before {
-    top: auto;
-    bottom: -0.5rem;
+  [data-verso-tip-below] > [role="tooltip"]::before {
+    top: -0.5rem;
+    bottom: auto;
   }
   /* Escape put it away: it stays away until the pointer or focus leaves. */
   [data-verso-tip-dismissed] > [role="tooltip"] {
+    visibility: hidden !important;
     opacity: 0 !important;
-    pointer-events: none;
+    pointer-events: none !important;
   }
 
   /* A copy belongs to the value's first line. Its 28px hit area keeps the

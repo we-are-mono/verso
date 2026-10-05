@@ -191,7 +191,7 @@
 {{/* verso-field-label-class: a setting's name, wherever a box is labelled —
      a form row, and the sign-in form that stands outside any row. */}}
 {{define "verso-field-label-class"}}text-sm font-semibold text-ink{{end}}
-{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} group/tip relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
+{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — the chip's
@@ -376,21 +376,20 @@
 {{/* verso-tip-wide: the tooltip that carries a sentence rather than a word —
      a form label explaining what the thing it names actually is. The narrow tip
      above states a control's name and so can sit on one line; this one wraps at
-     a reading measure and hangs below its label, where a panel's first field
-     has room for it and the label above stays legible while it is open.
+     a reading measure and rises above its label, clear of the control under it.
 
      It ends on the option it explains and what reads that option, ruled off in
      mono: the prose is for someone meeting the setting for the first time, the
      footer for someone who already knows the config and wants the line.
 
-     The raising element carries `group/tip` and `data-verso-tip`: the first
-     reveals this on hover and focus, the second is what verso.js measures and
-     what the stylesheet hangs the tip off, above or below. The stylesheet also
-     decides when it takes the pointer (only while shown, and bridged across
-     the gap to its label), so a pointer can move onto the sentence to read it,
-     and Escape puts it away (verso-page.js). */}}
+     The raising element carries `data-verso-tip`: the stylesheet reveals the
+     tip from it, after a pause for the pointer and at once for focus, and
+     hangs it above or below; verso-page.js sets it at the pointer and decides
+     which. The stylesheet also decides when it takes the pointer (only while
+     shown, and bridged across the gap to its label), so a pointer can move
+     onto the sentence to read it, and Escape puts it away (verso-page.js). */}}
 {{define "verso-tip-wide"}}
-<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus-visible/tip:opacity-100">
+<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-[0_4px_12px_rgba(27,25,23,.14)]">
   {{with .Tip}}<span class="text-sm leading-[1.45] text-ink">{{.}}</span>{{end}}
   {{/* A fused control with no one sentence of its own explains each part
        under that part's name. */}}
@@ -408,7 +407,7 @@
 {{/* verso-chip: the entity chip (an interface, a zone, a port) — the label
      names the one, led by one mark or none: a Lucide glyph naming the kind, or
      the packet square in the chip's tone. An icon wins. */}}
-{{define "verso-chip"}}<span{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}} class="{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} group/tip relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity group-hover/tip:opacity-100 group-focus/tip:opacity-100">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
+{{define "verso-chip"}}<span{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}} class="{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-[0_4px_12px_rgba(27,25,23,.14)]">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
 
 {{/* verso-tone-dot: the status dot's colour for a tone (the badge vocabulary);
      success pulses — it marks something live. */}}

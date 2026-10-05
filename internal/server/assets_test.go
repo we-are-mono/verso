@@ -436,6 +436,40 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 	}
 }
 
+// TestTipsRiseAboveTheirLabel: an explanation opens above the label that
+// raises it, so the pointer on its way down to the control never meets it; a
+// pointer passing over the label raises nothing, because the tip waits for it
+// to settle, while keyboard focus raises it at once. Until it shows it takes no
+// pointer, and below is only where there is no room above.
+func TestTipsRiseAboveTheirLabel(t *testing.T) {
+	css, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"[data-verso-tip] > [role=\"tooltip\"] {\n    bottom: 100%;\n    margin-bottom: 0.5rem;\n    visibility: hidden;\n    opacity: 0;\n    pointer-events: none;",
+		"[data-verso-tip]:hover > [role=\"tooltip\"] {\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 200ms;",
+		"[data-verso-tip]:focus-visible > [role=\"tooltip\"] {\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 0ms;",
+		"[data-verso-tip-below] > [role=\"tooltip\"] {\n    top: 100%;\n    bottom: auto;",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("stylesheet is missing %s", want)
+		}
+	}
+	if strings.Contains(string(css), "data-verso-tip-above") {
+		t.Error("a tip flips below, never above: above is where it opens")
+	}
+	for _, tmpl := range []string{"../widget/templates/shared.html.tmpl"} {
+		src, err := os.ReadFile(tmpl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(src), "group-hover/tip:opacity-100") {
+			t.Errorf("%s reveals a tip itself; the stylesheet owns the reveal and its pause", tmpl)
+		}
+	}
+}
+
 func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {

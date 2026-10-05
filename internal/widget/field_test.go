@@ -185,9 +185,10 @@ func TestRenderFieldTip(t *testing.T) {
 		Help: "Match a DHCPv6 client by DUID instead of MAC.",
 	})
 	for _, want := range []string{
-		"group/tip", "cursor-help", `tabindex="0"`, `aria-describedby="duid-tip"`,
-		`id="duid-tip"`, `role="tooltip"`, "group-hover/tip:opacity-100",
-		// The hook verso.js measures against to flip a tip with no room below.
+		"cursor-help", `tabindex="0"`, `aria-describedby="duid-tip"`,
+		`id="duid-tip"`, `role="tooltip"`,
+		// The hook the stylesheet reveals the tip from and verso-page.js
+		// places it by.
 		"data-verso-tip",
 		"A DHCPv6 client identifies itself by a DUID, not by its MAC.",
 		"duid · dhcp host",
@@ -214,7 +215,7 @@ func TestRenderFieldHelpRaised(t *testing.T) {
 		Help: "How long a client may keep an address before it asks again.",
 	})
 	for _, want := range []string{
-		"group/tip", `id="leasetime-tip"`, `role="tooltip"`,
+		"data-verso-tip", `id="leasetime-tip"`, `role="tooltip"`,
 		"How long a client may keep an address before it asks again.",
 	} {
 		if !strings.Contains(got, want) {
@@ -227,7 +228,7 @@ func TestRenderFieldHelpRaised(t *testing.T) {
 // hover affordance, no tab stop of its own, no tooltip.
 func TestRenderFieldWithoutTip(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "name", Label: "Name", Key: "name"})
-	for _, unwanted := range []string{"group/tip", "cursor-help", `tabindex="0"`, "role=\"tooltip\""} {
+	for _, unwanted := range []string{"data-verso-tip", "cursor-help", `tabindex="0"`, "role=\"tooltip\""} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("plain field should not carry %q:\n%s", unwanted, got)
 		}
