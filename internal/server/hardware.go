@@ -356,7 +356,6 @@ func hardwareFibre(inv sensors.Inventory) widget.Widget {
 	}
 	return &widget.Section{
 		Title: "Fiber modules", Hairline: true,
-		Meta:     "read from each module's own diagnostics",
 		Children: []widget.Widget{&widget.Grid{Columns: 2, Children: cards}},
 	}
 }
@@ -383,10 +382,11 @@ func fibreCard(f *sensors.FiberModule) widget.Widget {
 	// The card Access gives its HTTPS certificate: a thing the box holds, its
 	// facts set left under its title.
 	return &widget.Card{
-		Style:    "artifact",
-		Title:    "SFP+ module",
-		Subtitle: f.Cage,
-		Children: []widget.Widget{&widget.Properties{Align: "left", Items: items}},
+		Style:        "artifact",
+		Title:        "SFP+ module",
+		Subtitle:     f.Cage,
+		SubtitleMono: true,
+		Children:     []widget.Widget{&widget.Properties{Align: "left", Items: items}},
 	}
 }
 

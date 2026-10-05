@@ -39,7 +39,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.Body = t(n.Body)
 	case *Card:
 		n.Title = t(n.Title)
-		n.Subtitle = t(n.Subtitle)
+		if !n.SubtitleMono {
+			n.Subtitle = t(n.Subtitle)
+		}
 	case *Chart:
 		n.Label = t(n.Label)
 		n.AxisStart = t(n.AxisStart)

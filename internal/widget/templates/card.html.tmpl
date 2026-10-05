@@ -16,7 +16,7 @@
        the sentence on the rows' own 24px line. */}}
   {{if .Title}}<div class="border-b border-rule-strong pt-3.5 pb-2.5">
     <h3 class="text-base leading-6 font-semibold text-ink">{{.Title}}</h3>
-    {{if .Subtitle}}<p class="text-sm leading-6 text-body">{{.Subtitle}}</p>{{end}}
+    {{if .Subtitle}}<p class="{{if .SubtitleMono}}font-mono text-base leading-6 font-medium{{else}}text-sm leading-6{{end}} text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
   {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-8 mb-2{{else}}mb-5{{end}}">
     {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} text-ink">{{.Title}}</h3>{{end}}

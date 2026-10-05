@@ -15,10 +15,14 @@ import (
 // just under the title as part of the header block — describing the card — set apart
 // from the content below it.
 type Card struct {
-	Style    string  `json:"style"`
-	Title    string  `json:"title"`
-	Subtitle string  `json:"subtitle"`
-	Children Widgets `json:"children"`
+	Style    string `json:"style"`
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle"`
+	// SubtitleMono declares the subtitle a machine string (an SFP module's
+	// cage, "xfi0") rather than a sentence: set in mono, as every verbatim
+	// string is, and left out of translation.
+	SubtitleMono bool    `json:"subtitle_mono,omitempty"`
+	Children     Widgets `json:"children"`
 }
 
 func (*Card) isWidget() {}
@@ -30,10 +34,11 @@ func (c *Card) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children
 // cardView is the card template's model: the title and subtitle plus the children
 // already rendered to trusted HTML fragments.
 type cardView struct {
-	Style    string
-	Title    string
-	Subtitle string
-	Children []template.HTML
+	Style        string
+	Title        string
+	Subtitle     string
+	SubtitleMono bool
+	Children     []template.HTML
 }
 
 // renderInto renders each child through the renderer, so composition/nesting lives
@@ -43,5 +48,5 @@ func (c *Card) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "card.html.tmpl", cardView{Style: c.Style, Title: c.Title, Subtitle: c.Subtitle, Children: children})
+	return r.execute(out, "card.html.tmpl", cardView{Style: c.Style, Title: c.Title, Subtitle: c.Subtitle, SubtitleMono: c.SubtitleMono, Children: children})
 }

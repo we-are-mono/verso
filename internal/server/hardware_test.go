@@ -175,10 +175,16 @@ func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
 	for _, want := range []string{
 		`<section class="rounded-xs border border-rule bg-quiet px-5">`,
 		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
+		`<p class="font-mono text-base leading-6 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("an SFP module is not the certificate's card; missing %s:\n%s", want, body)
 		}
+	}
+	// The section says nothing about where its readings come from: a module's
+	// facts are its own, and a note beside the heading restates it.
+	if section := hardwareFibre(inv).(*widget.Section); section.Meta != "" {
+		t.Errorf("Fiber modules carries a note: %q", section.Meta)
 	}
 }
 
