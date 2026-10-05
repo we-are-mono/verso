@@ -436,6 +436,23 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 	}
 }
 
+// TestASectionsAirIsTheNextRulesToo: whatever draws its own rule after a
+// section (the configuration card's divider, a form's Save row) stands 32px
+// under the last control, the same as a section's rule stands under the one
+// before it: the section's own air is the air before any rule that follows
+// it, and the ruled block adds none of its own on top. The forward drawer's
+// card stood 60px under "Counting and logging" before this.
+func TestASectionsAirIsTheNextRulesToo(t *testing.T) {
+	css, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "[data-verso-section] + :is([data-verso-code-divider], [data-verso-form-actions]),\n  [data-verso-section] + input[type=\"hidden\"] + :is([data-verso-code-divider], [data-verso-form-actions]) { margin-top: 0; }"
+	if !strings.Contains(string(css), want) {
+		t.Errorf("sections.css is missing %s", want)
+	}
+}
+
 // TestTipsRiseAboveTheirLabel: an explanation opens above the label that
 // raises it, so the pointer on its way down to the control never meets it; a
 // pointer passing over the label raises nothing, because the tip waits for it

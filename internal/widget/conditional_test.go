@@ -44,6 +44,17 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 	}
 }
 
+// TestConditionalKeepsARowsAir: a gate is a row, and stands off what is around
+// it as every row does; trimming a section's first and last rows is the
+// section's to do (sections.css), so a gate opening a titled section keeps its
+// 16px under the band as a checkbox row there does.
+func TestConditionalKeepsARowsAir(t *testing.T) {
+	got := render(t, newRenderer(t), &Conditional{Name: "reflection", Label: "Also works from inside your network"})
+	if !strings.Contains(got, `<div class="verso-conditional py-4" data-verso-change-field`) {
+		t.Errorf("a gate's own padding is a row's, untrimmed: %s", got)
+	}
+}
+
 func TestConditionalUnknownOtherwiseFieldFails(t *testing.T) {
 	js := `{"type":"conditional","name":"t","label":"L","fields":[],"otherwise":[{"type":"bogus"}]}`
 	if _, err := Decode([]byte(js)); err == nil {
