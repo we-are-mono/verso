@@ -317,7 +317,7 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
         *control = Some(Box::new(clock_button));
     }
     let mut form = Widget::Form {
-        style: "page".into(),
+        style: "settings".into(),
         submit: "Save settings".into(),
         note: String::new(),
         target: String::new(),

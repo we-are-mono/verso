@@ -206,7 +206,7 @@ pub fn page(model: &Firewall) -> Envelope {
             columns: 2,
             children: vec![
                 Widget::Form {
-                    style: "page".into(),
+                    style: "settings".into(),
                     submit: "Save settings".into(),
                     error: String::new(),
                     // The page header supplies the first section's spacing;

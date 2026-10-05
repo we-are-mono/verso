@@ -127,6 +127,8 @@ fn computer_time_is_an_immediate_command() {
 fn general_names_what_it_saves() {
     let page = serde_json::to_value(get(&request())).unwrap();
     assert_eq!(page["widget"]["submit"], "Save settings", "{page}");
+    // A settings form's Save rests until something in it changes.
+    assert_eq!(page["widget"]["style"], "settings", "{page}");
 }
 #[test]
 fn general_says_where_each_option_lives() {
