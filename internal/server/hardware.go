@@ -56,7 +56,7 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 	}
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	if grid := hardwareVitals(tr, inv); grid != nil {
+	if grid := hardwareVitals(tr, profile, inv); grid != nil {
 		out = append(out, grid)
 	}
 	if temps := hardwareTemps(tr, profile, inv); temps != nil {
@@ -150,10 +150,14 @@ func panelPorts(profile *sensors.Profile, snapshot telemetry.Snapshot, wan openw
 }
 
 // hardwareVitals is the headline instrument grid — the CPU temperature, the main
-// power draw, and the main fan, each pulled out of the detail below. A box that
-// reports less shows fewer tiles; when it reports neither power nor a fan, the
-// warmest sensor stands beside the CPU so the grid is never a lonely single tile.
-func hardwareVitals(tr func(string) string, inv sensors.Inventory) widget.Widget {
+// power draw, and the main fan, each pulled out of the detail below. They are a
+// profile's picks: a box no profile describes has only guesses, so it draws no
+// grid, and its readings stand in Temperatures and All sensors. A profiled box
+// that reports less shows fewer tiles.
+func hardwareVitals(tr func(string) string, profile *sensors.Profile, inv sensors.Inventory) widget.Widget {
+	if profile == nil {
+		return nil
+	}
 	var tiles []widget.Widget
 	if cpu := inv.CPUTemp(); cpu != nil {
 		tiles = append(tiles, cpuTile(tr, cpu))
@@ -163,11 +167,6 @@ func hardwareVitals(tr func(string) string, inv sensors.Inventory) widget.Widget
 	}
 	if f := inv.MainFan(); f != nil {
 		tiles = append(tiles, fanTile(tr, f))
-	}
-	if len(tiles) == 1 {
-		if warm := warmestTile(tr, inv); warm != nil {
-			tiles = append(tiles, warm)
-		}
 	}
 	if len(tiles) == 0 {
 		return nil
@@ -213,47 +212,6 @@ func fanTile(tr func(string) string, f *sensors.FanReading) widget.Widget {
 		Value: rpmGroup(f.RPM), Verbatim: true, Unit: "rpm",
 		Sub: sub, SubVerbatim: true, Variant: "success",
 	}
-}
-
-// warmestTile is the unprofiled grid's second instrument: the warmest reading the
-// box has (preferring one with a real limit so its headroom is meaningful).
-func warmestTile(tr func(string) string, inv sensors.Inventory) widget.Widget {
-	var pick *sensors.TempReading
-	for i := range inv.Temps {
-		t := &inv.Temps[i]
-		if t.CPU || t.Fault {
-			continue
-		}
-		if pick == nil || betterWarmest(t, pick) {
-			pick = t
-		}
-	}
-	if pick == nil {
-		return nil
-	}
-	label := "Warmest sensor"
-	if strings.Contains(pick.Source, "nvme") {
-		label = "Storage"
-	}
-	sub := pick.Name
-	if pick.Warn > 0 {
-		sub = pick.Name + " · " + fmt.Sprintf(tr("warns at %s"), celsiusRound(pick.Warn))
-	}
-	return &widget.Stat{
-		Style: "bare", Label: label, Icon: "thermometer",
-		Value: celsiusWhole(pick.MilliC), Verbatim: true, Unit: "°C",
-		Sub: sub, SubVerbatim: true,
-		Variant: tempVariant(pick.Level),
-	}
-}
-
-// betterWarmest prefers a reading with a real limit, then the hotter one — so the
-// warmest tile favours a sensor whose headroom actually means something.
-func betterWarmest(a, b *sensors.TempReading) bool {
-	if a.HasLimits != b.HasLimits {
-		return a.HasLimits
-	}
-	return a.MilliC > b.MilliC
 }
 
 // hardwareTemps is the curated Temperatures section — the profile's picks (or the

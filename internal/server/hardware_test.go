@@ -48,7 +48,7 @@ func TestHardwareProfiledComposition(t *testing.T) {
 	profile := &sensors.Profile{Name: "Mono Gateway Development Kit"}
 
 	sections := []widget.Widget{
-		hardwareVitals(identityTranslator, inv), hardwareTemps(identityTranslator, profile, inv),
+		hardwareVitals(identityTranslator, profile, inv), hardwareTemps(identityTranslator, profile, inv),
 		hardwarePower(identityTranslator, inv), hardwareFans(identityTranslator, inv), hardwareFibre(inv),
 	}
 	sections = append(sections, hardwareReadings(inv)...)
@@ -145,6 +145,19 @@ func TestAnUnprofiledBoxSaysOnlyWhatItHas(t *testing.T) {
 	// row's other side does not have.
 	if strings.Contains(temps, "verso-stack space-y-4") || !strings.Contains(temps, "data-verso-rows") {
 		t.Errorf("Temperatures spaces its rows apart instead of letting each keep its own air:\n%s", temps)
+	}
+}
+
+// TestOnlyAProfileEarnsTheVitals: the vitals across the top are a profile's
+// picks — the processor, the input rail, the main fan. A box no profile
+// describes has no such picks, only guesses, so it draws no vitals; its
+// readings stand in Temperatures and All sensors.
+func TestOnlyAProfileEarnsTheVitals(t *testing.T) {
+	if grid := hardwareVitals(identityTranslator, nil, unprofiledInventory()); grid != nil {
+		t.Errorf("an unprofiled box draws vitals: %#v", grid)
+	}
+	if grid := hardwareVitals(identityTranslator, &sensors.Profile{Name: "Mono Gateway Development Kit"}, dkInventory()); grid == nil {
+		t.Error("a profiled box draws no vitals")
 	}
 }
 
