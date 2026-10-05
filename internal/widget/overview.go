@@ -96,11 +96,24 @@ type OverviewInterface struct {
 	TxPackets string
 }
 
-// inUse is whether anything asked for the interface: a network sits on it, or
-// it is a bridge's member or a VLAN's parent. The kernel's own sit0 and a spare
-// port are neither, so their state is nobody's concern.
+// inUse is whether anything asked for the port: a network sits on it, or it is
+// a bridge's member or a VLAN's parent. A spare port is neither, so its missing
+// cable is nobody's concern.
 func (n OverviewInterface) inUse() bool {
 	return len(n.Networks) > 0 || len(n.Relations) > 0
+}
+
+// kernelTunnels are the devices a tunnel module makes for itself when it
+// loads, under these fixed names, whether or not anyone configured a tunnel.
+// They are nobody's tunnels; every other tunnel device someone brought up.
+var kernelTunnels = map[string]bool{
+	"sit0": true, "ip6tnl0": true, "tunl0": true, "gre0": true, "gretap0": true,
+	"erspan0": true, "ip6gre0": true, "ip_vti0": true, "ip6_vti0": true,
+}
+
+// tunnel is whether the interface is a tunnel someone brought up.
+func (n OverviewInterface) tunnel() bool {
+	return n.Kind == "tunnel" && !kernelTunnels[n.Name]
 }
 
 // OverviewInterfaceRelation is a parent or member shown in the topology cell.

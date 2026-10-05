@@ -106,7 +106,7 @@ type overviewTunnel struct{ Name, Tone string }
 func (o *Overview) tunnels() []overviewTunnel {
 	var rows []overviewTunnel
 	for _, n := range o.Interfaces {
-		if n.Kind != "tunnel" || !n.inUse() {
+		if !n.tunnel() {
 			continue
 		}
 		row := overviewTunnel{Name: n.Name, Tone: "neutral"}
@@ -176,7 +176,7 @@ func (o *Overview) masthead(tr func(string) string) overviewMastheadView {
 		issues++
 	}
 	for _, n := range o.Interfaces {
-		if (n.Physical || n.Kind == "tunnel") && n.inUse() && (n.State == "down" || n.State == "lowerlayerdown") {
+		if ((n.Physical && n.inUse()) || n.tunnel()) && (n.State == "down" || n.State == "lowerlayerdown") {
 			issues++
 		}
 	}

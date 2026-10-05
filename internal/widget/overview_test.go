@@ -122,8 +122,10 @@ func TestOverviewStatusFollowsReadings(t *testing.T) {
 	}
 }
 
-// The kernel brings sit0 and ip6tnl0 up on its own, and a spare port has no
-// cable: down, but no network asked for them, so nothing needs attention.
+// The kernel makes sit0 and ip6tnl0 on its own, and a spare port has no
+// cable: down, but nobody asked for them, so nothing needs attention. A tunnel
+// someone did bring up counts whether or not uci names its device: WireGuard's
+// device is its section's name, and Tailscale keeps out of uci altogether.
 func TestOverviewStatusIgnoresUnusedInterfaces(t *testing.T) {
 	tr := func(s string) string { return s }
 	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{
@@ -132,13 +134,15 @@ func TestOverviewStatusIgnoresUnusedInterfaces(t *testing.T) {
 		{Name: "lan4", Physical: true, State: "down"},
 		{Name: "sit0", Kind: "tunnel", State: "down"},
 		{Name: "ip6tnl0", Kind: "tunnel", State: "down"},
+		{Name: "tailscale0", Kind: "tunnel", State: "up"},
+		{Name: "wg0", Kind: "tunnel", State: "up"},
 	}}
 	status := o.LiveStatus(tr)
 	if status.Kicker != "1 needs attention" {
 		t.Fatalf("kicker = %q, want only the bridged lan1 counted", status.Kicker)
 	}
-	if tile := o.tunnelTile(tr); tile.Status != "None observed" {
-		t.Fatalf("tunnel tile = %+v, want unused tunnels left out", tile)
+	if tile := o.tunnelTile(tr); tile.Status != "All interfaces up" || tile.Caption != "2 interfaces" {
+		t.Fatalf("tunnel tile = %+v, want tailscale0 and wg0, not the kernel's own", tile)
 	}
 	if tile := o.interfacesTile(tr); tile.Identity != "lan1" {
 		t.Fatalf("interfaces tile = %+v, want lan1 named, not the spare lan4", tile)
