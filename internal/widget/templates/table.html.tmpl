@@ -44,8 +44,10 @@
      a check) sits centred on that same line; only a 28px act is taller, and its
      cell insets it by 8px instead (table.cellpad-act). In the listing geometry
      the columns' widths space the cells and only the table's edges carry a side
-     inset; elsewhere every cell keeps its own. */}}
-{{define "table.cellpad"}}{{if .Dense}}py-2.5 leading-6{{else}}px-3.5 py-2.5 leading-6{{end}}{{end}}
+     inset, but each cell keeps 16px at its end so a value wider than its
+     column's measure never runs into the next; elsewhere every cell keeps its
+     own. */}}
+{{define "table.cellpad"}}{{if .Dense}}py-2.5 pr-4 leading-6{{else}}px-3.5 py-2.5 leading-6{{end}}{{end}}
 {{/* table.cellpad-stack: a cell that stacks two 20px lines. Every cell stands
      at the row's top, so the row's acts and one-line values stay level with
      the first line of anything that spans two; the stack takes 12px above and
@@ -83,7 +85,7 @@
 {{/* table.cellpad-detail: a value over its detail line, 12px above and below
      — the first line's centre stays on the 22px a one-line cell and a row's
      28px acts keep, and the stack sits evenly in its 64px row. */}}
-{{define "table.cellpad-detail"}}{{if .Dense}}py-3{{else}}px-3.5 py-3{{end}}{{end}}
+{{define "table.cellpad-detail"}}{{if .Dense}}py-3 pr-4{{else}}px-3.5 py-3{{end}}{{end}}
 {{/* table.detail: the line of words under a cell's value — what it is, or
      since when — in the secondary step, on one 20px line with the cell's tag
      riding it (the tag keeps to the line). */}}
@@ -234,7 +236,7 @@
         {{/* A block-level flex, not an inline one: the cell is then exactly as
              tall as the tallest thing in it, and a glyph's box cannot lift the
              line it would otherwise sit in. */}}
-        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}}{{if .Dense}} pr-4{{end}} align-top group-last:border-b-0">
+        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}} align-top group-last:border-b-0">
           <span class="flex items-center gap-3{{if .Detail}} *:leading-5{{end}}">
             {{if and .LeadIcon (not .Expandable)}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
             {{/* the name is words, never a door: a reader cannot tell what

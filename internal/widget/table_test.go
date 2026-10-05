@@ -730,7 +730,7 @@ func TestRenderTableDense(t *testing.T) {
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 leading-6 pr-4 align-top`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 pr-4 leading-6 align-top`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
