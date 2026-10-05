@@ -10,7 +10,8 @@
       ],
       "ubus": {
         "verso": [
-          "dhcpState"
+          "dhcpState",
+          "vpnState"
         ],
         "service": [
           "list"

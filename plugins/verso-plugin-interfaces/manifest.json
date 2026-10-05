@@ -47,6 +47,11 @@
         "scope": "ubus",
         "object": "verso",
         "function": "dhcpState"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "vpnState"
       }
     ],
     "write": [

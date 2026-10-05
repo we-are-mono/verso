@@ -81,6 +81,8 @@ pub struct Model {
     pub live: Value,
     pub wireless: Vec<Record>,
     pub routes: Vec<Record>,
+    /// The OpenVPN instance holding each tun device it made, by device.
+    pub openvpn: BTreeMap<String, String>,
 }
 impl Model {
     pub fn resolve_device(&self, name: &str) -> String {
@@ -113,6 +115,20 @@ impl Model {
             wireless: records(&r.snapshot, "wireless", "wifi-iface"),
             routes: routes(&r.snapshot),
             live: r.ubus.get("networkState").cloned().unwrap_or(Value::Null),
+            openvpn: r
+                .ubus
+                .get("vpnState")
+                .and_then(|s| s["tunnels"].as_array())
+                .into_iter()
+                .flatten()
+                .filter(|t| t["kind"] == "openvpn")
+                .filter_map(|t| {
+                    Some((
+                        t["device"].as_str()?.to_string(),
+                        t["instance"].as_str()?.to_string(),
+                    ))
+                })
+                .collect(),
         }
     }
     pub fn names(&self) -> BTreeSet<String> {

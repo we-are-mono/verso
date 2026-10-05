@@ -229,6 +229,9 @@ fn reshaped(m: &Model, kind: &str, f: &Form) -> Envelope {
     page(m, kind, "", "", &v, &Errors::new(), "")
 }
 pub fn edit(m: &Model, network: &str, device: &str) -> Envelope {
+    if let (true, Some(instance)) = (network.is_empty(), m.openvpn.get(device)) {
+        return handoff(m, device, instance);
+    }
     let Some(kind) = kind_of(m, network, device) else {
         return crate::missing();
     };
@@ -241,6 +244,29 @@ pub fn edit(m: &Model, network: &str, device: &str) -> Envelope {
         &Errors::new(),
         "",
     )
+}
+/// handoff is the drawer of a device an OpenVPN instance made when it
+/// connected. The tunnel sets its address and would overwrite anything set
+/// here, so the drawer says whose it is and leads to that instance's panel.
+fn handoff(m: &Model, device: &str, instance: &str) -> Envelope {
+    let drawer = RowDrawer {
+        title: device.into(),
+        closed: ROOT.into(),
+        open: true,
+        children: vec![
+            Widget::text(&format!(
+                "OpenVPN made this device for its `{instance}` tunnel and sets its address \
+                 when it connects, so its settings are the VPN's."
+            )),
+            Widget::link(
+                &format!("Open {instance} in VPN"),
+                &format!("/plugins/vpn/?open={instance}"),
+                "button",
+            ),
+        ],
+        ..Default::default()
+    };
+    crate::page::with_drawer(m, drawer).with_back("Interfaces", ROOT)
 }
 fn field(v: &Values, e: &Errors, key: &str, label: &str, datatype: &str) -> Widget {
     let value = v.get(key);

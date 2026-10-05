@@ -747,3 +747,20 @@ fn a_device_with_no_network_reads_as_its_device() {
     // the row's pencil edits it
     assert!(parts[0].get("control").is_none());
 }
+// A device OpenVPN makes when it connects is the VPN's, not the network
+// config's: its drawer says whose it is and leads there, rather than offering
+// a name, an MTU and a MAC the tunnel would overwrite.
+#[test]
+fn a_device_run_by_openvpn_hands_off_to_its_vpn_panel() {
+    let mut r = request("/edit", "device=tun0");
+    r.ubus = Ubus::from_value(json!({
+        "vpnState": {"tunnels": [{"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true}]}
+    }));
+    let drawer = open_drawer(&get(&r));
+    assert_eq!(drawer["title"], "tun0");
+    let text = drawer.to_string();
+    assert!(text.contains("/plugins/vpn/?open=proton"), "{text}");
+    assert!(text.contains("proton"), "{text}");
+    assert!(!text.contains("\"mtu\""), "{text}");
+    assert!(!text.contains("macaddr"), "{text}");
+}
