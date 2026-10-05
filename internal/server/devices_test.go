@@ -280,6 +280,22 @@ func TestOnlineDevicesCountsFromTheNeighbourTable(t *testing.T) {
 	}
 }
 
+// TestNeighboursSkipAddressesThatAreNoDevice: a group MAC (IPv6 and IPv4
+// multicast, broadcast) and the all-zero MAC a tunnel's entry carries name no
+// machine, so they never become a row.
+func TestNeighboursSkipAddressesThatAreNoDevice(t *testing.T) {
+	agg := aggregateNeighbors([]sysstat.Neighbor{
+		{Addr: "ff02::1", MAC: "33:33:00:00:00:01"},
+		{Addr: "224.0.0.251", MAC: "01:00:5e:00:00:fb"},
+		{Addr: "192.168.1.255", MAC: "ff:ff:ff:ff:ff:ff"},
+		{Addr: "0.0.0.0", MAC: "00:00:00:00:00:00"},
+		{Addr: "192.168.1.20", MAC: "3C:22:FB:00:00:01"},
+	})
+	if len(agg) != 1 || agg["3c:22:fb:00:00:01"] == nil {
+		t.Errorf("devices = %v, want only 3c:22:fb:00:00:01", agg)
+	}
+}
+
 // TestLeaseIn: lease expiry reads the way a person says it.
 func TestLeaseIn(t *testing.T) {
 	now := time.Unix(1000, 0)

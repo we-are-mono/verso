@@ -4,8 +4,10 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"sort"
 	"strconv"
@@ -80,12 +82,15 @@ const (
 )
 
 // aggregateNeighbors folds the neighbour table per MAC (lowercased): every
-// entry, v4 first, then v6 globals, link-locals last. An entry without a MAC
-// (unresolved, failed) says nothing about any device.
+// entry, v4 first, then v6 globals, link-locals last. An entry without a
+// machine's MAC says nothing about any device: unresolved or failed (none), a
+// tunnel's (all zero), or a group's (multicast or broadcast, the first octet's
+// low bit set).
 func aggregateNeighbors(neigh []sysstat.Neighbor) map[string][]sysstat.Neighbor {
 	agg := make(map[string][]sysstat.Neighbor)
 	for _, n := range neigh {
-		if n.MAC == "" {
+		hw, err := net.ParseMAC(n.MAC)
+		if err != nil || hw[0]&1 == 1 || bytes.Count(hw, []byte{0}) == len(hw) {
 			continue
 		}
 		mac := strings.ToLower(n.MAC)
