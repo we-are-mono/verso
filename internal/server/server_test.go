@@ -843,20 +843,26 @@ func TestARailRowIsFetchedAsItIsPressed(t *testing.T) {
 	}
 }
 
-// TestPluginKickerStatus: a page may mark a reference state beside its kicker
-// without burying that state in the lede.
-func TestPluginKickerStatus(t *testing.T) {
+// TestEveryPageWearsTheOneMasthead: the shell draws one masthead — the sand
+// bar, the heading and what acts on the page — for its own pages and a
+// plugin's alike, with no second shape (an eyebrow over the heading, a
+// display heading off the bar) for a page to drift into.
+func TestEveryPageWearsTheOneMasthead(t *testing.T) {
+	src, err := os.ReadFile("templates/page.html.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(src), "data-verso-masthead{{end}}"); n != 1 {
+		t.Errorf("page.html.tmpl draws %d mastheads, want one", n)
+	}
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "System", Kicker: "Reference", KickerStatus: "Complete",
+		SchemaVersion: 1, Title: "System",
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
-
 	body := get(t, s, "/plugins/demo/").Body.String()
-	for _, want := range []string{"Reference", "· Complete", "text-green-deep"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("kicker status missing %q", want)
-		}
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
+		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
 

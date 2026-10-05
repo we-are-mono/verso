@@ -137,35 +137,16 @@
          keeps the full 40px, as far from the top as from the left. */}}
     <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pb-10{{end}}">
     <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
-    {{if .Kicker}}
+    {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
     <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-6 py-4">
-      {{if .Kicker}}<div class="verso-kicker">{{if .Live}}<span class="verso-live-dot size-1.5 shrink-0 rounded-[1px] bg-green"></span>{{end}}{{.Kicker}}{{if .KickerStatus}}<span class="text-green-deep">· {{.KickerStatus}}</span>{{end}}</div>{{end}}
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits
-           under it. */}}
-      <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
-        {{/* A toned heading is a message about now, not a place-label: it
-             tints in the tone vocabulary and drops the " — <tab>" suffix
-             ("neutral" drops the suffix without a tint). */}}
-        <h1 class="min-w-0 verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
-        {{if .Modes}}
-        {{/* The one segmented tray every switch in the app wears: the view in
-             force filled in the body ink, the rest plain words that darken
-             under the pointer — never the action colour, which is for what
-             leads somewhere. */}}
-        <nav aria-label="{{ t "Page view" }}" class="inline-flex shrink-0 gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5">
-          {{range .Modes}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="flex h-7.5 items-center rounded-xs px-3.5 text-sm whitespace-nowrap transition-colors {{if .Active}}pointer-events-none bg-body font-semibold text-white{{else}}font-normal text-body hover:text-ink{{end}}">{{.Label}}</a>{{end}}
-        </nav>
-        {{end}}
-        {{if .HeadingAct}}{{.HeadingAct}}{{end}}
-      </div>
-    </div>
-    {{else if .Heading}}
-    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-6 py-4">
-      {{/* An act's height whether it holds one or not, as above. */}}
+           under it. A toned heading is a message about now, not a
+           place-label: it tints in the tone vocabulary and drops the
+           " — <tab>" suffix ("neutral" drops the suffix without a tint). */}}
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{if .HeadingAct}}{{.HeadingAct}}{{end}}

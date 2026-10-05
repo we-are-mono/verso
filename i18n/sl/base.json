@@ -501,7 +501,6 @@
   "1 minute": "1 minuta",
   "%d minutes": "%d minut",
   "Available": "Na voljo",
-  "Page view": "Pogled strani",
   "Enter a package name, then select Search. Matching packages will appear here.": "Vnesite ime paketa in izberite Iskanje. Ujemajoči se paketi se bodo prikazali tukaj.",
   "No available packages match “%s”. Check the spelling or refresh the package feeds.": "Noben razpoložljiv paket se ne ujema z „%s“. Preverite črkovanje ali osvežite vire paketov.",
   "Package name": "Ime paketa",

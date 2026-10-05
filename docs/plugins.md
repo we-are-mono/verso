@@ -228,9 +228,6 @@ envelope** back — `Content-Type: application/json`:
 
 - `widget` — one root widget: a whole page body or one contribution fragment.
 - `title` — the standalone page heading; omit it for a contribution.
-- `kicker` — optional eyebrow above a standalone page heading.
-- `kicker_status` — optional short emerald state beside the kicker, such as
-  `"Complete"` beside a finished reference page's kicker.
 - `tone` — optional; declares the title a message about now rather than a
   place-label: the shell tints the heading by the closed tone vocabulary
   (`info` | `success` | `warning` | `danger` | `neutral` — never a colour) and

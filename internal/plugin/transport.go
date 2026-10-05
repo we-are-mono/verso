@@ -82,13 +82,10 @@ type Envelope struct {
 
 	SchemaVersion int       `json:"schema_version"`
 	Title         string    `json:"title"`
-	Kicker        string    `json:"kicker"`        // optional eyebrow above the heading, e.g. "System"
-	KickerStatus  string    `json:"kicker_status"` // optional emerald completion/state label beside the kicker
-	Immediate     bool      `json:"immediate"`     // page actions are immediate: nothing on the page stages
-	Live          bool      `json:"live"`          // optional pulsing dot on the kicker
-	Tone          string    `json:"tone"`          // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
-	Width         string    `json:"width"`         // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
-	Pages         []PageTab `json:"pages"`         // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
+	Immediate     bool      `json:"immediate"` // page actions are immediate: nothing on the page stages
+	Tone          string    `json:"tone"`      // the title is a message about now: tint by the tone vocabulary, drop the nav suffix
+	Width         string    `json:"width"`     // page width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
+	Pages         []PageTab `json:"pages"`     // optional third navigation tier: this domain's subpages, rendered as the shell's top bar
 	// Back is an editor's return address: where a save that staged, or a
 	// command that ran, sends the person, and where a page form's Cancel leads.
 	// The masthead draws nothing for it. It reuses the PageAction shape, but

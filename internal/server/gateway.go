@@ -559,10 +559,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// these, which is a no-op on an already-translated value (a translation is never
 	// an English base key), so the plugin's text survives (ADR-012 §5).
 	hdr.Heading = tr(hdr.Heading)
-	hdr.Kicker = tr(env.Kicker)
-	hdr.KickerStatus = tr(env.KickerStatus)
 	hdr.Immediate = env.Immediate
-	hdr.Live = env.Live
 	hdr.Tone = env.Tone
 	hdr.Back = safeBack(env.Back)
 	hdr.Banner = localizeBanner(env.Banner, tr)

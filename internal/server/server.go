@@ -545,10 +545,7 @@ type pageData struct {
 	Lang          string // negotiated language for <html lang>, "en" when English
 	Title         string
 	Heading       string
-	HeadingDetail string // the active subpage's name, muted beside the heading
-	Kicker        string // optional eyebrow above the heading (with a live dot when Live)
-	KickerStatus  string // optional emerald status beside the kicker
-	Live          bool
+	HeadingDetail string        // the active subpage's name, muted beside the heading
 	Tone          string        // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Light         bool          // the light masthead, on the page's own ground (pageHeader.Light)
 	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
@@ -579,7 +576,6 @@ type pageData struct {
 	// translator, so the render hands it these as a JSON blob (ADR-012).
 	JSStrings template.JS
 	Pages     []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
-	Modes     []pageTab // optional local views, rendered as a compact switch beside the heading
 	// Flash is the one-shot outcome at the top of the content: the PRG
 	// confirmation from a redirect, or a plugin envelope's notice.
 	FlashVariant string // the tone vocabulary: "success" | "warning" | "danger" | "info" | "" (no flash)
@@ -603,15 +599,11 @@ type pageTab struct {
 	PluginID string
 }
 
-// pageHeader is the masthead the shell renders above a page body. Heading is always
-// shown; a page may also declare a kicker (an eyebrow, optionally with a live dot) to get
-// the fuller "your connection, live" header, otherwise it stays a plain heading.
+// pageHeader is the masthead the shell renders above a page body: the page's
+// heading, and what acts on the page beside it.
 type pageHeader struct {
-	Heading      string
-	Kicker       string
-	KickerStatus string
-	Immediate    bool
-	Live         bool
+	Heading   string
+	Immediate bool
 	// Tone declares the heading a message about now rather than a place-label:
 	// it tints in the closed tone vocabulary ("info" | "success" | "warning" |
 	// "danger" | "neutral" — never a colour) and the " — <tab>" navigation
@@ -649,7 +641,6 @@ type pageHeader struct {
 	Back   *plugin.PageAction
 	Banner *plugin.Banner
 	Notice *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
-	Modes  []pageTab
 	// StagedCommit records that this render staged a uci commit (a successful
 	// editor submit). The gateway reads it to send an editor back to its listing
 	// after a save, rather than re-rendering the form
@@ -784,11 +775,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 			headingDetail = p.Label
 		}
 	}
-	localizedModes := make([]pageTab, len(hdr.Modes))
-	for i, mode := range hdr.Modes {
-		mode.Label = tr(mode.Label)
-		localizedModes[i] = mode
-	}
 	// Whether root has a password is read from /etc/shadow by verso-rpcd (the
 	// shell can't); a helper miss fails safe to "has one" so it never falsely warns.
 	hasPassword, hpErr := s.backend.RootHasPassword(r.Context(), s.sessionSID(r))
@@ -805,11 +791,8 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Title:         documentTitle(r.URL.Path == "/", tr(hdr.Heading), headingDetail, tr),
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
-		Kicker:        tr(hdr.Kicker),
 		Tone:          pageTone(hdr.Tone),
 		Light:         hdr.Light,
-		KickerStatus:  tr(hdr.KickerStatus),
-		Live:          hdr.Live,
 		HeadingAct:    hdr.HeadingAct,
 		Width:         width,
 		CSS:           s.currentCSS(),
@@ -827,7 +810,6 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Staged:        staged,
 		JSStrings:     jsCatalog(tr),
 		Pages:         localizedPages,
-		Modes:         localizedModes,
 		FlashVariant:  flashVariant,
 		FlashMessage:  tr(flashMessage),
 	}); err != nil {
