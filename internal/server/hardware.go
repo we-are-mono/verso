@@ -459,7 +459,10 @@ func hardwareReadings(inv sensors.Inventory) []widget.Widget {
 	section := &widget.Section{
 		Title:    "All sensors",
 		Hairline: true,
-		Children: []widget.Widget{&widget.Table{Dense: true, Columns: readingColumns(), Rows: rows}},
+		// Not dense: the value (set right) and its limits (set left) stand side
+		// by side and need their cells' inset between them, which four columns
+		// have the measure for.
+		Children: []widget.Widget{&widget.Table{Columns: readingColumns(), Rows: rows}},
 	}
 	return []widget.Widget{section}
 }

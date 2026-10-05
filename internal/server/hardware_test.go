@@ -88,6 +88,22 @@ func TestHardwareProfiledComposition(t *testing.T) {
 	}
 }
 
+// TestReadingsKeepTheirCellsApart: a reading's value and its limits are
+// neighbouring columns, the value set right and the limits left, so each cell
+// keeps its own inset — a four-column table has the measure for it — or the
+// two run together ("46.9 °Chigh 81 °C").
+func TestReadingsKeepTheirCellsApart(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	var buf strings.Builder
+	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: hardwareReadings(dkInventory())}, "", "en", nil); err != nil {
+		t.Fatal(err)
+	}
+	body := buf.String()
+	if !strings.Contains(body, "px-3.5 py-2.5 leading-6") {
+		t.Errorf("the readings' cells give up their inset:\n%s", body)
+	}
+}
+
 // The DK's rear-panel art is embedded in the binary and loads as trusted content.
 func TestHardwarePanelArtEmbedded(t *testing.T) {
 	svg := readPanel("mono_gateway-dk", "back.svg")
