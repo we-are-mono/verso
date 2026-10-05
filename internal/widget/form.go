@@ -116,6 +116,9 @@ type formView struct {
 	// section's rule is the line that closes it.
 	Sectioned bool
 	JoinsCode bool // actions finish the configuration card above them
+	// LoneAct is a form that is only its act (every field a hidden carrier):
+	// it has no fields to close off, so its Save draws no rule of its own.
+	LoneAct bool
 	// ClosesPage is the page's own form, its sections inside it: its Save
 	// commits the whole page, so the rule above it is a section rule of the
 	// page's.
@@ -128,6 +131,17 @@ type formView struct {
 	CSRFToken  string
 	Actions    []FormAction
 	Fields     []template.HTML
+}
+
+// loneAct reports whether a form is only its act: every field a hidden
+// carrier, nothing someone fills in for the act to close off.
+func loneAct(f *Form) bool {
+	for _, w := range f.Fields {
+		if field, ok := w.(*Field); !ok || field.Kind != "hidden" {
+			return false
+		}
+	}
+	return true
 }
 
 // renderInto renders each field through the renderer, keeping composition in Go and
@@ -160,8 +174,8 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
-		JoinsCode: EndsWithCode(f),
-		Submit:    submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
+		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),
+		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})
 }

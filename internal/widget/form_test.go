@@ -174,6 +174,16 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-7 gap-4 border-t border-rule pt-5">`) {
 		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
+	// A form that is only its act (Install htop, under the package's facts)
+	// has no fields to close off: its button stands 20px under whatever is
+	// above it, drawing no rule of its own.
+	lone := &Form{Frame: "panel", Submit: "Install htop", Fields: []Widget{
+		&Field{Kind: "hidden", Name: "package", Value: "htop"},
+		&Field{Kind: "hidden", Name: "_primary", Value: "install"},
+	}}
+	if got := render(t, r, lone); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4">`) {
+		t.Errorf("a lone act draws a rule over itself:\n%s", got)
+	}
 }
 
 // A record editor opts into its own submit by giving the page form a label; it
