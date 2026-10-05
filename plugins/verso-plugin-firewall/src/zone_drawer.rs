@@ -47,6 +47,7 @@ pub const TAB: &str = "tab";
 /// so they are the same panel at the same kind of address.
 pub const NEW: &str = "new";
 
+const COVERS_TITLE: &str = "What it covers";
 const TRAFFIC_TITLE: &str = "What this zone allows";
 
 const REACHES_TITLE: &str = "Where it may go";
@@ -154,21 +155,18 @@ pub fn blank(
     errors: &Errors,
     tab: &str,
 ) -> RowDrawer {
-    let (title, sub, mut fields) = tab_body(model, None, form, reaches, errors, tab);
-    fields.extend(carried(form, reaches, tab));
+    let mut fields = tab_body(model, None, form, reaches, errors, tab);
     fields.push(Widget::config_preview(
         CONFIG_PATH,
         &uci_block(NEW, form, reaches, false),
     ));
+    fields.extend(carried(form, reaches, tab));
     RowDrawer {
         title: "New zone".into(),
         tabs: tabs(None, form, reaches, tab),
         closed: page::zones_href(),
         open: true,
-        children: vec![fields::panel_form(
-            "Add zone",
-            vec![Widget::section(title, sub, fields).flush()],
-        )],
+        children: vec![fields::panel_form("Add zone", fields)],
         ..RowDrawer::default()
     }
 }
@@ -278,18 +276,18 @@ fn body(
     errors: &Errors,
     tab: &str,
 ) -> Vec<Widget> {
-    let (title, sub, mut fields) = tab_body(model, Some(zone), form, reaches, errors, tab);
-    fields.extend(carried(form, reaches, tab));
+    let mut fields = tab_body(model, Some(zone), form, reaches, errors, tab);
     fields.push(Widget::config_preview(
         CONFIG_PATH,
         &uci_block(&zone.section, form, reaches, true),
     ));
-    vec![fields::panel_form(
-        "Save zone",
-        vec![Widget::section(title, sub, fields).flush()],
-    )]
+    fields.extend(carried(form, reaches, tab));
+    vec![fields::panel_form("Save zone", fields)]
 }
 
+/// tab_body is one reading's sections. Reaches and Advanced are one subject
+/// each; Traffic opens on the zone itself under no heading — the panel's
+/// title already names it — then what it covers, then what it allows.
 fn tab_body(
     model: &Firewall,
     zone: Option<&Zone>,
@@ -297,21 +295,39 @@ fn tab_body(
     reaches: &Crossings,
     errors: &Errors,
     tab: &str,
-) -> (&'static str, &'static str, Vec<Widget>) {
+) -> Vec<Widget> {
     match tab {
-        REACHES => (
+        REACHES => vec![Widget::section(
             REACHES_TITLE,
             REACHES_SUB,
             reaches_fields(model, zone, reaches, errors),
-        ),
-        ADVANCED => (ADVANCED_TITLE, "", advanced_fields(form, errors)),
-        _ => (TRAFFIC_TITLE, "", traffic_fields(model, zone, form, errors)),
+        )
+        .flush()],
+        ADVANCED => {
+            vec![Widget::section(ADVANCED_TITLE, "", advanced_fields(form, errors)).flush()]
+        }
+        _ => {
+            let traffic = traffic_fields(model, zone, form, errors);
+            vec![
+                Widget::section("", "", traffic.zone).flush(),
+                Widget::section(COVERS_TITLE, "", traffic.covers).ruled(),
+                Widget::section(TRAFFIC_TITLE, "", traffic.allows).ruled(),
+            ]
+        }
     }
 }
 
-/// traffic_fields is what the zone is and what it allows: its name, the networks
-/// it claims, the three verdicts firewall4 evaluates separately, and the two
-/// things a zone does to traffic rather than with it.
+/// Traffic is three parts: the zone itself (whether it is in force, its name),
+/// what it covers (the networks it claims, and the devices and address ranges
+/// besides), and what it allows (the three verdicts firewall4 evaluates
+/// separately, and the two things a zone does to traffic rather than with it).
+struct Traffic {
+    zone: Vec<Widget>,
+    covers: Vec<Widget>,
+    allows: Vec<Widget>,
+}
+
+/// traffic_fields is the Traffic reading's rows, by part.
 ///
 /// The name's help differs by whether the zone exists: a new zone's name is one
 /// things will point at, and an existing zone's is one things already point at —
@@ -321,44 +337,45 @@ fn traffic_fields(
     zone: Option<&Zone>,
     form: &ZoneForm,
     errors: &Errors,
-) -> Vec<Widget> {
+) -> Traffic {
     let allowed = match zone {
         Some(zone) => allowed_networks(model, zone),
         None => model.network_names(),
     };
-    let mut out = Vec::new();
-    // Whether the zone is in force at all comes first, because nothing below it
-    // means anything when it is off: firewall4 skips the whole section, and every
-    // rule naming this zone goes with it. It is on unless a zone says otherwise,
-    // which is exactly why it needs saying.
-    out.push(Widget::switch_keyed(
-        "enabled",
-        "Zone is in force",
-        "enabled",
-        ENABLED_HELP,
-        form.enabled,
-    ));
     let name_help = match zone {
         None => NEW_NAME_HELP,
         Some(_) => RENAME_HELP,
     };
-    out.push(fields::text_field("name", "Name", &form.name, name_help, errors).writes("name"));
-    out.push(Widget::Field(Field {
-        name: "network".into(),
-        label: "Networks".into(),
-        kind: "checks".into(),
-        values: form.networks.clone(),
-        options: network_options(model, &allowed, &form.networks),
-        error: errors.get("network").into(),
-        key: "network".into(),
-        ..Default::default()
-    }));
-    // The two other ways a zone covers something. A network is what the rest of the
-    // config names; these are for what it does not — a kernel device the network
+    // Whether the zone is in force at all comes first, because nothing below it
+    // means anything when it is off: firewall4 skips the whole section, and every
+    // rule naming this zone goes with it. It is on unless a zone says otherwise,
+    // which is exactly why it needs saying.
+    let itself = vec![
+        Widget::switch_keyed(
+            "enabled",
+            "Zone is in force",
+            "enabled",
+            ENABLED_HELP,
+            form.enabled,
+        ),
+        fields::text_field("name", "Name", &form.name, name_help, errors).writes("name"),
+    ];
+    // A network is what the rest of the config names; the other two ways a zone
+    // covers something are for what it does not — a kernel device the network
     // config never declared, and an address range that is not an interface at all.
     // The device list used to be a fact with a note saying it could not be edited
     // here, which left a zone claiming a raw device readable and unwritable.
-    out.push(
+    let covers = vec![
+        Widget::Field(Field {
+            name: "network".into(),
+            label: "Networks".into(),
+            kind: "checks".into(),
+            values: form.networks.clone(),
+            options: network_options(model, &allowed, &form.networks),
+            error: errors.get("network").into(),
+            key: "network".into(),
+            ..Default::default()
+        }),
         fields::token_list(
             "device",
             "Devices",
@@ -368,8 +385,6 @@ fn traffic_fields(
             errors,
         )
         .writes("device"),
-    );
-    out.push(
         fields::token_list(
             "subnet",
             "Address ranges",
@@ -379,9 +394,9 @@ fn traffic_fields(
             errors,
         )
         .writes("subnet"),
-    );
+    ];
     let choices = || zone_form::options(&POLICIES);
-    out.extend([
+    let allows = vec![
         policy_field(
             "input",
             "Traffic to the router",
@@ -445,8 +460,12 @@ fn traffic_fields(
             Vec::new(),
         ),
         Widget::switch_keyed("mtu_fix", MTU_LABEL, "mtu_fix", MTU_HELP, form.mtu_fix),
-    ]);
-    out
+    ];
+    Traffic {
+        zone: itself,
+        covers,
+        allows,
+    }
 }
 
 /// reaches_fields is where this zone's traffic may go, the zones pointing back

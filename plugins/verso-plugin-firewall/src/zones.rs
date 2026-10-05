@@ -456,12 +456,54 @@ mod tests {
             .clone()
     }
 
-    /// reading is the rows of one of the zone's readings, as its section holds
-    /// them.
-    fn reading(tab: &str) -> Vec<Value> {
+    /// parts are the sections one of the zone's readings stands in, in order.
+    fn parts(tab: &str) -> Vec<Value> {
         let panel = panel_of(&opened("cfg02dc81", tab), "cfg02dc81");
-        let section = fixture::find_with(&panel, &|v| v["type"] == "section").expect("the reading");
-        section["children"].as_array().unwrap().clone()
+        panel["children"][0]["fields"]
+            .as_array()
+            .expect("the form's fields")
+            .iter()
+            .filter(|w| w["type"] == "section")
+            .cloned()
+            .collect()
+    }
+
+    /// reading is the rows of one of the zone's readings, every part's in
+    /// order.
+    fn reading(tab: &str) -> Vec<Value> {
+        parts(tab)
+            .iter()
+            .flat_map(|part| part["children"].as_array().unwrap().clone())
+            .collect()
+    }
+
+    /// The Traffic reading opens on the zone itself — whether it is in force,
+    /// and its name — under no heading, since the panel's title names the
+    /// zone; then what the zone covers; then what it allows, the policies
+    /// alone under the heading that names them.
+    #[test]
+    fn the_traffic_reading_opens_on_the_zone_then_what_it_covers_then_what_it_allows() {
+        let names = |part: &Value| -> Vec<String> {
+            part["children"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|w| w["name"].as_str().map(str::to_string))
+                .collect()
+        };
+        let parts = parts(zone_drawer::TRAFFIC);
+        let titles: Vec<&str> = parts
+            .iter()
+            .map(|p| p["title"].as_str().unwrap_or_default())
+            .collect();
+        assert_eq!(titles, ["", "What it covers", "What this zone allows"]);
+        assert_eq!(names(&parts[0]), ["enabled", "name"]);
+        assert_eq!(names(&parts[1]), ["network", "device", "subnet"]);
+        let allows = names(&parts[2]);
+        assert_eq!(&allows[..3], ["input", "output", "forward"]);
+        assert!(!allows
+            .iter()
+            .any(|n| ["enabled", "name", "network"].contains(&n.as_str())));
     }
 
     /// A zone's name is a field like any other, and its help says what a new

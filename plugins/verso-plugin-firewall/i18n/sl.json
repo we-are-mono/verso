@@ -86,6 +86,8 @@
   "This zone": "To območje",
   "What points at this zone today. Changing what it covers changes what they govern.": "Kaj danes kaže na to območje. Če spremenite, kaj pokriva, spremenite tudi, kaj to ureja.",
   "Named elsewhere": "Omenjeno drugje",
+  "What it covers": "Kaj zajema",
+  "What this zone allows": "Kaj to območje dovoli",
   "A new name carries to each of them; deleting the zone leaves them matching nothing.": "Novo ime se prenese na vsakega od njih; če območje izbrišete, se ne ujemajo več z ničemer.",
   "Without a crossing, traffic from this zone reaches no other zone, whatever the policies say.": "Brez prehoda promet iz tega območja ne doseže nobenega drugega območja, ne glede na politike.",
   "Rules, forwards, crossings and source NAT that name this zone follow a new name. Custom nftables includes and other packages' settings keep the old one.": "Pravila, posredovanja, prehodi in izvorni NAT, ki omenjajo to območje, sledijo novemu imenu. Lastne vključitve nftables in nastavitve drugih paketov obdržijo staro.",
