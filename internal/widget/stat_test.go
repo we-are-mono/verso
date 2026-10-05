@@ -83,3 +83,20 @@ func TestRenderStatEscapes(t *testing.T) {
 		t.Errorf("escaped value missing: %s", got)
 	}
 }
+
+// TestABareStatIsAFigure: a bare stat is a vital laid on the open canvas (a
+// box's processor temperature, its power draw), so its number is the canvas's
+// figure — Inconsolata at 36px, the home page's meter's — with its unit quiet
+// beside it, rather than a 16px number a reader has to look for.
+func TestABareStatIsAFigure(t *testing.T) {
+	got := render(t, newRenderer(t), &Stat{Style: "bare", Label: "Processor", Icon: "thermometer", Value: "76", Unit: "°C"})
+	for _, want := range []string{
+		`<div class="mt-3 flex items-baseline gap-1.5 leading-none">`,
+		`<span class="font-mono text-4xl font-bold tracking-[-.05em] tabular-nums text-ink" data-verso-stat-v>76</span>`,
+		`<span class="text-base text-meta" data-verso-stat-u>°C</span>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a bare stat is not a figure; missing %s:\n%s", want, got)
+		}
+	}
+}
