@@ -154,17 +154,18 @@
      panel's tab, after a row's name — because a reader who sees two heights
      reads two kinds of thing, and a chip is one kind of thing.
 
-     22px, and the arithmetic that gets there rather than a height anyone has to
-     honour by hand: a 14px value in a 16px line box (leading-4), 2px of padding
-     above and below, and the 1px hairline. Retune it by moving the line box or
-     the padding and the whole vocabulary follows. */}}
+     21px, and the arithmetic that gets there rather than a height anyone has to
+     honour by hand: a 14px value in a 15px line box, 2px of padding above and
+     below, and the 1px hairline. Retune it by moving the line box or the
+     padding and the whole vocabulary follows. */}}
 {{/* verso-chip-shape is that box with the type left out, for the one chip whose
      words are not chip-sized — a traffic endpoint, which reads at the mono
-     reading size because it is an address someone could type. The 16px line box
+     reading size because it is an address someone could type. The 15px line box
      is what holds every chip to one height whatever size its words are. */}}
-{{/* A chip is 22px and rides a 20px line of the notebook's grid a pixel over
-     at either edge, so the line it stands on keeps its 20px. */}}
-{{define "verso-chip-shape"}}verso-chip -my-px inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap{{end}}
+{{/* A chip is 21px and stands a pixel over the 20px line it rides, so its top
+     and bottom borders are the notebook's two lines around that line, and the
+     line keeps its 20px. */}}
+{{define "verso-chip-shape"}}verso-chip -mt-px inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures

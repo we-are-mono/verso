@@ -1372,9 +1372,9 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
-		// the 22px chip overhangs the 20px detail line by a pixel either side
-		// rather than making the line taller
-		"verso-chip -my-px " + chipBox,
+		// the 21px chip stands a pixel over the 20px detail line rather than
+		// making the line taller
+		"verso-chip -mt-px " + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1397,14 +1397,15 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 }
 
 // chipBox is the one chip every citation wears, the Interfaces page's: 14px
-// regular words on a 16px line, 2px above and below, inside a 1px border; the
-// shape's -my-px, just before it, lets that 22px box ride a 20px line.
-const chipBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-normal"
+// regular words on a 15px line, 2px above and below, inside a 1px border; the
+// shape's -mt-px, just before it, stands that 21px box on the line over its
+// 20px line, so its top and bottom borders are the grid's two lines.
+const chipBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap text-sm font-normal"
 
 // chipMonoBox is the same box for a chip whose words the machine wrote: mono,
 // one step heavier (500), because mono at 400 reads a size smaller than the
 // sans beside it.
-const chipMonoBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono"
+const chipMonoBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap text-sm font-medium font-mono"
 
 // TestTableTagAlwaysWearsItsHairline: a tag is a chip — the same box as every
 // other chip, with the hairline of its own hue — with or without an icon.
