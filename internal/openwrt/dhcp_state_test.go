@@ -4,6 +4,9 @@ package openwrt
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -105,5 +108,42 @@ func TestDHCPIncludesCanSuppressAGeneratedRange(t *testing.T) {
 }
 
 func dhcpNetworkStates(config, services, dump map[string]any, read func(string) ([]byte, error), now int64) map[string]dhcpNetworkState {
-	return dhcpStates(config, services, dump, read, listDHCPFiles, now)
+	return dhcpStates(config, services, dump, read, read, listDHCPFiles, now)
+}
+
+// TestABlocklistBesideTheDHCPConfigIsScannedNotRefused: adblock drops a
+// blocklist of many megabytes into dnsmasq's runtime directory. Only the lines
+// that decide DHCP scope are kept from a config file, so a list that size is
+// read through rather than taken as an unreadable include, and the server it
+// sits beside is still verified.
+func TestABlocklistBesideTheDHCPConfigIsScannedNotRefused(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "dnsmasq.cfg01411c.d")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	main := filepath.Join(root, "dnsmasq.conf.cfg01411c")
+	body := "dhcp-range=set:lan,192.168.1.100,192.168.1.249,255.255.255.0,12h\nconf-dir=" + dir + "\n"
+	if err := os.WriteFile(main, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	list := strings.Repeat("local=/ads.example.com/\n", 400_000) + "interface=br-lan\n"
+	if err := os.WriteFile(filepath.Join(dir, "adb_list.overall"), []byte(list), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if len(list) <= 1<<20 {
+		t.Fatalf("the list must outgrow the old 1 MiB bound, is %d bytes", len(list))
+	}
+	got, err := expandDHCPConfig(main, readDHCPConfigFile, listDHCPFiles)
+	if err != nil {
+		t.Fatalf("a large blocklist is refused: %v", err)
+	}
+	if want := "dhcp-range=set:lan,192.168.1.100,192.168.1.249,255.255.255.0,12h\nconf-dir=" + dir + "\n\ninterface=br-lan\n\n"; string(got) != want {
+		t.Errorf("only the scope lines are kept, got %q", got)
+	}
+	// Read again unchanged, the file's scan is not repeated: the same lines
+	// come back from what was kept.
+	if again, err := expandDHCPConfig(main, readDHCPConfigFile, listDHCPFiles); err != nil || string(again) != string(got) {
+		t.Errorf("a second read differs: %q, %v", again, err)
+	}
 }

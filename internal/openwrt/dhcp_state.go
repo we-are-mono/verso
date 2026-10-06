@@ -3,6 +3,7 @@
 package openwrt
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/ubus"
@@ -57,7 +59,7 @@ func (*NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessag
 		if body, ok := protected.Files[path]; ok {
 			return []byte(body), nil
 		}
-		return readDHCPFile(path)
+		return readDHCPConfigFile(path)
 	}
 	listing := func(path string) ([]string, error) {
 		if names, ok := protected.Directories[path]; ok {
@@ -65,7 +67,7 @@ func (*NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessag
 		}
 		return listDHCPFiles(path)
 	}
-	return json.Marshal(map[string]any{"networks": dhcpStates(values, services, dump, reader, listing, time.Now().Unix())})
+	return json.Marshal(map[string]any{"networks": dhcpStates(values, services, dump, reader, readDHCPFile, listing, time.Now().Unix())})
 }
 
 type dhcpNetworkState struct {
@@ -87,6 +89,75 @@ type dhcpInstance struct {
 }
 
 func dhcpString(v any) string { s, _ := v.(string); return s }
+
+// dhcpScopeKeys are the directives that decide what a dnsmasq instance serves
+// and where else its configuration lives; nothing else in a config file is
+// read.
+var dhcpScopeKeys = map[string]bool{
+	"dhcp-range": true, "dhcp-leasefile": true, "interface": true, "no-dhcp-interface": true,
+	"except-interface": true, "conf-file": true, "conf-dir": true, "conf-script": true,
+}
+
+// dhcpConfigScanLimit bounds how much of one file is scanned for those lines:
+// far past any blocklist a package drops beside the configuration (adblock's
+// runs to tens of megabytes), short of reading without end.
+const dhcpConfigScanLimit = 256 << 20
+
+type dhcpScanned struct {
+	size  int64
+	mtime time.Time
+	body  []byte
+}
+
+// dhcpScans keeps each config file's scope lines until the file changes, so a
+// blocklist many megabytes long is scanned once rather than at every look.
+var dhcpScans = struct {
+	sync.Mutex
+	files map[string]dhcpScanned
+}{files: map[string]dhcpScanned{}}
+
+// readDHCPConfigFile is a config file's DHCP scope lines, scanned line by line
+// so a file of any size up to the scan limit costs no more memory than its
+// longest line.
+func readDHCPConfigFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > dhcpConfigScanLimit {
+		return nil, fmt.Errorf("DHCP file is not a bounded regular file")
+	}
+	dhcpScans.Lock()
+	kept, ok := dhcpScans.files[path]
+	dhcpScans.Unlock()
+	if ok && kept.size == info.Size() && kept.mtime.Equal(info.ModTime()) {
+		return kept.body, nil
+	}
+	var body []byte
+	scanner := bufio.NewScanner(io.LimitReader(f, dhcpConfigScanLimit))
+	scanner.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		key, _, found := strings.Cut(strings.TrimSpace(string(line)), "=")
+		if found && dhcpScopeKeys[key] {
+			body = append(body, line...)
+			body = append(body, '\n')
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	dhcpScans.Lock()
+	dhcpScans.files[path] = dhcpScanned{size: info.Size(), mtime: info.ModTime(), body: body}
+	dhcpScans.Unlock()
+	return body, nil
+}
+
 func readDHCPFile(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -172,8 +243,11 @@ func readDHCPInstances(services map[string]any, read func(string) ([]byte, error
 	}
 	return out
 }
-func dhcpStates(config, services, dump map[string]any, read func(string) ([]byte, error), list func(string) ([]string, error), now int64) map[string]dhcpNetworkState {
-	instances := readDHCPInstances(services, read, list)
+
+// dhcpStates reads dnsmasq's configuration through readConfig (its DHCP scope
+// lines) and the lease files through readLeases (whole).
+func dhcpStates(config, services, dump map[string]any, readConfig, readLeases func(string) ([]byte, error), list func(string) ([]string, error), now int64) map[string]dhcpNetworkState {
+	instances := readDHCPInstances(services, readConfig, list)
 	networks := map[string]map[string]any{}
 	entries, _ := dump["interface"].([]any)
 	for _, raw := range entries {
@@ -291,7 +365,7 @@ func dhcpStates(config, services, dump map[string]any, read func(string) ([]byte
 			leased := map[string]bool{}
 			leaseOK := true
 			for path := range leaseFiles {
-				data, err := read(path)
+				data, err := readLeases(path)
 				if err != nil {
 					leaseOK = false
 					continue
