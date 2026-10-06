@@ -39,7 +39,7 @@ func TestListValueWrapsAtItsSeparators(t *testing.T) {
 	// The remove hangs from the value's first line: the row aligns to the top,
 	// and the 28px remove pulls 4px out either side to centre on the value's
 	// first 20px line.
-	if !strings.Contains(got, `class="min-w-0 wrap-anywhere font-mono text-base leading-5 font-medium text-ink">/<wbr>corp.example.com/<wbr>10.66.0.53</span>`) ||
+	if !strings.Contains(got, `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-5 text-meta">/<wbr>corp.example.com/<wbr>10.66.0.53</span>`) ||
 		!strings.Contains(got, `aria-label="Remove" class="-my-1 grid size-7`) {
 		t.Errorf("the value wraps at its own separators, hung from its first line:\n%s", got)
 	}

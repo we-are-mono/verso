@@ -649,28 +649,15 @@ func TestTheNotebookFadesDownThePage(t *testing.T) {
 	}
 }
 
-// TestTimeServersAreDividedFromEachOther: General's time servers draw a
-// hairline only between two of them; the first row's goes clear and keeps its
-// pixel, so the rows stay on the notebook's lines.
-func TestTimeServersAreDividedFromEachOther(t *testing.T) {
+// TestNoPageStylesItsOwnListRows: a list's value rows wear the widget's one
+// look (list.html.tmpl) on every page; a page restyling its own would drift
+// from the rest.
+func TestNoPageStylesItsOwnListRows(t *testing.T) {
 	css, err := os.ReadFile("assets/forms.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `[data-verso-change-name="server"] [data-verso-list-row]:first-child {
-    border-top-color: transparent;
-  }`
-	if !strings.Contains(string(css), want) {
-		t.Error("the first time server draws a hairline over itself")
-	}
-	// Each leads with the packet, in its words' ink, centred in the grid's
-	// first column, the name starting at the next.
-	if !strings.Contains(string(css), `[data-verso-list-row] {
-    padding-inline: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);`) {
-		t.Error("the packet does not stand in the middle of the first column")
-	}
-	packet := regexp.MustCompile(`\[data-verso-change-name="server"\] \[data-verso-list-row\]::before \{[^}]*width: calc\(var\(--spacing\) \* 1\.5\);\s*height: calc\(var\(--spacing\) \* 1\.5\);[^}]*border-radius: 1px;\s*background-color: var\(--color-meta\);`)
-	if !packet.Match(css) {
-		t.Error("a time server does not lead with the packet in its words' ink")
+	if strings.Contains(string(css), "[data-verso-list-row]") || strings.Contains(string(css), "[data-verso-list-value]") {
+		t.Error("a page styles its own list rows")
 	}
 }

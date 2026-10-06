@@ -11,20 +11,23 @@
   {{/* Each value is a row on the notebook's grid, a hairline above it: the
        value writes on 20px lines with 10px over the first and 9px under the
        last, so a row is a cell more than its lines, and the 28px remove rides
-       the first line, 4px over at either edge. The first row's hairline is the
-       label's own line. The add box stands centred in the two cells after the
+       the first line, 4px over at either edge. Each value leads with the
+       packet in its words' Meta ink, centred on the first line and in the
+       grid's first column, the value starting at the next column. The values
+       are divided from each other, never from the label: the first row's
+       hairline goes clear, keeping its pixel. The add box stands centred in the two cells after the
        last row — directly under the label while the set is empty. A value
        that has to wrap wraps after its own separators (Breakable), and
        anywhere only where one part alone outgrows the column. */}}
   <div data-verso-list>
     <div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">
-    {{range $i, $item := .Items}}<div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule pt-2.5 pb-2.25">
-      <input type="hidden" name="{{$.Name}}" value="{{$item}}"><span data-verso-list-value class="min-w-0 wrap-anywhere font-mono text-base leading-5 font-medium text-ink">{{breakable $item}}</span>
+    {{range $i, $item := .Items}}<div data-verso-list-row class="{{template "list.row-class"}}">
+      <input type="hidden" name="{{$.Name}}" value="{{$item}}">{{template "list.packet"}}<span data-verso-list-value class="{{template "list.value-class"}}">{{breakable $item}}</span>
       <button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="-my-1 grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button>
       {{with index $.Errors (printf "%d" $i)}}<span data-verso-error class="{{template "verso-error-line"}}">{{template "verso-error-words" .}}</span>{{end}}
     </div>{{end}}
     </div>
-    <template><div data-verso-list-row class="flex items-start justify-between gap-3 border-t border-rule pt-2.5 pb-2.25"><input type="hidden" name="{{.Name}}"><span data-verso-list-value class="min-w-0 wrap-anywhere font-mono text-base leading-5 font-medium text-ink"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="-my-1 grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
+    <template><div data-verso-list-row class="{{template "list.row-class"}}"><input type="hidden" name="{{.Name}}">{{template "list.packet"}}<span data-verso-list-value class="{{template "list.value-class"}}"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="-my-1 grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
     <div class="flex items-center gap-2 py-0.75"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
@@ -87,3 +90,9 @@
   {{end}}
   {{/* The explanation is raised onto the label, as every other row's is. */}}
 {{end}}
+{{/* A value row's parts, shared by the rows drawn and the one the shell clones.
+     The row starts just past a column line: 6px in, the 6px packet sits in the
+     middle of the first column, and 8px on the value starts at the next. */}}
+{{define "list.row-class"}}flex items-start gap-2 border-t border-rule pt-2.5 pr-3 pb-2.25 pl-1.5 first:border-t-transparent{{end}}
+{{define "list.packet"}}<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>{{end}}
+{{define "list.value-class"}}min-w-0 flex-1 wrap-anywhere font-mono text-base leading-5 text-meta{{end}}

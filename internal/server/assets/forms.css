@@ -225,37 +225,6 @@
 
 /* Override the shared input box's w-full utility for native selects. */
 @layer utilities {
-  /* System → General: inset time-server rows beneath the standard field label.
-     Quieter values and the input's 12px inset establish the hierarchy; these
-     rules also cover rows added in the browser. */
-  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row] {
-    padding-inline: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);
-  }
-  /* The servers are divided from each other, not from the label: the first
-     row's hairline goes clear, keeping its pixel so the rows stay on lines. */
-  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row]:first-child {
-    border-top-color: transparent;
-  }
-  /* Each server leads with the packet in its words' ink, centred on the first
-     line and in the grid's first column (6px in from the row, which starts
-     just past a line), the name starting at the next column (8px on: the
-     row's gap less a step). */
-  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row]::before {
-    content: "";
-    flex-shrink: 0;
-    width: calc(var(--spacing) * 1.5);
-    height: calc(var(--spacing) * 1.5);
-    margin-top: calc(var(--spacing) * 1.75);
-    margin-right: calc(var(--spacing) * -1);
-    border-radius: 1px;
-    background-color: var(--color-meta);
-  }
-  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-value] {
-    flex: 1;
-    color: var(--color-meta);
-    font-weight: var(--font-weight-normal);
-  }
-
   [data-verso-control-measure="choice"] > :has(> select) > select {
     width: auto;
     max-width: 100%;
