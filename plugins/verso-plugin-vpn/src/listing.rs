@@ -55,20 +55,17 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
         .with_width("narrow")
         .with_tone("neutral");
     }
+    // The empty page says what goes here and why; the way in is the page's
+    // own act on the heading, as over a listing, which opens its panel in
+    // place rather than loading a page that then opens it.
     if vpn.instances.is_empty() && vpn.others.is_empty() {
-        let start = Widget::link(ADD_LABEL, &add::href(), "button");
-        let page = Envelope::page(
+        return Envelope::page(
             HEADING,
-            Widget::empty("lock", FIRST_TITLE, FIRST_BODY, vec![start]),
+            Widget::empty("lock", FIRST_TITLE, FIRST_BODY, Vec::new()),
         )
         .with_width("narrow")
-        .with_tone("neutral");
-        // The empty page carries the one way in; its panel, once asked for,
-        // opens from the heading as it does over a listing.
-        return match importing {
-            Some(panel) => page.with_act(act(Some(panel))),
-            None => page,
-        };
+        .with_tone("neutral")
+        .with_act(act(importing));
     }
     let mut rows: Vec<TableRow> = Vec::new();
     for instance in &vpn.instances {
@@ -407,12 +404,11 @@ mod tests {
         let body = serde_json::to_value(page(&Vpn::read(&request), None)).unwrap();
         assert_eq!(body["widget"]["type"], "empty");
         assert_eq!(body["widget"]["title"], FIRST_TITLE);
-        assert_eq!(
-            body["widget"]["children"][0]["href"],
-            "/plugins/vpn/?open=new"
-        );
-        // One way in: the heading carries no second copy of it.
-        assert!(body.get("act").is_none(), "{body}");
+        // One way in, the page's own act, which opens its panel in place: no
+        // link in the empty state reloads the page to open it.
+        assert_eq!(body["widget"]["children"], json!([]), "{body}");
+        assert_eq!(body["act"]["href"], "/plugins/vpn/?open=new");
+        assert_eq!(body["act"]["opens_panel"], true);
         // Asked for, the import panel opens over the empty page.
         let panel = add::drawer(
             &Vpn::read(&request),
