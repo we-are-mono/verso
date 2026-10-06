@@ -520,6 +520,9 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		// a section with no heading that opens under a notice stands a cell
 		// under it, rather than flush on it
 		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: calc(var(--spacing) * 5);\n  }",
+		// a notice or an empty slot further down a section's rows keeps the
+		// rhythm's air less its frame's pixel, never just the pixel's pull
+		".verso-rhythm > :not(input[type=\"hidden\"], [hidden]) ~ :is([data-verso-slot], [data-verso-callout]) {\n    margin-top: calc(var(--verso-rhythm, calc(var(--spacing) * 10)) - 1px);\n  }",
 		// a listing that ends its section gives its last hairline to the rule
 		// that closes it, clear but keeping its pixel
 		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",

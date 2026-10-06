@@ -60,7 +60,9 @@ func maintenanceBody(v maintenanceView) widget.Widget {
 // firmwareSection is the ledger: what this router runs part by part, with an
 // Available column only while a build is offered. The check stands on the
 // heading line with when it last ran; only a warning is explained, in the
-// marigold band above the ledger.
+// marigold band above the ledger. The automatic check stands under the acts
+// as a switch; when it cannot be read, its notice is a warning too and leads
+// with the ledger's own.
 func firmwareSection(v maintenanceView) *widget.Section {
 	label := "Check again"
 	if v.Checking {
@@ -72,6 +74,11 @@ func firmwareSection(v maintenanceView) *widget.Section {
 	s := &widget.Section{Title: "Firmware", Anchor: "firmware", Meta: v.Checked, MetaVerbatim: true, MetaPosition: "inline", Control: check}
 	if l := v.Ledger; l.Title != "" {
 		s.Children = append(s.Children, &widget.Callout{Variant: "warning", Compact: true, Title: l.Title, Body: l.Lede, Verbatim: l.Complaint})
+	}
+	autocheck := v.Autocheck
+	if notice, unread := autocheck.(*widget.Callout); unread {
+		s.Children = append(s.Children, notice)
+		autocheck = nil
 	}
 	s.Children = append(s.Children, ledgerTable(v.Ledger))
 	if note := ledgerNote(v.Ledger); note != "" {
@@ -87,7 +94,9 @@ func firmwareSection(v maintenanceView) *widget.Section {
 	if v.Packages != nil {
 		s.Children = append(s.Children, v.Packages)
 	}
-	s.Children = append(s.Children, v.Autocheck)
+	if autocheck != nil {
+		s.Children = append(s.Children, autocheck)
+	}
 	return s
 }
 

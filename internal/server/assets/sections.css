@@ -117,6 +117,11 @@
   section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :is([data-verso-slot], [data-verso-callout]):not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
     margin-top: calc(var(--spacing) * 5 - 1px);
   }
+  /* Further down its rows they keep the rhythm's air the same way, less
+     their pixel, rather than their own pull of a pixel replacing it. */
+  .verso-rhythm > :not(input[type="hidden"], [hidden]) ~ :is([data-verso-slot], [data-verso-callout]) {
+    margin-top: calc(var(--verso-rhythm, calc(var(--spacing) * 10)) - 1px);
+  }
   section[data-verso-section]:has(> [data-verso-section-band]),
   .verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
     margin-top: 0;

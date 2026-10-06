@@ -745,13 +745,20 @@ func TestAutocheckRowReadsTheSetting(t *testing.T) {
 // actually on would state the opposite of what the router does — the one control
 // whose purpose is honesty about unattended network activity — and saving from a
 // guessed state would write a decision the owner never made (ADR-014 §2). The row
-// says why instead, and offers no Save.
+// says why instead, as a marigold warning leading the ledger, and offers no Save.
 func TestAutocheckRowUnreadableShowsNoSwitch(t *testing.T) {
 	idleUpdates(t)
 	s := newServer(t, fakeBackend{access: true, uciReadErr: errors.New("rpcd refused")})
 	body := get(t, s, "/system/maintenance").Body.String()
-	if !strings.Contains(body, "could not be read just now") {
-		t.Errorf("an unreadable setting should say so plainly:\n%s", body)
+	notice := strings.Index(body, "could not be read just now")
+	if notice < 0 {
+		t.Fatalf("an unreadable setting should say so plainly:\n%s", body)
+	}
+	if ledger := strings.Index(body, ">Part</th>"); ledger < 0 || notice > ledger {
+		t.Errorf("the unreadable notice should lead the ledger, not trail the acts:\n%s", body)
+	}
+	if band := strings.LastIndex(body[:notice], "data-verso-callout"); band < 0 || !strings.Contains(body[band:notice], "bg-marigold-soft") {
+		t.Errorf("the unreadable notice should be the marigold warning:\n%s", body)
 	}
 	if strings.Contains(body, `name="autocheck"`) {
 		t.Error("no switch should be drawn when the setting cannot be read")

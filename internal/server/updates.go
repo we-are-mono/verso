@@ -215,8 +215,9 @@ func (s *Server) autocheckLane(ctx context.Context, sid string) widget.Widget {
 		// The setting could not be read, so there is no honest switch to draw and
 		// no state to save from. Say why rather than show a toggle that might state
 		// the opposite of what the router does — and offer no Save, so a guessed
-		// value is never written.
-		return &widget.Callout{Variant: "neutral", Compact: true,
+		// value is never written. Not knowing whether the router looks on its
+		// own is a warning about updates, so it is the ledger's marigold.
+		return &widget.Callout{Variant: "warning", Compact: true,
 			Body: "Whether this router checks for updates on its own could not be read just now. Reload in a moment."}
 	}
 	// The switch stands outside any form, so flipping it is a complete
