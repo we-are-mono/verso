@@ -295,6 +295,9 @@ func (f *Field) ControlMeasure() string {
 		return ""
 	}
 	switch f.Key {
+	case "username":
+		// A sign-in's name stands at its password's width: one short pair.
+		return "secret"
 	case "ula_prefix":
 		return "prefix"
 	case "hostname", "domain":
