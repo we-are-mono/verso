@@ -936,7 +936,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
 		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
@@ -2606,7 +2606,7 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	if !strings.Contains(body, `<div class="px-10 pb-10">`) {
 		t.Errorf("the bar meets the top bar, with no air of the frame's above it:\n%s", body)
 	}
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) {
 		t.Errorf("the title's line stands 16px inside the bar at both edges, and the hairline a cell over the page:\n%s", body)
 	}
 	if strings.Contains(body, `class="verso-lede`) {
@@ -2646,7 +2646,7 @@ func TestALiveLogsMastheadIsLight(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-5 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-10 py-4">`) {
 		t.Errorf("a live log's masthead is not the light one:\n%s", body)
 	}
 	plain := get(t, newServerWith(t, fakeBackend{}, &fakeTransport{env: &plugin.Envelope{

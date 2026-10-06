@@ -58,7 +58,7 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 func TestPageMastheadStandsOnAHairline(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="mb-5 py-4">`) {
+	if !strings.Contains(access, `<div data-verso-masthead class="mb-10 py-4">`) {
 		t.Error("the masthead stands 16px over its hairline and the page a cell under it")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
@@ -94,7 +94,7 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 // the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) {
 		t.Error("the masthead opens onto the first section from its hairline")
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens

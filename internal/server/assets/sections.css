@@ -143,7 +143,7 @@
   }
   /* A page opens under the masthead's hairline the same way: a heading band
      with nothing visible before it in the page draws no rule of its own, and
-     its title is the cell under the masthead's own cell of air. */
+     its title is the cell under the masthead's own two cells of air. */
   .verso-page-body [data-verso-section-band]:not(
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]

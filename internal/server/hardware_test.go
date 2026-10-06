@@ -207,7 +207,7 @@ func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
-		`<div data-verso-masthead class="mb-5 py-4">`,    // every page's sand bar
+		`<div data-verso-masthead class="mb-10 py-4">`,   // every page's sand bar
 		`<h1 class="verso-page-heading">Hardware</h1>`,   // titled as the page
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
 		"All sensors", // the full instrument panel

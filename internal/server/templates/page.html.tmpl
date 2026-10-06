@@ -139,8 +139,9 @@
     {{/* The masthead is a sand bar under the top bar, as the colophon is one
          over the window's foot: the title's line stands 16px inside it at top
          and bottom, so an act on that line sits in the bar's middle, and the
-         bar ends on a hairline, the grid's first line, a cell above what
-         follows it (input.css). The frame's bottom padding becomes the
+         bar ends on a hairline, the grid's first line, two cells above what
+         follows it, as far as the page's gutter keeps it from the rail
+         (input.css). The frame's bottom padding becomes the
          natural gap before the footer.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
@@ -150,7 +151,7 @@
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
-    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-5 py-4">
+    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-10 py-4">
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits
