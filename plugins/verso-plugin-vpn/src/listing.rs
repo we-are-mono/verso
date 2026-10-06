@@ -17,12 +17,10 @@ use crate::model::{Instance, Traffic, Tunnel, Vpn, CONFIG};
 pub const HEADING: &str = "VPN";
 const DASH: &str = "—";
 
-/// FIRST_TITLE and FIRST_BODY are the page before any tunnel: what goes here
-/// and why, then the way in, which offers both ways of setting one up.
-const FIRST_TITLE: &str = "No VPN yet";
-const FIRST_BODY: &str = "Send the devices on your network through a VPN provider or a server of \
-     your own. Drop in the profile your provider offers for routers, or enter the server's details \
-     yourself.";
+/// FIRST_TEXT is the listing before any tunnel: that there is none, and the
+/// two ways in the page's act offers.
+const FIRST_TEXT: &str = "No VPN yet. Add one from the profile your provider offers for routers, \
+     or from a server's details.";
 const ADD_LABEL: &str = add::TITLE;
 
 /// UNREAD_TITLE and UNREAD_BODY are the page when the router's tunnels could
@@ -55,18 +53,9 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
         .with_width("narrow")
         .with_tone("neutral");
     }
-    // The empty page says what goes here and why; the way in is the page's
-    // own act on the heading, as over a listing, which opens its panel in
-    // place rather than loading a page that then opens it.
-    if vpn.instances.is_empty() && vpn.others.is_empty() {
-        return Envelope::page(
-            HEADING,
-            Widget::empty("lock", FIRST_TITLE, FIRST_BODY, Vec::new()),
-        )
-        .with_width("narrow")
-        .with_tone("neutral")
-        .with_act(act(importing));
-    }
+    // With no tunnel the listing says so where its first row would stand; the
+    // way in is the page's own act on the heading, which opens its panel in
+    // place.
     let mut rows: Vec<TableRow> = Vec::new();
     for instance in &vpn.instances {
         let open = match &drawer {
@@ -82,6 +71,7 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
             dense: true,
             columns: columns(),
             rows,
+            empty_text: FIRST_TEXT.into(),
             ..Default::default()
         }),
     )
@@ -402,11 +392,12 @@ mod tests {
         request.ubus =
             verso_plugin::Ubus::from_value(json!({"vpnState": {"instances": {}, "tunnels": []}}));
         let body = serde_json::to_value(page(&Vpn::read(&request), None)).unwrap();
-        assert_eq!(body["widget"]["type"], "empty");
-        assert_eq!(body["widget"]["title"], FIRST_TITLE);
-        // One way in, the page's own act, which opens its panel in place: no
-        // link in the empty state reloads the page to open it.
-        assert_eq!(body["widget"]["children"], json!([]), "{body}");
+        // The listing with nothing in it, saying so where its first row would
+        // stand, as every listing does.
+        assert_eq!(body["widget"]["type"], "table");
+        assert_eq!(body["widget"]["rows"], json!([]), "{body}");
+        assert_eq!(body["widget"]["empty_text"], FIRST_TEXT);
+        // One way in, the page's own act, which opens its panel in place.
         assert_eq!(body["act"]["href"], "/plugins/vpn/?open=new");
         assert_eq!(body["act"]["opens_panel"], true);
         // Asked for, the import panel opens over the empty page.
