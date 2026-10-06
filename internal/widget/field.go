@@ -18,14 +18,19 @@ const RadioOptionLimit = 3
 // state — a plugin re-renders the field with the submitted Value and an Error on
 // a failed POST (ADR-006 §5).
 type Field struct {
-	Name         string   `json:"name"`
-	Label        string   `json:"label"`
-	Kind         string   `json:"kind"`                   // "text" (default) | "select" | "checks" | "password" | "file" | "textarea" | "time" | "datetime-local" | "hidden"
-	Autocomplete string   `json:"autocomplete,omitempty"` // optional browser autofill purpose, e.g. "current-password"
-	Accept       string   `json:"accept,omitempty"`       // kind "file": native accepted file types/extensions
-	Prompt       string   `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link
-	Placeholder  string   `json:"placeholder,omitempty"`  // text input hint; never substitutes for a visible label where one is required
-	Autofocus    bool     `json:"autofocus,omitempty"`    // focus this field when its task-specific page opens
+	Name         string `json:"name"`
+	Label        string `json:"label"`
+	Kind         string `json:"kind"`                   // "text" (default) | "select" | "checks" | "password" | "file" | "textarea" | "time" | "datetime-local" | "hidden"
+	Autocomplete string `json:"autocomplete,omitempty"` // optional browser autofill purpose, e.g. "current-password"
+	Accept       string `json:"accept,omitempty"`       // kind "file": native accepted file types/extensions
+	Prompt       string `json:"prompt,omitempty"`       // kind "file": sentence before the shell-owned picker link
+	// Chosen is the name of the file a "text" file field already read: with
+	// that style the browser reads the chosen file and posts what it says as
+	// the field's value, and its name as <name>_name, so a form drawn again
+	// around it still says which file it holds.
+	Chosen       string   `json:"chosen,omitempty"`
+	Placeholder  string   `json:"placeholder,omitempty"` // text input hint; never substitutes for a visible label where one is required
+	Autofocus    bool     `json:"autofocus,omitempty"`   // focus this field when its task-specific page opens
 	Required     bool     `json:"required,omitempty"`
 	Value        string   `json:"value"`    // current/submitted value
 	Values       []string `json:"values"`   // kind "checks": the checked option values

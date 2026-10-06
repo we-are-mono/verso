@@ -973,9 +973,23 @@ pub struct Field {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub style: String,
     /// Marks a `select` whose value decides which fields the form has — what
-    /// kind of object a New drawer makes. Set it through `reshapes`.
+    /// kind of object a New drawer makes. Set it through `reshapes`. A `text`
+    /// file field may reshape too: the form is drawn again around the file.
     #[serde(skip_serializing_if = "is_false")]
     pub reshapes: bool,
+    /// A `file` field's accepted types, as the browser's picker reads them:
+    /// ".ovpn,.conf".
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub accept: String,
+    /// A `file` field's sentence in its drop area: "Drop the profile here".
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub prompt: String,
+    /// The name of the file a `file` field of style `text` already read. That
+    /// style has the browser read the chosen file and post what it says as
+    /// the field's value, and its name as `<name>_name`; a form drawn again
+    /// around it sets both back, so it still says which file it holds.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub chosen: String,
 }
 
 /// Switch is the body of [`Widget::Switch`]; set what differs from the default.

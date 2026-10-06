@@ -895,6 +895,30 @@
     area.removeAttribute("data-dragging");
   }, true);
 
+  // A text file a plugin reads (field.html.tmpl, data-verso-file-read): the
+  // picker posts nothing; the chosen file is read here into the hidden field
+  // under it, its name beside it, and a change on that field draws a form
+  // that reshapes on it again around what the file says. A file larger than
+  // the field takes is refused here, before it is read.
+  document.addEventListener("change", function (e) {
+    var picker = e.target;
+    if (!picker || !picker.matches || !picker.matches("[data-verso-file-read]")) return;
+    var area = picker.closest("[data-verso-drop]").parentElement;
+    var text = area.querySelector("[data-verso-file-text]");
+    var name = area.querySelector("[data-verso-file-name]");
+    var refused = area.querySelector("[data-verso-file-refused]");
+    var file = picker.files && picker.files[0];
+    if (!file || !text) return;
+    var max = Number(picker.getAttribute("data-verso-file-max")) || 32768;
+    refused.hidden = file.size <= max;
+    if (file.size > max) { picker.value = ""; return; }
+    file.text().then(function (body) {
+      text.value = body;
+      name.value = file.name;
+      text.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
+
   function megabytes(n) { return (n / 1048576).toFixed(1); }
 
   // setStep moves the dialog's step line to the step in hand.

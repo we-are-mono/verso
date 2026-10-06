@@ -199,6 +199,8 @@
   "Drop a file here": "Spustite datoteko sem",
   "or": "ali",
   "choose one from your computer": "izberite jo iz računalnika",
+  "Choose another": "Izberite drugo",
+  "That file is larger than 32 KiB, so it isn’t a profile this router can use.": "Datoteka je večja od 32 KiB, zato ni profil, ki bi ga ta usmerjevalnik lahko uporabil.",
   "RJ45 = network cable": "RJ45 = omrežni kabel",
   "SFP+ = fiber": "SFP+ = optika",
   "Internet = your WAN connection": "Internet = vaša povezava WAN",
