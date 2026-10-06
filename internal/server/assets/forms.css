@@ -169,9 +169,12 @@
   }
   .verso-joined-part { width: fit-content; max-width: 100%; }
   .verso-joined-part select { width: auto; max-width: 100%; }
+  /* The word reads on the controls' own middle line, on a 20px line as the
+     words inside them are. */
   .verso-joined-word {
     font-family: var(--font-sans);
     font-size: var(--text-sm);
+    line-height: calc(var(--spacing) * 5);
     color: var(--color-body);
     white-space: nowrap;
   }
