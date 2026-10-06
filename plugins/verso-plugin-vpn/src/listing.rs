@@ -11,20 +11,19 @@ use verso_plugin::{
     TableChip, TableColumn, TableRow, TableRowAct, Widget,
 };
 
-use crate::import;
+use crate::add;
 use crate::model::{Instance, Traffic, Tunnel, Vpn, CONFIG};
 
 pub const HEADING: &str = "VPN";
 const DASH: &str = "—";
 
 /// FIRST_TITLE and FIRST_BODY are the page before any tunnel: what goes here
-/// and why, then the one way to start.
+/// and why, then the way in, which offers both ways of setting one up.
 const FIRST_TITLE: &str = "No VPN yet";
-const FIRST_BODY: &str =
-    "Import the OpenVPN profile your VPN provider offers for routers, and the \
-     devices on your network can go through it. Proton, Mullvad and most others have one in their \
-     downloads.";
-const IMPORT_LABEL: &str = "Import a profile";
+const FIRST_BODY: &str = "Send the devices on your network through a VPN provider or a server of \
+     your own. Drop in the profile your provider offers for routers, or enter the server's details \
+     yourself.";
+const ADD_LABEL: &str = add::TITLE;
 
 /// UNREAD_TITLE and UNREAD_BODY are the page when the router's tunnels could
 /// not be read, which is not the same as there being none.
@@ -45,7 +44,7 @@ pub fn href(name: &str) -> String {
 /// could not be read says so rather than claiming none.
 pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
     let (importing, mut drawer) = match drawer {
-        Some((name, panel)) if name == import::NEW => (Some(panel), None),
+        Some((name, panel)) if name == add::NEW => (Some(panel), None),
         other => (None, other),
     };
     if !vpn.known {
@@ -57,7 +56,7 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
         .with_tone("neutral");
     }
     if vpn.instances.is_empty() && vpn.others.is_empty() {
-        let start = Widget::link(IMPORT_LABEL, &import::href(), "button");
+        let start = Widget::link(ADD_LABEL, &add::href(), "button");
         let page = Envelope::page(
             HEADING,
             Widget::empty("lock", FIRST_TITLE, FIRST_BODY, vec![start]),
@@ -94,13 +93,13 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
     .with_act(act(importing))
 }
 
-/// act is the page's one act: a new tunnel, which opens the import panel
-/// over the page rather than a page of its own.
+/// act is the page's one act: a new tunnel, which opens its panel over the
+/// page rather than a page of its own. It makes a new thing, so it wears the
+/// plus every add does.
 fn act(panel: Option<RowDrawer>) -> HeadingAct {
     HeadingAct {
-        label: IMPORT_LABEL.into(),
-        href: import::href(),
-        icon: "upload".into(),
+        label: ADD_LABEL.into(),
+        href: add::href(),
         opens_panel: true,
         drawer: panel,
         ..Default::default()
@@ -131,7 +130,7 @@ fn instance_row(instance: &Instance, drawer: Option<RowDrawer>) -> TableRow {
     let (state, variant) = instance_state(instance);
     // A profile not yet on disk (imported, waiting on the stage) is read from
     // the staged copy instead.
-    let staged = instance.file.as_ref().map(|f| import::read(&f.content));
+    let staged = instance.file.as_ref().map(|f| add::read(&f.content));
     let kind = match (&instance.profile, &staged) {
         (Some(p), _) if p.client => "OpenVPN client",
         (Some(_), _) => "OpenVPN server",
@@ -415,13 +414,13 @@ mod tests {
         // One way in: the heading carries no second copy of it.
         assert!(body.get("act").is_none(), "{body}");
         // Asked for, the import panel opens over the empty page.
-        let panel = import::drawer(
+        let panel = add::drawer(
             &Vpn::read(&request),
-            &import::Draft::blank(),
+            &add::Draft::blank(),
             &Default::default(),
         );
         let opened =
-            serde_json::to_value(page(&Vpn::read(&request), Some((import::NEW, panel)))).unwrap();
+            serde_json::to_value(page(&Vpn::read(&request), Some((add::NEW, panel)))).unwrap();
         assert_eq!(opened["act"]["drawer"]["open"], true);
     }
 
@@ -448,7 +447,7 @@ mod tests {
     #[test]
     fn a_listing_offers_another_import_from_its_heading() {
         let body = body();
-        assert_eq!(body["act"]["label"], IMPORT_LABEL);
+        assert_eq!(body["act"]["label"], ADD_LABEL);
         assert_eq!(body["act"]["href"], "/plugins/vpn/?open=new");
         assert_eq!(body["act"]["opens_panel"], true);
     }

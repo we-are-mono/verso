@@ -38,10 +38,7 @@ pub fn describe(changes: &[Change], _snapshot: &Snapshot) -> Vec<Description> {
             .map(|(i, _)| i)
             .collect();
         covered.extend(&covers);
-        out.push(Description::new(
-            format!("Imported the {name} tunnel"),
-            covers,
-        ));
+        out.push(Description::new(format!("Added the {name} tunnel"), covers));
     }
     let mut changed: Vec<(String, Vec<usize>)> = Vec::new();
     for (i, c) in changes.iter().enumerate() {
@@ -101,7 +98,7 @@ mod tests {
         ];
         let lines = describe(&changes, &Snapshot::from_value(json!({})));
         assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0].plain, "Imported the nl_free_12 tunnel");
+        assert_eq!(lines[0].plain, "Added the nl_free_12 tunnel");
         assert_eq!(lines[0].covers, (0..8).collect::<Vec<_>>());
         assert_eq!(lines[1].plain, "Changed the proton tunnel");
         assert_eq!(lines[1].covers, vec![8]);

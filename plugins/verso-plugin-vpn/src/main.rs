@@ -17,9 +17,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use verso_plugin::{serve_described, Envelope, Errors, Form, Request, Tone};
 
+mod add;
 mod describe;
 mod drawer;
-mod import;
 mod listing;
 mod model;
 
@@ -36,9 +36,9 @@ fn main() {
 fn get(request: &Request) -> Envelope {
     let vpn = Vpn::read(request);
     let open = request.query.get(listing::OPEN);
-    if open == import::NEW {
-        let panel = import::drawer(&vpn, &import::Draft::blank(), &Errors::default());
-        return listing::page(&vpn, Some((import::NEW, panel)));
+    if open == add::NEW {
+        let panel = add::drawer(&vpn, &add::Draft::blank(), &Errors::default());
+        return listing::page(&vpn, Some((add::NEW, panel)));
     }
     let profile = request.query.get(drawer::TAB) == drawer::PROFILE;
     let panel = vpn.instance(&open).map(|instance| {
@@ -62,21 +62,21 @@ fn post(request: &Request, form: &Form) -> Envelope {
     // The import panel is drawn again around a chosen file (the shell's
     // reshape, which stages nothing), refused with its marks, or saved: the
     // profile and everything that runs it, staged together.
-    if !form.get(import::IMPORT).is_empty() {
-        let draft = import::Draft::submitted(form);
+    if !form.get(add::ADD).is_empty() {
+        let draft = add::Draft::submitted(form, &vpn);
         if form.get("_action") == "reshape" {
-            let panel = import::drawer(&vpn, &draft, &Errors::default());
-            return listing::page(&vpn, Some((import::NEW, panel)));
+            let panel = add::drawer(&vpn, &draft, &Errors::default());
+            return listing::page(&vpn, Some((add::NEW, panel)));
         }
-        return match import::save(&vpn, &draft) {
+        return match add::save(&vpn, &draft) {
             Ok((ops, stage)) => {
                 let mut page = listing::page(&vpn, None).with_commit(ops);
                 page.commands = vec![stage];
                 page
             }
             Err(errors) => {
-                let panel = import::drawer(&vpn, &draft, &errors);
-                listing::page(&vpn, Some((import::NEW, panel)))
+                let panel = add::drawer(&vpn, &draft, &errors);
+                listing::page(&vpn, Some((add::NEW, panel)))
                     .with_notice(Tone::Danger, drawer::REFUSED)
             }
         };
