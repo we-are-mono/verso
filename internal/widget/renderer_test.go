@@ -587,8 +587,9 @@ func TestRenderConfirm(t *testing.T) {
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
-		// the border inside the height, where a line plus padding would add 2px.
-		"flex h-control w-full cursor-pointer items-center justify-center rounded-xs border px-4",
+		// the border inside the height, where a line plus padding would add 2px,
+		// and it is as wide as its words, never the column.
+		"flex h-control w-fit cursor-pointer items-center justify-center rounded-xs border px-4",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)
