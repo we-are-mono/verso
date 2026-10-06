@@ -478,12 +478,15 @@
      no stripe, no whole-row click, so values stay selectable. style "card" opts
      into the hairline card frame shared with the settings card, so every boxed
      listing speaks one card language. */}}
-{{/* overflow-x-auto lets a genuinely wide table scroll sideways, but the browser
-     then computes overflow-y to auto too (CSS spec) — so an in-cell copy button's
-     absolute hover tooltip, which sits just below its row, would trip a spurious
-     vertical scrollbar on the last row. overflow-y-hidden clips that overhang (the
-     tooltip is a hover hint, not content) with no scrollbar. The card style keeps
-     its overflow visible so its ring-offset frame is never clipped. */}}
+{{/* A table wider than its box scrolls sideways in it. A box that scrolls
+     one way clips both (CSS computes overflow-y to auto too), so it clips the
+     other way outright (overflow-y-hidden) rather than grow a spurious
+     vertical scrollbar. The shell measures every box (data-verso-scroller,
+     verso-tables.js): one whose table fits is marked data-verso-fits and
+     neither scrolls nor clips, so a row act's tip rises over the column heads
+     on the first row too, and a copy control's tip hangs under the last row.
+     The card style keeps its overflow visible so its ring-offset frame is
+     never clipped. */}}
 {{/* A console is not a table and is not drawn as one. What a firewall log wants
      is what a terminal gives: one line per event, no grid, no hairlines between
      them, everything in mono at fixed columns so the eye reads down a column
@@ -548,7 +551,7 @@
     {{template "verso-empty-slot-body" .EmptyText}}
   </div>
 {{else}}
-<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
+<div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush

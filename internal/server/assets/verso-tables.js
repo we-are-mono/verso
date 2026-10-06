@@ -769,3 +769,35 @@ document.addEventListener("click", function (event) {
     }, 10000);
   });
 })();
+
+// A table's box scrolls sideways only while its table is wider than it. A box
+// that scrolls clips both ways, cutting off a first row's tips, so every box
+// is measured as it and its table change size, and one whose table fits is
+// marked data-verso-fits: it neither scrolls nor clips (input.css). Without
+// this every box scrolls, which is never wrong, only clipped.
+(function () {
+  if (!window.ResizeObserver) return;
+  function fit(box) {
+    var table = box.querySelector("table");
+    if (table) box.toggleAttribute("data-verso-fits", table.getBoundingClientRect().width <= box.clientWidth + 0.5);
+  }
+  var observer = new ResizeObserver(function (entries) {
+    entries.forEach(function (entry) {
+      var box = entry.target.closest("[data-verso-scroller]");
+      if (box) fit(box);
+    });
+  });
+  function watch(root) {
+    [].forEach.call(root.querySelectorAll("[data-verso-scroller]:not([data-verso-measured])"), function (box) {
+      box.setAttribute("data-verso-measured", "");
+      observer.observe(box);
+      var table = box.querySelector("table");
+      if (table) observer.observe(table);
+    });
+  }
+  watch(document);
+  // A panel or a page part swapped in brings its own tables.
+  document.addEventListener("htmx:afterSettle", function (e) {
+    if (e.target && e.target.querySelectorAll) watch(e.target);
+  });
+})();

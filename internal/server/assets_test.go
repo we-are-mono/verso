@@ -583,6 +583,35 @@ func TestAnUntitledOpeningKeepsNoClosingAir(t *testing.T) {
 	}
 }
 
+// TestAFittingTableClipsNoTip: a table's box scrolls, and so clips both ways,
+// only while its table is wider than it; the shell measures every box and one
+// whose table fits neither scrolls, clips nor fades, so a first row's act
+// raises its tip over the column heads. While the table is wider, the first
+// row's tips open under their act rather than into the clipping edge.
+func TestAFittingTableClipsNoTip(t *testing.T) {
+	css, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"[data-verso-scroller][data-verso-fits] {\n    overflow: visible;\n    mask-image: none;\n    animation: none;\n  }",
+		"[data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\\/act > span.bottom-full {\n    top: 100%;",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("input.css missing %q", want)
+		}
+	}
+	js, err := os.ReadFile("assets/verso-tables.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"new ResizeObserver(", `box.toggleAttribute("data-verso-fits"`, `"htmx:afterSettle"`} {
+		if !strings.Contains(string(js), want) {
+			t.Errorf("verso-tables.js does not measure the table boxes (%q)", want)
+		}
+	}
+}
+
 // TestTipsRiseAboveTheirLabel: an explanation opens above the label that
 // raises it, so the pointer on its way down to the control never meets it; a
 // pointer passing over the label raises nothing, because the tip waits for it

@@ -814,6 +814,24 @@ html {
     background-color: transparent;
   }
   [data-verso-callout-acts] a svg { color: inherit; }
+  /* A table's box scrolls only while its table is wider than it, and a box
+     that scrolls clips both ways. One whose table fits (data-verso-fits, set
+     by verso-tables.js as the box and the table change size) neither scrolls
+     nor clips, nor fades its edge, so a row act's tip rises over the column
+     heads on the first row as on every other. While the table is wider, the
+     first row's tips open under their act, over the next row, rather than
+     into the edge that clips them. */
+  [data-verso-scroller][data-verso-fits] {
+    overflow: visible;
+    mask-image: none;
+    animation: none;
+  }
+  [data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\/act > span.bottom-full {
+    top: 100%;
+    bottom: auto;
+    margin-top: calc(var(--spacing) * 2);
+    margin-bottom: 0;
+  }
   [data-verso-callout-acts] a:hover {
     color: inherit;
     border-color: color-mix(in srgb, currentColor 65%, transparent);
@@ -1052,7 +1070,9 @@ html {
    "there is more" rather than as the end of the row; scrolled to the end, the
    edge is solid again. The fade is driven by the scroll itself: a table with
    nothing to scroll has no timeline, and nothing fades. A browser without
-   scroll timelines keeps the plain edge. */
+   scroll timelines keeps the plain edge. A box whose table fits it does not
+   scroll and wears no mask (data-verso-fits, below): a mask clips what is
+   painted outside the box as an overflow does, a row act's tip included. */
 @property --verso-scroll-edge {
   syntax: "<length>";
   inherits: false;
