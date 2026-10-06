@@ -122,9 +122,9 @@ func TestRenderSectionSub(t *testing.T) {
 	if strings.Contains(sheet, "[data-verso-section-band]:has([data-verso-section-lede]) { margin-bottom") {
 		t.Error("a band with a lede keeps a margin of its own; the block under it carries the cell")
 	}
-	const first = "section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {\n    margin-top: calc(var(--spacing) * 5);"
+	const first = "section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {\n    margin-top: calc(var(--spacing) * 5);"
 	if !strings.Contains(sheet, first) {
-		t.Error("the first block under a band stands a cell under it unless it brings that cell itself (a field, a form of fields)")
+		t.Error("the first block under a band stands a cell under it unless it brings that cell itself (a field, a stacked form of fields; a field on one row with its act gives its air up)")
 	}
 
 	plain := render(t, r, &Section{Title: "Zones", Children: []Widget{&Text{Markdown: "body"}}})

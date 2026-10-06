@@ -106,9 +106,10 @@
     border-bottom-width: 0;
   }
   /* Under a title (or its lede), whatever brings no cell of air of its own (a
-     listing, a reading, a set, a form of acts alone) stands a cell under it,
-     as a field does with its own. */
-  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+     listing, a reading, a set, a form of acts alone, a field and its act on
+     one row, whose field gives up its air) stands a cell under it, as a
+     field does with its own. */
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
     margin-top: calc(var(--spacing) * 5);
   }
   /* An empty slot's frame and a band's stand on the line, so they take the

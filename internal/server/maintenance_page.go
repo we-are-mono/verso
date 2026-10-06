@@ -177,7 +177,9 @@ func rebootSection(v maintenanceView) *widget.Section {
 func factoryResetSection(v maintenanceView) *widget.Section {
 	form := &widget.Form{Action: factoryResetPath, Submit: "Erase and start over", Tone: widget.ToneDanger}
 	if v.Hostname != "" {
-		form.Fields = []widget.Widget{&widget.Field{Name: "hostname", Label: "Type the hostname to confirm", Placeholder: v.Hostname, Autocomplete: "off", Required: true}}
+		// One field and its act on one row, the act beside the field it gates.
+		form.Style = "search"
+		form.Fields = []widget.Widget{&widget.Field{Name: "hostname", Datatype: "hostname", Label: "Type the hostname to confirm", Placeholder: v.Hostname, Autocomplete: "off", Required: true}}
 	}
 	return &widget.Section{Title: "Factory reset", Anchor: "factory-reset", Hairline: true,
 		Sub:      "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you.",

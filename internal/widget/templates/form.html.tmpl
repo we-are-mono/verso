@@ -40,12 +40,14 @@
   {{/* A search and its act stand side by side, 8px apart, each control whole
        with its own corners and border, as Factory reset's confirm row does:
        the field at the 320px a page's find field keeps, the button after it,
-       never inside it. Search forms intentionally contain one unlabelled text
-       field plus hidden carriers; secondary actions remain separate controls
-       alongside it. */}}
-  <div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
+       never inside it. Search forms contain one text field plus hidden
+       carriers; a labelled one (Factory reset's hostname) keeps its label
+       over the field, and the button stands on the field's own two cells,
+       the row's last, centred in them as the field's box is. Secondary
+       actions remain separate controls alongside it. */}}
+  <div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
     {{range .Fields}}{{.}}{{end}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} my-0.75 shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
   <div class="flex flex-wrap items-center gap-3">

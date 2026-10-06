@@ -202,7 +202,8 @@ func TestPageFormWithLabelCarriesOwnSubmit(t *testing.T) {
 
 // TestSearchFormSetsSubmitBesideItsField: a search and its act stand side by
 // side, 8px apart, each control whole with its own corners and border, as
-// Factory reset's confirm row does; the button never sits inside the field.
+// Factory reset's confirm row does; the button never sits inside the field,
+// and stands on the field's own two cells, under a label when it has one.
 func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	f := &Form{
 		Style: "search", Icon: "search", Submit: "Search",
@@ -210,9 +211,9 @@ func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	}
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
-		`<div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
+		`<div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
 		`<button type="submit" class="inline-flex h-control cursor-pointer`,
-		"shrink-0 border border-denim bg-denim",
+		"my-0.75 shrink-0 border border-denim bg-denim",
 		`placeholder="Package name"`,
 		">Search</button>",
 	} {
