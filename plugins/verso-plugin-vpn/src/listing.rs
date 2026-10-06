@@ -7,15 +7,30 @@
 //! another program keeps (Tailscale) is listed as it stands.
 
 use verso_plugin::{
-    commit, json, ColumnWidth, CommitOp, Envelope, Form, RowDrawer, Table, TableCell, TableChip,
-    TableColumn, TableRow, TableRowAct, Widget,
+    commit, json, ColumnWidth, CommitOp, Envelope, Form, HeadingAct, RowDrawer, Table, TableCell,
+    TableChip, TableColumn, TableRow, TableRowAct, Widget,
 };
 
+use crate::import;
 use crate::model::{Instance, Traffic, Tunnel, Vpn, CONFIG};
 
 pub const HEADING: &str = "VPN";
-const EMPTY: &str = "No VPN is set up on this router.";
 const DASH: &str = "—";
+
+/// FIRST_TITLE and FIRST_BODY are the page before any tunnel: what goes here
+/// and why, then the one way to start.
+const FIRST_TITLE: &str = "No VPN yet";
+const FIRST_BODY: &str =
+    "Import the OpenVPN profile your VPN provider offers for routers, and the \
+     devices on your network can go through it. Proton, Mullvad and most others have one in their \
+     downloads.";
+const IMPORT_LABEL: &str = "Import a profile";
+
+/// UNREAD_TITLE and UNREAD_BODY are the page when the router's tunnels could
+/// not be read, which is not the same as there being none.
+const UNREAD_TITLE: &str = "This router’s tunnels can’t be read";
+const UNREAD_BODY: &str = "Sign out and back in: a VPN package installed or updated since you \
+     signed in is allowed in at your next sign-in.";
 
 /// OPEN is the query key naming the instance whose panel is open.
 pub const OPEN: &str = "open";
@@ -25,9 +40,37 @@ pub fn href(name: &str) -> String {
 }
 
 /// page is the listing, with one instance's panel in front of it when
-/// `drawer` carries one.
+/// `drawer` carries one, or the import panel when it is the new one's. A
+/// router with no tunnels opens on how to make the first; one whose tunnels
+/// could not be read says so rather than claiming none.
 pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
-    let mut drawer = drawer;
+    let (importing, mut drawer) = match drawer {
+        Some((name, panel)) if name == import::NEW => (Some(panel), None),
+        other => (None, other),
+    };
+    if !vpn.known {
+        return Envelope::page(
+            HEADING,
+            Widget::empty("lock", UNREAD_TITLE, UNREAD_BODY, Vec::new()),
+        )
+        .with_width("narrow")
+        .with_tone("neutral");
+    }
+    if vpn.instances.is_empty() && vpn.others.is_empty() {
+        let start = Widget::link(IMPORT_LABEL, &import::href(), "button");
+        let page = Envelope::page(
+            HEADING,
+            Widget::empty("lock", FIRST_TITLE, FIRST_BODY, vec![start]),
+        )
+        .with_width("narrow")
+        .with_tone("neutral");
+        // The empty page carries the one way in; its panel, once asked for,
+        // opens from the heading as it does over a listing.
+        return match importing {
+            Some(panel) => page.with_act(act(Some(panel))),
+            None => page,
+        };
+    }
     let mut rows: Vec<TableRow> = Vec::new();
     for instance in &vpn.instances {
         let open = match &drawer {
@@ -43,12 +86,25 @@ pub fn page(vpn: &Vpn, drawer: Option<(&str, RowDrawer)>) -> Envelope {
             dense: true,
             columns: columns(),
             rows,
-            empty_text: EMPTY.into(),
             ..Default::default()
         }),
     )
     .with_width("wide")
     .with_tone("neutral")
+    .with_act(act(importing))
+}
+
+/// act is the page's one act: a new tunnel, which opens the import panel
+/// over the page rather than a page of its own.
+fn act(panel: Option<RowDrawer>) -> HeadingAct {
+    HeadingAct {
+        label: IMPORT_LABEL.into(),
+        href: import::href(),
+        icon: "upload".into(),
+        opens_panel: true,
+        drawer: panel,
+        ..Default::default()
+    }
 }
 
 fn columns() -> Vec<TableColumn> {
@@ -73,10 +129,15 @@ fn columns() -> Vec<TableColumn> {
 fn instance_row(instance: &Instance, drawer: Option<RowDrawer>) -> TableRow {
     let door = href(&instance.name);
     let (state, variant) = instance_state(instance);
-    let kind = match &instance.profile {
-        Some(p) if p.client => "OpenVPN client",
-        Some(_) => "OpenVPN server",
-        None => "OpenVPN",
+    // A profile not yet on disk (imported, waiting on the stage) is read from
+    // the staged copy instead.
+    let staged = instance.file.as_ref().map(|f| import::read(&f.content));
+    let kind = match (&instance.profile, &staged) {
+        (Some(p), _) if p.client => "OpenVPN client",
+        (Some(_), _) => "OpenVPN server",
+        (None, Some(r)) if r.client => "OpenVPN client",
+        (None, Some(_)) => "OpenVPN server",
+        (None, None) => "OpenVPN",
     };
     // The server it reaches now, or else the first its profile would try.
     let server = match instance.live.server.as_str() {
@@ -85,6 +146,7 @@ fn instance_row(instance: &Instance, drawer: Option<RowDrawer>) -> TableRow {
             .as_ref()
             .and_then(|p| p.remotes.first())
             .map(|r| r.endpoint())
+            .or_else(|| staged.as_ref().and_then(|r| r.remotes.first().cloned()))
             .unwrap_or_default(),
         s => s.to_string(),
     };
@@ -99,7 +161,12 @@ fn instance_row(instance: &Instance, drawer: Option<RowDrawer>) -> TableRow {
             TableCell {
                 text: instance.name.clone(),
                 href: door.clone(),
-                chips: network_chip(&instance.network),
+                // A network named as the tunnel is says nothing the name
+                // does not; one named otherwise is cited.
+                chips: match instance.network == instance.name {
+                    true => Vec::new(),
+                    false => network_chip(&instance.network),
+                },
                 ..Default::default()
             },
             text_cell(kind),
@@ -147,6 +214,7 @@ pub fn instance_state(instance: &Instance) -> (&'static str, &'static str) {
         "connecting" => ("connecting", "warning"),
         "auth-failed" => ("sign-in refused", "danger"),
         "stopped" => ("not running", "danger"),
+        "pending" => ("not applied yet", ""),
         _ => ("unknown", ""),
     }
 }
@@ -333,11 +401,56 @@ mod tests {
     }
 
     #[test]
-    fn a_router_with_no_tunnels_says_so() {
-        let vpn = Vpn::read(&fixture::empty("/"));
-        let body = serde_json::to_value(page(&vpn, None)).unwrap();
-        assert_eq!(body["widget"]["rows"], json!([]));
-        assert_eq!(body["widget"]["empty_text"], EMPTY);
+    fn a_router_with_no_tunnels_opens_on_how_to_make_the_first() {
+        let mut request = fixture::empty("/");
+        request.ubus =
+            verso_plugin::Ubus::from_value(json!({"vpnState": {"instances": {}, "tunnels": []}}));
+        let body = serde_json::to_value(page(&Vpn::read(&request), None)).unwrap();
+        assert_eq!(body["widget"]["type"], "empty");
+        assert_eq!(body["widget"]["title"], FIRST_TITLE);
+        assert_eq!(
+            body["widget"]["children"][0]["href"],
+            "/plugins/vpn/?open=new"
+        );
+        // One way in: the heading carries no second copy of it.
+        assert!(body.get("act").is_none(), "{body}");
+        // Asked for, the import panel opens over the empty page.
+        let panel = import::drawer(
+            &Vpn::read(&request),
+            &import::Draft::blank(),
+            &Default::default(),
+        );
+        let opened =
+            serde_json::to_value(page(&Vpn::read(&request), Some((import::NEW, panel)))).unwrap();
+        assert_eq!(opened["act"]["drawer"]["open"], true);
+    }
+
+    #[test]
+    fn an_import_waiting_on_the_stage_says_so() {
+        let mut request = fixture::empty("/");
+        request.snapshot = verso_plugin::Snapshot::from_value(json!({"openvpn": {
+            "fresh": {".type": "openvpn", ".name": "fresh", ".index": 0, "enabled": "1",
+                "config": "/etc/openvpn/fresh.ovpn"}
+        }}));
+        request.ubus =
+            verso_plugin::Ubus::from_value(json!({"vpnState": {"instances": {}, "tunnels": []}}));
+        let vpn = Vpn::read(&request);
+        assert_eq!(instance_state(&vpn.instances[0]), ("not applied yet", ""));
+    }
+
+    #[test]
+    fn tunnels_that_cannot_be_read_are_not_called_none() {
+        let body = serde_json::to_value(page(&Vpn::read(&fixture::empty("/")), None)).unwrap();
+        assert_eq!(body["widget"]["title"], UNREAD_TITLE);
+        assert!(body.to_string().contains("Sign out and back in"));
+    }
+
+    #[test]
+    fn a_listing_offers_another_import_from_its_heading() {
+        let body = body();
+        assert_eq!(body["act"]["label"], IMPORT_LABEL);
+        assert_eq!(body["act"]["href"], "/plugins/vpn/?open=new");
+        assert_eq!(body["act"]["opens_panel"], true);
     }
 
     #[test]

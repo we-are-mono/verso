@@ -1,12 +1,12 @@
 {
 	"verso-plugin-vpn": {
-		"description": "Session grants for Verso's VPN page: OpenVPN's own config, the network config that names each tunnel's network, the helper's read of what the tunnels are doing and of the profiles (folded, keys left in the helper), and staging an edited profile through the helper's file journal. The shell holds the operator's session and performs these on the plugin's behalf (ADR-007), so this file is what makes the manifest's declared acl grantable at rpcd — the plugin itself holds no session and no privilege.",
+		"description": "Session grants for Verso's VPN page: OpenVPN's own config; the network and firewall configs, where an imported tunnel gets a network on its device and joins a zone; the helper's read of what the tunnels are doing and of the profiles (folded, keys left in the helper); and staging a profile through the helper's file journal. The shell holds the operator's session and performs these on the plugin's behalf (ADR-007), so this file is what makes the manifest's declared acl grantable at rpcd — the plugin itself holds no session and no privilege.",
 		"read": {
-			"uci": [ "openvpn", "network" ],
+			"uci": [ "openvpn", "network", "firewall" ],
 			"ubus": { "verso": [ "vpnState", "openvpnFiles" ] }
 		},
 		"write": {
-			"uci": [ "openvpn" ],
+			"uci": [ "openvpn", "network", "firewall" ],
 			"ubus": { "verso": [ "stageConfigFile" ] }
 		}
 	}

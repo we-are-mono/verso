@@ -18,6 +18,21 @@ pub struct Vpn {
     pub instances: Vec<Instance>,
     /// Tunnels no OpenVPN instance holds: Tailscale, WireGuard, the rest.
     pub others: Vec<Tunnel>,
+    /// Whether the helper's read of the tunnels arrived. Without it the
+    /// router's tunnels are unknown, which is not the same as none.
+    pub known: bool,
+    /// The firewall zones a new tunnel's network can join.
+    pub zones: Vec<Zone>,
+    /// Every tun device something already holds or names.
+    pub devices: Vec<String>,
+    /// Names a new tunnel cannot take: networks and profiles already here.
+    pub taken: Vec<String>,
+}
+
+pub struct Zone {
+    pub section: String,
+    pub name: String,
+    pub networks: Vec<String>,
 }
 
 pub struct Instance {
@@ -114,7 +129,12 @@ impl Vpn {
                 continue;
             }
             let read = state.map(|s| &s["instances"][name.as_str()]);
-            let live = read.map(live).unwrap_or_default();
+            let mut live = read.map(live).unwrap_or_default();
+            // The helper reads the applied config; a section it did not report
+            // though its read arrived is one still waiting on the stage.
+            if read.is_some_and(Value::is_null) {
+                live.state = "pending".into();
+            }
             // The device the instance holds now, or the one its section names.
             let device = match live.device.as_str() {
                 "" => section.scalar("dev"),
@@ -172,7 +192,50 @@ impl Vpn {
                 traffic: traffic(t),
             })
             .collect();
-        Vpn { instances, others }
+        let zones = request
+            .snapshot
+            .sections_of_type("firewall", "zone")
+            .iter()
+            .map(|z| Zone {
+                section: z.name(),
+                name: z.scalar("name"),
+                networks: z.list("network"),
+            })
+            .filter(|z| !z.name.is_empty())
+            .collect();
+        // Held now, or named by a section or a network: a new tunnel takes
+        // none of them.
+        let mut devices: Vec<String> = tunnels.iter().map(|t| text(t, "device")).collect();
+        devices.extend(
+            request
+                .snapshot
+                .sections_of_type(CONFIG, "openvpn")
+                .iter()
+                .map(|s| s.scalar("dev")),
+        );
+        devices.extend(networks.iter().map(|(d, _)| d.clone()));
+        devices.retain(|d| !d.is_empty());
+        let mut taken: Vec<String> = networks.iter().map(|(_, n)| n.clone()).collect();
+        taken.extend(
+            request
+                .ubus
+                .get("openvpnFiles")
+                .and_then(|s| s["files"].as_array())
+                .into_iter()
+                .flatten()
+                .filter_map(|f| f["path"].as_str())
+                .filter_map(|p| p.rsplit('/').next())
+                .filter_map(|f| f.split('.').next())
+                .map(String::from),
+        );
+        Vpn {
+            instances,
+            others,
+            known: state.is_some(),
+            zones,
+            devices,
+            taken,
+        }
     }
 
     pub fn instance(&self, name: &str) -> Option<&Instance> {
