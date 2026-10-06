@@ -137,6 +137,33 @@ func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 	}
 }
 
+// TestAnUnknownOperstateIsReadByCarrier: a tun or WireGuard device reports no
+// operational state of its own ("unknown"), so the kernel's carrier says
+// whether it carries: a connected tunnel reads up, not unknown.
+func TestAnUnknownOperstateIsReadByCarrier(t *testing.T) {
+	root := t.TempDir()
+	for name, files := range map[string]map[string]string{
+		"tun0": {"operstate": "unknown", "carrier": "1"},
+		"tun1": {"operstate": "unknown", "carrier": "0"},
+		"wg0":  {"operstate": "unknown"},
+		"eth0": {"operstate": "up", "carrier": "1"},
+	} {
+		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for file, value := range files {
+			if err := os.WriteFile(filepath.Join(root, name, file), []byte(value+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for name, want := range map[string]string{"tun0": "up", "tun1": "down", "wg0": "unknown", "eth0": "up", "gone": "unknown"} {
+		if got := readOperstate(root, name); got != want {
+			t.Errorf("%s: operstate %q, want %q", name, got, want)
+		}
+	}
+}
+
 func writeInterface(t *testing.T, root, name, state string, rxBytes, txBytes, rxPackets, txPackets uint64) {
 	t.Helper()
 	stats := filepath.Join(root, name, "statistics")

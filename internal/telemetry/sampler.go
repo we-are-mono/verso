@@ -329,12 +329,30 @@ func readCounter(path string) (uint64, error) {
 	return value, nil
 }
 
+// readOperstate is the device's operational state. A driver that keeps none
+// (tun, WireGuard) leaves it "unknown", and the kernel's word for whether such
+// a device carries is its carrier, so a connected tunnel reads up rather than
+// unknown. Without a readable carrier it stays unknown.
 func readOperstate(root, name string) string {
 	raw, err := os.ReadFile(filepath.Join(root, name, "operstate"))
 	if err != nil {
 		return "unknown"
 	}
-	return strings.TrimSpace(string(raw))
+	state := strings.TrimSpace(string(raw))
+	if state != "unknown" {
+		return state
+	}
+	carrier, err := os.ReadFile(filepath.Join(root, name, "carrier"))
+	if err != nil {
+		return state
+	}
+	switch strings.TrimSpace(string(carrier)) {
+	case "1":
+		return "up"
+	case "0":
+		return "down"
+	}
+	return state
 }
 
 func counterRate(current, previous, elapsedMS, multiplier uint64) uint64 {
