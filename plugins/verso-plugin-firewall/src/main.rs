@@ -269,11 +269,11 @@ impl Switch {
                 commit(CONFIG, &redirect.section, json!({ "enabled": enabled }))
             }
             Subject::Default(option) => {
-                // A firewall default is a real option with a real value, not a
-                // defaults-to-absent flag, so it is written explicitly both ways.
-                let value = if self.on { "1" } else { "0" };
+                // A firewall default writes as it does on the settings page:
+                // the state firewall4 reads, or a clear where that state is the
+                // one it assumes, so on then off coalesces to clean.
                 model.defaults.set(option, self.on);
-                let values = json!({ option.as_str(): value });
+                let values = json!({ option.as_str(): settings::switch_value(option, self.on) });
                 // A device with no defaults section runs firewall4's built-in
                 // baseline; writing one of its options means creating it.
                 if model.defaults.section.is_empty() {
@@ -620,6 +620,24 @@ mod tests {
                 "values": {"enabled": "0"}
             }])
         );
+    }
+
+    /// A defaults switch flipped back to what firewall4 assumes clears the
+    /// option rather than writing that assumption out, so on then off returns
+    /// the section to its committed state and the stage coalesces to clean.
+    #[test]
+    fn a_defaults_option_flipped_to_firewall4s_default_clears_it() {
+        let off = answer("/zones", "drop_invalid=off");
+        assert_eq!(
+            off["commit"],
+            serde_json::json!([{
+                "config": "firewall",
+                "section": "cfg01e63d",
+                "values": {"drop_invalid": null}
+            }])
+        );
+        let on = answer("/zones", "drop_invalid=on");
+        assert_eq!(on["commit"][0]["values"], json!({"drop_invalid": "1"}));
     }
 
     #[test]

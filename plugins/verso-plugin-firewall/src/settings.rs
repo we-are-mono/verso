@@ -152,6 +152,17 @@ pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
     (page(model), ops)
 }
 
+/// switch_value is what a defaults switch writes, by its uci name, wherever it
+/// is flipped: the state firewall4 reads, or a clear where that state is the
+/// one it assumes (SWITCHES).
+pub fn switch_value(option: &str, on: bool) -> Value {
+    let default_on = SWITCHES
+        .iter()
+        .find(|(name, _)| *name == option)
+        .is_some_and(|(_, default_on)| *default_on);
+    flag_value(on, default_on)
+}
+
 /// flag_value states a switch the way firewall4 reads it, and clears it where
 /// the state asked for is the one the daemon would assume: a stage that wrote
 /// the default back would count as a change nobody made.
