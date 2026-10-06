@@ -423,7 +423,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 			status = http.StatusUnprocessableEntity
 		} else {
 			if len(env.Commands) > 0 {
-				if len(env.Commit) > 0 {
+				// A staged file waits on the stage as uci does, so it may stand
+				// beside the sections that name it (an imported profile and its
+				// tunnel); an act that happens at once never shares a save.
+				staged := len(env.Commands) == 1 && env.Commands[0].Name == "config-file-stage"
+				if len(env.Commit) > 0 && !staged {
 					return s.notice(tr("Not permitted"), tr("Commands cannot be combined with staged changes.")), http.StatusForbidden
 				}
 				if err := s.runPluginCommands(r.Context(), m, s.sessionSID(r), env.Commands); err != nil {
@@ -447,7 +451,10 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 				}
 			}
 
-			if len(env.Commit) > 0 {
+			// A file refused leaves the sections that would name it unstaged
+			// too: a section pointing at a file that never arrived is no change
+			// anybody asked for.
+			if len(env.Commit) > 0 && status != http.StatusUnprocessableEntity {
 				if body, st, ok := s.brokerStage(r.Context(), m, authorAt(m, pluginPath), s.sessionSID(r), env.Commit, tr); !ok {
 					return body, st
 				}

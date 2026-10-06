@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -110,5 +111,35 @@ func TestAFileIsStagedOnlyByItsDaemonsWriter(t *testing.T) {
 	}
 	if len(b.staged) != 4 {
 		t.Errorf("only the allowed files reach the router: %v", b.staged)
+	}
+}
+
+// TestAFileStagesBesideTheConfigThatNamesIt: importing a profile writes the
+// file and the section that names it in one save, and both wait on the stage
+// together. Only a staged file joins staged changes; an act that happens at
+// once still stands alone.
+func TestAFileStagesBesideTheConfigThatNamesIt(t *testing.T) {
+	calls := []uciWrite{}
+	b := &fileStagingBackend{fakeBackend: fakeBackend{access: true, writes: &calls}}
+	m := fileWriter("openvpn")
+	m.ID, m.Socket, m.SchemaVersion = "demo", "/run/demo.sock", supportedSchemaVersion
+	m.Nav = []plugin.NavEntry{{Section: "VPN", Label: "VPN", Path: "/"}}
+	commit := []plugin.CommitOp{{Config: "openvpn", Section: "proton", Values: map[string]any{"config": "/etc/openvpn/proton.ovpn"}}}
+	env := &plugin.Envelope{SchemaVersion: 1, Title: "VPN", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"vpn"}`), Commit: commit,
+		Commands: []plugin.ApplyAction{{Name: "config-file-stage", Args: map[string]string{"path": "/etc/openvpn/proton.ovpn", "expected": "v", "content": "client\n"}}}}
+	s := newServerWith(t, b, &fakeTransport{env: env}, []plugin.Manifest{m})
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code >= 400 {
+		t.Fatalf("a file and its section answered %d", rec.Code)
+	}
+	if len(b.staged) != 1 || len(calls) != 1 {
+		t.Errorf("staged files %v and writes %v, want one of each", b.staged, calls)
+	}
+
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "network.interface", Function: "restart"})
+	env.Commands = []plugin.ApplyAction{{Name: "interface-restart", Args: map[string]string{"interface": "lan"}}}
+	s = newServerWith(t, b, &fakeTransport{env: env}, []plugin.Manifest{m})
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"x": {"1"}}); rec.Code != http.StatusForbidden {
+		t.Errorf("an immediate act beside staged changes answered %d, want refused", rec.Code)
 	}
 }
