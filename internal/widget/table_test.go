@@ -379,7 +379,7 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		"bg-green-soft text-green-deep",       // accept pill through the badge palette
 		"bg-marigold-soft text-marigold-deep", // reject pill
 		"bg-denim-soft text-denim-deep",       // NAT carries the info accent
-		`<span class="text-inert"><span aria-hidden="true">—</span><span class="sr-only">None</span></span>`, // empty pill cell is a faint dash, said as "None"
+		`font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`, // empty pill cell is the absence mark, said as "None"
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)

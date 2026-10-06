@@ -443,15 +443,16 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			if tc.firmware.State == openwrt.FirmwareUpdateAvailable {
 				// The changed build is the one value the Available column asserts:
 				// its dot is filled in the info tone, where a part a sysupgrade
-				// cannot change, or one the server did not report, wears the
-				// empty ring.
+				// cannot change wears the empty ring, and one the server did not
+				// report is the absence mark every empty cell is.
 				if cell := ledgerCell(t, body, ">25.12.5 r33051<"); !strings.Contains(cell, "rounded-[1px] bg-denim") {
 					t.Errorf("the changed build should be marked with the info dot in the Available column:\n%s", cell)
 				}
-				for _, rest := range []string{">same<", ">—<"} {
-					if cell := ledgerCell(t, body, rest); !strings.Contains(cell, "border border-faint") {
-						t.Errorf("an unchanged part (%s) should wear the empty ring:\n%s", rest, cell)
-					}
+				if cell := ledgerCell(t, body, ">same<"); !strings.Contains(cell, "border border-faint") {
+					t.Errorf("an unchanged part should wear the empty ring:\n%s", cell)
+				}
+				if cell := ledgerCell(t, body, ">—<"); strings.Contains(cell, "border border-faint") || !strings.Contains(cell, "text-faint") {
+					t.Errorf("an unreported part should be the absence mark, with no ring:\n%s", cell)
 				}
 			}
 			// The manual image upload is the permanent floor under every rung —

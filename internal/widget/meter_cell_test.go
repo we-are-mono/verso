@@ -55,7 +55,7 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 		if strings.Contains(got, "clip-path") || strings.Contains(got, "bg-rule") {
 			t.Errorf("a cell with no reading drew a track:\n%s", got)
 		}
-		if !strings.Contains(got, "text-inert") {
+		if !strings.Contains(got, `text-faint"><span aria-hidden="true">—</span>`) {
 			t.Errorf("a cell with no reading should be the faint dash:\n%s", got)
 		}
 	}

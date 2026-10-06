@@ -176,7 +176,12 @@
       <tr class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{end}}
         {{range .Cells}}
-        {{if eq .Kind "reorder"}}
+        {{if .Absent}}
+        {{/* nothing to state, said one way in every column: the faint dash in
+             the sans, a step below a muted value — the absence of a fact, not a
+             quiet one — and "None" to a screen reader. */}}
+        <td class="border-b border-rule {{template "table.cellpad" .}} font-sans text-sm whitespace-nowrap text-faint"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{template "verso-none"}}</td>
+        {{else if eq .Kind "reorder"}}
         {{/* the drag handle, drawn only where the table persists the new order —
              the column keeps its width either way so the grid stays aligned. */}}
         {{/* the grip rests at the step the eye passes over and darkens with the
@@ -384,14 +389,12 @@
         {{else if eq .Kind "mono"}}
         {{/* value and its copy control on one flex line, so the control's box
              cannot push the row taller than the text it sits beside. */}}
-        {{/* nothing to state is the faint dash, a step below a muted value: it
-             is the absence of a fact, not a quiet one. */}}
         {{/* A second line (Sub) is what the value becomes — a package's
              available version under the installed one. Which is which reads
              without colour: the value it was recedes to Meta, and what it
              becomes stands in Ink, led by an arrow turning down into it in the
              cell's tone (the action colour for info). */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds

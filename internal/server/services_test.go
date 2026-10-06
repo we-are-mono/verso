@@ -144,8 +144,14 @@ func TestServicesTable(t *testing.T) {
 	if strings.Contains(firewallRow, ">Stopped<") {
 		t.Errorf("a PID-less subsystem must not be called stopped: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `text-meta">—</span>`) {
-		t.Errorf("an indeterminate State must use the same secondary dash as Runtime: %s", firewallRow)
+	// No state, no PID, no memory (nor order or package here): each the one
+	// absence mark, the faint dash in the sans, never a hollow packet before it
+	// or a minus in mono.
+	if got := strings.Count(firewallRow, `font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`); got < 3 {
+		t.Errorf("an indeterminate State, PID and Memory must each be the absence mark (got %d): %s", got, firewallRow)
+	}
+	if strings.Contains(firewallRow, "border border-faint") {
+		t.Errorf("an indeterminate State must not wear a hollow packet: %s", firewallRow)
 	}
 	if strings.Contains(firewallRow, `name="svc:firewall"`) {
 		t.Errorf("firewall must not offer an enabled toggle: %s", firewallRow)

@@ -732,6 +732,24 @@ type tableChipView struct {
 	TipID string
 }
 
+// Absent reports whether the cell has nothing to state: no value, or only the
+// dash a caller wrote for none. Every column says it the same way
+// (table.absent), so a missing PID, a missing figure and a missing state read
+// as one absence rather than a minus in mono, a dash in the sans and a packet
+// with no state. Cells that are controls or slots (a switch, a grip, acts) or
+// that state their fact without words (a check's yes or no) are never absent:
+// their emptiness is their own.
+func (c tableCellView) Absent() bool {
+	switch c.Kind {
+	case "reorder", "toggle", "actions", "check":
+		return false
+	}
+	text := strings.TrimSpace(c.Text)
+	return (text == "" || text == "—") && c.Sub == "" && c.Detail == "" &&
+		c.Chip == "" && c.Tag == "" && c.Href == "" && c.Button == "" && c.Clip == "" &&
+		len(c.Chips) == 0 && len(c.Endpoints) == 0 && len(c.Actions) == 0
+}
+
 // OpensPanel reports whether this cell's link is the row's panel — the case
 // where following it would fetch the very page we are already on, only to show
 // what a swap can show without leaving.
