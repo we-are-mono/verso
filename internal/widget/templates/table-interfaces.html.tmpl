@@ -7,34 +7,37 @@
      a second vertical scroll area around the listing. */}}
 <div data-verso-inventory class="relative min-w-0 overflow-x-auto overflow-y-hidden">
   <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
-  <table class="group/inventory w-full min-w-[66rem] table-fixed border-collapse text-left text-sm">
+  {{/* On the notebook's grid as every listing is (.verso-table): each row two
+       cells, its hairline the second cell's line, the tree drawn in the same
+       40px and on through the hairline. */}}
+  <table class="verso-table group/inventory w-full min-w-[66rem] table-fixed text-left text-sm leading-5">
     <colgroup><col><col class="w-30"><col class="w-44"><col class="w-50"><col class="w-32"><col class="w-39"></colgroup>
-    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong py-2.5 text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
+    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Rows}}
       {{$row := .}}
       {{/* A row with an editor hosts the panel scope: its pencil, whose
            address is the panel's, opens the editor in a drawer over the
            listing, fetched the first time it opens (verso-drawer-fetched). */}}
-      <tr{{if .Drawer}} x-data="modal"{{end}} data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="group/row border-b border-rule hover:bg-quiet/50 data-[expanded=true]:bg-quiet">
+      <tr{{if .Drawer}} x-data="modal"{{end}} data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="group/row hover:bg-quiet/50 data-[expanded=true]:bg-quiet [&>td]:border-b [&>td]:border-rule">
       {{range $i, $cell := .Cells}}
         {{if eq $i 0}}
         {{/* A row that wraps hangs from its first line, as every listing's
-             does: the node and its branch hold the first 44px, and only the
+             does: the node and its branch hold the first 40px, and only the
              trunks that run on to later rows stretch down the rest. */}}
         <td class="relative py-0 pl-4 align-top">
-          <svg width="66" height="44" viewBox="0 0 66 44" aria-hidden="true" class="pointer-events-none absolute top-0 left-4 h-11 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
-          {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute top-11 bottom-0 left-4 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
+          <svg width="66" height="40" viewBox="0 0 66 40" aria-hidden="true" class="pointer-events-none absolute top-0 left-4 h-10 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
+          {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute top-10 bottom-0 left-4 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
           <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="group/identity flex w-full cursor-pointer items-start text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
-            <svg width="66" height="44" viewBox="0 0 66 44" class="relative shrink-0 overflow-visible text-glyph" aria-hidden="true">
-              <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="18" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="22" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
+            <svg width="66" height="40" viewBox="0 0 66 40" class="relative -mb-px shrink-0 overflow-visible text-glyph" aria-hidden="true">
+              <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
             </svg>
-            <span data-verso-expand-chevron class="mt-2 grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-white">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span>
-            <span class="flex min-w-0 flex-wrap items-center gap-1 py-2.5 pr-3 pl-3"><span class="break-all font-mono text-base font-bold text-ink">{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}</span>
+            <span data-verso-expand-chevron class="mt-1.5 grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-white">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span>
+            <span class="flex min-w-0 flex-wrap items-center gap-x-1 pt-2.5 pr-3 pb-2.25 pl-3"><span class="break-all font-mono text-base leading-5 font-bold text-ink">{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}</span>
           </button>
         </td>
         {{else if eq $i 5}}
-        <td class="py-2 pr-4 align-top"><div class="flex w-35 items-center justify-end">
+        <td class="pt-1.5 pr-4 pb-1.25 align-top"><div class="flex w-35 items-center justify-end">
           {{range .Actions}}
           {{if and .Href $cell.Panel (eq .Href $cell.Panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $cell.RowName}} {{$cell.RowName}}{{end}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
           {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
@@ -43,9 +46,9 @@
           {{end}}
         </div></td>
         {{else if eq $i 4}}
-        <td class="py-3 pr-2 align-top"><span class="flex items-center gap-2 text-sm {{if eq .Variant "danger"}}text-crimson-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "success"}}text-ink{{else}}text-meta{{end}}"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}border border-inert{{end}}"></span>{{.Text}}</span></td>
+        <td class="pt-2.5 pr-2 pb-2.25 align-top"><span class="flex items-center gap-2 text-sm {{if eq .Variant "danger"}}text-crimson-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "success"}}text-ink{{else}}text-meta{{end}}"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}border border-inert{{end}}"></span>{{.Text}}</span></td>
         {{else}}
-        <td class="py-2.5 pr-2 align-top font-mono text-base font-medium {{if eq $i 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}}"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
+        <td class="pt-2.5 pr-2 pb-2.25 align-top font-mono text-base leading-5 font-medium {{if eq $i 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}}"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
         {{end}}
       {{end}}
       {{if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{end}}

@@ -5,14 +5,17 @@
      live in verso.css (.verso-empty-icon); the rest is layout utilities. The children
      are the call(s) to action — typically a modal trigger — so the empty state
      composes the same widgets as the populated page. Icons come from the shared Lucide
-     set (icons.go); a "shield" here uses the alert variant — nothing is set up yet. */}}
-<div class="flex flex-col items-center px-6 py-12 text-center">
-  <span class="verso-empty-icon{{if eq .Variant "success"}} verso-empty-icon--success{{end}} mb-4 grid size-20 place-items-center rounded-3xl">
+     set (icons.go); a "shield" here uses the alert variant — nothing is set up yet.
+     On the notebook's grid: two cells of air, the icon four cells, the title
+     centred in two, the body on 20px lines a cell between paragraphs, and the
+     acts a cell under it, centred in two. */}}
+<div class="flex flex-col items-center px-6 py-10 text-center">
+  <span class="verso-empty-icon{{if eq .Variant "success"}} verso-empty-icon--success{{end}} mb-5 grid size-20 place-items-center rounded-3xl">
     {{if eq .Icon "shield"}}{{icon "shield-alert" "size-9"}}{{else}}{{icon .Icon "size-9"}}{{end}}
   </span>
-  {{if .Title}}<h2 class="text-2xl font-semibold tracking-[-0.025em] text-balance text-ink">{{.Title}}</h2>{{end}}
+  {{if .Title}}<h2 class="text-2xl leading-10 font-semibold tracking-[-0.025em] text-balance text-ink">{{.Title}}</h2>{{end}}
   {{/* the body is Markdown, so it brings its own paragraph — the wrapper is a
        div carrying the prose rules, exactly as a section's sub does. */}}
-  {{if .Body}}<div class="verso-prose mt-2 max-w-[44ch] text-body">{{.Body}}</div>{{end}}
-  {{if .Children}}<div class="mt-8 flex w-full flex-col items-center gap-5">{{range .Children}}{{.}}{{end}}</div>{{end}}
+  {{if .Body}}<div class="verso-prose max-w-[44ch] leading-5 text-body [&_p]:mb-5">{{.Body}}</div>{{end}}
+  {{if .Children}}<div class="mt-5 flex w-full flex-col items-center gap-5 py-0.75">{{range .Children}}{{.}}{{end}}</div>{{end}}
 </div>

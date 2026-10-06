@@ -14,7 +14,7 @@ import (
 // while its change waits — drawn by the one label, never by hand.
 func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 	r := newRenderer(t)
-	key := `<span class="verso-chip inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono border-rule bg-quiet text-meta">opt</span>`
+	key := `<span class="verso-chip -my-px inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-medium font-mono border-rule bg-quiet text-meta">opt</span>`
 	for name, w := range map[string]Widget{
 		"field":    &Field{Name: "opt", Label: "Option", Key: "opt", Staged: true},
 		"code":     &Field{Name: "opt", Label: "Option", Key: "opt", Style: "code", Staged: true},
@@ -44,7 +44,7 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 // including the code editor, which drew a bare red line of its own.
 func TestAFieldsRefusalIsTheBand(t *testing.T) {
 	r := newRenderer(t)
-	band := `<span id="script-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">`
+	band := `<span id="script-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2.5 text-sm leading-5 text-crimson-deep">`
 	for name, w := range map[string]Widget{
 		"text": &Field{Name: "script", Label: "Script", Error: "Not a script."},
 		"code": &Field{Name: "script", Label: "Script", Style: "code", Error: "Not a script."},
@@ -57,7 +57,7 @@ func TestAFieldsRefusalIsTheBand(t *testing.T) {
 	// An in-place value checks itself: its slot is the same band, empty and
 	// hidden until the check has something to say.
 	got := render(t, r, &Settings{Items: []SettingsItem{{Title: "Hostname", Name: "hostname", Value: "gw", Inline: true}}})
-	slot := `<span id="hostname-error" data-verso-inline-error hidden class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep"></span>`
+	slot := `<span id="hostname-error" data-verso-inline-error hidden class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2.5 text-sm leading-5 text-crimson-deep"></span>`
 	if !strings.Contains(got, slot) {
 		t.Errorf("an in-place value's slot is the refusal band:\n%s", got)
 	}

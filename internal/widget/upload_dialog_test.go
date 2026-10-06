@@ -43,7 +43,7 @@ func TestFileFieldIsTheWholeDropArea(t *testing.T) {
 		`data-verso-drop`, "border-dashed border-rule-strong bg-quiet",
 		`id="firmware_image" name="firmware_image" type="file" accept=".bin" required`,
 		">Drop a sysupgrade image here<", "choose one from your computer",
-		`<p id="firmware_image-help" class="text-sm leading-[1.45] text-pretty text-meta">Built for Mono Gateway Development Kit · .bin, up to 128 MiB</p>`,
+		`<p id="firmware_image-help" class="text-sm leading-5 text-pretty text-meta">Built for Mono Gateway Development Kit · .bin, up to 128 MiB</p>`,
 		`aria-describedby="firmware_image-help"`,
 	} {
 		if !strings.Contains(got, want) {

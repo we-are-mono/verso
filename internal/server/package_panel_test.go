@@ -54,7 +54,11 @@ func TestPackagePanelOutsideAPanel(t *testing.T) {
 func TestPackagesSearchArrivingWithoutAViewSearchesAll(t *testing.T) {
 	s := pluginsServer(t, fakeBackend{access: true, pkgTotal: 1, pkgFound: []openwrt.Package{{Name: "adblock", Description: "Blocklist"}}}, true)
 	body := get(t, s, "/system/packages?q=adblock").Body.String()
-	if !strings.Contains(body, `data-package-all="true"`) || !strings.Contains(body, "adblock") {
+	// The All listing is the selected cut, its search asks the router (no
+	// in-place filter) and keeps the query, and the package is a row.
+	allSelected := strings.Contains(body, `<option value="all" data-label="All" selected>`)
+	pagedSearch := strings.Contains(body, `<input type="search" value="adblock"`) && !strings.Contains(body, "data-verso-listing-filter")
+	if !allSelected || !pagedSearch || !strings.Contains(body, "Blocklist") {
 		t.Errorf("a search without a view lists all packages:\n%s", body)
 	}
 }

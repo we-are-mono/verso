@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* stack: layout of pre-rendered children, with no surface of its own. Inline forms
-     a wrapping row; Divided draws hairlines; Compact tightens the default vertical rhythm. A
+     a wrapping row of acts, centred in two of the notebook's cells (3px over
+     and under a control's 34px), its wrapped rows two cells apart; Divided draws hairlines; Compact tightens the default vertical rhythm. A
      plain stack names itself (verso-stack): as the page's root it takes the
      page rhythm from input.css — its blocks 2.5rem apart. A flush stack adds
      no rhythm and says it holds rows (data-verso-rows), so a section gives
      back its first and last rows' air as if they stood in it directly. */}}
-<div{{if and .Flush (not .Inline)}} data-verso-rows{{end}} class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-3{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}verso-stack space-y-8{{else}}verso-stack space-y-4{{end}}">{{range .Children}}{{.}}{{end}}</div>
+<div{{if and .Flush (not .Inline)}} data-verso-rows{{end}} class="{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}verso-stack space-y-10{{else}}verso-stack space-y-5{{end}}">{{range .Children}}{{.}}{{end}}</div>

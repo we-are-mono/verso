@@ -234,7 +234,7 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	// its own: the router's being current is one question.
 	// It stands with the answer — the ledger and its acts — above the standing
 	// arrangement, which closes the section.
-	firmware, band, setting, next := strings.Index(body, `id="firmware"`), strings.Index(body, "Review in Packages"), strings.Index(body, "Check for updates automatically"), strings.Index(body, `id="back-up-and-restore"`)
+	firmware, band, setting, next := strings.Index(body, `id="section-firmware"`), strings.Index(body, "Review in Packages"), strings.Index(body, "Check for updates automatically"), strings.Index(body, `id="section-back-up-and-restore"`)
 	if !(firmware < band && band < setting && setting < next) {
 		t.Errorf("the packages band should sit in the firmware section above the auto-check setting (firmware %d, band %d, setting %d, next %d)", firmware, band, setting, next)
 	}
@@ -303,10 +303,11 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 		"Check again",
 		// When it last checked, beside the act that checks again.
 		"Checked ",
-		// The ledger splits the build into its version and its revision, and
-		// names the server it was checked against.
-		">Current<", ">25.12.4<", "r32933-4ccb782af7",
-		"Checked against", "https://sysupgrade.mono.si",
+		// The ledger states the build as the update tool writes it, version
+		// and revision together, and names the server it was checked
+		// against, the name verbatim in mono.
+		">Current<", ">25.12.4 r32933-4ccb782af7<",
+		"Checked against <code>https://sysupgrade.mono.si</code>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the up-to-date Updates section is missing %q:\n%s", want, body)
@@ -314,7 +315,7 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	}
 	// Nothing is offered, so the ledger has no Available column; nothing is
 	// wrong, so nothing is explained — no verdict, no warning band.
-	if strings.Contains(body, ">Available<") || strings.Contains(body, "data-verso-ledger-warning") {
+	if strings.Contains(body, ">Available<") || ledgerWarning(t, body) != "" {
 		t.Errorf("a current router's ledger should have no Available column and no warning band:\n%s", body)
 	}
 	for _, gone := range []string{"Up to date", "This router runs the newest build its update server offers."} {
@@ -352,18 +353,17 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 		firmware  openwrt.FirmwareUpdate
 		want      []string
 		absent    string
-		inWarning string // must sit inside the warning band, not beside it
+		warning   string // the title of the marigold band above the ledger, if the rung explains itself
+		inWarning string // the tool's own words: inside the warning band, verbatim in mono
 	}{
 		{
 			name:     "an available build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051", Server: "https://sysupgrade.openwrt.org", Packages: 78},
 			want: []string{
-				// The ledger sets the build on offer beside what runs, the new
-				// value marked by the packet rather than by a tinted cell; no
-				// sentence restates it.
-				">Current<", ">Available<", ">25.12.4<", "r32933", ">25.12.5<", "r33051",
-				`data-verso-ledger-changed`,
-				"Built by", "https://sysupgrade.openwrt.org", "78 packages change",
+				// The ledger sets the build on offer beside what runs, each as
+				// the update tool writes it; no sentence restates it.
+				">Current<", ">Available<", ">25.12.4 r32933<", ">25.12.5 r33051<",
+				"Built by <code>https://sysupgrade.openwrt.org</code>", "78 packages change",
 				// Installing is caution, not danger: the same one-hue confirm, in
 				// marigold, naming the build.
 				"Download and install 25.12.5", `data-verso-confirm-tone="caution"`, "Install 25.12.5 now?",
@@ -377,26 +377,29 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 		{
 			name:     "no upgrade tool",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoOwut, Message: "owut is not installed on this device"},
-			want:     []string{`data-verso-ledger-warning`, "owut", "is not installed", `href="/system/packages/discover?q=owut"`},
+			want:     []string{"owut", "is not installed", `href="/system/packages/discover?q=owut"`},
+			warning:  "Firmware checks need owut",
 		},
 		{
 			name:     "no server",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer, Server: "https://sysupgrade.mono.si", Message: "uclient error code=-1"},
 			// A warning, not an error: the verdict stands in the marigold band,
 			// and the tool's own words ride inside it, verbatim and copyable.
-			want:      []string{`data-verso-ledger-warning`, "The update server didn&#39;t answer", "No update server answered", `data-verso-ledger-complaint`, "uclient error code=-1"},
-			inWarning: "uclient error code=-1",
+			want:      []string{"No update server answered"},
+			warning:   "The update server didn&#39;t answer",
+			inWarning: "https://sysupgrade.mono.si — uclient error code=-1",
 		},
 		{
 			name:      "a device the server cannot build",
 			firmware:  openwrt.FirmwareUpdate{State: openwrt.FirmwareUnsupported, Message: "File system type '(null)'"},
-			want:      []string{`data-verso-ledger-warning`, "No firmware updates for this router", "cannot build an image for this router", `data-verso-ledger-complaint`, "File system type &#39;(null)&#39;"},
+			want:      []string{"cannot build an image for this router"},
+			warning:   "No firmware updates for this router",
 			inWarning: "File system type &#39;(null)&#39;",
 		},
 		{
 			name:     "a check that could not run at all",
 			firmware: openwrt.FirmwareUpdate{},
-			want:     []string{`data-verso-ledger-warning`, "The firmware check could not run"},
+			warning:  "The firmware check could not run",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -412,20 +415,43 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			if tc.absent != "" && strings.Contains(body, tc.absent) {
 				t.Errorf("the %s rung should not offer %q", tc.name, tc.absent)
 			}
+			band := ledgerWarning(t, body)
+			if tc.warning == "" && band != "" {
+				t.Errorf("the %s rung explains nothing, but draws a warning band:\n%s", tc.name, band)
+			}
+			if tc.warning != "" {
+				// An inline warning sets its title and its sentence at one size,
+				// the title bold: the sentence is the band's own 14px, not a lede.
+				if !strings.Contains(band, `<p class="font-semibold">`+tc.warning+`</p>`) {
+					t.Errorf("the %s rung should title its warning band %q:\n%s", tc.name, tc.warning, band)
+				}
+				if strings.Contains(band, "verso-lede") {
+					t.Errorf("the %s rung's warning sets its sentence apart from its title:\n%s", tc.name, band)
+				}
+			}
 			if tc.inWarning != "" {
-				if band := section(t, body, "data-verso-ledger-warning", "<table"); !strings.Contains(band, tc.inWarning) {
-					t.Errorf("the %s rung should carry %q inside its warning band:\n%s", tc.name, tc.inWarning, band)
+				if words := verbatimLine(band); !strings.Contains(words, tc.inWarning) || !strings.Contains(words, "font-mono") {
+					t.Errorf("the %s rung should carry %q verbatim in mono inside its warning band:\n%s", tc.name, tc.inWarning, band)
+				}
+				if !strings.Contains(band, `x-data="copy"`) {
+					t.Errorf("the %s rung's tool words should be copyable:\n%s", tc.name, band)
 				}
 				if strings.Contains(body, "Error, given by the update server") {
 					t.Errorf("the %s rung should not label the tool's words separately", tc.name)
 				}
 			}
-			// An inline warning sets its title and its sentence at one size,
-			// the title bold: the sentence is the band's own 14px, not a lede.
-			if strings.Contains(body, "data-verso-ledger-warning") {
-				band := section(t, body, "data-verso-ledger-warning", "<table")
-				if strings.Contains(band, "verso-lede") || !strings.Contains(band, `<p class="font-semibold">`) {
-					t.Errorf("the %s rung's warning sets its sentence apart from its title:\n%s", tc.name, band)
+			if tc.firmware.State == openwrt.FirmwareUpdateAvailable {
+				// The changed build is the one value the Available column asserts:
+				// its dot is filled in the info tone, where a part a sysupgrade
+				// cannot change, or one the server did not report, wears the
+				// empty ring.
+				if cell := ledgerCell(t, body, ">25.12.5 r33051<"); !strings.Contains(cell, "rounded-[1px] bg-denim") {
+					t.Errorf("the changed build should be marked with the info dot in the Available column:\n%s", cell)
+				}
+				for _, rest := range []string{">same<", ">—<"} {
+					if cell := ledgerCell(t, body, rest); !strings.Contains(cell, "border border-faint") {
+						t.Errorf("an unchanged part (%s) should wear the empty ring:\n%s", rest, cell)
+					}
 				}
 			}
 			// The manual image upload is the permanent floor under every rung —
@@ -436,6 +462,43 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ledgerWarning is the marigold band the firmware section explains a warning
+// in, from the band to the ledger under it, or "" when the section explains
+// nothing.
+func ledgerWarning(t *testing.T, body string) string {
+	t.Helper()
+	head := section(t, body, `id="section-firmware"`, "<table")
+	at := strings.Index(head, "bg-marigold-soft text-marigold-deep")
+	if at < 0 {
+		return ""
+	}
+	return head[at:]
+}
+
+// verbatimLine is the paragraph a callout sets the tool's own words in, its
+// class and all, or "" when the band carries none.
+func verbatimLine(band string) string {
+	at := strings.Index(band, "font-mono")
+	if at < 0 {
+		return ""
+	}
+	end := strings.Index(band[at:], "</p>")
+	if end < 0 {
+		return ""
+	}
+	return band[at : at+end]
+}
+
+// ledgerCell is the ledger's table cell that holds text, from its opening tag.
+func ledgerCell(t *testing.T, body, text string) string {
+	t.Helper()
+	at := strings.Index(body, text)
+	if at < 0 {
+		t.Fatalf("the ledger has no %q", text)
+	}
+	return body[strings.LastIndex(body[:at], "<td"):at]
 }
 
 // TestUpdateInstallRunsOnceInTheBackground: the POST answers at once, the run is

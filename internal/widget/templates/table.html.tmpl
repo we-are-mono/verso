@@ -12,7 +12,7 @@
 {{/* table.tag: a chip, so the one chip box every citation wears, with its
      hue's hairline on its hue's wash. On a 20px detail line the 22px box
      overhangs the line by a pixel either side rather than making it taller. */}}
-{{define "table.tag"}}<span class="{{template "verso-chip-box"}}{{if .Detail}} -my-px{{end}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{else if .TagDot}}{{template "verso-chip-packet" .TagVariant}}{{end}}{{.Tag}}</span>{{end}}
+{{define "table.tag"}}<span class="{{template "verso-chip-box"}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}">{{if .TagIcon}}<span class="{{if eq .TagVariant "info"}}text-denim{{else}}text-faint{{end}}">{{icon .TagIcon "size-3.5"}}</span>{{else if .TagDot}}{{template "verso-chip-packet" .TagVariant}}{{end}}{{.Tag}}</span>{{end}}
 {{/* table.name-words: a row's name, its words in a span of their own so a
      switched-off row's marker can lie under them alone. Only the row's name
      carries it; a later identity column is a citation and stays bare.
@@ -39,21 +39,20 @@
 {{define "table.laneadd-look"}}{{if .AddText}}{{template "table.laneadd-class"}}{{else}}{{template "table.actbtn-class"}}{{end}}{{end}}
 {{define "table.laneadd-body"}}{{icon "plus" "size-4"}}{{if .AddText}}<span>{{.AddText}}</span>{{end}}{{if ne .AddText .AddLabel}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.AddLabel}}</span>{{end}}{{end}}
 {{/* table.cellpad: a cell's inset, and the line it insets. A row states no
-     height of its own: it is 44px because each of its cells is — a 24px line
-     with 10px above and below it. A control shorter than the line (a checkbox,
-     a check) sits centred on that same line; only a 28px act is taller, and its
-     cell insets it by 8px instead (table.cellpad-act). In the listing geometry
-     the columns' widths space the cells and only the table's edges carry a side
+     height of its own: every cell writes on the notebook's 20px lines with
+     10px above its first and 9px under its last, and its hairline is the
+     next pixel, so a row of one line is two cells, of two lines three, and
+     every row ends on a line however its values wrap. A control shorter than
+     the line sits centred on it; a 28px act is taller, and its cell insets it
+     by 6px and 5px instead (table.cellpad-act). In the listing geometry the
+     columns' widths space the cells and only the table's edges carry a side
      inset, but each cell keeps 16px at its end so a value wider than its
      column's measure never runs into the next; elsewhere every cell keeps its
      own. */}}
-{{define "table.cellpad"}}{{if .Dense}}py-2.5 pr-4 leading-6{{else}}px-3.5 py-2.5 leading-6{{end}}{{end}}
-{{/* table.cellpad-stack: a cell that stacks two 20px lines. Every cell stands
-     at the row's top, so the row's acts and one-line values stay level with
-     the first line of anything that spans two; the stack takes 12px above and
-     8px below, which puts its first line on the 22px centre a one-line cell's
-     24px line has, and keeps the row at 60px. */}}
-{{define "table.cellpad-stack"}}{{if .Dense}}pt-3 pb-2{{else}}px-3.5 pt-3 pb-2{{end}}{{end}}
+{{define "table.cellpad"}}{{if .Dense}}pt-2.5 pr-4 pb-2.25 leading-5{{else}}px-3.5 pt-2.5 pb-2.25 leading-5{{end}}{{end}}
+{{/* table.cellpad-stack: a cell that stacks two 20px lines — a row of three
+     cells, its first line level with every one-line cell's. */}}
+{{define "table.cellpad-stack"}}{{if .Dense}}pt-2.5 pb-2.25{{else}}px-3.5 pt-2.5 pb-2.25{{end}}{{end}}
 {{/* table.confirm-dialog: the alert a row act that ends something asks in,
      inside the act's own x-data="modal": the question, what is at stake, and
      the act named again on the danger button, which posts the one pair. A
@@ -75,22 +74,21 @@
     <div class="mt-6 flex flex-col gap-3 sm:flex-row">
       <form method="post">
         {{template "verso-csrf" .CSRFToken}}
-        <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-9 w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
+        <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-control w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
       </form>
-      <button type="button" @click="hide" class="inline-flex h-9 w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
+      <button type="button" @click="hide" class="inline-flex h-control w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
     </div>
   </dialog>
 </template>
 {{end}}
-{{/* table.cellpad-detail: a value over its detail line, 12px above and below
-     — the first line's centre stays on the 22px a one-line cell and a row's
-     28px acts keep, and the stack sits evenly in its 64px row. */}}
-{{define "table.cellpad-detail"}}{{if .Dense}}py-3 pr-4{{else}}px-3.5 py-3{{end}}{{end}}
+{{/* table.cellpad-detail: a value over its detail line, a 20px line each —
+     a row of three cells, its first line level with every one-line cell's. */}}
+{{define "table.cellpad-detail"}}{{if .Dense}}pt-2.5 pr-4 pb-2.25{{else}}px-3.5 pt-2.5 pb-2.25{{end}}{{end}}
 {{/* table.detail: the line of words under a cell's value — what it is, or
      since when — in the secondary step, on one 20px line with the cell's tag
      riding it (the tag keeps to the line). */}}
 {{define "table.detail"}}<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>{{.Detail}}</span>{{if .Tag}}{{template "table.tag" .}}{{end}}</span>{{end}}
-{{define "table.cellpad-act"}}{{if .Dense}}py-2{{else}}px-3.5 py-2{{end}}{{end}}
+{{define "table.cellpad-act"}}{{if .Dense}}pt-1.5 pb-1.25{{else}}px-3.5 pt-1.5 pb-1.25{{end}}{{end}}
 {{define "table.rowbtn-class"}}inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold whitespace-nowrap transition-colors {{if .Disabled}}cursor-not-allowed border-rule bg-ground text-faint opacity-70{{else}}{{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}{{end}}
 {{/* table.rowbtn-name: a row's labelled act names the row it acts on, the
      visible label leading, so a column of "Revoke" buttons read on their own is
@@ -109,10 +107,10 @@
            and the nudge rides a named group so the tr's own group stays out of
            it. */}}
       <tr class="group">
-        <td colspan="{{.ColumnSpan}}" class="border-b border-rule !p-0 group-last:border-b-0">
+        <td colspan="{{.ColumnSpan}}" class="border-b border-rule !p-0">
           {{/* the same ink the Router endpoint wears in these rows, so the
                listing's affordance and its subject speak one accent. */}}
-          <a href="{{.AddHref}}" class="group/add flex w-full items-center py-2.5 pr-3.5 text-sm leading-6 font-semibold text-denim-deep transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+          <a href="{{.AddHref}}" class="group/add flex w-full items-center pt-2.5 pr-3.5 pb-2.25 text-sm leading-5 font-semibold text-denim-deep transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             <span class="flex items-center gap-1.5 transition-transform group-hover/add:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover/add:translate-x-0"><span class="text-denim">{{icon "plus" "size-4"}}</span>{{.AddLabel}}</span>
           </a>
         </td>
@@ -126,15 +124,15 @@
            its last: a listing whose order is its meaning reads top-down, and the
            head is where the eye already is when it decides this is the lane it
            wants. Its words say the act; its tooltip says which lane. */}}
-      {{/* A lane is a row, not a band: the listing's own 44px — a 28px line,
-           the add's box, with 8px above and below — no fill, and a strong
-           hairline under it, so the only filled surface over a listing is the
-           band it is narrowed from. Every lane after the first starts its own
-           small table, 2.5rem below the last row of the one before; the air is
+      {{/* A lane is a row, not a band: the listing's own two cells, a 28px
+           line (the add's box) centred in them, no fill, and a strong hairline
+           under it, so the only filled surface over a listing is the band it
+           is narrowed from. Every lane after the first starts its own small
+           table, two cells below the last row of the one before; the air is
            the row's own padding, so a lane the filter hides takes its gap with
            it. */}}
       <tr class="verso-table-group{{if .Seam}} verso-table-seam-row{{end}}">
-        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-12{{else}}pt-2{{end}} pb-2 text-left leading-7 font-normal">
+        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-11.5{{else}}pt-1.5{{end}} pb-1.25 text-left leading-7 font-normal">
           <span class="flex items-center gap-3">
             <span class="flex items-center gap-2 text-sm font-semibold text-ink">{{.Group.Label}}{{if .Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Group.To}}{{end}}</span>
             {{if .Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Group.Chain}}</span>{{end}}
@@ -180,7 +178,7 @@
         {{/* the grip rests at the step the eye passes over and darkens with the
              whole row, not only under its own pointer: what is draggable is the
              row, and the row is what the hand is already on. */}}
-        <td class="w-6 border-b border-rule py-2.5{{if not .Dense}} pr-2{{end}} align-top group-last:border-b-0">
+        <td class="w-6 border-b border-rule pt-2 pb-1.75{{if not .Dense}} pr-2{{end}}">
           {{if .Draggable}}
           <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowName}}" aria-keyshortcuts="ArrowUp ArrowDown" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             {{icon "list-chevrons-up-down" "size-4"}}
@@ -195,13 +193,13 @@
              under it into the row, and the row's height stops being the row's. */}}
         {{/* the control sits centred on the row's 24px line, as the words in the
              next cell do; the glyph that stands in for one takes the same line. */}}
-        <td class="w-11 border-b border-rule py-2.5 pr-1 pl-3.5 align-top group-last:border-b-0">
-          <span class="flex h-6 items-center">{{if .Name}}{{template "switch.html.tmpl" .Control}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
+        <td class="w-11 border-b border-rule pt-2.5 pr-1 pb-2.25 pl-3.5">
+          <span class="flex h-5 items-center">{{if .Name}}{{template "switch.html.tmpl" .Control}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
         </td>
         {{else if eq .Kind "action"}}
         {{/* a compact, immediately applied row action. Name/Text carry the
              target field and value; Action is the lifecycle verb. */}}
-        <td class="w-11 border-b border-rule py-2 pr-1 pl-3.5 align-top group-last:border-b-0">
+        <td class="w-11 border-b border-rule pt-1.5 pr-1 pb-1.25 pl-3.5">
           {{if and .Name .Text .Action}}
           <form method="post" class="flex">
             {{template "verso-csrf" .CSRFToken}}
@@ -213,7 +211,7 @@
           {{end}}
         </td>
         {{else if eq .Kind "endpoint"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top group-last:border-b-0">
+        <td class="border-b border-rule {{template "table.cellpad" .}}">
           {{/* Both ends of a path wear the chip's box, so a zone and an address
                line up down the column whatever they are. Only the router fills
                it: it is the one end that is this device rather than something
@@ -236,16 +234,16 @@
         {{/* A block-level flex, not an inline one: the cell is then exactly as
              tall as the tallest thing in it, and a glyph's box cannot lift the
              line it would otherwise sit in. */}}
-        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}} align-top group-last:border-b-0">
+        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}}">
           <span class="flex items-center gap-3{{if .Detail}} *:leading-5{{end}}">
             {{if and .LeadIcon (not .Expandable)}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
             {{/* the name is words, never a door: a reader cannot tell what
                  pressing it would do. Where a plugin pointed it, the row's acts
                  lead instead (doorAct). Only an expandable row's name is a
-                 control, and its chevron says what it does. A name that was
-                 pointed somewhere keeps the size it had as a link. */}}
+                 control, and its chevron says what it does. A name reads at
+                 the listing's 14px wherever its column stands. */}}
             {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="{{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}} inline-flex items-center gap-2 font-mono text-base font-medium text-ink hover:text-denim focus-visible:outline-denim">{{icon "chevron-right" "size-3.5 shrink-0"}}{{if .LeadIcon}}<span class="text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}{{.Text}}</button>
-            {{else}}<span class="truncate {{if and .Primary (not .Href) (not .Opens)}}text-base {{end}}{{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-medium {{end}}{{template "table.name-ink" .}}">{{template "table.name-words" .}}</span>{{end}}
+            {{else}}<span class="truncate {{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-medium {{end}}{{template "table.name-ink" .}}">{{template "table.name-words" .}}</span>{{end}}
             {{/* a mark over words is not read aloud, so the row says it */}}
             {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
@@ -260,17 +258,17 @@
              mark, so the dot is filled only where the state is asserted now —
              every other state wears the same ring, empty, and the word beside it
              drops to the secondary step. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
           <span class="flex items-center gap-2">
-            <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-dot{{end}}></span>
-            <span class="{{if .Variant}}text-ink{{else}}text-meta{{end}}"{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>{{if .Sub}}<span class="text-meta">{{.Sub}}</span>{{end}}
+            <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"{{if .Key}} data-verso-dot{{end}}></span>
+            <span class="{{if .Variant}}text-ink{{else}}text-meta{{end}}{{if .Verbatim}} font-mono text-base font-medium{{end}}"{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>{{if .Sub}}<span class="text-meta">{{.Sub}}</span>{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
         </td>
         {{else if eq .Kind "path"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} break-all align-top font-mono text-base group-last:border-b-0"><span class="text-meta">{{.Sub}}</span><span class="text-ink">{{.Text}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} break-all font-mono text-base"><span class="text-meta">{{.Sub}}</span><span class="text-ink">{{.Text}}</span></td>
         {{else if eq .Kind "count"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap text-sm text-meta group-last:border-b-0">{{.Text}} {{.Sub}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap text-sm text-meta">{{.Text}} {{.Sub}}</td>
         {{else if eq .Kind "actions"}}
         {{/* A 12px lead-in separates the preceding value from the 28px actions,
              including dense tables. The reference reserves 96px for three
@@ -278,7 +276,7 @@
         {{/* the row's own acts, at its trailing edge: quiet glyphs that darken
              under the pointer. An act with no destination is drawn and inert —
              the shape is decided, what sits behind it is not. */}}
-        <td class="border-b border-rule py-2 pl-3 align-top whitespace-nowrap group-last:border-b-0">
+        <td class="border-b border-rule pt-1.5 pb-1.25 pl-3 whitespace-nowrap">
           {{/* the token is the cell's; inside the range the dot is one act, and
                a sub-template's $ is the row list rather than the table. */}}
           {{/* each act is named with its row, as a row's labelled act is; an
@@ -327,13 +325,13 @@
         </td>
         {{else if eq .Kind "link"}}
         {{/* a right-aligned action link (e.g. "Details") to the cell's Href. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-top whitespace-nowrap group-last:border-b-0">{{if .Text}}<a href="{{.Href}}" class="text-sm font-medium text-denim transition-colors hover:text-denim-deep">{{.Text}}</a>{{end}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} text-right whitespace-nowrap">{{if .Text}}<a href="{{.Href}}" class="text-sm font-medium text-denim transition-colors hover:text-denim-deep">{{.Text}}</a>{{end}}</td>
         {{else if eq .Kind "pill"}}
         {{/* a status pill, a drawer trigger, or a direct row action. A direct
              destructive action opens a compact alert dialog and posts its
              _action marker only after explicit confirmation. */}}
         {{/* a labelled act is the 28px control, and takes that control's inset. */}}
-        <td class="border-b border-rule {{if .Button}}{{template "table.cellpad-act" .}}{{else}}{{template "table.cellpad" .}}{{end}} align-top whitespace-nowrap group-last:border-b-0">
+        <td class="border-b border-rule {{if .Button}}{{template "table.cellpad-act" .}}{{else}}{{template "table.cellpad" .}}{{end}} whitespace-nowrap">
           <span class="flex items-center">
           {{if .Pill}}{{template "badge.html.tmpl" .Pill}}
           {{else if .Button}}
@@ -358,12 +356,12 @@
         {{else if eq .Kind "check"}}
         {{/* a yes/no fact: the checkmark affirms, absence says no — no dash,
              no "no", nothing to read when there is nothing to say. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top group-last:border-b-0"><span class="flex h-6 items-center">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green"}}<span class="sr-only">{{ t "Yes" }}</span>{{else}}<span class="sr-only">{{ t "No" }}</span>{{end}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}}"><span class="flex h-5 items-center">{{if .On}}{{icon "check" "size-5 [stroke-width:2.5] text-green"}}<span class="sr-only">{{ t "Yes" }}</span>{{else}}<span class="sr-only">{{ t "No" }}</span>{{end}}</span></td>
         {{else if eq .Kind "entity"}}
         {{/* entity references — an interface, a zone, or physical ports — as icon
              chips: the Lucide glyph names the kind, the label the one. One chip or
              a wrapping row of them; empty reads as a quiet dash. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top group-last:border-b-0">
+        <td class="border-b border-rule {{template "table.cellpad" .}}">
           {{if .Chips}}
           <span class="flex flex-wrap items-center gap-1.5">
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
@@ -380,12 +378,12 @@
              without colour: the value it was recedes to Meta, and what it
              becomes stands in Ink, led by an arrow turning down into it in the
              cell's tone (the action colour for info). */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if or .Muted .Sub}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if eq .Text "—"}}text-faint{{else if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
         {{else if eq .Kind "addr"}}
         {{/* stacked addresses: the primary (IPv4) on top in full ink, a secondary
              line (the global IPv6) muted below — both copyable, so the cell holds
              both families without a second column. */}}
-        <td class="border-b border-rule {{template "table.cellpad-stack" .}} align-top font-mono text-base font-medium tabular-nums group-last:border-b-0">
+        <td class="border-b border-rule {{template "table.cellpad-stack" .}} font-mono text-base font-medium tabular-nums">
           {{/* the two lines sit at the tighter step: one fact stacked on
                another, not two rows. */}}
           {{if .Text}}<div class="flex items-center leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}"><span>{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</div>{{end}}
@@ -393,18 +391,18 @@
           {{if and (not .Text) (not .Sub)}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "keyword"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap font-mono text-base font-medium text-body group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap font-mono text-base font-medium text-body">{{.Text}}</td>
         {{else if eq .Kind "runtime"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top whitespace-nowrap tabular-nums text-meta group-last:border-b-0">{{.Text}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap tabular-nums text-meta">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] align-top text-meta group-last:border-b-0"><span class="line-clamp-1" title="{{.Text}}">{{.Text}}</span></td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] text-meta"><span class="line-clamp-1" title="{{.Text}}">{{.Text}}</span></td>
         {{else if eq .Kind "rate"}}
-        <td class="w-32 min-w-32 max-w-32 border-b border-rule {{template "table.cellpad" .}} text-left align-top whitespace-nowrap tabular-nums text-meta group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
+        <td class="w-32 min-w-32 max-w-32 border-b border-rule {{template "table.cellpad" .}} text-left whitespace-nowrap tabular-nums text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "meter"}}
         {{/* the meter widget at a row's scale: the 6px track filled to the
              share, the figure hard beside it. A thing with no reading is the
              faint dash — an empty track would say "idle", which is a fact. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top group-last:border-b-0">
+        <td class="border-b border-rule {{template "table.cellpad" .}}">
           {{if .Clip}}<span class="flex items-center gap-3 pr-6">
             <span class="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span></span>
             <span class="w-10 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
@@ -413,14 +411,14 @@
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and
              reads in full ink; one that is nothing yet stays out of the way. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-top tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} text-right tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
         {{else}}
         {{/* a word, and when it stands for a config value, that value in the
              chip beside it — "WPA3" and the `sae` it writes. */}}
         {{if .Detail}}
-        <td class="border-b border-rule {{template "table.cellpad-detail" .}} align-top group-last:border-b-0"><div class="leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</div>{{template "table.detail" .}}</td>
+        <td class="border-b border-rule {{template "table.cellpad-detail" .}}"><div class="leading-5 whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</div>{{template "table.detail" .}}</td>
         {{else}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} align-top {{if .Muted}}text-meta{{else}}text-ink{{end}} group-last:border-b-0">{{if .Chip}}<span class="flex items-center gap-2 whitespace-nowrap">{{.Text}}<span class="{{template "verso-chip-class"}}">{{.Chip}}</span></span>{{else}}{{.Text}}{{end}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{if .Chip}}<span class="flex items-center gap-2 whitespace-nowrap">{{.Text}}<span class="{{template "verso-chip-class"}}">{{.Chip}}</span></span>{{else}}{{.Text}}{{end}}</td>
         {{end}}
         {{end}}
         {{end}}
@@ -428,7 +426,7 @@
         {{/* the trailing "more" affordance: a plain link hard-right, the only
              click target in the row. Blank when the row has nothing behind it,
              or when its drawer already opens from an in-cell button. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} text-right align-top whitespace-nowrap group-last:border-b-0">
+        <td class="border-b border-rule {{template "table.cellpad" .}} text-right whitespace-nowrap">
           {{/* a fetched panel's Details is a link to it, so the panel is reachable with no script at all */}}
           {{if and .Drawer (not .Inline) .PanelURL}}<a href="{{.PanelURL}}" @click.prevent="showPanel" class="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</a>
           {{else if and .Drawer (not .Inline)}}<button type="button" @click="show" class="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if .DrawerIcon}}{{icon .DrawerIcon "size-3.5"}}{{end}}{{.DrawerLabel}}</button>{{end}}
@@ -436,7 +434,7 @@
         {{end}}
         {{if .Entity}}{{template "verso-entity-drawer" .}}{{else if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{else if .Drawer}}{{template "verso-drawer-panel" .Panel}}{{end}}
       </tr>
-      {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-6">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
+      {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-5">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
       {{end}}
       {{end}}
       {{end}}
@@ -445,20 +443,19 @@
      one row across every column, the listing's inset, meta words. It gives up
      its hairline to whatever closes the table (the table's own, or the
      section's rule when the table ends its section). */}}
-{{define "table.empty-row"}}<tr class="group"{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0">{{.EmptyText}}</td></tr>{{end}}
+{{define "table.empty-row"}}<tr class="group"{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 pt-2.5 pb-2.25 text-left text-sm leading-5 text-meta">{{.EmptyText}}</td></tr>{{end}}
 {{define "table.head"}}
     <thead>
       <tr>
         {{range .Columns}}
-        {{/* The column heads are a row of the listing's own height — a 24px
-             line with 10px above and below, as every cell under them — so
-             under a control band, a title band or nothing at all the grid
-             keeps one pitch from its head down. */}}
+        {{/* The column heads are one cell of the grid: the 12px caps on a
+             16px line, 2px over and a pixel under, the hairline the cell's
+             last pixel, so the rows under them start on a line. */}}
         {{/* The heads are the kicker: medium, spaced, quiet. In the listing
              geometry an endpoint's head starts where the chip's glyph does —
              one hairline and the chip's own inset in — so the word sits over
              the column's ink rather than its border. */}}
-        <th scope="col" class="whitespace-nowrap border-b border-rule-strong {{if eq .Kind "reorder"}}w-6 py-0{{if not $.Dense}} pr-2{{end}}{{else}}{{if not $.Dense}}px-3.5 {{end}}py-2.5 leading-6{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}w-6{{if not $.Dense}} pr-2{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-rule-strong"></th>{{end}}
       </tr>
@@ -527,13 +524,21 @@
      Relative, so the scroller is the containing block of every absolutely
      placed word inside it (a dash's screen-reader "None"): otherwise a word in
      a column scrolled out of view escapes the clip and widens the page. */}}
+{{if and .Empty (not .Stream) (not .Title) (not .Live)}}
+{{/* Nothing to list: the listing says so as every set does, with the empty
+     slot where its first row would stand (verso-empty-slot-class), outside
+     the scroller so its frame keeps its pixel out on the lines. */}}
+<div data-verso-slot class="{{template "verso-empty-slot-class"}}">
+    {{template "verso-empty-slot-body" .EmptyText}}
+  </div>
+{{else}}
 <div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush
        left title, flush right link), a hairline under it so it reads as the
        table's first row. */}}
-  <div class="flex min-h-13 items-center gap-3 border-b border-rule bg-quiet px-4">
+  <div class="flex min-h-15 items-center gap-3 border-b border-rule bg-quiet px-4">
     <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Detail}}<span class="text-sm text-meta">{{.Detail}}</span>{{end}}
     <span class="flex-1"></span>
@@ -544,7 +549,7 @@
        shell's stream client draws arriving rows as a console (style
        "console", above); a grid carries the declaration and stays as it was
        rendered. */}}
-  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="w-full border-collapse border-b border-rule text-sm">
+  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="verso-table w-full text-sm leading-5">
     {{/* fit columns squeeze to their content through a colgroup width; the
          table's slack collects in the growing columns, so a huddle of fit
          columns sits together at the edge instead of drifting apart. */}}
@@ -568,9 +573,9 @@
       {{/* A genuine spanning row keeps the collapsed affordance and every
            revealed row in this table's single column-sizing context. */}}
       <tr class="verso-table-seam-control">
-        <td colspan="{{.ColumnSpan}}" class="border-t border-rule p-0 text-left">
+        <td colspan="{{.ColumnSpan}}" class="p-0 text-left">
           <details>
-            <summary class="group flex w-full cursor-pointer items-center justify-start gap-1.5 py-3 text-left text-sm font-semibold text-denim-deep transition-colors select-none hover:text-denim [&::-webkit-details-marker]:hidden">
+            <summary class="group flex w-full cursor-pointer items-center justify-start gap-1.5 py-2.5 text-left text-sm font-semibold text-denim-deep transition-colors select-none hover:text-denim [&::-webkit-details-marker]:hidden">
               {{icon "chevron-right" "verso-chevron size-4"}}
               {{icon "lock" "size-4 text-faint"}}
               <span class="underline-offset-2 group-hover:underline">{{.SeamSummary}}</span>
@@ -587,17 +592,18 @@
   {{/* The marks explained where the marks are: the same dot the rows wear, the
        plain words for it, and hard right the one caveat about what the listing
        includes. */}}
-  <div class="flex flex-wrap items-center gap-5 pt-4{{if not .Dense}} px-4{{end}}">
+  <div class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
     {{range .Legend}}
     <span class="flex items-center gap-2 text-sm whitespace-nowrap text-body">
-      <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else}}border border-faint{{end}}"></span>{{.Label}}
+      <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"></span>{{.Label}}
     </span>
     {{end}}
     {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
   </div>
   {{end}}
-  <p data-verso-listing-empty hidden class="border-b border-rule px-4 py-2.5 text-sm leading-6 text-meta">{{t "Nothing matches."}}</p>
+  <p data-verso-listing-empty hidden class="border-b border-rule px-4 pt-2.5 pb-2.25 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
 </div>
+{{end}}
 {{end}}
 {{if .Reorderable}}
 {{/* The dragged sequence is a staged change like any edited field: the rows'

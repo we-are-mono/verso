@@ -4,8 +4,7 @@
 package server
 
 import (
-	"bytes"
-	"html/template"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -36,26 +35,31 @@ func TestDocumentTitleNamesThePage(t *testing.T) {
 }
 
 // TestAccessContributionStandsOffByThePageGap: a plugin's part of Access is
-// one more of the page's subjects. Its heading band keeps the standard 24px
-// gap, without an extra divider or padding before it.
+// one more of the page's subjects, set into the page's own stack (an Embed),
+// so no wrapper of its own spaces it. The stack stands the rule it opens on two
+// cells under what is above it, as every section's rule stands — its margin
+// those cells less the rule's pixel, so the rule lands on a line.
 func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
-	var b bytes.Buffer
-	if err := passwordServer(t, fakeBackend{}).pageSet("").ExecuteTemplate(&b, "access-contribution.html.tmpl", template.HTML("<section>SSH</section>")); err != nil {
+	css, err := os.ReadFile("assets/sections.css")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(b.String(), `<div class="mt-6"><section>SSH</section></div>`) {
-		t.Errorf("want a 24px gap without a divider before the contribution, got %s", b.String())
+	if !strings.Contains(string(css), `.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
+		t.Error("a part that opens on a section's rule does not land the rule two cells under the part before it")
+	}
+	if _, err := os.Stat("templates/access-contribution.html.tmpl"); err == nil {
+		t.Error("a plugin's part of Access is drawn through a hand-built wrapper")
 	}
 }
 
 // TestPageMastheadStandsOnAHairline: the heading's line stands 16px over its
-// own hairline, as far as it stands under the bar's top, and the page 24px
-// under it. The masthead still aligns page acts.
+// own hairline, as far as it stands under the bar's top, and the page a cell
+// (20px) under it. The masthead still aligns page acts.
 func TestPageMastheadStandsOnAHairline(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="mb-6 py-4">`) {
-		t.Error("the masthead stands 16px over its hairline and the page 24px under it")
+	if !strings.Contains(access, `<div data-verso-masthead class="mb-5 py-4">`) {
+		t.Error("the masthead stands 16px over its hairline and the page a cell under it")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
 		t.Error("the page's rules are no one page's experiment")
@@ -84,27 +88,28 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 }
 
 // TestMaintenanceSectionsUsePageBands: the masthead stands on its hairline, and
-// Maintenance's content keeps 32px before the next band to match the 32px
-// between the preceding band and its first content.
+// Maintenance is the shell's widgets alone — its sections the section widget's
+// ruled sections, drawn by no hand-built template — so each band's rule stands
+// two cells under the content before it, as its title stands two cells under
+// the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) {
 		t.Error("the masthead opens onto the first section from its hairline")
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
-	// the page right under the masthead's line.
-	if !regexp.MustCompile(`max-w-form shrink-0">\s*<section data-verso-section="ruled" id="firmware">`).MatchString(body) {
-		t.Error("an empty notice block stands before Firmware")
+	// the work column right under the masthead's line.
+	if !regexp.MustCompile(`data-verso-form-column class="min-w-0">\s*<div class="verso-stack space-y-5">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
+		t.Error("something stands before Firmware with nothing to say")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
-		// The same ruled section the widget draws; its air is sections.css's.
-		want := `<section data-verso-section="ruled" data-verso-ruled data-verso-section-divider id="` + id + `">`
+		want := `<section data-verso-section="ruled" id="section-` + id + `" data-verso-ruled data-verso-section-divider>`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
 		}
 	}
-	if strings.Contains(body, `<section id="firmware" class="scroll-mt-20 py-8"`) || strings.Contains(body, "border-rule py-8") {
-		t.Error("no section keeps the old 32px step")
+	if _, err := os.Stat("templates/maintenance.html.tmpl"); err == nil {
+		t.Error("Maintenance is drawn by a hand-built template")
 	}
 }
 
@@ -113,8 +118,8 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 // lede — so the two cannot drift apart.
 func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	band := `<div data-verso-section-band class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">`
-	title := `<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">`
+	band := `<div data-verso-section-band class="flex flex-wrap items-center justify-between gap-x-6">`
+	title := `<h2 class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">`
 	lede := `<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">`
 	for want, n := range map[string]int{band: 4, title: 4, lede: 2} {
 		if got := strings.Count(body, want); got < n {

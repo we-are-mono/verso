@@ -21,7 +21,7 @@ func TestFormActionsFinishTheirConfigurationCard(t *testing.T) {
 				{Style: "settings", Submit: "Save", Fields: tail},
 			} {
 				got := render(t, newRenderer(t), f)
-				if !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4">`) {
+				if !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4 py-0.75">`) {
 					t.Errorf("Save must join the card without another rule:\n%s", got)
 				}
 			}
@@ -151,37 +151,39 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 	}
 }
 
-// A form that commits one section stands its Save under its own fields, with
-// no rule of its own: the next section's rule is the only line between them,
-// and a ruled Save would read as a section of its own. A form that is the
-// page's (its sections inside it) commits the whole page, so its Save stands
-// 32px under a section rule of the page's own, run out to the
-// rail. A form in a panel keeps its own rule inside the panel.
+// A form that commits one section stands its Save a cell under its own
+// fields, with no rule of its own: the next section's rule is the only line
+// between them, and a ruled Save would read as a section of its own. A form
+// that is the page's (its sections inside it) commits the whole page, so its
+// Save stands a cell under a section rule of the page's own, run out to the
+// rail. A form in a panel keeps its own rule inside the panel. Every rule
+// lands on the notebook's line (its margin a cell less its own pixel), and the
+// acts stand centred in the two cells after the air.
 func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	r := newRenderer(t)
 	form := func() *Form {
 		return &Form{Style: "settings", Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}
 	}
 	sectioned := render(t, r, &Section{Title: "SSH", Hairline: true, Children: []Widget{form()}})
-	if !strings.Contains(sectioned, `<div data-verso-form-actions class="flex flex-wrap items-center mt-8 gap-4">`) {
+	if !strings.Contains(sectioned, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4 py-0.75">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-6 gap-4 border-t border-rule pt-8">`) {
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75">`) {
 		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
 	}
 	framed := form()
 	framed.Frame = "panel"
-	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-7 gap-4 border-t border-rule pt-5">`) {
+	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75">`) {
 		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
 	// A form that is only its act (Install htop, under the package's facts)
-	// has no fields to close off: its button stands 20px under whatever is
+	// has no fields to close off: its button stands a cell under whatever is
 	// above it, drawing no rule of its own.
 	lone := &Form{Frame: "panel", Submit: "Install htop", Fields: []Widget{
 		&Field{Kind: "hidden", Name: "package", Value: "htop"},
 		&Field{Kind: "hidden", Name: "_primary", Value: "install"},
 	}}
-	if got := render(t, r, lone); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4">`) {
+	if got := render(t, r, lone); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4 py-0.75">`) {
 		t.Errorf("a lone act draws a rule over itself:\n%s", got)
 	}
 }
@@ -207,7 +209,7 @@ func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
 		`<div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
-		`<button type="submit" class="inline-flex h-9 cursor-pointer`,
+		`<button type="submit" class="inline-flex h-control cursor-pointer`,
 		"shrink-0 border border-denim bg-denim",
 		`placeholder="Package name"`,
 		">Search</button>",

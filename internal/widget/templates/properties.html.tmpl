@@ -34,8 +34,8 @@
      track — never a hairline, which a list of hairline rows would swallow —
      filled in the state's hue up to where now is. The ends are written under
      the track's ends; a screen reader hears them as one range. */}}
-{{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-6"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
-<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-2{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{else}}divide-y divide-mid{{end}}">
+{{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-5"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
+<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-2{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{end}}">
   {{range .Items}}
   {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
   {{/* 44px, never stated: a 24px line — the mono value's own, the sans label
@@ -65,22 +65,25 @@
     </dd>
   </div>
   {{else}}
-  {{/* A ruled row is the 44px one — a 24px line inset 10px — and its value
-       is a flex line too, so a copy control or a badge sits on the line rather
-       than lifting it. The plain list has no rows to keep to and keeps the
-       type's own line. */}}
-  {{/* Every part of a row is a 24px line, and the row hangs from its first:
-       a value that wraps keeps its label, copy control and pill level with its
-       top line. A row's mark hangs in the gutter, centred on that line, so a
-       marked value starts where every other row's value does; its note sits
-       under the value, in the value's column, and wraps there. */}}
+  {{/* A ruled row is a row of the notebook's grid: every part of it writes on
+       the 20px lines with 10px over the first and 9px under the last, and its
+       hairline is the next pixel, so a row is a cell more than its lines; the
+       last draws none and keeps that pixel as air. Its value is a flex line
+       too, so a copy control or a badge rides the line rather than lifting
+       it. The plain list has no rows to keep to and keeps the type's own
+       line. */}}
+  {{/* The row hangs from its first line: a value that wraps keeps its label,
+       copy control and pill level with its top line. A row's mark hangs in the
+       gutter, centred on that line, so a marked value starts where every other
+       row's value does; its note sits under the value, in the value's column,
+       and wraps there. */}}
   {{/* Left-set facts are a document's, read beside a fixed label column; on a
        phone the label sits over its value, which then has the card's width. */}}
-  <div class="flex {{if eq $.Align "left"}}flex-col items-start gap-y-1 sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap gap-y-1 {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} py-2.5 leading-6{{end}}">
+  <div class="flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid pt-2.5 pb-2.25 leading-5 last:border-b-0 last:pb-2.5{{end}}">
     <dt class="shrink-0 text-meta{{if eq $.Align "left"}} sm:w-24{{end}}">{{.Label}}</dt>
-    <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink">
+    <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink [&_*]:leading-5">
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
-      {{if .Dot}}<span class="absolute -left-3.75 top-2.25 size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}" aria-hidden="true"></span>{{end}}
+      {{if .Dot}}<span class="absolute -left-3.75 top-1.75 size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}" aria-hidden="true"></span>{{end}}
       {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
@@ -88,10 +91,10 @@
       <span class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
       {{else}}<span class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
-      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
+      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-5 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
     </dd>
-    {{if .Help}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-snug font-normal text-body">{{.Help}}</p>{{end}}
+    {{if .Help}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-5 font-normal text-body">{{.Help}}</p>{{end}}
   </div>
   {{end}}
   {{end}}

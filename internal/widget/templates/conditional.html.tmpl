@@ -7,21 +7,17 @@
      The gate is the same checkbox-before-label row as other form switches
      (verso-field); this block, not the gate, carries the change hooks.
 
-     The gate and whichever branch is showing are one row, so the row's own
-     padding sits outside both. What the branch is decides how close it hangs:
-     a note about the state the toggle is in belongs to the toggle and sits under
-     it at a helper line's distance, while a field-set the toggle reveals is more
-     rows of the form and stands off at a row's.
-
-     Its padding is a row's, untrimmed: a section gives back its first and last
-     rows' air itself (sections.css), and a gate opening a titled section keeps
-     its 16px under the band, as any row there does. */}}
-<div class="verso-conditional py-4" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
+     The gate and whichever branch is showing are fields like any other: the
+     gate brings its own cell of air, a note about the state the toggle is in
+     belongs to the toggle and runs on as its next line, and a field-set the
+     toggle reveals is more rows of the form, each with its own cell of air.
+     So the block adds no air of its own. */}}
+<div class="verso-conditional" data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle">
   {{.Gate}}
   {{/* A revealed field-set carries its own rows, and a field row zeroes its top
        padding when it is first — so the standing-off is this block's to state. */}}
   {{/* A gate with nothing to reveal is just its row: an empty reveal would
        still hang its standoff under the row when switched on. */}}
-  {{if .Fields}}<div class="verso-conditional-body verso-rhythm mt-5">{{range .Fields}}{{.}}{{end}}</div>{{end}}
-  {{if .Otherwise}}<div class="verso-conditional-otherwise verso-rhythm mt-2">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
+  {{if .Fields}}<div class="verso-conditional-body verso-rhythm">{{range .Fields}}{{.}}{{end}}</div>{{end}}
+  {{if .Otherwise}}<div class="verso-conditional-otherwise verso-rhythm">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
 </div>

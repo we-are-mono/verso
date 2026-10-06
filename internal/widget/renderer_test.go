@@ -4,6 +4,8 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -89,22 +91,26 @@ func TestAFlushStackIsARunOfRows(t *testing.T) {
 func TestRenderStackDivided(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Stack{Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	if !strings.Contains(plain, "space-y-4") {
-		t.Errorf("default stack should space its children:\n%s", plain)
+	// The default stack sets its blocks a cell of the notebook's grid apart.
+	if !strings.Contains(plain, "space-y-5") {
+		t.Errorf("default stack should space its children a cell apart:\n%s", plain)
 	}
 	div := render(t, r, &Stack{Divided: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
 	if !strings.Contains(div, "divide-y") {
 		t.Errorf("divided stack should draw hairlines:\n%s", div)
 	}
 	compact := render(t, r, &Stack{Compact: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-4") {
+	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-5") {
 		t.Errorf("compact stack should use tighter spacing: %s", compact)
 	}
+	// An inline stack is a wrapping row of acts: 12px between them, its
+	// wrapped rows two cells apart, and the row centred in two cells, 3px
+	// over and under a control's 34px.
 	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
-	if !strings.Contains(inline, "flex flex-wrap items-center gap-3") || !strings.Contains(inline, ">or</p>") {
+	if !strings.Contains(inline, "flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75") || !strings.Contains(inline, ">or</p>") {
 		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
 	}
-	if strings.Contains(div, "space-y-4") {
+	if strings.Contains(div, "space-y-") {
 		t.Errorf("divided stack should not also space:\n%s", div)
 	}
 	bounded := render(t, r, &Stack{Width: "compact", Children: []Widget{&Badge{Text: "a"}}})
@@ -117,7 +123,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section><div class="mb-5"><h3 class="text-lg font-semibold tracking-tight text-ink">empty</h3></div><div class="space-y-5"></div></section>`
+	want := `<section><div class="mb-5"><h3 class="text-lg font-semibold tracking-tight leading-5 text-ink">empty</h3></div><div class="space-y-5"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -126,10 +132,10 @@ func TestRenderCardChrome(t *testing.T) {
 func TestRenderCardSubtitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
-	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight text-ink">Your gateway</h3>`) {
+	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight leading-5 text-ink">Your gateway</h3>`) {
 		t.Errorf("card title missing:\n%s", got)
 	}
-	if !strings.Contains(got, `<p class="mt-1 text-sm leading-snug text-body">the back of the box</p>`) {
+	if !strings.Contains(got, `<p class="text-sm leading-5 text-body">the back of the box</p>`) {
 		t.Errorf("card subtitle missing or not styled as a subtitle:\n%s", got)
 	}
 }
@@ -427,8 +433,11 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	r := newRenderer(t)
 	items := []Property{{Label: "A", Value: "1"}, {Label: "B", Value: "2"}}
 
+	// Each ruled row draws its own hairline as its last pixel, landing it on a
+	// line of the grid; the last row keeps that pixel as air instead.
+	const hairlineRow = "border-b border-mid pt-2.5 pb-2.25 leading-5 last:border-b-0 last:pb-2.5"
 	divided := render(t, r, &Properties{Items: items}) // default
-	if !strings.Contains(divided, "divide-y divide-mid") {
+	if !strings.Contains(divided, hairlineRow) {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
 	}
 	// Striping is retired: a "striped" request falls through to the hairline
@@ -437,7 +446,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	if strings.Contains(striped, "odd:bg-quiet") {
 		t.Errorf("striped is retired; must not zebra-shade:\n%s", striped)
 	}
-	if !strings.Contains(striped, "divide-y divide-mid") {
+	if !strings.Contains(striped, hairlineRow) {
 		t.Errorf("retired striped should render as the hairline default:\n%s", striped)
 	}
 	bare := render(t, r, &Properties{Style: "plain", Items: items})
@@ -476,7 +485,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`<dt class="shrink-0 text-meta">Installed</dt>`,
-		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink">`,
+		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink [&_*]:leading-5">`,
 		`class="min-w-0 wrap-anywhere text-balance font-mono text-base font-medium">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
@@ -568,12 +577,18 @@ func TestRenderConfirm(t *testing.T) {
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 shrink-0 rounded-[1px] bg-crimson",
-		"mt-6 ml-4 flex items-center justify-start", "hover:bg-crimson-line/50", // actions align with the message; cancel keeps the explanation's tone and hovers by a soft wash, not a heavy colour darken
+		// The question's frame stands on the grid's lines, a pixel out at the
+		// top and the left, with 19px over its words and a cell under them.
+		"-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border px-4 pt-4.75 pb-5 text-sm leading-5",
+		// The actions align with the message a cell under it, centred in two
+		// cells; cancel keeps the explanation's tone and hovers by a soft wash,
+		// not a heavy colour darken.
+		"mt-5 ml-4 flex items-center justify-start gap-2 py-0.75", "hover:bg-crimson-line/50",
 		"border-crimson bg-crimson text-white",
 		"verso-press",
-		// The trigger is a 36px control like every other button: h-9 holds the
-		// border inside the height, where a line plus padding would add 2px.
-		"flex h-9 w-full cursor-pointer items-center justify-center rounded-xs border px-4",
+		// The trigger is a control like every other button: h-control holds
+		// the border inside the height, where a line plus padding would add 2px.
+		"flex h-control w-full cursor-pointer items-center justify-center rounded-xs border px-4",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)
@@ -584,7 +599,7 @@ func TestRenderConfirm(t *testing.T) {
 	if strings.Contains(got, "<script") || strings.Contains(got, `type="checkbox"`) {
 		t.Errorf("confirm must use the shell component, not a checkbox or script: %s", got)
 	}
-	if strings.Contains(got, `@click="cancel" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs border`) {
+	if strings.Contains(got, `@click="cancel" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs border`) {
 		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
 	}
 	// Unset, the confirm button repeats the act it confirms — the question
@@ -598,10 +613,10 @@ func TestRenderConfirm(t *testing.T) {
 	if !strings.Contains(got, `aria-controls="verso-confirm-1"`) || !strings.Contains(def, `id="verso-confirm-2"`) {
 		t.Errorf("each confirm's trigger controls its own panel:\n%s\n%s", got, def)
 	}
-	// A Title renders as a bold heading above the message; without one the
-	// message stands alone (no stray heading element).
+	// A Title renders as a bold heading on the message's 20px line above it;
+	// without one the message stands alone (no stray heading element).
 	titled := render(t, r, &Confirm{Trigger: "Download and install", Title: "Install now?", Message: "It will be unavailable for several minutes."})
-	if !strings.Contains(titled, `<p class="text-base font-semibold">Install now?</p>`) {
+	if !strings.Contains(titled, `<p class="text-base leading-5 font-semibold">Install now?</p>`) {
 		t.Errorf("a titled confirm should render its heading bold: %s", titled)
 	}
 	if !strings.Contains(titled, "It will be unavailable for several minutes.") {
@@ -609,7 +624,7 @@ func TestRenderConfirm(t *testing.T) {
 	}
 	// The trigger and the confirm button are semibold like every other control;
 	// what an untitled confirm must not draw is the heading paragraph.
-	if strings.Contains(def, `<p class="text-base font-semibold">`) {
+	if strings.Contains(def, `<p class="text-base leading-5 font-semibold">`) {
 		t.Errorf("an untitled confirm should draw no heading: %s", def)
 	}
 }
@@ -686,7 +701,13 @@ func TestRenderLink(t *testing.T) {
 	rail := render(t, r, &Link{Label: "Speed", Href: "#speed", Style: "rail"})
 	for _, want := range []string{
 		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
-		"flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm",
+		// a cell and a half each: two cells is too loose for a run of 14px
+		// words and one too tight. The run reaches its padding out at either
+		// end, so every second link's words stand in a cell and the ones
+		// between straddle a line; the hairline a pixel out onto the column's
+		"-ml-px flex items-center gap-1.5 border-l border-rule py-1.25 pl-4 text-sm leading-5",
+		// and ends on a line whatever the count
+		"first:-mt-1.25 last:-mb-1.25 [&:nth-child(even):last-child]:mb-1.25",
 	} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("rail link missing %q: %s", want, rail)
@@ -755,21 +776,28 @@ func TestRenderButton(t *testing.T) {
 		}
 	}
 	loading := render(t, r, &Button{Label: "Fetching sources", Icon: "refresh-cw", Style: "secondary", Loading: true})
-	// Waiting is the canvas's one look whatever the style: sand ground, strong
-	// hairline, glyph label, no pointer — on the same h-9 footprint.
-	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-9", "pointer-events-none border-rule-strong bg-quiet text-glyph", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
+	// Waiting is the canvas's one look whatever the style — sand ground, strong
+	// hairline, glyph label, no pointer — on the same h-control footprint. It
+	// is the one waiting rule the shell's script puts on a pressed button
+	// (verso-button-waiting), laid over the style's own dress, so a script
+	// ends a wait the server drew by taking the rule off.
+	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-control", "verso-button-waiting", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
 		if !strings.Contains(loading, want) {
 			t.Errorf("loading button missing %q: %s", want, loading)
 		}
 	}
-	for _, never := range []string{lucideIcons["refresh-cw"], "hover:", "bg-ground", "cursor-wait"} {
+	for _, never := range []string{lucideIcons["refresh-cw"], "bg-ground", "cursor-wait", "verso-press"} {
 		if strings.Contains(loading, never) {
-			t.Errorf("loading button must drop its icon, its style and any hover response, found %q: %s", never, loading)
+			t.Errorf("loading button must drop its icon and its press, found %q: %s", never, loading)
 		}
 	}
-	primary := render(t, r, &Button{Label: "Signing in…", Loading: true})
-	if strings.Contains(primary, "bg-denim") {
-		t.Errorf("a waiting primary is not denim any more: %s", primary)
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := regexp.MustCompile(`button\.verso-button-waiting:disabled \{\s*pointer-events: none;\s*cursor: default;\s*opacity: 1;\s*border-color: var\(--color-rule-strong\);\s*background-color: var\(--color-quiet\);\s*color: var\(--color-glyph\);`)
+	if !waiting.Match(css) {
+		t.Error("the waiting rule no longer takes the pointer and lays the sand ground, strong hairline and glyph label over every style")
 	}
 	// act: an act on a part of a section wears the subsection act's one dress,
 	// the same as a Link's act, whether it leads somewhere or submits.
@@ -779,7 +807,7 @@ func TestRenderButton(t *testing.T) {
 			t.Errorf("act button missing %q: %s", want, act)
 		}
 	}
-	for _, never := range []string{"h-9", "bg-denim", "bg-ground"} {
+	for _, never := range []string{"h-control", "bg-denim", "bg-ground"} {
 		if strings.Contains(act, never) {
 			t.Errorf("act button wears another dress's %q: %s", never, act)
 		}
@@ -937,13 +965,19 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if strings.Contains(frame, "overflow-hidden") {
 		t.Errorf("the card must not clip its copy control's tip: %s", frame)
 	}
-	if !strings.Contains(got, `data-verso-code-head class="flex h-9 items-center gap-2 rounded-t-xs`) {
+	if !strings.Contains(got, `data-verso-code-head class="flex h-10 items-center gap-2 rounded-t-xs`) {
 		t.Errorf("the head rounds its own corners: %s", got)
 	}
-	// The card stands 32px under the rule that sets it off, as a section's
-	// title stands under its rule — on a page and in a drawer alike.
-	if !strings.Contains(got, `class="flex flex-col gap-2 mt-7 border-t border-rule pt-8" data-verso-code-divider`) {
-		t.Errorf("the card stands 32px under its rule: %s", got)
+	// The card stands a cell under the rule that sets it off, the rule a cell
+	// under what it follows — on a page and in a drawer alike, so the air is
+	// the stylesheet's, not the block's.
+	sections, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `class="flex flex-col gap-2 border-t border-rule" data-verso-code-divider`) ||
+		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 5 - 1px);\n    padding-top: calc(var(--spacing) * 5 - 1px);\n  }") {
+		t.Errorf("the card stands a cell under its rule: %s", got)
 	}
 	// The path alone names the file: no glyph before it.
 	if head := got[strings.Index(got, "data-verso-code-head"):strings.Index(got, "/etc/config/network")]; strings.Contains(head, "<svg") {
@@ -1198,16 +1232,17 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// The chip the script clones is the chip the server draws, to the class:
 		// one source for a token's shape, not one here and one in the script.
 		`<template data-verso-token-chip>`, `data-verso-token-label`,
-		// 26px inside a 36px box, with 4px of the box showing all round and
-		// between chips — and a 20px remove glyph wearing the hover every icon
-		// act wears. The box is a field, so it wears a field's fill: white, with
-		// the inset shadow, and a field's 36px height.
-		`class="flex min-h-9 flex-wrap items-center gap-1 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-1`,
-		`h-6.5 min-w-18 flex-1`, // the value being typed stands at the chips' height
+		// 24px inside a 34px box, with 4px of the box showing all round and
+		// between chips, wrapped rows 16px apart so the box stays on the grid's
+		// cells — and a 20px remove glyph wearing the hover every icon act
+		// wears. The box is a field, so it wears a field's fill: white, with
+		// the inset shadow, and a field's height.
+		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-1`,
+		`h-6 min-w-18 flex-1`, // the value being typed stands at the chips' height
 		// A value in the box is a step darker than the quiet ground a chip
 		// wears elsewhere, so it stands off the white box it sits in; its
 		// remove glyph's hover is a step darker again, so it shows on the chip.
-		`inline-flex h-6.5 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
+		`inline-flex h-6 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
 		// Its remove glyph takes the hover every icon act takes: the parked
 		// border, the hairline wash and Ink.
 		`grid size-5 -mr-1 flex-none shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,

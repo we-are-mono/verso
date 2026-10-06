@@ -16,7 +16,7 @@
      them. A button set beside a field then ends exactly where the field does,
      because both are 36px and both carry a 1px border. Colour comes from the
      chains below; this says nothing about colour. */}}
-{{define "verso-btn-box"}}inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xs px-4 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2{{end}}
+{{define "verso-btn-box"}}inline-flex h-control cursor-pointer items-center justify-center gap-1.5 rounded-xs px-4 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2{{end}}
 
 {{/* verso-btn-primary: the primary action's colour + interaction chain. The
      call site owns layout (flex, gap, padding, radius, focus treatment). */}}
@@ -45,10 +45,12 @@
      marks a place rather than a thing, holding the hollow packet (absent) and
      the set's empty words in Meta. Every set draws its empty state this way (a
      collection's keys, a rule's conditions); the element and its attributes
-     stay at the call site, and the add stands 16px under it (pt-4). */}}
-{{define "verso-empty-slot-class"}}flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5{{end}}
+     stay at the call site, and the add stands a cell under it. On the
+     notebook's grid its frame is on the lines — a pixel out at the top and the
+     left — two cells tall, its words on the 20px line between. */}}
+{{define "verso-empty-slot-class"}}-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2.25 leading-5{{end}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
-    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
+    <p class="min-w-0 flex-1 text-sm leading-5 text-meta">{{.}}</p>{{end}}
 
 {{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
      remove, a list's remove, a copy beside a value or on a code box. A 28px
@@ -94,8 +96,11 @@
      title with whatever stands on its line (a count, an act) and wraps the
      lede to a line of its own under them. The title is the 18px heading; the
      lede is the section's one or two sentences in the reading style. */}}
-{{define "verso-section-band-class"}}mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1{{end}}
-{{define "verso-section-title-class"}}text-lg leading-tight font-semibold tracking-[-0.025em] text-ink{{end}}
+{{/* verso-control-band-class: a listing's control band, framed on the
+     notebook's lines (actionbar.html.tmpl). */}}
+{{define "verso-control-band-class"}}-mt-px -ml-px flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid px-3 pt-3 pb-3.25{{end}}
+{{define "verso-section-band-class"}}flex flex-wrap items-center justify-between gap-x-6{{end}}
+{{define "verso-section-title-class"}}text-lg leading-5 font-semibold tracking-[-0.025em] text-ink{{end}}
 {{define "verso-section-lede-class"}}verso-prose text-body{{end}}
 {{define "verso-section-lede"}}<div class="w-full"><div data-verso-section-lede class="{{template "verso-section-lede-class"}}">{{.}}</div></div>{{end}}
 {{/* A section meta: a fact standing on the heading's line — how long the
@@ -103,11 +108,11 @@
      meta ink and its value in the body ink at 600, so the value is what the
      eye lands on. data-verso-section-meta is the value's hook for a page that
      rewrites it live. */}}
-{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm{{end}}
+{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm leading-5{{end}}
 {{define "verso-section-meta-label-class"}}text-meta{{end}}
 {{define "verso-section-meta-value-class"}}font-semibold text-body{{end}}
 
-{{define "verso-kicker-class"}}text-xs font-medium tracking-[.08em] text-meta uppercase{{end}}
+{{define "verso-kicker-class"}}text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase{{end}}
 
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
@@ -126,7 +131,7 @@
 {{/* verso-input-box: one control, one box — the height a button beside it
      shares, white, the inset shadow, and a placeholder in the meta ink at the
      regular weight (it is text, and must read as such). */}}
-{{define "verso-input-box"}}h-9 w-full rounded-xs border {{template "verso-input-fill"}} px-3 text-ink transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
+{{define "verso-input-box"}}h-control w-full rounded-xs border {{template "verso-input-fill"}} px-3 text-ink transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
 
 {{/* verso-input-fill: what anything typed into stands on — white, pressed in
      by the inset shadow — so a plain box and a box of tokens read as the same
@@ -157,7 +162,9 @@
      words are not chip-sized — a traffic endpoint, which reads at the mono
      reading size because it is an address someone could type. The 16px line box
      is what holds every chip to one height whatever size its words are. */}}
-{{define "verso-chip-shape"}}verso-chip inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap{{end}}
+{{/* A chip is 22px and rides a 20px line of the notebook's grid a pixel over
+     at either edge, so the line it stands on keeps its 20px. */}}
+{{define "verso-chip-shape"}}verso-chip -my-px inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures
@@ -227,7 +234,7 @@
   {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="size-7 flex-none" aria-hidden="true"></span>{{end}}{{end}}
 {{end}}
 </div>{{end}}
-{{define "verso-field-desc-class"}}text-sm leading-snug text-pretty text-body{{end}}
+{{define "verso-field-desc-class"}}text-sm leading-5 text-pretty text-body{{end}}
 
 {{/* verso-switch-group: the checkbox rows of one setting asked of several
      things (switchGroupView) — which files load — under the row's one label,
@@ -256,13 +263,14 @@
     {{if .Reshapes}}{{template "verso-reshape-wait" "absolute inset-y-0 left-full ml-3 flex items-center"}}{{end}}
   </div>{{end}}
 {{/* verso-listing-search: the search that narrows a listing, given its
-     placeholder (.Filter). It wears the app's one input treatment: white, an
+     placeholder (.Filter) and the words standing in it (.Query); over a paged
+     listing (.Paged) the page asks the server instead of narrowing. It wears the app's one input treatment: white, an
      inset shadow, the strong hairline that warms to the faint step under the
      pointer and to the action colour while typing. */}}
 {{define "verso-listing-search"}}<div class="relative flex max-w-full items-center">
     <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
-    <input type="search" data-verso-listing-filter autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
-      class="h-9 w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+    <input type="search"{{if not .Paged}} data-verso-listing-filter{{end}}{{with .Query}} value="{{.}}"{{end}} autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
+      class="h-control w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
   </div>{{end}}
 {{/* verso-reshape-wait: the waiting mark beside a choice that reshapes its
      form, hidden until the choice is made and the form it names is on its way
@@ -328,7 +336,7 @@
      darker than a citation — Mid Sand behind a Strong Hairline — because it sits
      on a field's white rather than on the page, and a quiet chip there all but
      disappears into it. */}}
-{{define "verso-token-chip"}}inline-flex h-6.5 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
+{{define "verso-token-chip"}}inline-flex h-6 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
 
 {{/* The glyph that takes one value out. Twenty pixels, so what it takes on
      hover is a target rather than an outline of the glyph, and it answers the
@@ -471,8 +479,9 @@
 {{/* verso-refusal-band: a refusal under the box it refuses — a field, a key's
      box, a list's box — is that line set on crimson's own wash, so a wrong
      value is findable without reading and reads the same wherever it was
-     typed. Its words are verso-error-words. */}}
-{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep{{end}}
+     typed. Its words are verso-error-words. Half a cell inside at top and
+     bottom keeps it whole cells of the notebook's grid. */}}
+{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2.5 text-sm leading-5 text-crimson-deep{{end}}
 {{define "verso-error-words"}}{{template "verso-message-mark" "danger"}}<span data-verso-error-text>{{.}}</span>{{end}}
 
 {{/* verso-message-hue: the square's hue for a tone. Caution is marigold, as

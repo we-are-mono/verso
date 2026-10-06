@@ -14,10 +14,10 @@
      act on a thing of its own (a package) opens that thing's drawer over the
      page; the page keeps its address, since the drawer is not a place on it. */}}
 <div class="{{template "verso-field-row-class"}}">
-  <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+  <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 leading-5">
     <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>
-    {{if .Desc}}<p class="basis-full text-sm leading-[1.45] text-body">{{.Desc}}</p>{{end}}
+    {{if .Desc}}<p class="basis-full text-sm leading-5 text-body">{{.Desc}}</p>{{end}}
   </div>
   <div class="{{template "verso-field-control-class"}} items-start">
     {{if .Panel}}<span x-data="modal" class="contents">{{end}}
@@ -44,7 +44,13 @@
      are one set of three states, and a utility for any of them would beat the
      rule that draws the other two — the utility layer wins the cascade whatever
      the specificity. */}}
-<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link flex items-center gap-1.5 border-l border-rule py-1.5 pl-4 text-sm transition-colors">{{template "verso-link-face" .}}</a>
+{{/* A link is a cell and a half: two cells is too loose for a run of 14px
+     words and one too tight. The run reaches half its padding out over the
+     first, so its words stand in a cell, every second link's after them, and
+     the ones between straddle a line, centred on it. It ends on a line
+     whatever the count: an odd run gives the half back at its end, an even
+     one keeps it. */}}
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-1.5 border-l border-rule py-1.25 pl-4 text-sm leading-5 transition-colors first:-mt-1.25 last:-mb-1.25 [&:nth-child(even):last-child]:mb-1.25">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer

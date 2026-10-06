@@ -44,14 +44,25 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 	}
 }
 
-// TestConditionalKeepsARowsAir: a gate is a row, and stands off what is around
-// it as every row does; trimming a section's first and last rows is the
-// section's to do (sections.css), so a gate opening a titled section keeps its
-// 16px under the band as a checkbox row there does.
+// TestConditionalKeepsARowsAir: a gate is a field like any other, and brings
+// its own cell of air over its label's line as every field does (forms.css);
+// the block around it adds no air of its own, and a field-set it reveals is
+// more rows of the form, each with its own cell of air.
 func TestConditionalKeepsARowsAir(t *testing.T) {
-	got := render(t, newRenderer(t), &Conditional{Name: "reflection", Label: "Also works from inside your network"})
-	if !strings.Contains(got, `<div class="verso-conditional py-4" data-verso-change-field`) {
-		t.Errorf("a gate's own padding is a row's, untrimmed: %s", got)
+	got := render(t, newRenderer(t), &Conditional{
+		Name: "reflection", Label: "Also works from inside your network",
+		Fields: Widgets{&Field{Name: "port", Label: "Port"}},
+	})
+	if !strings.Contains(got, `<div class="verso-conditional" data-verso-change-field`) {
+		t.Errorf("the block adds no air of its own: %s", got)
+	}
+	if !strings.Contains(got, `<div class="verso-conditional-body verso-rhythm">`) {
+		t.Errorf("a revealed field-set stands on its rows' own air, not a margin: %s", got)
+	}
+	gate := got[strings.Index(got, "verso-conditional-gate"):]
+	gate = gate[:strings.Index(gate, `"`)]
+	if strings.Contains(gate, "py-0") || strings.Contains(gate, "pt-0") {
+		t.Errorf("the gate gives up its field's cell of air (%q), so nothing stands it off what is above: %s", gate, got)
 	}
 }
 

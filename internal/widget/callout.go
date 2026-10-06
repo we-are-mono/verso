@@ -20,6 +20,10 @@ type Callout struct {
 	Body    string `json:"body"`
 	Compact bool   `json:"compact,omitempty"` // tighter, body-only treatment for a short contextual note
 	Link    *Link  `json:"link,omitempty"`
+	// Verbatim is what a tool reported, in its own words: it rides inside the
+	// band under a hairline of the band's tone, in mono, with a copy control,
+	// because a message cut short or paraphrased is a message withheld.
+	Verbatim string `json:"verbatim,omitempty"`
 }
 
 func (*Callout) isWidget() {}

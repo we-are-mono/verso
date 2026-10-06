@@ -34,6 +34,7 @@ func translateFields(w Widget, t func(string) string) {
 		n.Text = t(n.Text)
 	case *Button:
 		n.Label = t(n.Label)
+		n.Busy = t(n.Busy)
 	case *Callout:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)

@@ -3,7 +3,11 @@
 
 (function () {
   "use strict";
-  var root = document.querySelector("[data-verso-packages]");
+  // The listing is the Packages page's own stack: its control band, the rows,
+  // the index's pager. Refresh and the index's age stand on the heading line.
+  var root = window.location.pathname === "/system/packages" ? document.querySelector(".verso-page-body > .verso-stack") : null;
+  var REFRESH = '[data-verso-masthead] form[action="/system/packages/discover"]';
+  var SEARCH = '[data-verso-actionbar] input[type="search"]';
   var pageURL = new URL(window.location.href);
   var request, sequence = 0, timer, pollTimer, refreshing = false;
   var submissions = new WeakMap();
@@ -32,8 +36,10 @@
   }, true);
 
   function failure(message) {
-    var error = root && root.querySelector("[data-package-error]");
-    if (error) { versoErrorLine(error, message || T("Packages could not be loaded. Try again.")); error.hidden = false; }
+    if (!root) return;
+    var error = root.querySelector("[data-package-error]");
+    if (!error) { error = versoErrorLine(null, ""); error.dataset.packageError = ""; error.setAttribute("role", "alert"); root.lastElementChild.append(error); }
+    versoErrorLine(error, message || T("Packages could not be loaded. Try again."));
   }
   function swap(target, fresh) {
     // Dispose teleported drawers with their owners before replacing the listing.
@@ -48,12 +54,12 @@
     watchFiles();
   }
   function filterState() {
-    var field = root && root.querySelector("[data-package-query]");
+    var field = root && root.querySelector(SEARCH);
     var cut = root && root.querySelector("[data-verso-listing-cut]");
     return { query: field ? field.value : "", tab: cut ? cut.value : "", focused: document.activeElement === field };
   }
   function restore(state, url) {
-    var field = root.querySelector("[data-package-query]");
+    var field = root.querySelector(SEARCH);
     field.value = state.query;
     var tab = new URL(url).searchParams.get("tab") === "upgradable" ? "upgradable" : state.tab;
     // Only the inventory narrows in place; the index's cut is already the page.
@@ -74,15 +80,15 @@
     try {
       var res = await fetch(url, { credentials: "same-origin", signal: request.signal, headers: { "X-Verso-Interaction": "packages" } });
       if (!res.ok || res.redirected) throw new Error();
-      var fresh = versoParse(await res.text()).querySelector("[data-verso-packages]");
+      var fresh = versoParse(await res.text()).body.firstElementChild;
       if (!fresh || id !== sequence) return;
       // Another operator started a refresh: retain the listing already visible.
-      if (fresh.hasAttribute("data-verso-package-busy")) { refreshStarted(); return; }
+      if (res.headers.get("X-Verso-Packages") === "refreshing") { refreshStarted(); return; }
       fresh = document.importNode(fresh, true);
       swap(root, fresh); root = fresh;
       // The heading's note follows the index's age the listing carries.
-      var note = document.querySelector("[data-package-note]");
-      if (note) note.textContent = root.dataset.packageIndexNote;
+      var note = document.querySelector("[data-verso-heading-note]");
+      if (note) note.textContent = decodeURIComponent(res.headers.get("X-Verso-Packages-Note") || "");
       pageURL = new URL(url, window.location.origin);
       if (!keepQuery) state.query = pageURL.searchParams.get("q") || "";
       restore(state, pageURL);
@@ -96,22 +102,23 @@
     refreshing = true;
     if (request) request.abort();
     // Refresh and its note stand on the heading line, outside the listing.
-    var button = document.querySelector("[data-package-refresh] button");
+    var button = document.querySelector(REFRESH + " button");
     if (button) {
       versoButtons.start(button, T("Refreshing index…"));
       // The button says it; the note beside it waits for the index's new age.
-      document.querySelector("[data-package-note]").textContent = "";
+      document.querySelector("[data-verso-heading-note]").textContent = "";
     }
     pollTimer = setTimeout(poll, 500);
   }
   function refreshStopped() {
     refreshing = false;
-    var button = document.querySelector("[data-package-refresh] button");
+    var button = document.querySelector(REFRESH + " button");
     if (!button) return;
     versoButtons.finish(button);
+    // A wait the server drew (the page loaded mid-refresh) ends the same way.
     button.disabled = false; button.removeAttribute("aria-disabled");
     button.removeAttribute("aria-busy");
-    button.className = "flex h-9 items-center rounded-xs border border-rule-strong px-4 text-sm font-semibold text-body hover:bg-quiet";
+    button.classList.remove("verso-button-waiting");
     button.textContent = T("Refresh index");
   }
   async function poll() {
@@ -140,7 +147,7 @@
   // this one. Caught on the way down, so the narrowing never sees a value it
   // has no rows for; the rest narrow in place and the address follows them.
   document.addEventListener("change", function (event) {
-    var cut = event.target.closest("[data-package-cut]");
+    var cut = event.target.closest("[data-verso-actionbar] select");
     if (!cut || !root || !root.contains(cut)) return;
     var chosen = cut.options[cut.selectedIndex];
     if (chosen && chosen.dataset.href) {
@@ -155,8 +162,9 @@
     history.replaceState(null, "", pageURL.pathname + pageURL.search);
   }, true);
   document.addEventListener("click", function (event) {
-    var link = event.target.closest("a[data-package-page]");
-    if (link && root && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) {
+    // The index's pager: a page of it is read in place.
+    var link = event.target.closest('a[href^="/system/packages?tab=all&"]');
+    if (link && root && root.contains(link) && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) {
       event.preventDefault();
       var url = new URL(link.href);
       // The find field follows the selected listing, including when All is opened.
@@ -219,8 +227,9 @@
     document.addEventListener("htmx:afterSettle", watchFiles);
   }
   document.addEventListener("input", function (event) {
-    if (!event.target.matches("[data-package-query]") || !root) return;
-    if (root.dataset.packageAll !== "true") {
+    if (!root || !root.contains(event.target) || !event.target.matches(SEARCH)) return;
+    // The inventory's search narrows in place; the index's asks the router.
+    if (event.target.hasAttribute("data-verso-listing-filter")) {
       pageURL.searchParams.set("q", event.target.value);
       history.replaceState(null, "", pageURL.pathname + pageURL.search);
       return;
@@ -235,7 +244,7 @@
   });
   document.addEventListener("submit", async function (event) {
     var form = event.target;
-    if (!form.matches("[data-package-refresh]")) {
+    if (!form.matches(REFRESH)) {
       if (!form.hasAttribute("hx-post") && /^\/system\/packages(?:\/discover)?$/.test(new URL(form.action).pathname)) {
         var label = actionLabel(form, event.submitter);
         if (label) versoButtons.submit(event, label);
@@ -289,6 +298,7 @@
   window.addEventListener("pagehide", function () { clearTimeout(pollTimer); clearTimeout(timer); if (request) request.abort(); });
   if (root) {
     restore(filterState(), pageURL);
-    if (root.hasAttribute("data-verso-package-busy")) refreshStarted();
+    var refresh = document.querySelector(REFRESH + " button");
+    if (refresh && refresh.getAttribute("aria-busy") === "true") refreshStarted();
   }
 })();

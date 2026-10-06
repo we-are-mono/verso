@@ -95,7 +95,7 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		`data-log-pause title="Pause"`, "<span data-log-pause-label>Connecting…</span></button>",
 		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
-		`<div data-verso-masthead="light" class="mb-6 py-4">`, // the light bar, on the page's own ground
+		`<div data-verso-masthead="light" class="mb-5 py-4">`, // the light bar, on the page's own ground
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs page missing %q", want)

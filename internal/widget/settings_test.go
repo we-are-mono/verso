@@ -59,7 +59,7 @@ func TestInlineValueField(t *testing.T) {
 		"aria-invalid:border-crimson",       // the error treatment is ready on the input
 		`data-verso-control-measure="host"`, // same host measure as form fields
 		"font-mono text-base",               // same size as an ordinary field input
-		`<p id="hostname-desc" class="text-sm leading-snug text-pretty text-body">Used on the network.</p>`, // help follows the field
+		`<p id="hostname-desc" class="text-sm leading-5 text-pretty text-body">Used on the network.</p>`, // help follows the field, on the grid's 20px lines
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("inline field missing %q\n%s", want, got)

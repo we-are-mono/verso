@@ -56,3 +56,20 @@
 
   setInterval(poll, 600);
 })();
+
+// The notebook's grid fades down the page; while laying a page out it helps to
+// see it whole. G, pressed outside a field, switches between the two, and the
+// choice holds across reloads in this browser.
+(function () {
+  var key = "verso-dev-grid";
+  var root = document.documentElement;
+  function apply(full) { root.toggleAttribute("data-verso-grid-full", full); }
+  try { apply(localStorage.getItem(key) === "full"); } catch (_) { /* storage blocked */ }
+  document.addEventListener("keydown", function (event) {
+    if (event.key.toLowerCase() !== "g" || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target.closest("input, textarea, select, [contenteditable]")) return;
+    var full = !root.hasAttribute("data-verso-grid-full");
+    apply(full);
+    try { localStorage.setItem(key, full ? "full" : "fade"); } catch (_) { /* storage blocked */ }
+  });
+})();

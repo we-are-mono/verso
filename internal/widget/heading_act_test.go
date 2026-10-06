@@ -128,13 +128,13 @@ func TestPrimaryActsWearThePlus(t *testing.T) {
 	}
 }
 
-// TestHeadingActRendersTheActAlone: on the heading line the act is the 36px
+// TestHeadingActRendersTheActAlone: on the heading line the act is the 34px
 // primary with no band around it.
 func TestHeadingActRendersTheActAlone(t *testing.T) {
 	bar := actOnly()
 	bar.Heading = true
 	got := render(t, newRenderer(t), bar)
-	for _, want := range []string{`@click.prevent="showPanel"`, "h-9", "bg-denim", ">Add network<"} {
+	for _, want := range []string{`@click.prevent="showPanel"`, "h-control", "bg-denim", ">Add network<"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("heading act missing %q:\n%s", want, got)
 		}
@@ -148,12 +148,13 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 
 // TestControlBandIsTheListingsSurface: the band that narrows a listing is its
 // one filled surface — a mid sand box in a strong hairline, a step darker
-// than the masthead's quiet sand, every control 12px from its edges — and it
-// sits flush on the listing's column heads.
+// than the masthead's quiet sand, its frame on the notebook's lines (a pixel
+// out at the top and the left) and three cells tall, its controls centred in
+// them, 12px over a control and 13px under — and it sits flush on the
+// listing's column heads.
 func TestControlBandIsTheListingsSurface(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
-	// mb-0 outranks a nested stack's space-y, which would part band and table.
-	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 rounded-xs border border-rule-strong bg-mid p-3"`) {
+	if !strings.Contains(got, `data-verso-actionbar class="-mt-px -ml-px flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid px-3 pt-3 pb-3.25"`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {
@@ -165,16 +166,17 @@ func TestControlBandIsTheListingsSurface(t *testing.T) {
 	}
 }
 
-// TestColumnHeadsAreARow: the heads are the listing's own 44px row — a 24px
-// line with 10px above and below — whatever introduces the table.
+// TestColumnHeadsAreARow: the heads are one cell of the grid — the 12px caps
+// on a 16px line, 2px over it and a pixel under it plus the 1px hairline —
+// whatever introduces the table.
 func TestColumnHeadsAreARow(t *testing.T) {
 	for _, tbl := range []*Table{
 		{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "x"}}}}},
 		{Title: "Rules", Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "x"}}}}},
 	} {
 		got := render(t, newRenderer(t), tbl)
-		if !strings.Contains(got, "px-3.5 py-2.5 leading-6 text-xs") || strings.Contains(got, "pt-4 pb-2") {
-			t.Errorf("column heads are not a 44px row:\n%s", got)
+		if !strings.Contains(got, "border-rule-strong pt-0.5 pb-px leading-4 px-3.5 text-xs") || strings.Contains(got, "pt-4 pb-2") {
+			t.Errorf("column heads are not a row of the grid:\n%s", got)
 		}
 	}
 }

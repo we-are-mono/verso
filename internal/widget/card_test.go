@@ -19,11 +19,11 @@ func TestACardsSubtitleMayBeAMachineString(t *testing.T) {
 		t.Errorf("a machine-string subtitle went through the catalog: %q", card.Subtitle)
 	}
 	got := render(t, newRenderer(t), card)
-	if !strings.Contains(got, `<p class="font-mono text-base leading-6 font-medium text-body">xfi0</p>`) {
+	if !strings.Contains(got, `<p class="font-mono text-base leading-5 font-medium text-body">xfi0</p>`) {
 		t.Errorf("a machine-string subtitle is not set in mono:\n%s", got)
 	}
 	sentence := render(t, newRenderer(t), &Card{Style: "artifact", Title: "HTTPS certificate", Subtitle: "What this router shows browsers."})
-	if !strings.Contains(sentence, `<p class="text-sm leading-6 text-body">What this router shows browsers.</p>`) {
+	if !strings.Contains(sentence, `<p class="text-sm leading-5 text-body">What this router shows browsers.</p>`) {
 		t.Errorf("a sentence subtitle lost its sans:\n%s", sentence)
 	}
 }

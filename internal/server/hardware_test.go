@@ -99,7 +99,7 @@ func TestReadingsKeepTheirCellsApart(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := buf.String()
-	if !strings.Contains(body, "px-3.5 py-2.5 leading-6") {
+	if !strings.Contains(body, "px-3.5 pt-2.5 pb-2.25 leading-5") {
 		t.Errorf("the readings' cells give up their inset:\n%s", body)
 	}
 }
@@ -143,7 +143,7 @@ func TestAnUnprofiledBoxSaysOnlyWhatItHas(t *testing.T) {
 	// The readings are rows, each with its own air above and below its
 	// hairline; a spaced stack would add a gap under each hairline that the
 	// row's other side does not have.
-	if strings.Contains(temps, "verso-stack space-y-4") || !strings.Contains(temps, "data-verso-rows") {
+	if strings.Contains(temps, "verso-stack space-y-") || !strings.Contains(temps, "data-verso-rows") {
 		t.Errorf("Temperatures spaces its rows apart instead of letting each keep its own air:\n%s", temps)
 	}
 }
@@ -163,7 +163,8 @@ func TestOnlyAProfileEarnsTheVitals(t *testing.T) {
 
 // TestAFibreModuleIsAnArtifactCard: an SFP module is a thing the box holds,
 // read as one, so it wears the card Access gives its HTTPS certificate — the
-// sand frame, the title over its line, the facts set left under it.
+// sand frame (a pixel out onto the grid's lines), the title over its line, the
+// facts set left under it.
 func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
 	s := newServer(t, fakeBackend{})
 	inv := dkInventory()
@@ -173,9 +174,9 @@ func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
 	}
 	body := buf.String()
 	for _, want := range []string{
-		`<section class="rounded-xs border border-rule bg-quiet px-5">`,
+		`<section class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-5 pb-4.75">`,
 		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
-		`<p class="font-mono text-base leading-6 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
+		`<p class="font-mono text-base leading-5 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("an SFP module is not the certificate's card; missing %s:\n%s", want, body)
@@ -206,7 +207,7 @@ func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
-		`<div data-verso-masthead class="mb-6 py-4">`,    // every page's sand bar
+		`<div data-verso-masthead class="mb-5 py-4">`,    // every page's sand bar
 		`<h1 class="verso-page-heading">Hardware</h1>`,   // titled as the page
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
 		"All sensors", // the full instrument panel

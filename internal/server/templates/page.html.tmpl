@@ -127,37 +127,40 @@
   {{/* The page's frame: 40px of air on every side, and inside it a measure the
        page declares (default normal). The padding is outside the cap, so the
        cap is the content's real width rather than a box the padding eats into —
-       a wide page is 1152px of content, which is what every canvas is drawn
-       against. Left-aligned against the rail; no centring, which reads better
-       on a wide monitor. */}}
+       a wide page is 1140px of content, which is what every canvas is drawn
+       against. On the notebook's grid the column is whole cells wide however
+       narrow the window, so its rules end on a line (input.css). Left-aligned
+       against the rail; no centring, which reads better on a wide monitor. */}}
   {{/* Every page but home and a log is a page of the operator's notebook: the
-       grid the charts sit on, faint under the masthead and fading as the page
-       goes down (verso-notebook, input.css). Home opens on its verdict, and a
+       grid the charts sit on, from the masthead's hairline to the page's foot
+       (verso-notebook, input.css). Home opens on its verdict, and a
        log is its own darker surface. */}}
   <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Overview .Light (eq .Width "full"))}} verso-notebook{{end}}">
     {{/* The masthead is a sand bar under the top bar, as the colophon is one
          over the window's foot: the title's line stands 16px inside it at top
          and bottom, so an act on that line sits in the bar's middle, and the
-         bar ends on a hairline 24px above what follows it (input.css). The frame's bottom padding becomes the
+         bar ends on a hairline, the grid's first line, a cell above what
+         follows it (input.css). The frame's bottom padding becomes the
          natural gap before the footer.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
          keeps the full 40px, as far from the top as from the left. */}}
     <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pb-10{{end}}">
-    <div class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
+    <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
-    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-6 py-4">
+    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-5 py-4">
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits
            under it. A toned heading is a message about now, not a
            place-label: it tints in the tone vocabulary and drops the
            " — <tab>" suffix ("neutral" drops the suffix without a tint). */}}
-      <div class="flex min-h-9 flex-wrap items-center justify-between gap-5">
+      <div class="flex min-h-control flex-wrap items-center justify-between gap-5">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
-        {{if .HeadingAct}}{{.HeadingAct}}{{end}}
+        {{/* A standing note leads the acts, the group as one on the line. */}}
+        {{if .HeadingNote}}<div class="flex flex-wrap items-center gap-3"><span data-verso-heading-note class="text-sm text-meta" aria-live="polite">{{.HeadingNote}}</span>{{.HeadingAct}}</div>{{else if .HeadingAct}}{{.HeadingAct}}{{end}}
       </div>
     </div>
     {{end}}
@@ -217,7 +220,7 @@
      save and folds away (verso-forms.js). The fields themselves are the
      truth: the shell counts their refusals, so no plugin writes a sentence
      telling you to look for them. */}}
-<div id="verso-refusals" hidden role="status" class="group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-9 -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-[0_4px_12px_rgba(27,25,23,.14)] md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep">
+<div id="verso-refusals" hidden role="status" class="group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-[0_4px_12px_rgba(27,25,23,.14)] md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep">
   <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson group-data-[ready]/refusals:bg-green"></span>
   <span data-verso-refusals-count class="inline-block pr-2"></span>
   <button type="button" data-verso-refusals-next class="flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden">{{ t "Next" }}{{icon "arrow-down" "size-3.5"}}</button>

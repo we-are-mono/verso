@@ -697,7 +697,7 @@
       // offers turns on what is installed, so its body is read again once the
       // drawer has closed, and what the install added there is shown.
       // Packages redraws its own listing.
-      if (!document.querySelector("[data-verso-packages]")) {
+      if (window.location.pathname !== "/system/packages") {
         var opener = openerOf(frame);
         var section = opener && opener.closest("section[id]");
         var before = settingsOf(section).map(said);

@@ -16,6 +16,10 @@ type Button struct {
 	Value    string `json:"value,omitempty"`
 	Disabled bool   `json:"disabled,omitempty"` // unavailable action; rendered natively disabled
 	Loading  bool   `json:"loading,omitempty"`  // disabled busy state; replaces Icon with a spinning loader
+	// Busy is what the button says from the moment it is pressed until the
+	// page answers, when the press starts work the page then waits on (an
+	// update check): the shell's script swaps it in on submit.
+	Busy string `json:"busy,omitempty"`
 	// Live states that something the button governs is running — a stream
 	// flowing, a sampler sampling — and the spinner says so. Unlike Loading it
 	// takes nothing away: the button stays enabled, keeps its hover and its

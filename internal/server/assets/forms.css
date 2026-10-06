@@ -1,22 +1,25 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
-/* Shared form geometry for pages, drawers and nested settings. The shell
- * assigns content measures; plugins never declare presentation widths. */
+/* Shared form geometry for pages, drawers and nested settings, on the
+ * notebook's 20px grid: a field is a cell of air, its label's 20px line, then
+ * its control — a control-height box centred in two cells, or a choice's
+ * options a line each — and its description's lines. The shell assigns
+ * content measures; plugins never declare presentation widths. */
 @layer components {
   /* Opt-in groups of related fields, in the same DOM and keyboard order at
-     every size. The group owns the row padding; wrapped rows keep 32px of air. */
+     every size. The group owns the row's cell of air; wrapped rows keep it. */
   .verso-form-grid {
     container: verso-form-grid / inline-size;
     min-width: 0;
-    padding-block: calc(var(--spacing) * 4);
+    padding-block: calc(var(--spacing) * 5) 0;
   }
   .verso-form-grid-fields {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    column-gap: calc(var(--spacing) * 6);
-    row-gap: calc(var(--spacing) * 8);
+    column-gap: calc(var(--spacing) * 5);
+    row-gap: calc(var(--spacing) * 5);
   }
   .verso-form-grid-fields > * { min-width: 0; }
   .verso-form-grid-fields > .verso-field-row { padding-block: 0; }
@@ -39,18 +42,24 @@
     container: verso-field / inline-size;
     display: flex;
     flex-direction: column;
-    gap: calc(var(--spacing) * 2);
-    padding-block: calc(var(--spacing) * 4);
+    gap: 0 calc(var(--spacing) * 2);
+    padding-block: calc(var(--spacing) * 5) 0;
   }
 
   .verso-field-control {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: calc(var(--spacing) * 1.5);
     width: 100%;
     max-width: 100%;
     min-width: 0;
+  }
+  /* A control-height box stands centred in the two cells under its label:
+     the control keeps 3px over and under it, and what follows the box inside
+     the control — a description's lines, a refusal band — is whole lines, so
+     the control stays whole cells. A list of values draws its own rows. */
+  .verso-field-row > .verso-field-control:has(.h-control, .min-h-control, .verso-box):not(:has([data-verso-list])) {
+    margin-block: calc((2.5rem - var(--spacing-control)) / 2);
   }
 
   /* Each half needs at least 20rem. Narrow drawers and zoomed pages retain
@@ -79,13 +88,11 @@
   }
   .verso-field-toggle > [data-verso-control] {
     width: auto;
-    padding-top: calc(var(--spacing) * 0.5);
   }
-  /* A description kept in view hangs under the label it explains, 2px below
-     it rather than a row gap away. */
+  /* A description kept in view hangs under the label it explains, the next
+     20px line, rather than a row gap away. */
   .verso-field-toggle > [data-verso-field-desc] {
     grid-column: 2;
-    margin-top: calc(var(--spacing) * -1.5);
   }
   /* A refused checkbox's band stands under its label, as a field's stands
      under its box. */
@@ -99,7 +106,7 @@
     display: inline-flex;
     align-self: flex-start;
     max-width: 100%;
-    height: calc(var(--spacing) * 9);
+    height: var(--spacing-control);
     border: 1px solid var(--color-rule-strong);
     border-radius: var(--radius-xs);
     background: var(--color-white);
@@ -210,12 +217,10 @@
   .verso-field-with-remove > [data-verso-control] { grid-column: 1; }
   .verso-field-with-remove > :is([data-verso-remove-field], [data-verso-remove-lane]) { grid-column: 2; }
 
-  /* Compound searches and inline actions already own their outer spacing. */
+  /* Compound searches and inline actions already own their outer spacing.
+     Everywhere else a field brings its own cell of air, the first in a form
+     or a revealed group too: it is the air under the title it follows. */
   [data-verso-compact-form] .verso-field-row { padding-block: 0; }
-  .verso-form > :is(.verso-field-row, .verso-form-grid):first-of-type { padding-top: 0; }
-  .verso-form > :is(.verso-field-row, .verso-form-grid):has(+ [data-verso-form-actions]) { padding-bottom: 0; }
-  :is(.verso-conditional-body, .verso-conditional-otherwise) > :is(.verso-field-row, .verso-form-grid):first-child { padding-top: 0; }
-  :is(.verso-conditional-body, .verso-conditional-otherwise) > :is(.verso-field-row, .verso-form-grid):last-child { padding-bottom: 0; }
 }
 
 /* Override the shared input box's w-full utility for native selects. */
@@ -224,9 +229,29 @@
      Quieter values and the input's 12px inset establish the hierarchy; these
      rules also cover rows added in the browser. */
   .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row] {
-    padding-inline: calc(var(--spacing) * 3);
+    padding-inline: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);
+  }
+  /* The servers are divided from each other, not from the label: the first
+     row's hairline goes clear, keeping its pixel so the rows stay on lines. */
+  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row]:first-child {
+    border-top-color: transparent;
+  }
+  /* Each server leads with the packet in its words' ink, centred on the first
+     line and in the grid's first column (6px in from the row, which starts
+     just past a line), the name starting at the next column (8px on: the
+     row's gap less a step). */
+  .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-row]::before {
+    content: "";
+    flex-shrink: 0;
+    width: calc(var(--spacing) * 1.5);
+    height: calc(var(--spacing) * 1.5);
+    margin-top: calc(var(--spacing) * 1.75);
+    margin-right: calc(var(--spacing) * -1);
+    border-radius: 1px;
+    background-color: var(--color-meta);
   }
   .verso-form:has(input[name="_client_time"]) [data-verso-change-name="server"] [data-verso-list-value] {
+    flex: 1;
     color: var(--color-meta);
     font-weight: var(--font-weight-normal);
   }
@@ -236,23 +261,18 @@
     max-width: 100%;
   }
 
-  /* An added condition (conditions.item) stands as one setting's row: 16px
-     above and below, as every row does, so conditions stand 32px apart as
-     rows do. Its name line is a label line — the glyph at its end does not
-     make it taller — and its parts stand 20px apart inside it, the step
-     inside a group, 12px under the name.
-     A condition of one control draws it at a label's 8px under the name, and
-     keeps that control's own label for a screen reader only: seen, it would
-     only repeat the name. A condition of several parts sets each part's
-     label quieter than the name, so the name reads as the setting and the
-     parts as its pieces. */
-  .verso-condition { padding-block: calc(var(--spacing) * 4); }
+  /* An added condition (conditions.item) stands as one setting's row on the
+     notebook's grid. Its name line is a label line — the glyph at its end
+     does not make it taller — and its parts are fields: the first straight
+     under the name, each after a cell of air, as fields stand.
+     A condition of one control draws it straight under the name, and keeps
+     that control's own label for a screen reader only: seen, it would only
+     repeat the name. A condition of several parts sets each part's label
+     quieter than the name, so the name reads as the setting and the parts
+     as its pieces. */
   .verso-condition-name { height: calc(var(--spacing) * 5); }
-  .verso-condition > .verso-rhythm > * { padding-block: calc(var(--spacing) * 2.5); }
   .verso-condition > .verso-rhythm > * + * { margin-top: 0; }
-  .verso-condition > .verso-rhythm > :first-child { padding-top: calc(var(--spacing) * 3); }
-  .verso-condition > .verso-rhythm > :last-child { padding-bottom: 0; }
-  .verso-condition-single > .verso-rhythm > :first-child { padding-top: calc(var(--spacing) * 2); }
+  .verso-condition > .verso-rhythm > :first-child { padding-top: 0; }
   .verso-condition-single > .verso-rhythm .verso-field-label {
     position: absolute;
     width: 1px;
@@ -268,30 +288,36 @@
   /* The conditions a rule carries are one block: the list wears the quiet
      card the Action reading's parameters wear — a hairline frame on Quiet
      Sand, 20px in — while it holds any, and none at all when it is empty, so
-     the card follows every add and remove with no script. */
+     the card follows every add and remove with no script. Its frame is on
+     the notebook's lines, a pixel out at the top and the left onto them: a
+     cell of air inside its top edge before the first name, and its bottom
+     edge the line after the last condition's cell of air. */
   .verso-condition-list:has(> .verso-condition) {
     /* The card is the measure its rows stand to, so they fill it and its
        20px inset is the same on both sides at every width. */
     --verso-form-width: 100%;
-    margin-bottom: calc(var(--spacing) * 4);
+    margin-top: -1px;
+    margin-left: -1px;
+    width: calc(100% + 1px);
     border: 1px solid var(--color-rule);
     border-radius: var(--radius-xs);
     background: var(--color-quiet);
     padding-inline: calc(var(--spacing) * 5);
   }
   .verso-condition-list > .verso-condition:first-child { padding-top: calc(var(--spacing) * 5); }
-  .verso-condition-list > .verso-condition:last-child { padding-bottom: calc(var(--spacing) * 5); }
-  /* Two conditions meet on a hairline across the card, 24px either side, and
-     the seam says how they join — "and", a kicker on the card's own sand, so
-     the rule breaks around it — which is the whole of the block's logic,
-     read where the eye crosses from one condition to the next. */
-  .verso-condition:has(+ .verso-condition) { padding-bottom: calc(var(--spacing) * 6); }
+  .verso-condition-list > .verso-condition:last-child { padding-bottom: calc(var(--spacing) * 5 - 1px); }
+  /* Two conditions meet on a hairline across the card, a cell from each and
+     on a line, and the seam says how they join — "and", a kicker on the
+     card's own sand, so the rule breaks around it — which is the whole of
+     the block's logic, read where the eye crosses from one condition to the
+     next. */
+  .verso-condition:has(+ .verso-condition) { padding-bottom: calc(var(--spacing) * 5 - 1px); }
   .verso-condition + .verso-condition {
     position: relative;
     margin-inline: calc(var(--spacing) * -5);
     border-top: 1px solid var(--color-rule);
     padding-inline: calc(var(--spacing) * 5);
-    padding-top: calc(var(--spacing) * 6);
+    padding-top: calc(var(--spacing) * 5);
   }
   .verso-condition + .verso-condition::before {
     content: attr(data-verso-and);
@@ -321,16 +347,17 @@
     color: var(--color-green-deep);
   }
 
-  /* The card is the block's edge, so the act that adds to it stands on the
-     card's own air rather than the empty slot's 16px. */
+  /* The card is the block's edge, so the act that adds to it stands centred
+     in the two cells straight under the card rather than a cell further on. */
   .verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker] {
-    padding-top: 0;
+    padding-top: calc(var(--spacing) * 1.5);
   }
 
   /* A reveal (disclosure style "reveal") is one of its form's rows: folded,
-     its act; open, the rows it folded, the act stepping aside — there is
-     nothing left to reveal. The rows keep their parent's step between them
-     and add no air of their own at the reveal's edges. */
+     its act — a cell of air and its 20px line, as a field's label stands;
+     open, the rows it folded, the act stepping aside — there is nothing left
+     to reveal. The rows are fields and bring their own air. */
+  .verso-reveal:not([open]) { padding-top: calc(var(--spacing) * 5); }
+  .verso-reveal-act { line-height: calc(var(--spacing) * 5); }
   .verso-reveal[open] > .verso-reveal-act { display: none; }
-  .verso-reveal > .verso-rhythm > .verso-field-row { padding-block: 0; }
 }

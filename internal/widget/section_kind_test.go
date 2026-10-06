@@ -25,6 +25,14 @@ var edgeTrim = regexp.MustCompile(`(?:^|[\s"'])((?:first|last|only)(?:-of-type)?
 func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 	allowed := map[string]string{
 		"settings.html.tmpl last:pb-0": "a read-only facts listing closes on its last line, inside no section's rows",
+		// A last row that draws no hairline keeps that pixel as air instead —
+		// it adds to its edge rather than trimming it, so the row stays a cell
+		// more than its lines and ends on one.
+		"meter.html.tmpl last:pb-2.5":      "a last reading keeps its hairline's pixel as air",
+		"properties.html.tmpl last:pb-2.5": "a last fact keeps its hairline's pixel as air",
+		// Radios stand a cell and a half apart, so an odd run adds half a
+		// padding at its end to finish on a line.
+		"field.html.tmpl last-of-type:mb-1.25": "an odd run of radios ends on a line",
 	}
 	files, err := filepath.Glob("templates/*.tmpl")
 	if err != nil {

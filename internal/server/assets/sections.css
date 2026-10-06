@@ -2,20 +2,25 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /* Sections: a page's and a drawer's subjects, their air and the hairlines
- * that divide them, stated once. A section says what it is
- * (data-verso-section) and this sheet says how it stands:
+ * that divide them, stated once, on the notebook's 20px grid. A section says
+ * what it is (data-verso-section) and this sheet says how it stands:
  *
  *   ruled      one of the surface's subjects, set off from the last by a rule
- *              with 24px on either side; the one a surface opens with draws
- *              neither. With a heading, the heading band carries the rule
- *              instead: 32px from rule to title, 20px to the content, 32px
- *              from the content to the next rule.
- *   part       a section inside a section, ruled the same way but kept to
- *              the content's inset, never reaching the surface's edges.
+ *              two cells under it, its content a cell under the rule; the one
+ *              a surface opens with draws neither. With a heading, the
+ *              heading band carries the rule instead: two cells from rule to
+ *              title, the content straight on (a cell on, under a lede).
+ *   part       a section inside a section, ruled a cell under the content
+ *              before it and kept to the content's inset, never reaching the
+ *              surface's edges.
  *   continued  not a new subject but more of the rows above (the act that adds
- *              another): its rule always draws, 16px over what follows.
- *   plain      an unruled block, 24px off the one before.
+ *              another): its rule always draws, on the last row's own line.
+ *   plain      an unruled block, a cell off the one before.
  *   bare       a nested or flush block that adds no air of its own.
+ *
+ * A rule is a top border, and a box ends on a line, so every rule's margin
+ * is its cells less the rule's own pixel: the rule lands on the line. The air
+ * before a rule is the section's own margin; no section keeps closing air.
  *
  * Where the surface differs is only how far its rules and bands run past the
  * content: the reach. A page runs them 40px into its gutter to the rail, and
@@ -51,11 +56,15 @@
 
   /* Qualified by the element, so a section's own air outranks the block
      rhythms around it (.verso-rhythm, the page stack) whatever their order. */
-  section[data-verso-section="ruled"],
-  section[data-verso-section="part"] {
-    margin-top: calc(var(--spacing) * 6);
+  section[data-verso-section="ruled"] {
+    margin-top: calc(var(--spacing) * 10 - 1px);
     border-top: 1px solid var(--color-rule);
-    padding-top: calc(var(--spacing) * 6);
+    padding-top: calc(var(--spacing) * 5);
+  }
+  section[data-verso-section="part"] {
+    margin-top: calc(var(--spacing) * 5 - 1px);
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 5);
   }
   section[data-verso-section="ruled"]:first-of-type,
   section[data-verso-section="part"]:first-of-type {
@@ -64,61 +73,64 @@
     padding-top: 0;
   }
   section[data-verso-section="continued"] {
-    margin-top: 0 !important;
+    margin-top: -1px !important;
     border-top: 1px solid var(--color-rule);
-    padding-top: calc(var(--spacing) * 4);
+    padding-top: 0;
   }
-  section[data-verso-section="plain"] { padding-top: calc(var(--spacing) * 6); }
+  section[data-verso-section="plain"] { padding-top: calc(var(--spacing) * 5); }
+  /* A plain block that opens its container takes the container's air. */
+  section[data-verso-section="plain"]:first-child { padding-top: 0; }
 
   /* On a page's own stack a section takes its standoff from the stack's
-     40px rhythm rather than adding its own; a ruled one stands 24px off. */
+     two cells rather than adding its own; a ruled one puts its rule there. */
   .verso-page-body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"]) { padding-top: 0; }
-  .verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 6); }
+  .verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }
+  /* A block of the stack that is itself a stack (a plugin's part of a shell
+     page) and opens on a section's rule puts that rule where the section's
+     own would stand. */
+  .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }
 
-  /* A headless subject keeps the heading band's 32px before the next rule. A
-     page form that opens on one opens under the masthead's own hairline, so
-     like any surface's first section it draws no rule above it. */
-  [data-verso-section="ruled"][data-verso-headless] { padding-bottom: calc(var(--spacing) * 8); }
-
-  /* An untitled opening block that is no ruled subject (a drawer's state and
-     name, a server's addresses) keeps the same 32px before the rule after it:
-     the band, card or Save that follows adds none of its own. A titled
-     section is named as one that is not headless: a :has cannot stand inside
-     a :has, and the browser would drop the whole case. */
-  [data-verso-headless]:not([data-verso-section="ruled"]):has(+ :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])),
-  [data-verso-headless]:not([data-verso-section="ruled"]):has(+ input[type="hidden"] + :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])) { padding-bottom: calc(var(--spacing) * 8); }
-
-  /* A section's 32px is the air before whatever rule follows it: the
-     configuration card's divider and a form's own Save rule add none on top.
-     A section that ends on its own card has given that air up so its Save
-     stands 20px under the card; that Save keeps its standoff. */
-  [data-verso-section] + [data-verso-code-divider],
-  [data-verso-section] + input[type="hidden"] + [data-verso-code-divider],
-  [data-verso-section]:not(:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"])))) + [data-verso-form-actions],
-  [data-verso-section]:not(:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"])))) + input[type="hidden"] + [data-verso-form-actions] { margin-top: 0; }
-
-  /* The heading band carries its section's rule: the rule, 32px, the title. */
+  /* The heading band carries its section's rule: the rule, two cells, the
+     title's 20px line, its lede's under it, and the content a cell on — a
+     field brings that cell itself; anything else is given it (below). */
   [data-verso-section-band] {
     display: flex;
     align-items: center;
+    row-gap: 0;
     min-height: 0;
     height: auto;
-    padding-block: calc(var(--spacing) * 8) 0;
+    margin-bottom: 0;
+    padding-block: calc(var(--spacing) * 10) 0;
     background-color: transparent;
     border-top: 1px solid var(--color-rule);
     border-bottom-width: 0;
+  }
+  /* Under a title (or its lede), whatever brings no cell of air of its own (a
+     listing, a reading, a set, a form of acts alone) stands a cell under it,
+     as a field does with its own. */
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+    margin-top: calc(var(--spacing) * 5);
+  }
+  /* An empty slot's frame stands on the line, so it takes the cell less its
+     pixel. */
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > [data-verso-slot]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+    margin-top: calc(var(--spacing) * 5 - 1px);
   }
   section[data-verso-section]:has(> [data-verso-section-band]),
   .verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
     margin-top: 0;
     border-top-width: 0;
-    padding-block: 0 calc(var(--spacing) * 8);
+    padding-block: 0;
+  }
+  :not(input[type="hidden"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),
+  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {
+    margin-top: calc(var(--spacing) * 10 - 1px);
   }
 
   /* A drawer's chrome ends on a hairline (the header's, or the tab strip's
      under it), and that hairline is the rule of the section the body opens
      on: a band with nothing visible before it draws none of its own, and the
-     body gives back its top padding, so the title stands the band's 32px
+     body gives back its top padding, so the title stands the band's two cells
      under the chrome as it stands under any rule. A body that opens on
      anything else keeps its padding. Hidden carriers and elements with
      nothing in them (a notice block with no notice) are not something
@@ -131,14 +143,13 @@
   }
   /* A page opens under the masthead's hairline the same way: a heading band
      with nothing visible before it in the page draws no rule of its own, and
-     its title stands the band's 32px under the masthead's line (its 24px of
-     air, then 8px of the band's). */
+     its title is the cell under the masthead's own cell of air. */
   .verso-page-body [data-verso-section-band]:not(
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
   ) {
     border-top-width: 0;
-    padding-top: calc(var(--spacing) * 2);
+    padding-top: 0;
   }
   [data-verso-drawer-body]:has([data-verso-section-band]:not(
     [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
@@ -147,42 +158,29 @@
     padding-top: 0;
   }
 
-  /* A section that ends on its configuration card ends there: the card is
-     what the form's Save follows, 20px under it (DESIGN: Configuration
-     cards), so the section's own closing air would only push Save away from
-     the card it belongs to. Hidden carriers after the card are skipped
-     (nth-last-child's "of", since a :has cannot stand inside a :has). */
-  section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"]))),
-  .verso-page-body > .verso-stack > section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"]))) {
-    padding-bottom: 0;
+  /* The configuration card's divider is a rule a cell under the fields, and
+     the card a cell under it, its own frame on the lines. A form that writes
+     more than one file shows a card per file, one under the other. The rule
+     above the first sets the files off from the form; the next is more of
+     the same answer, so it stands a cell under the one before and draws no
+     rule of its own. */
+  [data-verso-code-divider] {
+    margin-top: calc(var(--spacing) * 5 - 1px);
+    padding-top: calc(var(--spacing) * 5 - 1px);
   }
-
-  /* A form that writes more than one file shows a card per file, one under
-     the other. The rule above the first sets the files off from the form; the
-     next is more of the same answer, so it stands the group's 20px under the
-     one before and draws no rule of its own. */
   [data-verso-code-divider] + [data-verso-code-divider] {
-    margin-top: calc(var(--spacing) * 5);
+    margin-top: calc(var(--spacing) * 5 - 1px);
     border-top-width: 0;
     padding-top: 0;
   }
 
-  /* A section holds its air itself, so the rows it starts and ends with give
-     their own padding back: an untitled section's first visible row starts
-     where the section does (a titled one keeps it, as the air under its
-     heading), and every section's last visible row ends where the section
-     does — a table on its last row, its own closing hairline given to the
-     rule under it. Hidden carriers are skipped, and so is a hidden branch (a
-     `when` whose control holds another value): it is not a row, so the row
-     before it can still be the last. A branch that shows and ends the
-     section ends on its own last row. */
+  /* An untitled section holds the air under its rule itself, so the row it
+     starts with gives its own cell of air back: its first visible row starts
+     where the section's air ends (a titled one keeps it, as the air under its
+     heading). Every row ends on a line of its own, so the last row keeps its
+     padding. Hidden carriers are skipped. Rows grouped in a run (a flush
+     stack, data-verso-rows) are still the section's rows: the group's own
+     first gives its air back the same way. */
   [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
-  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
-  [data-verso-section] > .verso-rhythm > [data-verso-when]:not([hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
-  [data-verso-section] > .verso-rhythm > :not(input[type="hidden"]):not(:has(~ :not(input[type="hidden"]))) > table { border-bottom-width: 0; }
-  /* Rows grouped in a run (a flush stack, data-verso-rows) are still the
-     section's rows: the group's own first and last give their air back the
-     same way. */
   [data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
-  [data-verso-section] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) > :not(input[type="hidden"], [hidden]):not(:has(~ :not(input[type="hidden"], [hidden]))) { padding-bottom: 0; }
 }

@@ -4,6 +4,8 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -313,9 +315,10 @@ func TestRenderTableGroupHeader(t *testing.T) {
 		`<span class="text-faint">·</span><span class="text-meta">3 rules</span>`,
 		// The lane spans the row, so it is both first and last child and takes
 		// the wrapper's edge inset like every other cell. It is a row of the
-		// listing's own 44px: a 28px line — the add's box — 8px above and
-		// below, so a lane with no add is the same height as one with.
-		`class="verso-table-group"`, `pt-2 pb-2 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
+		// listing's own two cells: a 28px line — the add's box — 6px above
+		// and 5px plus its hairline below, so a lane with no add is the same
+		// height as one with.
+		`class="verso-table-group"`, `pt-1.5 pb-1.25 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
 		// The lane's add is a glyph at the band's right, its words on hover.
 		`aria-label="Add rule to Guest → Router"`, lucideIcons["plus"], ">Add rule to Guest → Router</span>",
 		// The handle is the drag's, not the band's.
@@ -383,8 +386,9 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 }
 
 // TestRenderTableSeam: the seam folds extra rows behind a native <details>
-// inside the same card — a full-bleed divider, never a nested card — repeating
-// the column head so the expanded block reads as more of the same listing.
+// inside the same card — under the last row's own hairline, never a nested
+// card — repeating the column head so the expanded block reads as more of the
+// same listing.
 func TestRenderTableSeam(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()
@@ -402,7 +406,7 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",     // the shared rotate-on-open affordance
 		lucideIcons["lock"], // the stock-rules padlock
-		`colspan="7"`, "border-t border-rule", "verso-table-seam-row",
+		`colspan="7"`, `<td colspan="7" class="p-0 text-left">`, "verso-table-seam-row",
 		"justify-start", "text-left", "group-hover:underline",
 	} {
 		if !strings.Contains(got, want) {
@@ -426,27 +430,22 @@ func TestRenderTableSeam(t *testing.T) {
 
 // TestRenderTableEmpty: a listing with nothing in it drops its column heads —
 // headings describe data, and over none they are chrome — and states the absence
-// in one quiet full-width row on the wash. The plugin's own sentence wins; a
-// listing that states none gets the shell's.
+// in the empty slot every set draws. The plugin's own sentence wins; a listing
+// that states none gets the shell's.
 func TestRenderTableEmpty(t *testing.T) {
 	r := newRenderer(t)
 	bare := &Table{
 		Columns: []TableColumn{{Label: "Type", Kind: "keyword"}, {Label: "Name", Kind: "mono"}},
 	}
 	got := render(t, r, bare)
-	// The canvas's one row, where the first row would sit: the row's own height
-	// from padding, the listing's inset, meta words, left-aligned, a hairline.
-	for _, want := range []string{
-		`colspan="2" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0"`,
-		">Nothing here yet<",
-	} {
+	for _, want := range []string{"data-verso-slot", ">Nothing here yet<"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("empty table missing %q:\n%s", want, got)
 		}
 	}
-	for _, never := range []string{"bg-quiet", "text-center", "py-6"} {
+	for _, never := range []string{"text-center", "py-6"} {
 		if strings.Contains(got, never) {
-			t.Errorf("the empty row is a plain row — no %q:\n%s", never, got)
+			t.Errorf("the empty slot is left-aligned on the grid — no %q:\n%s", never, got)
 		}
 	}
 	for _, absent := range []string{"<thead", ">Type<", ">Name<"} {
@@ -670,9 +669,10 @@ func TestRenderTableFlat(t *testing.T) {
 		">Details<",            // the trailing "more" affordance
 		`@click="show"`,        // the Details link opens the drawer
 		"border-b border-rule", // hairline rows
-		// A cell is a 24px line inset 10px above and below — which is the
-		// 44px row, arrived at rather than stated.
-		"px-3.5 py-2.5 leading-6",
+		// A cell writes on 20px lines, 10px over the first and 9px under the
+		// last plus its hairline — which is the row of two cells, arrived at
+		// rather than stated.
+		"px-3.5 pt-2.5 pb-2.25 leading-5",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
@@ -694,6 +694,43 @@ func TestRenderTableFlat(t *testing.T) {
 	}
 }
 
+// TestANameReadsAtTheListingsSize: a row's name is the listing's 14px at 600
+// wherever its column stands, so a lease's device reads as a rule's name does.
+func TestANameReadsAtTheListingsSize(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Device", Kind: "name"}, {Label: "Address", Kind: "mono"}},
+		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "family-laptop"}, {Text: "192.168.77.195"}}}},
+	})
+	if !strings.Contains(got, `<span class="truncate font-semibold text-ink"><span class="verso-row-name">family-laptop</span></span>`) {
+		t.Errorf("a name in the first column is not set at the listing's size:\n%s", got)
+	}
+}
+
+// TestAnEmptyTableIsTheEmptySlot: a listing with nothing in it says so the way
+// every set does — the dashed slot where its first row would stand, the hollow
+// packet and its words — rather than as a row of a table that has none. A live
+// listing keeps its row: that is the wait, not the absence.
+func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, EmptyText: "No device has a reserved address."})
+	for _, want := range []string{
+		`<div data-verso-slot class="-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
+		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
+		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No device has a reserved address.</p>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("an empty listing is not the empty slot, missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "<table") {
+		t.Errorf("an empty listing draws no table:\n%s", got)
+	}
+	live := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, Stream: &TableStream{Source: StreamSourceFirewallLog}})
+	if strings.Contains(live, "data-verso-slot") || !strings.Contains(live, "data-verso-stream-empty") {
+		t.Errorf("a live listing keeps its waiting row:\n%s", live)
+	}
+}
+
 // TestRenderTableFlatLabels: a flat table WITH column labels renders the <thead>
 // and stays stripeless.
 func TestRenderTableFlatLabels(t *testing.T) {
@@ -711,6 +748,11 @@ func TestRenderTableFlatLabels(t *testing.T) {
 	if strings.Contains(got, "odd:bg-slate-50") {
 		t.Errorf("flat table must not stripe:\n%s", got)
 	}
+	// The column heads are one cell: the 12px caps on a 16px line, 2px over
+	// and a pixel under, the hairline the cell's last pixel.
+	if strings.Count(got, "border-b border-rule-strong pt-0.5 pb-px leading-4") != 2 {
+		t.Errorf("column heads are one cell of the grid:\n%s", got)
+	}
 }
 
 // TestRenderTableDense: every row is inset from the table's edges so a hover
@@ -724,13 +766,13 @@ func TestRenderTableDense(t *testing.T) {
 	rows := []TableRow{{Cells: []TableCell{{Text: "SSH"}}}}
 
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 py-2.5 leading-6"} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 pt-2.5 pb-2.25 leading-5"} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-2.5 pr-4 leading-6 align-top`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule pt-2.5 pr-4 pb-2.25 leading-5"`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -833,9 +875,10 @@ func TestRowButtonNamesItsRow(t *testing.T) {
 
 // TestRowsHangFromTheirFirstLine: every cell stands at the row's top, so when
 // one cell spans two lines the others — the row's acts above all — stay level
-// with its first line rather than floating to the middle of the block. A
-// stacked cell holds its first line on the same 22px centre a one-line cell's
-// 24px line has, and the row keeps its height.
+// with its first line rather than floating to the middle of the block. The
+// listing's stylesheet stands every cell at the top; a stacked cell writes its
+// first line on the same 20px line, 10px down, a one-line cell does, and the
+// row grows by a cell for its second line.
 func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
 		Columns: []TableColumn{{Kind: "addr"}, {Kind: "actions"}},
@@ -843,14 +886,19 @@ func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 			{Icon: "trash-2", Title: "Remove", Href: "/remove"},
 		}}}}},
 	})
-	if strings.Count(got, "align-top") < 2 {
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `class="verso-table `) ||
+		!strings.Contains(string(css), ":where(.verso-table) :where(td, th) {\n    vertical-align: top;\n  }") {
 		t.Errorf("every cell stands at the row's top:\n%s", got)
 	}
 	if strings.Contains(got, "align-middle") {
 		t.Errorf("no cell centres itself against the others:\n%s", got)
 	}
-	if !strings.Contains(got, "pt-3 pb-2") {
-		t.Errorf("a stacked cell lifts its first line onto the one-line centre:\n%s", got)
+	if !strings.Contains(got, "px-3.5 pt-2.5 pb-2.25") {
+		t.Errorf("a stacked cell writes its first line on the one-line cell's line:\n%s", got)
 	}
 }
 
@@ -1262,19 +1310,23 @@ func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
 	}
 }
 
-// TestEveryCellGivesUpTheLastRowsHairline: whatever its kind, a cell on the
-// last row draws no hairline of its own — the table's closing line, or the
-// section's rule when the table ends its section, is the only line under it.
-func TestEveryCellGivesUpTheLastRowsHairline(t *testing.T) {
+// TestEveryCellKeepsTheLastRowsHairline: whatever its kind, a cell on the
+// last row keeps its own hairline — the row's last pixel, which lands it on a
+// line of the notebook's grid — so the table draws no closing line of its own
+// to stand in for it.
+func TestEveryCellKeepsTheLastRowsHairline(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
 		Columns: []TableColumn{{Label: "File", Kind: "path"}, {Label: "Options", Kind: "count"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "ads.conf", Sub: "/etc/dnsmasq.d/"}, {Text: "2", Sub: "options"}}}},
 	})
 	for _, td := range strings.Split(got, "<td")[1:] {
 		td = td[:strings.Index(td, ">")]
-		if strings.Contains(td, "border-b") && !strings.Contains(td, "group-last:border-b-0") {
-			t.Errorf("a cell keeps its hairline on the last row: <td%s>", td)
+		if !strings.Contains(td, "border-b border-rule") || strings.Contains(td, "group-last:border-b-0") {
+			t.Errorf("a cell gives up its hairline on the last row: <td%s>", td)
 		}
+	}
+	if table := got[strings.Index(got, "<table"):]; strings.Contains(table[:strings.Index(table, ">")], "border-b") {
+		t.Errorf("the table draws a closing line over its last row's own:\n%s", got)
 	}
 }
 
@@ -1282,8 +1334,8 @@ func TestEveryCellGivesUpTheLastRowsHairline(t *testing.T) {
 // band alone — its name, its count, its add — and when nothing else is listed
 // the table says its empty sentence under that band, one row across every
 // column in words, never a fake row in a value column. Heads describe data, so
-// over none there are none; and the sentence gives up its own hairline to
-// whatever closes the table.
+// over none there are none; and the sentence keeps its own hairline, as every
+// row does.
 func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
 		Columns:   []TableColumn{{Label: "File", Kind: "path"}, {Label: "Options", Kind: "count"}, {Kind: "actions"}},
@@ -1292,7 +1344,7 @@ func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 	})
 	for _, want := range []string{
 		"verso-table-group", ">Files<", ">0<", ">New file<",
-		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-2.5 text-left text-sm leading-6 text-meta group-last:border-b-0">No custom option files</td></tr>`,
+		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 pt-2.5 pb-2.25 text-left text-sm leading-5 text-meta">No custom option files</td></tr>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1322,17 +1374,18 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		">this browser</span>",
 		// the 22px chip overhangs the 20px detail line by a pixel either side
 		// rather than making the line taller
-		chipBox + " -my-px",
+		"verso-chip -my-px " + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
-	// Even air around the stack: 12px above and below, so its first line keeps
-	// the 22px centre of a one-line cell and of the row's acts.
+	// The stack writes on the row's lines: 10px over its value, 9px under its
+	// detail, so its first line is level with a one-line cell's and the row is
+	// three cells.
 	for _, want := range []string{
-		`relative border-b border-rule px-3.5 py-3 align-top`,
-		`border-b border-rule px-3.5 py-3 align-top group-last:border-b-0"><div class="leading-5`,
+		`<td class="relative border-b border-rule px-3.5 pt-2.5 pb-2.25">`,
+		`<td class="border-b border-rule px-3.5 pt-2.5 pb-2.25"><div class="leading-5`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a stacked cell sits evenly in its row, want %s in:\n%s", want, got)
@@ -1344,7 +1397,8 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 }
 
 // chipBox is the one chip every citation wears, the Interfaces page's: 14px
-// regular words on a 16px line, 2px above and below, inside a 1px border.
+// regular words on a 16px line, 2px above and below, inside a 1px border; the
+// shape's -my-px, just before it, lets that 22px box ride a 20px line.
 const chipBox = "inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-4 whitespace-nowrap text-sm font-normal"
 
 // chipMonoBox is the same box for a chip whose words the machine wrote: mono,

@@ -17,7 +17,7 @@
      styled itself differently would read as a different kind of thing. With
      nothing to read yet it is there for the watcher but hidden: an empty box
      would read as a box to fill. */}}
-<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}mt-7 border-t border-rule pt-8{{end}}"{{if not (and .Live (not .Label))}} data-verso-code-divider{{end}}{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
+<div class="flex flex-col gap-2 {{if not (and .Live (not .Label))}}border-t border-rule{{end}}"{{if not (and .Live (not .Label))}} data-verso-code-divider{{end}}{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
   {{if .Lines}}
   {{/* A block in a grammar is a file, and reads as an editor shows one: the
        file it goes into heads it on a quiet strip, as an editor's tab, named
@@ -25,16 +25,19 @@
        each line numbered in a gutter apart from the text — so selecting or
        copying the text takes none of it — and every token in its own ink:
        the keyword denim, a section's type amethyst, an option's name Ink,
-       its value green, the quotes and a comment Meta. The gutter's numbers
-       stand at the text's own 26px line, so they stay level with it; the
-       text scrolls sideways rather than wrapping, because a wrapped uci line
-       is a misread one. A line the form has changed is marked in the gutter
-       by the form watcher (verso-forms.js). */}}
+       its value green, the quotes and a comment Meta. Each line is written in
+       one of the notebook's cells, a cell of air above the first and below
+       the last, and the gutter's numbers stand on the same lines; the text
+       scrolls sideways rather than wrapping, because a wrapped uci line is a
+       misread one. A line the form has changed is marked in the gutter by the
+       form watcher (verso-forms.js). */}}
   {{/* The card does not clip what stands outside it — the copy control's tip
-       hangs above the head — so its quiet pieces round their own corners. */}}
-  <div data-verso-code-editor class="min-w-0 rounded-xs border border-rule bg-white">
+       hangs above the head — so its quiet pieces round their own corners. Its
+       frame is on the grid's lines: a pixel out into the gutter on the left,
+       the head two cells tall, the gutter's edge two cells in. */}}
+  <div data-verso-code-editor class="-ml-px min-w-0 rounded-xs border border-rule bg-white">
     {{if or .Label .Copy}}
-    <div data-verso-code-head class="flex h-9 items-center gap-2 rounded-t-xs border-b border-rule bg-quiet pr-1 pl-3">
+    <div data-verso-code-head class="flex h-10 items-center gap-2 rounded-t-xs border-b border-rule bg-quiet pr-1 pl-3">
       {{if .Label}}<span class="min-w-0 truncate font-mono text-sm font-medium text-meta">{{.Label}}</span>{{end}}
       {{if .Copy}}
       <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="group/copy relative ml-auto grid {{template "verso-btn-icon"}}">
@@ -47,8 +50,8 @@
     </div>
     {{end}}
     <div class="flex">
-      <div data-verso-preview-gutter aria-hidden="true" class="shrink-0 {{if or .Label .Copy}}rounded-bl-xs{{else}}rounded-l-xs{{end}} border-r border-rule bg-quiet py-3 text-right font-mono text-sm leading-[1.625rem] tabular-nums text-faint select-none">{{range .Lines}}<span data-verso-gutter-line class="block px-2.5">{{.Number}}</span>{{end}}</div>
-      <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar min-w-0 flex-1 overflow-x-auto px-3 py-3 font-mono text-base leading-[1.625rem] font-medium whitespace-pre text-ink">{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}<span data-verso-line>{{if $l.Comment}}<span class="text-meta">{{$l.Raw}}</span>{{else if $l.Keyword}}{{$l.Indent}}<span class="text-denim-deep">{{$l.Keyword}}</span> {{if $l.Section}}<span class="text-amethyst-deep">{{$l.Key}}</span>{{else}}{{$l.Key}}{{end}}{{if $l.Quoted}} <span class="text-meta">'</span><span data-verso-value class="text-green-deep">{{$l.Value}}</span><span class="text-meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}</span>{{end}}</div>
+      <div data-verso-preview-gutter aria-hidden="true" class="shrink-0 {{if or .Label .Copy}}rounded-bl-xs{{else}}rounded-l-xs{{end}} {{if gt (len .Lines) 99}}w-15{{else}}w-10{{end}} border-r border-rule bg-quiet pt-5 pb-4.75 text-right font-mono text-sm leading-5 tabular-nums text-faint select-none">{{range .Lines}}<span data-verso-gutter-line class="block px-2.5">{{.Number}}</span>{{end}}</div>
+      <div{{if .Live}} data-verso-preview-body{{end}} class="verso-drawer-scrollbar min-w-0 flex-1 overflow-x-auto px-3 pt-5 pb-4.75 font-mono text-base leading-5 font-medium whitespace-pre text-ink">{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}<span data-verso-line>{{if $l.Comment}}<span class="text-meta">{{$l.Raw}}</span>{{else if $l.Keyword}}{{$l.Indent}}<span class="text-denim-deep">{{$l.Keyword}}</span> {{if $l.Section}}<span class="text-amethyst-deep">{{$l.Key}}</span>{{else}}{{$l.Key}}{{end}}{{if $l.Quoted}} <span class="text-meta">'</span><span data-verso-value class="text-green-deep">{{$l.Value}}</span><span class="text-meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}</span>{{end}}</div>
     </div>
   </div>
   {{else}}

@@ -36,8 +36,12 @@ type Form struct {
 	// Target is where the options this form's controls write live,
 	// "config.section", when the form writes one uci section — said once here
 	// rather than on each control (MarkStaged).
-	Target  string       `json:"target,omitempty"`
-	Submit  string       `json:"submit"`  // submit button label: the act and its object, "Save rule" (default "Save changes")
+	Target string `json:"target,omitempty"`
+	Submit string `json:"submit"` // submit button label: the act and its object, "Save rule" (default "Save changes")
+	// Tone is the act's when it is not the primary: ToneDanger for an act that
+	// destroys (erasing the router), ToneCaution for one that is disruptive but
+	// wanted. Empty is the primary.
+	Tone    string       `json:"tone,omitempty"`
 	Success string       `json:"success"` // optional message shown after a successful save
 	Error   string       `json:"error"`   // optional error not tied to a single field, shown above the fields
 	Actions []FormAction `json:"actions"` // secondary submit buttons besides Save (below)
@@ -126,6 +130,7 @@ type formView struct {
 	Icon       string
 	Note       template.HTML
 	Submit     string
+	Tone       string
 	Success    string
 	Error      string
 	CSRFToken  string
@@ -175,7 +180,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),
-		Submit: submit, Success: f.Success, Error: f.Error, CSRFToken: csrf,
+		Submit: submit, Tone: f.Tone, Success: f.Success, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})
 }

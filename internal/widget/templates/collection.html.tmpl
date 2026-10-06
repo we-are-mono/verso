@@ -11,17 +11,18 @@
   {{if .Items}}
   <ul>
     {{range .Items}}
-    {{/* the first item's name starts where the set does: the air above it is
-         the subheading's (24px), not the item's own */}}
-    <li class="first:[&>form]:pt-0">
+    {{/* Each item writes on the notebook's 20px lines with half a cell above
+         and below, so it is whole cells; its act rides the first line, 4px
+         over at either edge. */}}
+    <li>
       <form method="post"{{if $.Action}} action="{{$.Action}}"{{end}} class="flex flex-wrap items-start justify-between gap-x-6 py-2.5">
         {{template "verso-csrf" $.CSRFToken}}
         {{if .Name}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
         <div class="min-w-0 flex-1">
-          <p class="font-mono text-base leading-6 font-medium wrap-anywhere text-ink">{{.Title}}</p>
+          <p class="font-mono text-base leading-5 font-medium wrap-anywhere text-ink">{{.Title}}</p>
           {{if .Detail}}<p class="font-mono text-sm leading-5 wrap-anywhere text-meta">{{.Detail}}</p>{{end}}
         </div>
-        {{.Remove}}
+        <div class="-my-1 shrink-0">{{.Remove}}</div>
       </form>
     </li>
     {{end}}
@@ -36,8 +37,9 @@
   </div>
   {{end}}
   {{with .Add}}
-  {{/* under the last item's row, or 16px under the empty slot's edge */}}
-  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="{{if $.Items}}pt-2.5{{else}}pt-4{{end}}">
+  {{/* the 28px act centred in the two cells under the last item's row, or a
+       cell under the empty slot's edge and then centred in two */}}
+  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="{{if $.Items}}pt-1.5{{else}}pt-6.5{{end}} pb-1.5">
     <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{.Label}}</button>
     <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="space-y-3">
       {{template "verso-csrf" $.CSRFToken}}

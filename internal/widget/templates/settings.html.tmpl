@@ -12,16 +12,19 @@
 {{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums">{{end}}
 {{define "settings.row"}}
   {{if .Frame}}{{.Frame}}{{else}}
-  {{/* Read-only facts and policy pills retain their compact listing geometry. */}}
-  <div class="flex items-start gap-3 {{if .Condensed}}py-1.5{{else}}py-2.5{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
+  {{/* Read-only facts and policy pills are fields on the notebook's grid: a
+       cell of air (half a cell, condensed), the name's 20px line and the
+       description's, and the hairline the next cell's line. The pills ride
+       the name's line, a pixel over at either edge. */}}
+  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}pt-2.5 pb-2.25{{else}}pt-5 pb-4.75{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <div class="text-base font-semibold text-ink">{{.Title}}</div>
+        <div class="text-base leading-5 font-semibold text-ink">{{.Title}}</div>
       </div>
-      {{if .Desc}}<div class="mt-0.5 text-sm leading-snug text-pretty text-body">{{.Desc}}</div>{{end}}
+      {{if .Desc}}<div class="text-sm leading-5 text-pretty text-body">{{.Desc}}</div>{{end}}
     </div>
     {{range .PillsHTML}}{{.}}{{end}}
-    {{if .Value}}<span class="mt-0.5 shrink-0 font-mono text-base font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
+    {{if .Value}}<span class="shrink-0 font-mono text-base leading-5 font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
   </div>
   {{end}}
 {{end}}
@@ -33,8 +36,9 @@
      the bottom padding with -mb-2.5, and overflow-hidden clips the seam's
      hover wash to the rounded edge. */}}
 {{/* the card frame is one hairline border — a card reads as a deliberate
-     object on the white canvas without leaning on shadow. */}}
-<div>
+     object on the white canvas without leaning on shadow. Each row brings its
+     own cell of air, so a section adds none above the set (data-verso-settings). */}}
+<div data-verso-settings>
   {{/* the group label lives inside its card (same treatment as table column
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline

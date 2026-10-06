@@ -286,13 +286,8 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	if username == "" {
 		username = "root"
 	}
-	var body strings.Builder
 	lang, t := s.localize(r)
 	access := accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r), translatorOrIdentity(t))
-	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	r = withStageMemo(r)
 	for _, manifest := range s.manifestList() {
@@ -332,10 +327,10 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 				return
 			}
 		}
-		if err := s.pageSet(lang).ExecuteTemplate(&body, "access-contribution.html.tmpl", contribution); err != nil {
-			http.Error(w, "render error", http.StatusInternalServerError)
-			return
-		}
+		// A plugin's part of Access continues the page's subjects: it is one more
+		// block of the page's stack, which stands its first section's rule two
+		// cells under the part before it as it does any section's.
+		access.Children = append(access.Children, &widget.Embed{HTML: contribution})
 		if code >= http.StatusBadRequest {
 			status = code
 		}
@@ -344,5 +339,10 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		}
 	}
 
+	var body strings.Builder
+	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
 	s.renderPage(w, r, status, hdr, "form", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }

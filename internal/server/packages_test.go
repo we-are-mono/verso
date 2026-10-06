@@ -55,9 +55,9 @@ func TestPackagesInventory(t *testing.T) {
 	for _, want := range []string{
 		`href="/system/packages" aria-current="page"`,
 		`href="/system/packages/discover"`,
-		`<select data-package-cut data-verso-listing-cut`, `<option value="upgradable">Upgradable · `,
-		`<option value="all" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
-		`data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid p-3"`,
+		`<select data-verso-listing-cut`, `<option value="upgradable" data-label="Upgradable">Upgradable · `,
+		`<option value="all" data-label="All" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
+		`data-verso-actionbar class="-mt-px -ml-px flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid px-3 pt-3 pb-3.25"`,
 		"htop", "3.5.1-r1", "packages", // the row
 		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
 		"Process viewer", "GPL-2.0",       // the drawer's story
@@ -98,21 +98,23 @@ func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
 
 // TestPackageRefreshIsAHeadingAct: Refresh index acts, so it stands on the
 // heading line beside the page's other acts, its note before it, and the
-// control band keeps only what narrows. The listing carries the index's age,
-// so a listing read in place can bring the heading's note up to date.
+// control band keeps only what narrows. A listing read in place carries the
+// index's age in a response header, so it can bring the heading's note up to
+// date.
 func TestPackageRefreshIsAHeadingAct(t *testing.T) {
 	b := fakeBackend{access: true, pkgInstalledList: []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Installed: true}}}
 	body := get(t, pluginsServer(t, b, true, mgmtManifest()), "/system/packages").Body.String()
-	masthead, listing := strings.Index(body, "data-verso-masthead"), strings.Index(body, "<div data-verso-packages")
-	note, refresh, install := strings.Index(body, "<span data-package-note"), strings.Index(body, "<form data-package-refresh"), strings.Index(body, ">Install</")
+	masthead, listing := strings.Index(body, "<div data-verso-masthead"), strings.Index(body, "<div data-verso-actionbar")
+	note := strings.Index(body, `<span data-verso-heading-note class="text-sm text-meta" aria-live="polite">`)
+	refresh, install := strings.Index(body, `method="post" action="/system/packages/discover"`), strings.Index(body, ">Install</")
 	if masthead < 0 || listing < 0 || note < 0 || refresh < 0 || install < 0 {
 		t.Fatalf("page is missing its masthead, listing, note, refresh or install:\n%s", body)
 	}
 	if !(masthead < note && note < refresh && refresh < install && install < listing) {
 		t.Errorf("the heading line reads note, Refresh index, Install, before the listing: masthead=%d note=%d refresh=%d install=%d listing=%d", masthead, note, refresh, install, listing)
 	}
-	if !strings.Contains(body, "<div data-verso-packages data-package-all=\"false\" data-package-index-note=") {
-		t.Error("the listing does not carry the index's age")
+	if !strings.Contains(body[refresh:install], `name="_action" value="refresh"`) || !strings.Contains(body[refresh:install], ">Refresh index</button>") {
+		t.Error("the heading's refresh form does not post the refresh")
 	}
 	s := pluginsServer(t, b, true, mgmtManifest())
 	fragment := httptest.NewRequest(http.MethodGet, "/system/packages", nil)
@@ -120,8 +122,16 @@ func TestPackageRefreshIsAHeadingAct(t *testing.T) {
 	fragment.Header.Set("X-Verso-Interaction", "packages")
 	res := httptest.NewRecorder()
 	s.Handler().ServeHTTP(res, fragment)
-	if got := res.Body.String(); strings.Contains(got, "<main") || strings.Contains(got, "data-package-refresh") {
-		t.Error("the listing read in place carries no act of the heading's")
+	got := res.Body.String()
+	if strings.Contains(got, "<main") || strings.Contains(got, `value="refresh"`) || strings.Contains(got, "data-verso-heading-note") {
+		t.Error("the listing read in place carries no act or note of the heading's")
+	}
+	if !strings.Contains(got, "<div data-verso-actionbar") || !strings.Contains(got, "htop") {
+		t.Errorf("the listing read in place is the band and its rows:\n%s", got)
+	}
+	ageNote, err := url.PathUnescape(res.Header().Get("X-Verso-Packages-Note"))
+	if err != nil || ageNote == "" || !strings.Contains(body, `aria-live="polite">`+ageNote+`</span>`) {
+		t.Errorf("the listing read in place does not carry the heading's index age: header %q (%v)", res.Header().Get("X-Verso-Packages-Note"), err)
 	}
 }
 
@@ -275,10 +285,15 @@ func TestAllPackagesIsAPaginatedListingFragment(t *testing.T) {
 	if res.Code != 200 || strings.Contains(body, "<main") {
 		t.Fatalf("not a fragment: %d", res.Code)
 	}
-	for _, want := range []string{`data-package-all="true"`, "available-package", "offset=0", "offset=60"} {
+	// The listing is All: its option is the selected cut, and its search asks
+	// the router rather than narrowing the rows on screen.
+	for _, want := range []string{`<option value="all" data-label="All" selected>`, "available-package", "75 matches", "offset=0\">Previous</a>", "offset=60\">Next</a>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("listing missing %q", want)
 		}
+	}
+	if strings.Contains(body, "data-verso-listing-filter") || strings.Contains(body, "data-verso-listing-cut") {
+		t.Error("a page of the index is narrowed by the router, never in place")
 	}
 }
 
@@ -400,9 +415,9 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover").Body.String()
-	// Before a search the listing is its one row, saying what goes there.
+	// Before a search the listing is its empty slot, saying what goes there.
 	for _, want := range []string{
-		`text-left text-sm leading-6 text-meta group-last:border-b-0">Enter a package name, then select Search. Matching packages will appear here.</td>`,
+		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">Enter a package name, then select Search. Matching packages will appear here.</p>`,
 		`placeholder="Package name"`,
 		"autofocus",
 	} {
@@ -417,9 +432,9 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 
 func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
 	body := get(t, pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest()), "/system/packages/discover?q=missing").Body.String()
-	// No match is the listing's one row, telling a filtered nothing apart.
+	// No match is the listing's empty slot, telling a filtered nothing apart.
 	for _, want := range []string{
-		`text-left text-sm leading-6 text-meta group-last:border-b-0">No available packages match “missing”. Check the spelling or refresh the package feeds.</td>`,
+		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No available packages match “missing”. Check the spelling or refresh the package feeds.</p>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-results state missing %q", want)
@@ -587,8 +602,11 @@ func TestPackagePagesRenderWhileTheFeedsRefresh(t *testing.T) {
 		}
 		// The busy button says it is refreshing; the note beside it says
 		// nothing until the index has an age again.
-		if path == "/system/packages" && !strings.Contains(body, `<span data-package-note class="text-sm text-meta" aria-live="polite"></span>`) {
+		if path == "/system/packages" && !strings.Contains(body, `<span data-verso-heading-note class="text-sm text-meta" aria-live="polite"></span>`) {
 			t.Errorf("%s repeats the refresh beside its busy button", path)
+		}
+		if path == "/system/packages" && (!strings.Contains(body, ">Refreshing index…</button>") || !strings.Contains(body, "verso-button-waiting")) {
+			t.Errorf("%s does not say its refresh is under way on the button", path)
 		}
 	}
 	if n := b.guarded.Load(); n != 0 {

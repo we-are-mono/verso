@@ -582,6 +582,14 @@ document.addEventListener(
  }
  window.versoTableFilters = initialize;
  initialize(document);
+ // A cut's option that is another listing (data-href) goes there: it has no
+ // rows here to narrow to. A page that reads that listing in place catches the
+ // change before it gets this far.
+ document.addEventListener("change", function (event) {
+  var cut = event.target.closest("[data-verso-actionbar] select");
+  var chosen = cut && cut.options[cut.selectedIndex];
+  if (chosen && chosen.dataset.href) window.location.assign(chosen.dataset.href);
+ });
 })();
 
 // Only the identity opens a row. Keep one open in the inventory, as in the

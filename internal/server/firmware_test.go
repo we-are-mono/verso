@@ -155,8 +155,8 @@ func TestFirmwareIsDeviceVerifiedThenInstalled(t *testing.T) {
 	if applied.Code != http.StatusOK {
 		t.Fatalf("install status = %d; body=%s", applied.Code, applied.Body.String())
 	}
-	// The way back is the page's 36px primary, not a button sized by its padding.
-	for _, want := range []string{"FIRMWARE INSTALLING", "Return to OpenWrt in about 5 minutes", "inline-flex h-9"} {
+	// The way back is the page's control-height primary, not a button sized by its padding.
+	for _, want := range []string{"FIRMWARE INSTALLING", "Return to OpenWrt in about 5 minutes", "inline-flex h-control"} {
 		if !strings.Contains(applied.Body.String(), want) {
 			t.Errorf("firmware started page missing %q", want)
 		}

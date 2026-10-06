@@ -698,7 +698,6 @@ type tableCellView struct {
 	Kind      string
 	Identity  bool // the row's name: its first identity column, the one a switched-off row marks
 	Off       bool // the row's subject is switched off and this is its name: marked over, set in Body, and said to a screen reader
-	Primary   bool // the first column — the row's identity, set one step larger
 	Draggable bool // reorder cells: the table persists an order, so draw the handle
 	RowID     string
 	CSRFToken string
@@ -1106,7 +1105,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			rv.TreeRoot = depth == 0
 			rv.TreeNodeCenter = depth*24 + 8
 			rv.TreeNodeX = rv.TreeNodeCenter - 4
-			rv.TreePath = fmt.Sprintf("M%d 22H66", rv.TreeNodeCenter)
+			// The tree is drawn on the row's two cells of the notebook's grid:
+			// 40px tall, its branches on the 20px middle.
+			rv.TreePath = fmt.Sprintf("M%d 20H66", rv.TreeNodeCenter)
 			// Each level continues until its last descendant, including through
 			// an expanded row. The plugin supplies the topology as row depths.
 			for level := 0; level < depth; level++ {
@@ -1122,17 +1123,17 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 					}
 				}
 				if continues {
-					rv.TreePath += fmt.Sprintf("M%d 0V44", x)
+					rv.TreePath += fmt.Sprintf("M%d 0V40", x)
 					rv.TreeContinuation += fmt.Sprintf("M%d 0V1", x)
 				} else if level == depth-1 {
-					rv.TreePath += fmt.Sprintf("M%d 0V22", x)
+					rv.TreePath += fmt.Sprintf("M%d 0V20", x)
 				}
 				if level == depth-1 {
-					rv.TreePath += fmt.Sprintf("M%d 22h24", x)
+					rv.TreePath += fmt.Sprintf("M%d 20h24", x)
 				}
 			}
 			if rowIndex+1 < len(rows) && rows[rowIndex+1].Depth > row.Depth {
-				rv.TreePath += fmt.Sprintf("M%d 22V44", rv.TreeNodeCenter)
+				rv.TreePath += fmt.Sprintf("M%d 20V40", rv.TreeNodeCenter)
 				rv.TreeContinuation += fmt.Sprintf("M%d 0V1", rv.TreeNodeCenter)
 			}
 		}
@@ -1181,7 +1182,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Primary: i == primary, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
+			cv := tableCellView{Kind: kind, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
 			cv.Expandable = i == primary && len(row.Expanded) > 0
 			if i == primary {
 				switch {

@@ -11,25 +11,30 @@
      the page shouting rather than as one act asking to be reconsidered. Danger
      is crimson; caution is marigold, whose act is white on the deep step because
      white on full marigold fails the 4.5 floor. */}}
+{{/* On the notebook's grid the trigger stands centred in two cells, and the
+     question's frame stands on the lines (a pixel out at the top and the left
+     when it is a block of its own): 19px over the question, its words on 20px
+     lines, the acts a cell under them and centred in two cells, and a cell
+     under the acts to the frame's edge. */}}
 {{$caution := eq .Tone "caution"}}
 {{/* An icon trigger is an item's act: the glyph on the item's first line, its
      word the tip and, with the item, its name. The confirm lays itself into
      the item's row (contents), so the question drops full-width under it. */}}
-<div class="verso-confirm{{if .Icon}} contents{{end}}" x-data="confirm" @keydown.escape="escape" data-verso-confirm-tone="{{.Tone}}">
+<div class="verso-confirm{{if .Icon}} contents{{else}} flow-root{{end}}" x-data="confirm" @keydown.escape="escape" data-verso-confirm-tone="{{.Tone}}">
   {{if .Icon}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" aria-label="{{.Trigger}}{{if .Subject}} {{.Subject}}{{end}}" class="{{template "table.actbtn-class"}} -my-0.5">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Trigger}}</span></button>
-  {{else}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" class="flex h-9 w-full cursor-pointer items-center justify-center rounded-xs border px-4 text-sm font-semibold transition-colors {{template "verso-press"}} focus-visible:outline-2 focus-visible:outline-offset-2 {{if $caution}}border-marigold-line bg-marigold-soft text-marigold-deep hover:border-marigold focus-visible:outline-marigold-deep{{else}}border-crimson-line bg-crimson-soft text-crimson-deep hover:border-crimson focus-visible:outline-crimson-deep{{end}}">{{.Trigger}}</button>{{end}}
-  <div id="{{.ID}}" x-show="asking" x-cloak class="{{if .Icon}}mt-3 basis-full {{end}}rounded-xs border p-4 text-sm {{if $caution}}border-marigold-line bg-marigold-soft{{else}}border-crimson-line bg-crimson-soft{{end}}">
+  {{else}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" class="my-0.75 flex h-control w-full cursor-pointer items-center justify-center rounded-xs border px-4 text-sm font-semibold transition-colors {{template "verso-press"}} focus-visible:outline-2 focus-visible:outline-offset-2 {{if $caution}}border-marigold-line bg-marigold-soft text-marigold-deep hover:border-marigold focus-visible:outline-marigold-deep{{else}}border-crimson-line bg-crimson-soft text-crimson-deep hover:border-crimson focus-visible:outline-crimson-deep{{end}}">{{.Trigger}}</button>{{end}}
+  <div id="{{.ID}}" x-show="asking" x-cloak class="{{if .Icon}}mt-3 basis-full{{else}}-mt-px -ml-px w-[calc(100%_+_1px)]{{end}} rounded-xs border px-4 pt-4.75 pb-5 text-sm leading-5 {{if $caution}}border-marigold-line bg-marigold-soft{{else}}border-crimson-line bg-crimson-soft{{end}}">
     <div class="flex gap-2.5 {{if $caution}}text-marigold-deep{{else}}text-crimson-deep{{end}}">
-      {{/* the square hangs on the first line: a title's 24px line sits it 2px lower */}}
-      <span class="flex shrink-0{{if .Title}} pt-0.5{{end}}">{{if $caution}}{{template "verso-message-mark" "caution"}}{{else}}{{template "verso-message-mark" "danger"}}{{end}}</span>
-      {{if .Title}}<div><p class="text-base font-semibold">{{.Title}}</p><p class="mt-1 leading-[1.45]">{{.Message}}</p></div>{{else}}<p class="leading-[1.45]">{{.Message}}</p>{{end}}
+      {{/* the square hangs on the first 20px line */}}
+      <span class="flex shrink-0">{{if $caution}}{{template "verso-message-mark" "caution"}}{{else}}{{template "verso-message-mark" "danger"}}{{end}}</span>
+      {{if .Title}}<div><p class="text-base leading-5 font-semibold">{{.Title}}</p><p>{{.Message}}</p></div>{{else}}<p>{{.Message}}</p>{{end}}
     </div>
-    <div class="mt-6 ml-4 flex items-center justify-start gap-2">
+    <div class="mt-5 ml-4 flex items-center justify-start gap-2 py-0.75">
       <button type="submit" x-ref="first" class="{{template "verso-btn-box"}} shrink-0 {{if $caution}}{{template "verso-btn-caution"}} focus-visible:outline-marigold-deep{{else}}{{template "verso-btn-danger"}} focus-visible:outline-crimson-deep{{end}}">{{.Confirm}}</button>
       {{/* the cancel keeps the explanation's tone at rest and hovers by a soft
            wash, not a colour shift — darkening the deep step desaturates it
            toward maroon and reads heavy. */}}
-      <button type="button" @click="cancel" class="flex h-9 shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 {{if $caution}}text-marigold-deep hover:bg-marigold-line/50 focus-visible:outline-marigold-deep{{else}}text-crimson-deep hover:bg-crimson-line/50 focus-visible:outline-crimson-deep{{end}}">{{.Cancel}}</button>
+      <button type="button" @click="cancel" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 {{if $caution}}text-marigold-deep hover:bg-marigold-line/50 focus-visible:outline-marigold-deep{{else}}text-crimson-deep hover:bg-crimson-line/50 focus-visible:outline-crimson-deep{{end}}">{{.Cancel}}</button>
     </div>
   </div>
 </div>

@@ -16,7 +16,10 @@
      the address bar already names, since an open panel is a place. Without
      script the form is simply submitted, and the page answers with the panel
      open on the outcome. */}}
-<form{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.5rem]{{end}}">
+{{/* form.submit-tone: the act's dress — the primary, or the danger act for
+     one that destroys, or the caution act for one disruptive but wanted. */}}
+{{define "form.submit-tone"}}{{if eq . "danger"}}{{template "verso-btn-danger"}} focus-visible:outline-crimson-deep {{template "verso-btn-waiting"}}{{else if eq . "caution"}}{{template "verso-btn-caution"}} focus-visible:outline-marigold-deep {{template "verso-btn-waiting"}}{{else}}{{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{end}}{{end}}
+<form{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.25rem]{{end}}">
   {{template "verso-csrf" .CSRFToken}}
   {{if .Success}}
   <div class="flex items-start gap-2 rounded-xs border border-green-line bg-green-soft px-3 py-2 text-sm leading-5 text-green-deep">
@@ -42,7 +45,7 @@
        alongside it. */}}
   <div class="flex max-w-full items-center gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
     {{range .Fields}}{{.}}{{end}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
   <div class="flex flex-wrap items-center gap-3">
@@ -60,20 +63,22 @@
        have decided to press. A form driven inline keeps its old tight row: it
        is one control's companion, not a page's ending. */}}
   {{/* A form that commits one section of a page draws no rule: its Save
-       stands under its own fields, and the next section's rule closes it. A
-       page's own form commits the whole page, so its Save stands 32px under
-       a section rule of the page's, run out to the rail. A
-       panel's form closes on its own rule, inside the panel, except when its
-       actions finish the configuration card immediately above them, or when
-       the form is only its act (every field hidden): with nothing to close
-       off, the act stands 20px under what is above it. */}}
-  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4{{else if .Sectioned}}mt-8 gap-4{{else if .ClosesPage}}mt-6 gap-4 border-t border-rule pt-8{{else if .LoneAct}}mt-5 gap-4{{else}}mt-7 gap-4 border-t border-rule pt-5{{end}}">
+       stands a cell under its own fields, and the next section's rule closes
+       it. A page's own form commits the whole page, so its Save stands a cell
+       under a section rule of the page's, run out to the rail. A panel's form
+       closes on its own rule, inside the panel, except when its actions finish
+       the configuration card immediately above them, or when the form is only
+       its act (every field hidden): with nothing to close off, the act stands
+       a cell under what is above it. Every rule lands on the notebook's line
+       (its margin a cell less its own pixel), and the acts stand centred in
+       the two cells after the air (3px above and below a control's 34). */}}
+  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4 py-0.75{{else if .Sectioned}}mt-5 gap-4 py-0.75{{else if .ClosesPage}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{else if .LoneAct}}mt-5 gap-4 py-0.75{{else}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's
          script keeps them until something changes (verso-forms.js): drawn
          active and put to rest after, they would blink denim on every visit. */}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}}{{if .Inline}}rounded-l-none{{end}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}}{{if .Inline}}rounded-l-none{{end}} {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Cancel"}}</a>{{end}}
     {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if .Note}}<span class="{{if not .Inline}}ml-auto {{else}}self-center {{end}}text-sm text-meta [&>p]:inline">{{.Note}}</span>{{end}}

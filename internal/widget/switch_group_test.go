@@ -39,7 +39,7 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	for _, want := range []string{
 		`role="group" aria-labelledby="include_a-group-label"`,
 		`<label for="include_a" id="include_a-label" class="font-mono text-base font-medium text-ink">/etc/nftables.d/10-custom.nft</label>`,
-		`<p id="include_a-desc" data-verso-field-desc class="text-sm leading-snug text-pretty text-body">nftables · chain-pre</p>`,
+		`<p id="include_a-desc" data-verso-field-desc class="text-sm leading-5 text-pretty text-body">nftables · chain-pre</p>`,
 		`aria-describedby="include_a-desc"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -84,7 +84,7 @@ func TestASwitchIsRefusedLikeAField(t *testing.T) {
 		Error: "DNSSEC requires a dnsmasq build with DNSSEC support."}
 	got := render(t, newRenderer(t), s)
 	for _, want := range []string{
-		`<span id="dnssec-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">`,
+		`<span id="dnssec-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2.5 text-sm leading-5 text-crimson-deep">`,
 		`aria-describedby="dnssec-error"`,
 		`aria-invalid="true"`,
 	} {

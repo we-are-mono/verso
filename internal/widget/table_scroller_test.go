@@ -26,7 +26,7 @@ func TestTableScrollerContainsItsHiddenWords(t *testing.T) {
 // its trailing columns — a row's act among them — out of sight, so the scroller
 // wears the edge that fades while more waits to the right.
 func TestTableScrollerSaysThereIsMore(t *testing.T) {
-	got := render(t, newRenderer(t), &Table{Columns: []TableColumn{{Label: "Source"}}})
+	got := render(t, newRenderer(t), &Table{Columns: []TableColumn{{Label: "Source"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "wan"}}}}})
 	if !strings.Contains(got, "verso-scroll-edge") {
 		t.Errorf("the table's scroller must mark what waits past its edge:\n%s", got)
 	}
@@ -43,12 +43,23 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 		t.Errorf("a listing carries no page gap of its own:\n%s", titled)
 	}
 	stack := render(t, r, &Stack{Children: []Widget{&Text{Markdown: "a"}, &Text{Markdown: "b"}}})
-	if !strings.Contains(stack, `class="verso-stack space-y-4"`) {
+	if !strings.Contains(stack, `class="verso-stack space-y-5"`) {
 		t.Errorf("a plain stack names itself for the page rhythm:\n%s", stack)
 	}
+	// The band's only margins put its frame on the grid's lines, a pixel out
+	// into the air above and the gutter; it adds no gap of its own.
 	bar := render(t, r, &ActionBar{Tabs: []ActionTab{{Label: "All", Count: 1, Active: true}}})
-	if !strings.Contains(bar, `data-verso-actionbar class="flex`) {
-		t.Errorf("a control band carries no margin of its own; it sits on its listing:\n%s", bar)
+	const open = `data-verso-actionbar class="`
+	at := strings.Index(bar, open)
+	if at < 0 || !strings.HasPrefix(bar[at+len(open):], "-mt-px -ml-px flex") {
+		t.Errorf("a control band's frame stands on the grid's lines:\n%s", bar)
+	} else {
+		class := bar[at+len(open):]
+		for _, c := range strings.Fields(class[:strings.Index(class, `"`)]) {
+			if strings.HasPrefix(c, "mt-") || strings.HasPrefix(c, "mb-") || strings.HasPrefix(c, "my-") {
+				t.Errorf("a control band carries no margin of its own; it sits on its listing (%s):\n%s", c, bar)
+			}
+		}
 	}
 }
 

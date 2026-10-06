@@ -49,6 +49,15 @@ type ActionBar struct {
 	// Heading renders the act alone, for the heading line: set by the shell,
 	// never by a plugin.
 	Heading bool `json:"-"`
+	// Finds draws the search over a listing that holds what it has, standing
+	// with Query in it, for a listing whose search is also the way into a
+	// larger set the server searches (the package index). Paged says the rows
+	// on screen are one page of that set: neither the search nor the cut
+	// narrows them in place, the page asks the server, and a cut's option with
+	// an Href loads that listing. Shell only.
+	Finds bool   `json:"-"`
+	Query string `json:"-"`
+	Paged bool   `json:"-"`
 }
 
 // HeadingAct is a page's one act, which stands on its heading line beside the
@@ -146,7 +155,7 @@ func TakeLive(w Widget) (live, filter string) {
 // with the browser's own find, however long it is, while a live one's rows
 // arrive as it is read and the browser's find cannot hold a question across
 // them.
-func (a *ActionBar) searches() bool { return a.overLog() }
+func (a *ActionBar) searches() bool { return a.overLog() || a.Finds }
 
 // bare reports whether the bar has nothing left to show: no search it draws,
 // no cut, no select, no act and no live control.
@@ -163,6 +172,11 @@ type ActionTab struct {
 	Count  int    `json:"count"`
 	Match  string `json:"match,omitempty"`
 	Active bool   `json:"active,omitempty"`
+	// Href makes the option another listing at that address, which choosing
+	// it loads rather than narrowing this one; Uncounted, one this page has
+	// not read, so it goes unpriced. Shell only.
+	Href      string `json:"-"`
+	Uncounted bool   `json:"-"`
 }
 
 // ActionPick is the bar's one select: the dimension a listing is always sliced
@@ -213,6 +227,14 @@ func (a *ActionBar) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		v.Filter = ""
 	case v.Filter == "":
 		v.Filter = r.tr("Filter · name, address, MAC")
+	}
+	if len(v.Tabs) > 0 {
+		v.Tabs = append([]ActionTab(nil), v.Tabs...)
+		for i := range v.Tabs {
+			if v.Tabs[i].Href != "" {
+				v.Tabs[i].Href = SafeHref(v.Tabs[i].Href)
+			}
+		}
 	}
 	if v.Action != nil {
 		act := *v.Action

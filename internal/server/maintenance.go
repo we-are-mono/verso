@@ -97,77 +97,55 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		_, _ = w.Write(b.Bytes())
 		return
 	}
-	var renderErr error
-	render := func(w widget.Widget) template.HTML {
-		var b strings.Builder
-		if err := s.widgets.RenderWithToken(&b, w, s.sessionCSRF(r), lang, t); err != nil {
-			renderErr = err
-		}
-		return template.HTML(b.String())
-	}
 	truth, known := s.updateTruth()
 	checking := updateChecks.running()
-	ledger := firmwareLedgerView(tr, truth, known, board, Version)
+	v := maintenanceView{
+		Ledger:    firmwareLedgerView(tr, truth, known, board, Version),
+		Checking:  checking,
+		Autocheck: s.autocheckLane(r.Context(), sid),
+		Restore:   s.restoreModal(restore),
+		Uptime:    tr("Unavailable"),
+		Hostname:  s.nameplate(r),
+	}
 	// The custom image is the floor under every verdict: the way in when no
 	// server can build for this router. Beside an offered build it recedes to a
 	// quiet link; on every other verdict it is the act, and stands as a button.
 	manual := s.firmwareModal(tr, firmware, board)
 	manual.Trigger, manual.TriggerStyle, manual.TriggerIcon = "Upload a custom image…", "secondary", "upload"
-	var install, owut template.HTML
-	if ledger.Offer {
-		install = render(firmwareInstallAct(tr, checking, ledger.Rows[0].Next))
+	if v.Ledger.Offer {
+		v.Install = firmwareInstallAct(tr, checking, v.Ledger.Rows[0].Next)
 		manual.Trigger, manual.TriggerStyle = "or upload a custom image…", "link"
 	}
-	if ledger.NeedsOwut {
-		owut = render(&widget.Link{Style: "button", Label: "Install owut", Icon: "download", Href: packagesPath + "/discover?q=owut"})
+	v.Manual = manual
+	if v.Ledger.NeedsOwut {
+		v.Owut = &widget.Link{Style: "button", Label: "Install owut", Icon: "download", Href: packagesPath + "/discover?q=owut"}
 	}
 	// A failed check is said above Firmware; with nothing to say, nothing
 	// stands there, and the section opens the page under the masthead's line.
-	notices := template.HTML("")
 	if err := updateChecks.takeFailure(); err != nil {
-		notices = render(&widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)})
+		v.Notice = &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Update check failed: %v"), err)}
 	}
 	// Packages are a band here only while there is something newer: the list and
 	// the act that updates it are Packages', and so is what became of an update.
-	packages := template.HTML("")
 	if len(truth.Packages) > 0 || packageUpgrade.running() {
-		packages = render(packagesBand(truth))
+		v.Packages = packagesBand(truth)
 	}
-	uptime := tr("Unavailable")
 	if systemErr == nil {
-		uptime = maintenanceUptime(tr, si.Uptime)
+		v.Uptime = maintenanceUptime(tr, si.Uptime)
 	}
 	// While a check runs, Check again says so itself; the line beside it waits.
-	checked := ""
 	if !checking {
-		checked = checkedAt(tr, truth.CheckedAt, known, time.Now())
+		v.Checked = checkedAt(tr, truth.CheckedAt, known, time.Now())
 	}
-	stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
-	// A reboot drops every device on the network, so the plain one asks first.
-	// With changes staged the two named choices are the question already.
-	reboot := render(&widget.Confirm{
-		Trigger: "Reboot now", Title: "Reboot the router now?",
-		Message: "Every device on the network loses its connection for about a minute, then reconnects on its own.",
-		Confirm: "Reboot", Cancel: "Not now",
-	})
-	data := struct {
-		Ledger                                                               firmwareLedger
-		Install, Owut, Autocheck, Manual, Restore, Packages, Notices, Reboot template.HTML
-		CSRFToken, Checked, Uptime, Hostname, StageLabel                     string
-		Checking, Staged                                                     bool
-	}{ledger, install, owut, render(s.autocheckLane(r.Context(), sid)), render(manual),
-		render(s.restoreModal(restore)), packages, notices, reboot,
-		s.sessionCSRF(r), checked, uptime, s.nameplate(r), stage.Label, checking, stage.Count > 0}
-	if renderErr != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
+	if stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r)); stage.Count > 0 {
+		v.Staged = stage.Label
 	}
 	var body strings.Builder
-	if err := s.pageSet(lang).ExecuteTemplate(&body, "maintenance.html.tmpl", data); err != nil {
+	if err := s.widgets.RenderWithToken(&body, maintenanceBody(v), s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

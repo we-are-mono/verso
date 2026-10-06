@@ -4,19 +4,22 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 // Heading actions align to the section's right content edge, including when
-// wrapped below the title. They keep their field-height footprint.
+// wrapped below the title. They keep a field's height, centred on the title's
+// 20px line and reaching past it, so the title stays on the grid's line.
 func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{
 		Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline",
 		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
 		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
 	})
-	column := `<span class="ml-auto flex w-full items-center justify-end sm:w-auto [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">`
+	column := `<span class="ml-auto flex h-5 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:gap-2 [&>button]:px-4">`
 	at := strings.Index(got, column)
 	if at < 0 {
 		t.Fatalf("the heading's control must align to the content edge:\n%s", got)
@@ -60,27 +63,33 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 }
 
 // TestListRowsTakeTheirHeightFromPadding: a list's values are rows, and a row's
-// height is its line plus its padding, never a fixed floor — the 28px remove
-// and 8px either side, 44px, plus a hairline above every row. The add box stands 16px under the last
-// remove (the last row's 8px and the set's own 8px), and a set with nothing in
-// it keeps no gap, so its box follows the label directly.
+// height is its line plus its padding, never a fixed floor — the value's 20px
+// line with 10px over it and 9px under it plus the hairline above every row, a
+// row of two cells, the 28px remove riding the line. The first row's hairline
+// is the label's own line, so the set pulls up a pixel and gives it back at
+// its foot, and only when it holds something; the add box stands centred in
+// the two cells after it, so a set with nothing in it puts its box directly
+// under the label.
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-start justify-between gap-3 border-t border-rule py-2"`
+	const row = `class="flex items-start justify-between gap-3 border-t border-rule pt-2.5 pb-2.25"`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}
 	if strings.Contains(got, "min-h-8") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:pb-2">`) || strings.Contains(got, `<div class="mt-2 flex items-center gap-2">`) {
-		t.Errorf("the gap above the add box belongs to the set, and only when it holds something:\n%s", got)
+	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 py-0.75">`) {
+		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box is centred in its two cells:\n%s", got)
 	}
 }
 
 // TestRenderSectionSub: the description belongs to the heading band and keeps
-// its rendered Markdown, with the content gap below the complete band.
+// its rendered Markdown. The band's air is the stylesheet's: the band keeps no
+// margin of its own, lede or not, and whatever stands first under it stands a
+// cell under it — a field brings that cell itself, so does a form of fields;
+// anything else is given it.
 func TestRenderSectionSub(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{
@@ -90,7 +99,6 @@ func TestRenderSectionSub(t *testing.T) {
 	})
 	for _, want := range []string{
 		"data-verso-section-lede", // description stays inside the band
-		"mb-5",                    // the gap moves below the sub
 		"<strong>Input</strong>",  // sub renders Markdown
 		"text-body",               // sub is muted head-matter, not body prose
 	} {
@@ -98,10 +106,22 @@ func TestRenderSectionSub(t *testing.T) {
 			t.Errorf("section sub missing %q:\n%s", want, got)
 		}
 	}
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet := string(css)
+	if strings.Contains(sheet, "[data-verso-section-band]:has([data-verso-section-lede]) { margin-bottom") {
+		t.Error("a band with a lede keeps a margin of its own; the block under it carries the cell")
+	}
+	const first = "section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {\n    margin-top: calc(var(--spacing) * 5);"
+	if !strings.Contains(sheet, first) {
+		t.Error("the first block under a band stands a cell under it unless it brings that cell itself (a field, a form of fields)")
+	}
 
 	plain := render(t, r, &Section{Title: "Zones", Children: []Widget{&Text{Markdown: "body"}}})
-	if !strings.Contains(plain, "mb-5") {
-		t.Errorf("section without sub should keep its original title spacing:\n%s", plain)
+	if band := plain[strings.Index(plain, "data-verso-section-band"):]; strings.Contains(band[:strings.Index(band, ">")], "mb-") {
+		t.Errorf("a section without a sub stands its content straight on under the title:\n%s", plain)
 	}
 }
 
@@ -189,11 +209,15 @@ func TestRenderSectionAnchor(t *testing.T) {
 func TestRenderSectionKicker(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "On this page", Kicker: true})
-	if !strings.Contains(got, `<h2 class="text-xs font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
+	if !strings.Contains(got, `<h2 class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
 		t.Errorf("kicker is not set as one:\n%s", got)
 	}
 	if strings.Contains(got, "text-lg") {
 		t.Errorf("a kicker is not a heading:\n%s", got)
+	}
+	// The list it names stands a cell under it.
+	if !strings.Contains(got, `<div class="flex flex-wrap items-center justify-between gap-x-6 mb-5">`) {
+		t.Errorf("a kicker keeps a cell of air under it:\n%s", got)
 	}
 }
 

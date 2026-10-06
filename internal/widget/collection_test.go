@@ -45,10 +45,18 @@ func TestCollectionItemsStandOnSpaceAlone(t *testing.T) {
 			t.Errorf("a collection draws no %s:\n%s", absent, got)
 		}
 	}
-	// The first item's name starts where the set does: the air above it is
-	// the subheading's, not the item's own.
-	if !strings.Contains(got, `<li class="first:[&>form]:pt-0">`) {
-		t.Errorf("the first item keeps its own air above it:\n%s", got)
+	// Every item, the first included, writes on the notebook's 20px lines
+	// with half a cell over and under, so each is whole cells; its act rides
+	// the first line, 4px over at either edge.
+	for _, want := range []string{
+		`<li>`,
+		`class="flex flex-wrap items-start justify-between gap-x-6 py-2.5">`,
+		`<p class="font-mono text-base leading-5 font-medium wrap-anywhere text-ink">demo@laptop</p>`,
+		`<div class="-my-1 shrink-0">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("an item is not whole cells of the grid, want %s in:\n%s", want, got)
+		}
 	}
 }
 
@@ -142,10 +150,10 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 	  "add":{"label":"Add a key","name":"authorized_key","submit":"Add key"}}`
 	got := renderCollection(t, empty, "")
 	for _, want := range []string{
-		`<div data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5">`,
+		`<div data-verso-slot class="-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2.25 leading-5">`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No keys are authorized.</p>`,
-		`x-data="confirm" @keydown.escape="escape" class="pt-4"`,
+		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No keys are authorized.</p>`,
+		`x-data="confirm" @keydown.escape="escape" class="pt-6.5 pb-1.5"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -162,7 +170,7 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 // slot is drawn and the add stands under the last item.
 func TestCollectionWithItemsAddsFromTheFoot(t *testing.T) {
 	got := renderCollection(t, keyCollection(), "")
-	if strings.Contains(got, "data-verso-slot") || !strings.Contains(got, `x-data="confirm" @keydown.escape="escape" class="pt-2.5"`) {
+	if strings.Contains(got, "data-verso-slot") || !strings.Contains(got, `x-data="confirm" @keydown.escape="escape" class="pt-1.5 pb-1.5"`) {
 		t.Errorf("a set with items adds from its foot:\n%s", got)
 	}
 }

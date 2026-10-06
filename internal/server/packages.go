@@ -118,49 +118,35 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, table)
 	}
 
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+	truth, _ := s.updateTruth()
+	busy := feedRefresh.running()
+	// What the band narrows — the outcome, the rows, the index's pager — is
+	// one block under it, a cell apart within.
+	if all {
+		children = append(children, packagesPager(q, offset, total, tr))
+	}
+	listing := &widget.Stack{Children: []widget.Widget{packagesBar(all, q, installed, len(truth.Packages), count), &widget.Stack{Children: children}}}
+	var page strings.Builder
+	if err := s.widgets.RenderWithToken(&page, listing, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	truth, _ := s.updateTruth()
 	// While the index refreshes, the busy button says so and the note beside it
 	// says nothing: the index has no age until the refresh ends.
 	note := ""
-	if !feedRefresh.running() {
+	if !busy {
 		checked, checkErr := s.backend.PkgStatus(r.Context(), s.sessionSID(r))
 		note = packageIndexNote(checked, checkErr, tr)
 	}
-	var page strings.Builder
-	data := struct {
-		Body                  template.HTML
-		CSRFToken, Note       string
-		Busy                  bool
-		Upgradable, Installed int
-		All                   bool
-		Query                 string
-		Count, Total          int
-		Previous, Next        string
-	}{Body: template.HTML(body.String()), CSRFToken: s.sessionCSRF(r), Note: note,
-		Busy: feedRefresh.running(), Upgradable: len(truth.Packages), Installed: installed,
-		All: all, Query: q, Count: count, Total: total}
-	if all {
-		pageURL := func(at int) string {
-			return "/system/packages?tab=all&q=" + url.QueryEscape(q) + "&offset=" + strconv.Itoa(at)
-		}
-		if offset > 0 {
-			data.Previous = pageURL(max(0, offset-30))
-		}
-		if offset+30 < total {
-			data.Next = pageURL(offset + 30)
-		}
-	}
-	if err := s.pageSet(lang).ExecuteTemplate(&page, "packages.html.tmpl", data); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
+	// A listing read in place carries the index's age, so the heading's note
+	// keeps up with it, and says when a refresh another operator started holds
+	// the listing back.
 	if r.Header.Get("X-Verso-Interaction") == "packages" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Verso-Packages-Note", url.PathEscape(note))
+		if busy {
+			w.Header().Set("X-Verso-Packages", "refreshing")
+		}
 		_, _ = w.Write([]byte(page.String()))
 		return
 	}
@@ -169,21 +155,74 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	// anything installed has a newer version, the act that updates them all
 	// stands beside it: this is where the upgradable list is. Refresh index
 	// leads the line, the index's age before it.
-	var lead strings.Builder
-	if err := s.pageSet(lang).ExecuteTemplate(&lead, "packages.acts", data); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
+	acts := []widget.Widget{packagesRefreshAct(busy)}
 	if n := len(truth.Packages); n > 0 || packageUpgrade.running() {
-		var update strings.Builder
-		if err := s.widgets.RenderWithToken(&update, packagesUpdateAct(n), s.sessionCSRF(r), lang, t); err == nil {
-			lead.WriteString(update.String())
+		acts = append(acts, packagesUpdateAct(n))
+	}
+	var lead strings.Builder
+	for _, act := range acts {
+		if err := s.widgets.RenderWithToken(&lead, act, s.sessionCSRF(r), lang, t); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+			return
 		}
 	}
 	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
-	acts := template.HTML(`<div class="flex flex-wrap items-center gap-3">`) + template.HTML(lead.String()) + s.headingAct(r, install, lang, t) + template.HTML(`</div>`) //nolint:gosec // rendered by the shell's own templates
-	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingAct: acts}
+	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingNote: &note,
+		HeadingAct: template.HTML(lead.String()) + s.headingAct(r, install, lang, t)} //nolint:gosec // rendered by the shell's own widgets
 	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.sectionPages("System", r.URL.Path), template.HTML(page.String()))
+}
+
+// packagesBar is the listing's control band. The cut is one dropdown:
+// Installed and Upgradable narrow the inventory on screen, and All is another
+// listing — the cached index, paged and searched by the router — so its
+// option (or, from it, theirs) loads that listing instead of narrowing. The
+// search narrows the inventory in place and asks the router of the index.
+func packagesBar(all bool, q string, installed, upgradable, count int) *widget.ActionBar {
+	bar := &widget.ActionBar{Filter: "Find a package", Finds: true, Query: q, Paged: all}
+	if all {
+		bar.Tabs = []widget.ActionTab{
+			{Label: "Installed", Count: installed, Href: packagesPath},
+			{Label: "Upgradable", Count: upgradable, Match: "upgradable", Href: packagesPath + "?tab=upgradable"},
+			{Label: "All", Count: count, Match: "all", Active: true},
+		}
+		return bar
+	}
+	bar.Tabs = []widget.ActionTab{
+		{Label: "Installed", Count: installed, Active: true},
+		{Label: "Upgradable", Count: upgradable, Match: "upgradable"},
+		{Label: "All", Match: "all", Href: packagesPath + "?tab=all", Uncounted: true},
+	}
+	return bar
+}
+
+// packagesPager walks the index thirty packages at a time: one line of prose
+// saying how many matched, with the way to the pages either side.
+func packagesPager(q string, offset, total int, tr func(string) string) widget.Widget {
+	at := func(n int) string {
+		return packagesPath + "?tab=all&q=" + url.QueryEscape(q) + "&offset=" + strconv.Itoa(n)
+	}
+	line := fmt.Sprintf(tr("%d matches"), total)
+	if offset > 0 {
+		line += " · [" + tr("Previous") + "](" + at(max(0, offset-30)) + ")"
+	}
+	if offset+30 < total {
+		line += " · [" + tr("Next") + "](" + at(offset+30) + ")"
+	}
+	return &widget.Text{Markdown: line}
+}
+
+// packagesRefreshAct reads the feeds' index anew. While it runs the button
+// says so and stays pressed; the page's script keeps it in step after that
+// (verso-packages.js).
+func packagesRefreshAct(busy bool) widget.Widget {
+	label := "Refresh index"
+	if busy {
+		label = "Refreshing index…"
+	}
+	return &widget.Form{Action: packagesPath + "/discover", Style: "inline", NoSubmit: true, Fields: []widget.Widget{
+		&widget.Field{Kind: "hidden", Name: "return_to", Value: packagesPath},
+		&widget.Button{Label: label, Style: "secondary", Name: "_action", Value: "refresh", Loading: busy},
+	}}
 }
 
 // packagesTable is the inventory roster: name, version, feed — files on disk,

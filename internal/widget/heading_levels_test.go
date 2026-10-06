@@ -19,8 +19,8 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		w    Widget
 		want string
 	}{
-		"section": {&Section{Title: "Privacy"}, `<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">Privacy</h2>`},
-		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="text-xs font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`},
+		"section": {&Section{Title: "Privacy"}, `<h2 class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">Privacy</h2>`},
+		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`},
 		"band":    {&Table{Title: "Leases", Columns: []TableColumn{{Label: "Name"}}}, `<h2 class="text-lg font-semibold tracking-tight text-body">Leases</h2>`},
 		"drawer":  {&Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Rule"}}, Drawer: &RowDrawer{Title: "Edit rule", Open: true}}}}, `<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit rule</h2>`},
 		"modal":   {&Modal{Title: "Restart", Trigger: "Restart"}, `<h2 class="text-base font-semibold text-ink">Restart</h2>`},
@@ -54,8 +54,9 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 			&Section{Title: "Authorized keys", Children: []Widget{keys(n)}},
 		}})
 		for _, part := range []string{
-			// 24px to the first box under it, as a form's rows stand apart
-			`<div data-verso-ledger class="mb-6 flex items-center gap-3">`,
+			// one 20px line, and a cell to the first box under it, as a
+			// form's rows stand apart
+			`<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">`,
 			`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 			`<span data-verso-count="Authorized keys" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]"`,
 			want,
@@ -71,7 +72,7 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{
 		&Section{Title: "DHCP server", Icon: "server", Meta: "lan", Children: []Widget{&Text{Markdown: "x"}}},
 	}})
-	if !strings.Contains(got, `<div data-verso-ledger class="mb-6 flex items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {
+	if !strings.Contains(got, `<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {
 		t.Errorf("a part's glyph leads its ledger line:\n%s", got)
 	}
 	if !strings.Contains(got, `</svg></span><h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">DHCP server</h3>`) {
@@ -99,7 +100,7 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 		}},
 	}})
 	for _, want := range []string{
-		`<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">SSH</h2>`,
+		`<h2 class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">SSH</h2>`,
 		`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -142,7 +143,7 @@ func TestDrawerSectionsStartTheirOwnHierarchy(t *testing.T) {
 			r := newRenderer(t)
 			got := render(t, r, tree)
 			for _, want := range []string{
-				`<h2 class="text-lg leading-tight font-semibold tracking-[-0.025em] text-ink">Security</h2>`,
+				`<h2 class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">Security</h2>`,
 				`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Encryption</h3>`,
 				`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Page subsection</h3>`,
 			} {

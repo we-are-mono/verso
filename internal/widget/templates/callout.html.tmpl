@@ -11,11 +11,28 @@
 
      Compact is the contextual note that sits under a control and explains what
      it just did; the full form is the standing block a page leads with, where
-     the tone's hairline frames it instead of a mark. */}}
+     the tone's hairline frames it instead of a mark.
+
+     Both write on the notebook's 20px lines. The compact band keeps half a
+     cell inside at top and bottom, so it is whole cells; the full block's
+     frame stands on the grid's lines — a pixel out at the top and the left —
+     with 19px over its words and a cell under them. */}}
+{{/* callout.verbatim: what a tool reported, in its own words, under a hairline
+     of the band's tone half a cell down: mono, wrapping rather than scrolling,
+     the copy control riding its first line. */}}
+{{define "callout.verbatim"}}<div class="mt-2.5 flex items-start border-t pt-2.25 leading-5 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
+  <p class="min-w-0 font-mono text-base leading-5 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Verbatim}}</p>
+  <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
+    <span x-ref="src" class="hidden">{{.Verbatim}}</span>
+    <span x-show="idle">{{icon "copy" "size-4"}}</span>
+    <span x-show="done" x-cloak>{{icon "check" "size-4"}}</span>
+    <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy"}}</span>
+  </button>
+</div>{{end}}
 {{if .Compact}}
 {{/* It explains the control it sits under, so it keeps that control's
      measure — the form's — rather than running past it. */}}
-<div class="flex w-full max-w-form items-start gap-2 rounded-xs px-3 py-2 text-left text-sm leading-[1.45]
+<div class="flex w-full max-w-form items-start gap-2 rounded-xs px-3 py-2.5 text-left text-sm leading-5
   {{if eq .Variant "success"}}bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}bg-crimson-soft text-crimson-deep
@@ -32,11 +49,12 @@
     {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
     {{/* One line of words, and its door closes that line — the sentence, then
          where to go about it — rather than standing on a line of its own. */}}
-    {{if .Body}}<p{{if .Title}} class="mt-0.5"{{end}}>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
+    {{if .Body}}<p>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
+    {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
   </div>
 </div>
 {{else}}
-<div class="flex w-full flex-col gap-2.5 rounded-xs border px-5 py-4 text-left text-sm leading-[1.45]
+<div class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-5 pt-4.75 pb-5 text-left text-sm leading-5
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -44,6 +62,7 @@
   {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
   {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
   {{if .Body}}<p>{{.Body}}</p>{{end}}
+  {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
   {{if .RenderedLink}}<div>{{.RenderedLink}}</div>{{end}}
 </div>
 {{end}}

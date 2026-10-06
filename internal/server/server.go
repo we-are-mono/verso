@@ -549,6 +549,7 @@ type pageData struct {
 	Tone          string        // the heading is a message about now: tint by the tone vocabulary, drop the nav suffix
 	Light         bool          // the light masthead, on the page's own ground (pageHeader.Light)
 	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
+	HeadingNote   *string       // the standing fact before the acts (pageHeader.HeadingNote)
 	Width         string        // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
 	Nav           navModel
@@ -635,6 +636,11 @@ type pageHeader struct {
 	// with a live log's live control beside it (widget.TakeLive), already
 	// rendered (Server.headingAct): it stands hard right on the heading row.
 	HeadingAct template.HTML
+	// HeadingNote is a standing fact about what the acts work on, said before
+	// them in the meta ink (how old the package index is). Set, it draws even
+	// empty, since the page's script fills it as the fact changes; nil draws
+	// nothing.
+	HeadingNote *string
 	// Back is an editor's return address: where a save that staged sends the
 	// person, and where a page form's Cancel leads (gateway). The masthead draws
 	// nothing for it.
@@ -796,6 +802,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Tone:          pageTone(hdr.Tone),
 		Light:         hdr.Light,
 		HeadingAct:    hdr.HeadingAct,
+		HeadingNote:   hdr.HeadingNote,
 		Width:         width,
 		CSS:           s.currentCSS(),
 		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr, localizedPages),

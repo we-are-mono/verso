@@ -28,10 +28,13 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 	got := render(t, newRenderer(t), c)
 	for _, want := range []string{
 		`data-verso-conditions`, `data-verso-condition="dest_port"`,
-		// The block is headed as every section is: the shared band (4px from
-		// the title to the lede, 20px from the lede to what follows) and the
+		// The block is headed as every section is: two cells of air over the
+		// shared band (the form's block step and one of its own), the lede the
+		// title's next 20px line, a cell from the lede to what follows, and the
 		// shared lede, not a heading of its own spacing.
-		`<div class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">`,
+		`<fieldset data-verso-conditions class="pt-5">`,
+		`<div class="flex flex-wrap items-center justify-between gap-x-6 mb-5">`,
+		`<legend class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">`,
 		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,
 		`Combined with and.`,
@@ -45,7 +48,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// Grouped, with the heading set as a kicker over its run of entries.
 		`data-verso-condition-group-name="Endpoints"`,
 		`data-verso-condition-group-name="Rate and time"`,
-		`<span class="text-xs font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
+		`<span class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
 		// A condition the rule already carries stays in the list and stays legible,
 		// but it is no longer an offer.
 		`data-verso-condition-choose="dest_port" disabled`,
@@ -204,18 +207,19 @@ func TestConditionsGroupsKeepCatalogueOrder(t *testing.T) {
 // TestConditionsSayWhenEmptyAsASetDoes: a rule carrying no condition draws
 // the empty set the way every set does — the dashed Quiet Sand slot marked
 // absent, its words in Meta, at the form's measure — and the way in is the
-// same compact act a set adds from, 16px under the slot, with no rule of its
-// own above it. Once a condition is added the slot goes; the picker is its own.
+// same compact act a set adds from, a cell under the slot and centred in the
+// two cells after, with no rule of its own above it. Once a condition is added
+// the slot goes; the picker is its own.
 func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 	c := &Conditions{Label: "Conditions", Items: []ConditionItem{{Key: "rate", Label: "Rate limit"}}}
 	got := render(t, newRenderer(t), c)
 	for _, want := range []string{
-		// mb-0: the block's 8px step would otherwise stand the act 24px under
-		// the slot, not the 16px it stands under every set's.
-		`<div data-verso-condition-empty data-verso-slot class="flex items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-2.5 max-w-form mb-0">`,
+		// mb-0: the act stands a cell under the slot, as it does under every
+		// set's, and nothing of the block adds to that.
+		`<div data-verso-condition-empty data-verso-slot class="-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2.25 leading-5 max-w-form mb-0">`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No additional conditions.`,
-		`<div data-verso-condition-picker class="relative pt-4">`,
+		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No additional conditions.`,
+		`<div data-verso-condition-picker class="relative pt-6.5 pb-1.5">`,
 		// The collection's own add act, glyph first.
 		`group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5">`,
 	} {

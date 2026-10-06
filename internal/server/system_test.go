@@ -141,7 +141,7 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	if !strings.Contains(body, `<div class="px-4 pt-10 pb-16 sm:px-6 md:px-10">`) {
 		t.Error("the page's air is the frame's, outside the content measure")
 	}
-	if !strings.Contains(body, `<div class="max-w-`) {
+	if !strings.Contains(body, `<div data-verso-column class="max-w-`) {
 		t.Error("the content measure must sit inside that air")
 	}
 }

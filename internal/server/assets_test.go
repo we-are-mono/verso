@@ -264,13 +264,14 @@ func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
 // TestACardUnderACardDrawsNoSecondDivider: a form that writes more than one
 // file shows a card per file, one under the other. The rule above the first
 // sets the files off from the form; the next card is more of the same answer,
-// so it stands the group's 20px under the one before, with no rule of its own.
+// so it stands a cell under the one before, its frame on the line, with no
+// rule of its own.
 func TestACardUnderACardDrawsNoSecondDivider(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing) * 5);border-top-width:0;padding-top:0}"
+	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing) * 5 - 1px);border-top-width:0;padding-top:0}"
 	if !strings.Contains(string(css), want) {
 		t.Errorf("stylesheet is missing %s", want)
 	}
@@ -314,10 +315,10 @@ func TestStylesheetTypeSystem(t *testing.T) {
 }
 
 // TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
-// own inset, 2.5rem — the gap the page keeps from the window's top and left
-// edge — and a control band's listing stands 1.5rem under it, the same air the
-// band keeps under the masthead's hairline, so the band sits evenly between
-// the two. A log stays flush on its bar. A section on the page takes its standoff from that
+// own inset, 2.5rem (two cells) — the gap the page keeps from the window's top
+// and left edge — and a control band's listing stands a cell under it, the
+// same air the band keeps under the masthead's hairline, so the band sits
+// evenly between the two. A log stays flush on its bar. A section on the page takes its standoff from that
 // rhythm rather than adding its own on top, and blocks inside a section keep
 // the same 2.5rem.
 func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
@@ -327,8 +328,8 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 	}
 	for _, want := range []string{
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
-		// the listing stands 24px under its band, as the band does under the masthead
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>[data-verso-packages]>[data-verso-actionbar]+*{margin-top:calc(var(--spacing) * 6)}",
+		// the listing stands a cell under its band, as the band does under the masthead
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*{margin-top:calc(var(--spacing) * 5)}",
 		// a log (and its notice) sits flush on its bar
 		".verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
@@ -369,27 +370,26 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 }
 
 // TestARuledSectionStandsByItsRulesAir: a ruled section on the page's stack
-// stands 24px after the block before it — the title's own air, which every
-// rule keeps on both sides — not the 40px between unruled blocks.
+// puts its rule in the stack's two cells after the block before it, less the
+// rule's own pixel so the rule lands on a line of the grid — not the plain
+// 40px between unruled blocks, which would set the rule a pixel off it.
 func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
-	css, err := os.ReadFile("assets/verso.css")
+	css, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	if !strings.Contains(string(css), ".verso-page-body>.verso-stack>section:is([data-verso-section=ruled],[data-verso-section=part]){margin-top:calc(var(--spacing) * 6)}") {
-		t.Error("a ruled section on the page's stack keeps the 40px block gap")
+	if !strings.Contains(string(css), `.verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
+		t.Error("a ruled section on the page's stack does not land its rule on a line")
 	}
 }
 
-// TestASectionKeepsTheMastheadsAirAndNoMore: a section holds the masthead's
-// 20px inside its rule itself, so the rows it starts and ends with give their
-// own padding back — an untitled section's first visible row starts where the
-// section does, and every section's last visible row ends where it does.
-// Hidden carriers ahead of the first row are not a block: the first row after
-// them takes no block gap. A branch that is hidden (a `when` whose control
-// holds another value) is not a row either, so the row before it can still be
-// the last; and a branch that shows and ends the section ends on its own last
-// row.
+// TestASectionKeepsTheMastheadsAirAndNoMore: an untitled section holds the
+// cell of air under its rule itself, so the row it starts with gives its own
+// padding back — its first visible row starts where the section's air ends,
+// inside a run of rows too. Every row ends on a line of its own, so a
+// section's last row keeps its padding: no section gives its last row's air
+// back. Hidden carriers ahead of the first row are not a block: the first row
+// after them takes no block gap.
 func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -397,14 +397,16 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
-		`[data-verso-section]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden]))),` +
-			`[data-verso-section]>.verso-rhythm>[data-verso-when]:not([hidden]):not(:has(~:not(input[type=hidden],[hidden])))>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden]))){padding-bottom:0}`,
+		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
+			`[data-verso-headless]>.verso-rhythm>[data-verso-rows]:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
 		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("stylesheet is missing %s", want)
 		}
+	}
+	if strings.Contains(css, `[data-verso-section]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden])))`) {
+		t.Error("a section's last row gives its padding back, so it ends off the grid's line")
 	}
 }
 
@@ -424,7 +426,7 @@ func TestAPageFormOpensUnderTheMastheadsRule(t *testing.T) {
 // TestAPageOpeningOnAHeadingDrawsOneRule: a page whose first content is a
 // section's heading band opens under the masthead's hairline, as a drawer's
 // opens under its chrome's: the band draws no rule of its own, and its title
-// stands the band's 32px under the masthead's line. An element with nothing in
+// is the cell under the masthead's own cell of air. An element with nothing in
 // it (a notice block with no notice) is not content before the band, so no
 // page has to take care not to render one.
 func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
@@ -433,7 +435,7 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	for _, want := range []string{
-		".verso-page-body [data-verso-section-band]:not(.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){padding-top:calc(var(--spacing) * 2);border-top-width:0}",
+		".verso-page-body [data-verso-section-band]:not(.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){border-top-width:0;padding-top:0}",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
@@ -444,14 +446,22 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 // TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
 // masthead's hairline runs from the rail to the window's right edge, while the
 // title keeps to the page's column and the page's acts end at the right edge
-// Log out ends at: the page's 2.5rem gutter in, never past the top bar's 72rem.
+// Log out ends at: the page's 2.5rem gutter in, never past the top bar's 72rem,
+// rounded down to whole cells so both end on a line of the grid.
 func TestMastheadEndsUnderLogOut(t *testing.T) {
-	css, err := os.ReadFile("assets/verso.css")
+	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	if !strings.Contains(string(css), "main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));border-bottom:1px solid var(--color-rule);background-color:var(--color-quiet)}") {
-		t.Error("the masthead's hairline runs from the rail to the window's edge and its acts end where Log out does")
+	css := string(raw)
+	for _, want := range []string{
+		"main{--verso-measure:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem)}",
+		"main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));border-bottom:1px solid var(--color-rule);background-color:var(--color-quiet)}",
+		"[data-verso-session]>div{width:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem);flex:none}",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("the masthead's hairline runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)
+		}
 	}
 }
 
@@ -490,66 +500,75 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 	}
 }
 
-// TestASectionsAirIsTheNextRulesToo: whatever draws its own rule after a
-// section (the configuration card's divider, a form's Save row) stands 32px
-// under the last control, the same as a section's rule stands under the one
-// before it: the section's own air is the air before any rule that follows
-// it, and the ruled block adds none of its own on top. The forward drawer's
-// card stood 60px under "Counting and logging" before this. A section that
-// ends on its own card gives its air up so Save stands 20px under the card
-// (the rule drawer's): that Save keeps its standoff, or it lies on the card.
-func TestASectionsAirIsTheNextRulesToo(t *testing.T) {
-	css, err := os.ReadFile("assets/sections.css")
+// TestTheRuleAfterASectionBringsItsOwnAir: no section keeps closing air;
+// whatever draws a rule after one brings the air before it itself, its margin
+// a whole number of cells less the rule's own pixel so the rule lands on a
+// line: a ruled section two cells under the last row's line, a heading band's
+// section the same, the configuration card's divider one. A section that kept
+// air of its own while the rule after it zeroed its margin set every rule off
+// the grid.
+func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	endsOnCard := `:has(> .verso-rhythm > [data-verso-code-divider]:nth-last-child(1 of :not(input[type="hidden"])))`
-	want := "[data-verso-section] + [data-verso-code-divider],\n" +
-		"  [data-verso-section] + input[type=\"hidden\"] + [data-verso-code-divider],\n" +
-		"  [data-verso-section]:not(" + endsOnCard + ") + [data-verso-form-actions],\n" +
-		"  [data-verso-section]:not(" + endsOnCard + ") + input[type=\"hidden\"] + [data-verso-form-actions] { margin-top: 0; }"
-	if !strings.Contains(string(css), want) {
-		t.Errorf("sections.css is missing %s", want)
-	}
-}
-
-// TestASectionTrimsThroughARunOfRows: rows grouped in a flush stack are still
-// the section's rows, so an untitled section's first row and any section's
-// last row give their air back from inside the group too. A port forward's
-// panel opened 16px lower than a DHCP server's because its first rows stood
-// in one.
-func TestASectionTrimsThroughARunOfRows(t *testing.T) {
-	css, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
+	css := string(raw)
 	for _, want := range []string{
-		"[data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }",
-		"[data-verso-section] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:has(~ :not(input[type=\"hidden\"], [hidden]))) > :not(input[type=\"hidden\"], [hidden]):not(:has(~ :not(input[type=\"hidden\"], [hidden]))) { padding-bottom: 0; }",
+		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: calc(var(--spacing) * 5);\n  }",
+		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
+			"  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
+		"[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 5 - 1px);\n    padding-top: calc(var(--spacing) * 5 - 1px);\n  }",
 	} {
-		if !strings.Contains(string(css), want) {
+		if !strings.Contains(css, want) {
 			t.Errorf("sections.css is missing %s", want)
+		}
+	}
+	for _, gone := range []string{
+		"[data-verso-section] + [data-verso-code-divider]",
+		"padding-block: 0 calc(var(--spacing) * 8)",
+	} {
+		if strings.Contains(css, gone) {
+			t.Errorf("sections.css still trades a section's closing air for the next rule's: %s", gone)
 		}
 	}
 }
 
-// TestAnUntitledOpeningClosesOnTheSameAir: a drawer's untitled opening block
-// (a forward's state and name, a DHCP server's addresses) keeps 32px before the
-// rule that follows it, as every section does; the band, card or Save after it
-// adds none of its own, so without this the rule lay on the last field.
-func TestAnUntitledOpeningClosesOnTheSameAir(t *testing.T) {
-	css, err := os.ReadFile("assets/sections.css")
+// TestASectionTrimsThroughARunOfRows: rows grouped in a flush stack are still
+// the section's rows, so an untitled section's first row gives its air back
+// from inside the group too. A port forward's panel opened lower than a DHCP
+// server's because its first rows stood in one. The last row keeps its
+// padding, in a group or not, so it ends on a line.
+func TestASectionTrimsThroughARunOfRows(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "[data-verso-headless]:not([data-verso-section=\"ruled\"]):has(+ :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])),\n  [data-verso-headless]:not([data-verso-section=\"ruled\"]):has(+ input[type=\"hidden\"] + :is([data-verso-section]:not([data-verso-headless]), [data-verso-code-divider], [data-verso-form-actions])) { padding-bottom: calc(var(--spacing) * 8); }"
-	// A :has inside a :has is dropped by the browser, which drops the case
-	// that held it: what the rule names after a section must be plain.
-	if strings.Contains(want, ":has(+ :is(section:has(") {
-		t.Fatal("a nested :has never matches")
-	}
-	if !strings.Contains(string(css), want) {
+	css := string(raw)
+	want := "[data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }"
+	if !strings.Contains(css, want) {
 		t.Errorf("sections.css is missing %s", want)
+	}
+	if strings.Contains(css, "[data-verso-section] > .verso-rhythm > [data-verso-rows]") {
+		t.Error("a run of rows gives its last row's air back, so it ends off the grid's line")
+	}
+}
+
+// TestAnUntitledOpeningKeepsNoClosingAir: a drawer's untitled opening block
+// (a forward's state and name, a DHCP server's addresses) ends on its last
+// row's line, as every section does, and the band, card or Save after it
+// brings its own air (TestTheRuleAfterASectionBringsItsOwnAir); an opening
+// that kept closing air of its own would push that rule off the line.
+func TestAnUntitledOpeningKeepsNoClosingAir(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	if strings.Contains(css, "[data-verso-headless]:not([data-verso-section=\"ruled\"]):has(") {
+		t.Error("an untitled opening keeps closing air before the rule after it")
+	}
+	if strings.Contains(css, "padding-bottom: calc(var(--spacing) * 8)") {
+		t.Error("a section keeps closing air of its own")
 	}
 }
 
@@ -600,5 +619,58 @@ func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
 		}
+	}
+}
+
+// TestTheNotebookFadesDownThePage: the grid stands at full strength under the
+// masthead and fades out within the first screen, so it marks the page as
+// paper and never sits behind a long listing's last rows.
+func TestTheNotebookFadesDownThePage(t *testing.T) {
+	css, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	grid := regexp.MustCompile(`\.verso-notebook::after \{[^}]*--verso-grid: color-mix\(in srgb, var\(--color-rule\) 35%, transparent\);[^}]*mask-image: linear-gradient\(to bottom, #000, transparent 30rem\);`)
+	if !grid.Match(css) {
+		t.Error("the notebook's grid does not fade out down the page")
+	}
+	// A dev session shows it whole on G, remembered in the browser.
+	if !strings.Contains(string(css), `:root[data-verso-grid-full] .verso-notebook::after { mask-image: none; }`) {
+		t.Error("the grid has no whole state to switch to")
+	}
+	dev, err := os.ReadFile("assets/verso-dev.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`toggleAttribute("data-verso-grid-full"`, `event.key.toLowerCase() !== "g"`, `localStorage.setItem(key`} {
+		if !strings.Contains(string(dev), want) {
+			t.Errorf("the dev script does not switch the grid: missing %q", want)
+		}
+	}
+}
+
+// TestTimeServersAreDividedFromEachOther: General's time servers draw a
+// hairline only between two of them; the first row's goes clear and keeps its
+// pixel, so the rows stay on the notebook's lines.
+func TestTimeServersAreDividedFromEachOther(t *testing.T) {
+	css, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `[data-verso-change-name="server"] [data-verso-list-row]:first-child {
+    border-top-color: transparent;
+  }`
+	if !strings.Contains(string(css), want) {
+		t.Error("the first time server draws a hairline over itself")
+	}
+	// Each leads with the packet, in its words' ink, centred in the grid's
+	// first column, the name starting at the next.
+	if !strings.Contains(string(css), `[data-verso-list-row] {
+    padding-inline: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);`) {
+		t.Error("the packet does not stand in the middle of the first column")
+	}
+	packet := regexp.MustCompile(`\[data-verso-change-name="server"\] \[data-verso-list-row\]::before \{[^}]*width: calc\(var\(--spacing\) \* 1\.5\);\s*height: calc\(var\(--spacing\) \* 1\.5\);[^}]*border-radius: 1px;\s*background-color: var\(--color-meta\);`)
+	if !packet.Match(css) {
+		t.Error("a time server does not lead with the packet in its words' ink")
 	}
 }

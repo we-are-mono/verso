@@ -38,13 +38,13 @@
        and a hairline running on to the column's end — the start of a group,
        which a field label never is. The count is the set's own length, keyed
        by the part's name, so the page can roll it when the number changes
-       (verso-page.js). The first box in the part stands 24px under the
-       name, as a form's rows stand apart. The line is the strong hairline,
+       (verso-page.js). The ledger is one 20px line, and the first box in the
+       part stands a cell under it, as a form's rows stand apart. The line is the strong hairline,
        the one that stands between sections, so a ledger is told from the
        hairlines between the rows under it; a part with a glyph leads with
        it, in Glyph, so parts of different kinds are told apart at a
        glance. */}}
-  <div data-verso-ledger class="mb-6 flex items-center gap-3">
+  <div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">
     {{if .Icon}}<span class="shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
     <h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">{{.Title}}</h3>
     {{if .Counted}}<span data-verso-count="{{.Title}}" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]">{{.Count}}</span></span>{{end}}
@@ -55,8 +55,9 @@
     {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
   </div>
   {{else if or .Title .Meta .Control}}
-  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}mb-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1{{else}}{{template "verso-section-band-class"}}{{end}}">
-    <div class="flex flex-wrap items-center gap-3">
+  {{/* A kicker's list stands a cell under it. */}}
+  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-5{{end}}">
+    <div class="flex flex-wrap items-center gap-3 leading-5">
       {{/* A kicker names the group under it and nothing more, so it is set at the
            meta size in caps rather than as a heading — a second 18px heading
            beside a rail's list of headings would read as one of them. */}}
@@ -64,12 +65,14 @@
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}
-      {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="relative top-px inline-flex items-center gap-1.5 text-sm text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
+      {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5 text-sm leading-5 text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
     </div>
     {{if and .Meta (not .MetaInline)}}<span class="{{template "verso-section-meta-class"}}">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="{{template "verso-section-meta-label-class"}}">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Meta}}</span></span>{{end}}
     {{/* Heading actions finish at the content's right edge, including when
-         they wrap below the title. They keep a field's 36px height. */}}
-    {{if .Control}}<span class="ml-auto flex w-full items-center justify-end sm:w-auto [&>button]:h-9 [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
+         they wrap below the title. They keep a field's height, centred on
+         the title's 20px line and reaching past it, so the title stays on
+         the notebook's line whatever stands beside it. */}}
+    {{if .Control}}<span class="ml-auto flex h-5 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
     {{if and .Sub $band}}{{template "verso-section-lede" .Sub}}{{end}}
   </div>
   {{end}}

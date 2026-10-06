@@ -55,7 +55,7 @@ func assertRestartingTakeover(t *testing.T, body string, wants ...string) {
 // single press.
 func TestRebootAsksBeforeItActs(t *testing.T) {
 	s := newServer(t, fakeBackend{})
-	reboot := section(t, get(t, s, "/system/maintenance").Body.String(), `id="reboot"`, `id="factory-reset"`)
+	reboot := section(t, get(t, s, "/system/maintenance").Body.String(), `id="section-reboot"`, `id="section-factory-reset"`)
 	for _, want := range []string{`x-data="confirm"`, "Reboot now", "Reboot the router now?"} {
 		if !strings.Contains(reboot, want) {
 			t.Errorf("the reboot section is missing %q:\n%s", want, reboot)
@@ -68,25 +68,20 @@ func TestRebootAsksBeforeItActs(t *testing.T) {
 func TestFactoryResetAsksForTheHostnameOnly(t *testing.T) {
 	s := newServer(t, fakeBackend{hn: "verso-lab"})
 	body := get(t, s, "/system/maintenance").Body.String()
-	reset := body[strings.Index(body, `id="factory-reset"`):]
+	reset := body[strings.Index(body, `id="section-factory-reset"`):]
 	if !strings.Contains(reset, `name="hostname"`) {
 		t.Errorf("the factory reset must ask for the hostname:\n%s", reset)
 	}
 	if strings.Contains(reset, `name="password"`) {
 		t.Errorf("the factory reset must not ask the signed-in administrator for a password:\n%s", reset)
 	}
-	// One field, one act, on one row a small step apart — the pattern a list's
-	// add row keeps (General's time servers): each control whole, its own
-	// corners and border, never a shared seam.
-	row := section(t, reset, "data-verso-reset-row", "</form>")
-	field, button := strings.Index(row, `name="hostname"`), strings.Index(row, "Erase and start over")
-	if field < 0 || button < field || !strings.Contains(row, `class="flex max-w-full items-center gap-2"`) {
-		t.Errorf("the hostname field and the erase button should stand a step apart on one row:\n%s", row)
-	}
-	for _, joined := range []string{"rounded-r-none", "rounded-l-none", "-ml-px"} {
-		if strings.Contains(row, joined) {
-			t.Errorf("the row keeps no joined seam (%s):\n%s", joined, row)
-		}
+	// One field, its box showing the hostname to type, and the act that
+	// destroys under it in the danger tone: a form like any other, which the
+	// page's script holds shut until the box says what it shows.
+	form := section(t, reset, `action="/system/maintenance/factory-reset"`, "</form>")
+	field, button := strings.Index(form, `name="hostname"`), strings.Index(form, "Erase and start over")
+	if field < 0 || button < field || !strings.Contains(form, `placeholder="verso-lab"`) || !strings.Contains(form, "bg-crimson") {
+		t.Errorf("the hostname field should show the hostname, and the danger act stand under it:\n%s", form)
 	}
 }
 

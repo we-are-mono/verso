@@ -19,7 +19,7 @@ func TestHeadingLineIsAnActsHeight(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
 	for _, path := range []string{"/system/services", "/system/packages"} {
 		whole := get(t, s, path).Body.String()
-		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-9 flex-wrap items-center justify-between gap-5">`) {
+		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-control flex-wrap items-center justify-between gap-5">`) {
 			t.Errorf("%s: the heading line should hold an act's height", path)
 		}
 	}

@@ -115,7 +115,7 @@ func TestGridRail(t *testing.T) {
 	})
 	for _, want := range []string{
 		`<div class="@container">`,
-		"grid grid-cols-1 gap-10 @6xl:grid-cols-form",
+		"grid grid-cols-1 gap-10 @form-split:grid-cols-form",
 		"the work", "the rail",
 	} {
 		if !strings.Contains(got, want) {
@@ -138,7 +138,7 @@ func TestASideColumnStaysInView(t *testing.T) {
 			Style: style, Columns: 2,
 			Children: []Widget{&Callout{Body: "the work"}, &Callout{Body: "the side"}},
 		})
-		for _, want := range []string{"[&>div:last-child]:self-start", "@6xl:[&>div:last-child]:sticky", "@6xl:[&>div:last-child]:top-22"} {
+		for _, want := range []string{"[&>div:last-child]:self-start", "@form-split:[&>div:last-child]:sticky", "@form-split:[&>div:last-child]:top-22"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s grid: the side column is missing %q:\n%s", style, want, got)
 			}

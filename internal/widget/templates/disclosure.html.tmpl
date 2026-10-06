@@ -13,7 +13,7 @@
      when what it folds already holds something, so nothing is ever hidden that
      the object says; once open, the act steps aside for the rows (forms.css). */}}
 <details{{if .Open}} open{{end}} class="verso-reveal">
-  <summary class="verso-reveal-act inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden">{{icon "plus" "size-4"}}{{.Summary}}</summary>
+  <summary class="verso-reveal-act inline-flex h-5 cursor-pointer items-center gap-1.5 rounded-xs text-sm leading-5 font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden">{{icon "plus" "size-4"}}{{.Summary}}</summary>
   <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </details>
 {{else}}
@@ -31,7 +31,7 @@
   {{/* The rhythm is the form's, not the box's: what it folds away is part of the
        form around it, so two rows inside sit as close together as two rows
        outside and only the blocks between them take air. */}}
-  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem] [--verso-form-width:100%] border-t border-rule px-5 py-5{{else}}[--verso-rhythm:1rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
+  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem] [--verso-form-width:100%] border-t border-rule px-5 py-5{{else}}[--verso-rhythm:1.25rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
     {{range .Children}}{{.}}{{end}}
   </div>
 </details>

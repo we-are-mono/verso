@@ -21,7 +21,10 @@
      a neutral dot. Colour is reserved for state (the fill + dot tone). */}}
 {{/* The bar and its dot share the reading's band: green in the ordinary range,
      marigold past the warn trip, crimson past critical — the canvas's meter. */}}
-<div class="grid grid-cols-[9.5rem_1fr_6.5rem] items-center gap-5 border-b border-rule py-2.5 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
+{{/* A row of the notebook's grid: its 20px line with 10px over it and 9px
+     under it, its hairline the line after; the last row draws none and keeps
+     the pixel as air. */}}
+<div class="grid grid-cols-[9.5rem_1fr_6.5rem] items-center gap-5 border-b border-rule pt-2.5 pb-2.25 leading-5 last:border-0 last:pb-2.5"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
   <span class="flex items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span>{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span>
@@ -34,7 +37,7 @@
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">
     <span class="size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
-    <span class="text-base font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
+    <span class="text-base leading-5 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
   </span>
 </div>
 {{else}}
@@ -48,13 +51,15 @@
     {{if .Icon}}<span class="{{if eq .Role "sky"}}text-denim{{else if eq .Role "violet"}}text-amethyst{{else if eq .Role "emerald"}}text-green{{else if eq .Role "amber"}}text-marigold{{else}}text-faint{{end}}">{{icon .Icon "size-4"}}</span>{{end}}
     <span>{{.Label}}</span>
   </div>
-  <div class="mt-3 flex items-baseline gap-1">
-    <span class="text-4xl font-extrabold tracking-tight tabular-nums text-ink" data-verso-meter-value>{{.Value}}</span>
-    {{if or .Unit .Name}}<span class="text-base font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}
+  {{/* On the notebook's grid: the kicker's line, the figure centred in two
+       cells, the track centred in the next, the detail on the line after. */}}
+  <div class="flex h-10 items-baseline gap-1 leading-10">
+    <span class="text-4xl leading-10 font-extrabold tracking-tight tabular-nums text-ink" data-verso-meter-value>{{.Value}}</span>
+    {{if or .Unit .Name}}<span class="text-base leading-10 font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
-  <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-rule">
+  <div class="my-1.75 h-1.5 overflow-hidden rounded-full bg-rule">
     <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else if eq .Band "info"}}bg-denim{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
   </div>
-  {{if or .Detail .Name}}<div class="mt-2.5 text-xs text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
+  {{if or .Detail .Name}}<div class="text-xs leading-5 text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>
 {{end}}

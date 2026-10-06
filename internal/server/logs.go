@@ -54,7 +54,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	// What narrows the log and what acts on it — its search, its live control,
 	// the download, the settings — sit on the heading line.
-	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", struct{ Filter string }{translatorOrIdentity(t)("Find a message or source")}); err != nil {
+	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", widget.ActionBar{Filter: translatorOrIdentity(t)("Find a message or source")}); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

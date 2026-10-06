@@ -43,6 +43,26 @@ func TestSingleChoiceCutoff(t *testing.T) {
 	}
 }
 
+// TestRadiosStandACellAndAHalfApart: a cell a radio is too tight for a run
+// of choices and two too loose, so each is a cell and a half. The run stands
+// half a cell under the field's label, so the first choice straddles a line
+// and every second one sits in a cell, and it ends on a line whatever the
+// count: an odd run keeps a little more air at its end, an even one gives a
+// little back.
+func TestRadiosStandACellAndAHalfApart(t *testing.T) {
+	if RadioOptionLimit < 2 {
+		t.Skip("radios disabled by the shared policy")
+	}
+	got := render(t, newRenderer(t), &Field{Name: "policy", Label: "Policy", Kind: "select", Value: "0", Options: choiceOptions(2)})
+	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start pt-1.25">`) {
+		t.Errorf("the run stands half a cell under the label:\n%s", got)
+	}
+	want := `<label class="flex max-w-full cursor-pointer items-center gap-2 py-1.25 last-of-type:mb-1.25 [&:nth-of-type(even):last-of-type]:-mb-1.25 `
+	if strings.Count(got, want) != 2 {
+		t.Errorf("each radio is a cell and a half, the run ending on a line, want %q:\n%s", want, got)
+	}
+}
+
 func TestRadiosPreserveSingleSelectDefaults(t *testing.T) {
 	if RadioOptionLimit == 0 {
 		t.Skip("radios disabled by the shared policy")
@@ -152,11 +172,11 @@ func TestRenderFieldChecks(t *testing.T) {
 	}
 	// A set of boxes is read down, one option a row, as a set of radios is:
 	// options of any length start at the same edge rather than scattering
-	// across a grid's columns.
+	// across a grid's columns, each on a 20px line of the notebook's grid.
 	if strings.Contains(got, "grid-cols") {
 		t.Errorf("a set of boxes is one column, not a grid:\n%s", got)
 	}
-	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-8 max-w-full cursor-pointer items-center gap-2 py-1`) {
+	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-5 max-w-full cursor-pointer items-center gap-2 text-sm leading-5 text-body">`) {
 		t.Errorf("a set of boxes takes the radio set's rows:\n%s", got)
 	}
 }

@@ -48,7 +48,7 @@ func TestMaintenanceShowsFullBuildFacts(t *testing.T) {
 		t.Errorf("the ledger should not repeat the distribution name or carry the kernel's build flags:\n%s", rr.Body.String())
 	}
 	for _, want := range []string{
-		">25.12.4<", "r32933-4ccb782af7",
+		"25.12.4 r32933-4ccb782af7",
 		">6.12.101<",
 		"qualcommax/ipq807x", "Download backup", "Restore a backup",
 		"Drop an OpenWrt backup here", `x-show="idle"`, `data-verso-autosubmit`,

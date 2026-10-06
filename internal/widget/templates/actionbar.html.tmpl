@@ -13,17 +13,22 @@
 {{/* A live log has no band: on the heading line its search, its live control
      and what the log offers stand together as equals, and the group is the
      log's bar, which its search narrows the log from. */}}
+{{/* On the notebook's grid the band's frame is on the lines: a pixel out into
+     the masthead's air and the gutter, three cells tall with its controls
+     centred in them (12px over a control, 13px under). */}}
 {{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
-<div data-verso-actionbar class="flex flex-wrap items-center gap-4 mb-0 rounded-xs border border-rule-strong bg-mid p-3">
+<div data-verso-actionbar class="{{template "verso-control-band-class"}}">
   {{if .Filter}}{{template "verso-listing-search" .}}{{end}}
   {{if .Tabs}}
   {{/* The coarse cuts are one dropdown beside the search, each option priced
        with what taking it would leave ("IPv4 · 14"). A live listing prices
-       them itself as lines arrive, from each option's own label. */}}
+       them itself as lines arrive, from each option's own label. An option
+       that is another listing carries its address (data-href), and the
+       shell's listing script loads it rather than narrowing. */}}
   <div class="relative flex max-w-full min-w-44 items-center">
-    <select data-verso-listing-cut aria-label="{{t "Show"}}"
-      class="h-9 w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
-      {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{if .Active}} selected{{end}}>{{.Label}} · {{.Count}}</option>{{end}}
+    <select{{if not .Paged}} data-verso-listing-cut{{end}} aria-label="{{t "Show"}}"
+      class="h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+      {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{with .Href}} data-href="{{.}}"{{end}}{{if .Active}} selected{{end}}>{{.Label}}{{if not .Uncounted}} · {{.Count}}{{end}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
@@ -31,7 +36,7 @@
   {{if .Select}}
   <div class="relative flex max-w-full items-center">
     <select data-verso-listing-select="{{.Select.Key}}" aria-label="{{ t "Show" }}"
-      class="h-9 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+      class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
       {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
@@ -48,7 +53,7 @@
      it turns while events arrive and stands still while they are held or the
      stream is down. */}}
 {{define "actionbar.live"}}
-    <button type="button" data-verso-live title="{{t "Pause"}}" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+    <button type="button" data-verso-live title="{{t "Pause"}}" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
       {{template "verso-waiting" ""}}<span data-verso-live-label>{{.Live}}</span>
     </button>
 {{end}}
@@ -58,7 +63,7 @@
     {{/* Making one opens the same panel that edits one, in place: the listing
          stays where it is and no page is loaded to show a form. */}}
     <span x-data="modal" class="contents">
-      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
       {{template "verso-drawer-fetched" ""}}
     </span>
     {{else if .HasPanel}}
@@ -68,23 +73,23 @@
          with the panel already open; the anchor underneath is what a browser
          with no script still follows. */}}
     <span x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="contents">
-      <a href="{{.Action.Href}}" @click.prevent="show" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+      <a href="{{.Action.Href}}" @click.prevent="show" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
       {{template "verso-drawer-panel" .Panel}}
     </span>
     {{else if .Entity}}
     {{/* Making one is editing one that does not exist yet, so it opens the same
          panel rather than a page of its own. */}}
     <span x-data="modal" class="contents">
-      <button type="button" @click="show" class="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</button>
+      <button type="button" @click="show" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</button>
       {{template "verso-entity-drawer" .}}
     </span>
     {{else if .Action.Quiet}}
     {{/* An act that takes something away from the page rather than leading
          somewhere sits with the bar's other controls and wears their weight:
          the filled colour is reserved for the one thing the listing is for. */}}
-    <a href="{{.Action.Href}}" class="flex h-9 shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+    <a href="{{.Action.Href}}" class="flex h-control shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
     {{else}}
-    <a href="{{.Action.Href}}" class="flex h-9 shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+    <a href="{{.Action.Href}}" class="flex h-control shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
     {{end}}
     {{end}}
 {{end}}

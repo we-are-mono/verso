@@ -15,7 +15,9 @@
     versoButtons.submit(event, button && button.getAttribute("data-busy-label") || T("Installing…"));
   });
 
-  if (document.querySelector("[data-verso-update-busy]")) {
+  // A check or an install under way draws its act busy; while one does, the
+  // page waits for the work to end and reads the router again.
+  if (document.querySelector('form[action^="/system/maintenance/updates/"] [aria-busy="true"]')) {
     var poll = setInterval(function () {
       fetch("/system/packages/status", { credentials: "same-origin" }).then(function (res) { if (!res.ok || res.redirected) throw new Error(); return res.json(); }).then(function (status) {
         if (!status.refreshing && !status.checking) { clearInterval(poll); window.location.reload(); }
@@ -23,18 +25,29 @@
     }, 2000);
     window.addEventListener("pagehide", function () { clearInterval(poll); });
   }
-  var reset = document.querySelector("[data-verso-reset]");
+  // Factory reset waits for the hostname, typed as its box shows it.
+  var reset = document.querySelector('form[action="/system/maintenance/factory-reset"]');
   if (reset) {
     var host = reset.querySelector('[name="hostname"]'), button = reset.querySelector('[type="submit"]');
-    function gate() { button.disabled = !!host && host.value !== reset.dataset.hostname; }
+    function gate() { button.disabled = !!host && host.value !== host.placeholder; }
     if (host) host.addEventListener("input", gate); gate();
   }
-  var reboot = document.querySelector("[data-verso-reboot]");
+  // A reboot with changes staged applies or discards them first. A refusal is
+  // said in a line under the acts, made the first time there is one to say.
+  var reboot = document.querySelector('form[action="/system/maintenance/restart"]');
   if (reboot) reboot.addEventListener("submit", async function (event) {
     var submitter = event.submitter;
-    if (!submitter || !submitter.value) return;
+    if (!submitter || submitter.name !== "stage" || !submitter.value) return;
     event.preventDefault();
-    var error = reboot.querySelector("[data-verso-reboot-error]"); error.hidden = true;
+    var error = reboot.querySelector("[data-verso-reboot-error]");
+    if (!error) {
+      error = document.createElement("p");
+      error.setAttribute("data-verso-reboot-error", "");
+      error.setAttribute("role", "alert");
+      error.className = "w-full flex items-start gap-2 text-sm leading-5 text-crimson-deep";
+      reboot.appendChild(error);
+    }
+    error.hidden = true;
     var buttons = reboot.querySelectorAll("button"); buttons.forEach(function (b) { b.disabled = true; });
     var csrf = reboot.querySelector('[name="_csrf"]').value;
     async function post(url) {

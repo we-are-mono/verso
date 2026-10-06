@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"html/template"
 	"strings"
 	"time"
 
@@ -42,10 +41,10 @@ type firmwareLedger struct {
 	Lede      string
 	Complaint string // the update tool's own words, verbatim
 	Rows      []ledgerRow
-	Offer     bool          // a newer build is on offer: the Available column shows
-	Server    template.HTML // which server answered, with the name in mono
-	Changes   string        // how many packages the offered build changes
-	NeedsOwut bool          // the check cannot run until owut is installed
+	Offer     bool   // a newer build is on offer: the Available column shows
+	Server    string // which server answered, in Markdown, the name a code span (mono)
+	Changes   string // how many packages the offered build changes
+	NeedsOwut bool   // the check cannot run until owut is installed
 }
 
 // firmwareLedgerView reads the recorded check and the running board into the
@@ -83,14 +82,14 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 		l.Rows[0].Next, l.Rows[0].NextRev, l.Rows[0].Change = next, nextRev, ledgerChanged
 		l.Rows[1].Change, l.Rows[2].Change, l.Rows[3].Change = ledgerUnreported, ledgerUnreported, ledgerSame
 		if firmware.Server != "" {
-			l.Server = verbatimIn(tr("Built by %s"), firmware.Server)
+			l.Server = fmt.Sprintf(tr("Built by %s"), markdownCode(firmware.Server))
 		}
 		if firmware.Packages > 0 {
 			l.Changes = counted(tr, int64(firmware.Packages), "1 package changes", "%d packages change")
 		}
 	case openwrt.FirmwareCurrent:
 		if firmware.Server != "" {
-			l.Server = verbatimIn(tr("Checked against %s"), firmware.Server)
+			l.Server = fmt.Sprintf(tr("Checked against %s"), markdownCode(firmware.Server))
 		}
 	case openwrt.FirmwareNoOwut:
 		l.Title = tr("Firmware checks need owut")
@@ -125,6 +124,26 @@ func checkedAt(tr func(string) string, at time.Time, known bool, now time.Time) 
 		return fmt.Sprintf(tr("Checked at %s"), at.Format("15:04"))
 	}
 	return fmt.Sprintf(tr("Checked %s"), at.Format("2 Jan, 15:04"))
+}
+
+// markdownCode sets a machine string as a Markdown code span, verbatim in mono:
+// its fence is one backtick longer than any run inside it, and a value that
+// starts or ends on a backtick is padded so the fence still reads as one.
+func markdownCode(value string) string {
+	longest, run := 0, 0
+	for _, c := range value {
+		if c == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", longest+1)
+	if strings.HasPrefix(value, "`") || strings.HasSuffix(value, "`") {
+		value = " " + value + " "
+	}
+	return fence + value + fence
 }
 
 // splitBuild parts an OpenWrt build string into its version and its revision:

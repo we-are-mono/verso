@@ -142,6 +142,9 @@ func TestTheStageStandsWithTheRouter(t *testing.T) {
 		changes: map[string][][]string{"system": {{"set", "@system[0]", "hostname", "verso-lab"}}},
 	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
 	body := get(t, s, "/").Body.String()
+	// The inlined stylesheet names the session's group in its selectors; only
+	// the rendered markup says where the parts stand.
+	body = body[strings.LastIndex(body, "</style>")+len("</style>"):]
 	nameplate := strings.Index(body, `data-verso-nameplate`)
 	chip := strings.Index(body, `id="verso-staged"`)
 	session := strings.Index(body, `data-verso-session`)

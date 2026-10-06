@@ -95,6 +95,19 @@
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --default-font-family: var(--font-sans);
   --default-mono-font-family: var(--font-mono);
+  /* One height for every field and button (h-control): centred in two of
+     the notebook's cells, it keeps 3px clear of the label's line above. */
+  --spacing-control: 2.125rem;
+  /* The page measures are whole cells of the notebook's 20px grid, so a
+     column's end, and the rules that run to it, land on a line: wide 1140,
+     default 1020, narrow 880, a page form 760. */
+  --container-3xl: 47.5rem;
+  --container-4xl: 55rem;
+  --container-5xl: 63.75rem;
+  --container-6xl: 71.25rem;
+  /* Wide enough to set a page form beside its rail (@form-split): the
+     form's 760px, the 40px gap, and 200px for the rail. */
+  --container-form-split: 62.5rem;
 }
 
 /* Page forms share one measure; dialog content retains the original one. */
@@ -555,6 +568,9 @@ html {
      All three states are here rather than as utilities on the element, because a
      utility for any one of them would beat the rule that draws the other two:
      this layer loses to utilities whatever its specificity. */
+  /* A run of rail links holds its own ends: the half cell its last link keeps
+     or gives back (link.html.tmpl) must not merge with what stands after it. */
+  :has(> [data-verso-rail-link]) { display: flow-root; }
   .verso-rail-link { color: var(--color-body); }
   .verso-rail-link:hover { color: var(--color-ink); }
   .verso-rail-link[aria-current="true"] {
@@ -641,10 +657,10 @@ html {
      uppercase at .08em, in the meta ink. Denim is for what leads somewhere, and
      a kicker leads nowhere. */
   .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
-  /* The heading keeps the masthead's 36px line on its own, centred on it, so
-     it stands at one height whether an act shares its line or the acts wrap
-     to a line of their own under it. */
-  .verso-page-heading { min-height: 2.25rem; align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
+  /* The heading keeps the masthead's act-height line on its own, centred on
+     it, so it stands at one height whether an act shares its line or the
+     acts wrap to a line of their own under it. */
+  .verso-page-heading { min-height: var(--spacing-control); align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; color: var(--color-body); }
 
   /* ports widget: a device's physical rear panel, drawn to scale from data. The
@@ -811,12 +827,32 @@ html {
      and only a utilities-layer rule outranks it; before the dock's rules,
      which must still win their pull-up. */
   .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
-  .verso-page-body > .verso-stack > [data-verso-actionbar] + *,
-  .verso-page-body > [data-verso-packages] > [data-verso-actionbar] + * { margin-top: calc(var(--spacing) * 6); }
+  .verso-page-body > .verso-stack > [data-verso-actionbar] + * { margin-top: calc(var(--spacing) * 5); }
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   /* Sections, their air and their rules: sections.css. */
+
+  /* A listing on the notebook's grid: each cell writes on 20px lines with
+     10px over the first and 9px under the last (table.cellpad), so a row is
+     a cell more than its lines and its hairline lands on a line however its
+     values wrap. The borders stay separate, so each row's hairline is its
+     own last pixel, the last row's too; every cell stands at the row's top,
+     so a row's first lines stay level. :where keeps both under a cell's own
+     classes. */
+  :where(.verso-table) {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  :where(.verso-table) :where(td, th) {
+    vertical-align: top;
+  }
+  /* A value set in a size step (text-base carries its own 24px leading)
+     still writes on the cell's line; a chip, or anything that states its
+     own leading, keeps it. */
+  .verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"]) {
+    line-height: inherit;
+  }
 
   /* Takeover and section ledes share one reading role, including inside drawers.
      Relative type and unitless leading let enlarged text and spacing overrides
@@ -828,6 +864,15 @@ html {
     font-weight: 300;
     line-height: 1.5;
   }
+  /* A section's lede is a step under the title it explains, written on the
+     notebook's 20px lines, a cell between its paragraphs. */
+  [data-verso-section-lede],
+  [data-verso-section-lede] * {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+  }
+  [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1.25rem; }
+  [data-verso-section-lede] p:last-child { margin-bottom: 0; }
 
   /* Page-form sections keep the same 40px inset at both ends of their rules.
      Apply the end inset once to the work column, never to each nested row;
@@ -841,12 +886,25 @@ html {
      title keeps to the page's column and its
      acts end where Log out does, whatever measure the column below keeps:
      the page's gutter in from the window, and never past the top bar's
-     72rem. The page (main) is the size container; the margins pull the
-     masthead out past the frame's 2.5rem and the column's end to the rail
-     and the window's edge, and the padding brings its content back. */
+     72rem, rounded down to whole cells of the notebook's grid so the acts
+     end on a line (--verso-measure). The page (main) is the size container;
+     the margins pull the masthead out past the frame's 2.5rem and the
+     column's end to the rail and the window's edge, and the padding brings
+     its content back. */
+  main { --verso-measure: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem); }
+  /* Log out ends on the same line: the top bar's session group measures
+     itself the way the masthead does, against the same width beside the
+     rail. */
+  @media (width >= 48rem) {
+    [data-verso-session] { container-type: inline-size; }
+    [data-verso-session] > div {
+      flex: none;
+      width: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem);
+    }
+  }
   main [data-verso-masthead] {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
-    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));
+    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));
     border-bottom: 1px solid var(--color-rule);
     background-color: var(--color-quiet);
   }
@@ -860,38 +918,49 @@ html {
   }
 
   /* A page of the operator's notebook: the 20px grid the charts sit on, in
-     the hairline's colour and fainter, behind everything on the page. It
-     hangs from the masthead, so the masthead's hairline and the rail's
-     border are the grid's first lines however tall the masthead grows, and
-     the page's 40px gutter starts the heading just past a line, as the
-     rail's border starts the page. It fades out
-     within the first screen, so it marks the page as paper and never sits
-     behind a long listing's last rows. It is painted, never laid out, so it
-     costs the page nothing as it scrolls. */
+     the hairline's colour and fainter, behind the page from the masthead's
+     hairline, fading out within the first screen. The masthead's hairline and
+     the rail's border are the grid's first lines however tall the masthead
+     grows, and the page's 40px gutter starts the heading just past a line,
+     as the rail's border starts the page. It is painted, never laid out, so
+     it costs the page nothing as it scrolls.
+     The grid is the page's last box, anchored to the masthead: its top is
+     the masthead's bottom edge, its sides and bottom the page's. Without
+     anchors it starts where a one-line masthead ends. */
   .verso-notebook {
+    position: relative;
     isolation: isolate;
   }
   .verso-notebook [data-verso-masthead] {
-    position: relative;
+    anchor-name: --verso-masthead;
   }
-  .verso-notebook [data-verso-masthead]::after {
+  .verso-notebook::after {
     content: "";
     position: absolute;
     inset-inline: 0;
-    top: 100%;
-    height: 32rem;
+    top: anchor(--verso-masthead bottom, 4.1875rem);
+    bottom: 0;
     z-index: -1;
     pointer-events: none;
-    --verso-grid: color-mix(in srgb, var(--color-rule) 70%, transparent);
+    --verso-grid: color-mix(in srgb, var(--color-rule) 35%, transparent);
     background-image:
       linear-gradient(var(--verso-grid) 1px, transparent 1px),
       linear-gradient(90deg, var(--verso-grid) 1px, transparent 1px);
-    background-size: 20px 20px;
-    /* The box starts on the hairline's row, so the first row's line lies
-       under the hairline; the rail's border sits one pixel left of the box,
-       so the columns step back a pixel to continue it. */
-    background-position: -1px 0;
-    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 92%);
+    background-size: 1.25rem 1.25rem;
+    /* The hairline and the rail's border each sit one pixel outside the box,
+       so the grid steps back a pixel both ways to continue them. */
+    background-position: -1px -1px;
+    /* Full strength under the masthead, gone 24 cells down: the grid marks
+       the page as paper and never sits behind a long listing's last rows. */
+    mask-image: linear-gradient(to bottom, #000, transparent 30rem);
+  }
+  /* The whole grid, for laying a page out: a dev session switches it on with
+     G (verso-dev.js). */
+  :root[data-verso-grid-full] .verso-notebook::after { mask-image: none; }
+  /* The column is whole cells wide however narrow the window: the measures
+     are whole cells already, and a column the window squeezes rounds down. */
+  .verso-notebook [data-verso-column] {
+    width: round(down, 100%, 1.25rem);
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

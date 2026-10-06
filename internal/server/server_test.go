@@ -936,7 +936,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
 		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
@@ -2575,26 +2575,26 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 	}
 }
 
-// TestTheHeadingKeepsItsLineWhenItsActsWrapUnder: the h1 stands on the 36px
-// line itself, centred on it, so a page whose acts take a line of their own
-// under the heading (Diagnostics) sets its title exactly where a page with an
-// act beside it, or none, does.
+// TestTheHeadingKeepsItsLineWhenItsActsWrapUnder: the h1 stands on the
+// act-height line itself, centred on it, so a page whose acts take a line of
+// their own under the heading (Diagnostics) sets its title exactly where a
+// page with an act beside it, or none, does.
 func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
 	css, err := os.ReadFile("assets/input.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), ".verso-page-heading { min-height: 2.25rem; align-content: center;") {
-		t.Error("the page heading does not keep its 36px line on its own")
+	if !strings.Contains(string(css), ".verso-page-heading { min-height: var(--spacing-control); align-content: center;") {
+		t.Error("the page heading does not keep its act-height line on its own")
 	}
 }
 
 // TestEveryMastheadStandsOnAHairline: every page's title stands in a sand bar,
 // the colophon's ground, alone on its line — no lede under it — with 16px
 // above and below the line, so an act on it sits in the bar's middle; the bar
-// ends on a hairline, with 24px before what follows. A page that opens on a
-// control band runs the bar on into the band: the band's own top edge is the
-// seam, at the same 16px.
+// ends on a hairline, the grid's first line, with a cell (20px) before what
+// follows. A page that opens on a control band keeps the hairline over it:
+// the band is a box in the page, not the bar's continuation.
 func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
@@ -2606,8 +2606,8 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	if !strings.Contains(body, `<div class="px-10 pb-10">`) {
 		t.Errorf("the bar meets the top bar, with no air of the frame's above it:\n%s", body)
 	}
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-6 py-4">`) {
-		t.Errorf("the title's line stands 16px inside the bar at both edges, and the hairline 24px over the page:\n%s", body)
+	if !strings.Contains(body, `<div data-verso-masthead class="mb-5 py-4">`) {
+		t.Errorf("the title's line stands 16px inside the bar at both edges, and the hairline a cell over the page:\n%s", body)
 	}
 	if strings.Contains(body, `class="verso-lede`) {
 		t.Error("a page's title carries no lede")
@@ -2620,7 +2620,7 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - min(100cqw - var(--spacing) * 20, var(--container-6xl)));\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-quiet);",
+		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-quiet);",
 		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {
@@ -2646,7 +2646,7 @@ func TestALiveLogsMastheadIsLight(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-6 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-5 py-4">`) {
 		t.Errorf("a live log's masthead is not the light one:\n%s", body)
 	}
 	plain := get(t, newServerWith(t, fakeBackend{}, &fakeTransport{env: &plugin.Envelope{
