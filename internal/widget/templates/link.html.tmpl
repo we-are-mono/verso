@@ -17,6 +17,7 @@
   <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 leading-5">
     <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>
+    {{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}
     {{if .Desc}}<p class="basis-full text-sm leading-5 text-body">{{.Desc}}</p>{{end}}
   </div>
   {{/* A fact something else on the router owns is said with no act. */}}

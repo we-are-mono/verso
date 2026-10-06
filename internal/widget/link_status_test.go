@@ -80,4 +80,10 @@ func TestAStatusAnotherProgramOwnsOffersNoAct(t *testing.T) {
 	if !strings.Contains(got, ">Handled by AdGuard Home</span>") || strings.Contains(got, "<a ") {
 		t.Errorf("a status with no act draws no button:\n%s", got)
 	}
+	// The machine's name for what the fact is about rides after it as a key
+	// chip, as a setting's option does.
+	front := render(t, newRenderer(t), &Link{Style: "status", Label: "AdGuard Home answers your devices", Code: "AdGuardHome"})
+	if !strings.Contains(front, `answers your devices</span><span class="verso-chip`) || !strings.Contains(front, ">AdGuardHome</span>") {
+		t.Errorf("a status's code rides after its label as a chip:\n%s", front)
+	}
 }

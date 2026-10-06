@@ -54,6 +54,13 @@ const FILTERS: [(&str, &str, &str, &str); 1] = [(
     "Your upstream is AdGuard Home on this router. It decides where queries go and whether they are encrypted.",
     "AdGuard Home on this router filters what your devices look up.",
 )];
+/// FRONT_DOOR is what the page says of a program other than dnsmasq holding
+/// port 53, the one devices ask: by the process name the kernel knows it by.
+/// ponytail: AdGuard Home by name, any other generically; name more as they
+/// turn up.
+const FRONT_DOOR: [(&str, &str); 1] = [("AdGuardHome", "AdGuard Home answers your devices")];
+const FRONT_DOOR_OTHER: &str = "Another program answers your devices";
+const FRONT_DOOR_DESC: &str = "It holds port 53, so your devices ask it first. dnsmasq answers behind it; the settings below are dnsmasq's and apply only to the queries that reach it.";
 type Errors = BTreeMap<String, String>;
 struct Settings {
     daemon: Options,
@@ -67,6 +74,8 @@ struct Settings {
     dnssec: bool,
     /// The filtering resolver an upstream on this router turned out to be.
     filter: Option<&'static (&'static str, &'static str, &'static str, &'static str)>,
+    /// The program holding port 53 when it is not dnsmasq.
+    front: Option<String>,
     values: BTreeMap<String, String>,
     lists: BTreeMap<String, Vec<String>>,
 }
@@ -121,6 +130,7 @@ impl Settings {
             let port = local_port(server)?;
             FILTERS.iter().find(|f| holder(port) == Some(f.0))
         });
+        let front = holder("53").filter(|p| *p != "dnsmasq").map(str::to_string);
         let proxy_server = proxy_address(&proxy);
         let encrypted = doh
             && (daemon.list("server").contains(&proxy_server)
@@ -204,6 +214,7 @@ impl Settings {
             blocking,
             dnssec,
             filter,
+            front,
             values,
             lists,
         }
@@ -312,10 +323,22 @@ pub fn page(r: &Request) -> Envelope {
     render(r, &Settings::read(r), &Errors::new())
 }
 fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
+    // What devices ask, when it is not dnsmasq, opens the page.
+    let front = s.front.as_ref().map(|process| {
+        let label = FRONT_DOOR
+            .iter()
+            .find(|f| f.0 == process)
+            .map_or(FRONT_DOOR_OTHER, |f| f.1);
+        let mut fact = handled(label, FRONT_DOOR_DESC);
+        if let Widget::Link { code, .. } = &mut fact {
+            *code = process.clone();
+        }
+        fact
+    });
     let mut sections = vec![part(
         "",
         "upstream",
-        vec![
+        front.into_iter().chain([
             s.rows(
                 e,
                 "upstream",
@@ -325,7 +348,8 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                 "dnsserver",
             ),
             s.check("peerdns", "Use the servers the ISP hands out", "peerdns"),
-        ],
+        ])
+        .collect(),
     )];
     sections.push(part(
         "Local names",
@@ -890,6 +914,28 @@ mod tests {
         r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":true,"adblock":false,
             "listeners":{"5053":"https-dns-proxy"}}}));
         assert_eq!(Settings::read(&r).v("encrypted"), "1");
+    }
+
+    // Whatever holds port 53 is what devices ask. When that is not dnsmasq,
+    // the page opens on it, naming the program as the kernel knows it, so
+    // dnsmasq's settings below never read as the whole story.
+    #[test]
+    fn another_program_on_port_53_is_the_front_door() {
+        let front = |listeners: Value| {
+            let mut r = request();
+            r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false,"listeners":listeners}}));
+            statuses(&serde_json::to_value(page(&r)).expect("serialize"))
+                .into_iter()
+                .find(|w| w["label"].as_str().is_some_and(|l| l.ends_with("answers your devices")))
+        };
+        let adguard = front(json!({"53":"AdGuardHome","5053":"https-dns-proxy"})).expect("a front door");
+        assert_eq!(adguard["label"], "AdGuard Home answers your devices");
+        assert_eq!(adguard["code"], "AdGuardHome");
+        assert!(adguard.get("act").is_none(), "{adguard}");
+        let other = front(json!({"53":"coredns"})).expect("a front door");
+        assert_eq!((other["label"].as_str(), other["code"].as_str()), (Some("Another program answers your devices"), Some("coredns")));
+        assert!(front(json!({"53":"dnsmasq"})).is_none(), "dnsmasq on 53 is the usual case");
+        assert!(front(json!({})).is_none());
     }
 
     fn encoded(s: &str) -> String {
