@@ -968,15 +968,16 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if !strings.Contains(got, `data-verso-code-head class="flex h-10 items-center gap-2 rounded-t-xs`) {
 		t.Errorf("the head rounds its own corners: %s", got)
 	}
-	// The card stands a cell under the rule that sets it off, the rule a cell
-	// under what it follows — on a page and in a drawer alike, so the air is
-	// the stylesheet's, not the block's.
+	// The card stands two cells under the rule that sets it off, the rule two
+	// cells under what it follows, as every section's rule and title — on a
+	// page and in a drawer alike, so the air is the stylesheet's, not the
+	// block's.
 	sections, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(got, `class="flex flex-col gap-2 border-t border-rule" data-verso-code-divider`) ||
-		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 5 - 1px);\n    padding-top: calc(var(--spacing) * 5 - 1px);\n  }") {
+		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }") {
 		t.Errorf("the card stands a cell under its rule: %s", got)
 	}
 	// The path alone names the file: no glyph before it.

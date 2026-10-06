@@ -158,15 +158,16 @@
     padding-top: 0;
   }
 
-  /* The configuration card's divider is a rule a cell under the fields, and
-     the card a cell under it, its own frame on the lines. A form that writes
-     more than one file shows a card per file, one under the other. The rule
-     above the first sets the files off from the form; the next is more of
-     the same answer, so it stands a cell under the one before and draws no
-     rule of its own. */
+  /* The configuration card's divider is a section's rule: two cells under
+     the content before it, and the card two cells under it, as a section's
+     title stands under its rule, its own frame on the lines. A form that
+     writes more than one file shows a card per file, one under the other.
+     The rule above the first sets the files off from the form; the next is
+     more of the same answer, so it stands a cell under the one before and
+     draws no rule of its own. */
   [data-verso-code-divider] {
-    margin-top: calc(var(--spacing) * 5 - 1px);
-    padding-top: calc(var(--spacing) * 5 - 1px);
+    margin-top: calc(var(--spacing) * 10 - 1px);
+    padding-top: calc(var(--spacing) * 10 - 1px);
   }
   [data-verso-code-divider] + [data-verso-code-divider] {
     margin-top: calc(var(--spacing) * 5 - 1px);

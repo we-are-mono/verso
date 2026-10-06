@@ -164,8 +164,11 @@
      is what holds every chip to one height whatever size its words are. */}}
 {{/* A chip is 21px and stands a pixel over the 20px line it rides, so its top
      and bottom borders are the notebook's two lines around that line, and the
-     line keeps its 20px. */}}
-{{define "verso-chip-shape"}}verso-chip -mt-px inline-flex items-center gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap{{end}}
+     line keeps its 20px: in running text it hangs from the line's top rather
+     than its baseline, which would push the line taller. A 16px glyph in it
+     reaches a pixel into the padding either side, so it never makes the chip
+     taller than the line box does. */}}
+{{define "verso-chip-shape"}}verso-chip -mt-px inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap [&_svg]:-my-px{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures
