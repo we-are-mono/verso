@@ -38,7 +38,7 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	}
 	for _, want := range []string{
 		`role="group" aria-labelledby="include_a-group-label"`,
-		`<label for="include_a" id="include_a-label" class="font-mono text-base font-medium text-ink">/etc/nftables.d/10-custom.nft</label>`,
+		`<label for="include_a" id="include_a-label" class="font-mono text-base leading-5 font-medium text-ink">/etc/nftables.d/10-custom.nft</label>`,
 		`<p id="include_a-desc" data-verso-field-desc class="text-sm leading-5 text-pretty text-body">nftables · chain-pre</p>`,
 		`aria-describedby="include_a-desc"`,
 	} {

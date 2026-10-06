@@ -168,7 +168,9 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	if !strings.Contains(sectioned, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5 gap-4 py-0.75">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75">`) {
+	// The page's rule is a section's rule: two cells under the content before
+	// it, as every section's stands.
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-9.75 gap-4 border-t border-rule pt-5.75 pb-0.75">`) {
 		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
 	}
 	framed := form()

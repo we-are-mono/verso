@@ -65,14 +65,15 @@
   {{/* A form that commits one section of a page draws no rule: its Save
        stands a cell under its own fields, and the next section's rule closes
        it. A page's own form commits the whole page, so its Save stands a cell
-       under a section rule of the page's, run out to the rail. A panel's form
+       under a section rule of the page's, run out to the rail, the rule two
+       cells under the content as every section's is. A panel's form
        closes on its own rule, inside the panel, except when its actions finish
        the configuration card immediately above them, or when the form is only
        its act (every field hidden): with nothing to close off, the act stands
        a cell under what is above it. Every rule lands on the notebook's line
        (its margin a cell less its own pixel), and the acts stand centred in
        the two cells after the air (3px above and below a control's 34). */}}
-  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4 py-0.75{{else if .Sectioned}}mt-5 gap-4 py-0.75{{else if .ClosesPage}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{else if .LoneAct}}mt-5 gap-4 py-0.75{{else}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{end}}">
+  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4 py-0.75{{else if .Sectioned}}mt-5 gap-4 py-0.75{{else if .ClosesPage}}mt-9.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{else if .LoneAct}}mt-5 gap-4 py-0.75{{else}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's

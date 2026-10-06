@@ -517,6 +517,9 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: calc(var(--spacing) * 5);\n  }",
 		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
 			"  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
+		// a listing that ends its section gives its last hairline to the rule
+		// that closes it, clear but keeping its pixel
+		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",
 		// the configuration card's rule is a section's rule: two cells under
 		// what it follows, the card two cells under it
 		"[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }",

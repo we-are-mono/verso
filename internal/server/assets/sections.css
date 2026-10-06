@@ -158,6 +158,13 @@
     padding-top: 0;
   }
 
+  /* A listing that ends its section gives its last hairline to the rule that
+     closes it (the next section's, the page Save's), so the two never stand
+     as a pair. Clear, not gone: the row keeps its pixel and the grid. */
+  section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {
+    border-bottom-color: transparent;
+  }
+
   /* The configuration card's divider is a section's rule: two cells under
      the content before it, and the card two cells under it, as a section's
      title stands under its rule, its own frame on the lines. A form that
