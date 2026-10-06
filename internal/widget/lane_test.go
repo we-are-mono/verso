@@ -21,20 +21,21 @@ func lanes() *Table {
 }
 
 // TestLaneIsARowNotABand: a group's head is a row of the listing's own height
-// — no fill, a strong hairline under it — so the only filled surface over a
-// listing is the band it is narrowed from.
+// on the masthead's Quiet Sand between strong hairlines; the air above a
+// later lane stays the page's ground.
 func TestLaneIsARowNotABand(t *testing.T) {
 	got := render(t, newRenderer(t), lanes())
 	if strings.Contains(got, `verso-table-group h-13 bg-quiet`) {
-		t.Errorf("a lane is a row, not a filled band:\n%s", got)
+		t.Errorf("a lane is a row, not a band of its own height:\n%s", got)
 	}
 	for _, want := range []string{
 		`class="verso-table-group"`,
 		// the first lane: a row of two cells, its add centred on the middle
 		// line and ending where the rows' acts do (7px in from the table's edge)
-		`border-b border-rule-strong pt-1.25 pb-1.5 pr-1.75! text-left leading-7`,
-		// a later one: two cells of air above
-		`border-b border-rule-strong pt-11.25 pb-1.5 pr-1.75! text-left leading-7`,
+		`border-b border-rule-strong bg-quiet pt-1.25 pb-1.5 pr-1.75! text-left leading-7`,
+		// a later one: two cells of air above, unfilled, then the strong
+		// hairline the first lane takes from the column heads
+		`border-b border-rule-strong bg-[linear-gradient(transparent_calc(2.5rem_-_1px),var(--color-rule-strong)_calc(2.5rem_-_1px)_2.5rem,var(--color-quiet)_2.5rem)] pt-11.25 pb-1.5 pr-1.75! text-left leading-7`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("lane rows missing %q:\n%s", want, got)

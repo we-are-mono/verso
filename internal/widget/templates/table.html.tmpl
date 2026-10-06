@@ -125,16 +125,18 @@
            head is where the eye already is when it decides this is the lane it
            wants. Its words say the act; its tooltip says which lane. */}}
       {{/* A lane is a row, not a band: the listing's own two cells, a 28px
-           line (the add's box) centred in them, no fill, and a strong hairline
-           under it, so the only filled surface over a listing is the band it
-           is narrowed from. Every lane after the first starts its own small
+           line (the add's box) centred in them, on the masthead's Quiet Sand
+           between strong hairlines: the first lane's top is the column
+           heads' own; a later one draws it on the line where its fill
+           starts, never filling the gap above. Every
+           lane after the first starts its own small
            table, two cells below the last row of the one before; the air is
            the row's own padding, so a lane the filter hides takes its gap with
            it. Its add sits as the rows' acts do: on the middle line (5px over,
            6px under) and 7px in from the table's edge, so on hover its border
            ends where theirs does. */}}
       <tr class="verso-table-group{{if .Seam}} verso-table-seam-row{{end}}">
-        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-11.25{{else}}pt-1.25{{end}} pb-1.5 pr-1.75! text-left leading-7 font-normal">
+        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}bg-[linear-gradient(transparent_calc(2.5rem_-_1px),var(--color-rule-strong)_calc(2.5rem_-_1px)_2.5rem,var(--color-quiet)_2.5rem)] pt-11.25{{else}}bg-quiet pt-1.25{{end}} pb-1.5 pr-1.75! text-left leading-7 font-normal">
           <span class="flex items-center gap-3">
             <span class="flex items-center gap-2 text-sm font-semibold text-ink">{{.Group.Label}}{{if .Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Group.To}}{{end}}</span>
             {{if .Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Group.Chain}}</span>{{end}}
