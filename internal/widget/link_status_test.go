@@ -71,6 +71,18 @@ func TestActLinkOpensItsFormAsAPanel(t *testing.T) {
 	}
 }
 
+// TestASecondaryLinkOpensItsDestinationAsAPanel: a secondary act that installs
+// a package opens that package's drawer over the page, as an act does.
+func TestASecondaryLinkOpensItsDestinationAsAPanel(t *testing.T) {
+	got := render(t, newRenderer(t), &Link{Style: "secondary", Label: "Install adblock", Icon: "download",
+		Href: "/system/packages/package?name=adblock", Panel: true})
+	for _, want := range []string{`x-data="modal"`, `@click.prevent="showPanel"`, "data-verso-panel-chrome", "data-verso-panel", ">Install adblock</a>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+}
+
 // TestAStatusAnotherProgramOwnsOffersNoAct: a fact owned by something else on
 // the router (AdGuard Home handling privacy) is said, and nothing is offered
 // to change it here.

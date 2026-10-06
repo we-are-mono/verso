@@ -51,6 +51,7 @@
          where to go about it — rather than standing on a line of its own. */}}
     {{if .Body}}<p>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
     {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
+    {{template "callout.acts" .}}
   </div>
 </div>
 {{else}}
@@ -63,6 +64,12 @@
   {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
   {{if .Body}}<p>{{.Body}}</p>{{end}}
   {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
+  {{template "callout.acts" .}}
   {{if .RenderedLink}}<div>{{.RenderedLink}}</div>{{end}}
 </div>
 {{end}}
+{{/* callout.acts: what resolves the notice, inside the band — a row of
+     buttons a cell under its words, each centred in two cells (3px over and
+     under a 34px button), so the band stays whole cells tall. The buttons keep
+     their own shape and take the band's ink (input.css, data-verso-callout-acts). */}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

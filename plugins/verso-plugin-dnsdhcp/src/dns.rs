@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::net::IpAddr;
 use verso_plugin::{
     commit, commit_new, json, CommitOp, Envelope, Field, Form, Grid, List, Request, SectionWidget,
-    SelectOption, Switch, Value, Widget,
+    SelectOption, Switch, Tone, Value, Widget,
 };
 
 const FLAGS: &[(&str, &str, bool)] = &[
@@ -278,17 +278,15 @@ fn local_port(server: &str) -> Option<&str> {
     let (host, port) = server.split_once('#')?;
     matches!(host, "127.0.0.1" | "::1" | "localhost").then_some(port)
 }
-/// handled is a fact another program on the router owns: said, with no act.
-fn handled(label: &str, desc: &str) -> Widget {
-    Widget::Link {
-        label: label.into(),
-        desc: desc.into(),
-        href: String::new(),
-        style: "status".into(),
-        code: String::new(),
-        icon: String::new(),
-        act: String::new(),
-        panel: false,
+/// notice is what another program on the router decides, said as the page's
+/// information: a compact info callout, nothing to press.
+fn notice(title: &str, body: &str) -> Widget {
+    Widget::Callout {
+        variant: Tone::Info,
+        title: title.into(),
+        body: body.into(),
+        compact: true,
+        acts: Vec::new(),
     }
 }
 fn proxy_address(proxy: &Options) -> String {
@@ -298,21 +296,25 @@ fn proxy_address(proxy: &Options) -> String {
     };
     format!("127.0.0.1#{port}")
 }
-// missing is a capability this page needs a package for: the fact, a sentence
-// under it where it has one, and the act that installs the package — in the
-// package's own drawer, over this page (the shell's package panel), so it is
-// added where the need for it is and the page then shows the setting it adds.
-fn missing(label: &str, desc: &str, package: &str) -> Widget {
-    Widget::Link {
-        label: label.into(),
-        desc: desc.into(),
-        href: format!("/system/packages/package?name={package}"),
-        style: "status".into(),
-        code: String::new(),
-        icon: "download".into(),
-        act: format!("Install {package}"),
-        panel: true,
+// missing is a capability this page needs a package for: the fact said as the
+// page's notice, carrying the act that installs the package — in the package's
+// own drawer, over this page (the shell's package panel), so it is added where
+// the need for it is and the page then shows the setting it adds.
+fn missing(label: &str, desc: &str, package: &str) -> Vec<Widget> {
+    let mut notice = notice(label, desc);
+    if let Widget::Callout { acts, .. } = &mut notice {
+        acts.push(Widget::Link {
+            label: format!("Install {package}"),
+            desc: String::new(),
+            href: format!("/system/packages/package?name={package}"),
+            style: "secondary".into(),
+            code: String::new(),
+            icon: "download".into(),
+            act: String::new(),
+            panel: true,
+        });
     }
+    vec![notice]
 }
 fn part(title: &str, anchor: &str, fields: Vec<Widget>) -> Widget {
     Widget::section(title, "", fields)
@@ -323,22 +325,18 @@ pub fn page(r: &Request) -> Envelope {
     render(r, &Settings::read(r), &Errors::new())
 }
 fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
-    // What devices ask, when it is not dnsmasq, opens the page.
+    // What devices ask, when it is not dnsmasq, is the page's notice.
     let front = s.front.as_ref().map(|process| {
-        let label = FRONT_DOOR
+        let title = FRONT_DOOR
             .iter()
             .find(|f| f.0 == process)
             .map_or(FRONT_DOOR_OTHER, |f| f.1);
-        let mut fact = handled(label, FRONT_DOOR_DESC);
-        if let Widget::Link { code, .. } = &mut fact {
-            *code = process.clone();
-        }
-        fact
+        notice(title, FRONT_DOOR_DESC)
     });
     let mut sections = vec![part(
         "",
         "upstream",
-        front.into_iter().chain([
+        vec![
             s.rows(
                 e,
                 "upstream",
@@ -348,8 +346,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                 "dnsserver",
             ),
             s.check("peerdns", "Use the servers the ISP hands out", "peerdns"),
-        ])
-        .collect(),
+        ],
     )];
     sections.push(part(
         "Local names",
@@ -369,15 +366,15 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                 s.flag("rebind_protection"),
             ]
         } else {
-            vec![missing(
+            missing(
                 "No local resolver",
                 "Devices ask the upstream servers directly.",
                 "dnsmasq",
-            )]
+            )
         },
     ));
     let mut privacy = if let Some(f) = s.filter {
-        vec![handled(f.1, f.2)]
+        vec![notice(f.1, f.2)]
     } else if s.doh && s.resolver {
         let provider = Widget::select(
             "provider",
@@ -418,11 +415,11 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             },
         ]
     } else {
-        vec![missing(
+        missing(
             "Queries leave in plain text",
             "Your internet provider can read every name your devices look up. Installing adds encryption here, off until you turn it on.",
             "https-dns-proxy",
-        )]
+        )
     };
     if s.resolver {
         let mut dnssec = s.flag("dnssec");
@@ -451,15 +448,15 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             "Blocking",
             "blocking",
             if let Some(f) = s.filter {
-                vec![handled(f.1, f.3)]
+                vec![notice(f.1, f.3)]
             } else if s.blocking {
                 vec![s.check("adblock", "Block ads and trackers", "adblock")]
             } else {
-                vec![missing(
+                missing(
                     "Nothing is blocked",
                     "Installing adds a blocklist of ads and trackers here, off until you turn it on. Once on, the router downloads the lists and keeps them in memory.",
                     "adblock",
-                )]
+                )
             },
         ));
         sections.push(part(
@@ -508,7 +505,7 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
                     // Each refusal rides its own field; the shell's
                     // navigator counts them, so the form says nothing.
                     error: String::new(),
-                    fields: sections,
+                    fields: front.into_iter().chain(sections).collect(),
                 }
                 .at("dhcp", &s.daemon.section),
                 Widget::section("On this page", "", vec![Widget::stack(anchors).flush()])
@@ -856,35 +853,34 @@ mod tests {
         }
     }
 
-    // A capability this page needs a package for is a settings row whose act
-    // installs the package in its own drawer over the page — never a link that
-    // leaves for Packages and lands on an empty Installed list. It says what
-    // installing adds, and that it arrives off: installing changes nothing.
+    // A capability this page needs a package for is the page's notice, with
+    // the act that installs the package under it, in the package's own drawer
+    // over the page — never a link that leaves for Packages and lands on an
+    // empty Installed list. It says what installing adds, and that it arrives
+    // off: installing changes nothing.
     #[test]
     fn a_missing_package_installs_in_its_own_drawer_over_the_page() {
         let mut r = request();
         r.ubus =
             Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false}}));
-        let rows = statuses(&serde_json::to_value(page(&r)).expect("serialize"));
-        for (label, package) in [
-            ("Queries leave in plain text", "https-dns-proxy"),
-            ("Nothing is blocked", "adblock"),
+        let body = serde_json::to_value(page(&r)).expect("serialize");
+        for (anchor, title, package) in [
+            ("privacy", "Queries leave in plain text", "https-dns-proxy"),
+            ("blocking", "Nothing is blocked", "adblock"),
         ] {
-            let row = rows
-                .iter()
-                .find(|w| w["label"] == label)
-                .unwrap_or_else(|| panic!("no row for {label}"));
-            let desc = row["desc"].as_str().unwrap_or_default();
-            assert!(desc.contains("Installing adds"), "{label}: {desc}");
-            assert!(desc.contains("off until you turn it on"), "{label}: {desc}");
-            assert_eq!(row["act"], format!("Install {package}"), "{label}");
-            assert_eq!(
-                row["href"],
-                format!("/system/packages/package?name={package}"),
-                "{label}"
-            );
-            assert_eq!(row["icon"], "download", "{label}");
-            assert_eq!(row["panel"], true, "{label}");
+            let fields = section_children(&body, anchor);
+            let notice = &fields[0];
+            assert_eq!((notice["type"].as_str(), notice["variant"].as_str()), (Some("callout"), Some("info")), "{anchor}");
+            assert_eq!(notice["title"], title, "{anchor}");
+            let words = notice["body"].as_str().unwrap_or_default();
+            assert!(words.contains("Installing adds"), "{title}: {words}");
+            assert!(words.contains("off until you turn it on"), "{title}: {words}");
+            let act = &notice["acts"][0];
+            assert_eq!((act["type"].as_str(), act["style"].as_str()), (Some("link"), Some("secondary")), "{anchor}");
+            assert_eq!(act["label"], format!("Install {package}"), "{title}");
+            assert_eq!(act["href"], format!("/system/packages/package?name={package}"), "{title}");
+            assert_eq!(act["icon"], "download", "{title}");
+            assert_eq!(act["panel"], true, "{title}");
         }
     }
 
@@ -902,12 +898,17 @@ mod tests {
         r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":true,"adblock":true,
             "listeners":{"5053":"AdGuardHome"}}}));
         let body = serde_json::to_value(page(&r)).expect("serialize");
-        let rows = statuses(&body);
-        let handled: Vec<&Value> = rows.iter().filter(|w| w["label"] == "Handled by AdGuard Home").collect();
-        assert_eq!(handled.len(), 2, "privacy and blocking: {rows:?}");
-        for row in handled {
-            assert!(row.get("act").is_none(), "a handled fact offers no act: {row}");
+        for anchor in ["privacy", "blocking"] {
+            let fields = section_children(&body, anchor);
+            assert_eq!(fields[0]["type"], "callout", "{anchor}: {fields:?}");
+            assert_eq!(fields[0]["title"], "Handled by AdGuard Home", "{anchor}");
+            assert_eq!(fields[0]["variant"], "info", "{anchor}");
+            assert!(
+                !fields.iter().any(|w| w["name"] == "encrypted" || w["name"] == "adblock"),
+                "{anchor} offers nothing the resolver decides: {fields:?}"
+            );
         }
+        let rows = statuses(&body);
         assert!(!rows.iter().any(|w| w["act"].as_str().is_some_and(|a| a.starts_with("Install"))), "{rows:?}");
         assert_eq!(Settings::read(&r).v("encrypted"), "0");
         // https-dns-proxy holding its own port is encryption.
@@ -917,25 +918,34 @@ mod tests {
     }
 
     // Whatever holds port 53 is what devices ask. When that is not dnsmasq,
-    // the page opens on it, naming the program as the kernel knows it, so
+    // the page opens on a notice saying so, ahead of every section, so
     // dnsmasq's settings below never read as the whole story.
     #[test]
     fn another_program_on_port_53_is_the_front_door() {
         let front = |listeners: Value| {
             let mut r = request();
             r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":false,"adblock":false,"listeners":listeners}}));
-            statuses(&serde_json::to_value(page(&r)).expect("serialize"))
-                .into_iter()
-                .find(|w| w["label"].as_str().is_some_and(|l| l.ends_with("answers your devices")))
+            let body = serde_json::to_value(page(&r)).expect("serialize");
+            let fields = body["widget"]["children"][0]["fields"].as_array().expect("form fields").clone();
+            fields.into_iter().next().filter(|w| w["type"] == "callout")
         };
-        let adguard = front(json!({"53":"AdGuardHome","5053":"https-dns-proxy"})).expect("a front door");
-        assert_eq!(adguard["label"], "AdGuard Home answers your devices");
-        assert_eq!(adguard["code"], "AdGuardHome");
-        assert!(adguard.get("act").is_none(), "{adguard}");
-        let other = front(json!({"53":"coredns"})).expect("a front door");
-        assert_eq!((other["label"].as_str(), other["code"].as_str()), (Some("Another program answers your devices"), Some("coredns")));
+        let adguard = front(json!({"53":"AdGuardHome","5053":"https-dns-proxy"})).expect("a notice first");
+        assert_eq!(adguard["title"], "AdGuard Home answers your devices");
+        assert_eq!((adguard["variant"].as_str(), adguard["compact"].as_bool()), (Some("info"), Some(true)));
+        let other = front(json!({"53":"coredns"})).expect("a notice first");
+        assert_eq!(other["title"], "Another program answers your devices");
         assert!(front(json!({"53":"dnsmasq"})).is_none(), "dnsmasq on 53 is the usual case");
         assert!(front(json!({})).is_none());
+    }
+
+    // The children of the page section addressed as anchor.
+    fn section_children(body: &Value, anchor: &str) -> Vec<Value> {
+        body["widget"]["children"][0]["fields"]
+            .as_array()
+            .and_then(|fields| fields.iter().find(|w| w["anchor"] == anchor))
+            .and_then(|s| s["children"].as_array())
+            .cloned()
+            .unwrap_or_else(|| panic!("no section {anchor}"))
     }
 
     fn encoded(s: &str) -> String {

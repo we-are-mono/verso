@@ -64,7 +64,14 @@
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else if eq .Style "secondary"}}
+{{/* A secondary act may open its destination in a drawer over the page, as
+     an act does (a package installed where its need is). */}}
+{{if .Panel}}<span x-data="modal" class="contents">
+<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+{{template "verso-drawer-fetched" ""}}</span>
+{{else}}
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+{{end}}
 {{else}}
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
 {{end}}

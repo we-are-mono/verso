@@ -24,28 +24,51 @@ type Callout struct {
 	// band under a hairline of the band's tone, in mono, with a copy control,
 	// because a message cut short or paraphrased is a message withheld.
 	Verbatim string `json:"verbatim,omitempty"`
+	// Acts resolve what the notice says (install what is missing, go where
+	// it is fixed): buttons in a row inside the band, a cell under its words,
+	// in the band's own ink.
+	Acts []Link `json:"acts,omitempty"`
 }
 
 func (*Callout) isWidget() {}
 
 func (c *Callout) children() []Widget {
-	if c.Link == nil {
-		return nil
+	var out []Widget
+	if c.Link != nil {
+		out = append(out, c.Link)
 	}
-	return []Widget{c.Link}
+	for i := range c.Acts {
+		out = append(out, &c.Acts[i])
+	}
+	return out
 }
 
 func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
+	render := func(l *Link) (template.HTML, error) {
+		var buf bytes.Buffer
+		if err := l.renderInto(r, &buf, ""); err != nil {
+			return "", err
+		}
+		return template.HTML(buf.String()), nil //nolint:gosec // rendered by the shell's own templates
+	}
 	var link template.HTML
 	if c.Link != nil {
-		var buf bytes.Buffer
-		if err := c.Link.renderInto(r, &buf, ""); err != nil {
+		var err error
+		if link, err = render(c.Link); err != nil {
 			return err
 		}
-		link = template.HTML(buf.String())
+	}
+	acts := make([]template.HTML, 0, len(c.Acts))
+	for i := range c.Acts {
+		act, err := render(&c.Acts[i])
+		if err != nil {
+			return err
+		}
+		acts = append(acts, act)
 	}
 	return r.execute(out, "callout.html.tmpl", struct {
 		*Callout
 		RenderedLink template.HTML
-	}{Callout: c, RenderedLink: link})
+		RenderedActs []template.HTML
+	}{Callout: c, RenderedLink: link, RenderedActs: acts})
 }

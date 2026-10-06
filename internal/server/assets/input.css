@@ -805,6 +805,20 @@ html {
    non-last child, and only a later utilities-layer rule outranks it. */
 @layer utilities {
   /* An in-flight action keeps its size but gives up its hover and press states. */
+  /* An act inside a band keeps its own shape and takes the band's ink: its
+     words and glyph in the band's deep step, its border that ink thinned, a
+     wash of it under the pointer, so it reads as the band's own way out. */
+  [data-verso-callout-acts] a {
+    color: inherit;
+    border-color: color-mix(in srgb, currentColor 40%, transparent);
+    background-color: transparent;
+  }
+  [data-verso-callout-acts] a svg { color: inherit; }
+  [data-verso-callout-acts] a:hover {
+    color: inherit;
+    border-color: color-mix(in srgb, currentColor 65%, transparent);
+    background-color: color-mix(in srgb, currentColor 8%, transparent);
+  }
   button.verso-button-waiting:disabled {
     pointer-events: none;
     cursor: default;

@@ -4,6 +4,8 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -18,6 +20,32 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 	}
 	if plain := render(t, newRenderer(t), &Button{Label: "Save"}); strings.Contains(plain, "data-busy-label") {
 		t.Errorf("a button with nothing to say while pressed carries a busy label:\n%s", plain)
+	}
+}
+
+// TestACalloutCarriesTheActsThatResolveIt: a notice that something is missing
+// carries the act that resolves it, inside the band: a row of buttons a cell
+// under the words, centred in two cells, in the band's own ink.
+func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
+	for _, compact := range []bool{true, false} {
+		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
+			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
+		row := strings.Index(got, `<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75">`)
+		words := strings.Index(got, "Installing adds a blocklist.")
+		if row < 0 || words < 0 || row < words {
+			t.Errorf("compact=%v: the acts row stands inside the band, under its words:\n%s", compact, got)
+		}
+		if !strings.Contains(got[row:], ">Install adblock</a>") || !strings.Contains(got[row:], `@click.prevent="showPanel"`) {
+			t.Errorf("compact=%v: the act keeps its button and its panel:\n%s", compact, got)
+		}
+	}
+	// In the band's ink: the stylesheet colours an act inside a band from it.
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), "[data-verso-callout-acts] a {") {
+		t.Error("an act inside a band is not coloured from it")
 	}
 }
 

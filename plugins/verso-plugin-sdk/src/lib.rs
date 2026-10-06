@@ -699,6 +699,10 @@ pub enum Widget {
         body: String,
         #[serde(skip_serializing_if = "is_false")]
         compact: bool,
+        /// Links that resolve what the notice says (install what is missing),
+        /// drawn as buttons inside the band, a cell under its words, in its ink.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        acts: Vec<Widget>,
     },
     /// A machine value in a monospace box, with an inline copy button.
     Code {
@@ -1647,6 +1651,7 @@ impl Widget {
             title: title.into(),
             body: body.into(),
             compact: false,
+            acts: Vec::new(),
         }
     }
 

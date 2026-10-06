@@ -73,6 +73,7 @@ fn controls(policy: &Policy, errors: &Errors) -> Vec<Widget> {
                 title: String::new(),
                 body: BLOCKED_NOTE.into(),
                 compact: true,
+                acts: Vec::new(),
             }],
         ),
         cap("download", "Download limit", &policy.down, errors).explained(RATE_TIP, "qos device"),
