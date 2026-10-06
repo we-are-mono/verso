@@ -70,3 +70,14 @@ func TestActLinkOpensItsFormAsAPanel(t *testing.T) {
 		t.Errorf("an act without a panel is a plain link:\n%s", plain)
 	}
 }
+
+// TestAStatusAnotherProgramOwnsOffersNoAct: a fact owned by something else on
+// the router (AdGuard Home handling privacy) is said, and nothing is offered
+// to change it here.
+func TestAStatusAnotherProgramOwnsOffersNoAct(t *testing.T) {
+	got := render(t, newRenderer(t), &Link{Style: "status", Label: "Handled by AdGuard Home",
+		Desc: "AdGuard Home on this router filters what your devices look up."})
+	if !strings.Contains(got, ">Handled by AdGuard Home</span>") || strings.Contains(got, "<a ") {
+		t.Errorf("a status with no act draws no button:\n%s", got)
+	}
+}

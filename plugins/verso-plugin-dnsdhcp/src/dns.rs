@@ -44,6 +44,16 @@ const PROVIDERS: &[(&str, &str, &str)] = &[
         "194.242.2.2",
     ),
 ];
+/// FILTERS are resolvers that, run on this router as the upstream, decide for
+/// themselves where queries go and what is blocked: the process name the
+/// kernel knows them by, and what the page says in Privacy and Blocking.
+/// ponytail: AdGuard Home alone; add a row when another filter turns up.
+const FILTERS: [(&str, &str, &str, &str); 1] = [(
+    "AdGuardHome",
+    "Handled by AdGuard Home",
+    "Your upstream is AdGuard Home on this router. It decides where queries go and whether they are encrypted.",
+    "AdGuard Home on this router filters what your devices look up.",
+)];
 type Errors = BTreeMap<String, String>;
 struct Settings {
     daemon: Options,
@@ -55,6 +65,8 @@ struct Settings {
     doh: bool,
     blocking: bool,
     dnssec: bool,
+    /// The filtering resolver an upstream on this router turned out to be.
+    filter: Option<&'static (&'static str, &'static str, &'static str, &'static str)>,
     values: BTreeMap<String, String>,
     lists: BTreeMap<String, Vec<String>>,
 }
@@ -101,10 +113,20 @@ impl Settings {
                 .all(|s| s.scalar("peerdns") != "0");
         values.insert("peerdns".into(), yes(isp));
         values.insert("adblock".into(), yes(adblock.flag("adb_enabled", false)));
+        // Which program answers on each local port, where the helper said:
+        // what a 127.0.0.1#port upstream really is.
+        let listeners = state.and_then(|s| s.get("listeners")).and_then(Value::as_object);
+        let holder = |port: &str| listeners.and_then(|l| l.get(port)).and_then(Value::as_str);
+        let filter = daemon.list("server").iter().find_map(|server| {
+            let port = local_port(server)?;
+            FILTERS.iter().find(|f| holder(port) == Some(f.0))
+        });
         let proxy_server = proxy_address(&proxy);
         let encrypted = doh
             && (daemon.list("server").contains(&proxy_server)
-                || daemon.list("doh_server").contains(&proxy_server));
+                || daemon.list("doh_server").contains(&proxy_server))
+            && (listeners.is_none()
+                || local_port(&proxy_server).and_then(holder) == Some("https-dns-proxy"));
         values.insert("encrypted".into(), yes(encrypted));
         let url = proxy.scalar("resolver_url");
         values.insert(
@@ -181,6 +203,7 @@ impl Settings {
             doh,
             blocking,
             dnssec,
+            filter,
             values,
             lists,
         }
@@ -236,6 +259,25 @@ impl Settings {
             }
         }
         w
+    }
+}
+/// local_port is the port of an upstream on this router (`127.0.0.1#5053`,
+/// `::1#5053`).
+fn local_port(server: &str) -> Option<&str> {
+    let (host, port) = server.split_once('#')?;
+    matches!(host, "127.0.0.1" | "::1" | "localhost").then_some(port)
+}
+/// handled is a fact another program on the router owns: said, with no act.
+fn handled(label: &str, desc: &str) -> Widget {
+    Widget::Link {
+        label: label.into(),
+        desc: desc.into(),
+        href: String::new(),
+        style: "status".into(),
+        code: String::new(),
+        icon: String::new(),
+        act: String::new(),
+        panel: false,
     }
 }
 fn proxy_address(proxy: &Options) -> String {
@@ -310,7 +352,9 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
             )]
         },
     ));
-    let mut privacy = if s.doh && s.resolver {
+    let mut privacy = if let Some(f) = s.filter {
+        vec![handled(f.1, f.2)]
+    } else if s.doh && s.resolver {
         let provider = Widget::select(
             "provider",
             "Provider",
@@ -382,7 +426,9 @@ fn render(r: &Request, s: &Settings, e: &Errors) -> Envelope {
         sections.push(part(
             "Blocking",
             "blocking",
-            if s.blocking {
+            if let Some(f) = s.filter {
+                vec![handled(f.1, f.3)]
+            } else if s.blocking {
                 vec![s.check("adblock", "Block ads and trackers", "adblock")]
             } else {
                 vec![missing(
@@ -816,6 +862,34 @@ mod tests {
             assert_eq!(row["icon"], "download", "{label}");
             assert_eq!(row["panel"], true, "{label}");
         }
+    }
+
+    // An upstream on this router that filters for itself (AdGuard Home) is
+    // what decides privacy and blocking: the page says so instead of offering
+    // packages that would compete with it. Its port is not encryption because
+    // it happens to be https-dns-proxy's: only that program holding it is.
+    #[test]
+    fn a_local_filtering_resolver_takes_privacy_and_blocking() {
+        let mut r = request();
+        r.snapshot = Snapshot::from_value(json!({
+            "dhcp":{"main":{".name":"main",".type":"dnsmasq","server":["127.0.0.1#5053"],"noresolv":"1"}},
+            "https-dns-proxy":{"resolver":{".name":"resolver",".type":"https-dns-proxy","listen_port":"5053"}}
+        }));
+        r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":true,"adblock":true,
+            "listeners":{"5053":"AdGuardHome"}}}));
+        let body = serde_json::to_value(page(&r)).expect("serialize");
+        let rows = statuses(&body);
+        let handled: Vec<&Value> = rows.iter().filter(|w| w["label"] == "Handled by AdGuard Home").collect();
+        assert_eq!(handled.len(), 2, "privacy and blocking: {rows:?}");
+        for row in handled {
+            assert!(row.get("act").is_none(), "a handled fact offers no act: {row}");
+        }
+        assert!(!rows.iter().any(|w| w["act"].as_str().is_some_and(|a| a.starts_with("Install"))), "{rows:?}");
+        assert_eq!(Settings::read(&r).v("encrypted"), "0");
+        // https-dns-proxy holding its own port is encryption.
+        r.ubus = Ubus::from_value(json!({"dnsState":{"resolver":true,"doh":true,"adblock":false,
+            "listeners":{"5053":"https-dns-proxy"}}}));
+        assert_eq!(Settings::read(&r).v("encrypted"), "1");
     }
 
     fn encoded(s: &str) -> String {

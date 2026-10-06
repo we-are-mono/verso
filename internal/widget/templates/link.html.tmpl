@@ -19,11 +19,12 @@
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>
     {{if .Desc}}<p class="basis-full text-sm leading-5 text-body">{{.Desc}}</p>{{end}}
   </div>
-  <div class="{{template "verso-field-control-class"}} items-start">
+  {{/* A fact something else on the router owns is said with no act. */}}
+  {{if .Act}}<div class="{{template "verso-field-control-class"}} items-start">
     {{if .Panel}}<span x-data="modal" class="contents">{{end}}
     <a href="{{.Href}}"{{if .Panel}} @click.prevent="showPanel" data-verso-panel-chrome{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{.Act}}</a>
     {{if .Panel}}{{template "verso-drawer-fetched" ""}}</span>{{end}}
-  </div>
+  </div>{{end}}
 </div>
 {{else if eq .Style "choice"}}
 <a href="{{.Href}}" class="group flex items-start gap-3.5 border-b border-rule px-10 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
