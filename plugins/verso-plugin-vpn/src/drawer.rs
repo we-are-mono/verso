@@ -17,7 +17,7 @@ use crate::listing::bytes;
 use crate::model::{Instance, Profile, CONFIG};
 
 const CONFIG_PATH: &str = "/etc/config/openvpn";
-const PROFILE_TITLE: &str = "What the profile says";
+const PROFILE_TITLE: &str = "Profile";
 const SIGN_IN_TITLE: &str = "Sign-in";
 const SIGN_IN_LEDE: &str = "The profile asks for a username and password. A provider's OpenVPN \
      sign-in is often not the one for its website: Proton's, for one, is on its dashboard.";
@@ -130,7 +130,7 @@ pub fn drawer(instance: &Instance, now: u64, stated: &Stated, errors: &Errors) -
         fields.push(sign_in(instance, stated, errors));
     }
     if let Some(profile) = &instance.profile {
-        let mut items = vec![mono("Profile", &instance.config)];
+        let mut items = vec![mono("File", &instance.config)];
         items.extend(reading(profile));
         fields.push(Widget::section(PROFILE_TITLE, "", vec![Widget::properties(items)]).ruled());
     }
@@ -384,7 +384,7 @@ mod tests {
         assert_eq!(reading["title"], PROFILE_TITLE);
         let items = &reading["children"][0]["items"];
         assert_eq!(
-            property(items, "Profile")["value"],
+            property(items, "File")["value"],
             "/etc/openvpn/proton.ovpn"
         );
         assert_eq!(
