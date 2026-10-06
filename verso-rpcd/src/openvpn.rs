@@ -187,7 +187,8 @@ fn block_name(trimmed: &str) -> Option<&'static str> {
 }
 
 fn placeholder(name: &str, lines: usize) -> String {
-    format!("<{name}> … {lines} lines … </{name}>")
+    let unit = if lines == 1 { "line" } else { "lines" };
+    format!("<{name}> … {lines} {unit} … </{name}>")
 }
 
 fn profile(text: &str) -> Value {
@@ -538,11 +539,11 @@ mod folding {
         let shown = fold(PROFILE);
         assert_eq!(
             shown,
-            "client\nremote a 1194\n<ca> … 2 lines … </ca>\n<tls-crypt> … 1 lines … </tls-crypt>\n"
+            "client\nremote a 1194\n<ca> … 2 lines … </ca>\n<tls-crypt> … 1 line … </tls-crypt>\n"
         );
         assert_eq!(
             fold("client\n<key>\nSECRET\n"),
-            "client\n<key> … 1 lines … </key>\n"
+            "client\n<key> … 1 line … </key>\n"
         );
     }
 
@@ -555,7 +556,7 @@ mod folding {
     #[test]
     fn a_block_pasted_whole_replaces_the_old_one() {
         let edited = fold(PROFILE).replace(
-            "<tls-crypt> … 1 lines … </tls-crypt>",
+            "<tls-crypt> … 1 line … </tls-crypt>",
             "<tls-crypt>\nNEWKEY\n</tls-crypt>",
         );
         let saved = unfold(&edited, PROFILE);
