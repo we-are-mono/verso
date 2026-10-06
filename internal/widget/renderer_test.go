@@ -576,14 +576,14 @@ func TestRenderConfirm(t *testing.T) {
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
-		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 shrink-0 rounded-[1px] bg-crimson",
-		// The question's frame stands on the grid's lines, a pixel out at the
-		// top and the left, with 19px over its words and a cell under them.
-		"-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border px-4 pt-4.75 pb-5 text-sm leading-5",
-		// The actions align with the message a cell under it, centred in two
-		// cells; cancel keeps the explanation's tone and hovers by a soft wash,
-		// not a heavy colour darken.
-		"mt-5 ml-4 flex items-center justify-start gap-2 py-0.75", "hover:bg-crimson-line/50",
+		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
+		// The question is the compact callout in the act's tone: its frame on
+		// the grid's lines, its words half a cell inside.
+		`<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25`,
+		// The answers are the band's acts, on the line a cell under the words;
+		// cancel keeps the explanation's tone and hovers by a soft wash, not a
+		// heavy colour darken.
+		`<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-1.5"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
@@ -614,18 +614,22 @@ func TestRenderConfirm(t *testing.T) {
 	if !strings.Contains(got, `aria-controls="verso-confirm-1"`) || !strings.Contains(def, `id="verso-confirm-2"`) {
 		t.Errorf("each confirm's trigger controls its own panel:\n%s\n%s", got, def)
 	}
-	// A Title renders as a bold heading on the message's 20px line above it;
-	// without one the message stands alone (no stray heading element).
-	titled := render(t, r, &Confirm{Trigger: "Download and install", Title: "Install now?", Message: "It will be unavailable for several minutes."})
-	if !strings.Contains(titled, `<p class="text-base leading-5 font-semibold">Install now?</p>`) {
+	// A Title renders as the band's bold title on the 20px line above the
+	// message; without one the message stands alone (no stray heading element).
+	titled := render(t, r, &Confirm{Trigger: "Download and install", Title: "Install now?", Message: "It will be unavailable for several minutes.", Tone: ToneCaution})
+	if !strings.Contains(titled, `<p class="font-semibold">Install now?</p>`) {
 		t.Errorf("a titled confirm should render its heading bold: %s", titled)
 	}
 	if !strings.Contains(titled, "It will be unavailable for several minutes.") {
 		t.Errorf("a titled confirm should still render its message: %s", titled)
 	}
+	// Caution asks in the warning's marigold band.
+	if !strings.Contains(titled, "border-marigold-line bg-marigold-soft text-marigold-deep") || strings.Contains(titled, "bg-crimson-soft") {
+		t.Errorf("a caution confirm should ask in the marigold band: %s", titled)
+	}
 	// The trigger and the confirm button are semibold like every other control;
 	// what an untitled confirm must not draw is the heading paragraph.
-	if strings.Contains(def, `<p class="text-base leading-5 font-semibold">`) {
+	if strings.Contains(def, `<p class="font-semibold">`) {
 		t.Errorf("an untitled confirm should draw no heading: %s", def)
 	}
 }

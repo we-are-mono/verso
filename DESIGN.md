@@ -404,10 +404,10 @@ How a consequential act asks first. The whole exchange is one hue, so the questi
 
 The anatomy is the same in both:
 - **In place:** the trigger gives way to the question where it stood. Nothing floats and nothing casts a shadow. Focus moves to the first answer; Escape and the way back return it to the trigger.
-- **One hue, every step of it:** the tone's Wash ground inside its Hairline, 2px corners, 16px padding, every word in its Deep step. Full chroma appears as a mark only: the 6px state square on the first line, and for danger the fill behind the act's white words. No sand, no Ink, no second border.
+- **One hue, every step of it:** the tone's Wash ground inside its Hairline, 2px corners, every word in its Deep step. Full chroma appears as a mark only: the 6px state square on the first line, and for danger the fill behind the act's white words. No sand, no Ink, no second border.
 - **Trigger:** the act's own name ("Reboot now", "Download and install 25.12.5") on the Wash with the Hairline, 14px/600 words in the Deep step, a 34px control as wide as its words like every other; the hairline turns full chroma on hover.
-- **Question:** a 16px/600 question ("Reboot the router now?") over one or two sentences of consequence at 14px/1.45. The icon leads on the question's first line.
-- **The answer pair:** the act (34px, named with the verb: "Reboot", "Install firmware"), then the way back as bare words in the Deep step ("Not now", "Not yet"): no border, no fill, 12px side padding, washing to the Hairline at half strength on hover. Danger's act is white on full Crimson. Caution's act is white on Deep Marigold, because white on full Marigold fails the 4.5 floor. The pair starts 24px below the message and indents 24px, so it lines up with the words, not the icon; 8px between the two. Never "OK" and "Cancel".
+- **Question:** the compact inline warning itself (Inline warnings), in the act's tone: danger's crimson band, caution's marigold one. The question ("Reboot the router now?") is its 14px/600 title over one or two sentences of consequence, the 6px square on the first line, the frame on the grid's lines and the words half a cell inside.
+- **The answer pair:** the band's acts, on the line a cell under the words: the act (34px, named with the verb: "Reboot", "Install firmware"), then the way back as bare words in the Deep step ("Not now", "Not yet"): no border, no fill, 12px side padding, washing to the Hairline at half strength on hover. Danger's act is white on full Crimson. Caution's act is white on Deep Marigold, because white on full Marigold fails the 4.5 floor. Never "OK" and "Cancel".
 - **With a password:** when the act needs re-authorizing, the password field leads the answer row with a Crimson Hairline border.
 
 ### Inline warnings
@@ -416,7 +416,7 @@ A warning (marigold) or an error (crimson) said in place, on the tone's Wash, ev
 - **Mark:** the tone's 6px square on the title's first line.
 - **The machine's words:** what a tool reported rides inside, under a Hairline of the tone, verbatim in mono.
 - **The acts that resolve it:** a notice may carry the buttons that resolve what it says (install what is missing): a row inside the band, each button's top on the line a cell under its words and the rest of its two cells kept below it, so the padding under the buttons matches the air over the first line and the band stays whole cells tall. The buttons keep their own shape and take the band's ink: words and glyph in its deep step, the border that ink thinned, a wash of it under the pointer.
-- A confirmation's question is not an inline warning: it asks, at 16px, over its 14px consequence (Confirmation).
+- A confirmation's question is this band, its answers the band's acts (Confirmation).
 
 ### Chips
 - **Style:** lowercase Inconsolata 14px in Meta on Quiet Sand, Hairline border, 2px corners, 2px 6px padding. They carry config values and config keys (`hostname`, `pppoe`), never decoration.

@@ -4,7 +4,9 @@
 package widget
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"io"
 )
 
@@ -46,11 +48,13 @@ func (*Confirm) isWidget() {}
 func (*Confirm) children() []Widget { return nil }
 
 // confirmView is the confirm template's model: a render-unique id (so several
-// confirms on a page never share checkbox state) plus the resolved labels.
+// confirms on a page never share checkbox state), the resolved labels, and
+// the question already drawn as its band.
 type confirmView struct {
 	ID                                             string
 	Trigger, Title, Message, Confirm, Cancel, Tone string
 	Icon, Subject                                  string
+	Question                                       template.HTML
 }
 
 func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -73,7 +77,7 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 	if c.Tone == ToneCaution {
 		tone = ToneCaution
 	}
-	return r.execute(out, "confirm.html.tmpl", confirmView{
+	view := confirmView{
 		ID:      fmt.Sprintf("verso-confirm-%d", r.seq.cfm.Add(1)),
 		Tone:    tone,
 		Trigger: c.Trigger,
@@ -83,5 +87,31 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Cancel:  cancel,
 		Icon:    c.Icon,
 		Subject: c.subject,
-	})
+	}
+	question, err := c.question(r, view)
+	if err != nil {
+		return err
+	}
+	view.Question = question
+	return r.execute(out, "confirm.html.tmpl", view)
+}
+
+// question draws what the trigger gives way to as a compact callout, the band
+// every notice is, in the act's tone (caution is the warning's marigold), its
+// answers the band's acts.
+func (c *Confirm) question(r *Renderer, view confirmView) (template.HTML, error) {
+	var answers bytes.Buffer
+	if err := r.execute(&answers, "confirm.answers", view); err != nil {
+		return "", err
+	}
+	variant := "danger"
+	if view.Tone == ToneCaution {
+		variant = "warning"
+	}
+	band := &Callout{Variant: variant, Compact: true, Title: c.Title, Body: c.Message}
+	var out bytes.Buffer
+	if err := band.execute(r, &out, "", []template.HTML{template.HTML(answers.String())}); err != nil { //nolint:gosec // rendered by the shell's own templates
+		return "", err
+	}
+	return template.HTML(out.String()), nil //nolint:gosec // rendered by the shell's own templates
 }

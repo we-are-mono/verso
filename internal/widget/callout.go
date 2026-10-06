@@ -66,6 +66,13 @@ func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
 		}
 		acts = append(acts, act)
 	}
+	return c.execute(r, out, link, acts)
+}
+
+// execute draws the band around what is already rendered for it: the link
+// that closes its words and the acts in its row. A confirmation asks its
+// question through it, its answers as the acts.
+func (c *Callout) execute(r *Renderer, out io.Writer, link template.HTML, acts []template.HTML) error {
 	return r.execute(out, "callout.html.tmpl", struct {
 		*Callout
 		RenderedLink template.HTML
