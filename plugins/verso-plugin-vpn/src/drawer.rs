@@ -52,7 +52,8 @@ impl Stated {
 
     pub fn submitted(form: &Form) -> Stated {
         Stated {
-            enabled: form.get("enabled") == "on",
+            // A ticked switch posts its value ("1"); an unticked one, nothing.
+            enabled: !form.get("enabled").is_empty(),
             username: form.get("username").trim().to_string(),
             password: form.get("password"),
         }
@@ -574,7 +575,8 @@ mod tests {
     fn save_writes_enabled_both_ways() {
         let vpn = Vpn::read(&fixture::request("/"));
         let proton = vpn.instance("proton").unwrap();
-        let on = written(save(proton, &Form::parse("enabled=on&panel=1")));
+        // What the browser posts for a ticked switch.
+        let on = written(save(proton, &Form::parse("enabled=1&panel=1")));
         assert_eq!(on["enabled"], "1");
         let off = written(save(proton, &Form::parse("panel=1")));
         assert_eq!(off["enabled"], "0");
@@ -612,7 +614,7 @@ mod tests {
             .contains("option password '••••••••'"));
         let kept = written(save(
             &proton,
-            &Form::parse("enabled=on&username=Xk2nQ8%2Bpmp&panel=1"),
+            &Form::parse("enabled=1&username=Xk2nQ8%2Bpmp&panel=1"),
         ));
         assert_eq!(kept, json!({"enabled": "1", "username": "Xk2nQ8+pmp"}));
     }
@@ -623,13 +625,13 @@ mod tests {
         let proton = vpn.instance("proton").unwrap();
         let set = written(save(
             proton,
-            &Form::parse("enabled=on&username=me&password=s3cret&panel=1"),
+            &Form::parse("enabled=1&username=me&password=s3cret&panel=1"),
         ));
         assert_eq!(
             set,
             json!({"enabled": "1", "username": "me", "password": "s3cret"})
         );
-        let cleared = written(save(&signed_in(), &Form::parse("enabled=on&panel=1")));
+        let cleared = written(save(&signed_in(), &Form::parse("enabled=1&panel=1")));
         assert_eq!(
             cleared,
             json!({"enabled": "1", "username": null, "password": null})
