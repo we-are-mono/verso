@@ -30,11 +30,8 @@ const HEADING: &str = "Activity";
 
 const EMPTY_TEXT: &str = "Waiting for the first logged event…";
 
-const NOTHING_LOGGED: &str = "Nothing is being logged";
-
-const NOTHING_LOGGED_BODY: &str = "The firewall decides quietly by default. Turn on **Log \
-matching packets** on a rule you're curious about, and its verdicts appear here the moment they \
-happen.";
+const NOTHING_LOGGED: &str = "Nothing is being logged. Turn on “Log matching packets” on a \
+rule you're curious about, and its verdicts appear here the moment they happen.";
 
 /// RING is how many verdicts the browser keeps. Enough to hold a burst and read
 /// back through it; not so many that the page becomes a log file.
@@ -45,7 +42,9 @@ const RING: u32 = 200;
 /// the envelope is immediate: nothing on it stages.
 pub fn page(snapshot: &Snapshot) -> Envelope {
     if !logging_configured(snapshot) {
-        return page::envelope(HEADING, teaching()).immediate();
+        return page::envelope(HEADING, teaching())
+            .with_act(rules())
+            .immediate();
     }
     // The stream is the page, so the page is the window: it fills the height,
     // scrolls inside itself, and runs to the right and bottom edges. A log has
@@ -88,20 +87,25 @@ fn download() -> HeadingAct {
 /// DOWNLOAD is the sub-path the buffer is fetched from.
 const DOWNLOAD: &str = "download";
 
-/// teaching is the page with nothing to show and a reason: the firewall is not
-/// being asked to record anything, and the door to the page where that is
-/// turned on.
+/// teaching is the page with nothing to show and a reason: the listing's empty
+/// slot says the firewall is not being asked to record anything.
 fn teaching() -> Widget {
-    Widget::empty(
-        "activity",
-        NOTHING_LOGGED,
-        NOTHING_LOGGED_BODY,
-        vec![Widget::link(
-            "Open traffic rules",
-            &page::rules_href(),
-            "button",
-        )],
-    )
+    Widget::Table(Table {
+        empty_text: NOTHING_LOGGED.into(),
+        ..Default::default()
+    })
+}
+
+/// rules is the act while nothing is logged: the page where logging is turned
+/// on. It leads elsewhere rather than making something, so it wears the quiet
+/// dress.
+fn rules() -> HeadingAct {
+    HeadingAct {
+        label: "Open traffic rules".into(),
+        href: page::rules_href(),
+        style: "quiet".into(),
+        ..Default::default()
+    }
 }
 
 /// console is where the verdicts are printed: one line per event, no grid, on
@@ -308,14 +312,15 @@ mod tests {
     /// Silence with nothing configured to log is not a quiet network — it is
     /// nothing being recorded, and the page has to say which.
     #[test]
-    fn a_config_that_asks_for_no_logging_teaches_instead_of_showing_an_empty_table() {
+    fn a_config_that_asks_for_no_logging_says_so_instead_of_waiting() {
         let body = body(&fixture::snapshot());
-        let empty = fixture::widget(&body, "empty");
-        assert_eq!(empty["title"], "Nothing is being logged");
-        assert_eq!(empty["icon"], "activity");
-        assert_eq!(empty["children"][0]["href"], "/plugins/firewall/");
-        assert_eq!(empty["children"][0]["label"], "Open traffic rules");
-        // No table at all: an empty listing here would read like calm.
+        // The listing's empty slot says why it is empty, as every empty
+        // listing does, and the way to change that is the page's act.
+        let listing = fixture::widget(&body, "table");
+        assert_eq!(listing["empty_text"], NOTHING_LOGGED);
+        assert_eq!(body["act"]["href"], "/plugins/firewall/");
+        assert_eq!(body["act"]["label"], "Open traffic rules");
+        // No stream: a console waiting here would read like calm.
         assert!(serde_json::to_string(&body)
             .expect("json")
             .find("\"stream\"")
@@ -370,8 +375,8 @@ mod tests {
                 "a zone with log={value} records nothing"
             );
             assert_eq!(
-                fixture::widget(&body(&snapshot), "empty")["title"],
-                "Nothing is being logged"
+                fixture::widget(&body(&snapshot), "table")["empty_text"],
+                NOTHING_LOGGED
             );
         }
     }
