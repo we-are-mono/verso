@@ -62,6 +62,7 @@ pub struct Defaults {
     pub synflood_protect: bool,
     /// What the flood protection allows before it starts limiting: a rate in
     /// firewall4's own `<n>/<unit>` spelling, and how many may arrive at once.
+    /// Empty where the config is silent and firewall4 keeps its own.
     pub synflood_rate: String,
     pub synflood_burst: String,
     pub flow_offloading: bool,
@@ -429,8 +430,8 @@ impl Default for Defaults {
             forward: "drop".into(),
             drop_invalid: false,
             synflood_protect: false,
-            synflood_rate: "25/s".into(),
-            synflood_burst: "50".into(),
+            synflood_rate: String::new(),
+            synflood_burst: String::new(),
             flow_offloading: false,
             flow_offloading_hw: false,
             syn_cookies: true,
@@ -455,10 +456,10 @@ impl Defaults {
             forward: policy(section, "forward", "drop"),
             drop_invalid: flag(section, "drop_invalid", false),
             synflood_protect: flag(section, "synflood_protect", false),
-            // firewall4's own defaults, written here rather than left blank so
-            // the page states what the device will actually do.
-            synflood_rate: scalar_or(section, "synflood_rate", "25/s"),
-            synflood_burst: scalar_or(section, "synflood_burst", "50"),
+            // As the config has them: unset is firewall4's own pace, which the
+            // page shows as the fields' placeholders (settings.rs).
+            synflood_rate: section.scalar("synflood_rate"),
+            synflood_burst: section.scalar("synflood_burst"),
             flow_offloading: flag(section, "flow_offloading", false),
             flow_offloading_hw: flag(section, "flow_offloading_hw", false),
             syn_cookies: flag(section, "tcp_syncookies", true),

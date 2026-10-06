@@ -21,9 +21,11 @@ use verso_plugin::{
 
 use verso_plugin::files::FileSet;
 
+use crate::conditions::options;
 use crate::model;
 use crate::model::{Defaults, Firewall, Include};
 use crate::page;
+use crate::rule_form::{rate_unit, RATE_UNITS};
 
 const HEADING: &str = "Firewall settings";
 
@@ -123,9 +125,13 @@ pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
         values.insert(option.to_string(), flag_value(on, default_on));
     }
     for option in VALUES {
-        let value = form.get(option);
+        let value = submitted(form, option);
         set_value(model, option, &value);
-        values.insert(option.to_string(), json!(value));
+        let written = match value.is_empty() {
+            true => json!(null),
+            false => json!(value),
+        };
+        values.insert(option.to_string(), written);
     }
     // A config with no defaults section runs firewall4's own; the first change
     // to it is what makes the section exist on disk.
@@ -150,6 +156,48 @@ pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
         }
     }
     (page(model), ops)
+}
+
+/// firewall4's own pace for a SYN flood's allowance where the config is
+/// silent: what the page offers as its placeholders, and what a save leaves
+/// unwritten, as it does a switch at the state the daemon assumes.
+const SYNFLOOD_RATE: (&str, &str) = ("25", "second");
+const SYNFLOOD_BURST: &str = "50";
+
+/// submitted is what a save writes for one value option: what the form
+/// carries, or nothing where that is firewall4's own pace. The rate's count
+/// and its period are two controls writing one option.
+fn submitted(form: &Form, option: &str) -> String {
+    match option {
+        "synflood_rate" => {
+            synflood_rate(&form.get("synflood_rate"), &form.get("synflood_rate_unit"))
+        }
+        "synflood_burst" => match form.get("synflood_burst").trim() {
+            SYNFLOOD_BURST => String::new(),
+            burst => burst.to_string(),
+        },
+        _ => form.get(option),
+    }
+}
+
+/// synflood_rate joins a count and its period into the rate firewall4 reads
+/// ("123/minute"), or nothing where no count was given or it is fw4's own.
+fn synflood_rate(count: &str, unit: &str) -> String {
+    let (count, unit) = rate_parts(count, unit);
+    if count.is_empty() || (count.as_str(), unit.as_str()) == SYNFLOOD_RATE {
+        return String::new();
+    }
+    format!("{count}/{unit}")
+}
+
+/// rate_parts reads a rate as its count and period, the period by prefix as
+/// firewall4 does ("123/min" is per minute). A rate written without one is
+/// counted per `unit`, which is seconds where nothing else says otherwise.
+fn rate_parts(written: &str, unit: &str) -> (String, String) {
+    match written.trim().split_once('/') {
+        Some((count, period)) => (count.trim().to_string(), rate_unit(period)),
+        None => (written.trim().to_string(), rate_unit(unit)),
+    }
 }
 
 /// switch_value is what a defaults switch writes, by its uci name, wherever it
@@ -427,26 +475,17 @@ fn protection(d: &Defaults) -> Widget {
                 SYN_HELP,
                 d.synflood_protect,
             ),
-            Widget::form_grid(
-                2,
-                vec![
-                    field(
-                        "synflood_rate",
-                        "Connections per second",
-                        RATE_HELP,
-                        &d.synflood_rate,
-                        "/s",
-                    ),
-                    field(
-                        "synflood_burst",
-                        "Burst",
-                        BURST_HELP,
-                        &d.synflood_burst,
-                        "packets",
-                    ),
-                ],
-            )
-            .labelled("Connection rate", ""),
+            synflood_rate_field(d),
+            unset_shows(
+                field(
+                    "synflood_burst",
+                    "Burst",
+                    BURST_HELP,
+                    &d.synflood_burst,
+                    "packets",
+                ),
+                SYNFLOOD_BURST,
+            ),
             switch(
                 "drop_invalid",
                 "Drop packets that belong to no connection",
@@ -669,6 +708,37 @@ fn switch(name: &str, label: &str, help: &str, on: bool) -> Widget {
 
 /// field is one typed value of this page, with the unit riding inside the box's
 /// trailing edge so the number and what it counts read as one thing.
+/// synflood_rate_field reads the rate as the sentence it writes, "25 per
+/// second": the count, then its period, both naming the one option. Unset,
+/// the count is empty with firewall4's own as its placeholder, so the page
+/// says what `uci show` says and still shows the pace the device keeps.
+fn synflood_rate_field(d: &Defaults) -> Widget {
+    let (count, unit) = rate_parts(&d.synflood_rate, SYNFLOOD_RATE.1);
+    Widget::form_grid(
+        2,
+        vec![
+            unset_shows(
+                field("synflood_rate", "Connections", RATE_HELP, &count, ""),
+                SYNFLOOD_RATE.0,
+            ),
+            Widget::select("synflood_rate_unit", "Per", &unit, options(&RATE_UNITS), "")
+                .writes("synflood_rate"),
+        ],
+    )
+    .labelled("Connection rate", "")
+    .joined("per")
+}
+
+/// unset_shows sets what a field holds while its option is unset: firewall4's
+/// own value, as a placeholder rather than a value, so an untouched field
+/// writes nothing.
+fn unset_shows(mut widget: Widget, default: &str) -> Widget {
+    if let Widget::Field(Field { placeholder, .. }) = &mut widget {
+        *placeholder = default.into();
+    }
+    widget
+}
+
 fn field(name: &str, label: &str, help: &str, value: &str, unit: &str) -> Widget {
     Widget::Field(Field {
         name: name.into(),
@@ -911,11 +981,79 @@ mod tests {
         assert_eq!(flow["fields"][0]["name"], "flow_offloading_hw");
     }
 
+    /// The rate reads as the sentence it writes, "25 per second": a count, then
+    /// its period from firewall4's closed set, both naming the one option; the
+    /// burst is counted in packets.
     #[test]
-    fn the_rate_and_burst_carry_their_units() {
+    fn the_rate_is_a_count_per_period_and_the_burst_counts_packets() {
         let body = body();
-        assert_eq!(fixture::control(&body, "synflood_rate")["unit"], "/s");
+        let unit = fixture::control(&body, "synflood_rate_unit");
+        assert_eq!(unit["kind"], "select");
+        assert_eq!(unit["key"], "synflood_rate");
+        let periods: Vec<&str> = unit["options"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|option| option["value"].as_str().unwrap())
+            .collect();
+        assert_eq!(periods, ["second", "minute", "hour", "day"]);
+        assert_eq!(fixture::control(&body, "synflood_rate")["key"], "synflood_rate");
         assert_eq!(fixture::control(&body, "synflood_burst")["unit"], "packets");
+    }
+
+    /// Unset, the rate and burst say what `uci show` says: nothing, with
+    /// firewall4's own pace as the placeholders, never as values.
+    #[test]
+    fn an_unset_rate_shows_firewall4s_own_as_placeholders() {
+        let mut model = fixture::firewall();
+        model.defaults.synflood_rate = String::new();
+        model.defaults.synflood_burst = String::new();
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        let rate = fixture::control(&body, "synflood_rate");
+        assert_eq!(rate["value"], "");
+        assert_eq!(rate["placeholder"], "25");
+        assert_eq!(fixture::control(&body, "synflood_rate_unit")["value"], "second");
+        let burst = fixture::control(&body, "synflood_burst");
+        assert_eq!(burst["value"], "");
+        assert_eq!(burst["placeholder"], "50");
+    }
+
+    /// A rate written over another period reads back as that period, by
+    /// prefix as firewall4 reads it.
+    #[test]
+    fn a_rate_per_minute_reads_back_per_minute() {
+        let mut model = fixture::firewall();
+        model.defaults.synflood_rate = "123/min".into();
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        assert_eq!(fixture::control(&body, "synflood_rate")["value"], "123");
+        assert_eq!(fixture::control(&body, "synflood_rate_unit")["value"], "minute");
+    }
+
+    /// A save writes the rate as firewall4 reads it and leaves fw4's own pace
+    /// unwritten: an empty count, or 25 per second, or a burst of 50, clears
+    /// the option rather than staging a change nobody made.
+    #[test]
+    fn a_save_writes_the_rate_and_clears_firewall4s_own() {
+        let written = |body: &str| {
+            let mut model = fixture::firewall();
+            let (_, ops) = save(&mut model, &Form::parse(body));
+            let values = ops[0].values.clone();
+            (values["synflood_rate"].clone(), values["synflood_burst"].clone())
+        };
+        assert_eq!(
+            written("synflood_rate=123&synflood_rate_unit=minute&synflood_burst=80"),
+            (json!("123/minute"), json!("80"))
+        );
+        assert_eq!(
+            written("synflood_rate=25&synflood_rate_unit=second&synflood_burst=50"),
+            (Value::Null, Value::Null)
+        );
+        assert_eq!(
+            written("synflood_rate=&synflood_rate_unit=hour&synflood_burst="),
+            (Value::Null, Value::Null)
+        );
+        // A count typed with its period is read as firewall4 would read it.
+        assert_eq!(written("synflood_rate=30/h").0, json!("30/hour"));
     }
 
     // Which included files load is one setting asked of each file: a label,
