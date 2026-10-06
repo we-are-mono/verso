@@ -30,8 +30,11 @@ func TestLaneIsARowNotABand(t *testing.T) {
 	}
 	for _, want := range []string{
 		`class="verso-table-group"`,
-		`border-b border-rule-strong pt-1.5 pb-1.25 text-left leading-7`,  // the first lane: a row of two cells
-		`border-b border-rule-strong pt-11.5 pb-1.25 text-left leading-7`, // a later one: two cells of air above
+		// the first lane: a row of two cells, its add centred on the middle
+		// line and ending where the rows' acts do (7px in from the table's edge)
+		`border-b border-rule-strong pt-1.25 pb-1.5 pr-1.75! text-left leading-7`,
+		// a later one: two cells of air above
+		`border-b border-rule-strong pt-11.25 pb-1.5 pr-1.75! text-left leading-7`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("lane rows missing %q:\n%s", want, got)

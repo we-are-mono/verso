@@ -130,9 +130,11 @@
            is narrowed from. Every lane after the first starts its own small
            table, two cells below the last row of the one before; the air is
            the row's own padding, so a lane the filter hides takes its gap with
-           it. */}}
+           it. Its add sits as the rows' acts do: on the middle line (5px over,
+           6px under) and 7px in from the table's edge, so on hover its border
+           ends where theirs does. */}}
       <tr class="verso-table-group{{if .Seam}} verso-table-seam-row{{end}}">
-        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-11.5{{else}}pt-1.5{{end}} pb-1.25 text-left leading-7 font-normal">
+        <th colspan="{{.ColumnSpan}}" class="border-b border-rule-strong {{if .LaneGap}}pt-11.25{{else}}pt-1.25{{end}} pb-1.5 pr-1.75! text-left leading-7 font-normal">
           <span class="flex items-center gap-3">
             <span class="flex items-center gap-2 text-sm font-semibold text-ink">{{.Group.Label}}{{if .Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Group.To}}{{end}}</span>
             {{if .Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Group.Chain}}</span>{{end}}
@@ -178,7 +180,12 @@
         {{/* the grip rests at the step the eye passes over and darkens with the
              whole row, not only under its own pointer: what is draggable is the
              row, and the row is what the hand is already on. */}}
-        <td class="w-6 border-b border-rule pt-2 pb-1.75{{if not .Dense}} pr-2{{end}}">
+        {{/* The table starts on a grid line, so 7px on the left (outranking
+             the table's 16px) centres the 24px grip on the line a cell in, and
+             7px over it, 8px under, on the row's middle line: the grip stands on
+             a crossing of the notebook's grid. What it gives up on the left it
+             keeps on the right, so the column is as wide as ever. */}}
+        <td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! {{if .Dense}}pr-2.25{{else}}pr-4.25{{end}}">
           {{if .Draggable}}
           <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowName}}" aria-keyshortcuts="ArrowUp ArrowDown" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             {{icon "list-chevrons-up-down" "size-4"}}
@@ -275,8 +282,12 @@
              actions: 84px of controls plus this gap. The outer inset is extra. */}}
         {{/* the row's own acts, at its trailing edge: quiet glyphs that darken
              under the pointer. An act with no destination is drawn and inert —
-             the shape is decided, what sits behind it is not. */}}
-        <td class="border-b border-rule pt-1.5 pb-1.25 pl-3 whitespace-nowrap">
+             the shape is decided, what sits behind it is not. The table ends on
+             a grid line, so a 7px right inset (outranking the table's 16px)
+             centres the last 28px act on the line a cell in from that edge, and
+             5px over it, 6px under, centre it on the row's middle line: the
+             rightmost glyph stands on a crossing of the notebook's grid. */}}
+        <td class="border-b border-rule pt-1.25 pb-1.5 pl-3 pr-1.75! whitespace-nowrap">
           {{/* the token is the cell's; inside the range the dot is one act, and
                a sub-template's $ is the row list rather than the table. */}}
           {{/* each act is named with its row, as a row's labelled act is; an
@@ -455,7 +466,7 @@
              geometry an endpoint's head starts where the chip's glyph does —
              one hairline and the chip's own inset in — so the word sits over
              the column's ink rather than its border. */}}
-        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}w-6{{if not $.Dense}} pr-2{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}w-6 pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-32 min-w-32 max-w-32 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-rule-strong"></th>{{end}}
       </tr>
@@ -508,8 +519,11 @@
 
      The reason is what the inset holds off: a row's hover tint and a band's fill
      run the table's full width, so values flush to that edge would sit on the
-     tint's own boundary and read as a mistake. It is 16px at either density:
-     what a dense listing — ten columns of firewall rule — gives up is the
+     tint's own boundary and read as a mistake. It is 11px on the leading edge,
+     where a grip's glyph starts when it stands on the grid's first crossing,
+     so every row's first content lines up with it, and 16px on the trailing
+     edge, at either density: what a dense listing — ten columns of firewall
+     rule — gives up is the
      cells' own inset (table.cellpad), spending the measure on values rather
      than on margin. Rows are the same height either way; density here is
      horizontal, and a shorter row is a rhythm no design asks for.
@@ -532,7 +546,7 @@
     {{template "verso-empty-slot-body" .EmptyText}}
   </div>
 {{else}}
-<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-4 [&_th:first-of-type]:pl-4 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
+<div{{if .Live}} data-verso-live-table{{end}} class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush
@@ -601,7 +615,7 @@
     {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
   </div>
   {{end}}
-  <p data-verso-listing-empty hidden class="border-b border-rule px-4 pt-2.5 pb-2.25 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
+  <p data-verso-listing-empty hidden class="border-b border-rule pt-2.5 pr-4 pb-2.25 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
 </div>
 {{end}}
 {{end}}

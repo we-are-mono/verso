@@ -47,9 +47,13 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 	// A wrapped row hangs from its first line: the node and its branch stay on
 	// the first two cells, 40px, and only the trunks that run on to later rows
 	// stretch down the rest of the row, without changing their stroke.
+	// The tree starts 11px in, where every listing's first content does, the
+	// first column's head over the names after it.
 	for _, want := range []string{
-		`class="pointer-events-none absolute top-0 left-4 h-10`,
-		`class="pointer-events-none absolute top-10 bottom-0 left-4`,
+		`<td class="relative py-0 pl-2.75 align-top">`,
+		`class="pointer-events-none absolute top-0 left-2.75 h-10`,
+		`class="pointer-events-none absolute top-10 bottom-0 left-2.75`,
+		`pl-29.25`,
 		`preserveAspectRatio="none"`, `vector-effect="non-scaling-stroke"`,
 	} {
 		if !strings.Contains(got, want) {

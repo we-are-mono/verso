@@ -12,7 +12,7 @@
        40px and on through the hairline. */}}
   <table class="verso-table group/inventory w-full min-w-[66rem] table-fixed text-left text-sm leading-5">
     <colgroup><col><col class="w-30"><col class="w-44"><col class="w-50"><col class="w-32"><col class="w-39"></colgroup>
-    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-30.5{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
+    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-29.25{{else if eq $i 5}}pr-4{{end}}">{{.Label}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Rows}}
       {{$row := .}}
@@ -25,9 +25,9 @@
         {{/* A row that wraps hangs from its first line, as every listing's
              does: the node and its branch hold the first 40px, and only the
              trunks that run on to later rows stretch down the rest. */}}
-        <td class="relative py-0 pl-4 align-top">
-          <svg width="66" height="40" viewBox="0 0 66 40" aria-hidden="true" class="pointer-events-none absolute top-0 left-4 h-10 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
-          {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute top-10 bottom-0 left-4 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
+        <td class="relative py-0 pl-2.75 align-top">
+          <svg width="66" height="40" viewBox="0 0 66 40" aria-hidden="true" class="pointer-events-none absolute top-0 left-2.75 h-10 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
+          {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute top-10 bottom-0 left-2.75 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
           <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="group/identity flex w-full cursor-pointer items-start text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             <svg width="66" height="40" viewBox="0 0 66 40" class="relative -mb-px shrink-0 overflow-visible text-glyph" aria-hidden="true">
               <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
@@ -37,7 +37,9 @@
           </button>
         </td>
         {{else if eq $i 5}}
-        <td class="pt-1.5 pr-4 pb-1.25 align-top"><div class="flex w-35 items-center justify-end">
+        {{/* the last act on the grid crossing a cell in from the right edge,
+             as every listing's is (table.html.tmpl, actions) */}}
+        <td class="pt-1.25 pr-1.75 pb-1.5 align-top"><div class="ml-auto flex w-35 items-center justify-end">
           {{range .Actions}}
           {{if and .Href $cell.Panel (eq .Href $cell.Panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $cell.RowName}} {{$cell.RowName}}{{end}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
           {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
@@ -61,8 +63,8 @@
            it rise, one after another. */}}
       <tr data-verso-expanded-row hidden><td colspan="6" class="p-0">
         <div class="verso-unfold"><div>
-          <div class="relative border-b border-rule bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-27.5">
-            {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-4 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
+          <div class="relative border-b border-rule bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-26.25">
+            {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-2.75 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
             <div class="@container min-w-0">{{range .Expanded}}{{.}}{{end}}</div>
           </div>
         </div></div>

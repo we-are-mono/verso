@@ -253,6 +253,31 @@ func TestRenderTableWithoutReorderCarriesNoOrderForm(t *testing.T) {
 	}
 }
 
+// TestTheGripStandsOnAGridCrossing: the table starts on a line of the notebook's
+// grid, so the grip's cell keeps 7px on its left to centre the 24px grip on the
+// line a cell in, and 7px over it (8px under) to centre it on the row's middle
+// line. What it gives up on the left it keeps on the right, so the column stays
+// as wide and every column after it stays where it was.
+func TestTheGripStandsOnAGridCrossing(t *testing.T) {
+	for dense, want := range map[bool]string{
+		true:  `<td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-2.25">`,
+		false: `<td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-4.25">`,
+	} {
+		got := render(t, newRenderer(t), &Table{
+			Dense:   dense,
+			Columns: []TableColumn{{Label: "Order", Kind: "reorder"}, {Label: "From"}},
+			Rows:    []TableRow{{ID: "a", Cells: []TableCell{{}, {Text: "wan"}}}},
+		})
+		if !strings.Contains(got, want) {
+			t.Errorf("dense=%v: the grip is not on a crossing, want %s in:\n%s", dense, want, got)
+		}
+		head := map[bool]string{true: "w-6 pl-1.75! pr-2.25", false: "w-6 pl-1.75! pr-4.25"}[dense]
+		if !strings.Contains(got, head) {
+			t.Errorf("dense=%v: the grip's head keeps the column's width, want %s in:\n%s", dense, head, got)
+		}
+	}
+}
+
 // TestRenderReorderColumnWithoutConfigDrawsNoHandle: the drag persists through a
 // uci order on the declared config, so a table that names none offers no grip —
 // the column still holds its slot, keeping the grid identical to the live case.
@@ -315,10 +340,10 @@ func TestRenderTableGroupHeader(t *testing.T) {
 		`<span class="text-faint">·</span><span class="text-meta">3 rules</span>`,
 		// The lane spans the row, so it is both first and last child and takes
 		// the wrapper's edge inset like every other cell. It is a row of the
-		// listing's own two cells: a 28px line — the add's box — 6px above
-		// and 5px plus its hairline below, so a lane with no add is the same
+		// listing's own two cells: a 28px line — the add's box — 5px above
+		// and 6px plus its hairline below, so a lane with no add is the same
 		// height as one with.
-		`class="verso-table-group"`, `pt-1.5 pb-1.25 text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-4",
+		`class="verso-table-group"`, `pt-1.25 pb-1.5 pr-1.75! text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-2.75",
 		// The lane's add is a glyph at the band's right, its words on hover.
 		`aria-label="Add rule to Guest → Router"`, lucideIcons["plus"], ">Add rule to Guest → Router</span>",
 		// The handle is the drag's, not the band's.
@@ -765,14 +790,17 @@ func TestRenderTableDense(t *testing.T) {
 	columns := []TableColumn{{Label: "Name", Kind: "name"}}
 	rows := []TableRow{{Cells: []TableCell{{Text: "SSH"}}}}
 
+	// The leading edge is 11px in, where a grip's glyph starts when it stands
+	// on the grid's first crossing, so every row's first content lines up with
+	// it; the trailing edge keeps 16px.
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", "px-3.5 pt-2.5 pb-2.25 leading-5"} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 pt-2.5 pb-2.25 leading-5"} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-4", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule pt-2.5 pr-4 pb-2.25 leading-5"`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule pt-2.5 pr-4 pb-2.25 leading-5"`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -899,6 +927,20 @@ func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 	}
 	if !strings.Contains(got, "px-3.5 pt-2.5 pb-2.25") {
 		t.Errorf("a stacked cell writes its first line on the one-line cell's line:\n%s", got)
+	}
+}
+
+// TestTheLastRowActStandsOnAGridCrossing: the table ends on a line of the
+// notebook's grid, so the actions cell's 7px right inset centres its last 28px
+// act on the line a cell in from that edge, and 5px over it (6px under) centre
+// it on the row's middle line: the rightmost glyph sits on a crossing.
+func TestTheLastRowActStandsOnAGridCrossing(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "demo@laptop"}, {Actions: []TableRowAct{{Icon: "pencil", Title: "Edit"}}}}}},
+	})
+	if !strings.Contains(got, `<td class="border-b border-rule pt-1.25 pb-1.5 pl-3 pr-1.75! whitespace-nowrap">`) {
+		t.Errorf("the actions cell does not put its last act on a crossing:\n%s", got)
 	}
 }
 
