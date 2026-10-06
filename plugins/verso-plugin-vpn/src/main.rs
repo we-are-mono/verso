@@ -34,12 +34,15 @@ fn main() {
 fn get(request: &Request) -> Envelope {
     let vpn = Vpn::read(request);
     let open = request.query.get(listing::OPEN);
+    let profile = request.query.get(drawer::TAB) == drawer::PROFILE;
     let panel = vpn.instance(&open).map(|instance| {
-        let stated = Stated::of(instance);
-        (
-            open.as_str(),
-            drawer::drawer(instance, now(), &stated, &Errors::default()),
-        )
+        let panel = match (&instance.file, profile) {
+            (Some(file), true) => {
+                drawer::profile_drawer(instance, &file.content, &file.version, "")
+            }
+            _ => drawer::drawer(instance, now(), &Stated::of(instance), &Errors::default()),
+        };
+        (open.as_str(), panel)
     });
     listing::page(&vpn, panel)
 }
@@ -50,6 +53,18 @@ fn get(request: &Request) -> Envelope {
 fn post(request: &Request, form: &Form) -> Envelope {
     let vpn = Vpn::read(request);
     let open = request.query.get(listing::OPEN);
+    // The profile editor stages its file as a command, on its own.
+    if let (Some(instance), false) = (vpn.instance(&open), form.get(drawer::PROFILE).is_empty()) {
+        return match drawer::save_profile(instance, form) {
+            Ok(command) => {
+                let mut page = listing::page(&vpn, None);
+                page.commands = vec![command];
+                page
+            }
+            // The editor itself says why; the form carries the refusal.
+            Err(panel) => listing::page(&vpn, Some((&open, *panel))),
+        };
+    }
     if let (Some(instance), false) = (vpn.instance(&open), form.get(drawer::PANEL).is_empty()) {
         let stated = Stated::submitted(form);
         return match drawer::save(instance, form) {

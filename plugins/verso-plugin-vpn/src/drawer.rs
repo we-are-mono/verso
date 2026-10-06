@@ -3,14 +3,14 @@
 
 //! One OpenVPN instance, opened beside the listing.
 //!
-//! It answers three things in order: what the tunnel is doing now, what its
-//! section says (and lets that change), and what its profile says. The
-//! profile is the provider's file and stays as they wrote it, so it is read
-//! out rather than edited; both files close the panel, as the router holds
-//! them.
+//! Its Settings reading answers what the tunnel is doing now, what its
+//! section says (and lets that change), and what its profile says. Its
+//! Profile reading is the profile file itself, edited with every key block
+//! folded to one line: the keys stay on the router, and an edit keeps them.
 
 use verso_plugin::{
-    commit, json, uci_text, CommitOp, Errors, Field, Form, Map, Property, RowDrawer, Value, Widget,
+    commit, json, uci_text, ApplyAction, CommitOp, DrawerTab, Errors, Field, Form, Map, Property,
+    RowDrawer, Value, Widget,
 };
 
 use crate::listing::bytes;
@@ -149,18 +149,110 @@ pub fn drawer(instance: &Instance, now: u64, stated: &Stated, errors: &Errors) -
         CONFIG_PATH,
         &uci_text("openvpn", &instance.name, &preview),
     ));
-    if let Some(profile) = &instance.profile {
+    // Where the profile cannot be edited, it is still shown as it reads.
+    if let (None, Some(profile)) = (&instance.file, &instance.profile) {
         fields.push(Widget::code(&instance.config, &profile.text));
     }
     fields.push(Widget::hidden(PANEL, "1"));
     RowDrawer {
         title: instance.name.clone(),
         closed: "/plugins/vpn/".into(),
+        tabs: tabs(instance, SETTINGS),
         open: true,
         children: vec![Widget::form("Save", fields).at(CONFIG, &instance.name)],
         ..Default::default()
     }
 }
+
+/// TAB is the query key naming the panel's reading; PROFILE is the profile
+/// editor's, and SETTINGS, the default, carries no tab in the address.
+pub const TAB: &str = "tab";
+pub const PROFILE: &str = "profile";
+const SETTINGS: &str = "";
+
+/// tabs are the panel's two readings: what the section says, and the profile
+/// file itself. Each saves on its own, because a profile is staged as a file
+/// and a section as uci. An instance with no profile to edit has one reading,
+/// and no strip.
+fn tabs(instance: &Instance, active: &str) -> Vec<DrawerTab> {
+    if instance.file.is_none() {
+        return Vec::new();
+    }
+    let href = crate::listing::href(&instance.name);
+    vec![
+        DrawerTab {
+            label: "Settings".into(),
+            href: href.clone(),
+            active: active == SETTINGS,
+        },
+        DrawerTab {
+            label: "Profile".into(),
+            href: format!("{href}&{TAB}={PROFILE}"),
+            active: active == PROFILE,
+        },
+    ]
+}
+
+/// profile_drawer is the profile in an editor, its key blocks one line each.
+/// A placeholder left as it is keeps its key; a block pasted in whole
+/// replaces it.
+pub fn profile_drawer(
+    instance: &Instance,
+    content: &str,
+    expected: &str,
+    error: &str,
+) -> RowDrawer {
+    let mut body = Widget::field("content", "Contents", content, "", "");
+    if let Widget::Field(Field { kind, style, .. }) = &mut body {
+        *kind = "textarea".into();
+        *style = "code".into();
+    }
+    let form = Widget::Form {
+        style: String::new(),
+        submit: "Save profile".into(),
+        error: error.into(),
+        fields: vec![
+            Widget::hidden("expected", expected),
+            Widget::hidden(PROFILE, "1"),
+            body,
+            Widget::text(&format!("`{}`", instance.config)),
+        ],
+        note: String::new(),
+        target: String::new(),
+    };
+    RowDrawer {
+        title: instance.name.clone(),
+        closed: "/plugins/vpn/".into(),
+        tabs: tabs(instance, PROFILE),
+        open: true,
+        children: vec![form],
+        ..Default::default()
+    }
+}
+
+/// save_profile states the editor's submission as the command that stages
+/// the file, or the editor again with why it cannot be saved.
+pub fn save_profile(instance: &Instance, form: &Form) -> Result<ApplyAction, Box<RowDrawer>> {
+    let content = form.get("content");
+    let expected = form.get("expected");
+    if content.len() > LIMIT || content.contains('\0') {
+        return Err(Box::new(profile_drawer(
+            instance, &content, &expected, TOO_LARGE,
+        )));
+    }
+    Ok(ApplyAction {
+        name: "config-file-stage".into(),
+        args: [
+            ("path".into(), instance.config.clone()),
+            ("expected".into(), expected),
+            ("content".into(), content),
+        ]
+        .into(),
+    })
+}
+
+const LIMIT: usize = 32768;
+const TOO_LARGE: &str = "Profiles must be at most 32 KiB.";
 
 /// facts is what the tunnel is doing now, as far as the helper could read,
 /// beyond the state its row already says.
@@ -383,10 +475,7 @@ mod tests {
         let reading = &fields[3];
         assert_eq!(reading["title"], PROFILE_TITLE);
         let items = &reading["children"][0]["items"];
-        assert_eq!(
-            property(items, "File")["value"],
-            "/etc/openvpn/proton.ovpn"
-        );
+        assert_eq!(property(items, "File")["value"], "/etc/openvpn/proton.ovpn");
         assert_eq!(
             property(items, "Servers")["value"],
             "185.107.56.234:1194, 185.107.56.234:80, 185.107.56.234:4569"
@@ -404,20 +493,74 @@ mod tests {
     }
 
     #[test]
-    fn both_files_close_the_panel_as_the_router_holds_them() {
+    fn settings_close_on_the_section_they_write() {
         let panel = panel("proton");
-        let files = &fields(&panel)[4..6];
-        assert_eq!(files[0]["label"], CONFIG_PATH);
-        assert_eq!(files[0]["live"], true, "the preview follows the switch");
+        let fields = fields(&panel);
+        let preview = &fields[4];
+        assert_eq!(preview["label"], CONFIG_PATH);
+        assert_eq!(preview["live"], true, "the preview follows the switch");
         assert_eq!(
-            files[0]["value"],
+            preview["value"],
             "config openvpn 'proton'\n\toption config '/etc/openvpn/proton.ovpn'\n\toption enabled '1'"
         );
-        assert_eq!(files[1]["label"], "/etc/openvpn/proton.ovpn");
-        assert!(files[1]["value"]
+        // The profile file is its own reading now, not a card under this one.
+        assert!(fields
+            .iter()
+            .all(|f| f["label"] != "/etc/openvpn/proton.ovpn"));
+        assert_eq!(panel["tabs"][0]["label"], "Settings");
+        assert_eq!(panel["tabs"][0]["active"], true);
+        assert_eq!(
+            panel["tabs"][1]["href"],
+            "/plugins/vpn/?open=proton&tab=profile"
+        );
+    }
+
+    #[test]
+    fn the_profile_is_edited_with_its_keys_folded() {
+        let vpn = Vpn::read(&fixture::request("/"));
+        let proton = vpn.instance("proton").unwrap();
+        let file = proton.file.as_ref().unwrap();
+        let body =
+            serde_json::to_value(profile_drawer(proton, &file.content, &file.version, "")).unwrap();
+        assert_eq!(body["tabs"][1]["active"], true);
+        let form = &body["children"][0];
+        assert_eq!(form["submit"], "Save profile");
+        let editor = form["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["name"] == "content")
+            .unwrap()
+            .clone();
+        assert_eq!(editor["kind"], "textarea");
+        assert!(editor["value"]
             .as_str()
             .unwrap()
-            .contains("<ca> … 31 lines … </ca>"));
+            .contains("<tls-crypt> … 18 lines … </tls-crypt>"));
+    }
+
+    #[test]
+    fn a_profile_save_is_staged_as_the_file_with_its_version() {
+        let vpn = Vpn::read(&fixture::request("/"));
+        let proton = vpn.instance("proton").unwrap();
+        let Ok(command) = save_profile(
+            proton,
+            &Form::parse("profile=1&expected=5f2c1a9e0b7d4c3a&content=client%0Adev+tun%0A"),
+        ) else {
+            panic!("a profile was refused");
+        };
+        assert_eq!(command.name, "config-file-stage");
+        assert_eq!(command.args["path"], "/etc/openvpn/proton.ovpn");
+        assert_eq!(command.args["expected"], "5f2c1a9e0b7d4c3a");
+        assert_eq!(command.args["content"], "client\ndev tun\n");
+        let huge = format!("profile=1&content={}", "a".repeat(LIMIT + 1));
+        assert!(save_profile(proton, &Form::parse(&huge)).is_err());
+    }
+
+    #[test]
+    fn an_instance_with_no_profile_to_edit_has_one_reading() {
+        let panel = panel("work");
+        assert!(panel.get("tabs").is_none(), "{panel}");
     }
 
     #[test]

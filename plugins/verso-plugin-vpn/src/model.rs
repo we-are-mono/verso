@@ -31,7 +31,15 @@ pub struct Instance {
     pub network: String,
     pub live: Live,
     pub profile: Option<Profile>,
+    /// The profile file as the editor opens it: folded, as it will read once
+    /// staged changes are applied, and the version a save replaces.
+    pub file: Option<ProfileFile>,
     pub traffic: Option<Traffic>,
+}
+
+pub struct ProfileFile {
+    pub content: String,
+    pub version: String,
 }
 
 /// Live is what the helper read of an instance. An empty state is a read the
@@ -116,9 +124,25 @@ impl Vpn {
                 .iter()
                 .find(|t| !device.is_empty() && t["device"] == device.as_str())
                 .map(|t| traffic(t));
+            let config = section.scalar("config");
+            let file = request
+                .ubus
+                .get("openvpnFiles")
+                .and_then(|s| s["files"].as_array())
+                .and_then(|files| {
+                    files
+                        .iter()
+                        .find(|f| !config.is_empty() && f["path"] == config.as_str())
+                })
+                .filter(|f| f.get("error").is_none())
+                .map(|f| ProfileFile {
+                    content: text(f, "content"),
+                    version: text(f, "version"),
+                });
             instances.push(Instance {
                 network: network_of(&device),
-                config: section.scalar("config"),
+                file,
+                config,
                 values: section
                     .entries()
                     .filter(|(key, _)| !key.starts_with('.'))

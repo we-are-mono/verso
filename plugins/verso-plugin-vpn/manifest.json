@@ -10,10 +10,12 @@
     "read": [
       { "scope": "uci", "object": "openvpn", "function": "read" },
       { "scope": "uci", "object": "network", "function": "read" },
-      { "scope": "ubus", "object": "verso", "function": "vpnState" }
+      { "scope": "ubus", "object": "verso", "function": "vpnState" },
+      { "scope": "ubus", "object": "verso", "function": "openvpnFiles" }
     ],
     "write": [
-      { "scope": "uci", "object": "openvpn", "function": "write" }
+      { "scope": "uci", "object": "openvpn", "function": "write" },
+      { "scope": "ubus", "object": "verso", "function": "stageConfigFile" }
     ]
   }
 }
