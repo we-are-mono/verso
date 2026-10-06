@@ -325,8 +325,8 @@ apk-qos-publish: apk-qos
 	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(QOS_OUT))  (index rebuilt)"
 
 # The VPN plugin ships as its own package. It lists every tunnel whatever runs
-# it, so it needs nothing beyond the shell: OpenVPN's rows appear where the
-# openvpn package is installed, Tailscale's and WireGuard's wherever they run.
+# it, and edits OpenVPN's, so it depends on `openvpn`: the name every OpenVPN
+# build provides (openssl, mbedtls), so a router keeps the one it has.
 VPN_PKG      := verso-plugin-vpn
 VPN_PAYLOAD  := $(APK_DIR)/pkg-vpn
 VPN_OUT      := $(APK_DIR)/$(VPN_PKG)-$(VER).apk
@@ -344,7 +344,7 @@ apk-vpn: apk-preflight build-$(APK_GOARCH)
 	  --info "description:Verso VPN — every tunnel on the router, and OpenVPN profiles read out" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
-	  --info "depends:verso" \
+	  --info "depends:verso openvpn" \
 	  --files "$(VPN_PAYLOAD)" \
 	  --script post-install:$(VPN_POSTINST) \
 	  --script post-upgrade:$(VPN_POSTINST) \

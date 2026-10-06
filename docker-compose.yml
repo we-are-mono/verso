@@ -15,9 +15,11 @@
 # host uplink, they can never bridge onto the real LAN; wan-sim's own uplink is
 # plain container egress on vnet.
 #
-# SAFETY: non-privileged and NO devices, so /dev/watchdog is absent inside the
-# containers. procd cannot grab a host watchdog here, so it cannot reboot the
-# host. Never add `privileged: true` or `devices: [/dev/watchdog]`.
+# SAFETY: non-privileged, and the router's only device is /dev/net/tun, so
+# /dev/watchdog is absent inside the containers. procd cannot grab a host
+# watchdog here, so it cannot reboot the host. Never add `privileged: true` or
+# `devices: [/dev/watchdog]`. The tun device only lets OpenVPN make its tunnel
+# inside the container's own network namespace.
 services:
   verso:
     build:
@@ -29,6 +31,8 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun           # OpenVPN's tunnel device
     sysctls:
       net.ipv6.conf.all.forwarding: "1"     # a v6 router routes
     tmpfs:
