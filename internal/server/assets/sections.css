@@ -111,9 +111,9 @@
   section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
     margin-top: calc(var(--spacing) * 5);
   }
-  /* An empty slot's frame stands on the line, so it takes the cell less its
-     pixel. */
-  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > [data-verso-slot]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+  /* An empty slot's frame and a band's stand on the line, so they take the
+     cell less their pixel. */
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :is([data-verso-slot], [data-verso-callout]):not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
     margin-top: calc(var(--spacing) * 5 - 1px);
   }
   section[data-verso-section]:has(> [data-verso-section-band]),

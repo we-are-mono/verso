@@ -32,12 +32,16 @@
 {{if .Compact}}
 {{/* It explains the control it sits under, so it keeps that control's
      measure — the form's — rather than running past it. */}}
-<div class="flex w-full max-w-form items-start gap-2 rounded-xs px-3 py-2.5 text-left text-sm leading-5
-  {{if eq .Variant "success"}}bg-green-soft text-green-deep
-  {{else if eq .Variant "warning"}}bg-marigold-soft text-marigold-deep
-  {{else if eq .Variant "danger"}}bg-crimson-soft text-crimson-deep
-  {{else if eq .Variant "neutral"}}bg-quiet text-body
-  {{else}}bg-denim-soft text-denim-deep{{end}}">
+{{/* Framed as every band is, in its tone one step darker than its ground; the
+     frame stands a pixel out at the top and the left, on the notebook's lines.
+     Its words stand half a cell inside the frame, above and below (the pixel
+     the frame takes given back underneath), so the band stays whole cells tall. */}}
+<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25 text-left text-sm leading-5
+  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
+  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
+  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
+  {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body
+  {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
   {{/* The mark sits on the first line's optical centre: 7px down a 20px line. */}}
   <span class="mt-[0.4375rem] size-1.5 flex-none
     {{if eq .Variant "success"}}bg-green
@@ -55,7 +59,7 @@
   </div>
 </div>
 {{else}}
-<div class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-5 pt-4.75 pb-5 text-left text-sm leading-5
+<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-5 pt-4.75 pb-5 text-left text-sm leading-5
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -69,7 +73,9 @@
 </div>
 {{end}}
 {{/* callout.acts: what resolves the notice, inside the band — a row of
-     buttons a cell under its words, each centred in two cells (3px over and
-     under a 34px button), so the band stays whole cells tall. The buttons keep
-     their own shape and take the band's ink (input.css, data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+     buttons whose tops stand on the line a cell under its words, with the
+     rest of their two cells (6px under a 34px button) kept below, so the
+     band's padding under them matches the air over its first line and the
+     band stays whole cells tall. The buttons keep their own shape and take
+     the band's ink (input.css, data-verso-callout-acts). */}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-1.5">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

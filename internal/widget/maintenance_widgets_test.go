@@ -24,13 +24,14 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 }
 
 // TestACalloutCarriesTheActsThatResolveIt: a notice that something is missing
-// carries the act that resolves it, inside the band: a row of buttons a cell
-// under the words, centred in two cells, in the band's own ink.
+// carries the act that resolves it, inside the band: a row of buttons on the
+// line a cell under the words, the rest of their two cells kept below, in the
+// band's own ink.
 func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 	for _, compact := range []bool{true, false} {
 		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
 			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
-		row := strings.Index(got, `<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75">`)
+		row := strings.Index(got, `<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-1.5">`)
 		words := strings.Index(got, "Installing adds a blocklist.")
 		if row < 0 || words < 0 || row < words {
 			t.Errorf("compact=%v: the acts row stands inside the band, under its words:\n%s", compact, got)
@@ -46,6 +47,22 @@ func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 	}
 	if !strings.Contains(string(css), "[data-verso-callout-acts] a {") {
 		t.Error("an act inside a band is not coloured from it")
+	}
+}
+
+// TestACompactCalloutIsFramedOneStepDarker: a band, compact or not, wears a
+// hairline of its tone one step darker than its ground, its frame a pixel out
+// so it lands on the notebook's lines, its words half a cell inside it above
+// and below.
+func TestACompactCalloutIsFramedOneStepDarker(t *testing.T) {
+	for variant, border := range map[string]string{
+		"info": "border-denim-line bg-denim-soft", "warning": "border-marigold-line bg-marigold-soft",
+		"danger": "border-crimson-line bg-crimson-soft", "success": "border-green-line bg-green-soft", "neutral": "border-rule bg-quiet",
+	} {
+		got := render(t, newRenderer(t), &Callout{Variant: variant, Compact: true, Body: "x"})
+		if !strings.Contains(got, `-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25`) || !strings.Contains(got, border) {
+			t.Errorf("%s: a compact band is framed one step darker on the lines, want %q:\n%s", variant, border, got)
+		}
 	}
 }
 

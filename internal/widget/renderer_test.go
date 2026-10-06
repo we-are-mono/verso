@@ -273,8 +273,8 @@ func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 // — rather than running past it; it leads with its tone's small square.
 func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	got := render(t, newRenderer(t), &Callout{Variant: "warning", Compact: true, Body: "Named once."})
-	if !strings.Contains(got, `class="flex w-full max-w-form items-start gap-2 rounded-xs`) {
-		t.Errorf("a compact note keeps the form's measure:\n%s", got)
+	if !strings.Contains(got, `flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs`) {
+		t.Errorf("a compact note keeps the form's measure, its frame a pixel out:\n%s", got)
 	}
 	if !strings.Contains(got, "size-1.5 flex-none") || !strings.Contains(got, "bg-marigold") {
 		t.Errorf("a compact note leads with its tone's square:\n%s", got)
@@ -662,15 +662,16 @@ func TestRenderCallout(t *testing.T) {
 		t.Errorf("neutral callout should be the quiet band: %s", neutral)
 	}
 	// Compact is the note under a control: the mark on the first line's optical
-	// centre, and no frame.
+	// centre, framed one step darker than its ground as every band is, without
+	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "py-2", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2.5 pb-2.25", "border-denim-line", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
 	}
-	if strings.Contains(compact, "px-5 py-4") || strings.Contains(compact, "border ") {
-		t.Errorf("compact callout should carry neither the standing padding nor a frame: %s", compact)
+	if strings.Contains(compact, "px-5") {
+		t.Errorf("compact callout should not carry the standing padding: %s", compact)
 	}
 }
 

@@ -411,11 +411,11 @@ The anatomy is the same in both:
 - **With a password:** when the act needs re-authorizing, the password field leads the answer row with a Crimson Hairline border.
 
 ### Inline warnings
-A warning (marigold) or an error (crimson) said in place, on the tone's Wash, every word in its Deep step. It is the only thing on a surface that explains itself: when nothing is wrong, nothing is said.
+A warning (marigold) or an error (crimson) said in place, on the tone's Wash, every word in its Deep step, framed by the tone's Hairline, one step darker than the Wash; the frame stands on the grid's lines, compact or not. It is the only thing on a surface that explains itself: when nothing is wrong, nothing is said.
 - **One size:** the title and the text under it are both 14px on 20px lines; the title is bold (600), the text regular, half a cell inside the band at top and bottom so it is whole cells. The title never steps up a size and the text is never a lede.
 - **Mark:** the tone's 6px square on the title's first line.
 - **The machine's words:** what a tool reported rides inside, under a Hairline of the tone, verbatim in mono.
-- **The acts that resolve it:** a notice may carry the buttons that resolve what it says (install what is missing): a row inside the band, a cell under its words, each button centred in two cells so the band stays whole cells tall. The buttons keep their own shape and take the band's ink: words and glyph in its deep step, the border that ink thinned, a wash of it under the pointer.
+- **The acts that resolve it:** a notice may carry the buttons that resolve what it says (install what is missing): a row inside the band, each button's top on the line a cell under its words and the rest of its two cells kept below it, so the padding under the buttons matches the air over the first line and the band stays whole cells tall. The buttons keep their own shape and take the band's ink: words and glyph in its deep step, the border that ink thinned, a wash of it under the pointer.
 - A confirmation's question is not an inline warning: it asks, at 16px, over its 14px consequence (Confirmation).
 
 ### Chips
