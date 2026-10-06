@@ -13,7 +13,7 @@ use verso_plugin::{
     commit, json, uci_text, CommitOp, Errors, Field, Form, Map, Property, RowDrawer, Value, Widget,
 };
 
-use crate::listing::{self, bytes};
+use crate::listing::bytes;
 use crate::model::{Instance, Profile, CONFIG};
 
 const CONFIG_PATH: &str = "/etc/config/openvpn";
@@ -106,12 +106,16 @@ fn option(instance: &Instance, key: &str) -> String {
 }
 
 /// drawer is the panel: one form, so Save closes it under everything it
-/// saves — the tunnel's state, its switch, its sign-in, the profile read out,
-/// and the section this writes, previewed as it changes, beside the profile
-/// file.
+/// saves — what the tunnel is doing, its switch, its sign-in, the profile
+/// read out, and the section this writes, previewed as it changes, beside the
+/// profile file.
 pub fn drawer(instance: &Instance, now: u64, stated: &Stated, errors: &Errors) -> RowDrawer {
-    let mut fields = vec![
-        Widget::properties(facts(instance, now)),
+    let mut fields = Vec::new();
+    let facts = facts(instance, now);
+    if !facts.is_empty() {
+        fields.push(Widget::properties(facts));
+    }
+    fields.push(
         Widget::switch_keyed(
             "enabled",
             "Start with the router",
@@ -120,7 +124,7 @@ pub fn drawer(instance: &Instance, now: u64, stated: &Stated, errors: &Errors) -
             stated.enabled,
         )
         .at(CONFIG, &instance.name),
-    ];
+    );
     let asks = instance.profile.as_ref().is_some_and(|p| p.asks_sign_in);
     if asks || !stated.username.is_empty() || !option(instance, "username").is_empty() {
         fields.push(sign_in(instance, stated, errors));
@@ -158,19 +162,10 @@ pub fn drawer(instance: &Instance, now: u64, stated: &Stated, errors: &Errors) -
     }
 }
 
-/// facts is what the tunnel is doing now, as far as the helper could read.
+/// facts is what the tunnel is doing now, as far as the helper could read,
+/// beyond the state its row already says.
 fn facts(instance: &Instance, now: u64) -> Vec<Property> {
-    let (state, tone) = listing::instance_state(instance);
-    let mut out = vec![Property {
-        label: "State".into(),
-        value: state.into(),
-        dot: if tone.is_empty() {
-            "neutral".into()
-        } else {
-            tone.into()
-        },
-        ..Default::default()
-    }];
+    let mut out = Vec::new();
     if let (true, Some(since)) = (instance.enabled, instance.live.since) {
         if instance.live.state == "connected" && now >= since {
             out.push(verbatim("Connected for", &duration(now - since)));
@@ -247,11 +242,7 @@ fn reading(profile: &Profile) -> Vec<Property> {
     let mut out = Vec::new();
     if !profile.remotes.is_empty() {
         let servers: Vec<String> = profile.remotes.iter().map(|r| r.endpoint()).collect();
-        let mut servers = mono("Servers", &servers.join(", "));
-        if profile.random && profile.remotes.len() > 1 {
-            servers.help = "Tried in random order.".into();
-        }
-        out.push(servers);
+        out.push(mono("Servers", &servers.join(", ")));
     }
     if !profile.proto.is_empty() {
         out.push(mono("Protocol", &profile.proto));
@@ -266,9 +257,7 @@ fn reading(profile: &Profile) -> Vec<Property> {
         ));
     }
     if !profile.blocks.is_empty() {
-        let mut keys = mono("Keys", &profile.blocks.join(", "));
-        keys.help = "Inside the profile.".into();
-        out.push(keys);
+        out.push(mono("Keys", &profile.blocks.join(", ")));
     }
     out.push(words(
         "Traffic",
@@ -368,8 +357,12 @@ mod tests {
         assert_eq!(panel["title"], "proton");
         assert_eq!(panel["open"], true);
         let facts = &fields(&panel)[0]["items"];
-        assert_eq!(property(facts, "State")["value"], "connected");
-        assert_eq!(property(facts, "State")["dot"], "success");
+        // The row already states it; the panel does not say it again.
+        assert!(facts
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p["label"] != "State"));
         assert_eq!(property(facts, "Connected for")["value"], "3 h 12 min");
         assert_eq!(property(facts, "Server")["value"], "185.107.56.234:1194");
         assert_eq!(property(facts, "Tunnel address")["value"], "10.96.0.14/16");
@@ -398,7 +391,10 @@ mod tests {
             property(items, "Servers")["value"],
             "185.107.56.234:1194, 185.107.56.234:80, 185.107.56.234:4569"
         );
-        assert_eq!(property(items, "Servers")["help"], "Tried in random order.");
+        // One line a fact: no note hangs under a value.
+        for item in items.as_array().unwrap() {
+            assert!(item.get("help").is_none(), "{item}");
+        }
         assert_eq!(property(items, "Encryption")["value"], "AES-256-GCM");
         assert_eq!(property(items, "Keys")["value"], "ca, tls-crypt");
         assert_eq!(
@@ -427,9 +423,8 @@ mod tests {
     #[test]
     fn a_stopped_tunnel_has_no_live_facts_to_state() {
         let panel = panel("work");
-        let facts = fields(&panel)[0]["items"].as_array().unwrap().clone();
-        assert_eq!(facts.len(), 1, "{facts:?}");
-        assert_eq!(facts[0]["value"], "off");
+        // Nothing to read out, so no fact sheet: the panel opens on its switch.
+        assert_eq!(fields(&panel)[0]["key"], "enabled");
     }
 
     #[test]

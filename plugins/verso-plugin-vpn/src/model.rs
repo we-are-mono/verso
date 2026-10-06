@@ -50,7 +50,6 @@ pub struct Profile {
     pub client: bool,
     pub proto: String,
     pub remotes: Vec<Remote>,
-    pub random: bool,
     pub cipher: String,
     pub verify: String,
     pub asks_sign_in: bool,
@@ -194,7 +193,6 @@ fn profile(v: &Value) -> Profile {
                     .collect()
             })
             .unwrap_or_default(),
-        random: flag("random"),
         cipher: text(v, "cipher"),
         verify: text(v, "verify"),
         asks_sign_in: flag("asks_sign_in"),
