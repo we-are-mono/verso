@@ -859,6 +859,41 @@ html {
     background-color: var(--color-ground);
   }
 
+  /* A page of the operator's notebook: the 20px grid the charts sit on, in
+     the hairline's colour and fainter, behind everything on the page. It
+     hangs from the masthead, so the masthead's hairline and the rail's
+     border are the grid's first lines however tall the masthead grows, and
+     the page's 40px gutter starts the heading just past a line, as the
+     rail's border starts the page. It fades out
+     within the first screen, so it marks the page as paper and never sits
+     behind a long listing's last rows. It is painted, never laid out, so it
+     costs the page nothing as it scrolls. */
+  .verso-notebook {
+    isolation: isolate;
+  }
+  .verso-notebook [data-verso-masthead] {
+    position: relative;
+  }
+  .verso-notebook [data-verso-masthead]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 32rem;
+    z-index: -1;
+    pointer-events: none;
+    --verso-grid: color-mix(in srgb, var(--color-rule) 70%, transparent);
+    background-image:
+      linear-gradient(var(--verso-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--verso-grid) 1px, transparent 1px);
+    background-size: 20px 20px;
+    /* The box starts on the hairline's row, so the first row's line lies
+       under the hairline; the rail's border sits one pixel left of the box,
+       so the columns step back a pixel to continue it. */
+    background-position: -1px 0;
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 92%);
+  }
+
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }
   /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
   :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }

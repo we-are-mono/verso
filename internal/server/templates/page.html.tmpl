@@ -130,7 +130,11 @@
        a wide page is 1152px of content, which is what every canvas is drawn
        against. Left-aligned against the rail; no centring, which reads better
        on a wide monitor. */}}
-  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}">
+  {{/* Every page but home and a log is a page of the operator's notebook: the
+       grid the charts sit on, faint under the masthead and fading as the page
+       goes down (verso-notebook, input.css). Home opens on its verdict, and a
+       log is its own darker surface. */}}
+  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Overview .Light (eq .Width "full"))}} verso-notebook{{end}}">
     {{/* The masthead is a sand bar under the top bar, as the colophon is one
          over the window's foot: the title's line stands 16px inside it at top
          and bottom, so an act on that line sits in the bar's middle, and the
