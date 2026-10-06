@@ -158,6 +158,13 @@
     padding-top: 0;
   }
 
+  /* A section with no heading opens with its first row's air given back,
+     which is right under a rule and flush under anything else. Under a notice
+     (a page's opening callout) it stands a cell clear of it instead. */
+  [data-verso-callout] + section[data-verso-section][data-verso-headless] {
+    margin-top: calc(var(--spacing) * 5);
+  }
+
   /* A listing that ends its section gives its last hairline to the rule that
      closes it (the next section's, the page Save's), so the two never stand
      as a pair. Clear, not gone: the row keeps its pixel and the grid. */

@@ -517,6 +517,9 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: calc(var(--spacing) * 5);\n  }",
 		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
 			"  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
+		// a section with no heading that opens under a notice stands a cell
+		// under it, rather than flush on it
+		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: calc(var(--spacing) * 5);\n  }",
 		// a listing that ends its section gives its last hairline to the rule
 		// that closes it, clear but keeping its pixel
 		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",
