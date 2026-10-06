@@ -208,7 +208,7 @@ func packagesPager(q string, offset, total int, tr func(string) string) widget.W
 	if offset+30 < total {
 		line += " · [" + tr("Next") + "](" + at(offset+30) + ")"
 	}
-	return &widget.Text{Markdown: line}
+	return &widget.Text{Markdown: line, Translated: true}
 }
 
 // packagesRefreshAct reads the feeds' index anew. While it runs the button

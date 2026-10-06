@@ -16,6 +16,10 @@ import (
 // labelled values; reach for raw only when a real widget is genuinely missing.
 type Text struct {
 	Markdown string `json:"markdown"`
+	// Translated marks prose the shell composed from strings it already
+	// translated (a count filled into its sentence), which a second pass would
+	// look up as a key it never was. Shell only.
+	Translated bool `json:"-"`
 }
 
 func (*Text) isWidget() {}

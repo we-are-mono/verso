@@ -223,7 +223,9 @@ func translateFields(w Widget, t func(string) string) {
 	case *Table:
 		translateTable(n, t)
 	case *Text:
-		n.Markdown = t(n.Markdown)
+		if !n.Translated {
+			n.Markdown = t(n.Markdown)
+		}
 	}
 	// Any other widget (pure containers like Stack, or Overview, which is
 	// shell page content that never reaches Decode) carries no prose of its own.
