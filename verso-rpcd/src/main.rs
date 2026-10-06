@@ -16,6 +16,7 @@ mod diagnostics;
 mod firewall;
 mod firewall_log;
 mod firmware;
+mod netlink;
 mod openvpn;
 mod packages;
 mod ubus;

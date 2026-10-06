@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 //! What the router's tunnels are doing, for the VPN page: each OpenVPN
-//! instance's profile read out, whether it runs and on which device, what its
-//! log last said, and every tunnel device's counters. Profiles are read only
-//! under /etc/openvpn, their key blocks are folded away, and a sign-in file is
-//! never opened: nothing secret leaves the helper.
+//! instance's profile read out, whether it runs and on which device, what
+//! OpenVPN last reported through its hooks, and every tunnel device as the
+//! kernel holds it. Profiles are read only under /etc/openvpn, their key blocks
+//! are folded away, and a sign-in file is never opened: nothing secret leaves
+//! the helper. No state is read from the log, which forgets.
+use crate::netlink::{self, Link};
 use crate::Failure;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::process::Command;
 
 const PROFILES: &str = "/etc/openvpn";
+/// Where the VPN plugin's hotplug hook (/etc/hotplug.d/openvpn/50-verso)
+/// records each instance's last transition.
+const RECORDS: &str = "/var/run/verso-openvpn";
 const LIMIT: usize = 64 * 1024;
 /// Link types the kernel gives a tunnel: none (WireGuard, tun), ipip, ip6tnl,
 /// sit, gre, ip6gre.
@@ -32,19 +38,22 @@ const BLOCKS: [&str; 9] = [
 pub fn state() -> Result<Value, Failure> {
     let sections = uci_sections(&run("/sbin/uci", &["-q", "show", "openvpn"]));
     let running = running();
-    let log = run("/sbin/logread", &["-t", "-e", "openvpn"]);
-    let addresses = addresses(&run("/sbin/ip", &["-o", "addr", "show"]));
+    let links = netlink::links();
     let mut devices = BTreeMap::new();
     let mut instances = Map::new();
     for (name, config) in &sections {
-        let mut instance = log_state(&log, name);
-        instance.insert("config".into(), json!(config));
         let process = running.get(name);
+        let record = process.and_then(|p| read_record(Path::new(RECORDS), name, p));
+        // The device the process holds open, or, where its descriptors are
+        // not ours to read (no CAP_SYS_PTRACE), the one OpenVPN named.
+        let device = process
+            .and_then(|p| p.device.clone())
+            .or_else(|| record.as_ref().map(|r| r.device.clone()).filter(|d| !d.is_empty()));
+        let link = device.as_ref().and_then(|d| links.get(d));
+        let mut instance = instance_state(process.is_some(), record.as_ref(), link);
+        instance.insert("config".into(), json!(config));
         instance.insert("running".into(), json!(process.is_some()));
-        if process.is_none() {
-            instance.insert("state".into(), json!("stopped"));
-        }
-        if let Some(device) = process.and_then(|p| p.device.clone()) {
+        if let Some(device) = device {
             devices.insert(device.clone(), name.clone());
             instance.insert("device".into(), json!(device));
         }
@@ -53,7 +62,7 @@ pub fn state() -> Result<Value, Failure> {
         }
         instances.insert(name.clone(), Value::Object(instance));
     }
-    Ok(json!({"instances": instances, "tunnels": tunnels(&devices, &addresses)}))
+    Ok(json!({"instances": instances, "tunnels": tunnels(&devices, &links)}))
 }
 
 fn run(program: &str, args: &[&str]) -> String {
@@ -271,59 +280,90 @@ fn profile(text: &str) -> Value {
     Value::Object(facts)
 }
 
-/// log_state is what an instance's log last said: connected (and since when,
-/// to which server, at which tunnel address), still trying, or turned away
-/// for its sign-in.
-fn log_state(log: &str, name: &str) -> Map<String, Value> {
-    let tag = format!(" openvpn({name})[");
-    let mut out = Map::new();
-    let mut state = "";
-    let mut since = 0u64;
-    for line in log.lines().filter(|l| l.contains(&tag)) {
-        let Some(message) = line.split_once("]: ").map(|(_, m)| m) else {
-            continue;
-        };
-        let at = line
-            .split_once(" [")
-            .and_then(|(_, rest)| rest.split(['.', ']']).next())
-            .and_then(|epoch| epoch.parse::<u64>().ok())
-            .unwrap_or(0);
-        if message.contains("Initialization Sequence Completed") {
-            state = "connected";
-            since = at;
-        } else if message.contains("AUTH_FAILED") {
-            state = "auth-failed";
-        } else if message.contains("SIGUSR1")
-            || message.contains("Restart pause")
-            || message.contains("Connection reset")
-            || message.contains("Inactivity timeout")
-            || message.contains("TLS Error")
-        {
-            if state != "auth-failed" {
-                state = "connecting";
-            }
-        } else if message.contains("process exiting") {
-            state = "stopped";
-        } else if let Some(peer) = message.split_once("Peer Connection Initiated with ") {
-            let server = peer.1.split_whitespace().next().unwrap_or("");
-            let server = server.split_once(']').map_or(server, |(_, s)| s);
-            out.insert("server".into(), json!(server));
-            if state != "connected" {
-                state = "connecting";
-            }
-        } else if let Some(address) = message.split_once("net_addr_v4_add: ") {
-            let address = address.1.split_whitespace().next().unwrap_or("");
-            out.insert("address".into(), json!(address));
+/// Record is what the hotplug hook last wrote for an instance: OpenVPN's own
+/// word on it (connected at route-up, connecting from up or route-pre-down,
+/// stopped at down), since when it connected, its tunnel address, the server
+/// it reached and the device it named, from the OpenVPN process that wrote it.
+#[derive(Debug, Default, PartialEq)]
+struct Record {
+    pid: u32,
+    state: String,
+    since: Option<u64>,
+    address: String,
+    server: String,
+    device: String,
+}
+
+fn parse_record(text: &str) -> Record {
+    let mut record = Record::default();
+    for (key, value) in text.lines().filter_map(|l| l.split_once('=')) {
+        match key {
+            "pid" => record.pid = value.parse().unwrap_or(0),
+            "state" => record.state = value.to_string(),
+            "since" => record.since = value.parse().ok(),
+            "address" => record.address = value.to_string(),
+            "server" => record.server = value.to_string(),
+            "device" => record.device = value.to_string(),
+            _ => {}
         }
     }
-    out.insert("state".into(), json!(if state.is_empty() { "connecting" } else { state }));
-    if state == "connected" {
-        out.insert("since".into(), json!(since));
+    record
+}
+
+/// read_record is an instance's record, trusted only as the running process's
+/// own: a file the process's user wrote (anyone may write in the directory, no
+/// one may replace another's) carrying that process's PID, so a record from
+/// an earlier run, or one planted by someone else, is not read as this one.
+fn read_record(dir: &Path, name: &str, process: &Process) -> Option<Record> {
+    if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-') {
+        return None;
     }
+    let path = dir.join(name);
+    let meta = fs::symlink_metadata(&path).ok()?;
+    if !meta.is_file() || meta.uid() != process.uid {
+        return None;
+    }
+    let record = parse_record(&fs::read_to_string(path).ok()?);
+    (record.pid == process.pid).then_some(record)
+}
+
+/// instance_state is what the page is told of an instance: what OpenVPN last
+/// reported through its hooks; or, where it reported nothing this run (the
+/// hook arrived after the tunnel came up, or the profile turns scripts off),
+/// what the kernel proves — its device up with an address ("up"), or not yet.
+/// The address is the device's while it has one.
+fn instance_state(running: bool, record: Option<&Record>, link: Option<&Link>) -> Map<String, Value> {
+    let mut out = Map::new();
+    let ipv4 = link
+        .filter(|l| l.up && l.carrier)
+        .and_then(|l| l.addresses.iter().find(|a| !a.contains(':')))
+        .cloned();
+    let state = match (running, record) {
+        (false, _) => "stopped".to_string(),
+        (true, Some(record)) => record.state.clone(),
+        (true, None) if ipv4.is_some() => "up".to_string(),
+        (true, None) => "connecting".to_string(),
+    };
+    if let Some(record) = record.filter(|_| running) {
+        if !record.server.is_empty() {
+            out.insert("server".into(), json!(record.server));
+        }
+        if let (Some(since), "connected") = (record.since, state.as_str()) {
+            out.insert("since".into(), json!(since));
+        }
+    }
+    let address = ipv4.or_else(|| record.filter(|r| running && !r.address.is_empty()).map(|r| r.address.clone()));
+    if let Some(address) = address {
+        out.insert("address".into(), json!(address));
+    }
+    out.insert("state".into(), json!(state));
     out
 }
 
 struct Process {
+    pid: u32,
+    /// The effective user it runs as, which a profile's `user` changes.
+    uid: u32,
     device: Option<String>,
 }
 
@@ -343,10 +383,20 @@ fn running() -> BTreeMap<String, Process> {
             continue;
         };
         if let Some(name) = instance_name(&cmdline) {
-            out.insert(name, Process { device: tun_device(pid) });
+            let uid = fs::read_to_string(format!("/proc/{pid}/status"))
+                .ok()
+                .and_then(|s| effective_uid(&s))
+                .unwrap_or(u32::MAX);
+            out.insert(name, Process { pid: pid.parse().unwrap_or(0), uid, device: tun_device(pid) });
         }
     }
     out
+}
+
+/// effective_uid is the second field of a process status's `Uid:` line.
+fn effective_uid(status: &str) -> Option<u32> {
+    let line = status.lines().find_map(|l| l.strip_prefix("Uid:"))?;
+    line.split_whitespace().nth(1)?.parse().ok()
 }
 
 fn instance_name(cmdline: &[u8]) -> Option<String> {
@@ -380,60 +430,33 @@ fn tun_device(pid: &str) -> Option<String> {
     None
 }
 
-/// addresses is each device's addresses from `ip -o addr show`.
-fn addresses(output: &str) -> BTreeMap<String, Vec<String>> {
-    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for line in output.lines() {
-        let words: Vec<&str> = line.split_whitespace().collect();
-        if let [_, device, family, address, ..] = words.as_slice() {
-            if *family == "inet" || *family == "inet6" {
-                out.entry(device.trim_end_matches(':').to_string())
-                    .or_default()
-                    .push(address.to_string());
-            }
-        }
-    }
-    out
-}
-
-/// tunnels is every tunnel device someone brought up: its kind as far as the
-/// kernel says, which OpenVPN instance holds it, its state and counters.
-fn tunnels(devices: &BTreeMap<String, String>, addresses: &BTreeMap<String, Vec<String>>) -> Value {
+/// tunnels is every tunnel device someone brought up, as the kernel holds it:
+/// its kind, which OpenVPN instance holds it, whether it carries (up, and for
+/// a tun device a process holding it), its counters and addresses.
+fn tunnels(devices: &BTreeMap<String, String>, links: &BTreeMap<String, Link>) -> Value {
     let mut out = Vec::new();
-    let Ok(entries) = fs::read_dir("/sys/class/net") else {
-        return json!(out);
-    };
-    let mut names: Vec<String> = entries
-        .flatten()
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .collect();
-    names.sort();
-    for name in names {
-        let base = Path::new("/sys/class/net").join(&name);
-        let read = |file: &str| fs::read_to_string(base.join(file)).unwrap_or_default();
-        let link_type = read("type").trim().parse::<u64>().unwrap_or(0);
-        let tun = base.join("tun_flags").exists();
-        if KERNEL_TUNNELS.contains(&name.as_str()) || !(tun || TUNNEL_TYPES.contains(&link_type)) {
+    for (name, link) in links {
+        let tun = link.kind == "tun";
+        if KERNEL_TUNNELS.contains(&name.as_str()) || !(tun || TUNNEL_TYPES.contains(&u64::from(link.link_type))) {
             continue;
         }
-        let kind = if devices.contains_key(&name) {
+        let kind = if devices.contains_key(name) {
             "openvpn"
-        } else if read("uevent").lines().any(|l| l == "DEVTYPE=wireguard") {
+        } else if link.kind == "wireguard" {
             "wireguard"
         } else if name.starts_with("tailscale") {
             "tailscale"
         } else {
             "tunnel"
         };
-        let counter = |file: &str| read(&format!("statistics/{file}")).trim().parse::<u64>().unwrap_or(0);
         out.push(json!({
             "device": name,
             "kind": kind,
-            "instance": devices.get(&name),
-            "up": read("operstate").trim() != "down",
-            "rx": counter("rx_bytes"),
-            "tx": counter("tx_bytes"),
-            "addresses": addresses.get(&name).cloned().unwrap_or_default(),
+            "instance": devices.get(name),
+            "up": link.up && link.carrier,
+            "rx": link.rx,
+            "tx": link.tx,
+            "addresses": link.addresses,
         }));
     }
     json!(out)
@@ -488,29 +511,147 @@ mod tests {
         assert_eq!(read_profile("/etc/openvpn/../shadow"), None);
     }
 
+    fn tun(addresses: &[&str]) -> Link {
+        Link {
+            name: "tun0".into(),
+            link_type: 65534,
+            kind: "tun".into(),
+            up: true,
+            carrier: true,
+            addresses: addresses.iter().map(|a| a.to_string()).collect(),
+            ..Link::default()
+        }
+    }
+
+    fn connected() -> Record {
+        Record {
+            pid: 812,
+            state: "connected".into(),
+            since: Some(1791295321),
+            address: "10.96.0.14".into(),
+            server: "185.107.56.234:1194".into(),
+            device: "tun0".into(),
+        }
+    }
+
     #[test]
-    fn the_log_says_connected_since_when_and_to_which_server() {
-        let log = "Mon Oct  6 14:01:58 2026 [1791295318.100] daemon.notice openvpn(proton)[812]: TCP/UDP: Preserving recently used remote address: [AF_INET]185.107.56.234:1194\n\
-Mon Oct  6 14:02:00 2026 [1791295320.200] daemon.notice openvpn(proton)[812]: [node-nl-05.protonvpn.net] Peer Connection Initiated with [AF_INET]185.107.56.234:1194\n\
-Mon Oct  6 14:02:01 2026 [1791295321.300] daemon.notice openvpn(proton)[812]: net_addr_v4_add: 10.96.0.14/16 dev tun0\n\
-Mon Oct  6 14:02:01 2026 [1791295321.400] daemon.notice openvpn(proton)[812]: Initialization Sequence Completed\n\
-Mon Oct  6 14:03:00 2026 [1791295380.000] daemon.notice openvpn(other)[900]: AUTH_FAILED\n";
-        let s = log_state(log, "proton");
+    fn a_record_reads_back_what_the_hook_wrote() {
+        let text = "pid=812\nstate=connected\nsince=1791295321\naddress=10.96.0.14\nserver=185.107.56.234:1194\ndevice=tun0\n";
+        assert_eq!(parse_record(text), connected());
+    }
+
+    #[test]
+    fn what_openvpn_reported_is_the_state_with_the_devices_address() {
+        let s = instance_state(true, Some(&connected()), Some(&tun(&["10.96.0.14/16", "fe80::1/64"])));
         assert_eq!(s["state"], "connected");
         assert_eq!(s["since"], 1791295321);
         assert_eq!(s["server"], "185.107.56.234:1194");
         assert_eq!(s["address"], "10.96.0.14/16");
-        assert_eq!(log_state(log, "other")["state"], "auth-failed");
+    }
+
+    /// Under persist-tun the device keeps its address while OpenVPN
+    /// reconnects; the hook's word wins over what the device still shows.
+    #[test]
+    fn a_reconnect_reads_as_connecting_though_the_device_holds_on() {
+        let record = Record { state: "connecting".into(), ..connected() };
+        let s = instance_state(true, Some(&record), Some(&tun(&["10.96.0.14/16"])));
+        assert_eq!(s["state"], "connecting");
+        assert!(s.get("since").is_none());
+    }
+
+    /// Nothing reported this run: the kernel's proof is all there is.
+    #[test]
+    fn with_no_record_the_device_says_up_or_not_yet() {
+        let up = instance_state(true, None, Some(&tun(&["10.96.0.112/16"])));
+        assert_eq!(up["state"], "up");
+        assert_eq!(up["address"], "10.96.0.112/16");
+        assert_eq!(instance_state(true, None, Some(&tun(&[])))["state"], "connecting");
+        let unplugged = Link { carrier: false, ..tun(&["10.96.0.112/16"]) };
+        assert_eq!(instance_state(true, None, Some(&unplugged))["state"], "connecting");
+        assert_eq!(instance_state(true, None, None)["state"], "connecting");
     }
 
     #[test]
-    fn a_dropped_connection_reads_as_trying_again() {
-        let log = "x [1.0] daemon.notice openvpn(proton)[1]: Initialization Sequence Completed\n\
-x [2.0] daemon.notice openvpn(proton)[1]: Inactivity timeout (--ping-restart), restarting\n\
-x [3.0] daemon.notice openvpn(proton)[1]: SIGUSR1[soft,ping-restart] received, process restarting\n";
-        let s = log_state(log, "proton");
-        assert_eq!(s["state"], "connecting");
-        assert!(s.get("since").is_none());
+    fn an_instance_with_no_process_is_stopped_whatever_was_recorded() {
+        let s = instance_state(false, Some(&connected()), None);
+        assert_eq!(s["state"], "stopped");
+        assert!(s.get("server").is_none() && s.get("address").is_none());
+    }
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("verso-openvpn-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("scratch dir");
+        dir
+    }
+
+    fn me(pid: u32) -> Process {
+        let uid = effective_uid(&fs::read_to_string("/proc/self/status").expect("status")).expect("uid");
+        Process { pid, uid, device: None }
+    }
+
+    #[test]
+    fn a_record_is_trusted_only_as_the_running_processs_own() {
+        let dir = scratch("trust");
+        fs::write(dir.join("proton"), "pid=812\nstate=connected\n").expect("record");
+        assert_eq!(read_record(&dir, "proton", &me(812)).map(|r| r.state), Some("connected".into()));
+        // an earlier run's record
+        assert_eq!(read_record(&dir, "proton", &me(900)), None);
+        // a record some other user wrote
+        assert_eq!(read_record(&dir, "proton", &Process { uid: u32::MAX - 1, ..me(812) }), None);
+        // a name that would leave the directory
+        assert_eq!(read_record(&dir, "../proton", &me(812)), None);
+        // a link to somewhere else
+        std::os::unix::fs::symlink(dir.join("proton"), dir.join("other")).expect("symlink");
+        assert_eq!(read_record(&dir, "other", &me(812)), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn effective_uid_is_the_second_field() {
+        assert_eq!(effective_uid("Name:\topenvpn\nUid:\t0\t65534\t65534\t65534\n"), Some(65534));
+    }
+
+    /// The hook itself, run as OpenWrt's hotplug-call runs it, against a
+    /// scratch directory: route-up records the session, ipchange keeps it,
+    /// route-pre-down turns it to connecting, and the record carries the PID
+    /// of the process that ran it (this test, standing in for OpenVPN).
+    #[test]
+    fn the_hotplug_hook_records_each_transition() {
+        let dir = scratch("hook");
+        let hook = fs::read_to_string("../plugins/verso-plugin-vpn/rootfs/etc/hotplug.d/openvpn/50-verso")
+            .expect("hook")
+            .replace("/var/run/verso-openvpn", dir.to_str().expect("utf-8"));
+        let script = dir.join("hook.sh");
+        fs::write(&script, hook).expect("script");
+        let run = |action: &str, env: &[(&str, &str)]| {
+            let status = Command::new("sh")
+                .arg(&script)
+                .env("ACTION", action)
+                .env("INSTANCE", "proton")
+                .envs(env.iter().copied())
+                .status()
+                .expect("sh");
+            assert!(status.success());
+            parse_record(&fs::read_to_string(dir.join("proton")).expect("record"))
+        };
+        let up = run(
+            "route-up",
+            &[("dev", "tun0"), ("ifconfig_local", "10.96.0.112"), ("trusted_ip", "79.127.144.158"), ("trusted_port", "5060")],
+        );
+        assert_eq!(up.pid, std::process::id());
+        assert_eq!((up.state.as_str(), up.address.as_str(), up.server.as_str()), ("connected", "10.96.0.112", "79.127.144.158:5060"));
+        assert_eq!(up.device, "tun0");
+        assert!(up.since.is_some());
+        let moved = run("ipchange", &[("trusted_ip", "79.127.144.159"), ("trusted_port", "5060")]);
+        assert_eq!((moved.state.as_str(), moved.server.as_str(), moved.since), ("connected", "79.127.144.159:5060", up.since));
+        let going = run("route-pre-down", &[]);
+        assert_eq!((going.state.as_str(), going.address.as_str()), ("connecting", "10.96.0.112"));
+        assert_eq!(run("down", &[]).state, "stopped");
+        // a name the hook will not write under
+        Command::new("sh").arg(&script).env("ACTION", "route-up").env("INSTANCE", "../x").status().expect("sh");
+        assert!(!dir.join("../x").exists());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -518,13 +659,6 @@ x [3.0] daemon.notice openvpn(proton)[1]: SIGUSR1[soft,ping-restart] received, p
         let cmdline = b"/usr/sbin/openvpn\0--syslog\0openvpn(proton)\0--status\0/var/run/openvpn.proton.status\0--cd\0/etc/openvpn\0--config\0proton.ovpn\0";
         assert_eq!(instance_name(cmdline).as_deref(), Some("proton"));
         assert_eq!(instance_name(b"/usr/sbin/dnsmasq\0--syslog\0openvpn(x)\0"), None);
-    }
-
-    #[test]
-    fn ip_lists_each_devices_addresses() {
-        let out = "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever\n9: tun0    inet 10.96.0.14/16 scope global tun0\\       valid_lft forever\n9: tun0    inet6 fe80::1/64 scope link \\       valid_lft forever\n";
-        let got = addresses(out);
-        assert_eq!(got["tun0"], vec!["10.96.0.14/16", "fe80::1/64"]);
     }
 }
 

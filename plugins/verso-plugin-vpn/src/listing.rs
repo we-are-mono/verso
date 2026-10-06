@@ -197,8 +197,10 @@ pub fn instance_state(instance: &Instance) -> (&'static str, &'static str) {
     }
     match instance.live.state.as_str() {
         "connected" => ("connected", "success"),
+        // Its device carries with an address, though OpenVPN has reported
+        // nothing this run: what the kernel proves, read as any tunnel's.
+        "up" => ("up", "success"),
         "connecting" => ("connecting", "warning"),
-        "auth-failed" => ("sign-in refused", "danger"),
         "stopped" => ("not running", "danger"),
         "pending" => ("not applied yet", ""),
         _ => ("unknown", ""),
@@ -377,11 +379,8 @@ mod tests {
         let mut vpn = Vpn::read(&fixture::request("/"));
         vpn.instances[0].live.state = "stopped".into();
         assert_eq!(instance_state(&vpn.instances[0]), ("not running", "danger"));
-        vpn.instances[0].live.state = "auth-failed".into();
-        assert_eq!(
-            instance_state(&vpn.instances[0]),
-            ("sign-in refused", "danger")
-        );
+        vpn.instances[0].live.state = "up".into();
+        assert_eq!(instance_state(&vpn.instances[0]), ("up", "success"));
         vpn.instances[0].live.state = String::new();
         assert_eq!(instance_state(&vpn.instances[0]), ("unknown", ""));
     }

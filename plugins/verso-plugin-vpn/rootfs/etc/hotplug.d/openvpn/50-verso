@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# What each OpenVPN instance last did, as OpenVPN itself says it: OpenWrt's init
+# hooks every instance's up, route-up, route-pre-down, down and ipchange to
+# hotplug-call, file-based profiles included, so nothing in anyone's profile
+# changes for Verso to know. route-up is the session established (the moment the
+# log would say "Initialization Sequence Completed"); route-pre-down is the
+# session going, which under persist-tun is a reconnect starting.
+#
+# The record is a few lines in RAM, gone on reboot like the tunnel, read by
+# verso-rpcd (openvpn.rs). It carries the PID of the OpenVPN that wrote it — this
+# script's parent — so a record from an earlier run is never taken for the one
+# running now. A profile that drops privileges (user nobody) runs these hooks as
+# that user, so the directory takes anyone's file but lets no one replace
+# another's (1733), and the reader trusts a record only when it is owned by the
+# user the instance runs as.
+
+case "$INSTANCE" in
+	'' | *[!A-Za-z0-9_-]*) exit 0 ;;
+esac
+
+case "$ACTION" in
+	up) state=connecting ;;
+	route-up) state=connected ;;
+	route-pre-down) state=connecting ;;
+	down) state=stopped ;;
+	ipchange) state= ;;
+	*) exit 0 ;;
+esac
+
+dir=/var/run/verso-openvpn
+[ -d "$dir" ] || { mkdir -p "$dir" && chmod 1733 "$dir"; } || exit 0
+record="$dir/$INSTANCE"
+
+since= address= server= device=
+if [ -f "$record" ]; then
+	while IFS='=' read -r key value; do
+		case "$key" in
+			pid) [ "$value" = "$PPID" ] || break ;;
+			state) [ -n "$state" ] || state=$value ;;
+			since) since=$value ;;
+			address) address=$value ;;
+			server) server=$value ;;
+			device) device=$value ;;
+		esac
+	done < "$record"
+fi
+
+[ -n "$dev" ] && device=$dev
+[ -n "$ifconfig_local" ] && address=$ifconfig_local
+[ -n "$trusted_ip" ] && server="$trusted_ip:${trusted_port:-1194}"
+[ "$ACTION" = route-up ] && since=$(date +%s)
+[ -n "$state" ] || state=connecting
+
+tmp="$dir/.$INSTANCE.$$"
+printf 'pid=%s\nstate=%s\nsince=%s\naddress=%s\nserver=%s\ndevice=%s\n' \
+	"$PPID" "$state" "$since" "$address" "$server" "$device" > "$tmp" && mv -f "$tmp" "$record"

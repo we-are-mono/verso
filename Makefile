@@ -337,6 +337,7 @@ apk-vpn: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 $(BUILDDIR)/verso-plugin-vpn-$(APK_GOARCH)                                      $(VPN_PAYLOAD)/usr/bin/verso-plugin-vpn
 	install -Dm755 plugins/verso-plugin-vpn/rootfs/etc/init.d/verso-plugin-vpn                     $(VPN_PAYLOAD)/etc/init.d/verso-plugin-vpn
 	install -Dm644 plugins/verso-plugin-vpn/rootfs/usr/share/rpcd/acl.d/verso-plugin-vpn.json      $(VPN_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-vpn.json
+	install -Dm644 plugins/verso-plugin-vpn/rootfs/etc/hotplug.d/openvpn/50-verso                  $(VPN_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
 	install -Dm644 plugins/verso-plugin-vpn/i18n/sl.json                                           $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/i18n/sl.json
 	install -Dm644 plugins/verso-plugin-vpn/manifest.json                                          $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/manifest.json
 	fakeroot -- sh -c 'chown -R 0:0 "$(VPN_PAYLOAD)" && "$(APK)" mkpkg \

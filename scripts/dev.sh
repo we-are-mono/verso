@@ -178,6 +178,12 @@ deploy_bundled_plugins() {
 				docker exec "$CONTAINER" sh -c \
 					"chown root:root /usr/share/rpcd/acl.d/$name.json; chmod 0644 /usr/share/rpcd/acl.d/$name.json"
 			fi
+			# A plugin's hotplug handlers (the VPN plugin's record of what each
+			# OpenVPN instance last did) land where hotplug-call finds them.
+			if [ -d "$dir/rootfs/etc/hotplug.d" ]; then
+				docker cp "$dir/rootfs/etc/hotplug.d/." "$CONTAINER:/etc/hotplug.d/"
+				docker exec "$CONTAINER" sh -c "chown -R root:root /etc/hotplug.d; chmod -R go-w /etc/hotplug.d"
+			fi
 			# The plugin's travelling catalogs (i18n/<code>.json, ADR-012) ride
 			# beside the manifest; the shell re-reads them on its next start.
 			if [ -d "$dir/i18n" ]; then
