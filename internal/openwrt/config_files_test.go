@@ -99,7 +99,7 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 	if !reflect.DeepEqual(changes, want) {
 		t.Fatalf("changes %v want %v", changes, want)
 	}
-	for config, family := range map[string]string{"firewall": "fw4", "dhcp": "dnsmasq"} {
+	for config, family := range map[string]string{"firewall": "fw4", "dhcp": "dnsmasq", "openvpn": "openvpn"} {
 		discarded = nil
 		if err := b.UCIRevert(ctx, "sid", config); err != nil {
 			t.Fatal(err)

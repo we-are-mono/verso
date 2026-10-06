@@ -22,6 +22,8 @@ func fileConfig(path string) (string, bool) {
 		return "dhcp", true
 	case strings.HasPrefix(path, "/etc/nftables.d/"):
 		return "firewall", true
+	case strings.HasPrefix(path, "/etc/openvpn/"):
+		return "openvpn", true
 	}
 	return "", false
 }

@@ -36,16 +36,21 @@ fn now() -> u64 {
 pub enum Family {
     Dnsmasq,
     Fw4,
+    /// OpenVPN's profiles. They carry keys, so whatever reports one shows it
+    /// folded (openvpn::fold), and a save puts the keys back (openvpn::unfold).
+    Openvpn,
 }
 
 impl Family {
-    const ALL: [Family; 2] = [Family::Dnsmasq, Family::Fw4];
+    const ALL: [Family; 3] = [Family::Dnsmasq, Family::Fw4, Family::Openvpn];
 
     pub fn of(path: &str) -> Option<Family> {
         if path == "/etc/dnsmasq.conf" || in_dir(path, "/etc/dnsmasq.d/", ".conf") {
             Some(Family::Dnsmasq)
         } else if in_dir(path, "/etc/nftables.d/", ".nft") {
             Some(Family::Fw4)
+        } else if profile_name(path) {
+            Some(Family::Openvpn)
         } else {
             None
         }
@@ -59,6 +64,7 @@ impl Family {
         match self {
             Family::Dnsmasq => "dnsmasq",
             Family::Fw4 => "fw4",
+            Family::Openvpn => "openvpn",
         }
     }
 
@@ -67,6 +73,7 @@ impl Family {
         match self {
             Family::Dnsmasq => (&["/etc/dnsmasq.conf"], "/etc/dnsmasq.d"),
             Family::Fw4 => (&[], "/etc/nftables.d"),
+            Family::Openvpn => (&[], "/etc/openvpn"),
         }
     }
 
@@ -77,14 +84,16 @@ impl Family {
     fn check_draft(self, body: &str) -> Result<(), Failure> {
         match self {
             Family::Dnsmasq => validate_dnsmasq(body),
-            Family::Fw4 => Ok(()),
+            Family::Fw4 | Family::Openvpn => Ok(()),
         }
     }
 
     /// check_live checks the daemon's whole configuration with the written
-    /// files in place.
+    /// files in place. OpenVPN has no such check: a profile it cannot read
+    /// shows as a tunnel that does not come up, which the VPN page says.
     fn check_live(self) -> Result<(), Failure> {
         let (mut command, refusal) = match self {
+            Family::Openvpn => return Ok(()),
             Family::Dnsmasq => {
                 let mut command = Command::new("/usr/sbin/dnsmasq");
                 command.args(["--test", "--conf-file=/etc/dnsmasq.conf"]);
@@ -116,18 +125,21 @@ impl Family {
         match self {
             Family::Dnsmasq => "Custom option files must be at most 32 KiB.",
             Family::Fw4 => "Rule files must be at most 32 KiB.",
+            Family::Openvpn => "Profiles must be at most 32 KiB.",
         }
     }
     fn invalid(self) -> &'static str {
         match self {
             Family::Dnsmasq => "Invalid custom options file.",
             Family::Fw4 => "Invalid rule file.",
+            Family::Openvpn => "Invalid profile.",
         }
     }
     fn over_limit(self) -> &'static str {
         match self {
             Family::Dnsmasq => "Custom option files exceed the editor size limit.",
             Family::Fw4 => "Rule files exceed the editor size limit.",
+            Family::Openvpn => "Profiles exceed the editor size limit.",
         }
     }
 
@@ -140,6 +152,9 @@ impl Family {
         let (program, args): (&str, &[&str]) = match self {
             Family::Dnsmasq => ("/etc/init.d/dnsmasq", &["reload"]),
             Family::Fw4 => ("/sbin/fw4", &["-q", "restart"]),
+            // procd restarts each instance whose profile changed, and leaves
+            // the other tunnels up.
+            Family::Openvpn => ("/etc/init.d/openvpn", &["reload"]),
         };
         let _ = Command::new(program)
             .args(args)
@@ -175,6 +190,23 @@ fn in_dir(path: &str, dir: &str, suffix: &str) -> bool {
                 && name
                     .bytes()
                     .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
+        })
+}
+
+/// profile_name reports whether path is an OpenVPN profile directly in
+/// /etc/openvpn. A provider's download keeps a name like
+/// `nl-free-12.protonvpn.udp.ovpn`, so dots and capitals are allowed where
+/// in_dir allows neither; a slash, and so any other folder, never is.
+fn profile_name(path: &str) -> bool {
+    path.strip_prefix("/etc/openvpn/")
+        .and_then(|s| s.strip_suffix(".ovpn").or_else(|| s.strip_suffix(".conf")))
+        .is_some_and(|name| {
+            !name.is_empty()
+                && name.len() <= 96
+                && name.as_bytes()[0].is_ascii_alphanumeric()
+                && name
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
         })
 }
 
@@ -401,7 +433,13 @@ pub fn state() -> Result<Value, Failure> {
             files.push(json!({"path":key,"family":family.name(),"error":family.over_limit()}));
             continue;
         }
-        files.push(json!({"path":key,"family":family.name(),"content":body.as_deref().unwrap_or(""),"version":version(body.as_deref()),"pending":j["files"].get(key.as_ref()).is_some(),"exists":body.is_some()}));
+        // A profile is reported folded, keys left in the helper; its version
+        // is still the whole file's, which is what a save is checked against.
+        let content = match family {
+            Family::Openvpn => crate::openvpn::fold(body.as_deref().unwrap_or("")),
+            _ => body.clone().unwrap_or_default(),
+        };
+        files.push(json!({"path":key,"family":family.name(),"content":content,"version":version(body.as_deref()),"pending":j["files"].get(key.as_ref()).is_some(),"exists":body.is_some()}));
     }
     Ok(
         json!({"files":files,"active":j["active"],"uci":j["uci"],"uci_confirmed":j["uci_confirmed"]}),
@@ -455,10 +493,21 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("Too many staged files."));
     }
+    // A profile was edited folded; its keys go back in from what it held.
+    let restored = match family {
+        Family::Openvpn => Some(crate::openvpn::unfold(body, previous.unwrap_or(""))),
+        _ => None,
+    };
+    let body = restored.as_deref().unwrap_or(body);
+    if body.len() > LIMIT {
+        return Err(Failure::invalid(family.invalid()));
+    }
     family.check_draft(body)?;
+    // A new profile holds keys, so only root reads it.
+    let fresh = if family == Family::Openvpn { 0o600 } else { 0o644 };
     let mode = fs::metadata(path)
         .map(|m| m.permissions().mode() & 0o777)
-        .unwrap_or(0o644);
+        .unwrap_or(fresh);
     let original = j["files"][path]
         .get("before")
         .cloned()
@@ -477,7 +526,7 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     if total > TOTAL {
         return Err(Failure::invalid(match family {
             Family::Dnsmasq => "Staged custom options exceed the editor size limit.",
-            Family::Fw4 => family.over_limit(),
+            Family::Fw4 | Family::Openvpn => family.over_limit(),
         }));
     }
     save_at(Path::new(JOURNAL), &j)?;
@@ -593,6 +642,12 @@ pub fn firewall_state() -> Result<Value, Failure> {
     Ok(result)
 }
 
+/// openvpn_state is OpenVPN's profiles, folded, as they will read once staged
+/// changes are applied.
+pub fn openvpn_state() -> Result<Value, Failure> {
+    Ok(only(state()?, Family::Openvpn))
+}
+
 /// only narrows a state to one family's files, so a page never lists — and
 /// so never offers to edit — another daemon's.
 fn only(mut state: Value, family: Family) -> Value {
@@ -661,6 +716,26 @@ mod tests {
             "/etc/nftables.d/Rules.nft",
             "/etc/firewall.user",
             "/usr/share/nftables.d/ruleset-post/x.nft",
+        ] {
+            assert_eq!(Family::of(p), None, "{p}");
+        }
+    }
+    #[test]
+    fn a_profile_is_any_ovpn_or_conf_directly_in_etc_openvpn() {
+        for p in [
+            "/etc/openvpn/proton.ovpn",
+            "/etc/openvpn/nl-free-12.protonvpn.udp.ovpn",
+            "/etc/openvpn/Work.conf",
+        ] {
+            assert_eq!(Family::of(p), Some(Family::Openvpn), "{p}");
+        }
+        for p in [
+            "/etc/openvpn/proton.auth",
+            "/etc/openvpn/keys/a.ovpn",
+            "/etc/openvpn/../shadow.conf",
+            "/etc/openvpn/.ovpn",
+            "/etc/openvpn/.hidden.ovpn",
+            "/etc/openvpnx/a.ovpn",
         ] {
             assert_eq!(Family::of(p), None, "{p}");
         }

@@ -297,6 +297,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "dhcpState" => dhcp::state(),
         "dnsState" => config_files::dns_state(),
         "firewallFiles" => config_files::firewall_state(),
+        "openvpnFiles" => config_files::openvpn_state(),
         "configFiles" => config_files::state(),
         "stageConfigFile" => config_files::stage(
             argument(request, "path")?,

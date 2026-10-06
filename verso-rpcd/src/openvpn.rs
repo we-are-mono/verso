@@ -113,32 +113,102 @@ fn read_profile(path: &str) -> Option<String> {
 
 /// profile reads what a profile says, with every inline block folded to its
 /// name and length, so the text can be shown and nothing in it is a secret.
-fn profile(text: &str) -> Value {
+/// fold is a profile as it may be shown: every inline block one line, its
+/// name and its length, so no key in it leaves the helper. A block left open
+/// at the end of the file is folded too.
+pub fn fold(text: &str) -> String {
     let mut shown = Vec::new();
-    let mut remotes = Vec::new();
-    let mut blocks = Vec::new();
-    let mut facts = Map::new();
-    let mut open: Option<(String, usize)> = None;
-    let mut proto = String::new();
+    let mut open: Option<(&str, usize)> = None;
     for line in text.lines() {
         let trimmed = line.trim();
         if let Some((name, count)) = open.as_mut() {
             if trimmed == format!("</{name}>") {
-                shown.push(format!("<{name}> … {count} lines … </{name}>"));
+                shown.push(placeholder(name, *count));
                 open = None;
             } else {
                 *count += 1;
             }
             continue;
         }
-        if let Some(name) = trimmed.strip_prefix('<').and_then(|t| t.strip_suffix('>')) {
-            if BLOCKS.contains(&name) {
-                blocks.push(name.to_string());
-                open = Some((name.to_string(), 0));
-                continue;
-            }
+        match block_name(trimmed) {
+            Some(name) => open = Some((name, 0)),
+            None => shown.push(line.to_string()),
         }
-        shown.push(line.to_string());
+    }
+    if let Some((name, count)) = open {
+        shown.push(placeholder(name, count));
+    }
+    let mut out = shown.join("\n");
+    if text.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+/// unfold is an edited profile with the keys put back: each placeholder line
+/// left as fold wrote it takes the original block of that name, in order. A
+/// block pasted in whole stays as pasted; a placeholder for a block the
+/// original never had stays a line OpenVPN will refuse.
+pub fn unfold(edited: &str, original: &str) -> String {
+    let mut blocks: Vec<(&str, Vec<&str>)> = Vec::new();
+    let mut open: Option<(&str, Vec<&str>)> = None;
+    for line in original.lines() {
+        if let Some((name, lines)) = open.as_mut() {
+            lines.push(line);
+            if line.trim() == format!("</{name}>") {
+                blocks.push(open.take().unwrap());
+            }
+            continue;
+        }
+        if let Some(name) = block_name(line.trim()) {
+            open = Some((name, vec![line]));
+        }
+    }
+    let mut out = Vec::new();
+    for line in edited.lines() {
+        let restored = blocks.iter().position(|(name, lines)| {
+            line.trim() == placeholder(name, lines.len().saturating_sub(2))
+        });
+        match restored {
+            Some(at) => out.extend(blocks.remove(at).1),
+            None => out.push(line),
+        }
+    }
+    let mut out = out.join("\n");
+    if edited.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+fn block_name(trimmed: &str) -> Option<&'static str> {
+    let name = trimmed.strip_prefix('<')?.strip_suffix('>')?;
+    BLOCKS.iter().copied().find(|b| *b == name)
+}
+
+fn placeholder(name: &str, lines: usize) -> String {
+    format!("<{name}> … {lines} lines … </{name}>")
+}
+
+fn profile(text: &str) -> Value {
+    let mut remotes = Vec::new();
+    let mut blocks = Vec::new();
+    let mut facts = Map::new();
+    let mut open: Option<String> = None;
+    let mut proto = String::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = &open {
+            if trimmed == format!("</{name}>") {
+                open = None;
+            }
+            continue;
+        }
+        if let Some(name) = block_name(trimmed) {
+            blocks.push(name.to_string());
+            open = Some(name.to_string());
+            continue;
+        }
         if trimmed.starts_with('#') || trimmed.starts_with(';') {
             continue;
         }
@@ -196,7 +266,7 @@ fn profile(text: &str) -> Value {
     facts.insert("proto".into(), json!(proto));
     facts.insert("remotes".into(), json!(remotes));
     facts.insert("blocks".into(), json!(blocks));
-    facts.insert("text".into(), json!(shown.join("\n")));
+    facts.insert("text".into(), json!(fold(text)));
     Value::Object(facts)
 }
 
@@ -454,5 +524,48 @@ x [3.0] daemon.notice openvpn(proton)[1]: SIGUSR1[soft,ping-restart] received, p
         let out = "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever\n9: tun0    inet 10.96.0.14/16 scope global tun0\\       valid_lft forever\n9: tun0    inet6 fe80::1/64 scope link \\       valid_lft forever\n";
         let got = addresses(out);
         assert_eq!(got["tun0"], vec!["10.96.0.14/16", "fe80::1/64"]);
+    }
+}
+
+#[cfg(test)]
+mod folding {
+    use super::*;
+
+    const PROFILE: &str = "client\nremote a 1194\n<ca>\nCERT1\nCERT2\n</ca>\n<tls-crypt>\nKEY\n</tls-crypt>\n";
+
+    #[test]
+    fn a_folded_profile_shows_no_key() {
+        let shown = fold(PROFILE);
+        assert_eq!(
+            shown,
+            "client\nremote a 1194\n<ca> … 2 lines … </ca>\n<tls-crypt> … 1 lines … </tls-crypt>\n"
+        );
+        assert_eq!(
+            fold("client\n<key>\nSECRET\n"),
+            "client\n<key> … 1 lines … </key>\n"
+        );
+    }
+
+    #[test]
+    fn an_edit_of_the_directives_keeps_every_key() {
+        let edited = fold(PROFILE).replace("remote a 1194", "remote b 443");
+        assert_eq!(unfold(&edited, PROFILE), PROFILE.replace("remote a 1194", "remote b 443"));
+    }
+
+    #[test]
+    fn a_block_pasted_whole_replaces_the_old_one() {
+        let edited = fold(PROFILE).replace(
+            "<tls-crypt> … 1 lines … </tls-crypt>",
+            "<tls-crypt>\nNEWKEY\n</tls-crypt>",
+        );
+        let saved = unfold(&edited, PROFILE);
+        assert!(saved.contains("NEWKEY") && !saved.contains("\nKEY\n"), "{saved}");
+        assert!(saved.contains("CERT1"), "{saved}");
+    }
+
+    #[test]
+    fn a_placeholder_taken_out_takes_its_key_with_it() {
+        let edited = fold(PROFILE).replace("<ca> … 2 lines … </ca>\n", "");
+        assert!(!unfold(&edited, PROFILE).contains("CERT1"));
     }
 }

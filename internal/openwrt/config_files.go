@@ -20,7 +20,7 @@ type ConfigFile struct {
 // fileFamilies binds each family of hand-edited files to the uci config whose
 // daemon reads them: a staged file waits under that config, and discarding
 // that config discards the family's files with it.
-var fileFamilies = map[string]string{"dnsmasq": "dhcp", "fw4": "firewall"}
+var fileFamilies = map[string]string{"dnsmasq": "dhcp", "fw4": "firewall", "openvpn": "openvpn"}
 
 // familyOf is the family whose files a config owns, if any.
 func familyOf(config string) (string, bool) {
@@ -46,6 +46,14 @@ func nativeConfigFileCall(ctx context.Context, sid, method string, args map[stri
 func (*NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
 	err := callHelper(ctx, "", "dnsState", sid, nil, &state)
+	return state, err
+}
+
+// OpenVPNFiles is OpenVPN's profiles as they will read once staged changes
+// are applied, each folded so no key in it leaves the helper.
+func (*NativeBackend) OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, "", "openvpnFiles", sid, nil, &state)
 	return state, err
 }
 

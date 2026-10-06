@@ -88,6 +88,7 @@ func TestAFileIsStagedOnlyByItsDaemonsWriter(t *testing.T) {
 		{fileWriter("dhcp"), "/etc/dnsmasq.d/10-local.conf"},
 		{fileWriter("dhcp"), "/etc/dnsmasq.conf"},
 		{fileWriter("firewall"), "/etc/nftables.d/10-custom.nft"},
+		{fileWriter("openvpn"), "/etc/openvpn/proton.ovpn"},
 	} {
 		if err := stage(ok.m, ok.path); err != nil {
 			t.Errorf("%s staging %s: %v", ok.m.ID, ok.path, err)
@@ -101,12 +102,13 @@ func TestAFileIsStagedOnlyByItsDaemonsWriter(t *testing.T) {
 		{fileWriter("dhcp"), "/etc/nftables.d/10-custom.nft"},
 		{fileWriter("firewall"), "/etc/firewall.user"},
 		{fileWriter("dhcp"), "/etc/passwd"},
+		{fileWriter("firewall"), "/etc/openvpn/proton.ovpn"},
 	} {
 		if err := stage(refused.m, refused.path); err == nil {
 			t.Errorf("%s staged %s", refused.m.ID, refused.path)
 		}
 	}
-	if len(b.staged) != 3 {
+	if len(b.staged) != 4 {
 		t.Errorf("only the allowed files reach the router: %v", b.staged)
 	}
 }
