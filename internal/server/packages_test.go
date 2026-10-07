@@ -39,8 +39,8 @@ func pluginsServer(t *testing.T, b fakeBackend, alive bool, manifests ...plugin.
 }
 
 // TestPackagesInventory: the Installed face is the inventory — every package
-// as a row, its story and Remove in the drawer, and no lifecycle cells (that
-// is the Services page's question).
+// as a row, removed from its row, its story in the drawer it opens, and no
+// lifecycle cells (that is the Services page's question).
 func TestPackagesInventory(t *testing.T) {
 	var removes []string
 	b := fakeBackend{access: true,
@@ -60,13 +60,10 @@ func TestPackagesInventory(t *testing.T) {
 		`data-verso-actionbar class="-mt-px -ml-px flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid px-3 pt-3 pb-3.25"`,
 		"htop", "3.5.1-r1", "packages", // the row
 		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
-		"Process viewer", "GPL-2.0",       // the drawer's story
-		">Remove</button>",    // removal is the row's act, asked on the row
-		"max-w-6xl",           // package management uses the focused content width
-		"verso-prose text-sm", // the description is plain body prose, no heading over it
-		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`,        // project link opens safely outside Verso
-		"space-y-0 border-b border-mid not-first:pt-2", "border-t border-mid py-2", // facts are hairline rows 32px under the prose, closed by a rule as a table's are
-		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
+		"Process viewer",                  // what it is, in its column
+		">Remove</button>",                // removal is the row's act, asked on the row
+		"max-w-6xl",                       // package management uses the focused content width
+		`data-verso-panel-url="/system/packages/package?name=htop"`, // the drawer is fetched as it opens
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("inventory missing %q", want)
@@ -74,6 +71,28 @@ func TestPackagesInventory(t *testing.T) {
 	}
 	if strings.Contains(body, `name="svc:`) || strings.Contains(body, `name="on:`) {
 		t.Error("the inventory carries no lifecycle switches — services own those")
+	}
+	// A listing of four hundred packages carries no drawer anybody has not
+	// opened: the row ships the address its drawer is read from.
+	if strings.Contains(body, "GPL-2.0") || strings.Contains(body, "https://htop.dev") {
+		t.Error("the inventory renders a drawer nobody opened")
+	}
+
+	panel := getPanel(t, s, "/system/packages/package?name=htop").Body.String()
+	for _, want := range []string{
+		"Process viewer", "GPL-2.0", // the drawer's story
+		"verso-prose text-sm", // the description is plain body prose, no heading over it
+		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`,        // project link opens safely outside Verso
+		"space-y-0 border-b border-mid not-first:pt-2", "border-t border-mid py-2", // facts are hairline rows 32px under the prose, closed by a rule as a table's are
+		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
+		`href="/system/packages/files?package=htop"`, // an installed package lists its files
+	} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("drawer missing %q", want)
+		}
+	}
+	if strings.Contains(panel, `value="install"`) {
+		t.Error("an installed package's drawer offers no install")
 	}
 
 	rec := postPlugin(t, s, "/system/packages", url.Values{"package": {"htop"}, "_primary": {"remove"}})
@@ -87,11 +106,11 @@ func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
 		{Name: "ca-bundle", Version: "20260601-r1", Feed: "base", Installed: true,
 			RequiredBy: []string{"verso"}},
 	}}
-	body := get(t, pluginsServer(t, b, true, mgmtManifest()), "/system/packages").Body.String()
-	if strings.Contains(body, ">Remove</button>") {
+	s := pluginsServer(t, b, true, mgmtManifest())
+	if strings.Contains(get(t, s, "/system/packages").Body.String(), ">Remove</button>") {
 		t.Error("a package required by another installed package must not offer Remove")
 	}
-	if !strings.Contains(body, "Required by") {
+	if !strings.Contains(getPanel(t, s, "/system/packages/package?name=ca-bundle").Body.String(), "Required by") {
 		t.Error("the drawer should explain why the package cannot be removed")
 	}
 }
@@ -209,7 +228,7 @@ func TestAPackageDrawerReadsAsTodaysDrawers(t *testing.T) {
 		{Name: "htop", Version: "3.4.1", Installed: true, Removable: true, Description: "Process viewer"},
 	}}, true)
 	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{{Name: "htop", Installed: "3.4.1", Available: "3.5.0"}}})
-	body := get(t, s, "/system/packages").Body.String()
+	body := getPanel(t, s, "/system/packages/package?name=htop").Body.String()
 	// Headings, not the table's "What it is" column label.
 	for _, gone := range []string{">What it is</h", ">Details</h"} {
 		if strings.Contains(body, gone) {

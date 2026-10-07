@@ -110,9 +110,6 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 				// colour — an update on offer is news, not a warning.
 				row.Cells[1].Sub, row.Cells[1].Variant = version, "info"
 				row.Cells[4].Actions = append([]widget.TableRowAct{{Icon: "upload", Title: "Update", Opens: true}}, row.Cells[4].Actions...)
-				p := pkgs[i]
-				p.Installed = true
-				row.Drawer = packageDrawer(p, version)
 			}
 		}
 		children = append(children, table)
@@ -267,9 +264,12 @@ func packageRow(p openwrt.Package) widget.TableRow {
 			ConfirmTitle: "Remove %s?",
 			Confirm:      "Everything it installed is taken off the router, and whatever needs it may stop working."}}
 	}
+	// The row ships its drawer's address, not its drawer: a router holds
+	// hundreds of packages, and rendering every drawer for the one anybody
+	// opens cost the listing seconds.
 	return widget.TableRow{ID: p.Name, Cells: []widget.TableCell{
 		{Text: p.Name, Opens: true}, {Text: p.Version}, {Text: packageDescription(p)}, {Text: size}, {Actions: acts},
-	}, Drawer: packageDrawer(p, "")}
+	}, Panel: packagePanelPath + "?name=" + url.QueryEscape(p.Name)}
 }
 
 func packageDescription(p openwrt.Package) string {
@@ -744,7 +744,7 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 // Remove for what is already here. The active query rides along so acting on
 // a result lands back on the same search — a shopping flow installs several.
 func discoverDrawer(p openwrt.Package, q string) *widget.RowDrawer {
-	return packageRow(p).Drawer
+	return packageDrawer(p, "")
 }
 
 func packageActionForm(name, verb, label string) *widget.Form {
@@ -754,11 +754,14 @@ func packageActionForm(name, verb, label string) *widget.Form {
 	}}
 }
 
-// handlePackagePanel answers one package's own panel — the drawer Packages
-// opens from the package's row, Install and all — for a page that offers the
-// package where the need for it is (DNS & DHCP's encryption and blocklist),
-// so it installs without leaving that page. Asked for as a page, the package
-// is found on Packages instead.
+// packagePanelPath is where one package's panel is read from.
+const packagePanelPath = "/system/packages/package"
+
+// handlePackagePanel answers one package's own panel — the drawer each row on
+// Packages fetches as it opens, Install and all — and the same panel for a page
+// that offers the package where the need for it is (DNS & DHCP's encryption
+// and blocklist), so it installs without leaving that page. Asked for as a
+// page, the package is found on Packages instead.
 func (s *Server) handlePackagePanel(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
@@ -775,17 +778,25 @@ func (s *Server) handlePackagePanel(w http.ResponseWriter, r *http.Request) {
 		s.entityNotice(w, http.StatusConflict, tr("The feeds are being refreshed — try again in a moment."))
 		return
 	}
-	found, _, err := s.backend.PkgSearch(r.Context(), s.sessionSID(r), name)
+	p, ok, err := s.backend.PkgInfo(r.Context(), s.sessionSID(r), name)
 	if err != nil {
 		s.entityNotice(w, http.StatusBadGateway, fmt.Sprintf(tr("The package index could not be read (%v). Refresh the feeds and try again."), err))
 		return
 	}
-	i := slices.IndexFunc(found, func(p openwrt.Package) bool { return p.Name == name })
-	if i < 0 {
+	if !ok {
 		s.entityNotice(w, http.StatusNotFound, fmt.Sprintf(tr("%s is not in the package feeds. Refresh the index on Packages and try again."), name))
 		return
 	}
-	row := packageRow(found[i])
+	// An installed package with a newer copy in the feeds offers it, as its
+	// row on Packages says.
+	available := ""
+	if truth, known := s.updateTruth(); known && p.Installed {
+		if i := slices.IndexFunc(truth.Packages, func(u openwrt.PackageUpgrade) bool { return u.Name == name }); i >= 0 {
+			available = truth.Packages[i].Available
+		}
+	}
+	row := packageRow(p)
+	row.Drawer = packageDrawer(p, available)
 	row.Drawer.Open = true
 	var body bytes.Buffer
 	if _, err := s.widgets.RenderOpenPanelWithToken(&body, &widget.Table{Columns: []widget.TableColumn{{}}, Rows: []widget.TableRow{row}},
