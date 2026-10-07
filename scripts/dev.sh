@@ -87,8 +87,11 @@ deploy_helper() {
 		docker cp docker/rootfs/usr/libexec/verso/firewall-logging "$CONTAINER":/usr/libexec/verso/firewall-logging
 		docker cp docker/rootfs/usr/libexec/verso/firewall-logging-setup "$CONTAINER":/usr/libexec/verso/firewall-logging-setup
 		docker cp docker/rootfs/usr/libexec/verso/web-owner "$CONTAINER":/usr/libexec/verso/web-owner
+		# The OpenVPN hook writes the records the helper reads (openvpn.rs).
+		docker exec "$CONTAINER" mkdir -p /etc/hotplug.d/openvpn
+		docker cp docker/rootfs/etc/hotplug.d/openvpn/50-verso "$CONTAINER":/etc/hotplug.d/openvpn/50-verso
 		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
-		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
+		docker exec "$CONTAINER" sh -c 'chown root:root /etc/hotplug.d/openvpn/50-verso /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
 		log "verso-rpcd reloaded"
 	else
 		log "verso-rpcd build failed — keeping the running helper"
@@ -295,7 +298,7 @@ helper_sig() {
 	{
 		find verso-rpcd/src -type f -printf '%T@ %p\n'
 		find verso-rpcd/Cargo.toml verso-rpcd/Cargo.lock verso-rpcd/rust-toolchain.toml -printf '%T@ %p\n'
-		find docker/rootfs/etc/init.d/verso-rpcd docker/rootfs/usr/libexec/verso/firewall-logging docker/rootfs/usr/libexec/verso/firewall-logging-setup -printf '%T@ %p\n'
+		find docker/rootfs/etc/init.d/verso-rpcd docker/rootfs/usr/libexec/verso/firewall-logging docker/rootfs/usr/libexec/verso/firewall-logging-setup docker/rootfs/etc/hotplug.d/openvpn/50-verso -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum
 }
 plugins_sig() {

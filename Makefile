@@ -202,6 +202,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
 	install -Dm755 docker/rootfs/usr/libexec/verso/update-check         $(APK_PAYLOAD)/usr/libexec/verso/update-check
 	install -Dm755 docker/rootfs/usr/libexec/verso/web-owner            $(APK_PAYLOAD)/usr/libexec/verso/web-owner
+	install -Dm644 docker/rootfs/etc/hotplug.d/openvpn/50-verso         $(APK_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
 	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
 	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
@@ -226,6 +227,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
 	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log" \
+	  --info "replaces:verso-plugin-vpn" \
 	  --files "$(APK_PAYLOAD)" \
 	  --script post-install:$(POSTINST) \
 	  --script post-upgrade:$(POSTINST) \
@@ -339,7 +341,6 @@ apk-vpn: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 $(BUILDDIR)/verso-plugin-vpn-$(APK_GOARCH)                                      $(VPN_PAYLOAD)/usr/bin/verso-plugin-vpn
 	install -Dm755 plugins/verso-plugin-vpn/rootfs/etc/init.d/verso-plugin-vpn                     $(VPN_PAYLOAD)/etc/init.d/verso-plugin-vpn
 	install -Dm644 plugins/verso-plugin-vpn/rootfs/usr/share/rpcd/acl.d/verso-plugin-vpn.json      $(VPN_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-vpn.json
-	install -Dm644 plugins/verso-plugin-vpn/rootfs/etc/hotplug.d/openvpn/50-verso                  $(VPN_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
 	install -Dm644 plugins/verso-plugin-vpn/i18n/sl.json                                           $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/i18n/sl.json
 	install -Dm644 plugins/verso-plugin-vpn/manifest.json                                          $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/manifest.json
 	fakeroot -- sh -c 'chown -R 0:0 "$(VPN_PAYLOAD)" && "$(APK)" mkpkg \

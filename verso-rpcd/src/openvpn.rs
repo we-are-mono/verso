@@ -17,8 +17,8 @@ use std::path::Path;
 use std::process::Command;
 
 const PROFILES: &str = "/etc/openvpn";
-/// Where the VPN plugin's hotplug hook (/etc/hotplug.d/openvpn/50-verso)
-/// records each instance's last transition.
+/// Where the hotplug hook the verso package ships beside this helper
+/// (/etc/hotplug.d/openvpn/50-verso) records each instance's last transition.
 const RECORDS: &str = "/var/run/verso-openvpn";
 const LIMIT: usize = 64 * 1024;
 /// Link types the kernel gives a tunnel: none (WireGuard, tun), ipip, ip6tnl,
@@ -619,7 +619,7 @@ mod tests {
     #[test]
     fn the_hotplug_hook_records_each_transition() {
         let dir = scratch("hook");
-        let hook = fs::read_to_string("../plugins/verso-plugin-vpn/rootfs/etc/hotplug.d/openvpn/50-verso")
+        let hook = fs::read_to_string("../docker/rootfs/etc/hotplug.d/openvpn/50-verso")
             .expect("hook")
             .replace("/var/run/verso-openvpn", dir.to_str().expect("utf-8"));
         let script = dir.join("hook.sh");
