@@ -9,7 +9,7 @@
      form field's (verso-field, built in settingsItem.frame), with the
      description kept in view under it. An in-place value stages itself on
      blur or Enter and says its own refusal in the frame's band. */}}
-{{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums">{{end}}
+{{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums{{if eq .Measure "number"}} w-24! max-w-full{{end}}">{{end}}
 {{define "settings.row"}}
   {{if .Frame}}{{.Frame}}{{else}}
   {{/* Read-only facts and policy pills are fields on the notebook's grid: a

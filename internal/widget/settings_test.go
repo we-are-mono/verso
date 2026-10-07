@@ -42,6 +42,23 @@ func firewallDefaults() *Settings {
 // blur. Verticality: label + option chip on one line, the field below at a
 // compact width, help under that; the datatype rides for client validation and an
 // error slot sits beneath the field.
+// TestAnInlinePortIsAsWideAsAPort: a number set in place stands at a number's
+// measure, the width a port field has in a form, and its description keeps
+// the row's.
+func TestAnInlinePortIsAsWideAsAPort(t *testing.T) {
+	got := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
+		{Title: "HTTPS port", Desc: "Where this interface answers.", Code: "web.listen_https", Value: "443", Name: "web_https", Inline: true, Datatype: "port"},
+	}})
+	input := got[strings.Index(got, `<input id="web_https"`):]
+	input = input[:strings.Index(input, ">")]
+	if !strings.Contains(input, "w-24! max-w-full") || !strings.Contains(input, `inputmode="numeric"`) {
+		t.Errorf("an inline port takes the row's width: %s", input)
+	}
+	if strings.Contains(got, "data-verso-control-measure") {
+		t.Errorf("the port's measure narrows its description too:\n%s", got)
+	}
+}
+
 func TestInlineValueField(t *testing.T) {
 	s := &Settings{Items: []SettingsItem{
 		{Title: "Hostname", Desc: "Used on the network.", Code: "hostname", Value: "mono-gateway",

@@ -126,16 +126,9 @@ fn page(r: &Request, posted: Option<&Form>, errors: &Errors) -> Envelope {
             .ruled(),
         );
     }
-    // Verso serves its pages itself (ADR-017): the web interface's part here is
-    // the certificate it serves them with.
-    sections.push(
-        Widget::section(
-            "Web interface",
-            "",
-            vec![super::credentials::certificate(r)],
-        )
-        .ruled(),
-    );
+    // Verso serves its pages itself (ADR-017): its part here is the
+    // certificate it serves them with; where it answers is the shell's.
+    sections.push(super::credentials::certificate(r));
     Envelope::page("Access", Widget::stack(sections)).with_width("form")
 }
 fn port(v: &str) -> bool {

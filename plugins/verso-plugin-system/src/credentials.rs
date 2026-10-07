@@ -183,9 +183,9 @@ fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
     ]
 }
 // certificate is the certificate Verso serves HTTPS with and the acts that
-// replace or fetch it, held as one group so its acts read as the card's, not
-// the section's — a part of the web section under a subheading of its own, as
-// the keys are of SSH.
+// replace or fetch it, held as one group so its acts read as the card's: a
+// section of Access of its own, beside the web interface's settings the shell
+// draws.
 pub fn certificate(r: &Request) -> Widget {
     let mut children = vec![];
     if let Some(cert) = r
@@ -236,7 +236,7 @@ pub fn certificate(r: &Request) -> Widget {
         *inline = true;
     }
     children.push(actions);
-    Widget::section("Certificates", "", vec![Widget::stack(children)])
+    Widget::section("Certificate", "", vec![Widget::stack(children)]).ruled()
 }
 // A PEM block is text the machine wrote, so it is typed in the code box.
 fn textarea(name: &str, label: &str, value: &str) -> Widget {

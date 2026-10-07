@@ -343,15 +343,11 @@ fn sections_commit_their_settings_before_what_they_hold() {
         (ssh[1]["type"].as_str(), ssh[1]["title"].as_str()),
         (Some("section"), Some("Authorized keys"))
     );
-    // The web interface holds no settings of the plugin's, only the
-    // certificate Verso serves.
-    assert_eq!(sections[1]["title"], "Web interface");
+    // The certificate Verso serves is a section of its own, holding no
+    // settings: where the web interface answers is the shell's.
+    assert_eq!(sections[1]["title"], "Certificate");
     assert_eq!(web.as_array().unwrap().len(), 1, "{web}");
-    assert_eq!(
-        (web[0]["type"].as_str(), web[0]["title"].as_str()),
-        (Some("section"), Some("Certificates"))
-    );
-    let held = &web[0]["children"][0];
+    let held = &web[0];
     assert_eq!(
         held["type"], "stack",
         "the certificate and its acts are one group: {web}"
@@ -517,13 +513,13 @@ fn access_forms_wait_for_a_change_before_saving() {
     assert!(!page.contains("\"style\":\"page\""));
 }
 #[test]
-fn the_certificate_is_a_part_of_the_web_section_named_certificates() {
-    // Like the keys under SSH, the certificate is a part of its section with
-    // a subheading of its own over the card and its acts.
+fn the_certificate_is_a_section_of_access_named_certificate() {
+    // The certificate and its acts stand under a heading of their own, beside
+    // the web interface's settings the shell draws.
     let page: serde_json::Value = serde_json::from_str(&access_page(json!([]))).unwrap();
     fn find(v: &serde_json::Value) -> Option<&serde_json::Value> {
         if v.get("type").and_then(|t| t.as_str()) == Some("section")
-            && v.get("title").and_then(|t| t.as_str()) == Some("Certificates")
+            && v.get("title").and_then(|t| t.as_str()) == Some("Certificate")
         {
             return Some(v);
         }
@@ -533,7 +529,7 @@ fn the_certificate_is_a_part_of_the_web_section_named_certificates() {
             _ => None,
         }
     }
-    let part = find(&page).expect("a Certificates part on Access");
+    let part = find(&page).expect("a Certificate section on Access");
     let text = part.to_string();
     assert!(
         text.contains("HTTPS certificate") && text.contains("Install a certificate"),

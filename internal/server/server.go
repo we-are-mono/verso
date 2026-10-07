@@ -729,6 +729,7 @@ func jsCatalog(tr func(string) string) template.JS {
 		// Inline-field validation, shown beneath the field on blur.
 		"Enter a value.",
 		"Use letters, numbers and hyphens — no spaces.",
+		"Enter a port from 1 to 65535.",
 		"Couldn’t save that just now — try again.",
 		// The live listing: its live control (and the act its title names), the
 		// shelf of plucked values, and what the section's meta says while events

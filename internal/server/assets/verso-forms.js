@@ -791,6 +791,9 @@
     if (datatype === "hostname" && !/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(v)) {
       return T("Use letters, numbers and hyphens — no spaces.");
     }
+    if (datatype === "port" && !(/^\d{1,5}$/.test(v) && Number(v) >= 1 && Number(v) <= 65535)) {
+      return T("Enter a port from 1 to 65535.");
+    }
     return "";
   }
   // commit validates and, when the value is valid and changed, stages just this

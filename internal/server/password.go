@@ -203,6 +203,10 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 		s.handleEndSession(w, r, strings.TrimPrefix(action, "end-session:"))
 		return
 	}
+	// A web interface setting edited in place posts itself alone.
+	if s.handleWebSetting(w, r) {
+		return
+	}
 
 	if id := r.URL.Query().Get("plugin"); id != "" {
 		if m, ok := s.manifestByID(id); !ok || m.SystemAccess == "" {
@@ -342,8 +346,11 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 			hdr.Notice = pluginHeader.Notice
 		}
 	}
-	// LuCI's part, where it stands beside Verso: after the web certificate,
-	// the web interface's other subject.
+	// The web interface's own subjects follow its certificate: where it
+	// answers, then LuCI's part, where LuCI stands beside it.
+	if web := s.webSettingsSection(r); web != nil {
+		access.Children = append(access.Children, web)
+	}
 	if luci := s.luciSection(r); luci != nil {
 		access.Children = append(access.Children, luci)
 	}

@@ -71,6 +71,13 @@ type SettingsItem struct {
 	Staged bool `json:"-"`
 }
 
+// Measure is the in-place value's own measure, as its field's would be in a
+// form: a number — a port — stands at a number's width while the description
+// and refusal under it keep the row's.
+func (it *SettingsItem) Measure() string {
+	return (&Field{Datatype: it.Datatype}).Measure()
+}
+
 // edits reports whether the row is a setting someone changes here — a value
 // posted under a name, or a switch — rather than a fact that only reads.
 func (it *SettingsItem) edits() bool {
