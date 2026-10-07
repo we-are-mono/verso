@@ -215,10 +215,11 @@ func serve(args []string) {
 		func(addr net.Addr, scheme string) { info.Printf("verso listening on %s (%s)", addr, scheme) })
 	err = set.Open(listeners)
 	// Given no listeners, the router's ports may be held by the web server
-	// LuCI runs on: Verso answers beside it rather than not at all, and edits
-	// nothing of that server's (ADR-017 §2).
+	// LuCI runs on, or closed to a shell not given the capability to bind
+	// them: Verso answers on 8443 rather than not at all, and edits nothing of
+	// another server's (ADR-017 §2).
 	if beside, ok := listeners.Beside(err); ok {
-		info.Printf("verso: %v; another web server holds the router's ports, so Verso answers beside it", err)
+		info.Printf("verso: %v; answering on port %s instead", err, listen.BesidePort)
 		err = set.Open(beside)
 	}
 	if err != nil {

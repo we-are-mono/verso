@@ -83,12 +83,16 @@ the running shell as it is, and a later respawn starts on them. A hand edit
 over SSH takes effect on `/etc/init.d/verso restart`.
 
 `CAP_NET_BIND_SERVICE`, kept by the init script, is what lets the unprivileged
-`verso` user bind 80 and 443.
+`verso` user bind 80 and 443. procd grants capabilities only through ujail, and
+runs ujail only for an instance that declares a jail, so the script declares
+one that names the service and asks for no namespace: the shell sees the
+router's filesystem as it is.
 
 ### 2. Beside uhttpd, Verso takes 8443
 
-When the listeners are absent and another process holds the router's ports,
-Verso listens on `:8443` for HTTPS alone and logs why. It never edits uhttpd's
+When the listeners are absent and another process holds the router's ports —
+or the shell was not given the capability to bind them — Verso listens on
+`:8443` for HTTPS alone and logs why. It never edits uhttpd's
 configuration on its own. Explicit listeners are bound as written; a port in use
 is a start failure, logged.
 

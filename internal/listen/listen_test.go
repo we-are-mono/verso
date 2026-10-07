@@ -49,10 +49,16 @@ func TestWithNothingSetAndThePortsHeldVersoAnswersBesideOn8443(t *testing.T) {
 	if _, ok := set.Beside(held); ok || set.Ports() != PortsSet {
 		t.Error("set listeners moved beside")
 	}
-	// Any other failure to bind is no other server's doing.
+	// Refused the router's ports for want of the capability, the shell still
+	// answers somewhere: beside, on 8443.
 	denied := &net.OpError{Op: "listen", Err: &os.SyscallError{Syscall: "bind", Err: syscall.EACCES}}
-	if _, ok := c.Beside(denied); ok {
-		t.Error("a refused bind moved beside")
+	if _, ok := c.Beside(denied); !ok {
+		t.Error("a bind refused for want of the capability did not move beside")
+	}
+	// Any other failure moves nothing.
+	other := &net.OpError{Op: "listen", Err: &os.SyscallError{Syscall: "bind", Err: syscall.EADDRNOTAVAIL}}
+	if _, ok := c.Beside(other); ok {
+		t.Error("an address the router lacks moved beside")
 	}
 }
 

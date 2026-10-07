@@ -51,12 +51,13 @@ func (c Config) Ports() string {
 	return PortsSet
 }
 
-// Beside is where Verso answers when it was given no listeners and binding
-// them failed because another web server — LuCI's uhttpd — holds the router's
-// ports: HTTPS alone, on 8443. Listeners someone set are bound as written, and
-// any other failure is not another server's doing; neither moves.
+// Beside is where Verso answers when it was given no listeners and could not
+// bind the router's ports — another web server, LuCI's uhttpd, holds them, or
+// the shell was not given the capability to bind ports under 1024: HTTPS
+// alone, on 8443. Listeners someone set are bound as written, and any other
+// failure moves nothing.
 func (c Config) Beside(err error) (Config, bool) {
-	if !c.Defaulted || !errors.Is(err, syscall.EADDRINUSE) {
+	if !c.Defaulted || !(errors.Is(err, syscall.EADDRINUSE) || errors.Is(err, syscall.EACCES)) {
 		return c, false
 	}
 	return Config{HTTPS: []string{"0.0.0.0:" + BesidePort, "[::]:" + BesidePort}, IsBeside: true}, true

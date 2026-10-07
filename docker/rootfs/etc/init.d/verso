@@ -73,13 +73,15 @@ start_service() {
 	# grant. CAP_NET_BIND_SERVICE is the one capability kept (to bind :80/:443 in
 	# production); no_new_privs blocks regaining anything via setuid binaries.
 	#
-	# NOTE: capabilities + no_new_privs are applied by procd through ujail, which
-	# needs namespace privileges the NON-privileged dev container does not have.
-	# So inside the container you will see a short "jail: failed to clone/fork:
-	# Operation not permitted" burst at boot and these two params are skipped
-	# (procd still drops user/group, so verso is non-root). They apply on real
-	# hardware. Do NOT make the container privileged to silence this — that
-	# re-exposes /dev/watchdog and can reboot the host (see docker-compose.yml).
+	# procd applies capabilities and no_new_privs only through ujail, and runs
+	# ujail only for an instance that declares a jail. This one names itself and
+	# asks for nothing else: no filesystem, network or user namespace, so the
+	# shell sees the router as it is, as the verso user with the one capability.
+	# Without ujail procd still drops the user, and the shell, refused the
+	# router's ports, answers on 8443 (ADR-017 §2). Do NOT make the dev
+	# container privileged for any of this — that re-exposes /dev/watchdog and
+	# can reboot the host (see docker-compose.yml).
+	procd_add_jail verso
 	procd_set_param user verso
 	procd_set_param group verso
 	procd_set_param capabilities /etc/capabilities/verso.json
