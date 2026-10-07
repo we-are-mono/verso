@@ -6,7 +6,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,11 +17,14 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/i18n"
+	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/server"
+	"github.com/we-are-mono/verso/internal/tlscert"
 	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -36,7 +41,34 @@ func main() {
 		}
 		return
 	}
-	serve()
+	// `verso certificate generate` is the init script's, run as root before the
+	// shell starts when it has no certificate to serve (ADR-017 §5).
+	if len(os.Args) > 1 && os.Args[1] == "certificate" {
+		if err := certificate(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "verso: certificate: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	serve(os.Args[1:])
+}
+
+// certificate makes a self-signed pair in dir for the names given that a LAN
+// visit can use, and leaves the key's group to the init script.
+func certificate(args []string) error {
+	if len(args) < 2 || args[0] != "generate" {
+		return errors.New("usage: verso certificate generate DIR NAME...")
+	}
+	names := tlscert.LANNames(args[2:])
+	cert, key, err := tlscert.Generate(names, time.Now())
+	if err != nil {
+		return err
+	}
+	if err := tlscert.Write(args[1], cert, key); err != nil {
+		return err
+	}
+	fmt.Printf("verso: certificate made for %s\n", strings.Join(names, " "))
+	return nil
 }
 
 // updateCheck reads both update lanes as local root and records the answer where
@@ -51,13 +83,32 @@ func updateCheck() error {
 	return updatecheck.Write(updatecheck.DefaultDir, truth)
 }
 
-func serve() {
+// serve runs the web shell. Its listeners arrive as arguments, one per address,
+// because procd restarts a service whose command line changes and not one
+// whose environment does: a listener applied from `verso.web` has to restart it.
+func serve(args []string) {
 	// procd records stdout as info and stderr as err. Keep normal lifecycle
 	// messages off the error stream; logd already supplies their timestamp.
 	info := log.New(os.Stdout, "", 0)
-	addr := os.Getenv("VERSO_ADDR")
-	if addr == "" {
-		addr = ":8080"
+	flags := flag.NewFlagSet("verso", flag.ContinueOnError)
+	var https, plain []string
+	flags.Func("listen-https", "an address:port to serve HTTPS on (repeatable)", func(v string) error { https = append(https, v); return nil })
+	flags.Func("listen-http", "an address:port to serve HTTP on (repeatable)", func(v string) error { plain = append(plain, v); return nil })
+	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
+	if err := flags.Parse(args); err != nil {
+		os.Exit(2)
+	}
+	listeners, err := listen.New(https, plain, *redirect)
+	if err != nil {
+		log.Fatalf("verso: %v", err)
+	}
+	tlsDir := os.Getenv("VERSO_TLS_DIR")
+	if tlsDir == "" {
+		tlsDir = "/etc/verso"
+	}
+	certs := tlscert.NewStore(tlsDir)
+	if err := certs.Load(); err != nil {
+		log.Fatalf("verso: no certificate to serve HTTPS with: %v", err)
 	}
 
 	renderer, err := widget.NewRenderer()
@@ -133,21 +184,78 @@ func serve() {
 	})
 	srv.SetAllowedHosts(allowedHosts())
 
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		srv.Close()
-		log.Fatalf("verso: %v", err)
-	}
-	info.Printf("verso listening on %s", listener.Addr())
+	// Both signals are answered from before the first listener is announced, so
+	// a signal sent on seeing it is never taken by the default handler.
 	// procd stops a service with SIGTERM; answering it is what lets Close run —
 	// the background work stopped, and a dev shell's sessions left for the next.
 	stopping, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
-	err = serveUntil(stopping, listener, srv.Handler())
+	// The certificate's writer has procd send SIGHUP once a new pair is on disk:
+	// it is read again and served from the next handshake, every open
+	// connection and session kept. A pair that fails to load leaves the last.
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+	go func() {
+		for range hup {
+			if err := certs.Load(); err != nil {
+				log.Printf("verso: certificate not reloaded, serving the previous one: %v", err)
+				continue
+			}
+			info.Printf("verso: certificate reloaded")
+		}
+	}()
+	endpoints, err := bind(listeners, srv.Handler(), certs, info)
+	if err != nil {
+		srv.Close()
+		log.Fatalf("verso: %v", err)
+	}
+	err = serveUntil(stopping, endpoints)
 	srv.Close()
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
+}
+
+// endpoint is one bound listener and the server answering on it; a server
+// with a TLS config answers in HTTPS.
+type endpoint struct {
+	listener net.Listener
+	server   *http.Server
+}
+
+// bind opens every listener: the shell over HTTPS, then over HTTP either the
+// redirect to the first HTTPS listener as bound or, with the redirect off, the
+// shell itself. A listener that cannot be bound closes the ones before it.
+func bind(c listen.Config, handler http.Handler, certs *tlscert.Store, info *log.Logger) ([]endpoint, error) {
+	var bound []endpoint
+	open := func(addr, scheme string, server *http.Server) error {
+		l, err := listen.Listen(addr)
+		if err != nil {
+			for _, e := range bound {
+				e.listener.Close()
+			}
+			return err
+		}
+		info.Printf("verso listening on %s (%s)", l.Addr(), scheme)
+		bound = append(bound, endpoint{l, server})
+		return nil
+	}
+	for _, addr := range c.HTTPS {
+		secure := &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
+		if err := open(addr, "https", &http.Server{Handler: handler, TLSConfig: secure}); err != nil {
+			return nil, err
+		}
+	}
+	plain := handler
+	if c.Redirect {
+		plain = listen.Redirect(bound[0].listener.Addr().String(), certs.Name)
+	}
+	for _, addr := range c.HTTP {
+		if err := open(addr, "http", &http.Server{Handler: plain}); err != nil {
+			return nil, err
+		}
+	}
+	return bound, nil
 }
 
 // logProblems reports each skipped manifest or catalog; none is fatal.
@@ -157,19 +265,34 @@ func logProblems(problems []error) {
 	}
 }
 
-// serveUntil serves until ctx ends, then closes every connection at once: a
-// held-open stream would otherwise keep a graceful shutdown waiting past
-// procd's patience. A stop asked for is not an error.
-func serveUntil(ctx context.Context, listener net.Listener, handler http.Handler) error {
-	server := &http.Server{Handler: handler}
-	go func() {
-		<-ctx.Done()
-		_ = server.Close()
-	}()
-	if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
-		return err
+// serveUntil serves every endpoint until ctx ends or one of them fails, then
+// closes every connection at once: a held-open stream would otherwise keep a
+// graceful shutdown waiting past procd's patience. A stop asked for is not an
+// error.
+func serveUntil(ctx context.Context, endpoints []endpoint) error {
+	failed := make(chan error, len(endpoints))
+	for _, e := range endpoints {
+		go func() {
+			var err error
+			if e.server.TLSConfig != nil {
+				err = e.server.ServeTLS(e.listener, "", "")
+			} else {
+				err = e.server.Serve(e.listener)
+			}
+			if !errors.Is(err, http.ErrServerClosed) {
+				failed <- err
+			}
+		}()
 	}
-	return nil
+	var err error
+	select {
+	case <-ctx.Done():
+	case err = <-failed:
+	}
+	for _, e := range endpoints {
+		_ = e.server.Close()
+	}
+	return err
 }
 
 // allowedHosts is the DNS-rebinding Host allowlist. It is OPT-IN: unset means an

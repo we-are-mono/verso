@@ -62,6 +62,13 @@ RUN apk add --no-check-certificate ca-bundle \
  # runs with the switch on, as a fresh install ships.
  && uci -q set verso.updates=updates \
  && uci -q set verso.updates.autocheck=1 \
+ # The dev image runs LuCI's uhttpd on 80/443 as the reference UI, so the shell
+ # answers beside it: the shell over HTTP on 8080 as `make dev` serves it, and
+ # over HTTPS on 8443.
+ && uci -q set verso.web=web \
+ && uci -q add_list verso.web.listen_http=0.0.0.0:8080 \
+ && uci -q add_list verso.web.listen_https=0.0.0.0:8443 \
+ && uci -q set verso.web.redirect_https=0 \
  && uci -q commit verso \
  && chmod 0755 /usr/libexec/verso/update-check \
  && chmod 0600 /etc/crontabs/root \

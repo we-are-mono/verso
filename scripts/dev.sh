@@ -136,6 +136,22 @@ seed_dev_livelog() {
 	' && log "seeded a logging firewall rule — Firewall → Activity reads its NFLOG events"
 }
 
+# seed_dev_listeners gives a container built before the shell served HTTPS the
+# listeners its Dockerfile seeds: uhttpd holds 80/443 for the reference LuCI, so
+# the shell answers on 8080 (HTTP, as $URL) and 8443 (HTTPS). A web section set
+# by hand is left alone.
+seed_dev_listeners() {
+	docker exec "$CONTAINER" sh -c '
+		uci -q get verso.web >/dev/null && exit 0
+		[ -e /etc/config/verso ] || { touch /etc/config/verso; chmod 0644 /etc/config/verso; }
+		uci set verso.web=web
+		uci add_list verso.web.listen_http=0.0.0.0:8080
+		uci add_list verso.web.listen_https=0.0.0.0:8443
+		uci set verso.web.redirect_https=0
+		uci commit verso
+	' && log "shell listeners: http :8080, https :8443"
+}
+
 # deploy_i18n lands the localization catalogs — ADR-012 data files the shell
 # reads from disk, never part of the binary — under the shell's i18n dir and
 # restarts the shell so it reloads them. On a real device these arrive as
@@ -258,6 +274,7 @@ sync_all() {
 	deploy_rpcd_acls
 	seed_dev_forward
 	seed_dev_livelog
+	seed_dev_listeners
 	deploy_i18n
 	deploy_helper
 	deploy_bundled_plugins

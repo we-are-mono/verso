@@ -6,13 +6,56 @@ USE_PROCD=1
 START=95
 STOP=10
 
+TLS_DIR=/etc/verso
+
+# make_certificate gives the shell a self-signed certificate to serve HTTPS with
+# when it has none, named for every way the LAN reaches the router: the
+# hostname, the hostname in the local domain, and the lan interface's addresses
+# (the shell keeps IPv4 and unique local IPv6 among them). It runs here, as root,
+# because the shell cannot write /etc; the key is left readable by the verso
+# group the shell runs in (ADR-017 §3, §5).
+make_certificate() {
+	local host domain v4 v6
+	[ -s "$TLS_DIR/tls.crt" ] && [ -s "$TLS_DIR/tls.key" ] && return
+	. /lib/functions/network.sh
+	host="$(uci -q get system.@system[0].hostname)"
+	host="${host:-OpenWrt}"
+	domain="$(uci -q get dhcp.@dnsmasq[0].domain)"
+	network_get_ipaddrs v4 lan
+	network_get_ipaddrs6 v6 lan
+	mkdir -p "$TLS_DIR"
+	/usr/bin/verso certificate generate "$TLS_DIR" "$host" "$host.${domain:-lan}" $v4 $v6 &&
+		chgrp verso "$TLS_DIR/tls.key"
+}
+
 start_service() {
+	local listen_http listen_https redirect_https addr
+	make_certificate
+	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
+	# handed over on the command line, as uhttpd's init script hands uhttpd its
+	# own. procd restarts an instance whose command changes, and not one whose
+	# environment does, so an applied listener restarts the shell on it. An
+	# absent option is not passed, and the shell holds what that means.
+	config_load verso
+	config_get listen_http web listen_http
+	config_get listen_https web listen_https
+	config_get redirect_https web redirect_https
 	procd_open_instance verso
 	procd_set_param command /usr/bin/verso
+	for addr in $listen_https; do
+		procd_append_param command -listen-https "$addr"
+	done
+	for addr in $listen_http; do
+		procd_append_param command -listen-http "$addr"
+	done
+	[ -n "$redirect_https" ] && procd_append_param command -redirect-https "$redirect_https"
 	# Multipart uploads spill to a private, group-protected runtime directory.
 	# This keeps large backup/firmware bodies out of the shared system /tmp and
 	# works even on images whose tmpfs is not writable by unprivileged services.
-	procd_set_param env VERSO_ADDR=:8080 TMPDIR=/var/run/verso
+	procd_set_param env TMPDIR=/var/run/verso VERSO_TLS_DIR="$TLS_DIR"
+	# No reload_signal: procd sends it in place of a restart when the instance
+	# changes, and changed listeners need the restart. A new certificate is
+	# announced to the shell with `ubus call service signal` instead.
 	# De-privilege the shell (ADR-007): run as the non-root `verso` user so it
 	# cannot write /etc/config directly and does not get ubusd's uid-0 ACL
 	# exemption — every backend op is then bounded by rpcd + the verso acl.d
@@ -34,4 +77,8 @@ start_service() {
 	procd_set_param stdout 1
 	procd_set_param stderr 1
 	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger verso
 }

@@ -53,6 +53,7 @@ services:
                                      # it here keeps Docker's IPAM off it).
     ports:
       - "8080:8080"                 # verso -> http://10.0.0.232:8080
+      - "8443:8443"                 # verso -> https://10.0.0.232:8443 (self-signed)
       - "8081:80"                   # luci  -> http://10.0.0.232:8081 (reference UI, same live uci/ubus)
     # DNS is deliberately not set here. On a user-defined network Docker always
     # fronts the container with its own resolver (127.0.0.11) and treats `dns:`

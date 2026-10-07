@@ -4,18 +4,13 @@ package server
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"net"
 	"net/http"
 	"slices"
@@ -26,6 +21,7 @@ import (
 	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/tlscert"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -87,7 +83,7 @@ func certificateFacts(c *x509.Certificate, now time.Time) map[string]string {
 	} else {
 		facts["expired"] = "1"
 	}
-	if c.Issuer.String() == c.Subject.String() && c.CheckSignature(c.SignatureAlgorithm, c.RawTBSCertificate, c.Signature) == nil {
+	if tlscert.SelfSigned(c) {
 		facts["self_signed"] = "1"
 	}
 	return facts
@@ -158,30 +154,8 @@ func generateWebCertificate(host string) (string, string, error) {
 	if host == "" || (net.ParseIP(host) == nil && datatype.Validate("hostname", host) != nil) {
 		return "", "", commandValidationError("Enter a valid hostname or IP address.")
 	}
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return "", "", err
-	}
-	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	if err != nil {
-		return "", "", err
-	}
-	now := time.Now()
-	cert := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: host}, NotBefore: now.Add(-5 * time.Minute), NotAfter: now.AddDate(2, 0, 0), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true}
-	if ip := net.ParseIP(host); ip != nil {
-		cert.IPAddresses = []net.IP{ip}
-	} else {
-		cert.DNSNames = []string{host}
-	}
-	der, err := x509.CreateCertificate(rand.Reader, cert, cert, &key.PublicKey, key)
-	if err != nil {
-		return "", "", err
-	}
-	pk, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return "", "", err
-	}
-	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})), string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pk})), nil
+	cert, key, err := tlscert.Generate([]string{host}, time.Now())
+	return string(cert), string(key), err
 }
 func validateWebCertificate(cert, key string) (string, string, error) {
 	if len(cert) > 64*1024 || len(key) > 64*1024 {
