@@ -258,12 +258,17 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
     let mut fields = vec![];
     let mut error = String::new();
     let mut command = None;
-    let (title, submit);
+    let (title, submit, done);
     match path {
         // The router names the certificate itself, for every way the LAN reaches
         // it, as it does at first boot (ADR-017 §5): there is nothing to type.
+        // The act puts the new one in place of the one in use, and says so.
         "/access/certificate/new" => {
-            (title, submit) = ("Make a new certificate", "Make certificate");
+            (title, submit, done) = (
+                "Make a new certificate",
+                "Replace certificate",
+                "The router is serving a new certificate.",
+            );
             fields.push(Widget::text("Makes a self-signed certificate for this router's name and its addresses on your network, valid for two years. Devices that trusted the current one warn again until they trust the new one."));
             if form.is_some() {
                 command = Some(ApplyAction {
@@ -273,7 +278,11 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             }
         }
         "/access/certificate/install" => {
-            (title, submit) = ("Install a certificate", "Install certificate");
+            (title, submit, done) = (
+                "Install a certificate",
+                "Install certificate",
+                "The router is serving the installed certificate.",
+            );
             let certificate = form.map(|f| f.get("certificate")).unwrap_or_default();
             fields.push(Widget::text("A trusted certificate is issued for a domain you control. Obtain it from your certificate authority, then paste the certificate and its private key here."));
             fields.push(textarea("certificate", "Certificate (PEM)", &certificate));
@@ -331,7 +340,7 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
         .with_back("Access", "/system/access");
     if let Some(command) = command {
         result.commands = vec![command];
-        result = result.with_notice(Tone::Success, "Access credentials updated.");
+        result = result.with_notice(Tone::Success, done);
     }
     result
 }

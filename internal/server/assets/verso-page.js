@@ -198,6 +198,17 @@
   if (!layer) return;
   var slot = layer.querySelector("[data-verso-outcome-slot]");
   var close = layer.querySelector("[data-verso-outcome-close]");
+  // An open drawer is a modal dialog: the browser draws it above the page and
+  // leaves nothing outside it to point at. While one is open the layer stands
+  // inside it, at the drawer's own top right, and comes home once it leaves.
+  var home = layer.parentNode;
+  function place() {
+    var host = home;
+    document.querySelectorAll("dialog[open]").forEach(function (dialog) {
+      if (dialog.matches(":modal")) host = dialog;
+    });
+    if (layer.parentNode !== host) host.appendChild(layer);
+  }
   // Six seconds: long enough to read two short sentences twice.
   var STAY = 6000;
   var timer = null;
@@ -212,6 +223,7 @@
       if (layer.classList.contains("is-shown")) return;
       slot.replaceChildren();
       layer.hidden = true;
+      if (layer.parentNode !== home) home.appendChild(layer);
     }, 300);
   }
 
@@ -226,6 +238,7 @@
 
   function show(outcome) {
     clearTimeout(timer);
+    place();
     slot.replaceChildren(outcome);
     layer.hidden = false;
     var variant = outcome.getAttribute && outcome.getAttribute("data-verso-flash-variant");
@@ -253,6 +266,18 @@
   layer.addEventListener("focusout", function () { setTimeout(resume, 0); });
   if (close) close.addEventListener("click", leave);
   window.versoOutcome = { show: show };
+
+  // An act whose request was never answered says so: otherwise a press the
+  // router never heard looks like one that did nothing. Only an act someone
+  // took — a press, a submit — speaks; a refresh the page makes on its own
+  // stays quiet, and tries again on its own.
+  document.addEventListener("htmx:sendError", function (event) {
+    var config = event.detail && event.detail.requestConfig;
+    var trigger = config && config.triggeringEvent;
+    var template = document.querySelector("template[data-verso-unanswered]");
+    if (!trigger || !trigger.isTrusted || !template) return;
+    show(document.importNode(template.content.firstElementChild, true));
+  });
 })();
 
 // A ledger's count: how many things a part of a section holds. Adding or

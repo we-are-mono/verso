@@ -463,10 +463,14 @@
      at the top of its body, because the page around it is not re-rendered to
      say what happened. One definition, so the two cannot drift apart. Nothing
      draws without a message. */}}
-{{define "verso-flash"}}{{if .Message}}<div class="verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-5 {{if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}" data-verso-flash-variant="{{.Variant}}">
+{{define "verso-flash"}}{{if .Message}}<div class="{{template "verso-flash-class" .Variant}}" data-verso-flash-variant="{{.Variant}}">
   {{template "verso-message-mark" .Variant}}
   <span>{{.Message}}</span>
 </div>{{end}}{{end}}
+
+{{/* verso-flash-class: a flash's box in its tone, for a flash whose words the
+     page composes itself (the unanswered request's, with its Reload). */}}
+{{define "verso-flash-class"}}verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-5 {{if eq . "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq . "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq . "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}{{end}}
 
 {{/* verso-message-mark: how an error, a notice, a warning or a confirmation
      says its tone — the state mark, the 6px square in the tone's hue, hung on

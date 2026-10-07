@@ -842,7 +842,7 @@ func TestAutocheckStagedSaysNothingOnThePage(t *testing.T) {
 	if rec := do(http.MethodPost, "/system/maintenance", url.Values{"autocheck": {"on"}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("autocheck POST = %d, want a redirect", rec.Code)
 	}
-	if body := do(http.MethodGet, maintenancePath, nil).Body.String(); strings.Contains(body, "Nothing is live until you apply.") || strings.Contains(body, `<div class="verso-flash`) {
+	if body := do(http.MethodGet, maintenancePath, nil).Body.String(); strings.Contains(body, "Nothing is live until you apply.") || flashShown(body) {
 		t.Errorf("a staged setting is said on the page:\n%s", body)
 	}
 }

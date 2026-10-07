@@ -23,11 +23,11 @@ func certificatePanelServer(t *testing.T, b *credentialsFake, commands []plugin.
 	m.Socket, m.SystemAccess, m.Name = "/run/system.sock", "/access", "System"
 	m.SchemaVersion = supportedSchemaVersion
 	widget := `{"type":"table","columns":[],"rows":[{"drawer":{"title":"Make a new certificate","open":true,"closed":"/system/access",
-	  "children":[{"type":"form","submit":"Make certificate","fields":[{"type":"text","text":"Makes a self-signed certificate for this router's name and its addresses on your network."}]}]}}]}`
+	  "children":[{"type":"form","submit":"Replace certificate","fields":[{"type":"text","text":"Makes a self-signed certificate for this router's name and its addresses on your network."}]}]}}]}`
 	env := &plugin.Envelope{SchemaVersion: 1, Title: "Make a new certificate", Widget: json.RawMessage(widget),
 		Back: &plugin.PageAction{Label: "Access", Href: "/system/access"}, Commands: commands}
 	if len(commands) > 0 {
-		env.Notice = &plugin.Notice{Level: "success", Text: "Access credentials updated."}
+		env.Notice = &plugin.Notice{Level: "success", Text: "The router is serving a new certificate."}
 	}
 	return newServerWith(t, b, &fakeTransport{env: env}, []plugin.Manifest{m})
 }
@@ -43,7 +43,7 @@ func TestAPanelOpenedOverAPagePostsToItsOwnAddress(t *testing.T) {
 	if rec.Code != http.StatusOK || strings.Contains(body, "<html") {
 		t.Fatalf("want the panel alone, got %d:\n%s", rec.Code, body)
 	}
-	for _, want := range []string{`hx-post="/plugins/system/access/certificate/new"`, `hx-target="closest [data-verso-panel]"`, "Make certificate"} {
+	for _, want := range []string{`hx-post="/plugins/system/access/certificate/new"`, `hx-target="closest [data-verso-panel]"`, "Replace certificate"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s in:\n%s", want, body)
 		}
@@ -63,7 +63,7 @@ func TestAPanelActThatRanClosesOnThePageReadAgain(t *testing.T) {
 	if !b.made {
 		t.Error("the router was not asked to make the certificate")
 	}
-	if _, message := s.sessions.TakeFlash(token); message != "Access credentials updated." {
+	if _, message := s.sessions.TakeFlash(token); message != "The router is serving a new certificate." {
 		t.Errorf("flash = %q, want what happened, waiting on Access", message)
 	}
 }
@@ -80,7 +80,7 @@ func TestAPanelActTheRouterRefusedStaysInThePanel(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity || rec.Header().Get("HX-Redirect") != "" {
 		t.Fatalf("want the refusal in the panel at 422, got %d → %q:\n%s", rec.Code, rec.Header().Get("HX-Redirect"), body)
 	}
-	if strings.Contains(body, "<html") || !strings.Contains(body, "Make certificate") || strings.Contains(body, "Access credentials updated.") {
+	if strings.Contains(body, "<html") || !strings.Contains(body, "Replace certificate") || strings.Contains(body, "The router is serving a new certificate.") {
 		t.Errorf("want the panel with the refusal and no success:\n%s", body)
 	}
 	if b.cert != "" {

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -1908,7 +1909,7 @@ func TestAStagedSaveIsSaidByTheChip(t *testing.T) {
 		if variant, message := s.sessions.TakeFlash(token); message != "" {
 			t.Errorf("notice %+v: a staged save must not be said on the page, flashed %q %q", notice, variant, message)
 		}
-		if strings.Contains(rec.Body.String(), `<div class="verso-flash`) {
+		if flashShown(rec.Body.String()) {
 			t.Errorf("notice %+v: a staged save must not be said on the page", notice)
 		}
 	}
@@ -2707,6 +2708,16 @@ func TestPluginWithoutActionRendersNoButton(t *testing.T) {
 	}
 }
 
+// inertTemplates matches the <template> elements a page carries for its
+// scripts to clone; nothing in one is shown.
+var inertTemplates = regexp.MustCompile(`(?s)<template\b.*?</template>`)
+
+// flashShown reports whether the page shows a flash strip, leaving out the
+// ones its templates hold for its scripts (the unanswered request's).
+func flashShown(body string) bool {
+	return strings.Contains(inertTemplates.ReplaceAllString(body, ""), `<div class="verso-flash`)
+}
+
 // TestPluginWithoutNoticeShowsNoFlash: no notice, no flash strip.
 func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
@@ -2715,7 +2726,7 @@ func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
-	if body := get(t, s, "/plugins/demo/").Body.String(); strings.Contains(body, `<div class="verso-flash`) {
+	if body := get(t, s, "/plugins/demo/").Body.String(); flashShown(body) {
 		t.Error("a plugin page without a notice must carry no flash strip")
 	}
 }

@@ -626,7 +626,7 @@ fn a_certificate_act_is_a_drawer_that_closes_back_on_access() {
         (
             "/access/certificate/new",
             "Make a new certificate",
-            "Make certificate",
+            "Replace certificate",
         ),
     ] {
         let (_, j) = certificate_act(path, None);
@@ -649,6 +649,12 @@ fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
     assert_eq!(e.commands[0].name, "certificate-generate");
     // the router names the certificate itself: nothing is asked or sent
     assert!(e.commands[0].args.is_empty(), "{:?}", e.commands[0]);
+    // and what happened is said as what the router now does
+    assert!(
+        j.to_string()
+            .contains("The router is serving a new certificate."),
+        "{j}"
+    );
     let drawer = drawer_of(&j["act"]).unwrap();
     assert_eq!(drawer["open"], true);
     assert!(

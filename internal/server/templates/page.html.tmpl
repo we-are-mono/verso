@@ -211,6 +211,15 @@
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </div>
+{{/* What the layer says when an act's request was never answered: the router
+     is down or restarting, or its certificate changed under the browser,
+     which refuses a certificate it has not been shown without a word when a
+     page asks in the background. Reloading is a page the browser loads
+     itself, so it says which (verso-page.js). */}}
+<template data-verso-unanswered><div class="{{template "verso-flash-class" "danger"}}" data-verso-flash-variant="danger">
+  {{template "verso-message-mark" "danger"}}
+  <span>{{ t "The router didn't answer." }} <a href="" class="font-semibold underline underline-offset-2 hover:text-ink">{{ t "Reload to reconnect." }}</a></span>
+</div></template>
 {{/* The refusal navigator: while settings on the page stand refused, how many,
      and the way to the next one. It pins itself under the bar, centred over
      the content column, and counts down as each refusal is corrected — a
