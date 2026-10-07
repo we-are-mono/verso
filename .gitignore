@@ -51,3 +51,6 @@
 
 # Impeccable's state, all of it local
 /.impeccable/
+
+# graphify's knowledge graph, built locally
+/graphify-out/
