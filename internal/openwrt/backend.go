@@ -1524,6 +1524,12 @@ type serviceDetail struct {
 // dialRCList reads the cheap rc inventory first, then enriches it from procd's
 // service instances and procfs. The richer read is best-effort: an older ACL or
 // procd without service.list still gets the complete, controllable rc table.
+//
+// rc.list is asked to skip its running checks: rpcd answers each one by
+// executing `/etc/init.d/<name> running`, one script after another, which costs
+// seconds on a router with fifty procd services — and some packages' scripts
+// reload their daemon from that hook. procd's own instance table, read next,
+// already says what runs.
 func dialRCList(socket string) rcListFn {
 	return func(_ context.Context, sid string) (map[string]RCState, error) {
 		c, err := ubus.Dial(socket)
@@ -1539,19 +1545,17 @@ func dialRCList(socket string) rcListFn {
 		if err != nil {
 			return nil, err
 		}
-		res, err := c.Invoke(id, "list")
+		res, err := c.InvokeTable(id, "list", map[string]any{"skip_running_check": true})
 		if err != nil {
 			return nil, err
 		}
 		out := make(map[string]RCState, len(res))
-		managed := make(map[string]bool, len(res))
 		for name, v := range res {
 			t, ok := v.(map[string]any)
 			if !ok {
 				continue
 			}
-			_, managed[name] = t["running"]
-			st := RCState{Enabled: asBool(t["enabled"]), Running: asBool(t["running"])}
+			st := RCState{Enabled: asBool(t["enabled"])}
 			if value, ok := t["start"]; ok {
 				order := int(asInt64(value))
 				st.Order = &order
@@ -1567,7 +1571,7 @@ func dialRCList(socket string) rcListFn {
 				}
 			}
 		}
-		enrichRCStates(out, managed, details, os.ReadFile)
+		enrichRCStates(out, details, os.ReadFile)
 		return out, nil
 	}
 }
@@ -1603,7 +1607,6 @@ func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
 
 func enrichRCStates(
 	states map[string]RCState,
-	managed map[string]bool,
 	details map[string]serviceDetail,
 	readFile func(string) ([]byte, error),
 ) {
@@ -1614,8 +1617,10 @@ func enrichRCStates(
 		if filepath.Base(name) == name && !strings.ContainsAny(name, `/\\`) {
 			script, _ = readFile(filepath.Join("/etc/init.d", name))
 		}
-		state.Kind = classifyService(managed[name], script, detail)
+		state.Kind = classifyService(usesProcd(script), script, detail)
 		for _, instance := range detail.Instances {
+			// rc's own check asks the same table: running is any live instance.
+			state.Running = state.Running || instance.Running
 			if instance.Running && instance.PID > 0 {
 				state.PIDs = append(state.PIDs, instance.PID)
 			}
@@ -1626,16 +1631,23 @@ func enrichRCStates(
 	}
 }
 
+// usesProcd reports whether an init script declares USE_PROCD with a non-zero
+// value at the start of a line — the declaration rpcd's rc reads to decide the
+// same.
+func usesProcd(script []byte) bool {
+	for _, line := range bytes.Split(script, []byte("\n")) {
+		if value, ok := bytes.CutPrefix(line, []byte("USE_PROCD=")); ok {
+			n, err := strconv.ParseUint(string(bytes.TrimSpace(value)), 0, 64)
+			return err == nil && n != 0
+		}
+	}
+	return false
+}
+
 func classifyService(managed bool, script []byte, detail serviceDetail) ServiceKind {
 	daemonScript := bytes.Contains(script, []byte("procd_set_param command"))
+	// A script procd does not run is a boot task.
 	if !managed {
-		// A never-tracked service (no `running` key in rc.list) is a boot task —
-		// unless its init script declares a procd command, which marks a daemon
-		// procd simply hasn't started yet (an installed-but-disabled daemon). That
-		// daemon still needs an on/off switch, so it must not read as a task.
-		if daemonScript {
-			return ServiceDaemon
-		}
 		return ServiceTask
 	}
 	// A procd one-shot leaves a successful, non-respawning instance behind after
