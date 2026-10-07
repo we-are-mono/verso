@@ -265,13 +265,16 @@ test('package refresh stays locked through polling and unlocks after a network f
   const root = new Element(), button = new Element('Refresh index'), field = new Element(), error = new Element();
   field.value = ''; field.dispatchEvent = () => {};
   root.dataset.packageAll = 'false';
+  // The listing holds the search and its error line; Refresh and the index's
+  // age stand on the heading line, outside it.
   root.querySelector = selector => ({
-    '[data-package-query]': field,
-    '[data-package-refresh] button': button,
-    '[data-package-note]': new Element(),
+    '[data-verso-actionbar] input[type="search"]': field,
     '[data-package-error]': error,
   })[selector] || null;
-  env.selectors.set('[data-verso-packages]', root);
+  env.window.location = new URL('http://verso.test/system/packages');
+  env.selectors.set('.verso-page-body > .verso-stack', root);
+  env.selectors.set('[data-verso-masthead] form[action="/system/packages/discover"] button', button);
+  env.selectors.set('[data-verso-heading-note]', new Element());
   env.context.Event = class {};
   env.context.FormData = class { *[Symbol.iterator]() { yield ['_csrf', 'test']; } };
   env.context.versoErrorLine = (line, text) => { line.textContent = text; };
@@ -294,7 +297,8 @@ test('package refresh stays locked through polling and unlocks after a network f
   assert.equal(button.disabled, false);
   assert.equal(button.getAttribute('aria-busy'), null);
   assert.equal(button.textContent, 'Refresh index');
-  assert.equal(error.hidden, false);
+  // The lost connection is said on the listing's error line.
+  assert.equal(error.textContent, 'Could not check refresh status. Try again.');
 });
 
 // A drawer's form answers in place, so its act says it is running: past a
