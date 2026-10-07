@@ -2371,8 +2371,9 @@ pub struct SettingsPill {
     pub text: String,
 }
 
-/// Notice is the outcome of the action this render answers — shown by the shell
-/// in its own flash slot (ADR-006 §4). State the outcome; never compose it.
+/// Notice is the outcome of the action this render answers — said by the
+/// shell's notification at the top right of the viewport (ADR-006 §4), never in
+/// the content. State the outcome; never compose it.
 #[derive(Serialize, Debug)]
 pub struct Notice {
     pub level: Tone,
@@ -2636,7 +2637,7 @@ impl Envelope {
         self
     }
 
-    /// with_notice states this render's outcome — shown in the shell's flash slot.
+    /// with_notice states this render's outcome — said by the shell's notification.
     pub fn with_notice(mut self, level: Tone, text: &str) -> Envelope {
         self.notice = Some(Notice {
             level,

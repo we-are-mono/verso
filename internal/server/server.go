@@ -577,15 +577,16 @@ type pageData struct {
 	// translator, so the render hands it these as a JSON blob (ADR-012).
 	JSStrings template.JS
 	Pages     []pageTab // the domain's subpages, rendered as the top bar (third navigation tier)
-	// Flash is the one-shot outcome at the top of the content: the PRG
-	// confirmation from a redirect, or a plugin envelope's notice.
+	// Flash is the one-shot outcome the page arrives with, said by the outcome
+	// layer as it loads: the PRG confirmation from a redirect, or a plugin
+	// envelope's notice.
 	FlashVariant string // the tone vocabulary: "success" | "warning" | "danger" | "info" | "" (no flash)
 	FlashMessage string
 }
 
-// Flash is the page's one-shot outcome as the shared flash partial draws it —
-// the same treatment a panel gives its own outcome, so a save reads the same
-// wherever it lands.
+// Flash is the page's one-shot outcome as the shared flash partial draws it
+// for the outcome layer — the same a panel carries, so a save reads the same
+// wherever it was made.
 func (d pageData) Flash() widget.Flash {
 	return widget.Flash{Variant: d.FlashVariant, Message: d.FlashMessage}
 }
@@ -646,7 +647,7 @@ type pageHeader struct {
 	// nothing for it.
 	Back   *plugin.PageAction
 	Banner *plugin.Banner
-	Notice *plugin.Notice // a plugin's outcome for this render, shown in the flash slot
+	Notice *plugin.Notice // a plugin's outcome for this render, said by the notification
 	// StagedCommit records that this render staged a uci commit (a successful
 	// editor submit). The gateway reads it to send an editor back to its listing
 	// after a save, rather than re-rendering the form
@@ -764,8 +765,8 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	pluginTr := s.pluginTranslators(r)
 	staged := s.staged(r.Context(), s.sessionSID(r), tr, pluginTr)
 	flashVariant, flashMessage := s.takeFlash(r)
-	// A plugin's outcome notice rides the same flash slot as the shell's PRG
-	// flash (one treatment for one meaning); the redirect flash, being the
+	// A plugin's outcome notice rides the same flash as the shell's PRG
+	// confirmation (one treatment for one meaning); the redirect flash, being the
 	// operator's own just-completed action, wins if both are present.
 	if flashMessage == "" && hdr.Notice != nil && hdr.Notice.Text != "" {
 		flashVariant, flashMessage = hdr.Notice.Level, hdr.Notice.Text

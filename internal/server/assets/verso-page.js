@@ -185,12 +185,11 @@
   mark();
 })();
 
-// The outcome layer: where an act made in place says how it went. A page you
-// arrive at says what happened before it at the top, in the flash; an act you
-// take on this page says what just happened here, at the right, where the panel
-// it came from has just gone — the same element, the same words and tones, a
-// different place and a lifetime. One at a time: a newer outcome replaces the
-// one showing. It stays long enough to read, holds while the pointer is on it,
+// The outcome layer: the one place any act says how it went, at the right of
+// the viewport under the bar, never in the content. An act taken on this page
+// says so as its answer arrives; a page, or a panel's answer, arrived at after
+// one brings its outcome in a template and the layer says it as it lands. One
+// at a time: a newer outcome replaces the one showing. It stays long enough to read, holds while the pointer is on it,
 // and leaves on its own or on the cross. It publishes window.versoOutcome,
 // which the acts that answer in place call from inside their handlers.
 (function () {
@@ -265,7 +264,20 @@
   layer.addEventListener("focusin", function () { clearTimeout(timer); });
   layer.addEventListener("focusout", function () { setTimeout(resume, 0); });
   if (close) close.addEventListener("click", leave);
+
+  // arrive says the outcome a page, or a panel's answer, brought with it:
+  // carried in a template, it is never drawn where it came, only said here,
+  // and once.
+  function arrive(root) {
+    var carried = root && root.querySelector && root.querySelector("template[data-verso-arrival]");
+    if (!carried) return;
+    carried.remove();
+    var outcome = carried.content.firstElementChild;
+    if (outcome) show(document.importNode(outcome, true));
+  }
   window.versoOutcome = { show: show };
+  arrive(document);
+  document.addEventListener("htmx:afterSwap", function (event) { arrive(event.target); });
 
   // An act whose request was never answered says so: otherwise a press the
   // router never heard looks like one that did nothing. Only an act someone

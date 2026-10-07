@@ -8,11 +8,11 @@ import (
 	"io"
 )
 
-// Flash is a one-shot outcome as the flash slot draws it — a confirmation, a
-// plugin envelope's notice — toned by the tone vocabulary. The page carries one
-// at the top of its content; a panel answering its own submission carries one
-// at the top of its body, because the page around it is not re-rendered to
-// show it. An empty Message draws nothing.
+// Flash is a one-shot outcome — a confirmation, a plugin envelope's notice —
+// toned by the tone vocabulary. It is never drawn in the content: the page,
+// and a panel answering its own submission, carry it in a template for the
+// outcome layer at the top right of the viewport to say. An empty Message
+// carries nothing.
 type Flash struct {
 	Variant string
 	Message string
@@ -81,9 +81,9 @@ func drawerPanel(d *RowDrawer, body []template.HTML) drawerPanelView {
 // The plugin is not asked anything different. It already answers an address
 // naming an open panel with exactly that panel open, and it answers the panel's
 // own submission the same way; this only takes the panel out of the answer and
-// leaves the rest. What the page would have said about that submission in its
-// flash slot rides in as flash, at the top of the body, since the page is not
-// being drawn to say it.
+// leaves the rest. What the page would have arrived with about that
+// submission rides in as flash, carried for the notification to say, since
+// the page is not being drawn around it.
 func (r *Renderer) RenderOpenPanelWithToken(out io.Writer, w Widget, csrfToken, lang string, t func(string) string, flash Flash) (bool, error) {
 	if t != nil {
 		translateSchema(w, t)

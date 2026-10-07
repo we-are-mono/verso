@@ -2561,10 +2561,11 @@ func TestValidateSchemaAnnotatesAndPreservesPluginErrors(t *testing.T) {
 	}
 }
 
-// TestPluginNoticeRendersInFlashSlot: the envelope's notice is the outcome
-// channel (ADR-006 §4) — the shell shows it in its own flash slot, toned by
-// its level, so a plugin's outcome and the shell's are indistinguishable.
-func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
+// TestPluginNoticeArrivesAsTheNotification: the envelope's notice is the
+// outcome channel (ADR-006 §4) — the page brings it for the outcome layer,
+// toned by its level, so a plugin's outcome and the shell's are
+// indistinguishable, and neither is ever drawn in the content.
+func TestPluginNoticeArrivesAsTheNotification(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
 		Notice: &plugin.Notice{Level: "warning", Text: "Takes effect on the next reload."},
@@ -2573,10 +2574,14 @@ func TestPluginNoticeRendersInFlashSlot(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 	body := get(t, s, "/plugins/demo/").Body.String()
+	outcome := arrival(body)
 	for _, want := range []string{`<div class="verso-flash`, "Takes effect on the next reload.", "border-marigold-line"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("notice flash missing %q", want)
+		if !strings.Contains(outcome, want) {
+			t.Errorf("the arriving notice is missing %q:\n%s", want, outcome)
 		}
+	}
+	if inContent(body, "Takes effect on the next reload.") {
+		t.Error("the notice is drawn in the content")
 	}
 }
 
@@ -2709,16 +2714,34 @@ func TestPluginWithoutActionRendersNoButton(t *testing.T) {
 }
 
 // inertTemplates matches the <template> elements a page carries for its
-// scripts to clone; nothing in one is shown.
+// scripts to clone; nothing in one is shown where it stands.
 var inertTemplates = regexp.MustCompile(`(?s)<template\b.*?</template>`)
 
-// flashShown reports whether the page shows a flash strip, leaving out the
-// ones its templates hold for its scripts (the unanswered request's).
-func flashShown(body string) bool {
-	return strings.Contains(inertTemplates.ReplaceAllString(body, ""), `<div class="verso-flash`)
+// arrivalTemplate is the outcome a page or a panel's answer brings for the
+// outcome layer to say.
+var arrivalTemplate = regexp.MustCompile(`(?s)<template data-verso-arrival>(.*?)</template>`)
+
+// arrival is the outcome a page arrived with, "" when it brought none.
+func arrival(body string) string {
+	if m := arrivalTemplate.FindStringSubmatch(body); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
-// TestPluginWithoutNoticeShowsNoFlash: no notice, no flash strip.
+// inContent reports whether text is drawn where it stands in the page, outside
+// the templates its scripts clone from.
+func inContent(body, text string) bool {
+	return strings.Contains(inertTemplates.ReplaceAllString(body, ""), text)
+}
+
+// flashShown reports whether the page says an outcome at all: one it arrived
+// with, or a flash drawn anywhere it should never be.
+func flashShown(body string) bool {
+	return arrival(body) != "" || inContent(body, `<div class="verso-flash`)
+}
+
+// TestPluginWithoutNoticeShowsNoFlash: no notice, no outcome said.
 func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
@@ -2727,7 +2750,7 @@ func TestPluginWithoutNoticeShowsNoFlash(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 
 	if body := get(t, s, "/plugins/demo/").Body.String(); flashShown(body) {
-		t.Error("a plugin page without a notice must carry no flash strip")
+		t.Error("a plugin page without a notice must say no outcome")
 	}
 }
 

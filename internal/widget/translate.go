@@ -108,7 +108,6 @@ func translateFields(w Widget, t func(string) string) {
 		n.Placeholder = t(n.Placeholder)
 	case *Form:
 		n.Submit = t(n.Submit)
-		n.Success = t(n.Success)
 		n.Error = t(n.Error)
 		if !n.NoteVerbatim {
 			n.Note = t(n.Note)

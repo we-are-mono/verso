@@ -162,12 +162,6 @@
       </div>
     </div>
     {{end}}
-    {{/* The flash: the one-shot outcome at the top of the content — a PRG
-         confirmation, or a plugin envelope's notice. Coloured by the tone
-         vocabulary; rendered once by the chrome, gone on the next view. The
-         partial is shared with the panel that answers its own submission, so
-         an outcome reads the same wherever it lands. */}}
-    {{template "verso-flash" .Flash}}
     <div{{if eq .Width "form"}} data-verso-form-column{{end}} class="verso-page-body">{{.Body}}</div>
     </div>
     </div>
@@ -200,13 +194,14 @@
   {{end}}{{end}}
 </main>
 </div>
-{{/* The outcome layer: where an act made in place says how it went. A page you
-     arrive at says what happened before it at the top, in the flash; an act
-     taken on this page says what just happened here, at the right, under the
-     bar, where the panel it came from has just gone (verso-page.js). The same
-     flash element, the same words and tones; only the place and the lifetime
-     differ. The sentence is read aloud through the page's announcer as it
-     arrives (verso-page.js), since this layer is hidden until then. */}}
+{{/* The outcome layer: the one place any act says how it went, at the right of
+     the viewport under the bar — never in the content. An act taken on this
+     page says so as its answer arrives; a page arrived at after one (a PRG
+     confirmation, a plugin envelope's notice) carries the sentence in the
+     flash template below, and the layer says it as the page loads
+     (verso-page.js). The sentence is read aloud through the page's announcer
+     as it arrives, since this layer is hidden until then. */}}
+{{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
 <div id="verso-outcome" hidden class="verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md">
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-[0_4px_12px_rgba(27,25,23,.14)]"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>

@@ -152,11 +152,11 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 	}
 }
 
-// TestOpenPanelLeadsWithItsOutcome: a panel answering its own submission says how
-// it went at the top of its body — the flash the page would have shown, drawn in
-// the panel because the page is not being drawn around it. It is the page's own
-// flash, toned the same way, so a save reads the same wherever it lands.
-func TestOpenPanelLeadsWithItsOutcome(t *testing.T) {
+// TestOpenPanelBringsItsOutcome: a panel answering its own submission brings
+// how it went for the outcome layer to say, because the page is not being
+// drawn around it — the page's own flash, toned the same way, and never a line
+// in the panel.
+func TestOpenPanelBringsItsOutcome(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{
 		Columns: []TableColumn{{Label: "Name", Kind: "name"}},
@@ -170,13 +170,16 @@ func TestOpenPanelLeadsWithItsOutcome(t *testing.T) {
 		t.Fatalf("RenderOpenPanelWithToken: %v", err)
 	}
 	got := b.String()
-	flash := strings.Index(got, `<div class="verso-flash`)
-	form := strings.Index(got, "<form")
-	if flash < 0 || !strings.Contains(got, "Rule saved.") || !strings.Contains(got, "border-green-line") {
-		t.Fatalf("the panel should lead with its outcome in the flash treatment:\n%s", got)
+	open, end := strings.Index(got, "<template data-verso-arrival>"), strings.Index(got, "</template>")
+	if open < 0 || end < open {
+		t.Fatalf("the panel should bring its outcome for the outcome layer:\n%s", got)
 	}
-	if form < 0 || flash > form {
-		t.Errorf("the outcome comes before the form it answers:\n%s", got)
+	carried := got[open:end]
+	if !strings.Contains(carried, `<div class="verso-flash`) || !strings.Contains(carried, "Rule saved.") || !strings.Contains(carried, "border-green-line") {
+		t.Errorf("the carried outcome is not the flash treatment:\n%s", carried)
+	}
+	if strings.Contains(got[:open]+got[end:], "Rule saved.") {
+		t.Errorf("the outcome is drawn in the panel:\n%s", got)
 	}
 }
 

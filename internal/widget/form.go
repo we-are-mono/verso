@@ -41,9 +41,11 @@ type Form struct {
 	// Tone is the act's when it is not the primary: ToneDanger for an act that
 	// destroys (erasing the router), ToneCaution for one that is disruptive but
 	// wanted. Empty is the primary.
-	Tone    string       `json:"tone,omitempty"`
-	Success string       `json:"success"` // optional message shown after a successful save
-	Error   string       `json:"error"`   // optional error not tied to a single field, shown above the fields
+	Tone string `json:"tone,omitempty"`
+	// Error is a refusal of the whole submission that no field owns, shown
+	// above the fields. A form says nothing of how a submission went: every
+	// outcome is the notification at the top right of the viewport.
+	Error   string       `json:"error"`
 	Actions []FormAction `json:"actions"` // secondary submit buttons besides Save (below)
 	Fields  Widgets      `json:"fields"`  // form contents
 }
@@ -131,7 +133,6 @@ type formView struct {
 	Note       template.HTML
 	Submit     string
 	Tone       string
-	Success    string
 	Error      string
 	CSRFToken  string
 	Actions    []FormAction
@@ -180,7 +181,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),
-		Submit: submit, Tone: f.Tone, Success: f.Success, Error: f.Error, CSRFToken: csrf,
+		Submit: submit, Tone: f.Tone, Error: f.Error, CSRFToken: csrf,
 		Actions: f.Actions, Fields: fields,
 	})
 }

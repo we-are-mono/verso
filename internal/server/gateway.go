@@ -153,8 +153,9 @@ func panelRequest(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 
-// panelFlash is a plugin's outcome as a panel carries it — the notice the page
-// would have shown in its flash slot. A render with no notice carries nothing.
+// panelFlash is a plugin's outcome as a panel carries it for the notification —
+// the notice a page would have arrived with. A render with no notice carries
+// nothing.
 func panelFlash(n *plugin.Notice) widget.Flash {
 	if n == nil {
 		return widget.Flash{}
@@ -486,8 +487,9 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	ensureEditorSubmit(wdg, tr("Save changes"))
 
 	// What a submission that changed the stage says about itself is composed
-	// here, once, for every way it can be answered: the page's flash slot, the
-	// listing an editor returns to, and the outcome a closing panel hands back.
+	// here, once, for every way it can be answered: the page it arrives on,
+	// the listing an editor returns to, and the outcome a closing panel hands
+	// back — each said by the notification.
 	hdr.Notice = localizeNotice(env.Notice, tr)
 	if hdr.StagedCommit {
 		hdr.Notice = stagedOutcome(hdr.Notice)

@@ -92,7 +92,7 @@ type Envelope struct {
 	// only Href is read. Href is a route through the shell, like the action's.
 	Back   *PageAction     `json:"back"`
 	Banner *Banner         `json:"banner"` // optional full-width semantic notice beneath the subpage bar
-	Notice *Notice         `json:"notice"` // optional outcome flash for this render, shown in the shell's flash slot
+	Notice *Notice         `json:"notice"` // optional outcome of this render, said by the shell's notification
 	Widget json.RawMessage `json:"widget"`
 	// Act is the page's one act, drawn on its heading line beside the title
 	// (widget.HeadingAct): the page's, not the listing's, so it travels beside
@@ -137,8 +137,8 @@ type Banner struct {
 
 // Notice is the outcome of the action this render answers — "saved", "could not
 // read the form", "takes effect on reboot" — stated as intent, never composed as
-// widgets. The shell renders it in its own flash slot, so a plugin's outcome and
-// the shell's are indistinguishable. Standing page state belongs in Banner; a
+// widgets. The shell says it in its notification at the top right of the
+// viewport, so a plugin's outcome and the shell's are indistinguishable. Standing page state belongs in Banner; a
 // contextual note beside content belongs in a callout; prose belongs in raw.
 type Notice struct {
 	Level string `json:"level"` // the tone vocabulary: "success" | "warning" | "danger" | "info"

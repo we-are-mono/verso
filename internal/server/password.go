@@ -29,7 +29,7 @@ type credentialVerifier interface {
 // Verso and manages Verso's sessions. Both actions are immediate and never
 // create UCI stage entries; an unrelated existing global stage may still appear.
 
-func accessForm(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string) *widget.Form {
+func accessForm(hasPassword bool, username string, fieldErrs map[string]string, formErr string) *widget.Form {
 	fields := make([]widget.Widget, 0, 4)
 	// The account the password belongs to, for the browser's password manager.
 	fields = append(fields, &widget.Field{Name: "username", Kind: "hidden", Value: username, Autocomplete: "username"})
@@ -44,11 +44,11 @@ func accessForm(hasPassword bool, username string, fieldErrs map[string]string, 
 	if hasPassword {
 		label = "Change password"
 	}
-	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Success: success, Error: formErr, Fields: fields}
+	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Error: formErr, Fields: fields}
 }
-func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr, success string, sessions []accessSession, tr func(string) string) *widget.Stack {
+func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr string, sessions []accessSession, tr func(string) string) *widget.Stack {
 	return &widget.Stack{Children: []widget.Widget{
-		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, username, fieldErrs, formErr, success)}},
+		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, username, fieldErrs, formErr)}},
 		&widget.Section{Title: "Signed in now", Hairline: true, Children: []widget.Widget{accessSessionsTable(sessions, tr)}},
 	}}
 }
@@ -190,13 +190,13 @@ func relativeSessionTime(tr func(string) string, last, now time.Time) string {
 }
 
 func (s *Server) handlePasswordForm(w http.ResponseWriter, r *http.Request) {
-	s.renderAccess(w, r, http.StatusOK, nil, "", "")
+	s.renderAccess(w, r, http.StatusOK, nil, "")
 }
 
 func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err := r.ParseForm(); err != nil {
-		s.renderAccess(w, r, http.StatusBadRequest, nil, "Could not read the form.", "")
+		s.renderAccess(w, r, http.StatusBadRequest, nil, "Could not read the form.")
 		return
 	}
 	if action := r.PostForm.Get("_action"); strings.HasPrefix(action, "end-session:") {
@@ -206,16 +206,16 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 
 	if id := r.URL.Query().Get("plugin"); id != "" {
 		if m, ok := s.manifestByID(id); !ok || m.SystemAccess == "" {
-			s.renderAccess(w, r, http.StatusBadRequest, nil, "These settings are no longer available. Reload the page.", "")
+			s.renderAccess(w, r, http.StatusBadRequest, nil, "These settings are no longer available. Reload the page.")
 			return
 		}
-		s.renderAccess(w, r, http.StatusOK, nil, "", "")
+		s.renderAccess(w, r, http.StatusOK, nil, "")
 		return
 	}
 
 	hasPassword, err := s.backend.RootHasPassword(r.Context(), s.sessionSID(r))
 	if err != nil {
-		s.renderAccess(w, r, http.StatusInternalServerError, nil, "Couldn’t check the administrator account just now.", "")
+		s.renderAccess(w, r, http.StatusInternalServerError, nil, "Couldn’t check the administrator account just now.")
 		return
 	}
 	fieldErrs := validatePassword(r.PostForm.Get("password"), r.PostForm.Get("confirm"))
@@ -231,17 +231,21 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(fieldErrs) > 0 {
-		s.renderAccess(w, r, http.StatusUnprocessableEntity, fieldErrs, "", "")
+		s.renderAccess(w, r, http.StatusUnprocessableEntity, fieldErrs, "")
 		return
 	}
 
 	password := r.PostForm.Get("password")
 	if err := s.backend.SetPassword(r.Context(), s.sessionSID(r), s.sessionUser(r), password); err != nil {
 		log.Printf("verso: set password failed: %v", err)
-		s.renderAccess(w, r, http.StatusInternalServerError, nil, "The password couldn’t be changed just now. Try again in a moment.", "")
+		s.renderAccess(w, r, http.StatusInternalServerError, nil, "The password couldn’t be changed just now. Try again in a moment.")
 		return
 	}
-	s.renderAccess(w, r, http.StatusOK, nil, "", "Password updated.")
+	// Access is read again rather than drawn as the answer to the post, so a
+	// reload never sends the password a second time; how it went arrives with
+	// it, as the notification.
+	s.flash(r, "success", "Password updated.")
+	http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 }
 
 // handleEndSession revokes one session. This browser's own is logging out, so
@@ -254,7 +258,7 @@ func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request, id str
 		return
 	}
 	if id == "" || !s.sessions.destroyID(id) {
-		s.renderAccess(w, r, http.StatusBadRequest, nil, "That session could not be ended.", "")
+		s.renderAccess(w, r, http.StatusBadRequest, nil, "That session could not be ended.")
 		return
 	}
 	s.flash(r, "success", "Session ended.")
@@ -274,7 +278,7 @@ func validatePassword(password, confirm string) map[string]string {
 	return errs
 }
 
-func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int, fieldErrs map[string]string, formErr, success string) {
+func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int, fieldErrs map[string]string, formErr string) {
 	hasPassword, err := s.backend.RootHasPassword(r.Context(), s.sessionSID(r))
 	if err != nil {
 		hasPassword = true
@@ -287,7 +291,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		username = "root"
 	}
 	lang, t := s.localize(r)
-	access := accessBody(hasPassword, username, fieldErrs, formErr, success, s.accessSessions(r), translatorOrIdentity(t))
+	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r), translatorOrIdentity(t))
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	r = withStageMemo(r)
 	for _, manifest := range s.manifestList() {

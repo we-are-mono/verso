@@ -21,12 +21,6 @@
 {{define "form.submit-tone"}}{{if eq . "danger"}}{{template "verso-btn-danger"}} focus-visible:outline-crimson-deep {{template "verso-btn-waiting"}}{{else if eq . "caution"}}{{template "verso-btn-caution"}} focus-visible:outline-marigold-deep {{template "verso-btn-waiting"}}{{else}}{{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{end}}{{end}}
 <form{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.25rem]{{end}}">
   {{template "verso-csrf" .CSRFToken}}
-  {{if .Success}}
-  <div class="flex items-start gap-2 rounded-xs border border-green-line bg-green-soft px-3 py-2 text-sm leading-5 text-green-deep">
-    {{template "verso-message-mark" "success"}}
-    <span>{{.Success}}</span>
-  </div>
-  {{end}}
   {{/* A refusal of the whole submission — one no field owns. A field's own
        refusal is its band, and the page's navigator counts them; no form says
        to look for them. The band keeps a dividing line's air below it. */}}

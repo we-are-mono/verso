@@ -551,8 +551,9 @@ Save stages a change; nothing happens on the router until it is applied from the
 - **Don't** set type in a full-chroma hue, or in Faint or Glyph.
 - **Don't** cast shadows on anything that sits on the page; only floating layers get one.
 - **Don't** use more than 2px corners on a surface, or circles for state.
-- **Don't** mark a message with an alert glyph. An error, a notice, a warning, a banner or a confirmation says its tone with the 6px state square in that tone's hue, hung on its first line (the flash, a form's error, the no-password band, the crimson and marigold confirms).
-- **Don't** repeat a failure in every form on the page. A failed act is said once, in the page's notice.
+- **Don't** mark a message with an alert glyph. An error, a notice, a warning, a banner or a confirmation says its tone with the 6px state square in that tone's hue, hung on its first line (the notification, a form's error, the crimson and marigold confirms).
+- **Don't** say how an act went in the content. Every outcome — a save confirmed, a notice, a request the router never answered — is the notification at the top right of the viewport, inside the open drawer when one is open. A form keeps only its refusals.
+- **Don't** repeat a failure in every form on the page. A failed act is said once, in the notification.
 - **Don't** add icons to buttons for emphasis. Glyphs appear only on the primary (its plus), on the direction glyphs (download, upload, open-out), and on every subsection act, where the glyph names the act.
 - **Don't** leave a plus alone on a table head or lane; it says what it adds ("+ Add route").
 - **Don't** use a circular spinner; waiting is the four-square mark.

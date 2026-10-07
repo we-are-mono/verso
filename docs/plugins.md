@@ -254,8 +254,9 @@ envelope** back — `Content-Type: application/json`:
 - `notice` — optional `{level, text}`: the *outcome* of the action this render
   answers ("Saved.", "Could not read the form.", "Takes effect on the next
   reload."). `level` speaks the tone vocabulary (`success` | `warning` |
-  `danger` | `info`). The shell renders it in its own flash slot, exactly where
-  its own confirmations appear — state the outcome, never compose it from
+  `danger` | `info`). The shell says it in its notification at the top right
+  of the viewport, exactly where its own confirmations appear; no outcome is
+  ever drawn in the content — state the outcome, never compose it from
   widgets. Standing state belongs in `banner`; context beside content in a
   `callout`.
 - `immediate` — optional boolean for a page made only of direct commands rather

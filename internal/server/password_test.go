@@ -134,10 +134,12 @@ func TestPasswordChangeSucceeds(t *testing.T) {
 		return nil
 	}}
 	form := url.Values{"current_password": {"old-password"}, "password": {"correct-horse"}, "confirm": {"correct-horse"}}
-	rec := postPlugin(t, passwordServer(t, backend), "/system/password", form)
+	do := sameSession(t, passwordServer(t, backend))
+	rec := do(http.MethodPost, "/system/password", form)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	// Access is read again, so a reload never sends the password twice.
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+		t.Fatalf("status = %d → %q, want 303 to Access", rec.Code, rec.Header().Get("Location"))
 	}
 	if !called {
 		t.Fatal("SetPassword was not called")
@@ -151,8 +153,14 @@ func TestPasswordChangeSucceeds(t *testing.T) {
 	if gotPass != "correct-horse" {
 		t.Errorf("password = %q, want correct-horse", gotPass)
 	}
-	if !strings.Contains(rec.Body.String(), "Password updated.") {
-		t.Error("success message not shown")
+	// How it went arrives with Access, for the notification to say — never
+	// as a line in the content.
+	body := do(http.MethodGet, "/system/access", nil).Body.String()
+	if !strings.Contains(arrival(body), "Password updated.") {
+		t.Error("Access did not arrive with the outcome")
+	}
+	if inContent(body, "Password updated.") {
+		t.Error("the outcome is drawn in the content")
 	}
 }
 

@@ -1297,13 +1297,10 @@ func TestRenderFormDefaultsSubmitLabel(t *testing.T) {
 	}
 }
 
-func TestRenderFormSuccess(t *testing.T) {
+func TestRenderFormSubmit(t *testing.T) {
 	r := newRenderer(t)
 
-	got := render(t, r, &Form{Submit: "Apply", Success: "Saved."})
-	if !strings.Contains(got, "Saved.") {
-		t.Errorf("success message missing: %s", got)
-	}
+	got := render(t, r, &Form{Submit: "Apply"})
 	if !strings.Contains(got, ">Apply<") {
 		t.Errorf("custom submit label missing: %s", got)
 	}

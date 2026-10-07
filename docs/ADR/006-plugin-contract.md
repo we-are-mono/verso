@@ -122,8 +122,9 @@ over a local socket**, exchanging *data*, not markup.
    is a full-width `{variant, title, body}` notice the shell renders at the navigation
    seam — standing page state, visible above the heading. `notice` is the *outcome*
    of the action this render answers — `{level, text}`, level in the tone vocabulary
-   (`success` | `warning` | `danger` | `info`) — rendered in the shell's flash slot,
-   exactly where and how the shell's own confirmations appear. An outcome is stated
+   (`success` | `warning` | `danger` | `info`) — said by the shell's notification at
+   the top right of the viewport, exactly where and how the shell's own
+   confirmations appear, and never in the content. An outcome is stated
    as intent, never composed as widgets, so a plugin cannot get it wrong. Every
    field is optional: a plugin that sends only `schema_version`, `title`,
    and `widget` gets a plain page. A successful POST may also carry a closed-set
