@@ -211,6 +211,18 @@
      which refuses a certificate it has not been shown without a word when a
      page asks in the background. Reloading is a page the browser loads
      itself, so it says which (verso-page.js). */}}
+{{/* What the layer says on a page an apply moved here because the listener it
+     came in on closed (ADR-017 §1, verso-commit.js): the apply confirmed from
+     here, or the router's window closing first and the old settings back,
+     with the way back to where they answer. */}}
+<template data-verso-moved><div class="{{template "verso-flash-class" "success"}}" data-verso-flash-variant="success">
+  {{template "verso-message-mark" "success"}}
+  <span>{{ t "Changes applied. The web interface answers here now." }}</span>
+</div></template>
+<template data-verso-moved-undone><div class="{{template "verso-flash-class" "danger"}}" data-verso-flash-variant="danger">
+  {{template "verso-message-mark" "danger"}}
+  <span>{{ t "This address wasn’t confirmed in time, so the router put the old settings back." }} <a href="" class="font-semibold underline underline-offset-2 hover:text-ink">{{ t "Go to the old address" }}</a></span>
+</div></template>
 <template data-verso-unanswered><div class="{{template "verso-flash-class" "danger"}}" data-verso-flash-variant="danger">
   {{template "verso-message-mark" "danger"}}
   <span>{{ t "The router didn't answer." }} <a href="" class="font-semibold underline underline-offset-2 hover:text-ink">{{ t "Reload to reconnect." }}</a></span>

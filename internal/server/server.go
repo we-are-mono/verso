@@ -119,6 +119,12 @@ type Server struct {
 	// of verso.web stages new ones beside them (ADR-017 §1), and how they hold
 	// the router's ports decides what Access offers LuCI (§2).
 	listeners Listeners
+	// listenerPending is set while an apply's staged listeners wait on its
+	// confirm; afterRollback runs a function once the window has passed
+	// (time.AfterFunc, which tests hold to run by hand).
+	listenerMu      sync.Mutex
+	listenerPending bool
+	afterRollback   func(time.Duration, func())
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -207,6 +213,7 @@ func New(
 	interfaceSampler.Start()
 	s := &Server{
 		mux:            http.NewServeMux(),
+		afterRollback:  func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 		widgets:        widgets,
 		backend:        backend,
 		transport:      transport,

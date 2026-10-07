@@ -429,24 +429,36 @@
       verdict("crimson", T("Apply rolled back"), true);
     }
 
+    // The window the router holds the apply for, in seconds, as it answers.
+    var held = 30;
     function confirmLoop() {
       versoConfirmApply(function () {
         return post("/uci/confirm").then(function (res) {
           if (!res.ok) throw new Error("not confirmed");
         });
-      }, since).then(applied, function () {
+      }, since, held).then(applied, function () {
         rolledBack(T("Couldn’t confirm — the router may have rolled back"));
       });
     }
 
     post("/uci/apply")
       .then(function (res) {
-        if (!res.ok) {
-          waiting(false);
-          note(T("Couldn’t apply — check the settings and try again"), "crimson");
-          return;
-        }
-        setTimeout(confirmLoop, 1000);
+        // An answer without a readable body says only its status.
+        return Promise.resolve().then(function () { return res.json(); }).catch(function () { return {}; }).then(function (answer) {
+          if (!res.ok) {
+            waiting(false);
+            note(answer.error || T("Couldn’t apply — check the settings and try again"), "crimson");
+            return;
+          }
+          held = answer.window || held;
+          // The listener this page came in on is going (ADR-017 §1): the page
+          // moves to where the shell answers now and confirms the apply there.
+          if (answer.move) {
+            versoMoveAndConfirm(answer.move, since + (held - 2) * 1000);
+            return;
+          }
+          setTimeout(confirmLoop, 1000);
+        });
       })
       .catch(function () {
         // The apply itself may have severed our path (a network change); keep
@@ -601,3 +613,53 @@
   // change leaves it.
   window.setTimeout(function () { window.versoStaged.fly(squares[0], note.count); }, 240);
 })();
+
+// versoMoveAndConfirm takes the page to where the shell answers after an
+// apply that closes the listener it came in on (ADR-017 §1). The address
+// carries the moment the router's window closes and where the page came from,
+// which is where it is sent back to should the window close first.
+function versoMoveAndConfirm(origin, deadline) {
+  if (window.versoDirtyState) window.versoDirtyState.suppress();
+  var next = new URL(window.location.pathname + window.location.search, origin);
+  next.searchParams.set("verso-confirm", String(deadline));
+  next.searchParams.set("verso-from", window.location.origin);
+  window.location.assign(next.toString());
+}
+
+// A page an apply moved here confirms the apply from here, inside the window
+// the move carried, and says how it went; its address then reads as the page
+// alone. A way back is offered only to the same router, on another port.
+document.addEventListener("DOMContentLoaded", function () {
+  var here = new URL(window.location.href);
+  var deadline = Number(here.searchParams.get("verso-confirm"));
+  if (!deadline) return;
+  var from = "";
+  try {
+    var back = new URL(here.searchParams.get("verso-from") || "");
+    if (back.hostname === here.hostname) from = back.origin;
+  } catch (_) { /* no way back to offer */ }
+  here.searchParams.delete("verso-confirm");
+  here.searchParams.delete("verso-from");
+  window.history.replaceState(window.history.state, "", here.pathname + here.search + here.hash);
+  function say(name, href) {
+    var template = document.querySelector("template[data-verso-" + name + "]");
+    if (!template || !window.versoOutcome) return;
+    var outcome = document.importNode(template.content.firstElementChild, true);
+    var link = outcome.querySelector("a");
+    if (link) {
+      if (href) link.href = href;
+      else link.remove();
+    }
+    window.versoOutcome.show(outcome);
+  }
+  var since = Date.now();
+  versoConfirmApply(function () {
+    return versoPost("/uci/confirm", versoBody()).then(function (res) {
+      if (!res.ok) throw new Error("not confirmed");
+    });
+  }, since, Math.max(2, (deadline - since) / 1000 + 2)).then(function () {
+    say("moved");
+  }, function () {
+    say("moved-undone", from ? from + here.pathname : "");
+  });
+});

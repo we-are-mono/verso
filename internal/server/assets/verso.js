@@ -128,10 +128,11 @@ function versoParse(html) {
 
 // versoConfirmApply holds an apply to the device-side rollback window: it asks
 // confirm() — a promise that rejects while the router is not reached — again
-// every half second until it answers, or until 28 s from `since` have gone,
-// when it rejects with the last failure and the router rolls itself back.
-function versoConfirmApply(confirm, since) {
-  var deadline = since + 28000;
+// every half second until it answers, or until the window (in seconds, 30
+// unless the apply said otherwise) less two from `since` has gone, when it
+// rejects with the last failure and the router rolls itself back.
+function versoConfirmApply(confirm, since, window) {
+  var deadline = since + ((window || 30) - 2) * 1000;
   return new Promise(function (resolve, reject) {
     function attempt() {
       confirm().then(resolve, function (err) {
