@@ -37,7 +37,7 @@
      secondary control at rest, warming to the hairline wash under the pointer.
      The call site adds the inset: pl-2 pr-2.5 before a leading glyph, px-2.5
      for words alone. */}}
-{{define "verso-btn-act"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
+{{define "verso-btn-act"}}verso-act group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
 {{/* verso-empty-slot-class and verso-empty-slot-body: where the first of a
      set's things would stand while there is none — a place, not a sentence.
