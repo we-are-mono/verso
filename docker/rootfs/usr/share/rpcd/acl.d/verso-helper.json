@@ -28,6 +28,7 @@
           "restart",
           "factoryReset",
           "setWebOwner",
+          "setWebListeners",
           "pkgStatus",
           "pkgUpdate",
           "pkgSearch",

@@ -248,6 +248,10 @@ type Backend interface {
 	// LuCI's uhttpd ("luci"); the helper does it after answering, because it
 	// restarts the shell that asked.
 	SetWebOwner(ctx context.Context, sid, owner string) error
+	// SetWebListeners writes verso.web's listener options and commits them on
+	// their own, leaving whatever else the session stages: a nil list, or an
+	// empty redirect, clears its option.
+	SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error
 	// DiagStart starts a network diagnostic on the router and names the run;
 	// DiagRead reads what it has written past a cursor, and DiagStop ends it.
 	// A run is its operator's alone: the helper answers another session's read

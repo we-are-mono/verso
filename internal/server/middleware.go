@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/datatype"
 )
 
 // securityHeaders sets defensive response headers on every reply (VS-07). The
@@ -17,12 +19,20 @@ import (
 // external scripts. Styles are the embedded stylesheet (inline); images allow
 // data: and https: for the raw bridge. frame-ancestors + X-Frame-Options block
 // clickjacking of a root panel.
+//
+// A form may also land on this router over HTTPS on another port: moving the
+// web interface's ports answers its form there (ADR-017 §1). Only a Host that
+// is a plain name or IPv4 address is written into the policy.
 func securityHeaders(next http.Handler) http.Handler {
 	const csp = "default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; " +
 		"img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", csp)
+		policy := csp
+		if host := plainHost(r.Host); host != "" {
+			policy += " https://" + host + ":*"
+		}
+		h.Set("Content-Security-Policy", policy)
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
@@ -33,6 +43,22 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// plainHost is the host a request names, without its port, when it is a
+// hostname or an IPv4 address and nothing else; "" otherwise.
+func plainHost(hostport string) string {
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil {
+		host = h
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.To4() != nil {
+		return host
+	}
+	if datatype.Validate("hostname", host) == nil {
+		return host
+	}
+	return ""
 }
 
 func hostSet(hosts []string) map[string]bool {

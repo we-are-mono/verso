@@ -15,6 +15,24 @@
     versoButtons.submit(event, button && button.getAttribute("data-busy-label") || T("Installing…"));
   });
 
+  // The web interface's Apply says what it is about to do: a change to the
+  // port this page came in on — or the redirect turned on while it is on
+  // HTTP — sends the page to the new address, so the act reads as the
+  // redirect it is (ADR-017 §1).
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form.elements || !form.elements.web_https) return;
+    var changed = function (name) {
+      var field = form.elements[name];
+      if (!field) return false;
+      return field.type === "checkbox" ? field.checked !== field.defaultChecked : field.value.trim() !== field.defaultValue;
+    };
+    var moves = window.location.protocol === "https:"
+      ? changed("web_https")
+      : changed("web_http") || (changed("web_redirect") && form.elements.web_redirect.checked);
+    versoButtons.submit(event, moves ? T("Redirecting…") : T("Applying…"));
+  });
+
   // A check or an install under way draws its act busy; while one does, the
   // page waits for the work to end and reads the router again.
   if (document.querySelector('form[action^="/system/maintenance/updates/"] [aria-busy="true"]')) {

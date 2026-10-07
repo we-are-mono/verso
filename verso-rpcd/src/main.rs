@@ -336,6 +336,17 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
             access::certificate(argument(request, "certificate")?, argument(request, "key")?)
         }
+        "setWebListeners" => {
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
+            access::web_listeners(
+                text_argument(request, "https")?,
+                text_argument(request, "http")?,
+                text_argument(request, "redirect")?,
+            )
+        }
         "makeWebCertificate" => {
             let _guard = state
                 .maintenance
@@ -1313,6 +1324,7 @@ mod tests {
         "setAuthorizedKeys",
         "setWebCertificate",
         "makeWebCertificate",
+        "setWebListeners",
         "setPassword",
         "setSystemTime",
         "pkgStatus",

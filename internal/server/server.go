@@ -119,12 +119,11 @@ type Server struct {
 	// of verso.web stages new ones beside them (ADR-017 §1), and how they hold
 	// the router's ports decides what Access offers LuCI (§2).
 	listeners Listeners
-	// listenerPending is set while an apply's staged listeners wait on its
-	// confirm; afterRollback runs a function once the window has passed
+	// webMoves is a change of listeners waiting on the browser at the new
+	// address; afterRollback runs a function once its window has passed
 	// (time.AfterFunc, which tests hold to run by hand).
-	listenerMu      sync.Mutex
-	listenerPending bool
-	afterRollback   func(time.Duration, func())
+	webMoves      webMoves
+	afterRollback func(time.Duration, func())
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -731,6 +730,8 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Use letters, numbers and hyphens — no spaces.",
 		"Enter a port from 1 to 65535.",
 		"Couldn’t save that just now — try again.",
+		// The web interface's Apply, while it moves the page or applies in place.
+		"Redirecting…", "Applying…",
 		// The live listing: its live control (and the act its title names), the
 		// shelf of plucked values, and what the section's meta says while events
 		// flow.

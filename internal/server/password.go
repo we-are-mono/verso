@@ -190,6 +190,9 @@ func relativeSessionTime(tr func(string) string, last, now time.Time) string {
 }
 
 func (s *Server) handlePasswordForm(w http.ResponseWriter, r *http.Request) {
+	// Access is where a change of the web interface's ports sends the
+	// browser: reached on the new listeners, the old ones close.
+	s.webArrived(r)
 	s.renderAccess(w, r, http.StatusOK, nil, "")
 }
 
@@ -203,8 +206,9 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 		s.handleEndSession(w, r, strings.TrimPrefix(action, "end-session:"))
 		return
 	}
-	// A web interface setting edited in place posts itself alone.
-	if s.handleWebSetting(w, r) {
+	// The web interface's form posts here, so a refusal stays at Access.
+	if r.PostForm.Has(webHTTPSField) {
+		s.handleWebListeners(w, r)
 		return
 	}
 
@@ -348,7 +352,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	}
 	// The web interface's own subjects follow its certificate: where it
 	// answers, then LuCI's part, where LuCI stands beside it.
-	if web := s.webSettingsSection(r); web != nil {
+	if web := s.webSettingsSection(r, fieldErrs); web != nil {
 		access.Children = append(access.Children, web)
 	}
 	if luci := s.luciSection(r); luci != nil {

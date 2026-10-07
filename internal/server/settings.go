@@ -68,12 +68,6 @@ func (s *Server) versoOption(ctx context.Context, sid, section, option string) (
 // Nothing is committed here: the review drawer's apply is what makes it live
 // (ADR-010).
 func (s *Server) stageVersoOption(ctx context.Context, sid, section, option, value string) error {
-	return s.stageVersoValue(ctx, sid, section, option, value)
-}
-
-// stageVersoValue is stageVersoOption for any value uci holds: a word, or a
-// list of them.
-func (s *Server) stageVersoValue(ctx context.Context, sid, section, option string, value any) error {
 	snapshot, err := s.backend.UCIConfig(ctx, sid, versoConfig)
 	if err != nil {
 		return fmt.Errorf("read %s config: %w", versoConfig, err)

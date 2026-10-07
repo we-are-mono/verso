@@ -2,7 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 package openwrt
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
 type AccessCredentials struct {
 	CertificateBytes []byte `json:"certificate_bytes"`
@@ -24,6 +27,11 @@ func (*NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key stri
 }
 func (*NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
 	return callHelper(ctx, "", "makeWebCertificate", sid, nil, nil)
+}
+func (*NativeBackend) SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error {
+	return callHelper(ctx, "", "setWebListeners", sid, map[string]string{
+		"https": strings.Join(https, " "), "http": strings.Join(http, " "), "redirect": redirect,
+	}, nil)
 }
 func (*NativeBackend) SetWebOwner(ctx context.Context, sid, owner string) error {
 	return callHelper(ctx, "", "setWebOwner", sid, map[string]string{"owner": owner}, nil)

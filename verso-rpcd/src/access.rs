@@ -141,6 +141,65 @@ fn install(dir: &Path, cert: &str, key: &str, group: Option<u32>) -> Result<(), 
     Ok(())
 }
 
+/// listener_shaped reports whether addr reads as address:port and nothing
+/// else uci or a shell could take for more.
+fn listener_shaped(addr: &str) -> bool {
+    addr.len() <= 64
+        && addr.contains(':')
+        && addr
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() || matches!(b, b'.' | b':' | b'[' | b']'))
+}
+
+// uci runs one uci command, reporting whether it succeeded; what it prints is
+// not the helper's to log.
+fn uci(args: &[&str]) -> Result<bool, Failure> {
+    Command::new("/sbin/uci")
+        .args(args)
+        .stdout(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .map_err(|e| Failure::unknown(e.to_string()))
+}
+
+/// web_listeners writes verso.web's listener options — the HTTPS and HTTP
+/// listeners, space-separated, and the redirect — and commits verso on its
+/// own, so what a session stages elsewhere is left as it is. An empty value
+/// clears its option. procd then records the shell's new command line; the
+/// running shell already answers on the listeners (ADR-017 §1).
+pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, Failure> {
+    if !https
+        .split_whitespace()
+        .chain(http.split_whitespace())
+        .all(listener_shaped)
+        || !matches!(redirect, "" | "0" | "1")
+    {
+        return Err(Failure::invalid("invalid listener"));
+    }
+    if !uci(&["-q", "get", "verso.web"])? && !uci(&["set", "verso.web=web"])? {
+        return Err(Failure::unknown("verso.web could not be created"));
+    }
+    for (option, addrs) in [("listen_https", https), ("listen_http", http)] {
+        let path = format!("verso.web.{option}");
+        uci(&["-q", "delete", &path])?;
+        for addr in addrs.split_whitespace() {
+            if !uci(&["add_list", &format!("{path}={addr}")])? {
+                return Err(Failure::unknown(format!("{path} could not be written")));
+            }
+        }
+    }
+    if redirect.is_empty() {
+        uci(&["-q", "delete", "verso.web.redirect_https"])?;
+    } else if !uci(&["set", &format!("verso.web.redirect_https={redirect}")])? {
+        return Err(Failure::unknown("verso.web.redirect_https could not be written"));
+    }
+    if !uci(&["commit", "verso"])? {
+        return Err(Failure::unknown("verso could not be committed"));
+    }
+    let _ = Command::new("/etc/init.d/verso").arg("reload").status();
+    Ok(json!({"result":true}))
+}
+
 /// make has the router make a new self-signed certificate, named as at first
 /// boot for every way the LAN reaches it, by the init script's own step; the
 /// key is born here, as root, and never crosses into the shell's request.
@@ -197,6 +256,18 @@ mod tests {
         assert_eq!(fs::read(&cert).unwrap(), b"public");
         assert_eq!(fs::read(&key).unwrap(), b"private");
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_listener_is_an_address_and_a_port_and_nothing_more() {
+        for good in ["0.0.0.0:443", "[::]:8443", "192.168.1.1:80", "[fd00::1]:9443", ":8443"] {
+            assert!(listener_shaped(good), "{good}");
+        }
+        for bad in ["8443", "router:443", "0.0.0.0:443;reboot", "0.0.0.0:443 x", "a'b:1", ""] {
+            assert!(!listener_shaped(bad), "{bad}");
+        }
+        assert!(web_listeners("0.0.0.0:443;x", "", "").is_err());
+        assert!(web_listeners("", "", "yes").is_err());
     }
 
     #[test]

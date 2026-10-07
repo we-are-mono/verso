@@ -52,29 +52,35 @@ line, as uhttpd's init script hands its own to uhttpd; the shell holds the
 defaults an absent option means. The Web interface section on Access edits these
 options and is rendered by the shell, which owns the `verso` config (ADR-013).
 
-**Listeners change in the running shell.** Restarting the shell on new
-listeners would end every session and the page's connection with it, so the
-browser could never confirm the apply and ADR-010's rollback would undo every
-change. Instead, when the stage being applied changes `verso.web`:
+**Listeners change at once, in the running shell.** The Web interface section
+is a form with its own **Apply**, not a staged setting: moving the address the
+page is on is an act whose outcome the person must see as it happens, and
+restarting the shell on new listeners would end every session with it. Apply:
 
-1. The shell parses the staged listeners and binds those it lacks, alongside
-   the ones it has. A listener that is not an address and port, or cannot be
-   bound, refuses the apply with its reason, and nothing changes.
-2. The stage is applied with a 90-second rollback window, not 30: a browser
-   meeting a new port may stop at a certificate warning before it can confirm.
-3. When the address the page is on is no longer among the listeners, the apply
-   answers with where the shell will answer, and the page moves there. It is
-   the same process, and a host's cookies reach every port on it, so the
-   session holds; the page confirms from the new address.
-4. Confirmed, the shell closes the listeners the stage dropped. Not confirmed
-   within the window, rpcd restores the configuration and the shell closes the
-   listeners it added, at the same moment.
+1. Checks the ports — numbers from 1 to 65535, HTTP and HTTPS apart — and binds
+   the listeners the shell lacks, alongside the ones it has. A port that cannot
+   be opened is said under its field, and nothing changes.
+2. Answers by sending the page where the shell answers when the page's own
+   listener is going; its button reads **Redirecting…** meanwhile. It is the
+   same process, and a host's cookies reach every port on it, so the session
+   holds, and the notification says the web interface moved.
+3. Writes `verso.web` once the browser arrives there, through `verso-rpcd`'s
+   `setWebListeners`, which commits those options alone and leaves whatever
+   the session stages; the shell then closes the listeners left behind. A
+   change that does not move the page is written and kept at once.
+4. A browser that has not arrived within 90 seconds — long enough to pass a
+   certificate warning on the new port — leaves nothing written; the shell
+   closes what it added. A shell that restarts meanwhile starts where
+   `verso.web` says, which is where it answered before.
+
+This is the one Verso setting that does not stage (ADR-013 §3): its apply is
+the move itself.
 
 The init script declares `verso` as a reload trigger and sets `reload_signal
 HUP`. procd sends that signal in place of a restart when the instance changes,
-and records the new command line: the apply that changed the listeners leaves
-the running shell as it is, and a later respawn starts on the listeners applied.
-A hand edit over SSH takes effect on `/etc/init.d/verso restart`.
+and records the new command line: the write that changed the listeners leaves
+the running shell as it is, and a later respawn starts on them. A hand edit
+over SSH takes effect on `/etc/init.d/verso restart`.
 
 `CAP_NET_BIND_SERVICE`, kept by the init script, is what lets the unprivileged
 `verso` user bind 80 and 443.

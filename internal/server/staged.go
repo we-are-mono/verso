@@ -6,7 +6,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -586,51 +585,12 @@ func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 // browser; no confirm within the window and the router reverts itself.
 func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
-	_, t := s.localize(r)
-	tr := translatorOrIdentity(t)
-	window, move := uciRollbackTimeout, ""
-	// New listeners answer before the router is asked to keep them, so one
-	// that cannot is said now and changes nothing (ADR-017 §1).
-	staged, changed, err := s.stagedListeners(r)
-	if err == nil && changed {
-		err = s.listeners.Stage(staged)
-	}
-	if err != nil {
-		log.Printf("verso: listeners not staged: %v", err)
-		writeApplyAnswer(w, http.StatusUnprocessableEntity, applyAnswer{Error: fmt.Sprintf(tr("The web interface can’t answer there: %s"), err)})
-		return
-	}
-	if changed {
-		window, move = uciListenerRollbackTimeout, moveTo(staged, r)
-	}
-	if err := s.backend.UCIApply(r.Context(), sid, window); err != nil {
+	if err := s.backend.UCIApply(r.Context(), sid, uciRollbackTimeout); err != nil {
 		log.Printf("verso: uci apply failed: %v", err)
-		if changed {
-			s.listeners.Drop()
-		}
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
-	if changed {
-		s.awaitListenerConfirm(window)
-	}
-	writeApplyAnswer(w, http.StatusOK, applyAnswer{OK: true, Window: window, Move: move})
-}
-
-// applyAnswer is what an apply says back to the review drawer: the rollback
-// window it holds, where the page moves when its own listener goes, or why
-// nothing was applied.
-type applyAnswer struct {
-	OK     bool   `json:"ok"`
-	Window int    `json:"window,omitempty"`
-	Move   string `json:"move,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
-func writeApplyAnswer(w http.ResponseWriter, status int, answer applyAnswer) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(answer)
+	writeOK(w)
 }
 
 // handleUCIConfirm disarms the pending rollback, keeping the applied
@@ -642,10 +602,8 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "confirm failed", http.StatusBadGateway)
 		return
 	}
-	// The stage is applied and kept: who staged what no longer describes it,
-	// and listeners it staged are the shell's own.
+	// The stage is applied and kept: who staged what no longer describes it.
 	s.authors.forget(s.sessionSID(r))
-	s.keepListeners()
 	writeOK(w)
 }
 

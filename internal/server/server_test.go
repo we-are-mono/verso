@@ -52,8 +52,10 @@ type fakeBackend struct {
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
 	setPassword func(ctx context.Context, sid, username, password string) error
-	// webOwner backs SetWebOwner, answering for the owner asked.
+	// webOwner backs SetWebOwner, answering for the owner asked; webListeners
+	// backs SetWebListeners.
 	webOwner         func(owner string) error
+	webListeners     func(https, http []string, redirect string) error
 	setSystemTime    func(ctx context.Context, sid, datetime, timezone string) error
 	createBackup     func(ctx context.Context, sid, path string) error
 	restoreBackup    func(ctx context.Context, sid, path string) error
@@ -527,6 +529,13 @@ func (fakeBackend) SetWebCertificate(context.Context, string, string, string) er
 
 func (fakeBackend) MakeWebCertificate(context.Context, string) error {
 	return errNoHelper
+}
+
+func (f fakeBackend) SetWebListeners(_ context.Context, _ string, https, http []string, redirect string) error {
+	if f.webListeners == nil {
+		return errNoHelper
+	}
+	return f.webListeners(https, http, redirect)
 }
 
 func (f fakeBackend) SetWebOwner(_ context.Context, _ string, owner string) error {
@@ -2871,6 +2880,32 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 	if h.Get("X-Content-Type-Options") != "nosniff" {
 		t.Errorf("X-Content-Type-Options missing")
+	}
+}
+
+// TestAFormMayLandOnThisRouterOnAnotherPort: moving the web interface's ports
+// answers its form with the router on another port (ADR-017 §1), so a form
+// may land on this host over HTTPS on any port — and nowhere else. A Host
+// that is not a plain name or address writes nothing into the policy.
+func TestAFormMayLandOnThisRouterOnAnotherPort(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	policy := func(host string) string {
+		req := httptest.NewRequest(http.MethodGet, "/login", nil)
+		req.Host = host
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec.Header().Get("Content-Security-Policy")
+	}
+	for host, want := range map[string]string{
+		"router.lan:8443":  "form-action 'self' https://router.lan:*",
+		"192.168.1.1":      "form-action 'self' https://192.168.1.1:*",
+		"[fd00::1]:8443":   "form-action 'self'",
+		"evil; script-src": "form-action 'self'",
+	} {
+		got := policy(host)
+		if !strings.HasSuffix(got, want) {
+			t.Errorf("Host %q: policy %q, want it to end %q", host, got, want)
+		}
 	}
 }
 
