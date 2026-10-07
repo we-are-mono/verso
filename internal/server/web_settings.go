@@ -107,12 +107,19 @@ func webPort(addrs []string) string {
 // webSettingsSection is the web interface's part of Access: its ports and the
 // redirect, in one form whose Apply moves them. Beside LuCI the ports are
 // where LuCI leaves them, and its own section says where; there is nothing
-// here to set. A refused Apply comes back with what was typed.
+// here to set. Refused the router's ports, the shell says why it answers on
+// 8443, which no setting here changes. A refused Apply comes back with what
+// was typed.
 func (s *Server) webSettingsSection(r *http.Request, errs map[string]string) widget.Widget {
-	if s.webPorts() == listen.PortsBeside {
-		return nil
-	}
 	section := &widget.Section{Title: "Web interface", Hairline: true}
+	switch s.webPorts() {
+	case listen.PortsBeside:
+		return nil
+	case listen.PortsRefused:
+		section.Children = []widget.Widget{&widget.Callout{Variant: "warning", Compact: true,
+			Body: "This interface may not use the router’s web ports, so it answers on port 8443. Its service was started without the permission to bind ports below 1024; the system log says more."}}
+		return section
+	}
 	web, readable := s.webConfig(r)
 	c, err := listen.New(web.HTTPS, web.HTTP, web.Redirect)
 	if !readable || err != nil {
@@ -230,7 +237,7 @@ func refusedPort(err error, https, plain string, tr func(string) string) (string
 func (s *Server) handleWebListeners(w http.ResponseWriter, r *http.Request) {
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	if s.listeners == nil || s.webPorts() == listen.PortsBeside {
+	if ports := s.webPorts(); s.listeners == nil || ports == listen.PortsBeside || ports == listen.PortsRefused {
 		http.Error(w, tr("The web interface can’t be changed here now. Reload the page."), http.StatusConflict)
 		return
 	}

@@ -47,6 +47,9 @@ func TestAccessOffersTheRoutersWebAddressAsVersoHoldsIt(t *testing.T) {
 	}{
 		{"no LuCI installed", listen.PortsOwn, false},
 		{"listeners set in verso.web", listen.PortsSet, true},
+		// Taking the router's ports would only fail again, and LuCI, moved
+		// to 8443, would find this interface already there.
+		{"refused the router's ports", listen.PortsRefused, true},
 	} {
 		if body := get(t, webOwnerServer(t, tc.ports, tc.luci, nil), "/system/access").Body.String(); strings.Contains(body, "/system/access/web-owner") {
 			t.Errorf("%s: Access offers to move the web interface", tc.name)

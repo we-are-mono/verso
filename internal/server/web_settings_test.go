@@ -95,6 +95,16 @@ func TestAccessShowsWhereTheWebInterfaceAnswersInAFormToApply(t *testing.T) {
 	}
 }
 
+func TestAccessSaysWhyTheWebInterfaceAnswersOn8443WhenItMayNotBindTheRoutersPorts(t *testing.T) {
+	body := get(t, newWebForm(t, listenersHolding(listen.PortsRefused), nil).s, "/system/access").Body.String()
+	if strings.Contains(body, `name="web_https"`) {
+		t.Error("refused the router's ports, the ports are offered for editing")
+	}
+	if !strings.Contains(body, "may not use the router’s web ports") {
+		t.Error("Access does not say why the web interface answers on port 8443")
+	}
+}
+
 func TestApplyingANewPortSendsThePageThereAndClosesTheOldOnArrival(t *testing.T) {
 	w := newWebForm(t, devListeners(), map[string]any{"listen_https": []any{"0.0.0.0:8443"}, "listen_http": []any{"0.0.0.0:8080"}, "redirect_https": "0"})
 	resp := w.apply("192.0.2.1:8443", "9443", "8080", false)

@@ -104,7 +104,10 @@ address the operator is on changes:
 - Holding the router's ports: **Hand the web interface back to LuCI**.
 
 With listeners set in `verso.web`, or no uhttpd, the section is absent and
-nothing moves. `verso-rpcd`'s `setWebOwner` runs
+nothing moves. A shell on 8443 because it was refused the router's ports
+offers no move either: taking them would fail again, and uhttpd, moved to
+8443, would find Verso there. Its **Web interface** section says instead that
+the service lacks the permission to bind ports below 1024. `verso-rpcd`'s `setWebOwner` runs
 `/usr/libexec/verso/web-owner` after answering: it stops both servers, moves
 uhttpd's listeners (`:8080`/`:8443` when Verso takes the ports, `:80`/`:443`
 when LuCI does), and starts the new owner first, so it binds the router's ports

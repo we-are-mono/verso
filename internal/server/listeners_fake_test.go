@@ -56,11 +56,14 @@ func (f *fakeListeners) Drop() {
 }
 
 // listenersHolding is a set answering as ports says: on the router's own
-// ports, beside another server, or on listeners set in verso.web.
+// ports, beside another server or for want of the capability to bind them, or
+// on listeners set in verso.web.
 func listenersHolding(ports string) *fakeListeners {
 	switch ports {
 	case listen.PortsBeside:
 		return &fakeListeners{current: listen.Config{HTTPS: []string{"0.0.0.0:8443", "[::]:8443"}, IsBeside: true}}
+	case listen.PortsRefused:
+		return &fakeListeners{current: listen.Config{HTTPS: []string{"0.0.0.0:8443", "[::]:8443"}, IsBeside: true, Refused: true}}
 	case listen.PortsOwn:
 		c, _ := listen.New(nil, nil, "")
 		return &fakeListeners{current: c}

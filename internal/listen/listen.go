@@ -27,22 +27,29 @@ type Config struct {
 	Defaulted bool
 	// IsBeside is set on the listeners Verso answers on beside that server.
 	IsBeside bool
+	// Refused is set on those listeners when the router's ports were not held
+	// but closed to the shell, which lacks the capability to bind them.
+	Refused bool
 }
 
 // BesidePort is where Verso answers beside another web server (ADR-017 §2).
 const BesidePort = "8443"
 
 // How Verso holds the router's web ports, as it bound them: its own defaults,
-// beside another web server that holds them, or listeners set in verso.web.
+// beside another web server that holds them, beside them because it may not
+// bind them, or listeners set in verso.web.
 const (
-	PortsOwn    = "own"
-	PortsBeside = "beside"
-	PortsSet    = "set"
+	PortsOwn     = "own"
+	PortsBeside  = "beside"
+	PortsRefused = "refused"
+	PortsSet     = "set"
 )
 
 // Ports says how these listeners hold the router's web ports.
 func (c Config) Ports() string {
 	switch {
+	case c.Refused:
+		return PortsRefused
 	case c.IsBeside:
 		return PortsBeside
 	case c.Defaulted:
@@ -60,7 +67,7 @@ func (c Config) Beside(err error) (Config, bool) {
 	if !c.Defaulted || !(errors.Is(err, syscall.EADDRINUSE) || errors.Is(err, syscall.EACCES)) {
 		return c, false
 	}
-	return Config{HTTPS: []string{"0.0.0.0:" + BesidePort, "[::]:" + BesidePort}, IsBeside: true}, true
+	return Config{HTTPS: []string{"0.0.0.0:" + BesidePort, "[::]:" + BesidePort}, IsBeside: true, Refused: errors.Is(err, syscall.EACCES)}, true
 }
 
 // New is the listeners the init script hands over from `verso.web`, one
