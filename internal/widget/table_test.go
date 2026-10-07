@@ -1711,3 +1711,18 @@ func TestRenderTableNameIsNeverADoor(t *testing.T) {
 		t.Errorf("a drawer row with no acts should keep the trailing Details:\n%s", got)
 	}
 }
+
+// TestAnEmptyNumberStandsWhereItsFigureWould: a number column's dash keeps the
+// column's right edge, so an empty period reads in line with the figures above
+// it rather than adrift at the cell's start.
+func TestAnEmptyNumberStandsWhereItsFigureWould(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Period"}, {Label: "Download", Kind: "num"}},
+		Rows:    []TableRow{{Cells: []TableCell{{Text: "Last month"}, {}}}},
+	})
+	at := strings.Index(got, `<span aria-hidden="true">—</span>`)
+	cell := got[strings.LastIndex(got[:at], "<td"):at]
+	if !strings.Contains(cell, "text-right") {
+		t.Errorf("a number column's dash should hold its right edge:\n%s", cell)
+	}
+}

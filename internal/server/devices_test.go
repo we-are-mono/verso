@@ -128,20 +128,29 @@ func TestDevicesPageRendersTheRoster(t *testing.T) {
 	}
 }
 
-// The drawer's body belongs to the active plugin form; no duplicate device recap.
-func TestEntityPanelOmitsDeviceDetails(t *testing.T) {
+// TestEntityPanelDetailsAreATabNotARecap: a device's machine facts are the
+// panel's first tab, Details, holding what the roster does not show — the MAC
+// once usage takes its column, every address, the lease. They are a tab of their
+// own, never a recap above a plugin's form.
+func TestEntityPanelDetailsAreATabNotARecap(t *testing.T) {
 	rec := get(t, rosterServer(t), "/entity/device/42:e6:ad:ff:b7:af")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("panel status = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "toms-iphone") {
-		t.Error("device title missing")
-	}
-	for _, absent := range []string{"Device details", ">IPv4<", ">Lease<", ">Network<", ">DUID<"} {
-		if strings.Contains(body, absent) {
-			t.Errorf("removed device details still render: %s", absent)
+	// A lone tab draws no strip; the facts are the panel's body.
+	for _, want := range []string{"toms-iphone", ">MAC address<", "42:e6:ad:ff:b7:af", "fd42:7ea:aa00:0:1::66", ">Lease<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the Details tab missing %q", want)
 		}
+	}
+	if strings.Contains(body, "Device details") {
+		t.Error("the facts are a tab, not a titled recap")
+	}
+
+	shape := getLang(t, shapingServer(t, twoTabs()), "/entity/device/42:e6:ad:ff:b7:af?tab=shape", "")
+	if strings.Contains(shape, ">MAC address<") {
+		t.Error("a plugin's tab carries its own form and no device recap")
 	}
 }
 

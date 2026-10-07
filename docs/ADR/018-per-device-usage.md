@@ -103,8 +103,9 @@ Mbit/s) and **This month** (the calendar month's total). On a busy row each Now
 figure stands over a 2px meter: download green and upload amethyst, the WAN
 chart's series, measured against the WAN's current total, at most full. A month
 has no ceiling to measure against, so it carries no meter. Idle rows show the
-empty dash. The device panel gains a Usage tab: the live rate, the last ten
-minutes, and Today, Last 7 days, This month and Last month.
+empty dash. The device panel opens on the shell's Details tab: the machine facts
+the roster does not show (the MAC among them), then a Usage section with the live
+rate and Today, Last 7 days, This month and Last month.
 
 ## Consequences
 

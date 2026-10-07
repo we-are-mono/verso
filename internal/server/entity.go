@@ -211,8 +211,10 @@ func (s *Server) fetchEntity(ctx context.Context, r *http.Request, claim entityC
 // entityTabs asks every live contributor for its tab on one subject. A plugin
 // that fails or answers nothing contributes no tab: a panel is worth opening for
 // the tabs that did answer, and a tab that cannot render is worse than absent.
-func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, active string, posted *entityPost) []entityTab {
-	var out []entityTab
+func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, active string, posted *entityPost, shell []entityTab) []entityTab {
+	// The shell's own tabs lead: what the subject is, before what a plugin
+	// does with it.
+	out := append([]entityTab(nil), shell...)
 	// A tab's prose is its plugin's, so it localizes from that plugin's own
 	// catalog and never from the shell's base (ADR-012 §5) — the label, the
 	// commit verb, and the sentence about what applying it costs alike.
@@ -331,6 +333,7 @@ func entityRef(path string) (kind, id string, ok bool) {
 // tab per plugin that answered for it.
 func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr func(string) string, posted *entityPost) (entityPanelData, error) {
 	data := entityPanelData{Kind: kind, ID: id, CSRF: s.sessionCSRF(r)}
+	var shell []entityTab
 	switch {
 	case id == entityNew:
 		// A subject that does not exist yet has no facts to pin: the panel is
@@ -346,12 +349,13 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 			return data, errNoSuchEntity
 		}
 		data.Title = d.Name
+		shell = s.deviceTabs(r, d)
 
 	default:
 		return data, errNoSuchEntity
 	}
 
-	tabs := s.entityTabs(r.Context(), r, kind, id, active, posted)
+	tabs := s.entityTabs(r.Context(), r, kind, id, active, posted, shell)
 	// A tab is a form like a page's: each control whose option waits on the
 	// stage is marked on every opening, as it is on the plugin's own page.
 	waits := s.waitingOptions(r.Context(), s.sessionSID(r))

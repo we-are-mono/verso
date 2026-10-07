@@ -37,9 +37,17 @@
     });
     return rows;
   }
+  // A device's panel open over the roster shows its rate as two figures,
+  // named by the device; an idle device reads as nothing moving.
+  function setStat(name, text) {
+    var stat = document.querySelector('[data-verso-stat="' + CSS.escape(name) + '"] [data-verso-stat-v]');
+    if (stat) stat.textContent = text;
+  }
   function apply(frame, withMonth) {
     var rows = rowsByMAC();
     frame.forEach(function (d) {
+      setStat("usage-down:" + d.mac, d.busy ? d.down : "0");
+      setStat("usage-up:" + d.mac, d.busy ? d.up : "0");
       var row = rows[d.mac];
       if (!row) return;
       var now = row.querySelector('[data-verso-cell="usage-now"]');

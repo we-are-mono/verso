@@ -180,7 +180,7 @@
         {{/* nothing to state, said one way in every column: the faint dash in
              the sans, a step below a muted value — the absence of a fact, not a
              quiet one — and "None" to a screen reader. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} font-sans text-sm whitespace-nowrap text-faint"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{template "verso-none"}}</td>
+        <td class="border-b border-rule {{template "table.cellpad" .}} font-sans text-sm whitespace-nowrap text-faint{{if eq .Kind "num"}} text-right{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{template "verso-none"}}</td>
         {{else if eq .Kind "reorder"}}
         {{/* the drag handle, drawn only where the table persists the new order —
              the column keeps its width either way so the grid stays aligned. */}}

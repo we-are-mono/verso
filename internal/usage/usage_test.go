@@ -44,7 +44,14 @@ func TestSamplerTurnsTwoReadingsIntoRates(t *testing.T) {
 		t.Fatalf("within the gap: rates=%+v ok=%v calls=%d, want the last answer and no read", again, ok, calls)
 	}
 
+	if latest, ok := s.Latest(); !ok || latest["192.168.77.20"] != got {
+		t.Errorf("latest = %+v ok=%v, want the rates last taken, read again for nobody", latest, ok)
+	}
+
 	now = now.Add(time.Minute)
+	if _, ok := s.Latest(); ok {
+		t.Error("rates a minute old are not what is happening now")
+	}
 	if _, ok := s.Rates(context.Background(), addrs, read); ok {
 		t.Error("a reading a minute old is no basis for a rate now")
 	}

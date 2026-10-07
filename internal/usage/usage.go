@@ -91,6 +91,18 @@ func (s *Sampler) Rates(ctx context.Context, addrs []string, read Read) (map[str
 	return rates, rates != nil
 }
 
+// Latest is the rates last taken, without a read: what a panel over a live
+// listing shows, so opening it does not take the listing's reading from it.
+// False when there are none recent enough to be now.
+func (s *Sampler) Latest() (map[string]Rate, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.rates == nil || s.Now().Sub(s.prevAt) > maxAge {
+		return nil, false
+	}
+	return s.rates, true
+}
+
 // Devices sums each owner's addresses: a device's rate is every address it
 // holds. Owners are MACs, as the roster keys devices.
 func Devices(rates map[string]Rate, owners map[string]string) map[string]Rate {

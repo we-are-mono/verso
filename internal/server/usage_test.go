@@ -65,6 +65,40 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	}
 }
 
+// TestDevicePanelDetailsSayWhatTheDeviceMoves: with usage on, the device's
+// Details tab goes on, under its machine facts, to a Usage section: its rate
+// now, down and up, named so the roster's stream keeps it current, and its
+// periods by the calendar — today, the last seven days, the month so far and
+// the month before — each down and up. Usage is not a tab of its own.
+func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
+	var received uint64 = 1_000_000
+	s, _ := usageServer(t, &received)
+	body := get(t, s, "/entity/device/42:e6:ad:ff:b7:af").Body.String()
+	facts, section := strings.Index(body, ">MAC address<"), strings.Index(body, ">Usage<")
+	if facts < 0 || section < facts {
+		t.Fatalf("the Usage section follows the machine facts in Details:\n%s", body)
+	}
+	if strings.Contains(body, "?tab=usage") {
+		t.Error("usage is a section of Details, not a tab")
+	}
+	for _, want := range []string{
+		`data-verso-stat="usage-down:42:e6:ad:ff:b7:af"`, `data-verso-stat="usage-up:42:e6:ad:ff:b7:af"`,
+		">Download<", ">Upload<", "Mbit/s",
+		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
+		">2 GiB<", ">512 MiB<", // today down and up
+		">3 GiB<", // this month's download: today and the 1st
+		">9 GiB<", // last month's download
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Usage tab missing %q", want)
+		}
+	}
+
+	if off := get(t, rosterServer(t), "/entity/device/42:e6:ad:ff:b7:af").Body.String(); strings.Contains(off, ">Usage<") {
+		t.Error("with usage off Details has no Usage section")
+	}
+}
+
 // TestDevicesRosterWithoutUsage: usage off (nlbwmon disabled) is the roster as
 // it was, MAC and all, with no usage drawn.
 func TestDevicesRosterWithoutUsage(t *testing.T) {
