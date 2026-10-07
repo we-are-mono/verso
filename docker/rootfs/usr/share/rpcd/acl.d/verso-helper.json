@@ -7,6 +7,8 @@
           "firewallCounters",
           "firewallStatus",
           "firewallLog",
+          "usageLive",
+          "usageDays",
           "pkgUpgradable",
           "firmwareCheck",
           "configFiles",

@@ -20,6 +20,7 @@ mod netlink;
 mod openvpn;
 mod packages;
 mod ubus;
+mod usage;
 
 use serde_json::{json, Value};
 use std::ffi::c_void;
@@ -57,6 +58,7 @@ const STATUS_UNKNOWN_ERROR: i32 = 9;
 
 struct State {
     firewall_log: firewall_log::Collector,
+    usage: usage::Reader,
     diagnostics: diagnostics::Jobs,
     packages: Mutex<()>,
     maintenance: Mutex<()>,
@@ -149,10 +151,12 @@ fn serve(socket: &Path) -> Result<(), String> {
     println!("verso-rpcd: listening on {}", socket.display());
 
     config_files::watchdog();
+    usage::watchdog();
     let collector = firewall_log::Collector::new();
     collector.start();
     let state = Arc::new(State {
         firewall_log: collector,
+        usage: usage::Reader::default(),
         diagnostics: diagnostics::Jobs::default(),
         packages: Mutex::new(()),
         maintenance: Mutex::new(()),
@@ -484,6 +488,11 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "firewallCounters" => firewall_counters(),
         "firewallStatus" => firewall_status(),
         "firewallLog" => state.firewall_log.read(&request["args"]),
+        "usageLive" => state
+            .usage
+            .read(optional_argument(request, "addresses"))
+            .map_err(Failure::invalid),
+        "usageDays" => usage::days(optional_argument(request, "known")).map_err(Failure::unknown),
         // A run belongs to the session that started it: its sid is the owner,
         // so another operator's read or stop answers as if no run existed.
         "diagStart" => {
@@ -1353,6 +1362,8 @@ mod tests {
         "firewallCounters",
         "firewallStatus",
         "firewallLog",
+        "usageLive",
+        "usageDays",
         "createBackup",
         "restoreBackup",
         "validateFirmware",
@@ -1404,6 +1415,7 @@ mod tests {
         // session lookup, which is exactly what makes this bound the helper's own.
         let state = State {
             firewall_log: firewall_log::Collector::new(),
+            usage: usage::Reader::default(),
             diagnostics: diagnostics::Jobs::default(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
@@ -1421,6 +1433,7 @@ mod tests {
     fn the_zero_session_refuses_a_read_verb_from_the_shell() {
         let state = State {
             firewall_log: firewall_log::Collector::new(),
+            usage: usage::Reader::default(),
             diagnostics: diagnostics::Jobs::default(),
             packages: Mutex::new(()),
             maintenance: Mutex::new(()),
