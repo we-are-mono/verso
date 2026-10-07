@@ -23,7 +23,7 @@ func webOwnerServer(t *testing.T, ports string, withLuCI bool, owner func(string
 		rc["uhttpd"] = openwrt.RCState{}
 	}
 	s := newServerFull(t, fakeBackend{rcStates: rc, webOwner: owner}, &fakeTransport{}, nil, fakeAuth{sid: "s"})
-	s.SetWebPorts(ports)
+	s.SetListeners(listenersHolding(ports))
 	return s
 }
 

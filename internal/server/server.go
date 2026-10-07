@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/i18n"
+	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
@@ -114,10 +115,10 @@ type Server struct {
 	// loginInternet reads only the public uplink boolean, without an rpcd session.
 	loginInternet func() (bool, error)
 	allowedHosts  map[string]bool
-	// webPorts is how Verso holds the router's web ports (listen.Ports*):
-	// beside another web server, Access offers to take them; holding its own,
-	// to hand them back (ADR-017 §2).
-	webPorts string
+	// listeners is where the shell answers, changed while it serves: an apply
+	// of verso.web stages new ones beside them (ADR-017 §1), and how they hold
+	// the router's ports decides what Access offers LuCI (§2).
+	listeners Listeners
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -167,9 +168,26 @@ type Server struct {
 // device's hostnames and LAN addresses.
 func (s *Server) SetAllowedHosts(hosts []string) { s.allowedHosts = hostSet(hosts) }
 
-// SetWebPorts records how Verso holds the router's web ports, once it has
-// bound its listeners.
-func (s *Server) SetWebPorts(ports string) { s.webPorts = ports }
+// Listeners is where the shell answers (listen.Set): what it answers on now,
+// and new listeners staged beside them until an apply is kept or dropped.
+type Listeners interface {
+	Current() listen.Config
+	Stage(listen.Config) error
+	Keep()
+	Drop()
+}
+
+// SetListeners hands the shell the listeners it answers on, once bound.
+func (s *Server) SetListeners(l Listeners) { s.listeners = l }
+
+// webPorts is how the shell holds the router's web ports (listen.Ports*); a
+// shell with no listeners handed to it holds none it may move.
+func (s *Server) webPorts() string {
+	if s.listeners == nil {
+		return listen.PortsSet
+	}
+	return s.listeners.Current().Ports()
+}
 
 // New constructs a Server. It renders widgets through the injected renderer,
 // reads live state through the injected backend, and reaches plugins through the

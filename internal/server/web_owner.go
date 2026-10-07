@@ -40,7 +40,7 @@ func (s *Server) webOwnerMove(r *http.Request) string {
 	if !s.luciInstalled(r) {
 		return ""
 	}
-	switch s.webPorts {
+	switch s.webPorts() {
 	case listen.PortsBeside:
 		return "verso"
 	case listen.PortsOwn:

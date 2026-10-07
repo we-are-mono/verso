@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -83,9 +82,10 @@ func updateCheck() error {
 	return updatecheck.Write(updatecheck.DefaultDir, truth)
 }
 
-// serve runs the web shell. Its listeners arrive as arguments, one per address,
-// because procd restarts a service whose command line changes and not one
-// whose environment does: a listener applied from `verso.web` has to restart it.
+// serve runs the web shell. Its listeners arrive as arguments, one per address:
+// procd records the command line, so a listener applied from `verso.web`,
+// which the running shell takes on by itself (ADR-017 §1), is where its next
+// start answers too.
 func serve(args []string) {
 	// procd records stdout as info and stderr as err. Keep normal lifecycle
 	// messages off the error stream; logd already supplies their timestamp.
@@ -204,67 +204,40 @@ func serve(args []string) {
 			info.Printf("verso: certificate reloaded")
 		}
 	}()
-	endpoints, err := bind(listeners, srv.Handler(), certs, info)
+	// The listeners are a set the shell changes while it serves: an apply of
+	// new ones binds them beside these, and confirming it closes the old
+	// (ADR-017 §1).
+	set := listen.NewSet(srv.Handler(),
+		func() *tls.Config {
+			return &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
+		},
+		certs.Name,
+		func(addr net.Addr, scheme string) { info.Printf("verso listening on %s (%s)", addr, scheme) })
+	err = set.Open(listeners)
 	// Given no listeners, the router's ports may be held by the web server
 	// LuCI runs on: Verso answers beside it rather than not at all, and edits
 	// nothing of that server's (ADR-017 §2).
 	if beside, ok := listeners.Beside(err); ok {
 		info.Printf("verso: %v; another web server holds the router's ports, so Verso answers beside it", err)
-		listeners = beside
-		endpoints, err = bind(listeners, srv.Handler(), certs, info)
+		err = set.Open(beside)
 	}
 	if err != nil {
 		srv.Close()
 		log.Fatalf("verso: %v", err)
 	}
-	srv.SetWebPorts(listeners.Ports())
-	err = serveUntil(stopping, endpoints)
+	srv.SetListeners(set)
+	// Served until a stop is asked for or a listener fails; then every
+	// connection closes at once, since a held-open stream would otherwise keep
+	// a graceful shutdown waiting past procd's patience.
+	select {
+	case <-stopping.Done():
+	case err = <-set.Failed():
+	}
+	set.Close()
 	srv.Close()
 	if err != nil {
 		log.Fatalf("verso: %v", err)
 	}
-}
-
-// endpoint is one bound listener and the server answering on it; a server
-// with a TLS config answers in HTTPS.
-type endpoint struct {
-	listener net.Listener
-	server   *http.Server
-}
-
-// bind opens every listener: the shell over HTTPS, then over HTTP either the
-// redirect to the first HTTPS listener as bound or, with the redirect off, the
-// shell itself. A listener that cannot be bound closes the ones before it.
-func bind(c listen.Config, handler http.Handler, certs *tlscert.Store, info *log.Logger) ([]endpoint, error) {
-	var bound []endpoint
-	open := func(addr, scheme string, server *http.Server) error {
-		l, err := listen.Listen(addr)
-		if err != nil {
-			for _, e := range bound {
-				e.listener.Close()
-			}
-			return err
-		}
-		info.Printf("verso listening on %s (%s)", l.Addr(), scheme)
-		bound = append(bound, endpoint{l, server})
-		return nil
-	}
-	for _, addr := range c.HTTPS {
-		secure := &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
-		if err := open(addr, "https", &http.Server{Handler: handler, TLSConfig: secure}); err != nil {
-			return nil, err
-		}
-	}
-	plain := handler
-	if c.Redirect {
-		plain = listen.Redirect(bound[0].listener.Addr().String(), certs.Name)
-	}
-	for _, addr := range c.HTTP {
-		if err := open(addr, "http", &http.Server{Handler: plain}); err != nil {
-			return nil, err
-		}
-	}
-	return bound, nil
 }
 
 // logProblems reports each skipped manifest or catalog; none is fatal.
@@ -272,36 +245,6 @@ func logProblems(problems []error) {
 	for _, p := range problems {
 		log.Printf("verso: %v", p)
 	}
-}
-
-// serveUntil serves every endpoint until ctx ends or one of them fails, then
-// closes every connection at once: a held-open stream would otherwise keep a
-// graceful shutdown waiting past procd's patience. A stop asked for is not an
-// error.
-func serveUntil(ctx context.Context, endpoints []endpoint) error {
-	failed := make(chan error, len(endpoints))
-	for _, e := range endpoints {
-		go func() {
-			var err error
-			if e.server.TLSConfig != nil {
-				err = e.server.ServeTLS(e.listener, "", "")
-			} else {
-				err = e.server.Serve(e.listener)
-			}
-			if !errors.Is(err, http.ErrServerClosed) {
-				failed <- err
-			}
-		}()
-	}
-	var err error
-	select {
-	case <-ctx.Done():
-	case err = <-failed:
-	}
-	for _, e := range endpoints {
-		_ = e.server.Close()
-	}
-	return err
 }
 
 // allowedHosts is the DNS-rebinding Host allowlist. It is OPT-IN: unset means an

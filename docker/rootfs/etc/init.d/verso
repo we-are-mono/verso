@@ -41,9 +41,9 @@ start_service() {
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
-	# own. procd restarts an instance whose command changes, and not one whose
-	# environment does, so an applied listener restarts the shell on it. An
-	# absent option is not passed, and the shell holds what that means.
+	# own: procd records an instance's command line, and a change to it is what
+	# carries applied listeners to the shell's next start. An absent option is
+	# not passed, and the shell holds what that means.
 	config_load verso
 	config_get listen_http web listen_http
 	config_get listen_https web listen_https
@@ -61,9 +61,12 @@ start_service() {
 	# This keeps large backup/firmware bodies out of the shared system /tmp and
 	# works even on images whose tmpfs is not writable by unprivileged services.
 	procd_set_param env TMPDIR=/var/run/verso VERSO_TLS_DIR="$TLS_DIR"
-	# No reload_signal: procd sends it in place of a restart when the instance
-	# changes, and changed listeners need the restart. A new certificate is
-	# announced to the shell with `ubus call service signal` instead.
+	# The running shell changes its own listeners when an apply changes them
+	# (ADR-017 §1), so the applied config must not restart it: procd sends
+	# reload_signal in place of a restart when the instance changes, and records
+	# the new command line for the next start. SIGHUP re-reads the certificate,
+	# which is harmless. A hand edit takes effect on `/etc/init.d/verso restart`.
+	procd_set_param reload_signal HUP
 	# De-privilege the shell (ADR-007): run as the non-root `verso` user so it
 	# cannot write /etc/config directly and does not get ubusd's uid-0 ACL
 	# exemption — every backend op is then bounded by rpcd + the verso acl.d
