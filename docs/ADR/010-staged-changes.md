@@ -156,29 +156,44 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
 
 ## Implementation notes
 
-- The broker (`brokerStage`) stages and never commits; the write gate
-  (ADR-007) is otherwise untouched — staging is already the ACL-checked
-  operation.
+- The broker (`brokerStage` in `internal/server/gateway.go`) stages and never
+  commits; the write gate (ADR-007) is otherwise untouched — staging is
+  already the ACL-checked operation. Who staged a change is `stageAuthor`
+  (`internal/server/stage_authors.go`), and the staged mark on a field is
+  `MarkStaged` (`internal/widget/staged.go`).
 - The chip's count needs the set of configs to query: the union of `uci`
-  declarations across installed plugin manifests, which the shell loads for
-  the write gate, plus the shell's own (ADR-013). The chip is `#verso-staged`
-  in the top bar; the drawer's contents render from `staged.html.tmpl` at
-  `/uci/review`, fetched when it opens; the client is `verso-commit.js`.
+  declarations across installed plugin manifests (`declaredUCIConfigs` in
+  `internal/server/gateway.go`), which the shell loads for the write gate,
+  plus the shell's own (ADR-013). The chip is `#verso-staged` in the top bar;
+  the drawer's contents render from `internal/server/templates/staged.html.tmpl`
+  at `/uci/review`, fetched when it opens. The routes — `handleUCIReview`,
+  `handleUCIApply`, `handleUCIConfirm`, `handleUCIDiscard` — live in
+  `internal/server/staged.go` and reach the device through `UCIApply` and
+  `UCIConfirm` on the Backend (`internal/openwrt/backend.go`); the client is
+  `internal/server/assets/verso-commit.js`.
 - The confirm round-trip needs the page to come back after a firewall/network
   apply: post-apply, the drawer polls the confirm route inside the rollback
   window, mirroring LuCI's cadence — and keeps polling even when the apply
   response itself was lost, since reaching the router again is the success
   signal. Confirmed, the drawer closes, the chip says so in green and fades,
   and the page reloads clean behind it; a confirm that never lands is said in
-  crimson, and the drawer reopens.
+  crimson, and the drawer reopens. The loop is `apply`, `confirmLoop`,
+  `applied` and `rolledBack` in `internal/server/assets/verso-commit.js`.
 - Unsaved work is guarded once, shell-owned: dirty on-page form fields arm the
-  browser's native leave-warning until a submit. Dirtiness is always a
+  browser's native leave-warning until a submit
+  (`internal/server/assets/verso-forms.js`). Dirtiness is always a
   comparison with the rendered baseline, not a history of input events, so
   reverting a field to its original value makes the page clean again. What is
   already staged needs no guard — the stage outlives the page. Discard all
   reverts the stage on the device and reloads the page, which reads the
   authoritative state back.
 - The drawer's plain language is the owning plugin's describe hook
-  (docs/plugins.md); a change no plugin describes reads as its raw uci line.
+  (docs/plugins.md; `serve_described` in
+  `plugins/verso-plugin-sdk/src/lib.rs`, answered by each plugin's
+  `describe.rs`). Before asking, the shell collapses repeated writes to one
+  target (`coalesceChanges`) and normalizes each change into the closed op
+  vocabulary the hook reads (`describeChange`), both in
+  `internal/server/staged.go`.
+  A change no plugin describes reads as its raw uci line.
   The count is the number of drawer rows — what a person did, not the number of
   writes it took.
