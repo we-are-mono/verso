@@ -31,6 +31,7 @@ import (
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/updatecheck"
+	"github.com/we-are-mono/verso/internal/usage"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -57,7 +58,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //
 //go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js assets/verso-boot.js
 //go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
-//go:embed assets/verso-packages.js assets/verso-buttons.js
+//go:embed assets/verso-packages.js assets/verso-buttons.js assets/verso-usage.js
 //go:embed assets/verso-system.js assets/verso-diagnostics.js
 //go:embed assets/verso-stream.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
 //go:embed assets/verso-login.js
@@ -166,6 +167,11 @@ type Server struct {
 	// location on the device rather than anything this process owns; tests point
 	// it at a directory of their own.
 	stateDir string
+	// usageSampler and usageHistory are per-device usage as every page and
+	// stream shares it (ADR-018): the live rates, read at most once a gap, and
+	// the closed days already read from nlbwmon.
+	usageSampler *usage.Sampler
+	usageHistory *usage.History
 }
 
 // SetAllowedHosts configures the Host allowlist for the DNS-rebinding guard
@@ -234,6 +240,8 @@ func New(
 		wanHist:        newWanHistory(time.Now),
 		maintenanceDir: "/var/run/verso",
 		stateDir:       updatecheck.DefaultDir,
+		usageSampler:   &usage.Sampler{Now: time.Now},
+		usageHistory:   &usage.History{},
 	}
 	// Start English-only: the page cache holds just the identity set and the
 	// bundle stays nil (English) until SetBundle — wired by cmd/verso once the

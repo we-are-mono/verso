@@ -48,11 +48,41 @@ type Device struct {
 	Traffic    string
 	Conns      string
 
+	// Usage is what the device moves (ADR-018), nil while usage is off.
+	Usage *DeviceUsage
+
 	Leased       bool
 	Reserved     bool
 	Limit        string // configured policy, supplied by the plugin claiming the shape slot
 	LimitDetails string // configured days, times and rates for the limits tooltip
 	LimitTip     *DeviceLimitTip
+}
+
+// DeviceUsage is a device's usage as the roster says it: its rate now in
+// Mbit/s, stated only while it is busy enough to read as in use, with each
+// figure's share of the WAN's current traffic, and its calendar month so far.
+type DeviceUsage struct {
+	Busy             bool
+	Down, Up         string
+	DownFill, UpFill int
+	Month            string
+}
+
+// UsageNowCell is a device's Now: download then upload, each over its meter.
+// An idle device keeps both figures empty, so the cell reads as the dash and a
+// live listing has the slots to fill.
+func UsageNowCell(u DeviceUsage) TableCell {
+	down, up := TableFigure{Icon: "arrow-down", Role: "emerald", Label: "down"}, TableFigure{Icon: "arrow-up", Role: "violet", Label: "up"}
+	if u.Busy {
+		down.Text, down.Fill, up.Text, up.Fill = u.Down, u.DownFill, u.Up, u.UpFill
+	}
+	return TableCell{Key: "usage-now", Figures: []TableFigure{down, up}}
+}
+
+// UsageMonthCell is a device's calendar month so far. A month has no ceiling
+// to measure against, so it stands without a meter.
+func UsageMonthCell(u DeviceUsage) TableCell {
+	return TableCell{Key: "usage-month", Figures: []TableFigure{{Text: u.Month}}}
 }
 
 // DeviceLimitTip is the shell's visual reading of configured device limits.
@@ -103,7 +133,10 @@ func DeviceActTitles(d Device) map[string]string {
 //
 // Devices arrive already ordered by their network; the caller decides that
 // order, and every change of network opens a band.
-func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
+//
+// With usage on, the MAC gives its column to what each device moves now and
+// this month (ADR-018); the device's panel still names it.
+func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage bool) *Table {
 	rows := make([]TableRow, 0, len(devices))
 	network := ""
 	for i, d := range devices {
@@ -112,15 +145,25 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		// muted cell by cell, not as a row, since a muted row is one switched
 		// off and absent is not off.
 		away := d.Presence != "online"
+		cells := []TableCell{
+			{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d), Muted: away},
+			{Text: d.Port, Muted: away},
+			{Text: d.V4, Copy: true, Emphasis: true, Muted: away},
+		}
+		if usage {
+			u := DeviceUsage{}
+			if d.Usage != nil {
+				u = *d.Usage
+			}
+			month := UsageMonthCell(u)
+			month.Muted = away
+			cells = append(cells, presenceCell(d.Presence), UsageNowCell(u), month)
+		} else {
+			cells = append(cells, TableCell{Text: d.MAC, Copy: true, Emphasis: true, Muted: away}, presenceCell(d.Presence))
+		}
 		row := TableRow{
-			Cells: []TableCell{
-				{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d), Muted: away},
-				{Text: d.Port, Muted: away},
-				{Text: d.V4, Copy: true, Emphasis: true, Muted: away},
-				{Text: d.MAC, Copy: true, Emphasis: true, Muted: away},
-				presenceCell(d.Presence),
-				{Actions: acts(d)},
-			},
+			ID:    d.MAC,
+			Cells: append(cells, TableCell{Actions: acts(d)}),
 			// The device's panel is the shell's — every plugin with a say about
 			// a device contributes a tab to it — so the row carries the subject's
 			// address and nothing else.
@@ -140,15 +183,8 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		// Every column but the device's own is fixed, so the grid holds its shape
 		// whatever this particular network happens to be named and however short
 		// one device's address is.
-		Columns: []TableColumn{
-			{Label: "Device", Kind: "name"},
-			{Label: "Port", Kind: "mono", Width: MeasureShort},
-			{Label: "Address", Kind: "mono", Width: MeasureAddress},
-			{Label: "MAC address", Kind: "mono", Width: MeasureAddress},
-			{Label: "Status", Kind: "status", Width: MeasureWord},
-			{Kind: "actions", Width: MeasureShort},
-		},
-		Rows: rows,
+		Columns: devicesColumns(usage),
+		Rows:    rows,
 		Legend: []TableLegend{
 			{Variant: "success", Label: "holding a lease now"},
 			{Label: "known, not present"},
@@ -156,6 +192,29 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct) *Table {
 		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}
+}
+
+// devicesColumns is the roster's grid. Every column but the device's own is
+// fixed; with usage on, the MAC's measure goes to Now and This month.
+func devicesColumns(usage bool) []TableColumn {
+	cols := []TableColumn{
+		{Label: "Device", Kind: "name"},
+		{Label: "Port", Kind: "mono", Width: MeasureShort},
+		{Label: "Address", Kind: "mono", Width: MeasureAddress},
+	}
+	if usage {
+		cols = append(cols,
+			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
+			TableColumn{Label: "Now · Mbit/s", Kind: "figures", Width: MeasureAddress},
+			TableColumn{Label: "This month", Kind: "figures", Width: MeasureWord},
+		)
+	} else {
+		cols = append(cols,
+			TableColumn{Label: "MAC address", Kind: "mono", Width: MeasureAddress},
+			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
+		)
+	}
+	return append(cols, TableColumn{Kind: "actions", Width: MeasureShort})
 }
 
 // DevicesAct is the roster's act on its heading line. It is offered only where

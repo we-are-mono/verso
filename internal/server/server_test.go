@@ -80,6 +80,9 @@ type fakeBackend struct {
 	// The helper's package verbs (ADR-011 §4): canned search results and
 	// records of what the shell installed, removed, or refreshed.
 	pkgCheckedAt      int64
+	usageLive         func(addr string) openwrt.UsageCounter // each address's running bytes; nil reads nothing
+	usageDays         *openwrt.UsageDays                     // the history read; nil is usage off
+	usageErr          error
 	pkgFound          []openwrt.Package
 	pkgInstalledList  []openwrt.Package
 	pkgTotal          int
@@ -354,6 +357,23 @@ func (f fakeBackend) PkgInfo(_ context.Context, _ string, name string) (openwrt.
 		}
 	}
 	return openwrt.Package{}, false, nil
+}
+
+func (f fakeBackend) UsageLive(_ context.Context, _ string, addrs []string) (openwrt.UsageLive, error) {
+	out := openwrt.UsageLive{Accounting: true, Addresses: map[string]openwrt.UsageCounter{}}
+	for _, a := range addrs {
+		if f.usageLive != nil {
+			out.Addresses[a] = f.usageLive(a)
+		}
+	}
+	return out, nil
+}
+
+func (f fakeBackend) UsageDays(context.Context, string, []string) (openwrt.UsageDays, error) {
+	if f.usageDays == nil {
+		return openwrt.UsageDays{}, nil
+	}
+	return *f.usageDays, f.usageErr
 }
 
 func (f fakeBackend) PkgFiles(context.Context, string, string) ([]string, error) {

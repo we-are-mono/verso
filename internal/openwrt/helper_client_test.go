@@ -221,6 +221,30 @@ func TestPkgInfoAnswersOnePackageOrNone(t *testing.T) {
 	}
 }
 
+// TestUsageReadsCarryAddressesAndDays: a live reading names the addresses it
+// wants and answers each one's running bytes; a history read names the days
+// the shell already holds and answers today's date and the days read.
+func TestUsageReadsCarryAddressesAndDays(t *testing.T) {
+	socket := helperReplyingTo(t, "usageLive", map[string]string{"addresses": "192.168.77.20,fd42:7ea:1::20"},
+		`{"status":0,"result":{"accounting":true,"addresses":{"192.168.77.20":{"sent":10,"received":200}}}}`)
+	live, err := dialUsageLive(socket)(context.Background(), "good-sid", []string{"192.168.77.20", "fd42:7ea:1::20"})
+	if err != nil || !live.Accounting || live.Addresses["192.168.77.20"] != (UsageCounter{Sent: 10, Received: 200}) {
+		t.Fatalf("live=%+v err=%v", live, err)
+	}
+
+	socket = helperReplyingTo(t, "usageDays", map[string]string{"known": "2026-10-06,2026-10-05"},
+		`{"status":0,"result":{"enabled":true,"today":"2026-10-07","days":{"2026-10-07":{"02:aa":{"received":500,"sent":50}}}}}`)
+	days, err := dialUsageDays(socket)(context.Background(), "good-sid", []string{"2026-10-06", "2026-10-05"})
+	if err != nil || !days.Enabled || days.Today != "2026-10-07" || days.Days["2026-10-07"]["02:aa"] != (UsageCounter{Sent: 50, Received: 500}) {
+		t.Fatalf("days=%+v err=%v", days, err)
+	}
+
+	socket = helperReplyingTo(t, "usageDays", map[string]string{"known": ""}, `{"status":0,"result":{"enabled":false}}`)
+	if days, err := dialUsageDays(socket)(context.Background(), "good-sid", nil); err != nil || days.Enabled {
+		t.Fatalf("usage off: days=%+v err=%v", days, err)
+	}
+}
+
 // TestPkgUpgradableDecodesBothVersions: the upgradable set reaches the caller as
 // typed entries naming what the device runs and what the feeds hold.
 func TestPkgUpgradableDecodesBothVersions(t *testing.T) {

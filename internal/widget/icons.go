@@ -85,6 +85,7 @@ var lucideIcons = map[string]string{
 	"clock":             `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />`,
 	"arrow-down":        `<path d="M12 5v14" /><path d="m19 12-7 7-7-7" />`,
 	"arrow-left":        `<path d="m12 19-7-7 7-7" /><path d="M19 12H5" />`,
+	"arrow-up":          `<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />`,
 	"arrow-right":       `<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />`,
 	"corner-down-right": `<path d="m15 10 5 5-5 5" /><path d="M4 4v7a4 4 0 0 0 4 4h12" />`,
 	"plus":              `<path d="M5 12h14" /><path d="M12 5v14" />`,

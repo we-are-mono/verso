@@ -99,10 +99,11 @@ device unseen for the retention window drops out with its last day's file.
 
 The roster keeps its network lanes and its order; nothing re-ranks. MAC moves to
 the device panel to make room for two columns: **Now** (download over upload,
-Mbit/s) and **This month** (the calendar month's total). Busy rows carry a 2px
-meter under each figure: download green and upload amethyst, the WAN chart's
-series, measured against the WAN's current total, at most full. Idle rows show
-the empty dash. The device panel gains a Usage tab: the live rate, the last ten
+Mbit/s) and **This month** (the calendar month's total). On a busy row each Now
+figure stands over a 2px meter: download green and upload amethyst, the WAN
+chart's series, measured against the WAN's current total, at most full. A month
+has no ceiling to measure against, so it carries no meter. Idle rows show the
+empty dash. The device panel gains a Usage tab: the live rate, the last ten
 minutes, and Today, Last 7 days, This month and Last month.
 
 ## Consequences

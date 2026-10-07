@@ -45,6 +45,12 @@ import (
 //	             (0–100) with the figure (Text) beside it; Variant bands the
 //	             fill (warning marigold, danger crimson, else green), so the
 //	             listing owns its thresholds. No Text is the faint dash
+//	"figures"  — one or more figures side by side, each in a fixed slot; one in
+//	             a series (Role: emerald, violet, the chart's colours) stands
+//	             over a 2px meter of its share (Fill), one without stands
+//	             alone, having no whole to measure against. A figure
+//	             with no Text keeps its slot hidden, so a live listing fills it
+//	             in place; with none to show, the faint dash
 //	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
 //	             cell's variant uses the badge vocabulary, and an empty cell
 //	             renders a faint dash — pills stay meaningful because most
@@ -447,11 +453,47 @@ type TableCell struct {
 	Name         string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
 	Chips        []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
+	Figures      []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
 	Actions      []TableRowAct   `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
 	// Opens says the row's drawer is where this cell's subject is read. A name
 	// is never drawn as a door (doorAct): the shell puts a Details act on the
 	// row, or the trailing Details link where the row has no acts.
 	Opens bool `json:"opens,omitempty"`
+}
+
+// TableFigure is one figure in a figures cell: the number, the glyph that says
+// which way it runs, and the series it belongs to with its share of that
+// series' whole as a meter under it. A figure in no series has no whole and
+// draws no meter. Label is what a screen reader hears after the number when
+// the glyph alone carries its meaning ("down").
+type TableFigure struct {
+	Text  string `json:"text,omitempty"`
+	Icon  string `json:"icon,omitempty"`
+	Fill  int    `json:"fill,omitempty"` // 0–100, read only in a series
+	Role  string `json:"role,omitempty"` // "emerald" | "violet" | "" (no meter)
+	Label string `json:"label,omitempty"`
+}
+
+// tableFigureView is a figure as the template draws it: its meter's clip
+// already computed from the clamped share, and its series' fill class.
+type tableFigureView struct {
+	TableFigure
+	Clip  template.CSS
+	Class string
+}
+
+// figureClip is a meter's fill as a clip of the full-width bar, square-ended
+// because a 2px line has no room for a rounded one.
+func figureClip(fill int) string {
+	return fmt.Sprintf("inset(0 %d%% 0 0)", 100-min(max(fill, 0), 100))
+}
+
+// figureRoleClass is a series role's fill: the chart's own colours.
+func figureRoleClass(role string) string {
+	if role == "violet" {
+		return "bg-amethyst"
+	}
+	return "bg-green"
 }
 
 // TableRowAct is one act on a row, drawn as a bare icon button at the row's
@@ -720,6 +762,10 @@ type tableCellView struct {
 	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
 	// empty when the cell has no reading to draw.
 	Clip template.CSS
+	// FigureViews are a figures cell's figures as drawn, and FiguresShown
+	// whether any has a number, so the dash stands only for a cell with none.
+	FigureViews  []tableFigureView
+	FiguresShown bool
 	TableCell
 	Chips     []tableChipView
 	Actions   []tableRowActView
@@ -741,7 +787,8 @@ type tableChipView struct {
 // their emptiness is their own.
 func (c tableCellView) Absent() bool {
 	switch c.Kind {
-	case "reorder", "toggle", "actions", "check":
+	// A figures cell says its own dash, keeping its slots for a live listing.
+	case "reorder", "toggle", "actions", "check", "figures":
 		return false
 	}
 	text := strings.TrimSpace(c.Text)
@@ -1273,6 +1320,16 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				if kind == "meter" && cv.Text != "" && cv.Text != "—" {
 					fill := min(max(cv.Fill, 0), 100)
 					cv.Clip = template.CSS(MeterClip(fill)) //nolint:gosec // built from a clamped integer, never from input text
+				}
+				if kind == "figures" {
+					for _, f := range cv.Figures {
+						cv.FigureViews = append(cv.FigureViews, tableFigureView{
+							TableFigure: f,
+							Clip:        template.CSS(figureClip(f.Fill)), //nolint:gosec // built from a clamped integer, never from input text
+							Class:       figureRoleClass(f.Role),
+						})
+						cv.FiguresShown = cv.FiguresShown || f.Text != ""
+					}
 				}
 				if suffixed[i] {
 					cv.SuffixSlot = true

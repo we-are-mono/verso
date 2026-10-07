@@ -156,6 +156,10 @@ type Backend interface {
 	// PkgInfo is one package by its exact name: the installed copy when the
 	// router holds it, the feed index's otherwise; false when neither does.
 	PkgInfo(ctx context.Context, sid, name string) (Package, bool, error)
+	// UsageLive is each listed address's running bytes from conntrack
+	// (ADR-018); UsageDays is nlbwmon's today and the days not yet known.
+	UsageLive(ctx context.Context, sid string, addrs []string) (UsageLive, error)
+	UsageDays(ctx context.Context, sid string, known []string) (UsageDays, error)
 	PkgUpgradeOne(ctx context.Context, sid, name string) error
 	// PkgInstalled lists every installed package (no descriptions).
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
@@ -370,6 +374,28 @@ type Package struct {
 	Removable   bool     `json:"removable"`
 }
 
+// UsageCounter is bytes an address or a device moved: sent is its upload,
+// received its download.
+type UsageCounter struct {
+	Sent     uint64 `json:"sent"`
+	Received uint64 `json:"received"`
+}
+
+// UsageLive is one conntrack reading: each asked address's running bytes since
+// the helper started, and whether the kernel accounts bytes at all.
+type UsageLive struct {
+	Accounting bool                    `json:"accounting"`
+	Addresses  map[string]UsageCounter `json:"addresses"`
+}
+
+// UsageDays is one read of nlbwmon's history: whether usage is on, its today,
+// and each day read by device MAC.
+type UsageDays struct {
+	Enabled bool                               `json:"enabled"`
+	Today   string                             `json:"today"`
+	Days    map[string]map[string]UsageCounter `json:"days"`
+}
+
 type PackagePage struct {
 	Packages  []Package `json:"packages"`
 	Total     int       `json:"total"`
@@ -514,6 +540,8 @@ type (
 	pkgBrowseFn    func(ctx context.Context, sid, query string, offset int) (PackagePage, error)
 	pkgFilesFn     func(ctx context.Context, sid, name string) ([]string, error)
 	pkgInfoFn      func(ctx context.Context, sid, name string) (Package, bool, error)
+	usageLiveFn    func(ctx context.Context, sid string, addrs []string) (UsageLive, error)
+	usageDaysFn    func(ctx context.Context, sid string, known []string) (UsageDays, error)
 	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	pkgUpgradesFn  func(ctx context.Context, sid string) ([]PackageUpgrade, error)
@@ -565,6 +593,8 @@ type NativeBackend struct {
 	pkgBrowse      pkgBrowseFn
 	pkgFiles       pkgFilesFn
 	pkgInfo        pkgInfoFn
+	usageLive      usageLiveFn
+	usageDays      usageDaysFn
 	pkgUpgradeOne  pkgActFn
 	pkgInstalled   pkgInstalledFn
 	pkgInstall     pkgActFn
@@ -628,6 +658,8 @@ func NewNativeBackend() *NativeBackend {
 		pkgBrowse:      dialPkgBrowse(""),
 		pkgFiles:       dialPkgFiles(""),
 		pkgInfo:        dialPkgInfo(""),
+		usageLive:      dialUsageLive(""),
+		usageDays:      dialUsageDays(""),
 		pkgUpgradeOne:  dialPkgAct("", "pkgUpgradeOne"),
 		pkgInstalled:   dialPkgInstalled(""),
 		pkgInstall:     dialPkgAct("", "pkgInstall"),
@@ -873,6 +905,14 @@ func (b *NativeBackend) PkgFiles(ctx context.Context, sid, name string) ([]strin
 
 func (b *NativeBackend) PkgInfo(ctx context.Context, sid, name string) (Package, bool, error) {
 	return b.pkgInfo(ctx, sid, name)
+}
+
+func (b *NativeBackend) UsageLive(ctx context.Context, sid string, addrs []string) (UsageLive, error) {
+	return b.usageLive(ctx, sid, addrs)
+}
+
+func (b *NativeBackend) UsageDays(ctx context.Context, sid string, known []string) (UsageDays, error) {
+	return b.usageDays(ctx, sid, known)
 }
 
 func (b *NativeBackend) PkgUpgradeOne(ctx context.Context, sid, name string) error {
@@ -1816,6 +1856,22 @@ func dialPkgInfo(socket string) pkgInfoFn {
 			return Package{}, false, err
 		}
 		return *result.Package, true, nil
+	}
+}
+
+func dialUsageLive(socket string) usageLiveFn {
+	return func(ctx context.Context, sid string, addrs []string) (UsageLive, error) {
+		var result UsageLive
+		err := callHelper(ctx, socket, "usageLive", sid, map[string]string{"addresses": strings.Join(addrs, ",")}, &result)
+		return result, err
+	}
+}
+
+func dialUsageDays(socket string) usageDaysFn {
+	return func(ctx context.Context, sid string, known []string) (UsageDays, error) {
+		var result UsageDays
+		err := callHelper(ctx, socket, "usageDays", sid, map[string]string{"known": strings.Join(known, ",")}, &result)
+		return result, err
 	}
 }
 

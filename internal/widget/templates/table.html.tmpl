@@ -424,6 +424,21 @@
             <span class="w-10 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
+        {{else if eq .Kind "figures"}}
+        {{/* figures side by side, each in a slot of one width so a column of
+             them lines up, and under each one in a series a 2px meter of its
+             share in its series' colour: 3px under the line, inside the row's
+             own padding, so the row stays two cells tall. A figure with no
+             series has no whole to measure against and stands alone. Every slot is drawn even when it
+             has nothing to say, hidden, so a live listing fills it in place;
+             the dash stands for a cell with no figure. */}}
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
+          <span class="text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
+          {{$muted := .Muted}}{{range .FigureViews}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums {{if $muted}}text-meta{{else}}text-ink{{end}} last:mr-0" data-verso-figure="{{.Role}}"{{if not .Text}} hidden{{end}}>
+            <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
+            {{if .Role}}<span aria-hidden="true" class="absolute inset-x-0 top-5.75 h-0.5 bg-rule"><span data-verso-figure-meter class="absolute inset-0 {{.Class}} transition-[clip-path] duration-300 ease-out motion-reduce:transition-none" style="clip-path: {{.Clip}}"></span></span>{{end}}
+          </span>{{end}}
+        </td>
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and
              reads in full ink; one that is nothing yet stays out of the way. */}}

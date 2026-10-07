@@ -59,7 +59,7 @@ func testActs(d Device) []TableRowAct {
 // and maker, the port it attaches through, address, MAC, whether it is here —
 // with its acts at the trailing edge and the full story behind each row.
 func TestRenderDevicesTable(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(roster(), testActs))
+	got := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
 	for _, want := range []string{
 		"Local network", "192.168.1.0/24", "1 online · 1 offline", // the lan band, and what it amounts to
 		"guest", "192.168.20.0/24", "0 online · 1 offline", // the guest band
@@ -99,7 +99,7 @@ func TestRenderDevicesTable(t *testing.T) {
 // carried them would ask every contributing plugin thirty times before anyone
 // clicked anything.
 func TestRenderDevicesRowsCarryNoPanel(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(roster(), testActs))
+	got := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
 	for _, unwanted := range []string{
 		"2001:db8::4f",                // an address only the panel shows
 		"in 11h 12m", "No DHCP lease", // lease facts
@@ -115,10 +115,53 @@ func TestRenderDevicesRowsCarryNoPanel(t *testing.T) {
 	}
 }
 
+// TestRenderDevicesUsage: with usage on, the roster says what each device moves
+// (ADR-018). Now is the rate down and up, each figure over a meter of its share
+// of the WAN, drawn only on a busy row; an idle row is the empty dash, its
+// figures kept in place for the stream to fill. This month is the calendar
+// month's total alone: a month has no ceiling to measure against, so a meter
+// under it would only restate the number. The MAC gives up its column to them;
+// the panel carries it.
+func TestRenderDevicesUsage(t *testing.T) {
+	devices := roster()
+	devices[0].Usage = &DeviceUsage{Busy: true, Down: "38.2", Up: "1.1", DownFill: 76, UpFill: 2, Month: "212 GiB"}
+	devices[1].Usage = &DeviceUsage{Month: "41 GiB"}
+	devices[2].Usage = &DeviceUsage{}
+	got := render(t, newRenderer(t), DevicesTable(devices, testActs, true))
+	for _, want := range []string{
+		">Now · Mbit/s<", ">This month<",
+		`data-verso-cell="usage-now"`, `data-verso-cell="usage-month"`,
+		">38.2<", ">1.1<", ">212 GiB<", ">41 GiB<",
+		"clip-path: inset(0 24% 0 0)", "clip-path: inset(0 98% 0 0)",
+		"bg-green", "bg-amethyst",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("usage roster missing %q", want)
+		}
+	}
+	at := strings.Index(got, `data-verso-cell="usage-month"`)
+	month := got[at : at+strings.Index(got[at:], "</td>")]
+	if strings.Contains(month, "data-verso-figure-meter") {
+		t.Errorf("a month has nothing to measure against and draws no meter:\n%s", month)
+	}
+	if strings.Contains(got, ">MAC address<") || strings.Contains(got, "a4:83:e7:2b:19:0c</") {
+		t.Error("the MAC gives up its column to usage")
+	}
+	// The idle and the offline rows' Now is the dash, their figures hidden.
+	if n := strings.Count(got, "data-verso-figures-none hidden"); n != 3 {
+		t.Errorf("rows with something to state should hide the dash: %d, want 3 (one busy Now, two months)", n)
+	}
+
+	off := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
+	if strings.Contains(off, "usage-now") || !strings.Contains(off, ">MAC address<") {
+		t.Error("with usage off the roster keeps its MAC column and draws no usage")
+	}
+}
+
 // TestRenderDevicesTableEmpty: a roster with nobody on it says so in its own
 // words rather than drawing column headings over nothing.
 func TestRenderDevicesTableEmpty(t *testing.T) {
-	got := render(t, newRenderer(t), DevicesTable(nil, testActs))
+	got := render(t, newRenderer(t), DevicesTable(nil, testActs, false))
 	if !strings.Contains(got, "Nothing has joined this network yet.") {
 		t.Errorf("empty roster missing its own empty text:\n%s", got)
 	}

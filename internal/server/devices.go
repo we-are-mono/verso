@@ -37,6 +37,10 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	roster := s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r))
 	configured, limitsOffered, limitsAvailable := s.deviceLimits(r)
 	roster = mergeDeviceLimits(roster, configured)
+	used := s.readUsage(r.Context(), s.sessionSID(r), roster)
+	if used.on {
+		used.apply(roster)
+	}
 
 	var body strings.Builder
 	lang, t := s.localize(r)
@@ -48,7 +52,7 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	})
 	table := widget.DevicesTable(roster, func(d widget.Device) []widget.TableRowAct {
 		return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles(d))
-	})
+	}, used.on)
 	// The roster is read whole, banded by network: no bar cuts or narrows it.
 	page := &widget.Stack{Children: []widget.Widget{table}}
 	if !limitsAvailable {
