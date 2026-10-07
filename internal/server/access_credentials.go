@@ -11,14 +11,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/tlscert"
@@ -90,8 +88,11 @@ func certificateFacts(c *x509.Certificate, now time.Time) map[string]string {
 }
 func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid string, cmd plugin.ApplyAction) error {
 	function := "setAuthorizedKeys"
-	if strings.HasPrefix(cmd.Name, "certificate-") {
+	switch cmd.Name {
+	case "certificate-install":
 		function = "setWebCertificate"
+	case "certificate-generate":
+		function = "makeWebCertificate"
 	}
 	if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: function}) {
 		return fmt.Errorf("undeclared credential write")
@@ -136,11 +137,9 @@ func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid s
 		}
 		return s.backend.SetAuthorizedKeys(ctx, sid, current.AuthorizedKeys, next)
 	case "certificate-generate":
-		cert, key, err := generateWebCertificate(cmd.Args["hostname"])
-		if err != nil {
-			return err
-		}
-		return s.backend.SetWebCertificate(ctx, sid, cert, key)
+		// The router makes it, named for every way the LAN reaches it, and the
+		// key never passes through the shell (ADR-017 §5).
+		return s.backend.MakeWebCertificate(ctx, sid)
 	case "certificate-install":
 		cert, key, err := validateWebCertificate(cmd.Args["certificate"], cmd.Args["key"])
 		if err != nil {
@@ -149,13 +148,6 @@ func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid s
 		return s.backend.SetWebCertificate(ctx, sid, cert, key)
 	}
 	return fmt.Errorf("unknown credential command")
-}
-func generateWebCertificate(host string) (string, string, error) {
-	if host == "" || (net.ParseIP(host) == nil && datatype.Validate("hostname", host) != nil) {
-		return "", "", commandValidationError("Enter a valid hostname or IP address.")
-	}
-	cert, key, err := tlscert.Generate([]string{host}, time.Now())
-	return string(cert), string(key), err
 }
 func validateWebCertificate(cert, key string) (string, string, error) {
 	if len(cert) > 64*1024 || len(key) > 64*1024 {

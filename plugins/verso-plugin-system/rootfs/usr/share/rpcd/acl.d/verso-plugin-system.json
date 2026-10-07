@@ -5,8 +5,7 @@
       "uci": [
         "system",
         "network",
-        "dropbear",
-        "uhttpd"
+        "dropbear"
       ],
       "ubus": {
         "verso": [
@@ -18,14 +17,14 @@
       "uci": [
         "system",
         "network",
-        "dropbear",
-        "uhttpd"
+        "dropbear"
       ],
       "ubus": {
         "verso": [
           "setSystemTime",
           "setAuthorizedKeys",
-          "setWebCertificate"
+          "setWebCertificate",
+          "makeWebCertificate"
         ]
       }
     }

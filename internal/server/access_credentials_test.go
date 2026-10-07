@@ -19,6 +19,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/tlscert"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -26,7 +27,7 @@ type credentialsFake struct {
 	fakeBackend
 	data                         openwrt.AccessCredentials
 	expected, written, cert, key string
-	conflict                     bool
+	conflict, made               bool
 }
 
 func (b *credentialsFake) AccessCredentials(context.Context, string) (openwrt.AccessCredentials, error) {
@@ -45,8 +46,16 @@ func (b *credentialsFake) SetWebCertificate(_ context.Context, _, cert, key stri
 	b.cert, b.key = cert, key
 	return nil
 }
+func (b *credentialsFake) MakeWebCertificate(context.Context, string) error {
+	b.made = true
+	return nil
+}
 func credentialManifest() plugin.Manifest {
-	return plugin.Manifest{ID: "system", ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "ubus", Object: "verso", Function: "setAuthorizedKeys"}, {Scope: "ubus", Object: "verso", Function: "setWebCertificate"}}}}
+	return plugin.Manifest{ID: "system", ACL: plugin.ACL{Write: []plugin.ACLScope{
+		{Scope: "ubus", Object: "verso", Function: "setAuthorizedKeys"},
+		{Scope: "ubus", Object: "verso", Function: "setWebCertificate"},
+		{Scope: "ubus", Object: "verso", Function: "makeWebCertificate"},
+	}}}
 }
 func testPublicKey(t *testing.T) string {
 	t.Helper()
@@ -106,11 +115,11 @@ func TestAuthorizedKeyCommandsValidateAndCompareCurrentContents(t *testing.T) {
 // "not secure" page by eye; and the certificate's life is counted in whole days
 // against the clock it is read by.
 func TestCertificateFactsReadAsTheBrowserDoes(t *testing.T) {
-	pemCert, _, err := generateWebCertificate("router.lan")
+	pemCert, _, err := tlscert.Generate([]string{"router.lan"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	block, _ := pem.Decode([]byte(pemCert))
+	block, _ := pem.Decode(pemCert)
 	c, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		t.Fatal(err)
@@ -139,24 +148,21 @@ func TestCertificateFactsReadAsTheBrowserDoes(t *testing.T) {
 }
 
 func TestCertificateCommandsValidatePairAndExposeOnlyPublicMaterial(t *testing.T) {
-	cert, key, err := generateWebCertificate("router.lan")
+	certPEM, keyPEM, err := tlscert.Generate([]string{"router.lan"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
+	cert, key := string(certPEM), string(keyPEM)
 	if _, _, err := validateWebCertificate(cert, key); err != nil {
 		t.Fatal(err)
 	}
-	_, other, _ := generateWebCertificate("other.lan")
+	_, otherPEM, _ := tlscert.Generate([]string{"other.lan"}, time.Now())
+	other := string(otherPEM)
 	if _, _, err := validateWebCertificate(cert, other); err == nil {
 		t.Fatal("accepted mismatched key")
 	}
-	for _, host := range []string{"-bad", "has space", "router;reboot", strings.Repeat("x", 64) + ".lan"} {
-		if _, _, err := generateWebCertificate(host); err == nil {
-			t.Fatalf("accepted %q", host)
-		}
-	}
 	block, _ := pem.Decode([]byte(cert))
-	b := &credentialsFake{data: openwrt.AccessCredentials{CertificateBytes: block.Bytes, CertificateFile: "/etc/uhttpd.crt"}}
+	b := &credentialsFake{data: openwrt.AccessCredentials{CertificateBytes: block.Bytes, CertificateFile: "/etc/verso/tls.crt"}}
 	s := &Server{backend: b}
 	raw, err := s.readAccessCredentials(context.Background(), "sid")
 	if err != nil {
@@ -178,5 +184,24 @@ func TestCertificateCommandsValidatePairAndExposeOnlyPublicMaterial(t *testing.T
 	err = s.credentialCommand(context.Background(), credentialManifest(), "sid", plugin.ApplyAction{Name: "certificate-install", Args: map[string]string{"certificate": cert, "key": other}})
 	if err == nil || b.cert != "" || b.key != "" {
 		t.Fatal("invalid pair reached helper")
+	}
+}
+
+// TestANewCertificateIsTheRoutersToMake: Make a new one asks the router to make
+// the certificate, under the plugin's declared grant; the shell holds no key.
+func TestANewCertificateIsTheRoutersToMake(t *testing.T) {
+	b := &credentialsFake{}
+	s := &Server{backend: b}
+	make := plugin.ApplyAction{Name: "certificate-generate"}
+	if err := s.credentialCommand(context.Background(), credentialManifest(), "sid", make); err != nil || !b.made {
+		t.Fatalf("the router was not asked to make one: %v", err)
+	}
+	if b.cert != "" || b.key != "" {
+		t.Error("the shell handed the router a pair of its own")
+	}
+	b.made = false
+	undeclared := plugin.Manifest{ID: "system", ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "ubus", Object: "verso", Function: "setWebCertificate"}}}}
+	if err := s.credentialCommand(context.Background(), undeclared, "sid", make); err == nil || b.made {
+		t.Error("a plugin that did not declare makeWebCertificate had one made")
 	}
 }

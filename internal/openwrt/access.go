@@ -22,3 +22,6 @@ func (*NativeBackend) SetAuthorizedKeys(ctx context.Context, sid, expected, keys
 func (*NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key string) error {
 	return callHelper(ctx, "", "setWebCertificate", sid, map[string]string{"certificate": cert, "key": key}, nil)
 }
+func (*NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
+	return callHelper(ctx, "", "makeWebCertificate", sid, nil, nil)
+}

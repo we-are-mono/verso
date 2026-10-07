@@ -8,6 +8,8 @@ fn request() -> Request {
         query: Form::default(),
         snapshot: Snapshot::from_value(
             json!({"system":{"sys":{".name":"sys",".type":"system","hostname":"router","zonename":"UTC","timezone":"UTC"},"ntp":{".name":"ntp",".type":"timeserver","enabled":"1","server":["time.example.org"]}},"network":{"globals":{".name":"globals",".type":"globals","ula_prefix":"fd42:1:1::/48","packet_steering":"1"},"lan":{".name":"lan",".type":"interface"}},"dropbear":{"ssh":{".name":"ssh",".type":"dropbear","Port":"22","Interface":"lan","PasswordAuth":"on"}},"uhttpd":{"main":{".name":"main",".type":"uhttpd","listen_http":["0.0.0.0:80","[::]:80"],"listen_https":["0.0.0.0:443"]}}}),
+            // uhttpd stays in the snapshot: a router may run it beside Verso,
+            // and Access neither shows nor writes it.
         ),
         ubus: Ubus::from_value(json!({})),
     }
@@ -56,29 +58,19 @@ fn access_stages_only_what_differs() {
         let e = post(&access_request(), &Form::parse(body));
         serde_json::to_value(&e).unwrap()["commit"].clone()
     };
-    // Either form posted back as drawn: nothing to stage, the defaults of
+    // The form posted back as drawn: nothing to stage, the defaults of
     // options the router leaves unset included.
     let ssh =
         "_access_config=ssh&section=ssh&Port=22&Interface=lan&PasswordAuth=1&RootPasswordAuth=1";
-    let web = "_access_config=web&section=main&listen_http_port=80&listen_https_port=443";
     assert!(
         staged(ssh).as_array().is_none_or(Vec::is_empty),
         "{}",
         staged(ssh)
     );
-    assert!(
-        staged(web).as_array().is_none_or(Vec::is_empty),
-        "{}",
-        staged(web)
-    );
     // One switch flipped: that option alone.
     assert_eq!(
         staged(&ssh.replace("&PasswordAuth=1", ""))[0]["values"],
         json!({"PasswordAuth": "off"})
-    );
-    assert_eq!(
-        staged(&format!("{web}&redirect_https=1"))[0]["values"],
-        json!({"redirect_https": "1"})
     );
 }
 #[test]
@@ -160,7 +152,8 @@ fn general_says_where_each_option_lives() {
 fn access_forms_say_where_their_options_live() {
     let page = access_page(json!([]));
     assert!(page.contains("\"target\":\"dropbear.ssh\""), "{page}");
-    assert!(page.contains("\"target\":\"uhttpd.main\""), "{page}");
+    // Verso serves its own pages: uhttpd's options are no part of Access.
+    assert!(!page.contains("uhttpd"), "{page}");
 }
 #[test]
 fn computer_time_is_an_act_on_the_clock_dressed_as_the_certificates() {
@@ -214,8 +207,8 @@ fn access_refuses_invalid_ports_and_stale_sections() {
     for f in [
         "_access_config=ssh&section=ssh&Port=70000&Interface=lan",
         "_access_config=ssh&section=other&Port=22",
-        "_access_config=web&section=main&redirect_https=1&listen_http=0.0.0.0%3A80",
-        "_access_config=web&section=main&listen_http=bad",
+        // uhttpd is not Access's to write, whatever a form claims
+        "_access_config=web&section=main&listen_http_port=8080",
     ] {
         assert!(post(&r, &Form::parse(f)).commit.is_empty(), "{f}");
     }
@@ -244,18 +237,8 @@ fn a_refusal_is_said_once() {
         let e = post(&r, &Form::parse(body));
         serde_json::to_string(&e).unwrap().matches(said).count()
     };
-    let web = "_access_config=web&section=main&listen_http_port=80";
     let port = "Enter a port from 1 to 65535.";
-    assert_eq!(times(&format!("{web}&listen_https_port=99999"), port), 1);
     assert_eq!(times("_access_config=ssh&section=ssh&Port=99999", port), 1);
-    let redirect = "Add an HTTPS listener before enabling redirection.";
-    let unsecured = format!("{web}&redirect_https=1");
-    assert_eq!(times(&unsecured, redirect), 1);
-    let j = serde_json::to_value(post(&r, &Form::parse(&unsecured)))
-        .unwrap()
-        .to_string();
-    let on_switch = format!(r#""error":"{redirect}","key":"redirect_https""#);
-    assert!(j.contains(&on_switch), "the switch carries it: {j}");
     let hostname = "Use 1–63 letters, numbers or hyphens, without a leading or trailing hyphen.";
     let bad = GENERAL_AS_IS.replace("hostname=router", "hostname=-bad");
     let e = post(&request(), &Form::parse(&bad));
@@ -263,30 +246,6 @@ fn a_refusal_is_said_once() {
         serde_json::to_string(&e).unwrap().matches(hostname).count(),
         1
     );
-}
-#[test]
-fn web_ports_preserve_all_bind_addresses() {
-    let mut r = request();
-    r.path = "/access".into();
-    let e = post(&r, &Form::parse("_access_config=web&section=main&listen_http_port=8080&listen_https_port=8443&redirect_https=1"));
-    assert_eq!(e.commit.len(), 1, "{e:?}");
-    assert_eq!(
-        e.commit[0].values["listen_http"],
-        json!(["0.0.0.0:8080", "[::]:8080"])
-    );
-    assert_eq!(e.commit[0].values["listen_https"], json!(["0.0.0.0:8443"]));
-    for body in [
-        "listen_http_port=443&listen_https_port=443",
-        "listen_http_port=70000&listen_https_port=443",
-        "listen_http_port=80&redirect_https=1",
-    ] {
-        assert!(post(
-            &r,
-            &Form::parse(&format!("_access_config=web&section=main&{body}"))
-        )
-        .commit
-        .is_empty());
-    }
 }
 #[test]
 fn unknown_access_page_is_contained() {
@@ -303,7 +262,7 @@ fn access_with(keys: serde_json::Value, certificate: serde_json::Value) -> Strin
     serde_json::to_string(&get(&r)).unwrap()
 }
 fn self_signed() -> serde_json::Value {
-    json!({"file":"/etc/uhttpd.crt","subject":"OpenWrt","issuer":"OpenWrt","from":"2026-08-31",
+    json!({"file":"/etc/verso/tls.crt","subject":"OpenWrt","issuer":"OpenWrt","from":"2026-08-31",
         "until":"2027-10-02","fingerprint":"9D 4C 7A","self_signed":"1",
         "days_total":"397","days_left":"376"})
 }
@@ -374,9 +333,8 @@ fn sections_commit_their_settings_before_what_they_hold() {
     let sections = page["widget"]["children"].as_array().unwrap();
     let (ssh, web) = (&sections[0]["children"], &sections[1]["children"]);
     assert_eq!(ssh[0]["type"], "form", "{ssh}");
-    // Each form's button names what it saves, never a bare "Save".
+    // The form's button names what it saves, never a bare "Save".
     assert_eq!(ssh[0]["submit"], "Save SSH settings");
-    assert_eq!(web[0]["submit"], "Save web interface settings");
     assert!(
         !ssh[0].to_string().contains("Authorized keys"),
         "keys are not a setting"
@@ -385,12 +343,15 @@ fn sections_commit_their_settings_before_what_they_hold() {
         (ssh[1]["type"].as_str(), ssh[1]["title"].as_str()),
         (Some("section"), Some("Authorized keys"))
     );
-    assert_eq!(web[0]["type"], "form", "{web}");
+    // The web interface holds no settings of the plugin's, only the
+    // certificate Verso serves.
+    assert_eq!(sections[1]["title"], "Web interface");
+    assert_eq!(web.as_array().unwrap().len(), 1, "{web}");
     assert_eq!(
-        (web[1]["type"].as_str(), web[1]["title"].as_str()),
+        (web[0]["type"].as_str(), web[0]["title"].as_str()),
         (Some("section"), Some("Certificates"))
     );
-    let held = &web[1]["children"][0];
+    let held = &web[0]["children"][0];
     assert_eq!(
         held["type"], "stack",
         "the certificate and its acts are one group: {web}"
@@ -439,12 +400,6 @@ fn a_certificate_someone_else_signed_names_its_signer() {
     );
     assert_eq!(signed["dot"], "success");
     assert!(signed.get("help").is_none());
-}
-#[test]
-fn access_names_the_rebinding_guard_for_what_it_does() {
-    let page = access_page(json!([]));
-    assert!(page.contains("Block DNS rebinding"), "{page}");
-    assert!(!page.contains("Refuse requests from the internet"));
 }
 #[test]
 fn access_spells_authorized_keys_one_way() {
@@ -558,7 +513,7 @@ fn the_key_pages_are_gone_now_keys_are_kept_in_place() {
 #[test]
 fn access_forms_wait_for_a_change_before_saving() {
     let page = access_page(json!([]));
-    assert_eq!(page.matches("\"style\":\"settings\"").count(), 2, "{page}");
+    assert_eq!(page.matches("\"style\":\"settings\"").count(), 1, "{page}");
     assert!(!page.contains("\"style\":\"page\""));
 }
 #[test]
@@ -689,18 +644,18 @@ fn a_certificate_act_is_a_drawer_that_closes_back_on_access() {
 fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
     // A valid submission runs the act; the drawer stays open in the answer,
     // so a refusal from the router is said in it.
-    let (e, j) = certificate_act("/access/certificate/new", Some("hostname=router.lan"));
+    let (e, j) = certificate_act("/access/certificate/new", Some(""));
     assert_eq!(e.commands.len(), 1);
     assert_eq!(e.commands[0].name, "certificate-generate");
-    assert_eq!(drawer_of(&j["act"]).unwrap()["open"], true);
-    // An invalid one runs nothing and says why, in the drawer.
-    let (e, j) = certificate_act("/access/certificate/new", Some("hostname=not%20a%20host"));
-    assert!(e.commands.is_empty());
+    // the router names the certificate itself: nothing is asked or sent
+    assert!(e.commands[0].args.is_empty(), "{:?}", e.commands[0]);
     let drawer = drawer_of(&j["act"]).unwrap();
-    assert_eq!(
-        drawer["children"][0]["error"],
-        "Enter a valid hostname or IP address."
+    assert_eq!(drawer["open"], true);
+    assert!(
+        !drawer.to_string().contains("\"type\":\"field\""),
+        "{drawer}"
     );
+    // An invalid install runs nothing and says why, in the drawer.
     let (e, j) = certificate_act("/access/certificate/install", Some("certificate=x&key=y"));
     assert!(e.commands.is_empty());
     let drawer = drawer_of(&j["act"]).unwrap();

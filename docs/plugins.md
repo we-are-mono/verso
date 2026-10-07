@@ -28,7 +28,8 @@ configuration, and the static routes (`config route`, `config route6`) in the sa
 file. Its manifest files two pages under Network: Interfaces (`/`) and Routes
 (`/routes`). **System General** remains a bundled System plugin. On **Access**, the
 shell owns password changes and login sessions; the System plugin contributes
-SSH and uhttpd configuration through its `system_access: "/access"` route.
+SSH configuration and the certificate Verso serves HTTPS with through its
+`system_access: "/access"` route.
 Only that contributor receives its own submitted form. Password submissions are
 never forwarded to plugins.
 

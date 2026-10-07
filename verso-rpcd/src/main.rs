@@ -336,6 +336,13 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
             access::certificate(argument(request, "certificate")?, argument(request, "key")?)
         }
+        "makeWebCertificate" => {
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
+            access::make()
+        }
         "setPassword" => {
             let username = argument(request, "username")?;
             let password = argument(request, "password")?;
@@ -1292,6 +1299,7 @@ mod tests {
         "accessCredentials",
         "setAuthorizedKeys",
         "setWebCertificate",
+        "makeWebCertificate",
         "setPassword",
         "setSystemTime",
         "pkgStatus",

@@ -125,38 +125,6 @@ const SETTINGS: &[Setting] = &[
         reads: Reads::Flag,
         folds: &[],
     },
-    Setting {
-        config: "uhttpd",
-        kind: "uhttpd",
-        option: "listen_http",
-        label: "HTTP listeners",
-        reads: Reads::List,
-        folds: &[],
-    },
-    Setting {
-        config: "uhttpd",
-        kind: "uhttpd",
-        option: "listen_https",
-        label: "HTTPS listeners",
-        reads: Reads::List,
-        folds: &[],
-    },
-    Setting {
-        config: "uhttpd",
-        kind: "uhttpd",
-        option: "redirect_https",
-        label: "Redirect to HTTPS",
-        reads: Reads::Flag,
-        folds: &[],
-    },
-    Setting {
-        config: "uhttpd",
-        kind: "uhttpd",
-        option: "rfc1918_filter",
-        label: "Block DNS rebinding",
-        reads: Reads::Flag,
-        folds: &[],
-    },
 ];
 
 /// describe answers the shell's pending-change list with one sentence per

@@ -23,7 +23,7 @@ func certificatePanelServer(t *testing.T, b *credentialsFake, commands []plugin.
 	m.Socket, m.SystemAccess, m.Name = "/run/system.sock", "/access", "System"
 	m.SchemaVersion = supportedSchemaVersion
 	widget := `{"type":"table","columns":[],"rows":[{"drawer":{"title":"Make a new certificate","open":true,"closed":"/system/access",
-	  "children":[{"type":"form","submit":"Make certificate","fields":[{"type":"field","name":"hostname","label":"Router name","value":"router.lan"}]}]}}]}`
+	  "children":[{"type":"form","submit":"Make certificate","fields":[{"type":"text","text":"Makes a self-signed certificate for this router's name and its addresses on your network."}]}]}}]}`
 	env := &plugin.Envelope{SchemaVersion: 1, Title: "Make a new certificate", Widget: json.RawMessage(widget),
 		Back: &plugin.PageAction{Label: "Access", Href: "/system/access"}, Commands: commands}
 	if len(commands) > 0 {
@@ -55,13 +55,13 @@ func TestAPanelOpenedOverAPagePostsToItsOwnAddress(t *testing.T) {
 // closes on that page read again, with what happened said once there.
 func TestAPanelActThatRanClosesOnThePageReadAgain(t *testing.T) {
 	b := &credentialsFake{}
-	s := certificatePanelServer(t, b, []plugin.ApplyAction{{Name: "certificate-generate", Args: map[string]string{"hostname": "router.lan"}}})
-	rec, token := postPluginFromPanel(t, s, "/plugins/system/access/certificate/new", url.Values{"hostname": {"router.lan"}})
+	s := certificatePanelServer(t, b, []plugin.ApplyAction{{Name: "certificate-generate"}})
+	rec, token := postPluginFromPanel(t, s, "/plugins/system/access/certificate/new", url.Values{})
 	if rec.Code != http.StatusOK || rec.Header().Get("HX-Redirect") != "/system/access" {
 		t.Fatalf("want the frame sent to Access, got %d → %q:\n%s", rec.Code, rec.Header().Get("HX-Redirect"), rec.Body.String())
 	}
-	if !strings.Contains(b.cert, "BEGIN CERTIFICATE") {
-		t.Errorf("the certificate was not made: %q", b.cert)
+	if !b.made {
+		t.Error("the router was not asked to make the certificate")
 	}
 	if _, message := s.sessions.TakeFlash(token); message != "Access credentials updated." {
 		t.Errorf("flash = %q, want what happened, waiting on Access", message)
@@ -75,7 +75,7 @@ func TestAPanelActTheRouterRefusedStaysInThePanel(t *testing.T) {
 	b := &credentialsFake{}
 	s := certificatePanelServer(t, b, []plugin.ApplyAction{{Name: "certificate-install",
 		Args: map[string]string{"certificate": "-----BEGIN CERTIFICATE-----\nx\n-----END CERTIFICATE-----", "key": "-----BEGIN PRIVATE KEY-----\ny\n-----END PRIVATE KEY-----"}}})
-	rec, _ := postPluginFromPanel(t, s, "/plugins/system/access/certificate/new", url.Values{"hostname": {"router.lan"}})
+	rec, _ := postPluginFromPanel(t, s, "/plugins/system/access/certificate/new", url.Values{})
 	body := rec.Body.String()
 	if rec.Code != http.StatusUnprocessableEntity || rec.Header().Get("HX-Redirect") != "" {
 		t.Fatalf("want the refusal in the panel at 422, got %d → %q:\n%s", rec.Code, rec.Header().Get("HX-Redirect"), body)

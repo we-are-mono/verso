@@ -182,9 +182,10 @@ fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
         property("File", value(cert, "file"), false),
     ]
 }
-// certificate is the certificate and the acts that replace or fetch it, held
-// as one group so its acts read as the card's, not the section's — a part of
-// the web section under a subheading of its own, as the keys are of SSH.
+// certificate is the certificate Verso serves HTTPS with and the acts that
+// replace or fetch it, held as one group so its acts read as the card's, not
+// the section's — a part of the web section under a subheading of its own, as
+// the keys are of SSH.
 pub fn certificate(r: &Request) -> Widget {
     let mut children = vec![];
     if let Some(cert) = r
@@ -259,28 +260,16 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
     let mut command = None;
     let (title, submit);
     match path {
+        // The router names the certificate itself, for every way the LAN reaches
+        // it, as it does at first boot (ADR-017 §5): there is nothing to type.
         "/access/certificate/new" => {
             (title, submit) = ("Make a new certificate", "Make certificate");
-            let hostname = form
-                .map(|f| f.get("hostname"))
-                .unwrap_or_else(|| super::facts(&r.snapshot).hostname);
-            fields.push(Widget::field(
-                "hostname",
-                "Router name",
-                &hostname,
-                "host",
-                "",
-            ));
-            fields.push(Widget::text("Creates a self-signed certificate valid for two years. The web server restarts immediately."));
+            fields.push(Widget::text("Makes a self-signed certificate for this router's name and its addresses on your network, valid for two years. Devices that trusted the current one warn again until they trust the new one."));
             if form.is_some() {
-                if !super::valid_server(&hostname) {
-                    error = "Enter a valid hostname or IP address.".into();
-                } else {
-                    command = Some(ApplyAction {
-                        name: "certificate-generate".into(),
-                        args: BTreeMap::from([("hostname".into(), hostname)]),
-                    });
-                }
+                command = Some(ApplyAction {
+                    name: "certificate-generate".into(),
+                    args: BTreeMap::new(),
+                });
             }
         }
         "/access/certificate/install" => {
@@ -291,7 +280,7 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             // A failed attempt may keep its public certificate, never its key.
             fields.push(textarea("key", "Private key (PEM)", ""));
             fields.push(Widget::text(
-                "The certificate and key must match. The web server restarts immediately.",
+                "The certificate and key must match. The router serves it from the next connection.",
             ));
             if let Some(form) = form {
                 if !certificate.contains("BEGIN CERTIFICATE")

@@ -522,6 +522,10 @@ func (fakeBackend) SetWebCertificate(context.Context, string, string, string) er
 	return errNoHelper
 }
 
+func (fakeBackend) MakeWebCertificate(context.Context, string) error {
+	return errNoHelper
+}
+
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a
 // canned envelope or error and records the request the gateway forwarded, so the
 // gateway is testable with no plugin process and no socket.

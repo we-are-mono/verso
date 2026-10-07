@@ -236,11 +236,14 @@ type Backend interface {
 	NetworkSetUp(ctx context.Context, sid, name string, up bool) error
 	NetworkRestart(ctx context.Context, sid, name string) error
 	// AccessCredentials reads the SSH authorized keys and the web certificate;
-	// SetAuthorizedKeys replaces the keys unless they changed from expected, and
-	// SetWebCertificate installs a certificate and its key. All ride the helper.
+	// SetAuthorizedKeys replaces the keys unless they changed from expected,
+	// SetWebCertificate installs a certificate and its key, and
+	// MakeWebCertificate has the router make a self-signed one for its own
+	// names. All ride the helper.
 	AccessCredentials(ctx context.Context, sid string) (AccessCredentials, error)
 	SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error
 	SetWebCertificate(ctx context.Context, sid, cert, key string) error
+	MakeWebCertificate(ctx context.Context, sid string) error
 	// DiagStart starts a network diagnostic on the router and names the run;
 	// DiagRead reads what it has written past a cursor, and DiagStop ends it.
 	// A run is its operator's alone: the helper answers another session's read

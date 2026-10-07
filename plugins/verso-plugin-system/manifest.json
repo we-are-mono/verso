@@ -28,11 +28,6 @@
         "function": "read"
       },
       {
-        "scope": "uci",
-        "object": "uhttpd",
-        "function": "read"
-      },
-      {
         "scope": "ubus",
         "object": "verso",
         "function": "accessCredentials"
@@ -60,11 +55,6 @@
         "function": "write"
       },
       {
-        "scope": "uci",
-        "object": "uhttpd",
-        "function": "write"
-      },
-      {
         "scope": "ubus",
         "object": "verso",
         "function": "setAuthorizedKeys"
@@ -73,6 +63,11 @@
         "scope": "ubus",
         "object": "verso",
         "function": "setWebCertificate"
+      },
+      {
+        "scope": "ubus",
+        "object": "verso",
+        "function": "makeWebCertificate"
       }
     ]
   },

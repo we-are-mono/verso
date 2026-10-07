@@ -7,16 +7,18 @@ START=95
 STOP=10
 
 TLS_DIR=/etc/verso
+EXTRA_COMMANDS="certificate"
+EXTRA_HELP="	certificate	Make a new self-signed certificate for the web interface"
 
 # make_certificate gives the shell a self-signed certificate to serve HTTPS with
-# when it has none, named for every way the LAN reaches the router: the
-# hostname, the hostname in the local domain, and the lan interface's addresses
-# (the shell keeps IPv4 and unique local IPv6 among them). It runs here, as root,
-# because the shell cannot write /etc; the key is left readable by the verso
-# group the shell runs in (ADR-017 §3, §5).
+# when it has none, or always when asked to "replace": named for every way the
+# LAN reaches the router — the hostname, the hostname in the local domain, and
+# the lan interface's addresses (the shell keeps IPv4 and unique local IPv6
+# among them). It runs here, as root, because the shell cannot write /etc; the
+# key is left readable by the verso group the shell runs in (ADR-017 §3, §5).
 make_certificate() {
 	local host domain v4 v6
-	[ -s "$TLS_DIR/tls.crt" ] && [ -s "$TLS_DIR/tls.key" ] && return
+	[ "$1" != replace ] && [ -s "$TLS_DIR/tls.crt" ] && [ -s "$TLS_DIR/tls.key" ] && return
 	. /lib/functions/network.sh
 	host="$(uci -q get system.@system[0].hostname)"
 	host="${host:-OpenWrt}"
@@ -26,6 +28,12 @@ make_certificate() {
 	mkdir -p "$TLS_DIR"
 	/usr/bin/verso certificate generate "$TLS_DIR" "$host" "$host.${domain:-lan}" $v4 $v6 &&
 		chgrp verso "$TLS_DIR/tls.key"
+}
+
+# certificate is Make a new one on Access, run through verso-rpcd, which then
+# has the running shell serve the new pair.
+certificate() {
+	make_certificate replace
 }
 
 start_service() {

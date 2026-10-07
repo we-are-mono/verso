@@ -85,7 +85,7 @@ same uci configs, so nothing moves between them.
 
 | File | Mode | Owner |
 |---|---|---|
-| `/etc/verso/tls.crt` | 0644 | root:root |
+| `/etc/verso/tls.crt` | 0644 | root |
 | `/etc/verso/tls.key` | 0640 | root:verso |
 
 The certificate file holds the leaf followed by its chain. The key is the one file
@@ -113,9 +113,12 @@ normalised to PKCS#8.
 ### 5. A self-signed certificate from first boot
 
 When `/etc/verso/tls.crt` is absent, the init script runs `verso certificate
-generate` as root before starting the shell. It is the same generator behind
-**Make a new one** on Access: ECDSA P-256, valid two years, `serverAuth`, and
-named for every way the LAN reaches the router:
+generate` as root before starting the shell. **Make a new one** on Access runs
+the same step: `verso-rpcd`'s `makeWebCertificate` calls the init script's
+`certificate` command, then signals the shell as `setWebCertificate` does. The
+key is made as root and never passes through the shell. The certificate is
+ECDSA P-256, valid two years, `serverAuth`, and named for every way the LAN
+reaches the router:
 
 - the hostname (`system.@system[0].hostname`),
 - the hostname under the local domain (`dhcp.@dnsmasq[0].domain`, `lan` when absent),
