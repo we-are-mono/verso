@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net"
 	"path/filepath"
 	"strings"
@@ -168,6 +169,13 @@ func TestFirewallCountersPassesResultThrough(t *testing.T) {
 // verb shares.
 func helperReplying(t *testing.T, method, body string) string {
 	t.Helper()
+	return helperReplyingTo(t, method, nil, body)
+}
+
+// helperReplyingTo is helperReplying for a verb that carries arguments: the
+// request must arrive with exactly these.
+func helperReplyingTo(t *testing.T, method string, args map[string]string, body string) string {
+	t.Helper()
 	socket := filepath.Join(t.TempDir(), "helper.sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
@@ -184,13 +192,33 @@ func helperReplying(t *testing.T, method, body string) string {
 		if err := json.NewDecoder(conn).Decode(&request); err != nil {
 			return
 		}
-		if request.Method != method || request.SID != "good-sid" || len(request.Args) != 0 {
+		if request.Method != method || request.SID != "good-sid" || !maps.Equal(request.Args, args) {
 			_ = json.NewEncoder(conn).Encode(map[string]any{"status": 2, "error": "unexpected request"})
 			return
 		}
 		_, _ = conn.Write([]byte(body + "\n"))
 	}()
 	return socket
+}
+
+// TestPkgInfoAnswersOnePackageOrNone: a package's panel asks for it by name,
+// and the helper's null — neither installed nor in the feeds — is an answer,
+// not an error.
+func TestPkgInfoAnswersOnePackageOrNone(t *testing.T) {
+	socket := helperReplyingTo(t, "pkgInfo", map[string]string{"package": "htop"},
+		`{"status":0,"result":{"package":{"name":"htop","version":"3.5.1-r1","installed":true,"removable":true}}}`)
+	got, ok, err := dialPkgInfo(socket)(context.Background(), "good-sid", "htop")
+	if err != nil || !ok || got.Name != "htop" || got.Version != "3.5.1-r1" || !got.Installed || !got.Removable {
+		t.Fatalf("package=%+v ok=%v err=%v", got, ok, err)
+	}
+	socket = helperReplyingTo(t, "pkgInfo", map[string]string{"package": "nosuch"}, `{"status":0,"result":{"package":null}}`)
+	if got, ok, err := dialPkgInfo(socket)(context.Background(), "good-sid", "nosuch"); err != nil || ok {
+		t.Fatalf("an unknown package: package=%+v ok=%v err=%v", got, ok, err)
+	}
+	socket = helperReplyingTo(t, "pkgInfo", map[string]string{"package": "htop"}, `{"status":6,"error":"permission denied"}`)
+	if _, _, err := dialPkgInfo(socket)(context.Background(), "good-sid", "htop"); !errors.Is(err, ErrAccessDenied) {
+		t.Fatalf("a refused read: err=%v", err)
+	}
 }
 
 // TestPkgUpgradableDecodesBothVersions: the upgradable set reaches the caller as

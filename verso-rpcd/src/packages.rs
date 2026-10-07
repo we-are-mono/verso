@@ -45,23 +45,7 @@ pub fn installed() -> Result<Value, String> {
 // result. Installed copies win the merge, including their removal protection.
 // Pagination bounds the helper response even for an unfiltered All listing.
 pub fn browse(query: &str, offset: usize) -> Result<Value, String> {
-    let output = Command::new("apk")
-        .args([
-            "query",
-            "--network=no",
-            "--fields",
-            "name,version,origin,description,license,url,file-size",
-            "--format",
-            "json",
-            "*",
-        ])
-        .output()
-        .map_err(|error| format!("apk query: {error}"))?;
-    if !output.status.success() {
-        return Err(format!("apk query: {}", output_tail(&output.stderr)));
-    }
-    let available: Vec<Value> = serde_json::from_slice(&output.stdout)
-        .map_err(|error| format!("apk query returned invalid JSON: {error}"))?;
+    let available = index("*")?;
     let inventory = installed()?;
     Ok(browse_page(
         &available,
@@ -71,12 +55,65 @@ pub fn browse(query: &str, offset: usize) -> Result<Value, String> {
     ))
 }
 
+// info is one package by its exact name, for its panel. Loading the feed index
+// is most of what an index read costs on a router, so it is read only for a
+// package the router does not hold; the installed copy, which carries its
+// removal protection, needs only the installed database. Null when neither
+// holds the name.
+pub fn info(name: &str) -> Result<Value, String> {
+    let inventory = installed()?;
+    one_package(name, inventory.as_array().unwrap(), || index(name))
+}
+
+fn one_package(
+    name: &str,
+    inventory: &[Value],
+    index: impl FnOnce() -> Result<Vec<Value>, String>,
+) -> Result<Value, String> {
+    if let Some(found) = inventory.iter().find(|package| package["name"] == name) {
+        return Ok(found.clone());
+    }
+    Ok(index()?
+        .iter()
+        .find(|package| package["name"] == name)
+        .map(available_copy)
+        .unwrap_or(Value::Null))
+}
+
+// index reads the feed index's packages matching an apk pattern: "*" for all of
+// them, or a package's whole name for that one.
+fn index(pattern: &str) -> Result<Vec<Value>, String> {
+    let output = Command::new("apk")
+        .args([
+            "query",
+            "--network=no",
+            "--fields",
+            "name,version,origin,description,license,url,file-size",
+            "--format",
+            "json",
+            pattern,
+        ])
+        .output()
+        .map_err(|error| format!("apk query: {error}"))?;
+    if !output.status.success() {
+        return Err(format!("apk query: {}", output_tail(&output.stderr)));
+    }
+    serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("apk query returned invalid JSON: {error}"))
+}
+
+// available_copy is an index entry as a package the router does not hold.
+fn available_copy(raw: &Value) -> Value {
+    let mut package = normalize_installed(raw, &HashMap::new());
+    package["installed"] = json!(false);
+    package["removable"] = json!(false);
+    package
+}
+
 fn browse_page(available: &[Value], inventory: &[Value], query: &str, offset: usize) -> Value {
     let mut by_name = std::collections::BTreeMap::new();
     for raw in available {
-        let mut package = normalize_installed(raw, &HashMap::new());
-        package["installed"] = json!(false);
-        package["removable"] = json!(false);
+        let package = available_copy(raw);
         by_name.insert(
             package["name"].as_str().unwrap_or_default().to_string(),
             package,
@@ -502,6 +539,32 @@ mod tests {
             .as_array()
             .unwrap()
             .is_empty());
+    }
+
+    // A package's panel names one package: the installed copy answers without
+    // the feed index being read at all, and only a package the router does not
+    // hold is looked up in the index — by its whole name, never a part of it.
+    #[test]
+    fn one_package_is_the_installed_copy_before_the_index_is_read() {
+        let inventory = vec![
+            json!({"name":"ip-full", "version":"1", "installed":true, "removable":false, "required_by":["verso"]}),
+        ];
+        let found = one_package("ip-full", &inventory, || panic!("the index was read for an installed package"));
+        assert_eq!(found, Ok(inventory[0].clone()));
+
+        let index = || Ok(vec![json!({"name":"ip", "version":"2", "description":"Routing tool"})]);
+        let found = one_package("ip", &inventory, index).unwrap();
+        assert_eq!(found["name"], "ip");
+        assert_eq!(found["description"], "Routing tool");
+        assert_eq!(found["installed"], false);
+        assert_eq!(found["removable"], false);
+
+        let index = || Ok(vec![json!({"name":"ip-tiny", "version":"2"})]);
+        assert_eq!(one_package("ip", &inventory, index), Ok(Value::Null));
+        assert_eq!(
+            one_package("ip", &inventory, || Err("apk query: no index".to_string())),
+            Err("apk query: no index".to_string())
+        );
     }
 
     #[test]

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -339,6 +340,20 @@ func (f fakeBackend) PkgSearch(context.Context, string, string) ([]openwrt.Packa
 
 func (f fakeBackend) PkgBrowse(context.Context, string, string, int) (openwrt.PackagePage, error) {
 	return openwrt.PackagePage{Packages: f.pkgFound, Total: f.pkgTotal, Count: f.pkgTotal, Installed: len(f.pkgInstalledList)}, f.pkgErr
+}
+
+// PkgInfo answers the installed copy first and the index's otherwise, as the
+// helper does.
+func (f fakeBackend) PkgInfo(_ context.Context, _ string, name string) (openwrt.Package, bool, error) {
+	if f.pkgErr != nil {
+		return openwrt.Package{}, false, f.pkgErr
+	}
+	for _, list := range [][]openwrt.Package{f.pkgInstalledList, f.pkgFound} {
+		if i := slices.IndexFunc(list, func(p openwrt.Package) bool { return p.Name == name }); i >= 0 {
+			return list[i], true, nil
+		}
+	}
+	return openwrt.Package{}, false, nil
 }
 
 func (f fakeBackend) PkgFiles(context.Context, string, string) ([]string, error) {

@@ -153,6 +153,9 @@ type Backend interface {
 	// PkgBrowse pages through the local index, including installed packages.
 	PkgBrowse(ctx context.Context, sid, query string, offset int) (PackagePage, error)
 	PkgFiles(ctx context.Context, sid, name string) ([]string, error)
+	// PkgInfo is one package by its exact name: the installed copy when the
+	// router holds it, the feed index's otherwise; false when neither does.
+	PkgInfo(ctx context.Context, sid, name string) (Package, bool, error)
 	PkgUpgradeOne(ctx context.Context, sid, name string) error
 	// PkgInstalled lists every installed package (no descriptions).
 	PkgInstalled(ctx context.Context, sid string) ([]Package, error)
@@ -510,6 +513,7 @@ type (
 	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
 	pkgBrowseFn    func(ctx context.Context, sid, query string, offset int) (PackagePage, error)
 	pkgFilesFn     func(ctx context.Context, sid, name string) ([]string, error)
+	pkgInfoFn      func(ctx context.Context, sid, name string) (Package, bool, error)
 	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
 	pkgActFn       func(ctx context.Context, sid, name string) error
 	pkgUpgradesFn  func(ctx context.Context, sid string) ([]PackageUpgrade, error)
@@ -560,6 +564,7 @@ type NativeBackend struct {
 	pkgSearch      pkgSearchFn
 	pkgBrowse      pkgBrowseFn
 	pkgFiles       pkgFilesFn
+	pkgInfo        pkgInfoFn
 	pkgUpgradeOne  pkgActFn
 	pkgInstalled   pkgInstalledFn
 	pkgInstall     pkgActFn
@@ -622,6 +627,7 @@ func NewNativeBackend() *NativeBackend {
 		pkgSearch:      dialPkgSearch(""),
 		pkgBrowse:      dialPkgBrowse(""),
 		pkgFiles:       dialPkgFiles(""),
+		pkgInfo:        dialPkgInfo(""),
 		pkgUpgradeOne:  dialPkgAct("", "pkgUpgradeOne"),
 		pkgInstalled:   dialPkgInstalled(""),
 		pkgInstall:     dialPkgAct("", "pkgInstall"),
@@ -863,6 +869,10 @@ func (b *NativeBackend) PkgBrowse(ctx context.Context, sid, query string, offset
 
 func (b *NativeBackend) PkgFiles(ctx context.Context, sid, name string) ([]string, error) {
 	return b.pkgFiles(ctx, sid, name)
+}
+
+func (b *NativeBackend) PkgInfo(ctx context.Context, sid, name string) (Package, bool, error) {
+	return b.pkgInfo(ctx, sid, name)
 }
 
 func (b *NativeBackend) PkgUpgradeOne(ctx context.Context, sid, name string) error {
@@ -1794,6 +1804,18 @@ func dialPkgFiles(socket string) pkgFilesFn {
 		}
 		err := callHelper(ctx, socket, "pkgFiles", sid, map[string]string{"package": name}, &result)
 		return result.Files, err
+	}
+}
+
+func dialPkgInfo(socket string) pkgInfoFn {
+	return func(ctx context.Context, sid, name string) (Package, bool, error) {
+		var result struct {
+			Package *Package `json:"package"`
+		}
+		if err := callHelper(ctx, socket, "pkgInfo", sid, map[string]string{"package": name}, &result); err != nil || result.Package == nil {
+			return Package{}, false, err
+		}
+		return *result.Package, true, nil
 	}
 }
 

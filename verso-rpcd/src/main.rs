@@ -440,6 +440,14 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             let _guard = package_guard(state)?;
             Ok(json!({"files": packages::files(name).map_err(Failure::unknown)?}))
         }
+        "pkgInfo" => {
+            let name = argument(request, "package")?;
+            if !packages::valid_name(name) {
+                return Err(Failure::invalid("invalid package name"));
+            }
+            let _guard = package_guard(state)?;
+            Ok(json!({"package": packages::info(name).map_err(Failure::unknown)?}))
+        }
         "pkgInstall" | "pkgRemove" | "pkgUpgradeOne" => {
             let name = argument(request, "package")?;
             if !packages::valid_name(name) {
@@ -1337,6 +1345,7 @@ mod tests {
         "pkgSearch",
         "pkgBrowse",
         "pkgFiles",
+        "pkgInfo",
         "pkgUpgradeOne",
         "pkgInstall",
         "pkgRemove",
