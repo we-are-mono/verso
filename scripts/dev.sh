@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 #
-# Dev loop: watch the shell, helper, bundled plugins, and ACLs independently;
+# Dev loop: watch the shell, helper, plugins, and ACLs independently;
 # rebuild and hot-swap only the component that changed. No image rebuild or
 # OpenWrt reboot is needed, and a shell/UI edit cannot interrupt an in-flight
 # verso-rpcd request.
@@ -19,7 +19,6 @@ DEV_CSS=/usr/share/verso/verso-dev.css # in-container drop file the shell reads 
 ACL_SRC=docker/rootfs/usr/share/acl.d
 RPCD_ACL_SRC=docker/rootfs/usr/share/rpcd/acl.d
 URL="http://localhost:8080"
-BUNDLED_PLUGIN_GLOB=plugins/verso-plugin-*/bundled
 
 log() { printf '\033[36m[dev]\033[0m %s\n' "$*"; }
 
@@ -173,15 +172,23 @@ deploy_i18n() {
 	log "i18n catalogs reloaded"
 }
 
-# deploy_bundled_plugins discovers plugins by a checked-in `bundled` marker.
-# Adding another bundled Rust plugin therefore makes `make dev` install and
-# activate it without teaching this script its name. Independent/reference
-# plugins have no marker and remain under their own deploy flow.
-deploy_bundled_plugins() {
-	local marker dir name id cargo_bin="${CARGO:-$HOME/.cargo/bin/cargo}"
-	for marker in $BUNDLED_PLUGIN_GLOB; do
-		[ -e "$marker" ] || continue
-		dir="$(dirname "$marker")"
+# dev_plugins lists the plugins `make dev` builds and deploys: every Rust plugin
+# under plugins/ — the core ones tracked here, and the non-core ones checked out
+# beside them from their own repositories — so a plugin is deployed without
+# teaching this script its name. A plugin that brings its own deploy-dev.sh is
+# left to it.
+dev_plugins() {
+	local dir
+	for dir in plugins/verso-plugin-*/; do
+		dir="${dir%/}"
+		[ -f "$dir/Cargo.toml" ] && [ -f "$dir/manifest.json" ] && [ ! -e "$dir/deploy-dev.sh" ] && echo "$dir"
+	done
+	return 0
+}
+
+deploy_plugins() {
+	local dir name id cargo_bin="${CARGO:-$HOME/.cargo/bin/cargo}"
+	for dir in $(dev_plugins); do
 		name="$(basename "$dir")"
 		id="${name#verso-plugin-}"
 		if (cd "$dir" && "$cargo_bin" build --locked --release --target x86_64-unknown-linux-musl) 2>&1; then
@@ -198,8 +205,7 @@ deploy_bundled_plugins() {
 				docker exec "$CONTAINER" sh -c \
 					"chown root:root /usr/share/rpcd/acl.d/$name.json; chmod 0644 /usr/share/rpcd/acl.d/$name.json"
 			fi
-			# A plugin's hotplug handlers (the VPN plugin's record of what each
-			# OpenVPN instance last did) land where hotplug-call finds them.
+			# A plugin's hotplug handlers land where hotplug-call finds them.
 			if [ -d "$dir/rootfs/etc/hotplug.d" ]; then
 				docker cp "$dir/rootfs/etc/hotplug.d/." "$CONTAINER:/etc/hotplug.d/"
 				docker exec "$CONTAINER" sh -c "chown -R root:root /etc/hotplug.d; chmod -R go-w /etc/hotplug.d"
@@ -281,7 +287,7 @@ sync_all() {
 	seed_dev_listeners
 	deploy_i18n
 	deploy_helper
-	deploy_bundled_plugins
+	deploy_plugins
 	deploy_shell
 }
 
@@ -304,9 +310,8 @@ helper_sig() {
 plugins_sig() {
 	{
 		find plugins/verso-plugin-sdk \( -name target -o -name tests -o -name testdata \) -prune -o -type f -printf '%T@ %p\n'
-		for marker in $BUNDLED_PLUGIN_GLOB; do
-			[ -e "$marker" ] || continue
-			find "$(dirname "$marker")" \( -name target -o -name tests -o -name testdata \) -prune -o -type f -printf '%T@ %p\n'
+		for dir in $(dev_plugins); do
+			find "$dir" \( -name target -o -name build -o -name .git -o -name tests -o -name testdata \) -prune -o -type f -printf '%T@ %p\n'
 		done
 	} 2>/dev/null | sha1sum
 }
@@ -351,7 +356,7 @@ while sleep 1; do
 	fi
 	if [ "$cur_plugins" != "$last_plugins" ]; then
 		last_plugins="$cur_plugins"
-		deploy_bundled_plugins
+		deploy_plugins
 	fi
 	if [ "$cur_shell" != "$last_shell" ]; then
 		last_shell="$cur_shell"

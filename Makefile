@@ -15,8 +15,10 @@ GOOS     ?= linux
 BUILDDIR := build
 CARGO    ?= $(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME)/.cargo/bin/cargo,cargo)
 RPCD_MANIFEST := verso-rpcd/Cargo.toml
-# The bundled plugins; each is plugins/verso-plugin-<name>, a crate of its own.
-PLUGINS := interfaces system firewall dnsdhcp qos vpn
+# The core plugins, built and shipped inside the verso package; each is
+# plugins/verso-plugin-<name>, a crate of its own. Every other plugin is a
+# repository of its own that builds and packages itself.
+PLUGINS := interfaces system firewall
 plugin_manifest = plugins/verso-plugin-$(1)/Cargo.toml
 # Every Rust crate the tree tests and lints: the helper, the SDK, the plugins.
 CRATES := $(RPCD_MANIFEST) plugins/verso-plugin-sdk/Cargo.toml $(foreach p,$(PLUGINS),$(call plugin_manifest,$(p)))
@@ -97,7 +99,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build dev css test lint deadcode hooks clean apk apk-publish apk-preflight apk-dnsdhcp apk-dnsdhcp-publish apk-qos apk-qos-publish apk-vpn apk-vpn-publish apk-i18n apk-i18n-publish i18n-audit version
+.PHONY: all build dev css test lint deadcode hooks clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -247,123 +249,6 @@ apk-publish: apk
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
-
-# ── DNS/DHCP plugin packaging ─────────────────────────────────────────────────
-# The DNS/DHCP plugin ships as its own package rather than inside the verso
-# payload: it is only useful where dnsmasq serves the network, and apk is what
-# states that — `depends:dnsmasq` alongside the shell it plugs into. Its layout
-# is the shell package's, narrowed to one plugin: the binary, the init script,
-# and the manifest the shell discovers on disk.
-DNSDHCP_PKG     := verso-plugin-dnsdhcp
-DNSDHCP_PAYLOAD := $(APK_DIR)/pkg-dnsdhcp
-DNSDHCP_OUT     := $(APK_DIR)/$(DNSDHCP_PKG)-$(VER).apk
-DNSDHCP_POSTINST := packaging/apk/post-install-dnsdhcp.sh
-
-apk-dnsdhcp: apk-preflight build-$(APK_GOARCH)
-	rm -rf $(DNSDHCP_PAYLOAD)
-	install -Dm755 $(BUILDDIR)/verso-plugin-dnsdhcp-$(APK_GOARCH)                       $(DNSDHCP_PAYLOAD)/usr/bin/verso-plugin-dnsdhcp
-	install -Dm755 plugins/verso-plugin-dnsdhcp/rootfs/etc/init.d/verso-plugin-dnsdhcp  $(DNSDHCP_PAYLOAD)/etc/init.d/verso-plugin-dnsdhcp
-	install -Dm644 plugins/verso-plugin-dnsdhcp/rootfs/usr/share/rpcd/acl.d/verso-plugin-dnsdhcp.json $(DNSDHCP_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-dnsdhcp.json
-	install -Dm644 plugins/verso-plugin-dnsdhcp/i18n/sl.json $(DNSDHCP_PAYLOAD)/usr/share/verso/plugins/dnsdhcp/i18n/sl.json
-	install -Dm644 plugins/verso-plugin-dnsdhcp/manifest.json                           $(DNSDHCP_PAYLOAD)/usr/share/verso/plugins/dnsdhcp/manifest.json
-	fakeroot -- sh -c 'chown -R 0:0 "$(DNSDHCP_PAYLOAD)" && "$(APK)" mkpkg \
-	  --info name:$(DNSDHCP_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \
-	  --info "description:Verso DNS and DHCP — dnsmasq and odhcpd, as pages" \
-	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
-	  --info origin:verso \
-	  --info "depends:verso dnsmasq" \
-	  --files "$(DNSDHCP_PAYLOAD)" \
-	  --script post-install:$(DNSDHCP_POSTINST) \
-	  --script post-upgrade:$(DNSDHCP_POSTINST) \
-	  --sign-key "$(KEY)" \
-	  --output "$(DNSDHCP_OUT)"'
-	@echo "built and signed: $(DNSDHCP_OUT)  (arch $(APK_ARCH), version $(VER))"
-
-# apk-dnsdhcp-publish drops the plugin package beside verso in the per-arch dev
-# repo and re-indexes what is present. Like the catalog publisher, it does not
-# clear the dir — run it after `apk-publish` to keep both in one index.
-apk-dnsdhcp-publish: apk-dnsdhcp
-	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
-	cp $(DNSDHCP_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
-	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
-	chmod -R a+rX $(VERSO_REPO_DIR)
-	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(DNSDHCP_OUT))  (index rebuilt)"
-
-# The device-limits plugin ships as its own package: it is only useful where fw4
-# enforces the rules it writes, and apk is what states that — `depends:firewall4`
-# alongside the shell it plugs into. Besides the usual three files it ships the
-# rpcd acl.d grant that makes its declared uci scopes grantable (ADR-007), and a
-# default /etc/config/qos, because uci will not write into a file that is absent.
-QOS_PKG      := verso-plugin-qos
-QOS_PAYLOAD  := $(APK_DIR)/pkg-qos
-QOS_OUT      := $(APK_DIR)/$(QOS_PKG)-$(VER).apk
-QOS_POSTINST := packaging/apk/post-install-qos.sh
-
-apk-qos: apk-preflight build-$(APK_GOARCH)
-	rm -rf $(QOS_PAYLOAD)
-	install -Dm755 $(BUILDDIR)/verso-plugin-qos-$(APK_GOARCH)                                      $(QOS_PAYLOAD)/usr/bin/verso-plugin-qos
-	install -Dm755 plugins/verso-plugin-qos/rootfs/etc/init.d/verso-plugin-qos                     $(QOS_PAYLOAD)/etc/init.d/verso-plugin-qos
-	install -Dm644 plugins/verso-plugin-qos/rootfs/etc/config/qos                                  $(QOS_PAYLOAD)/etc/config/qos
-	install -Dm644 plugins/verso-plugin-qos/rootfs/usr/share/rpcd/acl.d/verso-plugin-qos.json      $(QOS_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-qos.json
-	install -Dm644 plugins/verso-plugin-qos/manifest.json                                          $(QOS_PAYLOAD)/usr/share/verso/plugins/qos/manifest.json
-	fakeroot -- sh -c 'chown -R 0:0 "$(QOS_PAYLOAD)" && "$(APK)" mkpkg \
-	  --info name:$(QOS_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \
-	  --info "description:Verso device limits — what a device may reach, when, and how fast" \
-	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
-	  --info origin:verso \
-	  --info "depends:verso firewall4" \
-	  --files "$(QOS_PAYLOAD)" \
-	  --script post-install:$(QOS_POSTINST) \
-	  --script post-upgrade:$(QOS_POSTINST) \
-	  --sign-key "$(KEY)" \
-	  --output "$(QOS_OUT)"'
-	@echo "built and signed: $(QOS_OUT)  (arch $(APK_ARCH), version $(VER))"
-
-# apk-qos-publish drops the plugin package beside verso in the per-arch dev repo
-# and re-indexes what is present, like the DNS/DHCP publisher above.
-apk-qos-publish: apk-qos
-	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
-	cp $(QOS_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
-	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
-	chmod -R a+rX $(VERSO_REPO_DIR)
-	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(QOS_OUT))  (index rebuilt)"
-
-# The VPN plugin ships as its own package. It lists every tunnel whatever runs
-# it, and edits OpenVPN's, so it depends on `openvpn`: the name every OpenVPN
-# build provides (openssl, mbedtls), so a router keeps the one it has.
-VPN_PKG      := verso-plugin-vpn
-VPN_PAYLOAD  := $(APK_DIR)/pkg-vpn
-VPN_OUT      := $(APK_DIR)/$(VPN_PKG)-$(VER).apk
-VPN_POSTINST := packaging/apk/post-install-vpn.sh
-
-apk-vpn: apk-preflight build-$(APK_GOARCH)
-	rm -rf $(VPN_PAYLOAD)
-	install -Dm755 $(BUILDDIR)/verso-plugin-vpn-$(APK_GOARCH)                                      $(VPN_PAYLOAD)/usr/bin/verso-plugin-vpn
-	install -Dm755 plugins/verso-plugin-vpn/rootfs/etc/init.d/verso-plugin-vpn                     $(VPN_PAYLOAD)/etc/init.d/verso-plugin-vpn
-	install -Dm644 plugins/verso-plugin-vpn/rootfs/usr/share/rpcd/acl.d/verso-plugin-vpn.json      $(VPN_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-vpn.json
-	install -Dm644 plugins/verso-plugin-vpn/i18n/sl.json                                           $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/i18n/sl.json
-	install -Dm644 plugins/verso-plugin-vpn/manifest.json                                          $(VPN_PAYLOAD)/usr/share/verso/plugins/vpn/manifest.json
-	fakeroot -- sh -c 'chown -R 0:0 "$(VPN_PAYLOAD)" && "$(APK)" mkpkg \
-	  --info name:$(VPN_PKG) --info version:$(VER) --info arch:$(APK_ARCH) \
-	  --info "description:Verso VPN — every tunnel on the router, and OpenVPN profiles read out" \
-	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
-	  --info origin:verso \
-	  --info "depends:verso openvpn" \
-	  --files "$(VPN_PAYLOAD)" \
-	  --script post-install:$(VPN_POSTINST) \
-	  --script post-upgrade:$(VPN_POSTINST) \
-	  --sign-key "$(KEY)" \
-	  --output "$(VPN_OUT)"'
-	@echo "built and signed: $(VPN_OUT)  (arch $(APK_ARCH), version $(VER))"
-
-# apk-vpn-publish drops the plugin package beside verso in the per-arch dev repo
-# and re-indexes what is present, like the publishers above.
-apk-vpn-publish: apk-vpn
-	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
-	cp $(VPN_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
-	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
-	chmod -R a+rX $(VERSO_REPO_DIR)
-	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(VPN_OUT))  (index rebuilt)"
 
 # ── i18n catalog packaging ────────────────────────────────────────────────────
 # A catalog is a per-component data package, discovered on disk at runtime

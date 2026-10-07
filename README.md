@@ -13,9 +13,10 @@ that register with the shell and look native — **without writing HTML or CSS**
 > multi-page admin UI over live `ubus`/`uci` from a booted OpenWrt — login/session, staged
 > config changes with device-side rollback, package/service management — styled with a
 > design-token system and privilege-gated through rpcd (ADR-007). The plugin transport, a
-> broad widget set and a Rust plugin SDK are in place, and the bundled pages (interfaces,
-> firewall, DNS and DHCP, device limits, system) are plugins built on it; the open question
-> is still whether a *third-party* plugin renders native through the schema alone.
+> broad widget set and a Rust plugin SDK are in place, and the core pages (interfaces,
+> firewall, system) are plugins built on it, as are the non-core DNS and DHCP, device limits
+> and VPN plugins, each a repository of its own; the open question is still whether a
+> *third-party* plugin renders native through the schema alone.
 
 **Minimum target: 128 MB flash** (NAND-class). Flash is the binding constraint, not RAM:
 the shell is a single, deliberately unconstrained Go binary, and it plus its plugins fit
@@ -94,7 +95,10 @@ internal/
   deviceicon/ version/   device-type icon by MAC OUI/hostname · build version stamp
 plugins/
   verso-plugin-sdk/   the Rust plugin SDK: envelope, widgets, forms, serving
-  verso-plugin-*/     bundled plugins: interfaces, system, firewall, dnsdhcp, qos
+  verso-plugin-*/     core plugins, shipped in the verso package: interfaces, system,
+                      firewall. Non-core plugins are repositories of their own
+                      (we-are-mono/verso-plugin-dnsdhcp, -qos, -vpn), checked out
+                      here for `make dev` to deploy them too
 verso-rpcd/           persistent privileged Rust companion (ADR-007): src/ + Cargo
 i18n/                 the shell's translation catalogs (sl)
 profiles/             hardware profiles: sensors and board art per device
@@ -121,7 +125,7 @@ the Tailwind CLI is auto-fetched (pinned) on first `make css`/`build`.
 make test           # go test ./... + cargo test (unit-tested with fakes; no device needed)
 make build          # cross-compiles both arches (compiles CSS first) ->
                     #   build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64},
-                    #   build/verso-plugin-{interfaces,system,firewall,dnsdhcp,qos}-{amd64,arm64}
+                    #   build/verso-plugin-{interfaces,system,firewall}-{amd64,arm64}
 make build-arm64    # just the device target (amd64 is the docker testbed's arch)
 make apk            # the signed router package, build/apk/verso-<version>.apk
 make version        # what this commit builds as
@@ -152,7 +156,7 @@ Fast inner loop:
 make dev            # watch sources -> hot-swap only the component that changed
 ```
 Edit, save, and refresh the browser. CSS hot-swaps without a restart; shell,
-`verso-rpcd`, bundled plugins, and ACLs reload independently. This keeps an
+`verso-rpcd`, plugins, and ACLs reload independently. This keeps an
 in-flight helper operation alive while UI code is rebuilt. No image rebuild.
 Build outputs and test fixtures do not trigger reloads.
 

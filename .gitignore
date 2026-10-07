@@ -1,24 +1,18 @@
 # Reference clones — cloned for investigation, not part of Verso
 /sources/
 
-# Most first-party plugin sources are independent reference repos. The plugin
-# SDK and bundled DNS/DHCP, Firewall, System, Interfaces, QoS and VPN plugins are
-# exceptions: the build and tests require their sources in a clean checkout.
+# The plugin SDK and the core plugins — Interfaces, System and Firewall — live
+# here. Every other plugin is a repository of its own (we-are-mono/verso-plugin-*),
+# checked out beside them, where `make dev` deploys it too.
 /plugins/*
 !/plugins/verso-plugin-sdk/
 !/plugins/verso-plugin-sdk/**
-!/plugins/verso-plugin-dnsdhcp/
-!/plugins/verso-plugin-dnsdhcp/**
 !/plugins/verso-plugin-firewall/
 !/plugins/verso-plugin-firewall/**
 !/plugins/verso-plugin-system/
 !/plugins/verso-plugin-system/**
 !/plugins/verso-plugin-interfaces/
 !/plugins/verso-plugin-interfaces/**
-!/plugins/verso-plugin-qos/
-!/plugins/verso-plugin-qos/**
-!/plugins/verso-plugin-vpn/
-!/plugins/verso-plugin-vpn/**
 /plugins/**/target/
 
 # Scratch research notes — not part of the project
