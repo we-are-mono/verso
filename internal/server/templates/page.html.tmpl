@@ -53,7 +53,10 @@
   {{template "verso-staged-chip" .Staged}}
   <div data-verso-session class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
     <div class="mx-4 flex min-w-0 max-w-6xl flex-1 items-center justify-end gap-2 sm:mx-6 md:ml-10 md:mr-10 md:gap-4">
-      {{if and .Overview .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm font-semibold text-crimson-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span class="sr-only xl:not-sr-only xl:truncate">{{ t "No administrator password" }}</span></a>
+      {{/* Security state is the router's, not one page's: with no root
+           password the warning stands in the top bar on every page, leading to
+           Access where the password is set. */}}
+      {{if .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm text-crimson-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span class="sr-only xl:not-sr-only xl:truncate"><span class="font-semibold">{{ t "No administrator password" }}</span> — {{ t "anyone can sign in" }}</span></a>
       {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-denim"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
       {{/* Logging out is a plain act with the identity it ends beside it: the
            account is a decided constant (ADR-007: one root credential, the shell
@@ -108,14 +111,8 @@
   {{/* Subpages are the rail's business — the active row opens them beneath
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
-  {{/* Security state sits at the navigation seam, not inside one page's content. */}}
-  {{if and .NoPassword (not .Overview)}}
+  {{if .Banner}}
   {{/* the square hangs on the banner's first 28px line */}}
-  <div class="relative z-10 -mt-px flex items-start gap-2.5 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7 text-crimson-deep">
-    <span class="flex shrink-0 pt-1">{{template "verso-message-mark" "danger"}}</span>
-    <span><span class="font-semibold">{{ t "No administrator password is set." }}</span> {{ t "Anyone who can reach this router can change its settings." }}</span>
-  </div>
-  {{else if .Banner}}
   <div class="relative z-10 -mt-px flex items-start gap-2.5 border-y px-8 py-3 text-sm leading-7
     {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
     {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep

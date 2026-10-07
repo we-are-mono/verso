@@ -3103,71 +3103,63 @@ func TestCrossSiteLogin(t *testing.T) {
 	}
 }
 
-// TestNoPasswordBanner: the full-width security warning shows only when root
-// has no password and sits at the navigation seam rather than inside content.
-func TestNoPasswordBanner(t *testing.T) {
-	warn := newServerFull(t, fakeBackend{rootNoPassword: true}, &fakeTransport{}, nil, fakeAuth{sid: "s"})
-	body := get(t, warn, "/").Body.String()
-	for _, want := range []string{
-		"No administrator password is set.",
-		"Anyone who can reach this router can change its settings.",
-		"border-crimson bg-crimson-soft",
-		"text-crimson-deep",
-		"text-crimson", // the glyph at full chroma — a mark, beside words at the step that carries them
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("no-password warning missing %q", want)
+// TestNoPasswordWarningStandsInTheTopBarOnEveryPage: with no root password the
+// top bar carries one warning on every page, leading to Access; the content
+// area carries none of its own.
+func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "System", Pages: []plugin.PageTab{{Label: "Access", Path: "access"}},
+		Widget: json.RawMessage(`{"type":"card","children":[]}`),
+	}}
+	warn := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
+	for _, path := range []string{"/", "/plugins/demo/access"} {
+		body := get(t, warn, path).Body.String()
+		// Index from the top bar on: the compiled stylesheet is inlined above it
+		// and carries every class name the page could mention.
+		bar := body[strings.Index(body, "data-verso-session"):]
+		main := bar[strings.Index(bar, "<main "):]
+		bar = bar[:strings.Index(bar, "<main ")]
+		chip := bar[strings.Index(bar, `<a href="/system/access"`):]
+		chip = chip[:strings.Index(chip, "</a>")+len("</a>")]
+		for _, want := range []string{
+			`title="No administrator password is set. Anyone who can reach this router can change its settings."`,
+			// the state in the weight of a heading, what it means in the body's
+			`<span class="font-semibold">No administrator password</span> — anyone can sign in`,
+			"border-crimson bg-crimson-soft",
+		} {
+			if !strings.Contains(chip, want) {
+				t.Errorf("%s: the top-bar warning is missing %q:\n%s", path, want, chip)
+			}
 		}
-	}
-	if strings.Contains(body, "passwd</code> over SSH") {
-		t.Error("the warning must point at the Access experience, not require SSH")
+		if strings.Contains(main, "No administrator password") {
+			t.Errorf("%s: the content area repeats the warning", path)
+		}
 	}
 	safe := newServer(t, fakeBackend{}) // hasPassword true
 	if strings.Contains(get(t, safe, "/").Body.String(), "No administrator password") {
 		t.Errorf("must not warn when a password is set")
 	}
 
-	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "System", Pages: []plugin.PageTab{{Label: "Access", Path: "access"}},
-		Widget: json.RawMessage(`{"type":"card","children":[]}`),
-	}}
-	withPages := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
-	body = get(t, withPages, "/plugins/demo/access").Body.String()
-	// Index within <main> only: the compiled stylesheet is inlined above it and
-	// carries every class name the page could mention.
-	main := body[strings.Index(body, "<main "):]
-	warnAt := strings.Index(main, "No administrator password is set.")
-	bodyAt := strings.Index(main, `class="verso-page-body"`)
-	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt {
-		t.Errorf("the warning belongs at the head of the content area, above the page: warning=%d body=%d", warnAt, bodyAt)
-	}
-	// A band, arrived at rather than stated: a 28px line inset 12px, so a
-	// sentence that wraps on a phone grows the band instead of spilling out.
-	if !strings.Contains(body, "-mt-px flex items-start gap-2.5 border-y border-crimson-line bg-crimson-soft px-8 py-3 text-sm leading-7") {
-		t.Error("the warning is a 52px band from its padding")
-	}
-	// its tone is the crimson square on the first line, not a glyph
-	if !strings.Contains(body, `<span class="flex shrink-0 pt-1"><span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span></span>`) {
-		t.Error("the warning is marked with the crimson square")
-	}
-
-	// A page may declare another important state at the same seam. The shell's
-	// own password warning takes precedence when active, so notices never stack.
+	// A page may declare an important state of its own at the head of its
+	// content; the password warning lives in the top bar, so both show.
 	tr = &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1,
 		Title:         "System",
 		Pages:         []plugin.PageTab{{Label: "Access", Path: "access"}},
-		Banner: &plugin.Banner{Variant: "danger", Title: "No administrator password is set.",
-			Body: "Anyone who can reach this router can change its settings."},
+		Banner: &plugin.Banner{Variant: "danger", Title: "SSH accepts passwords from the internet.",
+			Body: "Anyone can try to guess one."},
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
 	}}
-	pageBanner := newServerFull(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
-	body = get(t, pageBanner, "/plugins/demo/access").Body.String()
-	main = body[strings.Index(body, "<main "):]
-	warnAt = strings.Index(main, "No administrator password is set.")
-	bodyAt = strings.Index(main, `class="verso-page-body"`)
-	if warnAt < 0 || bodyAt < 0 || warnAt > bodyAt || !strings.Contains(body, "border-crimson-line bg-crimson-soft") {
-		t.Errorf("a declared danger banner takes the same seam: warning=%d body=%d", warnAt, bodyAt)
+	pageBanner := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
+	body := get(t, pageBanner, "/plugins/demo/access").Body.String()
+	main := body[strings.Index(body, "<main "):]
+	bannerAt := strings.Index(main, "SSH accepts passwords from the internet.")
+	bodyAt := strings.Index(main, `class="verso-page-body"`)
+	if bannerAt < 0 || bodyAt < 0 || bannerAt > bodyAt || !strings.Contains(main, "border-crimson-line bg-crimson-soft") {
+		t.Errorf("a declared danger banner heads the content: banner=%d body=%d", bannerAt, bodyAt)
+	}
+	if !strings.Contains(body[:strings.Index(body, "<main ")], "</span> — anyone can sign in") {
+		t.Error("a page's banner does not displace the top-bar password warning")
 	}
 }
 
