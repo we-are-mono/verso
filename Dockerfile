@@ -49,6 +49,8 @@ COPY plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system /etc/init
 # verification disabled for this one transaction; apk still verifies the
 # repository and package signatures against OpenWrt's bundled signing keys.
 RUN apk add --no-check-certificate ca-bundle \
+ # The package depends on nlbwmon for usage history (ADR-018).
+ && apk add nlbwmon \
  && echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
  && echo 'verso:x:6000:' >> /etc/group \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
@@ -70,7 +72,8 @@ RUN apk add --no-check-certificate ca-bundle \
  && uci -q add_list verso.web.listen_https=0.0.0.0:8443 \
  && uci -q set verso.web.redirect_https=0 \
  && uci -q commit verso \
- && chmod 0755 /usr/libexec/verso/update-check /usr/libexec/verso/web-owner \
+ && chmod 0755 /usr/libexec/verso/update-check /usr/libexec/verso/web-owner /usr/libexec/verso/usage-setup \
+ && /usr/libexec/verso/usage-setup \
  && chmod 0600 /etc/crontabs/root \
  && chmod 0755 /usr/sbin/verso-rpcd /usr/bin/verso-plugin-system \
  && chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup \
@@ -84,6 +87,7 @@ RUN apk add --no-check-certificate ca-bundle \
  && ( /etc/init.d/verso-plugin-system enable || ln -sf ../init.d/verso-plugin-system /etc/rc.d/S93verso-plugin-system ) \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ( /etc/init.d/cron enable || ln -sf ../init.d/cron /etc/rc.d/S50cron ) \
+ && ( /etc/init.d/nlbwmon enable || ln -sf ../init.d/nlbwmon /etc/rc.d/S60nlbwmon ) \
  && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true
 EXPOSE 8080
 # Boots OpenWrt via procd so verso can reach live ubus/uci. MUST run

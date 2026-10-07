@@ -204,6 +204,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
 	install -Dm755 docker/rootfs/usr/libexec/verso/update-check         $(APK_PAYLOAD)/usr/libexec/verso/update-check
 	install -Dm755 docker/rootfs/usr/libexec/verso/web-owner            $(APK_PAYLOAD)/usr/libexec/verso/web-owner
+	install -Dm755 docker/rootfs/usr/libexec/verso/usage-setup          $(APK_PAYLOAD)/usr/libexec/verso/usage-setup
 	install -Dm644 docker/rootfs/etc/hotplug.d/openvpn/50-verso         $(APK_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
 	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
@@ -228,7 +229,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --info "description:Verso — a modern web UI for OpenWrt" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
-	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log" \
+	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log nlbwmon" \
 	  --info "replaces:verso-plugin-vpn" \
 	  --files "$(APK_PAYLOAD)" \
 	  --script post-install:$(POSTINST) \

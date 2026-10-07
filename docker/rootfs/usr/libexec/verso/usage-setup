@@ -1,0 +1,22 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# Points nlbwmon at the history Verso reads (ADR-018): one period a day, thirteen
+# months of them, on storage that survives a reboot. The interval and the
+# generations are Verso's, set every time; the directory moves only while it is
+# the stock tmpfs one, so an owner's own choice stays.
+cfg=nlbwmon.@nlbwmon[0]
+uci -q get "$cfg" >/dev/null || exit 0
+
+uci -q set "$cfg.database_interval=2026-01-01/1"
+uci -q set "$cfg.database_generations=400"
+if [ "$(uci -q get "$cfg.database_directory")" = /var/lib/nlbwmon ]; then
+	if grep -qs ' /data ' /proc/mounts; then
+		uci -q set "$cfg.database_directory=/data/nlbwmon"
+	else
+		uci -q set "$cfg.database_directory=/usr/share/nlbwmon/db"
+	fi
+fi
+uci -q commit nlbwmon
+exit 0

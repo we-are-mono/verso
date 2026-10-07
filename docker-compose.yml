@@ -35,6 +35,9 @@ services:
       - /dev/net/tun:/dev/net/tun           # OpenVPN's tunnel device
     sysctls:
       net.ipv6.conf.all.forwarding: "1"     # a v6 router routes
+      net.netfilter.nf_conntrack_acct: "1"  # OpenWrt's own default, which a
+                                            # container's read-only /proc/sys
+                                            # keeps its sysctl.d from setting
     tmpfs:
       - /tmp
     networks:

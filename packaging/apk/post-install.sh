@@ -29,6 +29,11 @@ if ! grep -qsF '/usr/libexec/verso/update-check' /etc/crontabs/root; then
 fi
 /etc/init.d/cron enable 2>/dev/null
 /etc/init.d/cron start 2>/dev/null
+# Usage history is nlbwmon's, kept a day a period on storage that survives a
+# reboot (ADR-018); it restarts to take the periods up.
+/usr/libexec/verso/usage-setup
+/etc/init.d/nlbwmon enable 2>/dev/null
+/etc/init.d/nlbwmon restart 2>/dev/null
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload 2>/dev/null
 killall -HUP ubusd 2>/dev/null
 /etc/init.d/verso enable 2>/dev/null
