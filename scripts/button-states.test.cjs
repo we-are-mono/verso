@@ -296,3 +296,76 @@ test('package refresh stays locked through polling and unlocks after a network f
   assert.equal(button.textContent, 'Refresh index');
   assert.equal(error.hidden, false);
 });
+
+// A drawer's form answers in place, so its act says it is running: past a
+// moment's wait the submit turns to the waiting state with its own label, the
+// buttons beside it stand down, and the answer gives them back.
+function drawerSubmit(env, form, submitter, headers = {}) {
+  const xhr = {getResponseHeader: name => headers[name] ?? null};
+  const detail = {elt: form, xhr, requestConfig: {triggeringEvent: {type: 'submit', submitter}}};
+  env.document.emit('htmx:beforeRequest', {detail});
+  return () => env.document.emit('htmx:afterRequest', {detail});
+}
+function drawerForm(buttons) {
+  const form = formWith(buttons);
+  form.setAttribute('hx-post', '/plugins/system/access/certificate/new');
+  return form;
+}
+
+test('a drawer act that keeps its answer waiting turns to the waiting state until it comes', () => {
+  const env = environment();
+  const make = new Element('Make certificate');
+  const cancel = new Element('Cancel');
+  const answered = drawerSubmit(env, drawerForm([make, cancel]), make);
+  assert.equal(make.disabled, false, 'nothing turns before the moment has passed');
+  env.timers.at(-1)();
+  busy(make, 'Make certificate');
+  assert.equal(cancel.disabled, true);
+  assert.equal(cancel.getAttribute('aria-busy'), null, 'only the act pressed spins');
+  answered();
+  assert.equal(make.disabled, false);
+  assert.equal(make.getAttribute('aria-busy'), null);
+  assert.equal(make.textContent, 'Make certificate');
+  assert.equal(cancel.disabled, false);
+});
+
+test('a drawer act answered within the moment never flickers', () => {
+  const env = environment();
+  const save = new Element('Save rule');
+  drawerSubmit(env, drawerForm([save]), save)();
+  env.timers.at(-1)();
+  assert.equal(save.disabled, false);
+  assert.equal(save.getAttribute('aria-busy'), null);
+});
+
+test('a drawer act answered by going elsewhere keeps waiting while the page is left', () => {
+  const env = environment();
+  const make = new Element('Make certificate');
+  const answered = drawerSubmit(env, drawerForm([make]), make, {'HX-Redirect': '/system/access'});
+  env.timers.at(-1)();
+  answered();
+  busy(make, 'Make certificate');
+});
+
+test('a drawer act answered by going elsewhere within the moment waits at once', () => {
+  const env = environment();
+  const make = new Element('Make certificate');
+  const cancel = new Element('Cancel');
+  drawerSubmit(env, drawerForm([make, cancel]), make, {'HX-Redirect': '/system/access'})();
+  busy(make, 'Make certificate');
+  assert.equal(cancel.disabled, true);
+  env.timers.at(-1)();
+  busy(make, 'Make certificate');
+});
+
+test('a form that is not a drawer\'s, or one already waiting by its own hand, is left alone', () => {
+  const env = environment();
+  const page = new Element('Save');
+  drawerSubmit(env, formWith([page]), page);
+  assert.equal(env.timers.length, 0);
+  const install = new Element('Install');
+  env.buttons.start(install, 'Installing…');
+  drawerSubmit(env, drawerForm([install]), install);
+  env.timers.at(-1)();
+  busy(install, 'Installing…');
+});

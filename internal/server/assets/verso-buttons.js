@@ -66,3 +66,48 @@ var versoButtons = (function () {
   });
   return { start: start, finish: finish, submit: submit, has: function (button) { return waiting.has(button); } };
 })();
+
+// A drawer's form answers in place, so the page never leaves while its act
+// runs: the act says it is running instead. Once the answer has kept it a
+// moment, the submit pressed turns to the waiting state under its own label
+// and the buttons beside it stand down, until the answer comes. An answer that
+// is another page turns them at once, however soon it came, and they wait
+// until that page arrives. An answer already here never flickers them, and an
+// act that waits by its own hand is left to it.
+(function () {
+  var SETTLE = 120;
+  var requests = new Map();
+  function wait(request) {
+    if (request.buttons.length) return;
+    var buttons = Array.from(request.form.querySelectorAll("button"));
+    if (buttons.some(versoButtons.has)) return;
+    buttons.forEach(function (button) {
+      versoButtons.start(button, button === request.active ? request.label : "");
+    });
+    request.buttons = buttons;
+  }
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    var detail = event.detail || {};
+    var form = detail.elt;
+    var trigger = detail.requestConfig && detail.requestConfig.triggeringEvent;
+    if (!form || !form.hasAttribute || !form.hasAttribute("hx-post") || !trigger || trigger.type !== "submit") return;
+    var active = trigger.submitter || form.querySelector('button[type="submit"]');
+    if (!active) return;
+    var request = { form: form, active: active, label: active.textContent.trim(), buttons: [] };
+    requests.set(detail.xhr, request);
+    setTimeout(function () {
+      if (requests.get(detail.xhr) === request) wait(request);
+    }, SETTLE);
+  });
+  document.addEventListener("htmx:afterRequest", function (event) {
+    var xhr = event.detail && event.detail.xhr;
+    var request = requests.get(xhr);
+    if (!request) return;
+    requests.delete(xhr);
+    if (xhr.getResponseHeader && xhr.getResponseHeader("HX-Redirect")) {
+      wait(request);
+      return;
+    }
+    request.buttons.forEach(versoButtons.finish);
+  });
+})();
