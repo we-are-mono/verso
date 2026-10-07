@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
+	"syscall"
 	"testing"
 )
 
@@ -28,6 +30,29 @@ func TestListenersAreTakenAsTheInitScriptHandsThem(t *testing.T) {
 	}
 	if !slices.Equal(c.HTTP, []string{"0.0.0.0:8080"}) || !slices.Equal(c.HTTPS, []string{"192.168.1.1:8443", "[fd00::1]:8443", ":8444"}) || c.Redirect {
 		t.Errorf("config = %+v", c)
+	}
+}
+
+func TestWithNothingSetAndThePortsHeldVersoAnswersBesideOn8443(t *testing.T) {
+	held := &net.OpError{Op: "listen", Err: &os.SyscallError{Syscall: "bind", Err: syscall.EADDRINUSE}}
+	c, _ := New(nil, nil, "")
+	beside, ok := c.Beside(held)
+	if !ok || !beside.IsBeside || !slices.Equal(beside.HTTPS, []string{"0.0.0.0:8443", "[::]:8443"}) || len(beside.HTTP) != 0 {
+		t.Fatalf("Beside = %+v, %v", beside, ok)
+	}
+	if c.Ports() != PortsOwn || beside.Ports() != PortsBeside {
+		t.Errorf("Ports = %q then %q", c.Ports(), beside.Ports())
+	}
+	// Listeners someone set are bound as written: a port they chose that is
+	// held is theirs to see, not one to move away from.
+	set, _ := New([]string{"0.0.0.0:443"}, nil, "")
+	if _, ok := set.Beside(held); ok || set.Ports() != PortsSet {
+		t.Error("set listeners moved beside")
+	}
+	// Any other failure to bind is no other server's doing.
+	denied := &net.OpError{Op: "listen", Err: &os.SyscallError{Syscall: "bind", Err: syscall.EACCES}}
+	if _, ok := c.Beside(denied); ok {
+		t.Error("a refused bind moved beside")
 	}
 }
 

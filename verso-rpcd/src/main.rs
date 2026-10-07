@@ -510,6 +510,17 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             spawn_system_action("/sbin/firstboot", &["-r", "-y"])?;
             Ok(json!({"result": true}))
         }
+        // setWebOwner hands the router's web ports to Verso or back to LuCI's
+        // uhttpd (ADR-017 §2). It stops and starts the shell that asked, so it
+        // runs after this answer, as a reboot does.
+        "setWebOwner" => {
+            let owner = argument(request, "owner")?;
+            if !matches!(owner, "verso" | "luci") {
+                return Err(Failure::invalid("owner must be verso or luci"));
+            }
+            spawn_system_action(WEB_OWNER, &[owner])?;
+            Ok(json!({"result": true}))
+        }
         _ => Err(Failure {
             status: STATUS_METHOD_NOT_FOUND,
             message: format!("unknown method {method}"),
@@ -564,6 +575,8 @@ fn firewall_status() -> Result<Value, Failure> {
 // A device owut cannot answer for is not an error: the method reports the rung
 // instead, so the page states a plain fact rather than a failure.
 const OWUT: &str = "/usr/bin/owut";
+/// The sequence that hands the router's web ports between Verso and uhttpd.
+const WEB_OWNER: &str = "/usr/libexec/verso/web-owner";
 
 fn firmware_check() -> Value {
     if !Path::new(OWUT).exists() {
@@ -1325,6 +1338,7 @@ mod tests {
         "installFirmware",
         "restart",
         "factoryReset",
+        "setWebOwner",
         "diagStart",
         "diagRead",
         "diagStop",

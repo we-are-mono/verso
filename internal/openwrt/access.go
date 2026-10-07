@@ -25,3 +25,6 @@ func (*NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key stri
 func (*NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
 	return callHelper(ctx, "", "makeWebCertificate", sid, nil, nil)
 }
+func (*NativeBackend) SetWebOwner(ctx context.Context, sid, owner string) error {
+	return callHelper(ctx, "", "setWebOwner", sid, map[string]string{"owner": owner}, nil)
+}

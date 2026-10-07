@@ -244,6 +244,10 @@ type Backend interface {
 	SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error
 	SetWebCertificate(ctx context.Context, sid, cert, key string) error
 	MakeWebCertificate(ctx context.Context, sid string) error
+	// SetWebOwner hands the router's web ports to Verso ("verso") or back to
+	// LuCI's uhttpd ("luci"); the helper does it after answering, because it
+	// restarts the shell that asked.
+	SetWebOwner(ctx context.Context, sid, owner string) error
 	// DiagStart starts a network diagnostic on the router and names the run;
 	// DiagRead reads what it has written past a cursor, and DiagStop ends it.
 	// A run is its operator's alone: the helper answers another session's read

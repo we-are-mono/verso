@@ -201,6 +201,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 docker/rootfs/usr/libexec/verso/firewall-logging-setup $(APK_PAYLOAD)/usr/libexec/verso/firewall-logging-setup
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
 	install -Dm755 docker/rootfs/usr/libexec/verso/update-check         $(APK_PAYLOAD)/usr/libexec/verso/update-check
+	install -Dm755 docker/rootfs/usr/libexec/verso/web-owner            $(APK_PAYLOAD)/usr/libexec/verso/web-owner
 	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
 	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
 	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json

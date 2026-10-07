@@ -255,15 +255,38 @@
     if (!done) timer = window.setTimeout(poll, POLL_MS);
   }
 
+  // A shell that moves (ADR-017 §2) does not come back here: once this
+  // address stops answering as the shell, the screen follows it to where it
+  // answers next — as soon as that answers, or after a short wait regardless,
+  // since a browser refuses an address it has not trusted yet without a word
+  // when asked in the background, and only says why on a page it loads.
+  var TARGET = root.getAttribute("data-verso-restarting-target");
+  var FOLLOW_MS = 15000;
+  function follow() {
+    if (done) return;
+    done = true;
+    window.clearTimeout(deadline);
+    var leaving = Date.now();
+    (function probe() {
+      fetch(TARGET, { mode: "no-cors", cache: "no-store" })
+        .then(function () { window.location.assign(TARGET); })
+        .catch(function () {
+          if (Date.now() - leaving >= FOLLOW_MS) window.location.assign(TARGET);
+          else window.setTimeout(probe, 1000);
+        });
+    })();
+  }
+
   function poll() {
     fetch(STATUS_URL, { headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" })
       .then(function (res) {
         var ct = res.headers.get("Content-Type") || "";
         if (res.ok && !res.redirected && ct.indexOf("application/json") !== -1) schedule();
+        else if (TARGET) follow();
         else if (res.ok) finish("back");
         else schedule(); // reachable but erroring: still going down or still coming up
       })
-      .catch(schedule);
+      .catch(TARGET ? follow : schedule);
   }
 
   schedule();

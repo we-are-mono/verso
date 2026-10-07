@@ -62,21 +62,31 @@ applied.
 
 ### 2. Beside uhttpd, Verso takes 8443
 
-When the listeners are absent and another process holds port 443, Verso listens on
-`:8443` for HTTPS alone and logs why. It never edits uhttpd's configuration on
-its own. Explicit listeners are bound as written; a port in use is a start
-failure, logged.
+When the listeners are absent and another process holds the router's ports,
+Verso listens on `:8443` for HTTPS alone and logs why. It never edits uhttpd's
+configuration on its own. Explicit listeners are bound as written; a port in use
+is a start failure, logged.
 
-Verso's home page then offers the switch-over: **Make Verso this router's web
-interface**. It is confirmed inline, because the address the operator is on
-changes. `verso-rpcd` stops uhttpd, moves its listeners to `:8080` (HTTP) and
-`:8443` (HTTPS), starts uhttpd and restarts Verso on the absent-default listeners.
-The browser is sent to the new address. LuCI stays installed and reachable on its
-new ports.
+When uhttpd is installed, Access carries a **LuCI** section saying where each
+server answers and offering the move, confirmed inline in marigold because the
+address the operator is on changes:
 
-Settings → Access keeps the way back: **Hand the web interface back to LuCI**,
-the inverse edit. Both acts take effect at once rather than staging: they change
-which server answers the page the operator is on.
+- Beside LuCI: **Make this the router's web interface**.
+- Holding the router's ports: **Hand the web interface back to LuCI**.
+
+With listeners set in `verso.web`, or no uhttpd, the section is absent and
+nothing moves. `verso-rpcd`'s `setWebOwner` runs
+`/usr/libexec/verso/web-owner` after answering: it stops both servers, moves
+uhttpd's listeners (`:8080`/`:8443` when Verso takes the ports, `:80`/`:443`
+when LuCI does), and starts the new owner first, so it binds the router's ports
+while they are free, then the other. LuCI stays installed and reachable.
+
+Both acts take effect at once rather than staging: they change which server
+answers the page the operator is on. The answer is the restarting takeover,
+told the address Verso answers at afterwards: once the old address stops
+answering as Verso, the takeover follows to the new one as soon as it answers,
+or after fifteen seconds regardless, so a browser that has not yet trusted the
+new address shows why on a page it loads itself.
 
 Both servers sign in through rpcd with the root password and read and write the
 same uci configs, so nothing moves between them.

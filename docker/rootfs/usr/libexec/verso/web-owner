@@ -1,0 +1,53 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# web-owner hands the router's web ports between Verso and LuCI's uhttpd
+# (ADR-017 §2). `web-owner verso` moves uhttpd to 8080 (HTTP) and 8443 (HTTPS)
+# and has Verso take 80 and 443; `web-owner luci` gives them back, and Verso
+# answers beside uhttpd on 8443. verso-rpcd runs it after answering the request
+# that asked, so the answer reaches the browser before the shell stops.
+#
+# Only Verso's own ports move with it: listeners set in verso.web are bound as
+# written, so a router with them set is refused rather than rearranged.
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+owner="$1"
+case "$owner" in
+verso) http=8080 https=8443 ;;
+luci) http=80 https=443 ;;
+*)
+	echo "usage: web-owner verso|luci" >&2
+	exit 2
+	;;
+esac
+[ -x /etc/init.d/uhttpd ] || {
+	echo "web-owner: uhttpd is not installed" >&2
+	exit 1
+}
+if [ -n "$(uci -q get verso.web.listen_http)$(uci -q get verso.web.listen_https)" ]; then
+	echo "web-owner: verso.web sets its listeners; nothing moves" >&2
+	exit 1
+fi
+
+sleep 1
+/etc/init.d/uhttpd stop
+/etc/init.d/verso stop
+
+uci -q delete uhttpd.@uhttpd[0].listen_http
+uci -q delete uhttpd.@uhttpd[0].listen_https
+for address in 0.0.0.0 '[::]'; do
+	uci add_list uhttpd.@uhttpd[0].listen_http="$address:$http"
+	uci add_list uhttpd.@uhttpd[0].listen_https="$address:$https"
+done
+uci commit uhttpd
+
+# The new owner starts first and binds the router's ports while they are free;
+# the other then starts on its own.
+if [ "$owner" = verso ]; then
+	/etc/init.d/verso start
+	/etc/init.d/uhttpd start
+else
+	/etc/init.d/uhttpd start
+	/etc/init.d/verso start
+fi

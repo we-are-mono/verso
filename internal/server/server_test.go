@@ -51,7 +51,9 @@ type fakeBackend struct {
 	deleteErr func(config, section, option string) error
 	// setPassword backs SetPassword — tests inject it to capture the sid/username/
 	// password or return an error. Nil means "succeed silently".
-	setPassword      func(ctx context.Context, sid, username, password string) error
+	setPassword func(ctx context.Context, sid, username, password string) error
+	// webOwner backs SetWebOwner, answering for the owner asked.
+	webOwner         func(owner string) error
 	setSystemTime    func(ctx context.Context, sid, datetime, timezone string) error
 	createBackup     func(ctx context.Context, sid, path string) error
 	restoreBackup    func(ctx context.Context, sid, path string) error
@@ -525,6 +527,13 @@ func (fakeBackend) SetWebCertificate(context.Context, string, string, string) er
 
 func (fakeBackend) MakeWebCertificate(context.Context, string) error {
 	return errNoHelper
+}
+
+func (f fakeBackend) SetWebOwner(_ context.Context, _ string, owner string) error {
+	if f.webOwner == nil {
+		return errNoHelper
+	}
+	return f.webOwner(owner)
 }
 
 // fakeTransport is the plugin-transport seam double (ADR-003/006): it returns a

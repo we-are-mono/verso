@@ -342,6 +342,11 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 			hdr.Notice = pluginHeader.Notice
 		}
 	}
+	// LuCI's part, where it stands beside Verso: after the web certificate,
+	// the web interface's other subject.
+	if luci := s.luciSection(r); luci != nil {
+		access.Children = append(access.Children, luci)
+	}
 
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {

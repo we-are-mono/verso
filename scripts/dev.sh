@@ -86,8 +86,9 @@ deploy_helper() {
 		docker exec "$CONTAINER" mkdir -p /usr/libexec/verso
 		docker cp docker/rootfs/usr/libexec/verso/firewall-logging "$CONTAINER":/usr/libexec/verso/firewall-logging
 		docker cp docker/rootfs/usr/libexec/verso/firewall-logging-setup "$CONTAINER":/usr/libexec/verso/firewall-logging-setup
+		docker cp docker/rootfs/usr/libexec/verso/web-owner "$CONTAINER":/usr/libexec/verso/web-owner
 		docker cp docker/rootfs/etc/init.d/verso-rpcd "$CONTAINER":/etc/init.d/.verso-rpcd.new
-		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
+		docker exec "$CONTAINER" sh -c 'chown root:root /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup /usr/libexec/verso/web-owner /usr/sbin/.verso-rpcd.new /etc/init.d/.verso-rpcd.new; mv /usr/sbin/.verso-rpcd.new /usr/sbin/verso-rpcd; mv /etc/init.d/.verso-rpcd.new /etc/init.d/verso-rpcd; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start'
 		log "verso-rpcd reloaded"
 	else
 		log "verso-rpcd build failed — keeping the running helper"

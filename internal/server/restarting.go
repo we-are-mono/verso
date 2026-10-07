@@ -33,10 +33,13 @@ const restartStatusPath = "/system/maintenance/restart/status"
 // restartPlan is what one kind of restart says while it waits: its heading, what
 // is happening, how long it usually takes, and how long before the screen stops
 // waiting. Address is set only when the router comes back somewhere else.
+// Target is set when the shell itself moves (ADR-017 §2): the address it
+// answers at afterwards, which the screen follows once this one has gone.
 type restartPlan struct {
 	Title, Lede, Estimate string
 	Budget                time.Duration
 	Address               string
+	Target                string
 }
 
 func rebootPlan(tr func(string) string) restartPlan {
@@ -74,7 +77,7 @@ func factoryResetPlan(tr func(string) string, address string) restartPlan {
 // or in the template; the client only moves [hidden] between the surfaces.
 type restartingView struct {
 	Lang, Title, Lede, Estimate, Status string
-	Hostname, Maker, Model              string
+	Hostname, Maker, Model, Target      string
 	CSS                                 template.CSS
 	Budget                              int
 	Address                             template.HTML
@@ -92,7 +95,7 @@ func (s *Server) restartingPage(r *http.Request, plan restartPlan) (string, erro
 		Lang: langAttr(lang), CSS: s.currentCSS(), Status: restartStatusPath,
 		Title: plan.Title, Lede: plan.Lede, Estimate: plan.Estimate,
 		Hostname: s.nameplate(r), Maker: hw.Maker, Model: hw.Model,
-		Budget: int(plan.Budget / time.Second),
+		Budget: int(plan.Budget / time.Second), Target: plan.Target,
 	}
 	if plan.Address != "" {
 		view.Address = verbatimIn(tr("It answers at %s afterwards. Reconnect this computer if it doesn't pick up an address on its own."), "http://"+plan.Address)

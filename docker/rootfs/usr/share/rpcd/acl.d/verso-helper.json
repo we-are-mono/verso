@@ -27,6 +27,7 @@
           "installFirmware",
           "restart",
           "factoryReset",
+          "setWebOwner",
           "pkgStatus",
           "pkgUpdate",
           "pkgSearch",

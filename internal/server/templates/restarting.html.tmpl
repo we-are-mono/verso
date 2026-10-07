@@ -17,7 +17,7 @@
      its poll of the status endpoint moves, and ticks the clock. */}}
 <body class="m-0 min-h-screen bg-ground font-sans text-sm leading-normal text-ink">
   <main class="flex min-h-screen flex-col items-center px-4 py-16 sm:px-11">
-    <div class="w-full max-w-[32rem]" data-verso-restarting data-verso-restarting-status="{{.Status}}" data-verso-restarting-budget="{{.Budget}}">
+    <div class="w-full max-w-[32rem]" data-verso-restarting data-verso-restarting-status="{{.Status}}" data-verso-restarting-budget="{{.Budget}}"{{with .Target}} data-verso-restarting-target="{{.}}"{{end}}>
       <div class="flex min-w-0 items-center gap-4">
         <span class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Hostname}}{{.Hostname}}{{else}}{{ t "This device" }}{{end}}</span>
         {{if .Maker}}<span class="h-5 w-px shrink-0 bg-rule-strong"></span>
@@ -61,7 +61,7 @@
           </div>
         </div>
         {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-marigold"></span><span>{{.Address}}</span></div>{{end}}
-        <a href="/" class="mt-9 {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{ t "Try the router again" }}</a>
+        <a href="{{if .Target}}{{.Target}}{{else}}/{{end}}" class="mt-9 {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{ t "Try the router again" }}</a>
       </div>
     </div>
   </main>

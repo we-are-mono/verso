@@ -114,6 +114,10 @@ type Server struct {
 	// loginInternet reads only the public uplink boolean, without an rpcd session.
 	loginInternet func() (bool, error)
 	allowedHosts  map[string]bool
+	// webPorts is how Verso holds the router's web ports (listen.Ports*):
+	// beside another web server, Access offers to take them; holding its own,
+	// to hand them back (ADR-017 §2).
+	webPorts string
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -162,6 +166,10 @@ type Server struct {
 // (VS-01). An empty list leaves the check disabled; production supplies the
 // device's hostnames and LAN addresses.
 func (s *Server) SetAllowedHosts(hosts []string) { s.allowedHosts = hostSet(hosts) }
+
+// SetWebPorts records how Verso holds the router's web ports, once it has
+// bound its listeners.
+func (s *Server) SetWebPorts(ports string) { s.webPorts = ports }
 
 // New constructs a Server. It renders widgets through the injected renderer,
 // reads live state through the injected backend, and reaches plugins through the

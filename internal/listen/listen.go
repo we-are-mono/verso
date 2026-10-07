@@ -7,11 +7,13 @@
 package listen
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // Config is the shell's listeners, each address:port with the address an IP
@@ -20,6 +22,44 @@ type Config struct {
 	HTTPS    []string
 	HTTP     []string
 	Redirect bool
+	// Defaulted is set when no listener was given: the router's own ports,
+	// which another web server may already hold.
+	Defaulted bool
+	// IsBeside is set on the listeners Verso answers on beside that server.
+	IsBeside bool
+}
+
+// BesidePort is where Verso answers beside another web server (ADR-017 §2).
+const BesidePort = "8443"
+
+// How Verso holds the router's web ports, as it bound them: its own defaults,
+// beside another web server that holds them, or listeners set in verso.web.
+const (
+	PortsOwn    = "own"
+	PortsBeside = "beside"
+	PortsSet    = "set"
+)
+
+// Ports says how these listeners hold the router's web ports.
+func (c Config) Ports() string {
+	switch {
+	case c.IsBeside:
+		return PortsBeside
+	case c.Defaulted:
+		return PortsOwn
+	}
+	return PortsSet
+}
+
+// Beside is where Verso answers when it was given no listeners and binding
+// them failed because another web server — LuCI's uhttpd — holds the router's
+// ports: HTTPS alone, on 8443. Listeners someone set are bound as written, and
+// any other failure is not another server's doing; neither moves.
+func (c Config) Beside(err error) (Config, bool) {
+	if !c.Defaulted || !errors.Is(err, syscall.EADDRINUSE) {
+		return c, false
+	}
+	return Config{HTTPS: []string{"0.0.0.0:" + BesidePort, "[::]:" + BesidePort}, IsBeside: true}, true
 }
 
 // New is the listeners the init script hands over from `verso.web`, one
@@ -35,6 +75,7 @@ func New(https, http []string, redirect string) (Config, error) {
 		return c, err
 	}
 	c.Redirect = redirect != "0"
+	c.Defaulted = len(https) == 0 && len(http) == 0
 	return c, nil
 }
 

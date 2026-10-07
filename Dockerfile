@@ -70,7 +70,7 @@ RUN apk add --no-check-certificate ca-bundle \
  && uci -q add_list verso.web.listen_https=0.0.0.0:8443 \
  && uci -q set verso.web.redirect_https=0 \
  && uci -q commit verso \
- && chmod 0755 /usr/libexec/verso/update-check \
+ && chmod 0755 /usr/libexec/verso/update-check /usr/libexec/verso/web-owner \
  && chmod 0600 /etc/crontabs/root \
  && chmod 0755 /usr/sbin/verso-rpcd /usr/bin/verso-plugin-system \
  && chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup \

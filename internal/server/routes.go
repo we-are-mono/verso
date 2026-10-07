@@ -49,6 +49,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/access/certificate", s.handleCertificateDownload)
 	s.mux.HandleFunc("GET /system/access", s.handlePasswordForm)
 	s.mux.HandleFunc("POST /system/access", s.handlePassword)
+	s.mux.HandleFunc("POST "+webOwnerPath, s.handleWebOwner)
 
 	// Package + service management (ADR-011): shell-owned — installing or
 	// stopping things mutates the set the shell trusts. Packages are files on

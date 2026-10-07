@@ -205,10 +205,19 @@ func serve(args []string) {
 		}
 	}()
 	endpoints, err := bind(listeners, srv.Handler(), certs, info)
+	// Given no listeners, the router's ports may be held by the web server
+	// LuCI runs on: Verso answers beside it rather than not at all, and edits
+	// nothing of that server's (ADR-017 §2).
+	if beside, ok := listeners.Beside(err); ok {
+		info.Printf("verso: %v; another web server holds the router's ports, so Verso answers beside it", err)
+		listeners = beside
+		endpoints, err = bind(listeners, srv.Handler(), certs, info)
+	}
 	if err != nil {
 		srv.Close()
 		log.Fatalf("verso: %v", err)
 	}
+	srv.SetWebPorts(listeners.Ports())
 	err = serveUntil(stopping, endpoints)
 	srv.Close()
 	if err != nil {
