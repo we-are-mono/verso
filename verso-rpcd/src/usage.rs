@@ -265,13 +265,24 @@ pub fn days(known: &str) -> Result<Value, String> {
         .collect();
     let wanted = days_to_read(&listed, &known, WINDOW_DAYS);
     let mut out = Map::new();
-    for day in &wanted {
+    for (i, day) in wanted.iter().enumerate() {
         out.insert(
             day.clone(),
-            Value::Object(parse_day(&nlbw(&["-c", "json", "-g", "mac", "-t", day])?)?),
+            Value::Object(parse_day(&nlbw(&day_args(day, i == 0))?)?),
         );
     }
     Ok(json!({"enabled": true, "today": wanted.first(), "days": out}))
+}
+
+/// day_args asks nlbw for one day's per-device totals. Today is asked for with
+/// no date: named by its date, nlbwmon answers from the file it last wrote,
+/// not the counts it holds now.
+fn day_args(day: &str, today: bool) -> Vec<&str> {
+    let mut args = vec!["-c", "json", "-g", "mac"];
+    if !today {
+        args.extend(["-t", day]);
+    }
+    args
 }
 
 /// torn is the watchdog's whole decision: nlbwmon should be running, its socket
@@ -451,6 +462,17 @@ mod tests {
             vec!["2026-10-07", "2026-10-05"]
         );
         assert!(days_to_read(&[], &known, 3).is_empty());
+    }
+
+    // Today is the counts nlbwmon holds now, so it is asked for undated; an
+    // earlier day is its file, by date.
+    #[test]
+    fn today_is_read_live_and_an_earlier_day_by_its_date() {
+        assert_eq!(day_args("2026-10-07", true), ["-c", "json", "-g", "mac"]);
+        assert_eq!(
+            day_args("2026-10-06", false),
+            ["-c", "json", "-g", "mac", "-t", "2026-10-06"]
+        );
     }
 
     // A day is moved aside only when nlbwmon should run, does not answer, and
