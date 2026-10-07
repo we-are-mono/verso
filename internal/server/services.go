@@ -35,7 +35,16 @@ const pluginServicePrefix = "verso-plugin-"
 
 // rcActions is the closed set of lifecycle verbs the surface forwards to
 // procd; anything else in a POST is rejected before touching the bus.
-var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "enable": true, "disable": true}
+var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "reload": true, "enable": true, "disable": true}
+
+// svcReapply names the subsystems (init scripts that apply configuration and
+// exit, leaving nothing running) whose live state can drift from their config
+// without the config changing, and the words for putting it back. firewall4's
+// ruleset can be rewritten by an include script or by another program, and a
+// reload rebuilds it from the config in one swap (fw4 reload; a restart
+// flushes it first). Every other subsystem, `system` among them, re-runs on
+// its own whenever its config changes, so it offers no act at all.
+var svcReapply = map[string]string{"firewall": "Reload rules"}
 
 // svcKeep is the set of services this surface refuses to stop or restart:
 // severing them severs the surface itself (the shell, its privileged path,
@@ -156,7 +165,9 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, a := range actions {
-		if !rcActions[a] {
+		// A reload is offered only where putting the state back means something
+		// (svcReapply), so it is accepted only there.
+		if !rcActions[a] || (a == "reload" && svcReapply[svc] == "") {
 			http.Error(w, "unknown action", http.StatusBadRequest)
 			return
 		}
@@ -436,21 +447,31 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 			pill = runningStateCell(st.Uptime)
 		}
 	case openwrt.ServiceSubsystem:
-		// A subsystem such as firewall4 can apply persistent kernel state and
-		// exit. A false generic `running` result therefore proves nothing; only
-		// surface an active state when the init script positively reports it.
-		if st.Running {
-			pill = widget.TableCell{Text: "active", Variant: "success"}
-		}
+		pill = subsystemStateCell(st.Running, st.Enabled)
 	}
 	return serviceListingRow(name, st, pill, owners, true)
+}
+
+// subsystemStateCell is a subsystem's state. A subsystem such as firewall4
+// applies persistent kernel state and exits, so a false generic `running`
+// proves nothing: it is active only where the init script positively says so,
+// and otherwise what it did, applied at boot, or that it does not run.
+func subsystemStateCell(running, enabled bool) widget.TableCell {
+	switch {
+	case running:
+		return widget.TableCell{Text: "active", Variant: "success"}
+	case enabled:
+		return widget.TableCell{Text: "applied at boot", Variant: "info"}
+	default:
+		return widget.TableCell{Text: "disabled", Variant: "neutral"}
+	}
 }
 
 // pluginServiceRow is a Verso plugin's service: procd's truth sharpened by
 // the socket probe.
 func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow {
 	kind := serviceKind(st.Kind)
-	pill := widget.TableCell{Muted: true}
+	var pill widget.TableCell
 	switch {
 	case !st.Known:
 		pill = widget.TableCell{Text: "not managed", Variant: "warning"}
@@ -460,9 +481,7 @@ func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow 
 			pill = widget.TableCell{Text: "runs at boot", Variant: "info"}
 		}
 	case kind == openwrt.ServiceSubsystem:
-		if st.Running {
-			pill = widget.TableCell{Text: "active", Variant: "success"}
-		}
+		pill = subsystemStateCell(st.Running, st.Enabled)
 	case st.Running && st.Alive:
 		pill = runningStateCell(st.Uptime)
 	case st.Running:
@@ -517,7 +536,13 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 	}
 	kind := serviceKind(st.Kind)
 	acts := []widget.TableRowAct{}
-	if managed && kind != openwrt.ServiceTask {
+	if managed && kind == openwrt.ServiceSubsystem {
+		// Nothing runs, so nothing starts or stops: only a subsystem whose
+		// state can drift is offered putting it back.
+		if label, ok := svcReapply[name]; ok {
+			acts = append(acts, widget.TableRowAct{Icon: "refresh-cw", Title: label, Name: "_service_action", Value: "reload:" + name})
+		}
+	} else if managed && kind != openwrt.ServiceTask {
 		if !svcKeep[name] {
 			acts = append(acts, widget.TableRowAct{Icon: "refresh-cw", Title: "Restart", Name: "_service_action", Value: "restart:" + name})
 		}

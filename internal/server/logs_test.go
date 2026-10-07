@@ -185,6 +185,13 @@ func TestServiceIconsChangeRuntimeOnly(t *testing.T) {
 	if len(actions) != 3 {
 		t.Fatalf("a refused service action reached rc: %v", actions)
 	}
+	// The firewall's rules reload, the one place a reload is offered.
+	if res := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"reload:firewall"}}); res.Code != http.StatusSeeOther {
+		t.Fatalf("reload firewall: status=%d", res.Code)
+	}
+	if got := actions[len(actions)-1]; got != "firewall reload" {
+		t.Fatalf("reloading the firewall's rules should reach rc as a reload, got %q", got)
+	}
 }
 
 func TestRebootRefusesUnresolvedOrUnreadableStage(t *testing.T) {

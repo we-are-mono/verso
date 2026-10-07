@@ -303,6 +303,8 @@
   "Enabled": "Omogočeno",
   "disabled": "onemogočeno",
   "runs at boot": "zažene ob zagonu",
+  "applied at boot": "uveljavljeno ob zagonu",
+  "Reload rules": "Znova naloži pravila",
   "stopped": "ustavljeno",
   "active": "aktivno",
   "not managed": "neupravljano",

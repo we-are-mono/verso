@@ -156,11 +156,25 @@ func TestServicesTable(t *testing.T) {
 	if strings.Contains(firewallRow, `name="svc:firewall"`) {
 		t.Errorf("firewall must not offer an enabled toggle: %s", firewallRow)
 	}
-	if !strings.Contains(firewallRow, `aria-label="Cannot be stopped from here"`) {
-		t.Errorf("firewall must explain its locked enablement: %s", firewallRow)
+	// A subsystem says what it did: active where its script says so, applied
+	// at boot where it is enabled, and disabled otherwise — never a dash.
+	for _, tc := range []struct {
+		running, enabled bool
+		want             string
+	}{{true, true, "active"}, {false, true, "applied at boot"}, {false, false, "disabled"}} {
+		if got := subsystemStateCell(tc.running, tc.enabled).Text; got != tc.want {
+			t.Errorf("subsystem running=%v enabled=%v reads %q, want %q", tc.running, tc.enabled, got, tc.want)
+		}
 	}
-	if !strings.Contains(firewallRow, `aria-label="Restart firewall"`) {
-		t.Errorf("firewall must remain restartable: %s", firewallRow)
+	// Nothing runs, so nothing starts or stops: the firewall offers only
+	// reloading its rules, which can drift from the config.
+	if !strings.Contains(firewallRow, `aria-label="Reload rules firewall"`) || !strings.Contains(firewallRow, `value="reload:firewall"`) {
+		t.Errorf("firewall must offer reloading its rules: %s", firewallRow)
+	}
+	for _, never := range []string{`aria-label="Restart firewall"`, `aria-label="Cannot be stopped from here"`, `aria-label="Stop firewall"`, `aria-label="Start firewall"`} {
+		if strings.Contains(firewallRow, never) {
+			t.Errorf("a subsystem offers nothing to start, stop or restart (%s): %s", never, firewallRow)
+		}
 	}
 	nameAt := strings.Index(body, ">verso-rpcd<")
 	if nameAt < 0 {
