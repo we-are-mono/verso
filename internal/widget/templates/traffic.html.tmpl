@@ -14,8 +14,8 @@
     <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Meta}}<span aria-hidden="true" class="text-faint">·</span><span class="font-mono text-base font-medium text-meta">{{.Meta}}</span>{{end}}
     <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
-      <span class="inline-flex items-baseline gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="min-w-12 text-right font-mono text-lg font-semibold" data-verso-live-down>{{.DownNow}}</span><span class="text-sm text-meta">{{ t "Mbit/s down" }}</span></span>
-      <span class="inline-flex items-baseline gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="min-w-10 text-right font-mono text-lg font-semibold" data-verso-live-up>{{.UpNow}}</span><span class="text-sm text-meta">{{ t "Mbit/s up" }}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold" data-verso-live-down>{{.DownNow}}</span></span><span class="text-sm text-meta">{{ t "Mbit/s down" }}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold" data-verso-live-up>{{.UpNow}}</span></span><span class="text-sm text-meta">{{ t "Mbit/s up" }}</span></span>
     </div>
   </div>
   <div class="pt-5" data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}">{{.Chart}}</div>
