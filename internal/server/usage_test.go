@@ -4,10 +4,12 @@
 package server
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 )
@@ -84,7 +86,7 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 	}
 	for _, want := range []string{
 		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, "Mbit/s down", "Mbit/s up", `<svg class="verso-chart`,
-		">Download<", ">Upload<",
+		">Downloaded<", ">Uploaded<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
 		">2 GiB<", ">512 MiB<", // today down and up
 		">3 GiB<", // this month's download: today and the 1st
@@ -113,6 +115,32 @@ func TestAReadWithoutTodayKeepsTheDaysHeld(t *testing.T) {
 	days.Today, days.Days = "", nil
 	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
 		t.Error("a read with no today must not blank the month already held")
+	}
+}
+
+// TestUsageSpeaksSlovenian: the i18n audit's fake router has usage off, so the
+// usage roster and panel would be its blind spot; this renders both in
+// Slovenian from the real catalogs, every word of theirs translated.
+func TestUsageSpeaksSlovenian(t *testing.T) {
+	var received uint64
+	s, _ := usageServer(t, &received)
+	bundle, problems := i18n.Load(os.DirFS("../../i18n"), "*/*.json")
+	if len(problems) != 0 {
+		t.Fatal(problems)
+	}
+	s.SetBundle(bundle)
+	roster := getLang(t, s, "/devices", "sl")
+	for _, want := range []string{">Zdaj · Mbit/s<", ">Ta mesec<", ">prenos<", ">nalaganje<"} {
+		if !strings.Contains(roster, want) {
+			t.Errorf("Slovenian roster missing %q", want)
+		}
+	}
+	panel := getLang(t, s, "/entity/device/42:e6:ad:ff:b7:af", "sl")
+	for _, want := range []string{">Naslov MAC<", ">Zakup<", ">Poraba</h2>", "Promet naprave — prenos in nalaganje, zadnja minuta",
+		">Obdobje<", ">Preneseno<", ">Naloženo<", ">Danes<", ">Zadnjih 7 dni<", ">Ta mesec<", ">Prejšnji mesec<"} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("Slovenian panel missing %q", want)
+		}
 	}
 }
 

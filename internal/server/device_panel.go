@@ -87,8 +87,10 @@ func deviceUsage(d widget.Device, downBPS, upBPS []float64, p usage.Periods) wid
 		Style: "flat",
 		Columns: []widget.TableColumn{
 			{Label: "Period"},
-			{Label: "Download", Kind: "num", Width: widget.MeasureWord},
-			{Label: "Upload", Kind: "num", Width: widget.MeasureWord},
+			// Volumes, so the words say what was moved: "Download" is the
+			// button's verb wherever else it stands, and translates as one.
+			{Label: "Downloaded", Kind: "num", Width: widget.MeasureWord},
+			{Label: "Uploaded", Kind: "num", Width: widget.MeasureWord},
 		},
 		Rows: []widget.TableRow{
 			period("Today", p.Today),

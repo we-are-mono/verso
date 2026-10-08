@@ -814,5 +814,17 @@
   "Stopped.": "Ustavljeno.",
   "Done.": "Končano.",
   "Ended with status %d.": "Končano s stanjem %d.",
-  "This run is no longer on the router.": "Tega zagona na usmerjevalniku ni več."
+  "This run is no longer on the router.": "Tega zagona na usmerjevalniku ni več.",
+  "Now · Mbit/s": "Zdaj · Mbit/s",
+  "This month": "Ta mesec",
+  "IPv6": "IPv6",
+  "Lease": "Zakup",
+  "Usage": "Poraba",
+  "Period": "Obdobje",
+  "Downloaded": "Preneseno",
+  "Uploaded": "Naloženo",
+  "Today": "Danes",
+  "Last 7 days": "Zadnjih 7 dni",
+  "Last month": "Prejšnji mesec",
+  "Device traffic — download and upload, last minute": "Promet naprave — prenos in nalaganje, zadnja minuta"
 }
