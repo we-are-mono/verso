@@ -4,14 +4,104 @@
 package server
 
 import (
+	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/telemetry"
 )
+
+// getSignedIn fetches path as a signed-in operator.
+func getSignedIn(t *testing.T, s *Server, path string) (int, string) {
+	t.Helper()
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL+path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res.StatusCode, string(body)
+}
+
+// TestOverviewTrafficDrawsAPastWindowFromHistory: the Internet graph's window
+// fetches the uplink's history, in Mbit/s, each minute at its own time with
+// gaps where nothing was recorded, its figures the window's averages; the
+// minute is the live graph again; a window not offered is refused.
+func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
+	s := newServer(t, fakeBackend{wan: openwrt.WANState{Devices: []openwrt.WANDevice{
+		{Device: "wan0", Routes: []openwrt.WANRoute{{Family: 4, Main: true}}},
+	}}})
+	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	s.historyStore = store
+	now := time.Now().Truncate(time.Minute)
+	store.Add(
+		history.Point{Series: "iface.wan0.rx", Time: now.Add(-10 * time.Minute), Average: 20e6, Peak: 30e6},
+		history.Point{Series: "iface.wan0.rx", Time: now.Add(-9 * time.Minute), Average: 40e6, Peak: 50e6},
+		history.Point{Series: "iface.wan0.tx", Time: now.Add(-10 * time.Minute), Average: 1e6, Peak: 1e6},
+		history.Point{Series: "iface.wan0.tx", Time: now.Add(-9 * time.Minute), Average: 3e6, Peak: 3e6},
+	)
+
+	status, body := getSignedIn(t, s, "/overview/traffic?range=day")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, body:\n%s", status, body)
+	}
+	for _, want := range []string{
+		`<option value="day" selected>`, "24 h ago", ">wan0<",
+		">30.0<", "Mbit/s down on average", ">2.0<", "Mbit/s up on average",
+		`class="verso-chart-line`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("a day's graph missing %q", want)
+		}
+	}
+	if strings.Contains(body, "data-verso-live-chart") {
+		t.Error("a day's graph is fed by the live stream")
+	}
+
+	if _, live := getSignedIn(t, s, "/overview/traffic?range=minute"); !strings.Contains(live, `data-verso-live-chart="wan"`) {
+		t.Error("the minute is not the live graph")
+	}
+	if status, _ := getSignedIn(t, s, "/overview/traffic?range=decade"); status != http.StatusBadRequest {
+		t.Errorf("an unknown window answered %d, want 400", status)
+	}
+}
+
+// TestOverviewOffersTheWindowOnlyWithHistory: without a history to read, the
+// Internet graph is the live minute alone, with no dropdown.
+func TestOverviewOffersTheWindowOnlyWithHistory(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	if _, body := getSignedIn(t, s, "/"); strings.Contains(body, `name="range"`) {
+		t.Error("the overview offers a window with no history behind it")
+	}
+	if status, _ := getSignedIn(t, s, "/overview/traffic?range=day"); status != http.StatusNotFound {
+		t.Errorf("a window with no history answered %d, want 404", status)
+	}
+}
 
 // TestInterfaceRatesHandsOverEachSecondOnce: each per-second rate reaches the
 // history once, however the ticks fall. Loopback is not recorded, nor a device

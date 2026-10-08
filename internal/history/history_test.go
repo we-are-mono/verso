@@ -6,6 +6,7 @@ package history
 import (
 	"context"
 	"database/sql"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -92,6 +93,41 @@ func TestASeriesNameIsStoredOnce(t *testing.T) {
 	got, err := reopened.Points(ctx, "temp.Composite.nvme · 0e:00", Minute, minute(0), minute(4))
 	if err != nil || len(got) != 4 {
 		t.Fatalf("points = %+v (%v), want all four under one name", got, err)
+	}
+}
+
+// TestPointsIncludesMinutesNotYetFlushed: a chart of the last day shows the
+// last quarter of an hour too, though it is still in memory.
+func TestPointsIncludesMinutesNotYetFlushed(t *testing.T) {
+	store, _ := open(t)
+	store.Add(Point{Series: "cpu", Time: minute(0), Average: 1, Peak: 1})
+	if err := store.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	store.Add(Point{Series: "cpu", Time: minute(1), Average: 2, Peak: 2})
+	store.Add(Point{Series: "memory", Time: minute(1), Average: 9, Peak: 9})
+	store.Add(Point{Series: "cpu", Time: minute(5), Average: 3, Peak: 3})
+	got, err := store.Points(ctx, "cpu", Minute, minute(0), minute(5))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Average != 1 || got[1].Average != 2 {
+		t.Fatalf("points = %+v, want the flushed minute and the one in memory", got)
+	}
+}
+
+// TestSlotsPutsEachPointAtItsTimeAndLeavesGaps: a chart's x is time, so a
+// minute nobody recorded is NaN at its own place, not the next point moved
+// left.
+func TestSlotsPutsEachPointAtItsTimeAndLeavesGaps(t *testing.T) {
+	points := []Point{
+		{Time: minute(0), Average: 4},
+		{Time: minute(2), Average: 6},
+		{Time: minute(9), Average: 99}, // past the window
+	}
+	got := Slots(points, func(p Point) float64 { return p.Average / 2 }, minute(0), Minute, 4)
+	if len(got) != 4 || got[0] != 2 || !math.IsNaN(got[1]) || got[2] != 3 || !math.IsNaN(got[3]) {
+		t.Fatalf("slots = %v, want [2 NaN 3 NaN]", got)
 	}
 }
 

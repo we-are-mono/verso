@@ -8,30 +8,6 @@ import (
 	"time"
 )
 
-// Points reads one series at one resolution, oldest first, in [from, to).
-func (s *Store) Points(ctx context.Context, series string, res Resolution, from, to time.Time) ([]Point, error) {
-	rows, err := s.db.QueryContext(ctx, `
-SELECT time, average, peak FROM points
-WHERE series_id = (SELECT id FROM series WHERE name = ?) AND resolution = ? AND time >= ? AND time < ?
-ORDER BY time`,
-		series, res, from.Unix(), to.Unix())
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var out []Point
-	for rows.Next() {
-		p := Point{Series: series}
-		var at int64
-		if err := rows.Scan(&at, &p.Average, &p.Peak); err != nil {
-			return nil, err
-		}
-		p.Time = time.Unix(at, 0)
-		out = append(out, p)
-	}
-	return out, rows.Err()
-}
-
 // Record writes an event at once: events are rare, and the one that explains
 // a power cut must not be lost with it.
 func (s *Store) Record(ctx context.Context, e Event) error {

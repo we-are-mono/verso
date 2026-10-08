@@ -27,6 +27,28 @@ type Traffic struct {
 	// Panel stands the graph in a panel beside other facts: a quarter lower,
 	// and two cells apart from the blocks above and below it rather than one.
 	Panel bool
+	// RangeURL, where history stands behind the graph (ADR-019), offers its
+	// window as a dropdown on the heading line: choosing one fetches the graph
+	// for it from RangeURL with ?range=<value>, in this one's place. Range is
+	// the window drawn, one of TrafficRanges; empty is the live minute. A past
+	// window is drawn once, its figures its averages.
+	RangeURL string
+	Range    string
+}
+
+// TrafficRange is one window a traffic graph can show.
+type TrafficRange struct {
+	Value, Label, AxisStart string
+}
+
+// TrafficRanges are the windows a graph with history offers, the live minute
+// first.
+var TrafficRanges = []TrafficRange{
+	{"minute", "Last minute", "60 s ago"},
+	{"day", "Last 24 hours", "24 h ago"},
+	{"week", "Last 7 days", "7 days ago"},
+	{"month", "Last 30 days", "30 days ago"},
+	{"year", "Last year", "a year ago"},
 }
 
 func (*Traffic) isWidget() {}
@@ -39,12 +61,24 @@ type trafficView struct {
 	Seed              string
 	Chart             template.HTML
 	Panel             bool
+	RangeURL, Range   string
+	Ranges            []TrafficRange
 }
 
 func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	window := TrafficRanges[0]
+	for _, candidate := range TrafficRanges {
+		if candidate.Value == t.Range {
+			window = candidate
+		}
+	}
+	live := t.Live
+	if window != TrafficRanges[0] {
+		live = ""
+	}
 	chart := &Chart{
 		Unit:      "Mbit/s",
-		AxisStart: "60 s ago",
+		AxisStart: window.AxisStart,
 		AxisEnd:   "now",
 		Label:     t.Label,
 		Short:     t.Panel,
@@ -60,12 +94,24 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	seed, err := json.Marshal(map[string][]float64{"down": t.Down, "up": t.Up})
-	if err != nil {
-		return err
+	view := trafficView{
+		Title: r.tr(t.Title), Meta: t.Meta, Live: live,
+		DownNow: t.DownNow, UpNow: t.UpNow, Chart: chartHTML, Panel: t.Panel,
+		RangeURL: t.RangeURL, Range: window.Value,
 	}
-	return r.execute(out, "traffic.html.tmpl", trafficView{
-		Title: r.tr(t.Title), Meta: t.Meta, Live: t.Live,
-		DownNow: t.DownNow, UpNow: t.UpNow, Seed: string(seed), Chart: chartHTML, Panel: t.Panel,
-	})
+	if t.RangeURL != "" {
+		for _, option := range TrafficRanges {
+			view.Ranges = append(view.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
+		}
+	}
+	// Only the live minute seeds the live layer; a past window's gaps are
+	// NaN, which JSON cannot carry, and it is never fed.
+	if live != "" {
+		seed, err := json.Marshal(map[string][]float64{"down": t.Down, "up": t.Up})
+		if err != nil {
+			return err
+		}
+		view.Seed = string(seed)
+	}
+	return r.execute(out, "traffic.html.tmpl", view)
 }

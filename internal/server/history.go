@@ -47,6 +47,7 @@ func (s *Server) StartHistory(dir string) {
 		defer close(done)
 		collector.Run(ctx)
 	}()
+	s.historyStore = store
 	s.historyStop = func() { cancel(); <-done }
 }
 

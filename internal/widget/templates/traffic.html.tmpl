@@ -4,7 +4,10 @@
      measures, the newest download and upload with their series' squares, and
      the chart under them. The live layer (verso-chart.js) finds the chart by
      data-verso-live-chart, seeds itself from data-verso-live-seed, and keeps the
-     two figures by data-verso-live-down and -up. In a panel, whose blocks stand
+     two figures by data-verso-live-down and -up. A graph with history behind it
+     offers its window as a dropdown on the heading line, which fetches the graph
+     for the window in this section's place; a past window carries none of the
+     live attributes, and its figures are averages. In a panel, whose blocks stand
      a cell apart, it stands two from its neighbours: 39px over its border, so
      the border keeps its line, and 40px under it. The panel's blocks are
      spaced by margins that collapse into the larger, so the 39px is the whole
@@ -13,10 +16,19 @@
   <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 xl:h-10 xl:py-0">
     <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Meta}}<span aria-hidden="true" class="text-faint">·</span><span class="font-mono text-base font-medium text-meta">{{.Meta}}</span>{{end}}
+    {{if .Ranges}}
+    <div class="relative flex items-center">
+      <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="closest section" hx-swap="outerHTML"
+        class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+        {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
+    </div>
+    {{end}}
     <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
-      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold" data-verso-live-down>{{.DownNow}}</span></span><span class="text-sm text-meta">{{ t "Mbit/s down" }}</span></span>
-      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold" data-verso-live-up>{{.UpNow}}</span></span><span class="text-sm text-meta">{{ t "Mbit/s up" }}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s down" }}{{else}}{{ t "Mbit/s down on average" }}{{end}}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s up" }}{{else}}{{ t "Mbit/s up on average" }}{{end}}</span></span>
     </div>
   </div>
-  <div class="pt-5" data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}">{{.Chart}}</div>
+  <div class="pt-5"{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
 </section>

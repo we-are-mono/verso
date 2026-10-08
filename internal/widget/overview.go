@@ -33,6 +33,9 @@ type Overview struct {
 	UpSeries   []float64
 	DownVal    string
 	UpVal      string
+	// TrafficRangeURL offers the Internet graph's window where history
+	// stands behind it (Traffic.RangeURL).
+	TrafficRangeURL string
 
 	// The IPv4/IPv6 connection facts. Each side carries its protocol label and
 	// its rows; an absent address family keeps its place when facts are available.
@@ -144,6 +147,21 @@ type OverviewMeter struct {
 	Fill   int
 }
 
+// InternetTraffic is the overview's Internet graph of the uplink device: the
+// live minute when window is empty or "minute", else the past window drawn
+// from history, its figures the window's averages.
+func InternetTraffic(device, downNow, upNow string, down, up []float64, rangeURL, window string) *Traffic {
+	label := "Internet traffic — download and upload, last minute"
+	if window != "" && window != TrafficRanges[0].Value {
+		label = "Internet traffic — download and upload"
+	}
+	return &Traffic{
+		Title: "Internet traffic", Meta: device, Live: "wan", Label: label,
+		DownNow: downNow, UpNow: upNow, Down: down, Up: up,
+		RangeURL: rangeURL, Range: window,
+	}
+}
+
 // wanSeriesFallback is the flat-line length drawn before any WAN sample lands.
 const wanSeriesFallback = 60
 
@@ -233,11 +251,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	// RenderWithToken), so it runs the localization walk over each itself — every
 	// column label, cell word, chart caption and drawer fact is translated in one
 	// place, exactly as a plugin's table would be (ADR-012).
-	traffic, err := renderToHTML(r, &Traffic{
-		Title: "Internet traffic", Meta: o.WANDevice, Live: "wan",
-		Label:   "Internet traffic — download and upload, last minute",
-		DownNow: o.DownVal, UpNow: o.UpVal, Down: down, Up: up,
-	}, csrf)
+	traffic, err := renderToHTML(r, InternetTraffic(o.WANDevice, o.DownVal, o.UpVal, down, up, o.TrafficRangeURL, ""), csrf)
 	if err != nil {
 		return err
 	}

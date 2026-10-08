@@ -99,6 +99,9 @@ func (s *Server) routes() {
 	// the shell pushes fresh readings into it (events.go). Read-only, behind
 	// the same session gate as every page.
 	s.mux.HandleFunc("GET /overview/events", s.handleOverviewEvents)
+	// The Internet graph for the window chosen on it, live or from history
+	// (ADR-019, overview_traffic.go).
+	s.mux.HandleFunc("GET "+overviewTrafficPath, s.handleOverviewTraffic)
 	// The Devices roster's usage while it is open (ADR-018, usage.go).
 	s.mux.HandleFunc("GET "+devicesPath+"/usage", s.handleDevicesUsage)
 

@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -99,8 +100,10 @@ type Server struct {
 	telemetryAt   time.Time
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
-	// historyStop ends the history collector, writing what it holds (ADR-019).
-	historyStop func()
+	// historyStop ends the history collector, writing what it holds; the store
+	// is what the graphs' past windows read (ADR-019). Nil without a history.
+	historyStop  func()
+	historyStore *history.Store
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors
@@ -928,15 +931,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("verso: overview: system info unavailable: %v", err)
 	}
-	// The process-wide sampler normally supplies an already-warm minute. WAN data
-	// can still use the low-cost netifd device counters if sampling fails.
-	var d, u float64
 	wan, wanErr := s.wanStatus(r)
-	primaryWAN, primaryWANOK := wan.Primary()
 	if wanErr == nil {
 		ov.WANKnown, ov.WANUp = true, wan.Up()
-		if primaryWANOK {
-			ov.WANDevice = primaryWAN.Device
+		if primaryWAN, ok := wan.Primary(); ok {
 			ov.WANUptime = loginDuration(tr, primaryWAN.Uptime)
 		}
 	} else {
@@ -944,20 +942,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
 	ov.InterfacesKnown = telemetryOK
-	if telemetryOK && wanErr == nil && primaryWANOK {
-		if device, found := snapshot.Interface(primaryWAN.Device); found {
-			ov.DownSeries, ov.UpSeries = telemetryInterfaceRates(device.History)
-			if len(ov.DownSeries) != 0 {
-				d = ov.DownSeries[len(ov.DownSeries)-1]
-				u = ov.UpSeries[len(ov.UpSeries)-1]
-			}
-		}
+	ov.WANDevice, ov.DownSeries, ov.UpSeries, ov.DownVal, ov.UpVal = s.wanMinute(r)
+	if s.historyStore != nil {
+		ov.TrafficRangeURL = overviewTrafficPath
 	}
-	if len(ov.DownSeries) == 0 {
-		ov.DownSeries, ov.UpSeries = s.wanHist.Series()
-		d, u = s.wanHist.Latest()
-	}
-	ov.DownVal, ov.UpVal = fmt.Sprintf("%.1f", d), fmt.Sprintf("%.1f", u)
 	// The IPv4/IPv6 panel reads the uplink's live connection facts: the
 	// addresses, gateways and lease times behind the internet tile's verdict.
 	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {

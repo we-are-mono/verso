@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -263,6 +264,59 @@ WHERE resolution = ? AND time >= ? AND time < ?
 GROUP BY series_id, time / ?`,
 		to, step, step, from, start, end, step)
 	return err
+}
+
+// Points reads one series at one resolution, oldest first, in [from, to).
+// Minutes still in memory are included, so the newest quarter of an hour is
+// not missing from a chart.
+func (s *Store) Points(ctx context.Context, series string, res Resolution, from, to time.Time) ([]Point, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT time, average, peak FROM points
+WHERE series_id = (SELECT id FROM series WHERE name = ?) AND resolution = ? AND time >= ? AND time < ?
+ORDER BY time`,
+		series, res, from.Unix(), to.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Point
+	for rows.Next() {
+		p := Point{Series: series}
+		var at int64
+		if err := rows.Scan(&at, &p.Average, &p.Peak); err != nil {
+			return nil, err
+		}
+		p.Time = time.Unix(at, 0)
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if res == Minute {
+		s.mu.Lock()
+		for _, p := range s.pending {
+			if p.Series == series && !p.Time.Before(from) && p.Time.Before(to) {
+				out = append(out, p)
+			}
+		}
+		s.mu.Unlock()
+	}
+	return out, nil
+}
+
+// Slots lays points out on n periods of res from start, each slot holding
+// value(point) or NaN where nothing was recorded, so a chart's x is time.
+func Slots(points []Point, value func(Point) float64, start time.Time, res Resolution, n int) []float64 {
+	out := make([]float64, n)
+	for i := range out {
+		out[i] = math.NaN()
+	}
+	for _, p := range points {
+		if i := int(p.Time.Sub(start) / (time.Duration(res) * time.Second)); i >= 0 && i < n {
+			out[i] = value(p)
+		}
+	}
+	return out
 }
 
 // Close writes what is still in memory and closes the file.

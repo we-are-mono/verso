@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
@@ -60,6 +61,37 @@ func TestChartCurveDoesNotOvershootEndpoints(t *testing.T) {
 	if !strings.Contains(got, "C0.2 100.0 0.7 100.0 1.0 100.0") {
 		t.Fatalf("first segment's controls were not constrained to its endpoints: %s", got)
 	}
+}
+
+// TestChartBreaksTheLineAtAGap: a NaN is a period nothing was recorded, so the
+// line stops there and starts again after it, each run in its place on the
+// axis; the scale ignores the gap, and a lone point between gaps is no line.
+func TestChartBreaksTheLineAtAGap(t *testing.T) {
+	nan := math.NaN()
+	got := render(t, newRenderer(t), &Chart{Series: []ChartSeries{
+		{Values: []float64{1, 2, nan, 5, nan, 4, 4}, Fill: true},
+	}})
+	if strings.Contains(got, "NaN") {
+		t.Fatalf("a gap was drawn as a number:\n%s", got)
+	}
+	line := between(got, `class="verso-chart-line`, `/>`)
+	if n := strings.Count(line, "M"); n != 2 {
+		t.Fatalf("line has %d runs, want 2 (the lone 5 is no line): %s", n, line)
+	}
+	// Seven slots over 620: the second run starts at slot 5, x = 516.7.
+	if !strings.Contains(line, "M516.7 ") {
+		t.Fatalf("the second run is not at its own place on the axis: %s", line)
+	}
+	if area := between(got, `class="verso-chart-area"`, `/>`); strings.Count(area, "Z") != 2 {
+		t.Fatalf("area does not close each run on its own: %s", area)
+	}
+}
+
+// between is the text after the first start and before the next end.
+func between(s, start, end string) string {
+	_, rest, _ := strings.Cut(s, start)
+	before, _, _ := strings.Cut(rest, end)
+	return before
 }
 
 // TestChartSkipsShortSeries: a series with fewer than two points can't be a line — it is

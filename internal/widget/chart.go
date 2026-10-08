@@ -6,6 +6,7 @@ package widget
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 )
 
@@ -77,7 +78,9 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	top := 0.0
 	for _, s := range c.Series {
 		for _, v := range s.Values {
-			top = max(top, v)
+			if !math.IsNaN(v) {
+				top = max(top, v)
+			}
 		}
 	}
 	top *= 1.15
@@ -102,11 +105,18 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		if len(s.Values) < 2 {
 			continue // a line needs at least two points
 		}
-		pts := chartPoints(s.Values, chartW, chartH, top)
-		sv := chartSeriesView{Role: s.Role, Line: chartCurve(pts)}
+		var line, area strings.Builder
+		for _, run := range chartRuns(chartPoints(s.Values, chartW, chartH, top)) {
+			line.WriteString(chartCurve(run))
+			area.WriteString(chartCurveArea(run, chartH))
+		}
+		if line.Len() == 0 {
+			continue
+		}
+		sv := chartSeriesView{Role: s.Role, Line: line.String()}
 		if s.Fill {
 			sv.GradID = fmt.Sprintf("vc%d-%d", seq, i)
-			sv.Area = chartCurveArea(pts, chartW, chartH)
+			sv.Area = area.String()
 		}
 		view.Series = append(view.Series, sv)
 	}
@@ -167,11 +177,28 @@ func chartCurve(pts [][2]float64) string {
 }
 
 // chartCurveArea is the same smooth curve closed down to the baseline and back — the
-// filled shape under the line.
-func chartCurveArea(pts [][2]float64, w, h float64) string {
+// filled shape under the line, from the run's first point to its last.
+func chartCurveArea(pts [][2]float64, h float64) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "M0 %.1f L%.1f %.1f", h, pts[0][0], pts[0][1])
+	fmt.Fprintf(&b, "M%.1f %.1f L%.1f %.1f", pts[0][0], h, pts[0][0], pts[0][1])
 	chartSegments(&b, pts)
-	fmt.Fprintf(&b, " L%.1f %.1f Z", w, h)
+	fmt.Fprintf(&b, " L%.1f %.1f Z", pts[len(pts)-1][0], h)
 	return b.String()
+}
+
+// chartRuns splits the points at gaps (a NaN value, nothing recorded) into the
+// runs a line can be drawn through; a lone point between gaps is no line.
+func chartRuns(pts [][2]float64) [][][2]float64 {
+	var runs [][][2]float64
+	start := 0
+	for i := 0; i <= len(pts); i++ {
+		if i < len(pts) && !math.IsNaN(pts[i][1]) {
+			continue
+		}
+		if i-start >= 2 {
+			runs = append(runs, pts[start:i])
+		}
+		start = i + 1
+	}
+	return runs
 }
