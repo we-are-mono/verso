@@ -68,6 +68,18 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **`verso` uci config.** A uci config for durable shell preferences (e.g. a
   reorderable set of dashboard cards).
 
+## Per-device usage (ADR-018)
+
+- **First Devices visit on the router.** The first history read after the
+  shell starts runs `nlbw` once per day of the last 62; time it on the DK.
+- **nlbwmon writes in place.** Send a temp-file-and-rename save upstream and
+  carry it in the Mono feed; the helper's watchdog covers stock installs.
+- **SELinux: label `/data/nlbwmon`** before the policy goes enforcing.
+- **Overview usage.** The sentence naming the heavy user and the household's
+  month tile (agreed, not built).
+- **Destinations.** What a device talks to needs a source for names that is
+  not logs, and a privacy decision.
+
 ## Tooling
 
 - **Router pull-watcher.** A small procd service on a dev router that polls a
