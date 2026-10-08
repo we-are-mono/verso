@@ -8,12 +8,13 @@
 // and a partial catalog renders the rest in English.
 //
 // Catalogs are per-component (ADR-012): the shell owns "base", and each plugin
-// owns its own. They ship as separate data packages (verso-i18n-base-<code>,
-// verso-i18n-<plugin>-<code>) that drop <component>.json into a per-language
-// directory (<code>/<component>.json) on disk; the shell loads them at runtime the
-// same way it discovers plugin manifests, so adding a language — for the shell or
-// for one plugin — needs no rebuild. A plugin's catalog is applied by the shell
-// but never curated into the shell's own; it travels with the plugin.
+// owns its own. The shell's ship one language per data package
+// (verso-i18n-base-<code>), dropping base.json into a per-language directory
+// (<code>/base.json); a plugin's travel inside the plugin's own package, as
+// i18n/<code>.json beside its manifest. The shell loads both at runtime the same
+// way it discovers plugin manifests, so adding a language needs no rebuild of the
+// shell. A plugin's catalog is applied by the shell but never curated into the
+// shell's own.
 package i18n
 
 import (

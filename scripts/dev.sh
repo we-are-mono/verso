@@ -158,7 +158,7 @@ seed_dev_listeners() {
 # deploy_i18n lands the localization catalogs — ADR-012 data files the shell
 # reads from disk, never part of the binary — under the shell's i18n dir and
 # restarts the shell so it reloads them. On a real device these arrive as
-# verso-i18n-* packages; the dev loop syncs the repo's catalogs directly.
+# verso-i18n-base-<code> packages; the dev loop syncs the repo's catalogs directly.
 deploy_i18n() {
 	local d code
 	for d in i18n/*/; do

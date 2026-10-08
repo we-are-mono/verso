@@ -253,37 +253,33 @@ apk-publish: apk
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
 
 # ── i18n catalog packaging ────────────────────────────────────────────────────
-# A catalog is a per-component data package, discovered on disk at runtime
-# (ADR-012), the same shape LuCI ships (luci-i18n-<app>-<code>). `make apk-i18n`
-# builds + signs a data-only, architecture-independent apk for one component of one
-# language: the shell (verso-i18n-base-<code>) or a plugin (verso-i18n-<plugin>-<code>).
-# It drops i18n/<code>/<component>.json onto disk at
-# /usr/share/verso/i18n/<code>/<component>.json. No post-install script — nothing to
-# restart, the shell rescans on the same trigger as a plugin install. Override
-# I18N_CODE and I18N_COMPONENT (its source must exist at i18n/<code>/<component>.json):
+# The shell's own strings ship one language per data package (ADR-012), the same
+# shape LuCI ships (luci-i18n-base-<code>); a plugin's catalogs travel inside the
+# plugin's own package. `make apk-i18n` builds + signs a data-only,
+# architecture-independent apk of one language of the shell (verso-i18n-base-<code>).
+# It drops i18n/<code>/base.json onto disk at /usr/share/verso/i18n/<code>/base.json.
+# No post-install script — nothing to restart, the shell rescans on the same trigger
+# as a plugin install. Override I18N_CODE (its source must exist at
+# i18n/<code>/base.json):
 #   make apk-i18n                              # verso-i18n-base-sl
-#   make apk-i18n I18N_COMPONENT=system        # verso-i18n-system-sl
+#   make apk-i18n I18N_CODE=de                 # verso-i18n-base-de
 I18N_CODE      ?= sl
-I18N_COMPONENT ?= base
-I18N_SRC       := i18n/$(I18N_CODE)/$(I18N_COMPONENT).json
-I18N_PKG       := verso-i18n-$(I18N_COMPONENT)-$(I18N_CODE)
-I18N_PAYLOAD   := $(APK_DIR)/i18n-$(I18N_COMPONENT)-$(I18N_CODE)
+I18N_SRC       := i18n/$(I18N_CODE)/base.json
+I18N_PKG       := verso-i18n-base-$(I18N_CODE)
+I18N_PAYLOAD   := $(APK_DIR)/i18n-base-$(I18N_CODE)
 I18N_OUT       := $(APK_DIR)/$(I18N_PKG)-$(VER).apk
-# The shell's catalog depends on verso; a plugin's depends on that plugin's package,
-# so a plugin catalog is meaningless without the plugin it translates.
-I18N_DEPENDS   := $(if $(filter base,$(I18N_COMPONENT)),verso,verso-plugin-$(I18N_COMPONENT))
 
 # apk-i18n needs no cross-build (data only), only the buildroot's apk + signing key.
 apk-i18n: apk-preflight
-	@test -f "$(I18N_SRC)" || { echo "catalog $(I18N_SRC) not found — author it, or pass I18N_CODE=<code> I18N_COMPONENT=<base|plugin-id>."; exit 1; }
+	@test -f "$(I18N_SRC)" || { echo "catalog $(I18N_SRC) not found — author it, or pass I18N_CODE=<code>."; exit 1; }
 	rm -rf $(I18N_PAYLOAD)
-	install -Dm644 $(I18N_SRC) $(I18N_PAYLOAD)/usr/share/verso/i18n/$(I18N_CODE)/$(I18N_COMPONENT).json
+	install -Dm644 $(I18N_SRC) $(I18N_PAYLOAD)/usr/share/verso/i18n/$(I18N_CODE)/base.json
 	fakeroot -- sh -c 'chown -R 0:0 "$(I18N_PAYLOAD)" && "$(APK)" mkpkg \
 	  --info name:$(I18N_PKG) --info version:$(VER) --info arch:noarch \
-	  --info "description:Verso localization catalog ($(I18N_COMPONENT), $(I18N_CODE))" \
+	  --info "description:Verso localization catalog ($(I18N_CODE))" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
-	  --info "depends:$(I18N_DEPENDS)" \
+	  --info "depends:verso" \
 	  --files "$(I18N_PAYLOAD)" \
 	  --sign-key "$(KEY)" \
 	  --output "$(I18N_OUT)"'
