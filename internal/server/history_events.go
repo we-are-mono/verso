@@ -226,7 +226,7 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 	return widget.TableRow{Cells: []widget.TableCell{
 		{Text: eventTime(e.Time, now), Verbatim: true},
 		{Text: e.Subject},
-		{Text: what, Variant: variant, Verbatim: true},
+		{Text: what, Variant: variant},
 	}}
 }
 

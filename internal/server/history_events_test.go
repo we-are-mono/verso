@@ -130,6 +130,15 @@ func TestEventsPageListsWhatHappenedNewestFirst(t *testing.T) {
 	}
 }
 
+// TestAnEventIsSaidInWords: what happened is a sentence, so it is set in sans;
+// mono is for the strings a machine wrote (the interface).
+func TestAnEventIsSaidInWords(t *testing.T) {
+	row := eventRow(history.Event{Kind: "wan.down", Subject: "wan0"}, time.Now(), func(s string) string { return s })
+	if row.Cells[2].Verbatim {
+		t.Fatal("the event is set as a machine string")
+	}
+}
+
 // TestAShortOutageSaysItsSeconds: under a minute reads in seconds, not as
 // "0 min".
 func TestAShortOutageSaysItsSeconds(t *testing.T) {
