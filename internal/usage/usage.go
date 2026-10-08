@@ -255,18 +255,20 @@ type Load int
 
 const (
 	Idle   Load = iota // under busyBPS: background chatter
-	Light              // a call, browsing, a sync
-	Medium             // a film, from HD to 4K
-	Heavy              // a download, an update, several streams at once
+	Light              // browsing, music, a video call, an HD film
+	Medium             // a 4K film or a few HD ones, a cloud sync
+	Heavy              // a download, an update, a backup, as fast as it is let
 )
 
 const (
-	// mediumBPS is where a stream of film starts: an HD picture needs about
-	// five megabits, both ways together.
-	mediumBPS = 5_000_000
-	// heavyBPS is past what one 4K stream needs, about twenty-five megabits:
-	// beyond it a device is fetching as fast as it is let.
-	heavyBPS = 25_000_000
+	// mediumBPS is past what a device in everyday use needs: a video call
+	// takes about four megabits and an HD film about eight, both ways
+	// together.
+	mediumBPS = 10_000_000
+	// heavyBPS is past streaming: a 4K film takes about twenty-five megabits
+	// and three at once stay under a hundred. A device beyond it is fetching
+	// in bulk, as fast as the line lets it.
+	heavyBPS = 100_000_000
 )
 
 // LoadOf is a device's load at its rate now, both ways together.

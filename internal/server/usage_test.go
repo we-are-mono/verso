@@ -65,10 +65,9 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	if !strings.Contains(body, "data-verso-figure-text>8</span>") {
 		t.Errorf("the second reading states the rate: 8 Mbit/s down\n%s", body[strings.Index(body, "usage-now"):][:600])
 	}
-	// 8.8 Mbit/s both ways is past a call and short of a download: medium,
-	// inked marigold.
-	if !strings.Contains(body, `data-verso-ink="warning"`) {
-		t.Error("a device moving 8.8 Mbit/s reads as medium")
+	// 8.8 Mbit/s both ways is an HD film or a call: light, inked green.
+	if !strings.Contains(body, `data-verso-ink="success"`) {
+		t.Error("a device moving 8.8 Mbit/s reads as light")
 	}
 }
 
@@ -136,7 +135,7 @@ func TestUsageSpeaksSlovenian(t *testing.T) {
 	s.SetBundle(bundle)
 	roster := getLang(t, s, "/devices", "sl")
 	for _, want := range []string{">Zdaj · Mbit/s<", ">Ta mesec<", ">prenos<", ">nalaganje<",
-		">majhna<", ">pod 5 Mbit/s<", ">srednja<", ">5 do 25 Mbit/s<", ">velika<", ">25 Mbit/s in več<"} {
+		">majhna<", ">pod 10 Mbit/s<", ">srednja<", ">10 do 100 Mbit/s<", ">velika<", ">100 Mbit/s in več<"} {
 		if !strings.Contains(roster, want) {
 			t.Errorf("Slovenian roster missing %q", want)
 		}

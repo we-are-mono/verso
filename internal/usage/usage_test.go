@@ -159,10 +159,10 @@ func TestLoadIsWhatTheRateIsEnoughFor(t *testing.T) {
 		{Rate{}, Idle},
 		{Rate{Down: 40_000, Up: 40_000}, Idle},
 		{Rate{Down: 100_000}, Light},
-		{Rate{Down: 4_000_000, Up: 900_000}, Light},
-		{Rate{Down: 4_000_000, Up: 1_000_000}, Medium},
-		{Rate{Down: 24_900_000}, Medium},
-		{Rate{Down: 20_000_000, Up: 5_000_000}, Heavy},
+		{Rate{Down: 8_000_000, Up: 1_900_000}, Light},
+		{Rate{Down: 8_000_000, Up: 2_000_000}, Medium},
+		{Rate{Down: 99_900_000}, Medium},
+		{Rate{Down: 90_000_000, Up: 10_000_000}, Heavy},
 		{Rate{Down: 940_000_000}, Heavy},
 	} {
 		if got := LoadOf(tc.rate); got != tc.want {

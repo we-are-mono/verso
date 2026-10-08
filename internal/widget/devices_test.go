@@ -135,7 +135,7 @@ func TestRenderDevicesUsage(t *testing.T) {
 		">38.2<", ">1.1<", ">212 GiB<", ">41 GiB<",
 		`data-verso-ink="danger"`,
 		// The legend says what each ink stands for, in the ink itself.
-		">light<", ">under 5 Mbit/s<", ">medium<", ">5 to 25 Mbit/s<", ">heavy<", ">25 Mbit/s and over<",
+		">light<", ">under 10 Mbit/s<", ">medium<", ">10 to 100 Mbit/s<", ">heavy<", ">100 Mbit/s and over<",
 		"text-green-deep", "text-marigold-deep", "text-crimson-deep",
 	} {
 		if !strings.Contains(got, want) {
@@ -146,6 +146,16 @@ func TestRenderDevicesUsage(t *testing.T) {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("Now draws no meter, found %q", unwanted)
 		}
+	}
+	// Now's figures are written at 500, a step over the row's words; the
+	// month's total stays at the row's own weight.
+	cell := func(key string) string {
+		at := strings.Index(got, `data-verso-cell="`+key+`"`)
+		open := strings.LastIndex(got[:at], "<td")
+		return got[open:at]
+	}
+	if !strings.Contains(cell("usage-now"), "font-medium") || strings.Contains(cell("usage-month"), "font-medium") {
+		t.Errorf("Now's figures are 500 and the month's are not:\n%s\n%s", cell("usage-now"), cell("usage-month"))
 	}
 	// An idle row's Now carries no ink until the stream gives it one.
 	if n := strings.Count(got, `data-verso-ink=""`); n != 2 {

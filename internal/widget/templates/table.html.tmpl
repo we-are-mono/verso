@@ -426,14 +426,14 @@
         </td>
         {{else if eq .Kind "figures"}}
         {{/* figures side by side, each in a slot of one width so a column of
-             them lines up. An inked cell writes them in its tone's Deep step
-             (input.css, [data-verso-ink]), which a live listing changes in
-             place; otherwise they are Ink. Every slot is drawn even when it
+             them lines up. An inked cell writes them at 500 in its tone's
+             Deep step (input.css, [data-verso-ink]), which a live listing
+             changes in place; otherwise they are Ink at the row's weight. Every slot is drawn even when it
              has nothing to say, unseen but keeping its width, so a live listing fills it in place and
              the cell is as wide busy as idle: a table squeezed below its columns' widths shares the
              shortfall by content, and a cell whose width swung would move its column with every
              reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}{{else if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}font-medium{{else if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
           <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
           {{range .Figures}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
