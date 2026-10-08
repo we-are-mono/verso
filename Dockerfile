@@ -51,6 +51,8 @@ COPY plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system /etc/init
 RUN apk add --no-check-certificate ca-bundle \
  # The package depends on nlbwmon for usage history (ADR-018).
  && apk add nlbwmon \
+ # What verso-plugin-ddns depends on, for `make dev` to deploy it beside the rest.
+ && apk add ddns-scripts ddns-scripts-cloudflare ddns-scripts-noip \
  && echo 'verso:x:6000:6000:verso:/var/run/verso:/bin/false' >> /etc/passwd \
  && echo 'verso:x:6000:' >> /etc/group \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
