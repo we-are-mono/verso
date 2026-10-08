@@ -604,6 +604,9 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	// The stage is applied and kept: who staged what no longer describes it.
 	s.authors.forget(s.sessionSID(r))
+	// The running alerter takes up verso.alerts as the apply left it
+	// (ADR-020); procd records the command line only for the next start.
+	s.refreshAlerts(r.Context(), s.sessionSID(r))
 	writeOK(w)
 }
 

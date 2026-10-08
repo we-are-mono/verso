@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -199,6 +200,27 @@ func TestDeliverPostsEachDueAlertAndRetriesAFailure(t *testing.T) {
 	a.Deliver(ctx)
 	if queued := waiting(t, store); len(queued) != 0 {
 		t.Fatalf("an alert a day old is still tried: %+v", queued)
+	}
+}
+
+// TestTestSaysWhetherAlertsArrive: the operator's "Send a test alert" posts
+// at once and answers with what the receiver said.
+func TestTestSaysWhetherAlertsArrive(t *testing.T) {
+	rc := &receiver{status: http.StatusOK}
+	srv := httptest.NewServer(rc)
+	defer srv.Close()
+	a, _ := newAlerter(t)
+	a.Configure(Config{})
+	if err := a.Test(ctx); err == nil {
+		t.Fatal("a test with no address succeeded")
+	}
+	a.Configure(Config{URL: srv.URL})
+	if err := a.Test(ctx); err != nil || len(rc.requests) != 1 || rc.requests[0].Header.Get("Title") != "home-router: a test alert" {
+		t.Fatalf("test = %v, requests %d", err, len(rc.requests))
+	}
+	rc.status = http.StatusForbidden
+	if err := a.Test(ctx); err == nil || !strings.Contains(err.Error(), "403") {
+		t.Fatalf("a refused test = %v, want the 403 named", err)
 	}
 }
 

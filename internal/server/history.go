@@ -75,6 +75,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 		collector.Run(ctx)
 	}()
 	s.historyStore = store
+	s.alerter = alerter
 	s.historyStop = func() {
 		stopWatch()
 		watching.Wait()

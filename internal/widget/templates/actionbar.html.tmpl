@@ -63,7 +63,11 @@
     {{/* Making one opens the same panel that edits one, in place: the listing
          stays where it is and no page is loaded to show a form. */}}
     <span x-data="modal" class="contents">
+      {{if eq .Action.Style "quiet"}}
+      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}">{{.Action.Label}}</a>
+      {{else}}
       <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+      {{end}}
       {{template "verso-drawer-fetched" ""}}
     </span>
     {{else if .HasPanel}}

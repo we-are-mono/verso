@@ -11,6 +11,7 @@ package alerts
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -230,6 +231,29 @@ func (a *Alerter) post(ctx context.Context, url string, alert history.Alert) (in
 	}
 	_ = res.Body.Close()
 	return res.StatusCode, strconv.Itoa(res.StatusCode)
+}
+
+// Configured is whether alerts have an address to go to.
+func (a *Alerter) Configured() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.cfg.URL != ""
+}
+
+// Test posts a test alert at once and says why it did not arrive, if it did
+// not: no address, no answer, or the receiver's refusal by status.
+func (a *Alerter) Test(ctx context.Context) error {
+	a.mu.Lock()
+	url := a.cfg.URL
+	a.mu.Unlock()
+	if url == "" {
+		return errors.New("no alert address is set")
+	}
+	status, result := a.post(ctx, url, history.Alert{Title: a.title("a test alert"), Body: "If you can read this, alerts reach you."})
+	if status < 200 || status >= 300 {
+		return fmt.Errorf("the receiver answered %s", result)
+	}
+	return nil
 }
 
 // Beat tells the outside monitor the router is alive, once every five

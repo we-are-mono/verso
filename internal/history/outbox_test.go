@@ -119,6 +119,26 @@ func TestTheOutboxJoinsAnExistingFile(t *testing.T) {
 	}
 }
 
+// TestLastAlertIsTheNewestAttempted: what the alert address's description
+// reports — the last alert that was tried, and how it went.
+func TestLastAlertIsTheNewestAttempted(t *testing.T) {
+	store, _ := open(t)
+	if _, found, err := store.LastAlert(ctx); err != nil || found {
+		t.Fatalf("LastAlert on nothing = %v, %v", found, err)
+	}
+	tried, _ := store.Enqueue(ctx, Alert{Created: minute(0), Title: "tried"})
+	if _, err := store.Enqueue(ctx, Alert{Created: minute(1), Title: "waiting"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Attempted(ctx, tried, minute(2), "sent", "200", time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := store.LastAlert(ctx)
+	if err != nil || !found || got.Title != "tried" || got.State != "sent" || got.Result != "200" || !got.LastTry.Equal(minute(2)) {
+		t.Fatalf("LastAlert = %+v, %v, %v", got, found, err)
+	}
+}
+
 // TestMaintainForgetsOldAlerts: the outbox keeps thirty days.
 func TestMaintainForgetsOldAlerts(t *testing.T) {
 	store, _ := open(t)

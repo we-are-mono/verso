@@ -188,7 +188,14 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Events", Tone: "neutral"}, "wide",
+	// Where the events are told when nobody is looking (ADR-020) opens over
+	// the page from its heading line.
+	var act *widget.ActionBar
+	if s.alerter != nil {
+		act = &widget.ActionBar{Heading: true, OpensPanel: true,
+			Action: &widget.TableAction{Label: "Alerts", Href: alertsPath, Icon: "bell", Style: "quiet"}}
+	}
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Events", Tone: "neutral", HeadingAct: s.headingAct(r, act, lang, t)}, "wide",
 		s.sectionPages("System", r.URL.Path), template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
 }
 

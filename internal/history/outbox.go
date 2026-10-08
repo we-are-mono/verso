@@ -62,9 +62,21 @@ func (s *Store) Enqueue(ctx context.Context, a Alert) (int64, error) {
 
 // Due is the pending alerts whose next try has come, oldest first.
 func (s *Store) Due(ctx context.Context, now time.Time) ([]Alert, error) {
+	return s.alerts(ctx, `WHERE state = 'pending' AND next_try <= ? ORDER BY id`, now.Unix())
+}
+
+// LastAlert is the alert most recently tried; found is false before any was.
+func (s *Store) LastAlert(ctx context.Context) (a Alert, found bool, err error) {
+	tried, err := s.alerts(ctx, `WHERE attempts > 0 ORDER BY last_try DESC, id DESC LIMIT 1`)
+	if err != nil || len(tried) == 0 {
+		return Alert{}, false, err
+	}
+	return tried[0], true, nil
+}
+
+func (s *Store) alerts(ctx context.Context, where string, args ...any) ([]Alert, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, created, title, body, priority, state, attempts, last_try, result FROM alerts
-WHERE state = 'pending' AND next_try <= ? ORDER BY id`, now.Unix())
+SELECT id, created, title, body, priority, state, attempts, last_try, result FROM alerts `+where, args...)
 	if err != nil {
 		return nil, err
 	}

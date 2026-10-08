@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
@@ -104,6 +105,8 @@ type Server struct {
 	// is what the graphs' past windows read (ADR-019). Nil without a history.
 	historyStop  func()
 	historyStore *history.Store
+	// alerter sends alerts and the heartbeat (ADR-020); nil without a history.
+	alerter *alerts.Alerter
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors

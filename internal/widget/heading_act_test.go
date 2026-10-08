@@ -180,3 +180,14 @@ func TestColumnHeadsAreARow(t *testing.T) {
 		}
 	}
 }
+
+// TestAQuietHeadingActOpensItsPanelInTheSecondaryDress: an act that opens a
+// panel of settings over the page, not the thing the page is for, wears the
+// quiet button, as Logs' Settings does.
+func TestAQuietHeadingActOpensItsPanelInTheSecondaryDress(t *testing.T) {
+	got := render(t, newRenderer(t), &ActionBar{Heading: true, OpensPanel: true,
+		Action: &TableAction{Label: "Alerts", Href: "/system/events/alerts", Icon: "bell", Style: "quiet"}})
+	if !strings.Contains(got, `@click.prevent="showPanel"`) || !strings.Contains(got, "border-rule-strong bg-transparent text-meta") || strings.Contains(got, "bg-denim") {
+		t.Errorf("a quiet act that opens a panel is not in the secondary dress:\n%s", got)
+	}
+}
