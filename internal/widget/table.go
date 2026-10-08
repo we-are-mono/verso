@@ -45,12 +45,13 @@ import (
 //	             (0–100) with the figure (Text) beside it; Variant bands the
 //	             fill (warning marigold, danger crimson, else green), so the
 //	             listing owns its thresholds. No Text is the faint dash
-//	"figures"  — one or more figures side by side, each in a fixed slot; one in
-//	             a series (Role: emerald, violet, the chart's colours) stands
-//	             over a 2px meter of its share (Fill), one without stands
-//	             alone, having no whole to measure against. A figure
-//	             with no Text keeps its slot hidden, so a live listing fills it
-//	             in place; with none to show, the faint dash
+//	"figures"  — one or more figures side by side, each in a fixed slot, in
+//	             Ink; an inked cell (Ink) writes them in its Variant's Deep
+//	             step instead (success green, warning marigold, danger
+//	             crimson), so the listing owns its thresholds and its legend
+//	             says them. A figure with no Text keeps its slot hidden, so a
+//	             live listing fills it in place; with none to show, the faint
+//	             dash
 //	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
 //	             cell's variant uses the badge vocabulary, and an empty cell
 //	             renders a faint dash — pills stay meaningful because most
@@ -454,6 +455,7 @@ type TableCell struct {
 	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
 	Chips        []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
 	Figures      []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
+	Ink          bool            `json:"ink,omitempty"`     // figures cells: the figures are written in Variant's Deep step, a tone a live listing may change
 	Actions      []TableRowAct   `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
 	// Opens says the row's drawer is where this cell's subject is read. A name
 	// is never drawn as a door (doorAct): the shell puts a Details act on the
@@ -461,39 +463,14 @@ type TableCell struct {
 	Opens bool `json:"opens,omitempty"`
 }
 
-// TableFigure is one figure in a figures cell: the number, the glyph that says
-// which way it runs, and the series it belongs to with its share of that
-// series' whole as a meter under it. A figure in no series has no whole and
-// draws no meter. Label is what a screen reader hears after the number when
-// the glyph alone carries its meaning ("down").
+// TableFigure is one figure in a figures cell: the number and the glyph that
+// says which way it runs. Label is what a screen reader hears after the number
+// when the glyph alone carries its meaning ("down"); it also names the figure's
+// slot, so a live listing finds it.
 type TableFigure struct {
 	Text  string `json:"text,omitempty"`
 	Icon  string `json:"icon,omitempty"`
-	Fill  int    `json:"fill,omitempty"` // 0–100, read only in a series
-	Role  string `json:"role,omitempty"` // "emerald" | "violet" | "" (no meter)
 	Label string `json:"label,omitempty"`
-}
-
-// tableFigureView is a figure as the template draws it: its meter's clip
-// already computed from the clamped share, and its series' fill class.
-type tableFigureView struct {
-	TableFigure
-	Clip  template.CSS
-	Class string
-}
-
-// figureClip is a meter's fill as a clip of the full-width bar, square-ended
-// because a 2px line has no room for a rounded one.
-func figureClip(fill int) string {
-	return fmt.Sprintf("inset(0 %d%% 0 0)", 100-min(max(fill, 0), 100))
-}
-
-// figureRoleClass is a series role's fill: the chart's own colours.
-func figureRoleClass(role string) string {
-	if role == "violet" {
-		return "bg-amethyst"
-	}
-	return "bg-green"
 }
 
 // TableRowAct is one act on a row, drawn as a bare icon button at the row's
@@ -556,9 +533,15 @@ type TableChip struct {
 // and the plain words for what wearing it means. Variant is the status cell's
 // own vocabulary, so the mark here and the mark in the row are one treatment —
 // an empty Variant draws the empty ring, exactly as a row does.
+//
+// An ink entry explains an inked figures cell instead: no mark, the Label
+// written in the Variant's Deep step as the figures are, and Detail after it
+// in Meta, saying where that ink starts and stops ("under 5 Mbit/s").
 type TableLegend struct {
 	Variant string `json:"variant,omitempty"`
 	Label   string `json:"label"`
+	Ink     bool   `json:"ink,omitempty"`
+	Detail  string `json:"detail,omitempty"`
 }
 
 // TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
@@ -762,9 +745,8 @@ type tableCellView struct {
 	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
 	// empty when the cell has no reading to draw.
 	Clip template.CSS
-	// FigureViews are a figures cell's figures as drawn, and FiguresShown
-	// whether any has a number, so the dash stands only for a cell with none.
-	FigureViews  []tableFigureView
+	// FiguresShown is whether any of a figures cell's figures has a number,
+	// so the dash stands only for a cell with none.
 	FiguresShown bool
 	TableCell
 	Chips     []tableChipView
@@ -1330,11 +1312,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				}
 				if kind == "figures" {
 					for _, f := range cv.Figures {
-						cv.FigureViews = append(cv.FigureViews, tableFigureView{
-							TableFigure: f,
-							Clip:        template.CSS(figureClip(f.Fill)), //nolint:gosec // built from a clamped integer, never from input text
-							Class:       figureRoleClass(f.Role),
-						})
 						cv.FiguresShown = cv.FiguresShown || f.Text != ""
 					}
 				}

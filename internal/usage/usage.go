@@ -245,18 +245,43 @@ func lastMonth(today string) string {
 	return first.AddDate(0, -1, 0).Format("2006-01")
 }
 
-// Share is part's whole percentage of whole, at most 100; anything above none
-// shows at least one, so a trickle is a sliver rather than nothing.
-func Share(part, whole float64) int {
-	if whole <= 0 || part <= 0 {
-		return 0
-	}
-	pct := int(math.Round(part / whole * 100))
-	return max(1, min(100, pct))
-}
-
 // Busy is whether a device moves enough to read as in use.
 func Busy(r Rate) bool { return r.Down+r.Up >= busyBPS }
+
+// Load is how hard a device uses the line now, read from what its rate is
+// enough for rather than from a share of the line: no router knows its line's
+// speed, and a share of whatever else moves says only who else is busy.
+type Load int
+
+const (
+	Idle   Load = iota // under busyBPS: background chatter
+	Light              // a call, browsing, a sync
+	Medium             // a film, from HD to 4K
+	Heavy              // a download, an update, several streams at once
+)
+
+const (
+	// mediumBPS is where a stream of film starts: an HD picture needs about
+	// five megabits, both ways together.
+	mediumBPS = 5_000_000
+	// heavyBPS is past what one 4K stream needs, about twenty-five megabits:
+	// beyond it a device is fetching as fast as it is let.
+	heavyBPS = 25_000_000
+)
+
+// LoadOf is a device's load at its rate now, both ways together.
+func LoadOf(r Rate) Load {
+	switch total := r.Down + r.Up; {
+	case total < busyBPS:
+		return Idle
+	case total < mediumBPS:
+		return Light
+	case total < heavyBPS:
+		return Medium
+	default:
+		return Heavy
+	}
+}
 
 // Mbits is a rate in megabits per second at one decimal, the ".0" dropped.
 func Mbits(bps float64) string {

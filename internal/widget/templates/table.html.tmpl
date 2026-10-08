@@ -426,19 +426,17 @@
         </td>
         {{else if eq .Kind "figures"}}
         {{/* figures side by side, each in a slot of one width so a column of
-             them lines up, and under each one in a series a 2px meter of its
-             share in its series' colour: 3px under the line, inside the row's
-             own padding, so the row stays two cells tall. A figure with no
-             series has no whole to measure against and stands alone. Every slot is drawn even when it
+             them lines up. An inked cell writes them in its tone's Deep step
+             (input.css, [data-verso-ink]), which a live listing changes in
+             place; otherwise they are Ink. Every slot is drawn even when it
              has nothing to say, unseen but keeping its width, so a live listing fills it in place and
              the cell is as wide busy as idle: a table squeezed below its columns' widths shares the
              shortfall by content, and a cell whose width swung would move its column with every
              reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
+        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}{{else if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
           <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
-          {{$muted := .Muted}}{{range .FigureViews}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums {{if $muted}}text-meta{{else}}text-ink{{end}} last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Role}}">
+          {{range .Figures}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
-            {{if .Role}}<span aria-hidden="true" class="absolute inset-x-0 top-5.75 h-0.5 bg-rule"><span data-verso-figure-meter class="absolute inset-0 {{.Class}} transition-[clip-path] duration-300 ease-out motion-reduce:transition-none" style="clip-path: {{.Clip}}"></span></span>{{end}}
           </span>{{end}}</span>
         </td>
         {{else if eq .Kind "num"}}
@@ -633,9 +631,15 @@
        includes. */}}
   <div class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
     {{range .Legend}}
+    {{if .Ink}}
+    {{/* an ink explained in the ink itself: the word in the tone's Deep
+         step, as the figures are written, and where it starts and stops. */}}
+    <span class="flex items-center gap-1.5 text-sm whitespace-nowrap"><span class="font-medium {{if eq .Variant "success"}}text-green-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "danger"}}text-crimson-deep{{else}}text-ink{{end}}">{{.Label}}</span>{{if .Detail}}<span class="text-meta">{{.Detail}}</span>{{end}}</span>
+    {{else}}
     <span class="flex items-center gap-2 text-sm whitespace-nowrap text-body">
       <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"></span>{{.Label}}
     </span>
+    {{end}}
     {{end}}
     {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
   </div>

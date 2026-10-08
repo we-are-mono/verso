@@ -103,11 +103,15 @@ device unseen for the retention window drops out with its last day's file.
 
 The roster keeps its network lanes and its order; nothing re-ranks. MAC moves to
 the device panel to make room for two columns: **Now** (download over upload,
-Mbit/s) and **This month** (the calendar month's total). On a busy row each Now
-figure stands over a 2px meter: download green and upload amethyst, the WAN
-chart's series, measured against the WAN's current total, at most full. A month
-has no ceiling to measure against, so it carries no meter. Idle rows show the
-empty dash. The device panel opens on the shell's Details tab: the machine facts
+Mbit/s) and **This month** (the calendar month's total). A busy row's Now is
+inked by the device's load, both ways together, read from what the rate is
+enough for: light under 5 Mbit/s (a call, browsing) in green, medium to 25
+Mbit/s (a film, HD to 4K) in marigold, heavy past it (a download, an update) in
+crimson, each in its Deep step; the roster's legend states the three bands.
+Nothing is drawn as a share: the router knows no line speed, and a share of the
+WAN's current total says only who else is busy, so a device alone on the line
+would read as full at any rate. Idle rows show the empty dash. The device panel
+opens on the shell's Details tab: the machine facts
 the roster does not show (the MAC among them), then the device's live traffic
 graph, the overview's Internet graph drawn for the device, and Today, Last 7
 days, This month and Last month. The shell keeps the last minute of rates it
@@ -119,6 +123,6 @@ it is drawn only in the panel's own fetch, when a device is opened.
 
 - Every Verso install runs `nlbwmon` and writes to flash once a day.
 - Traffic between a LAN device and the router itself counts toward the device,
-  as `nlbwmon` counts it; a meter clamps at full.
+  as `nlbwmon` counts it, and in its load.
 - A daily breakdown in the panel can reuse the overview's chart at daily
   granularity; it is not drawn yet.

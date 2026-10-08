@@ -4,24 +4,16 @@
 // verso-usage.js — the Devices roster's usage, live (ADR-018). One EventSource
 // the shell pushes each device's rate into every second, and its month every
 // half minute. The server drew every figure's slot, hidden when empty, so a
-// frame only sets text, a meter's clip and which of the slots and the dash
-// show; nothing here builds markup.
+// frame only sets text, the Now cell's ink and which of the slots and the
+// dash show; nothing here builds markup.
 (function () {
   "use strict";
   if (!window.EventSource || !document.querySelector('[data-verso-cell="usage-now"]')) return;
 
-  // The meter's clip, as the server draws it (widget figureClip): the bar
-  // spans the slot and the clip shows the share, square-ended.
-  function clip(fill) {
-    return "inset(0 " + (100 - Math.min(100, Math.max(0, fill || 0))) + "% 0 0)";
-  }
-  // A figure in no series (a month) has no meter, so only its text moves.
-  function setFigure(cell, role, text, fill) {
-    var slot = cell.querySelector('[data-verso-figure="' + role + '"]');
+  function setFigure(cell, label, text) {
+    var slot = cell.querySelector('[data-verso-figure="' + label + '"]');
     if (!slot) return false;
     slot.querySelector("[data-verso-figure-text]").textContent = text || "";
-    var meter = slot.querySelector("[data-verso-figure-meter]");
-    if (meter) meter.style.clipPath = clip(fill);
     // Unseen, not removed: an empty slot keeps its width, so the column holds
     // still as devices go busy and idle.
     slot.classList.toggle("invisible", !text);
@@ -49,12 +41,26 @@
       if (!row) return;
       var now = row.querySelector('[data-verso-cell="usage-now"]');
       if (now) {
-        var down = setFigure(now, "emerald", d.busy ? d.down : "", d.down_fill);
-        var up = setFigure(now, "violet", d.busy ? d.up : "", d.up_fill);
+        var down = setFigure(now, "down", d.busy ? d.down : "");
+        var up = setFigure(now, "up", d.busy ? d.up : "");
         setDash(now, down || up);
+        // The device's load is the figures' ink; the stylesheet eases it from
+        // one tone to the next, so only a change of load sets it.
+        var ink = d.busy ? d.ink || "" : "";
+        var was = now.getAttribute("data-verso-ink");
+        if (was !== ink) {
+          // A device waking from idle arrives already in its ink: figures
+          // appearing while they shade from Ink would read as a flicker.
+          if (!was) now.style.transition = "none";
+          now.setAttribute("data-verso-ink", ink);
+          if (!was) {
+            void getComputedStyle(now).color;
+            now.style.transition = "";
+          }
+        }
       }
       var month = withMonth && row.querySelector('[data-verso-cell="usage-month"]');
-      if (month) setDash(month, setFigure(month, "", d.month, 0));
+      if (month) setDash(month, setFigure(month, "", d.month));
     });
   }
 

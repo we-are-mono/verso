@@ -27,7 +27,6 @@ type rosterUsage struct {
 	on      bool                  // nlbwmon is enabled, so usage is drawn at all
 	periods usage.Periods         // the calendar periods by MAC
 	rates   map[string]usage.Rate // live rates by MAC; nil while there is no rate yet
-	wan     usage.Rate            // the uplink's rate now, the meters' whole
 }
 
 // readUsage reads the roster's usage under the operator's session: the
@@ -39,7 +38,6 @@ func (s *Server) readUsage(ctx context.Context, sid string, roster []widget.Devi
 	}
 	u.periods = s.usageHistory.Periods()
 	u.rates = s.readUsageRates(ctx, sid, roster)
-	u.wan = s.wanRate(ctx, sid)
 	return u
 }
 
@@ -115,28 +113,8 @@ func addressOwners(roster []widget.Device) map[string]string {
 	return owners
 }
 
-// wanRate is the uplink's rate now, from the telemetry sampler's newest
-// point; zero when there is no uplink to sample, which leaves meters empty.
-func (s *Server) wanRate(ctx context.Context, sid string) usage.Rate {
-	ws, err := s.backend.WANStatus(ctx, sid)
-	if err != nil {
-		return usage.Rate{}
-	}
-	primary, found := ws.Primary()
-	if !found || primary.Device == "" {
-		return usage.Rate{}
-	}
-	snapshot, ok := s.telemetrySnapshot(ctx)
-	if !ok {
-		return usage.Rate{}
-	}
-	device, found := snapshot.Interface(primary.Device)
-	if !found || len(device.History) == 0 {
-		return usage.Rate{}
-	}
-	p := device.History[len(device.History)-1]
-	return usage.Rate{Down: float64(p.RxBPS), Up: float64(p.TxBPS)}
-}
+// loadNames is each load as the roster names it.
+var loadNames = map[usage.Load]string{usage.Light: "light", usage.Medium: "medium", usage.Heavy: "heavy"}
 
 // deviceUsage is one device's usage as the roster says it.
 func (u rosterUsage) deviceUsage(mac string) *widget.DeviceUsage {
@@ -145,7 +123,7 @@ func (u rosterUsage) deviceUsage(mac string) *widget.DeviceUsage {
 	if r, ok := u.rates[mac]; ok && usage.Busy(r) {
 		out.Busy = true
 		out.Down, out.Up = usage.Mbits(r.Down), usage.Mbits(r.Up)
-		out.DownFill, out.UpFill = usage.Share(r.Down, u.wan.Down), usage.Share(r.Up, u.wan.Up)
+		out.Load = loadNames[usage.LoadOf(r)]
 	}
 	month := u.periods.ThisMonth[mac]
 	out.Month = usage.Bytes(month.Down + month.Up)
@@ -162,13 +140,12 @@ func (u rosterUsage) apply(roster []widget.Device) {
 // usageFrame is one live frame for the roster: each device's Now, and its
 // month when the frame carries the month too.
 type usageFrame struct {
-	MAC      string `json:"mac"`
-	Busy     bool   `json:"busy"`
-	Down     string `json:"down"`
-	Up       string `json:"up"`
-	DownFill int    `json:"down_fill"`
-	UpFill   int    `json:"up_fill"`
-	Month    string `json:"month,omitempty"`
+	MAC   string `json:"mac"`
+	Busy  bool   `json:"busy"`
+	Down  string `json:"down"`
+	Up    string `json:"up"`
+	Ink   string `json:"ink"` // the Now cell's tone for the device's load, none while idle
+	Month string `json:"month,omitempty"`
 	// DownMbps and UpMbps are the rate as numbers, idle or not, for the
 	// device's traffic graph when its panel is open.
 	DownMbps float64 `json:"down_mbps"`
@@ -196,13 +173,12 @@ func (s *Server) handleDevicesUsage(w http.ResponseWriter, r *http.Request) {
 			return writeEvent(w, "", "usage", map[string]any{"devices": []usageFrame{}}) == nil
 		}
 		u.rates = s.readUsageRates(r.Context(), sid, roster)
-		u.wan = s.wanRate(r.Context(), sid)
 		frames := make([]usageFrame, 0, len(roster))
 		for _, d := range roster {
 			du := u.deviceUsage(d.MAC)
 			mac := strings.ToLower(d.MAC)
 			r := u.rates[mac]
-			f := usageFrame{MAC: mac, Busy: du.Busy, Down: du.Down, Up: du.Up, DownFill: du.DownFill, UpFill: du.UpFill, DownMbps: r.Down / 1_000_000, UpMbps: r.Up / 1_000_000}
+			f := usageFrame{MAC: mac, Busy: du.Busy, Down: du.Down, Up: du.Up, Ink: widget.LoadInk(du.Load), DownMbps: r.Down / 1_000_000, UpMbps: r.Up / 1_000_000}
 			if withMonth {
 				f.Month = du.Month
 			}

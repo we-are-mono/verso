@@ -148,13 +148,25 @@ func TestHistoryKeepsClosedDaysAndSumsCalendarPeriods(t *testing.T) {
 	}
 }
 
-func TestShareIsAWholePercentOfTheWhole(t *testing.T) {
+// TestLoadIsWhatTheRateIsEnoughFor: a device's load is read from its own rate,
+// both ways together, against what that rate carries (a call, a film, a
+// download), never against the line, whose speed no router knows.
+func TestLoadIsWhatTheRateIsEnoughFor(t *testing.T) {
 	for _, tc := range []struct {
-		part, whole float64
-		want        int
-	}{{38, 50, 76}, {0, 50, 0}, {5, 0, 0}, {80, 50, 100}, {0.2, 1000, 1}} {
-		if got := Share(tc.part, tc.whole); got != tc.want {
-			t.Errorf("Share(%v, %v) = %d, want %d", tc.part, tc.whole, got, tc.want)
+		rate Rate
+		want Load
+	}{
+		{Rate{}, Idle},
+		{Rate{Down: 40_000, Up: 40_000}, Idle},
+		{Rate{Down: 100_000}, Light},
+		{Rate{Down: 4_000_000, Up: 900_000}, Light},
+		{Rate{Down: 4_000_000, Up: 1_000_000}, Medium},
+		{Rate{Down: 24_900_000}, Medium},
+		{Rate{Down: 20_000_000, Up: 5_000_000}, Heavy},
+		{Rate{Down: 940_000_000}, Heavy},
+	} {
+		if got := LoadOf(tc.rate); got != tc.want {
+			t.Errorf("LoadOf(%+v) = %v, want %v", tc.rate, got, tc.want)
 		}
 	}
 }

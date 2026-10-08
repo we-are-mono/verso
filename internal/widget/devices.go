@@ -59,28 +59,48 @@ type Device struct {
 }
 
 // DeviceUsage is a device's usage as the roster says it: its rate now in
-// Mbit/s, stated only while it is busy enough to read as in use, with each
-// figure's share of the WAN's current traffic, and its calendar month so far.
+// Mbit/s, stated only while it is busy enough to read as in use, how hard that
+// rate uses the line (Load: "light", "medium" or "heavy"), and its calendar
+// month so far.
 type DeviceUsage struct {
-	Busy             bool
-	Down, Up         string
-	DownFill, UpFill int
-	Month            string
+	Busy     bool
+	Down, Up string
+	Load     string
+	Month    string
 }
 
-// UsageNowCell is a device's Now: download then upload, each over its meter.
-// An idle device keeps both figures empty, so the cell reads as the dash and a
+// loadInks is each load's ink, in the tone vocabulary a figures cell is inked
+// with: calm green for light, marigold for medium, crimson for heavy.
+var loadInks = map[string]string{"light": "success", "medium": "warning", "heavy": "danger"}
+
+// LoadInk is the tone a load inks its figures in; none for an idle device.
+func LoadInk(load string) string { return loadInks[load] }
+
+// UsageNowCell is a device's Now: download then upload, inked by its load. An
+// idle device keeps both figures empty, so the cell reads as the dash and a
 // live listing has the slots to fill.
 func UsageNowCell(u DeviceUsage) TableCell {
-	down, up := TableFigure{Icon: "arrow-down", Role: "emerald", Label: "down"}, TableFigure{Icon: "arrow-up", Role: "violet", Label: "up"}
+	down, up := TableFigure{Icon: "arrow-down", Label: "down"}, TableFigure{Icon: "arrow-up", Label: "up"}
+	cell := TableCell{Key: "usage-now", Ink: true}
 	if u.Busy {
-		down.Text, down.Fill, up.Text, up.Fill = u.Down, u.DownFill, u.Up, u.UpFill
+		down.Text, up.Text = u.Down, u.Up
+		cell.Variant = LoadInk(u.Load)
 	}
-	return TableCell{Key: "usage-now", Figures: []TableFigure{down, up}}
+	cell.Figures = []TableFigure{down, up}
+	return cell
 }
 
-// UsageMonthCell is a device's calendar month so far. A month has no ceiling
-// to measure against, so it stands without a meter.
+// usageLegend says what each load's ink stands for, in the ink itself, with
+// the rates that bound it: the reader learns the scale where the colours are.
+func usageLegend() []TableLegend {
+	return []TableLegend{
+		{Variant: "success", Ink: true, Label: "light", Detail: "under 5 Mbit/s"},
+		{Variant: "warning", Ink: true, Label: "medium", Detail: "5 to 25 Mbit/s"},
+		{Variant: "danger", Ink: true, Label: "heavy", Detail: "25 Mbit/s and over"},
+	}
+}
+
+// UsageMonthCell is a device's calendar month so far.
 func UsageMonthCell(u DeviceUsage) TableCell {
 	return TableCell{Key: "usage-month", Figures: []TableFigure{{Text: u.Month}}}
 }
@@ -178,17 +198,21 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		}
 		rows = append(rows, row)
 	}
+	legend := []TableLegend{
+		{Variant: "success", Label: "holding a lease now"},
+		{Label: "known, not present"},
+	}
+	if usage {
+		legend = append(legend, usageLegend()...)
+	}
 	return &Table{
 		Style: "flat",
 		// Every column but the device's own is fixed, so the grid holds its shape
 		// whatever this particular network happens to be named and however short
 		// one device's address is.
-		Columns: devicesColumns(usage),
-		Rows:    rows,
-		Legend: []TableLegend{
-			{Variant: "success", Label: "holding a lease now"},
-			{Label: "known, not present"},
-		},
+		Columns:   devicesColumns(usage),
+		Rows:      rows,
+		Legend:    legend,
 		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}

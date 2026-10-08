@@ -414,6 +414,33 @@ html {
     to { opacity: 0; }
   }
 
+  /* An inked figures cell: its figures written in the tone's Deep step, the
+     4.5 floor's step for words, the glyphs beside them left in Glyph. A live
+     listing changes the tone in place, and the ink eases to it. The tokens are
+     hex, and hex colours ease through sRGB, where green to crimson passes
+     through mud; each tone is restated in OKLCH so the ease runs through
+     Oklab, the way a pen's ink would shade over. A browser without relative
+     colours keeps the first declaration and eases the plain way. */
+  [data-verso-ink] {
+    color: var(--color-ink);
+    transition: color 300ms cubic-bezier(.16, 1, .3, 1);
+  }
+  [data-verso-ink="success"] {
+    color: var(--color-green-deep);
+    color: oklch(from var(--color-green-deep) l c h);
+  }
+  [data-verso-ink="warning"] {
+    color: var(--color-marigold-deep);
+    color: oklch(from var(--color-marigold-deep) l c h);
+  }
+  [data-verso-ink="danger"] {
+    color: var(--color-crimson-deep);
+    color: oklch(from var(--color-crimson-deep) l c h);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-verso-ink] { transition: none; }
+  }
+
   /* Autofilled inputs: the browser's trust tint, repainted in the action colour.
      Chrome's own pale blue sits off the palette and washes the field's outline
      soft. The UA background yields only to an inset shadow — and the fields'
