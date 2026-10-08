@@ -4,7 +4,8 @@
 //! What the kernel says about the network devices, asked over rtnetlink rather
 //! than read from a command's output: every link with its kind, flags and
 //! counters (RTM_GETLINK), and every address on it (RTM_GETADDR). Two dumps on
-//! one socket, with nothing but the C library's socket calls.
+//! one socket, with nothing but the C library's socket calls. The same dump
+//! serves any netlink family that answers one (`dump`), as conntrack does.
 
 use std::collections::BTreeMap;
 use std::ffi::c_void;
@@ -17,6 +18,7 @@ const AF_INET6: u8 = 10;
 const SOCK_RAW: i32 = 3;
 const SOCK_CLOEXEC: i32 = 0o2_000_000;
 const NETLINK_ROUTE: i32 = 0;
+pub const NETLINK_NETFILTER: i32 = 12;
 
 const NLMSG_ERROR: u16 = 2;
 const NLMSG_DONE: u16 = 3;
@@ -61,16 +63,16 @@ pub struct Link {
 /// links is every device with its addresses, by name. A kernel that cannot be
 /// asked gives none.
 pub fn links() -> BTreeMap<String, Link> {
-    let Some(socket) = Socket::open() else {
+    let Ok(socket) = Socket::open(NETLINK_ROUTE) else {
         return BTreeMap::new();
     };
     let mut by_index = BTreeMap::new();
-    for message in socket.dump(RTM_GETLINK, &[0u8; 16]) {
+    for message in socket.dump(RTM_GETLINK, &[0u8; 16]).unwrap_or_default() {
         if let Some((index, link)) = parse_link(&message) {
             by_index.insert(index, link);
         }
     }
-    for message in socket.dump(RTM_GETADDR, &[0u8; 8]) {
+    for message in socket.dump(RTM_GETADDR, &[0u8; 8]).unwrap_or_default() {
         if let Some((index, address)) = parse_address(&message) {
             if let Some(link) = by_index.get_mut(&index) {
                 link.addresses.push(address);
@@ -138,9 +140,17 @@ fn parse_address(message: &Message) -> Option<(u32, String)> {
     Some((index, format!("{ip}/{prefix}")))
 }
 
+/// dump asks one netlink family for every object of one kind (`request`, its
+/// family header after the message header) on a socket of its own, and
+/// answers every message of the reply, or why the kernel refused.
+pub fn dump(protocol: i32, request: u16, header: &[u8]) -> Result<Vec<Message>, String> {
+    Socket::open(protocol)?.dump(request, header)
+}
+
 /// attributes walks a run of netlink attributes (struct rtattr: length, type,
-/// value, padded to four bytes).
-fn attributes(mut data: &[u8]) -> impl Iterator<Item = (u16, &[u8])> {
+/// value, padded to four bytes). The type's two top bits are flags (nested,
+/// byte order) and are dropped.
+pub fn attributes(mut data: &[u8]) -> impl Iterator<Item = (u16, &[u8])> {
     std::iter::from_fn(move || {
         if data.len() < 4 {
             return None;
@@ -167,8 +177,8 @@ fn text(value: &[u8]) -> String {
 
 /// Message is one netlink message: its type and what follows the header.
 pub struct Message {
-    kind: u16,
-    body: Vec<u8>,
+    pub kind: u16,
+    pub body: Vec<u8>,
 }
 
 /// messages splits a datagram into its messages (struct nlmsghdr: length,
@@ -200,21 +210,24 @@ unsafe extern "C" {
     fn recv(fd: i32, data: *mut c_void, len: usize, flags: i32) -> isize;
 }
 
-/// Socket is a NETLINK_ROUTE socket, closed when dropped.
+/// Socket is a netlink socket of one family, closed when dropped.
 struct Socket(OwnedFd);
 
 impl Socket {
-    fn open() -> Option<Socket> {
-        // SAFETY: socket(2) with constant arguments; a negative return is the
-        // only failure and is checked, and the descriptor is owned from here.
-        let fd = unsafe { socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE) };
-        (fd >= 0).then(|| Socket(unsafe { OwnedFd::from_raw_fd(fd) }))
+    fn open(protocol: i32) -> Result<Socket, String> {
+        // SAFETY: socket(2) with plain integer arguments; a negative return is
+        // the only failure and is checked, and the descriptor is owned from here.
+        let fd = unsafe { socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, protocol) };
+        if fd < 0 {
+            return Err(format!("netlink socket: {}", std::io::Error::last_os_error()));
+        }
+        Ok(Socket(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
     /// dump asks for every object of one kind and gathers the answer until
-    /// the kernel says it is done. A failed send or receive ends it with what
-    /// arrived.
-    fn dump(&self, request: u16, header: &[u8]) -> Vec<Message> {
+    /// the kernel says it is done. A refusal (an error message carrying an
+    /// errno) or a failed send or receive is an error, never a short answer.
+    fn dump(&self, request: u16, header: &[u8]) -> Result<Vec<Message>, String> {
         let len = 16 + header.len();
         let mut packet = Vec::with_capacity(len);
         packet.extend_from_slice(&(len as u32).to_ne_bytes());
@@ -237,24 +250,37 @@ impl Socket {
             )
         };
         if sent < 0 {
-            return Vec::new();
+            return Err(format!("netlink send: {}", std::io::Error::last_os_error()));
         }
         let mut out = Vec::new();
+        // The kernel sizes a dump's datagrams to the largest read it has seen,
+        // up to 32 KiB, so a read this size always takes a whole one.
         let mut buf = vec![0u8; 32 * 1024];
         loop {
             // SAFETY: recv(2) writes at most buf.len() bytes into buf.
             let got = unsafe { recv(self.0.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len(), 0) };
-            if got <= 0 {
-                return out;
+            if got < 0 {
+                return Err(format!("netlink receive: {}", std::io::Error::last_os_error()));
+            }
+            if got == 0 {
+                return Err("netlink receive: the kernel closed the dump".into());
             }
             for message in messages(&buf[..got as usize]) {
                 match message.kind {
-                    NLMSG_DONE | NLMSG_ERROR => return out,
+                    NLMSG_DONE => return Ok(out),
+                    NLMSG_ERROR => return refusal(&message.body).map_or(Ok(out), Err),
                     _ => out.push(message),
                 }
             }
         }
     }
+}
+
+/// refusal reads an error message's errno (struct nlmsgerr: a negative errno,
+/// then the request it answers); zero is an acknowledgement, not an error.
+fn refusal(body: &[u8]) -> Option<String> {
+    let errno = i32::from_ne_bytes(body.get(..4)?.try_into().ok()?);
+    (errno != 0).then(|| format!("netlink: {}", std::io::Error::from_raw_os_error(-errno)))
 }
 
 #[cfg(test)]
@@ -314,6 +340,15 @@ mod tests {
         data.extend_from_slice(&[0u8; 12]);
         assert!(messages(&data).is_empty());
         assert_eq!(attributes(&[8, 0, 3, 0, b't']).count(), 0);
+    }
+
+    #[test]
+    fn an_error_message_is_a_refusal_unless_it_acknowledges() {
+        let mut body = (-1i32).to_ne_bytes().to_vec();
+        body.extend_from_slice(&[0u8; 16]);
+        assert!(refusal(&body).expect("refused").contains("not permitted"));
+        assert_eq!(refusal(&0i32.to_ne_bytes()), None);
+        assert_eq!(refusal(&[0u8; 2]), None);
     }
 
     /// The kernel this runs on answers: loopback is always there, up, with

@@ -5,18 +5,40 @@
 //! conntrack's accounting while someone watches; each day's bytes per device,
 //! read from nlbwmon; and the watchdog that moves aside a day nlbwmon can no
 //! longer read, so one torn write does not stop the counting.
+//!
+//! Conntrack is dumped over ctnetlink, not read from /proc/net/nf_conntrack:
+//! the proc file walks the table again from its start for every page it hands
+//! out, so a busy router's table of ten thousand connections costs a second of
+//! kernel time to read, every second someone watches.
 
+use crate::netlink::{self, Message, NETLINK_NETFILTER};
 use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Mutex;
 use std::time::Duration;
 
-const CONNTRACK: &str = "/proc/net/nf_conntrack";
+/// ctnetlink's dump request (NFNL_SUBSYS_CTNETLINK << 8 | IPCTNL_MSG_CT_GET)
+/// and each connection in its answer (… | IPCTNL_MSG_CT_NEW).
+const CT_GET: u16 = 1 << 8 | 1;
+const CT_NEW: u16 = 1 << 8;
+/// struct nfgenmsg: AF_UNSPEC for every family, NFNETLINK_V0, no resource.
+const CT_HEADER: [u8; 4] = [0; 4];
+const CTA_TUPLE_ORIG: u16 = 1;
+const CTA_TUPLE_REPLY: u16 = 2;
+const CTA_COUNTERS_ORIG: u16 = 9;
+const CTA_COUNTERS_REPLY: u16 = 10;
+const CTA_ZONE: u16 = 18;
+const CTA_TUPLE_IP: u16 = 1;
+const CTA_IP_V4_SRC: u16 = 1;
+const CTA_IP_V6_SRC: u16 = 3;
+const CTA_COUNTERS_BYTES: u16 = 2;
+const CTA_COUNTERS32_BYTES: u16 = 4;
+
 const NLBW_SOCKET: &str = "/var/run/nlbwmon.sock";
 /// The days the shell may ask for at once: this month and the last, whole.
 const WINDOW_DAYS: usize = 62;
@@ -27,49 +49,41 @@ const MAX_ADDRESSES: usize = 1024;
 /// it sent (none while the kernel keeps no accounting).
 #[derive(Debug, PartialEq)]
 struct Conn {
-    key: String,
+    key: Vec<u8>,
     orig_src: IpAddr,
     orig_bytes: Option<u64>,
     reply_src: IpAddr,
     reply_bytes: Option<u64>,
 }
 
-/// parse_line reads one `/proc/net/nf_conntrack` line. The original direction
-/// comes first (`src=`, then its ports and counters), the reply after the second
-/// `src=`. The key is the protocol and the original direction's identity, which
-/// stay the same while the state, timeout and counters move.
-fn parse_line(line: &str) -> Option<Conn> {
-    let mut fields = line.split_whitespace();
-    let family = fields.next()?;
-    let protocol = fields.nth(1)?;
-    let mut key = format!("{family} {protocol}");
+/// parse_conntrack reads one connection of a ctnetlink dump: struct nfgenmsg,
+/// then its attributes. Each direction's tuple names its source, and its
+/// counters (absent while the kernel keeps no accounting) the bytes that
+/// source sent. The key is the original tuple and the zone, as the kernel
+/// encodes them, which stay the same while the state, timeout and counters
+/// move.
+fn parse_conntrack(message: &Message) -> Option<Conn> {
+    if message.kind != CT_NEW || message.body.len() < CT_HEADER.len() {
+        return None;
+    }
+    let (mut key, mut zone) = (None, &[][..]);
     let (mut orig_src, mut reply_src) = (None, None);
     let (mut orig_bytes, mut reply_bytes) = (None, None);
-    let mut direction = 0;
-    for field in fields {
-        let Some((name, value)) = field.split_once('=') else {
-            continue;
-        };
-        match name {
-            "src" => {
-                direction += 1;
-                let address = value.parse::<IpAddr>().ok()?;
-                match direction {
-                    1 => orig_src = Some(address),
-                    2 => reply_src = Some(address),
-                    _ => return None,
-                }
+    for (kind, value) in netlink::attributes(&message.body[CT_HEADER.len()..]) {
+        match kind {
+            CTA_TUPLE_ORIG => {
+                key = Some(value);
+                orig_src = tuple_source(value);
             }
-            "bytes" if direction == 1 => orig_bytes = value.parse().ok(),
-            "bytes" if direction == 2 => reply_bytes = value.parse().ok(),
-            "packets" | "bytes" => {}
-            _ if direction == 1 || name == "zone" => {
-                key.push(' ');
-                key.push_str(field);
-            }
+            CTA_TUPLE_REPLY => reply_src = tuple_source(value),
+            CTA_COUNTERS_ORIG => orig_bytes = counted_bytes(value),
+            CTA_COUNTERS_REPLY => reply_bytes = counted_bytes(value),
+            CTA_ZONE => zone = value,
             _ => {}
         }
     }
+    let mut key = key?.to_vec();
+    key.extend_from_slice(zone);
     Some(Conn {
         key,
         orig_src: orig_src?,
@@ -79,12 +93,36 @@ fn parse_line(line: &str) -> Option<Conn> {
     })
 }
 
+/// tuple_source is a tuple's source address (CTA_TUPLE_IP's v4 or v6 source).
+fn tuple_source(tuple: &[u8]) -> Option<IpAddr> {
+    let (_, ip) = netlink::attributes(tuple).find(|(kind, _)| *kind == CTA_TUPLE_IP)?;
+    netlink::attributes(ip).find_map(|(kind, value)| match kind {
+        CTA_IP_V4_SRC => Some(IpAddr::from(Ipv4Addr::from(
+            <[u8; 4]>::try_from(value).ok()?,
+        ))),
+        CTA_IP_V6_SRC => Some(IpAddr::from(Ipv6Addr::from(
+            <[u8; 16]>::try_from(value).ok()?,
+        ))),
+        _ => None,
+    })
+}
+
+/// counted_bytes is a direction's byte counter, in network byte order: 64
+/// bits, or 32 from a kernel that keeps them that wide.
+fn counted_bytes(counters: &[u8]) -> Option<u64> {
+    netlink::attributes(counters).find_map(|(kind, value)| match kind {
+        CTA_COUNTERS_BYTES => Some(u64::from_be_bytes(value.try_into().ok()?)),
+        CTA_COUNTERS32_BYTES => Some(u32::from_be_bytes(value.try_into().ok()?).into()),
+        _ => None,
+    })
+}
+
 /// Live is the running byte totals per address since the helper started. They
 /// only grow, so any reader turns two readings into a rate (ADR-018).
 #[derive(Default)]
 pub struct Live {
     /// Each connection's bytes at the last reading, original then reply.
-    last: HashMap<String, (u64, u64)>,
+    last: HashMap<Vec<u8>, (u64, u64)>,
     /// Each address's bytes sent and received.
     totals: HashMap<IpAddr, (u64, u64)>,
 }
@@ -154,8 +192,11 @@ impl Reader {
         if addresses.len() > MAX_ADDRESSES {
             return Err("too many addresses".into());
         }
-        let text = fs::read_to_string(CONNTRACK).map_err(|e| format!("{CONNTRACK}: {e}"))?;
-        let conns: Vec<Conn> = text.lines().filter_map(parse_line).collect();
+        let conns: Vec<Conn> = netlink::dump(NETLINK_NETFILTER, CT_GET, &CT_HEADER)
+            .map_err(|e| format!("conntrack: {e}"))?
+            .iter()
+            .filter_map(parse_conntrack)
+            .collect();
         let empty = conns.is_empty();
         let mut live = self
             .0
@@ -388,10 +429,86 @@ pub fn watchdog() {
 mod tests {
     use super::*;
 
-    const OUTBOUND: &str = "ipv4     2 tcp      6 431999 ESTABLISHED src=192.168.77.20 dst=93.184.215.14 sport=51544 dport=443 packets=12 bytes=1500 src=93.184.215.14 dst=172.30.1.10 sport=443 dport=51544 packets=40 bytes=52000 [ASSURED] mark=0 zone=0 use=2";
-    const FORWARDED: &str = "ipv4     2 tcp      6 300 ESTABLISHED src=203.0.113.9 dst=172.30.1.10 sport=40000 dport=8080 packets=3 bytes=300 src=192.168.77.20 dst=203.0.113.9 sport=80 dport=40000 packets=9 bytes=9000 [ASSURED] mark=0 zone=0 use=2";
-    const V6: &str = "ipv6     10 udp      17 25 src=fd42:07ea:0001:0000:0000:0000:0000:0020 dst=2001:0db8:0000:0000:0000:0000:0000:0001 sport=5353 dport=53 packets=1 bytes=80 src=2001:0db8:0000:0000:0000:0000:0000:0001 dst=fd42:07ea:0001:0000:0000:0000:0000:0020 sport=53 dport=5353 packets=1 bytes=120 mark=0 zone=0 use=2";
-    const UNACCOUNTED: &str = "ipv4     2 tcp      6 87 TIME_WAIT src=10.0.0.232 dst=172.20.0.10 sport=38694 dport=8443 src=172.20.0.10 dst=10.0.0.232 sport=8443 dport=38694 [ASSURED] mark=0 zone=0 use=2";
+    /// One direction of a connection: source, destination, ports, and the
+    /// bytes its source sent (None while the kernel keeps no accounting).
+    struct Side(&'static str, &'static str, u16, u16, Option<u64>);
+
+    const OUTBOUND: [Side; 2] = [
+        Side("192.168.77.20", "93.184.215.14", 51544, 443, Some(1500)),
+        Side("93.184.215.14", "172.30.1.10", 443, 51544, Some(52000)),
+    ];
+    const FORWARDED: [Side; 2] = [
+        Side("203.0.113.9", "172.30.1.10", 40000, 8080, Some(300)),
+        Side("192.168.77.20", "203.0.113.9", 80, 40000, Some(9000)),
+    ];
+    const V6: [Side; 2] = [
+        Side("fd42:7ea:1::20", "2001:db8::1", 5353, 53, Some(80)),
+        Side("2001:db8::1", "fd42:7ea:1::20", 53, 5353, Some(120)),
+    ];
+    const UNACCOUNTED: [Side; 2] = [
+        Side("10.0.0.232", "172.20.0.10", 38694, 8443, None),
+        Side("172.20.0.10", "10.0.0.232", 8443, 38694, None),
+    ];
+    /// NLA_F_NESTED, which the kernel sets on every nested attribute.
+    const NESTED: u16 = 0x8000;
+
+    fn attribute(kind: u16, value: &[u8]) -> Vec<u8> {
+        let mut out = ((4 + value.len()) as u16).to_ne_bytes().to_vec();
+        out.extend_from_slice(&kind.to_ne_bytes());
+        out.extend_from_slice(value);
+        out.resize((out.len() + 3) & !3, 0);
+        out
+    }
+
+    fn tuple(side: &Side) -> Vec<u8> {
+        let ip = match (ip(side.0), ip(side.1)) {
+            (IpAddr::V4(s), IpAddr::V4(d)) => {
+                [attribute(1, &s.octets()), attribute(2, &d.octets())].concat()
+            }
+            (IpAddr::V6(s), IpAddr::V6(d)) => {
+                [attribute(3, &s.octets()), attribute(4, &d.octets())].concat()
+            }
+            _ => unreachable!("one family per tuple"),
+        };
+        let proto = [
+            attribute(1, &[6]),
+            attribute(2, &side.2.to_be_bytes()),
+            attribute(3, &side.3.to_be_bytes()),
+        ]
+        .concat();
+        [
+            attribute(CTA_TUPLE_IP | NESTED, &ip),
+            attribute(2 | NESTED, &proto),
+        ]
+        .concat()
+    }
+
+    fn counters(bytes: u64) -> Vec<u8> {
+        [
+            attribute(1, &(bytes / 1000 + 1).to_be_bytes()),
+            attribute(CTA_COUNTERS_BYTES, &bytes.to_be_bytes()),
+        ]
+        .concat()
+    }
+
+    /// conntrack is one connection as a ctnetlink dump sends it, with the
+    /// timeout it has left.
+    fn conntrack([orig, reply]: &[Side; 2], timeout: u32) -> Message {
+        let mut body = CT_HEADER.to_vec();
+        body.extend(attribute(CTA_TUPLE_ORIG | NESTED, &tuple(orig)));
+        body.extend(attribute(CTA_TUPLE_REPLY | NESTED, &tuple(reply)));
+        body.extend(attribute(7, &timeout.to_be_bytes()));
+        if let (Some(o), Some(r)) = (orig.4, reply.4) {
+            body.extend(attribute(CTA_COUNTERS_ORIG | NESTED, &counters(o)));
+            body.extend(attribute(CTA_COUNTERS_REPLY | NESTED, &counters(r)));
+        }
+        body.extend(attribute(CTA_ZONE, &0u16.to_be_bytes()));
+        Message { kind: CT_NEW, body }
+    }
+
+    fn conn(sides: &[Side; 2]) -> Conn {
+        parse_conntrack(&conntrack(sides, 300)).expect("parsed")
+    }
 
     fn ip(text: &str) -> IpAddr {
         text.parse().unwrap()
@@ -399,25 +516,52 @@ mod tests {
 
     // A connection is its original source and the source of the reply, each
     // with the bytes it sent; the key names the connection whatever its
-    // state or timeout reads now, so a later reading finds it again.
+    // timeout and counters read now, so a later reading finds it again.
     #[test]
-    fn a_conntrack_line_is_both_directions_and_what_each_sent() {
-        let conn = parse_line(OUTBOUND).expect("parsed");
-        assert_eq!(conn.orig_src, ip("192.168.77.20"));
-        assert_eq!(conn.orig_bytes, Some(1500));
-        assert_eq!(conn.reply_src, ip("93.184.215.14"));
-        assert_eq!(conn.reply_bytes, Some(52000));
-        let later = OUTBOUND
-            .replace("431999 ESTABLISHED", "120 FIN_WAIT")
-            .replace("bytes=52000", "bytes=99000");
-        assert_eq!(parse_line(&later).expect("parsed").key, conn.key);
+    fn a_conntrack_message_is_both_directions_and_what_each_sent() {
+        let first = conn(&OUTBOUND);
+        assert_eq!(first.orig_src, ip("192.168.77.20"));
+        assert_eq!(first.orig_bytes, Some(1500));
+        assert_eq!(first.reply_src, ip("93.184.215.14"));
+        assert_eq!(first.reply_bytes, Some(52000));
+        let [orig, Side(s, d, sp, dp, _)] = OUTBOUND;
+        let later = parse_conntrack(&conntrack(&[orig, Side(s, d, sp, dp, Some(99000))], 120))
+            .expect("parsed");
+        assert_eq!(later.reply_bytes, Some(99000));
+        assert_eq!(later.key, first.key);
+        assert_ne!(conn(&FORWARDED).key, first.key);
 
-        let v6 = parse_line(V6).expect("parsed");
-        assert_eq!(v6.orig_src, ip("fd42:7ea:1::20"));
+        assert_eq!(conn(&V6).orig_src, ip("fd42:7ea:1::20"));
 
-        let unaccounted = parse_line(UNACCOUNTED).expect("parsed");
-        assert_eq!(unaccounted.orig_bytes, None);
-        assert_eq!(parse_line("garbage"), None);
+        let unaccounted = conn(&UNACCOUNTED);
+        assert_eq!(
+            (unaccounted.orig_bytes, unaccounted.reply_bytes),
+            (None, None)
+        );
+    }
+
+    // A kernel that keeps 32-bit counters still counts; anything that is not
+    // a connection, or is cut short, is passed over.
+    #[test]
+    fn narrow_counters_count_and_other_messages_do_not() {
+        let mut message = conntrack(&UNACCOUNTED, 300);
+        message.body.extend(attribute(
+            CTA_COUNTERS_ORIG | NESTED,
+            &attribute(CTA_COUNTERS32_BYTES, &700u32.to_be_bytes()),
+        ));
+        assert_eq!(
+            parse_conntrack(&message).expect("parsed").orig_bytes,
+            Some(700)
+        );
+
+        let other = Message {
+            kind: CT_NEW + 2,
+            body: conntrack(&OUTBOUND, 300).body,
+        };
+        assert_eq!(parse_conntrack(&other), None);
+        let mut cut = conntrack(&OUTBOUND, 300);
+        cut.body.truncate(CT_HEADER.len() + 8);
+        assert_eq!(parse_conntrack(&cut), None);
     }
 
     // The running totals only grow: what a connection moved since the last
@@ -425,40 +569,38 @@ mod tests {
     // forwarded connection counts for the LAN host that answers it.
     #[test]
     fn totals_grow_by_what_is_new_and_credit_both_ends() {
+        // OUTBOUND with each direction's bytes as given.
+        let outbound = |sent, received| {
+            let [Side(a, b, c, d, _), Side(e, f, g, h, _)] = OUTBOUND;
+            conn(&[
+                Side(a, b, c, d, Some(sent)),
+                Side(e, f, g, h, Some(received)),
+            ])
+        };
         let mut live = Live::default();
-        assert!(live.absorb(vec![
-            parse_line(OUTBOUND).unwrap(),
-            parse_line(FORWARDED).unwrap()
-        ]));
+        assert!(live.absorb(vec![conn(&OUTBOUND), conn(&FORWARDED)]));
         let host = ip("192.168.77.20");
         assert_eq!(live.totals[&host], (1500 + 9000, 52000 + 300));
         assert_eq!(live.totals[&ip("93.184.215.14")], (52000, 1500));
 
-        let grown = OUTBOUND.replace("bytes=52000", "bytes=60000");
-        live.absorb(vec![
-            parse_line(&grown).unwrap(),
-            parse_line(FORWARDED).unwrap(),
-        ]);
+        live.absorb(vec![outbound(1500, 60000), conn(&FORWARDED)]);
         assert_eq!(live.totals[&host], (1500 + 9000, 60000 + 300));
 
         // Gone, then back with fewer bytes: a new connection on the same tuple.
         live.absorb(vec![]);
-        let reused = OUTBOUND
-            .replace("bytes=52000", "bytes=100")
-            .replace("bytes=1500", "bytes=10");
-        live.absorb(vec![parse_line(&reused).unwrap()]);
+        live.absorb(vec![outbound(10, 100)]);
         assert_eq!(live.totals[&host], (1500 + 9000 + 10, 60000 + 300 + 100));
 
         // Without accounting nothing is counted, and the reading says so.
         let mut off = Live::default();
-        assert!(!off.absorb(vec![parse_line(UNACCOUNTED).unwrap()]));
+        assert!(!off.absorb(vec![conn(&UNACCOUNTED)]));
         assert!(off.totals.is_empty());
     }
 
     #[test]
     fn a_report_names_only_the_addresses_asked_for() {
         let mut live = Live::default();
-        live.absorb(vec![parse_line(OUTBOUND).unwrap()]);
+        live.absorb(vec![conn(&OUTBOUND)]);
         let report = live.report(&[ip("192.168.77.20"), ip("192.168.77.99")]);
         assert_eq!(
             report["192.168.77.20"],

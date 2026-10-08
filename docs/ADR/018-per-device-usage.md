@@ -75,7 +75,11 @@ every other day stays.
 
 ### Live rates are read only while watched
 
-`verso-rpcd` answers `usageLive` from `/proc/net/nf_conntrack`. For each
+`verso-rpcd` answers `usageLive` from a ctnetlink dump of conntrack, not from
+`/proc/net/nf_conntrack`: the proc file walks the table again from its start
+for every page it hands out, so a busy router's ten thousand connections cost a
+second and more of kernel time per read, where the dump takes a twentieth of
+that. For each
 connection it credits the original direction's bytes as sent by the original
 source and received by the reply source, and the reply direction's the other
 way, so a NATed connection counts for the LAN device that opened it and a
