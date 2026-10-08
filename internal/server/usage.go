@@ -55,6 +55,12 @@ func (s *Server) readUsageHistory(ctx context.Context, sid string) bool {
 	if !read.Enabled {
 		return false
 	}
+	// A read that cannot say what today is has read nothing; the days held
+	// stand rather than going blank.
+	if read.Today == "" {
+		log.Printf("verso: usage history: the helper named no today")
+		return s.usageHistory.Periods().Known
+	}
 	days := make(map[string]usage.Day, len(read.Days))
 	for date, macs := range read.Days {
 		day := make(usage.Day, len(macs))

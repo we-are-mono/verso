@@ -208,24 +208,60 @@ fn civil_day(date: &str) -> Option<i64> {
     Some(era * 146_097 + yoe * 365 + yoe / 4 - yoe / 100 + doy)
 }
 
-/// days_to_read is today (the newest day nlbwmon lists, always read since it
-/// still grows) and every earlier listed day inside the window the caller does
-/// not already hold, newest first.
-fn days_to_read(listed: &[String], known: &HashSet<String>, window: usize) -> Vec<String> {
-    let mut days: Vec<&String> = listed.iter().filter(|d| civil_day(d).is_some()).collect();
-    days.sort_by(|a, b| b.cmp(a));
-    let Some(today) = days.first().map(|d| d.to_string()) else {
+/// days_to_read is today, always read since it still grows, and every earlier
+/// day on disk inside the window the caller does not already hold, newest
+/// first. Days come from the files themselves, not from `nlbw -c list`, which
+/// walks back from today and stops at the first day without a file: today's is
+/// written only at its first commit, so after midnight it lists nothing, and a
+/// day the router was off would hide every day before it.
+fn days_to_read(
+    today: &str,
+    archived: &[String],
+    known: &HashSet<String>,
+    window: usize,
+) -> Vec<String> {
+    let Some(newest) = civil_day(today) else {
         return Vec::new();
     };
-    let newest = civil_day(&today).unwrap_or_default();
-    let mut out = vec![today.clone()];
-    for day in days.into_iter().skip(1) {
-        let age = newest - civil_day(day).unwrap_or_default();
-        if age < window as i64 && !known.contains(day.as_str()) {
-            out.push(day.clone());
-        }
+    let mut days: Vec<&String> = archived
+        .iter()
+        .filter(|d| d.as_str() != today && !known.contains(d.as_str()))
+        .filter(|d| civil_day(d).is_some_and(|n| (0..window as i64).contains(&(newest - n))))
+        .collect();
+    days.sort_by(|a, b| b.cmp(a));
+    std::iter::once(today.to_string())
+        .chain(days.into_iter().cloned())
+        .collect()
+}
+
+/// archived_day is the date a file in nlbwmon's directory holds, when it is a
+/// day's file: `YYYYMMDD.db`, or `.db.gz`.
+fn archived_day(name: &str) -> Option<String> {
+    let stamp = name
+        .strip_suffix(".db.gz")
+        .or_else(|| name.strip_suffix(".db"))?;
+    if stamp.len() != 8 || !stamp.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
     }
-    out
+    Some(format!("{}-{}-{}", &stamp[..4], &stamp[4..6], &stamp[6..]))
+}
+
+/// nlbw_option is one of nlbwmon's options as uci holds it.
+fn nlbw_option(option: &str) -> String {
+    Command::new("uci")
+        .args(["-q", "get", &format!("nlbwmon.@nlbwmon[0].{option}")])
+        .output()
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+/// router_date is today as the router dates it, in a format of date's own; the
+/// helper runs under procd as nlbwmon does, so both read the same clock and zone.
+fn router_date(format: &str) -> Option<String> {
+    let out = Command::new("date").arg(format).output().ok()?;
+    let date = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!date.is_empty()).then_some(date)
 }
 
 fn nlbw(args: &[&str]) -> Result<String, String> {
@@ -257,13 +293,21 @@ pub fn days(known: &str) -> Result<Value, String> {
     if !enabled() {
         return Ok(json!({"enabled": false}));
     }
-    let listed: Vec<String> = nlbw(&["-c", "list"])?.lines().map(str::to_string).collect();
+    let today = router_date("+%Y-%m-%d").ok_or("the router's date could not be read")?;
+    let archived: Vec<String> = fs::read_dir(nlbw_option("database_directory"))
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter_map(|e| archived_day(&e.file_name().to_string_lossy()))
+                .collect()
+        })
+        .unwrap_or_default();
     let known: HashSet<String> = known
         .split(',')
         .filter(|d| !d.is_empty())
         .map(str::to_string)
         .collect();
-    let wanted = days_to_read(&listed, &known, WINDOW_DAYS);
+    let wanted = days_to_read(&today, &archived, &known, WINDOW_DAYS);
     let mut out = Map::new();
     for (i, day) in wanted.iter().enumerate() {
         out.insert(
@@ -295,18 +339,9 @@ fn torn(enabled: bool, answering: bool, readable: Option<bool>) -> bool {
 /// current_day is nlbwmon's file for today, and whether it reads: None when
 /// there is none. A compressed day must decompress to something.
 fn current_day() -> Option<(String, bool)> {
-    let uci = |option: &str| {
-        Command::new("uci")
-            .args(["-q", "get", &format!("nlbwmon.@nlbwmon[0].{option}")])
-            .output()
-            .ok()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .unwrap_or_default()
-    };
-    let dir = uci("database_directory");
-    let compressed = uci("database_compress") != "0";
-    let stamp = Command::new("date").arg("+%Y%m%d").output().ok()?;
-    let stamp = String::from_utf8_lossy(&stamp.stdout).trim().to_string();
+    let dir = nlbw_option("database_directory");
+    let compressed = nlbw_option("database_compress") != "0";
+    let stamp = router_date("+%Y%m%d")?;
     if dir.is_empty() || stamp.len() != 8 {
         return None;
     }
@@ -448,20 +483,50 @@ mod tests {
         assert!(parse_day("not json").is_err());
     }
 
-    // The newest listed day is today, always read; earlier days inside the
-    // window are read once, then the shell keeps them.
+    // Today is the router's date, always read, whether or not nlbwmon has
+    // written its file yet; earlier days are the files on disk inside the
+    // window the caller does not hold, newest first, a day without a file
+    // hiding none before it.
     #[test]
     fn days_read_are_today_and_the_unknown_days_in_the_window() {
-        let listed: Vec<String> = ["2026-10-05", "2026-10-07", "2026-08-01", "2026-10-06"]
+        let archived: Vec<String> = ["2026-10-05", "2026-10-03", "2026-08-01", "2026-10-06"]
             .iter()
             .map(|d| d.to_string())
             .collect();
-        let known: HashSet<String> = ["2026-10-06".to_string(), "2026-10-07".to_string()].into();
+        let known: HashSet<String> = ["2026-10-06".to_string()].into();
         assert_eq!(
-            days_to_read(&listed, &known, 3),
-            vec!["2026-10-07", "2026-10-05"]
+            days_to_read("2026-10-07", &archived, &known, 5),
+            vec!["2026-10-07", "2026-10-05", "2026-10-03"]
         );
-        assert!(days_to_read(&[], &known, 3).is_empty());
+        assert_eq!(
+            days_to_read("2026-10-07", &[], &known, 5),
+            vec!["2026-10-07"]
+        );
+        // Today's own file, once written, is still today, read live.
+        assert_eq!(
+            days_to_read("2026-10-07", &["2026-10-07".to_string()], &known, 5),
+            vec!["2026-10-07"]
+        );
+    }
+
+    // nlbwmon names a day's file by its date; a file moved aside, or anything
+    // else in the directory, is not a day.
+    #[test]
+    fn a_day_is_a_file_named_by_its_date() {
+        assert_eq!(
+            archived_day("20261007.db.gz"),
+            Some("2026-10-07".to_string())
+        );
+        assert_eq!(archived_day("20261007.db"), Some("2026-10-07".to_string()));
+        for not in [
+            "20261007.db.gz.broken",
+            "0.db",
+            "notes.txt",
+            "2026100.db.gz",
+            "2026xx07.db",
+        ] {
+            assert_eq!(archived_day(not), None, "{not}");
+        }
     }
 
     // Today is the counts nlbwmon holds now, so it is asked for undated; an

@@ -100,6 +100,22 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 	}
 }
 
+// TestAReadWithoutTodayKeepsTheDaysHeld: a history read that cannot say what
+// today is has read nothing, so the month the shell already holds stands
+// rather than going blank.
+func TestAReadWithoutTodayKeepsTheDaysHeld(t *testing.T) {
+	var received uint64
+	s, _ := usageServer(t, &received)
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+		t.Fatal("the first read should give the month")
+	}
+	days := s.backend.(fakeBackend).usageDays
+	days.Today, days.Days = "", nil
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+		t.Error("a read with no today must not blank the month already held")
+	}
+}
+
 // TestDevicesRosterWithoutUsage: usage off (nlbwmon disabled) is the roster as
 // it was, MAC and all, with no usage drawn.
 func TestDevicesRosterWithoutUsage(t *testing.T) {
