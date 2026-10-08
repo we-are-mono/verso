@@ -319,6 +319,47 @@ func Slots(points []Point, value func(Point) float64, start time.Time, res Resol
 	return out
 }
 
+// Record writes an event at once: events are rare, and the one that explains
+// a power cut must not be lost with it.
+func (s *Store) Record(ctx context.Context, e Event) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO events (time, kind, subject, detail) VALUES (?, ?, ?, ?)`,
+		e.Time.Unix(), e.Kind, e.Subject, e.Detail)
+	return err
+}
+
+// Events reads the events in [from, to), newest first.
+func (s *Store) Events(ctx context.Context, from, to time.Time) ([]Event, error) {
+	return s.events(ctx, `WHERE time >= ? AND time < ? ORDER BY time DESC, rowid DESC`, from.Unix(), to.Unix())
+}
+
+// Latest is the newest event of one kind; found is false when there is none.
+func (s *Store) Latest(ctx context.Context, kind string) (e Event, found bool, err error) {
+	events, err := s.events(ctx, `WHERE kind = ? ORDER BY time DESC, rowid DESC LIMIT 1`, kind)
+	if err != nil || len(events) == 0 {
+		return Event{}, false, err
+	}
+	return events[0], true, nil
+}
+
+func (s *Store) events(ctx context.Context, where string, args ...any) ([]Event, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT time, kind, subject, detail FROM events `+where, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Event
+	for rows.Next() {
+		var e Event
+		var at int64
+		if err := rows.Scan(&at, &e.Kind, &e.Subject, &e.Detail); err != nil {
+			return nil, err
+		}
+		e.Time = time.Unix(at, 0)
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // Close writes what is still in memory and closes the file.
 func (s *Store) Close() error {
 	return errors.Join(s.Flush(context.Background()), s.db.Close())

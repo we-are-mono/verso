@@ -282,6 +282,25 @@ func TestEventsAreRecordedAndReadNewestFirst(t *testing.T) {
 	}
 }
 
+// TestLatestIsTheNewestEventOfAKind: what a watcher compares the present
+// against; none recorded is not an error.
+func TestLatestIsTheNewestEventOfAKind(t *testing.T) {
+	store, _ := open(t)
+	if _, found, err := store.Latest(ctx, "boot"); err != nil || found {
+		t.Fatalf("Latest on nothing = found %v, %v", found, err)
+	}
+	newest := Event{Time: minute(5), Kind: "boot", Detail: `{"id":"b-2"}`}
+	for _, e := range []Event{{Time: minute(1), Kind: "boot", Detail: `{"id":"b-1"}`}, newest, {Time: minute(9), Kind: "wan.down", Subject: "wan0"}} {
+		if err := store.Record(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, found, err := store.Latest(ctx, "boot")
+	if err != nil || !found || got != newest {
+		t.Fatalf("Latest = %+v found %v (%v), want %+v", got, found, err, newest)
+	}
+}
+
 // TestMaintainDeletesExpiredEvents: events are kept as long as daily points.
 func TestMaintainDeletesExpiredEvents(t *testing.T) {
 	store, _ := open(t)

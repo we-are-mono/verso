@@ -60,6 +60,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /system/packages/discover", s.handleDiscoverPage)
 	s.mux.HandleFunc("POST /system/packages/discover", s.handleDiscoverAction)
 	s.mux.HandleFunc("GET /system/logs", s.handleLogs)
+	s.mux.HandleFunc("GET "+eventsPath, s.handleEvents)
 	s.mux.HandleFunc("GET /system/logs/settings", s.handleLogSettings)
 	s.mux.HandleFunc("POST /system/logs/settings", s.handleLogSettings)
 	// Diagnostics: a run starts in the helper, its output is read back over

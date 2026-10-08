@@ -36,6 +36,17 @@ type netifdOwner struct {
 	status                  map[string]any
 }
 
+// KernelWAN is the uplink as the kernel's default routes alone show it. Route
+// netlink answers any user, so it needs no session: what unattended work reads
+// to tell whether the internet is reachable (ADR-019).
+func KernelWAN() (WANState, error) {
+	routes, err := kernelDefaultRoutes()
+	if err != nil {
+		return WANState{}, err
+	}
+	return discoverWAN(nil, routes), nil
+}
+
 // discoverWAN combines stock netifd routing truth with routes installed by
 // external managers. netifd supplies logical ownership; a kernel-only device is
 // retained without inventing UCI metadata.

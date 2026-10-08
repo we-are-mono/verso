@@ -123,14 +123,26 @@ the log:
 
 | Kind | Source |
 |---|---|
-| WAN down, WAN up | `network.interface` ubus events |
-| Router booted, cleanly or not | boot time; a clean stop records itself |
+| WAN down, WAN up | the kernel's main-table default routes, read over route netlink every ten seconds |
+| Router booted, cleanly or not | the kernel's boot id and boot time; a clean stop leaves a mark beside the history |
 | Changes applied, changes rolled back | the shell's own apply path (ADR-010) |
 | Firmware installed | the release changing between boots |
 | VPN tunnel up, down | the VPN plugin's daemon hooks |
 | New device | a MAC address seen for the first time |
 | DHCP pool nearly full | lease count against the pool size |
 | History storage unavailable, back | the shell's own writes |
+
+The internet is up while a default route stands in the main table, IPv4 or
+IPv6. A default route in a policy table carries only the traffic marked for it
+(a VPN's table), so it does not keep the internet up for everyone else. Route
+netlink answers any user, so the shell reads it without a session.
+
+A boot is known by the kernel's boot id, not its boot time: a router without a
+clock boots in the past and its boot time moves once NTP sets the clock. The
+shell records a boot when it starts under a boot id it has not recorded. When
+procd stops the shell it leaves the file `stopped` in the history directory,
+and the next boot that finds it is clean; one that does not followed a power
+cut or a crash.
 
 Events are kept for 400 days, like the daily points.
 
@@ -150,8 +162,9 @@ as total loss.
 - Every traffic and system chart gains a range: Live, 24 hours, 7 days, 30
   days, 1 year. Live is the chart as it is today.
 - Events are marked on the charts they explain, at the time they happened.
-- System → Logs gains an Events section: the timeline, newest first, filtered
-  like every listing (still-lens).
+- System → Events lists the timeline, newest first: when, on which interface,
+  and what happened as a status coloured by its weight. It is a page of its
+  own beside Logs, whose console fills its page.
 - System → Maintenance gains the "History is kept in" row, its description
   stating the file's size and the free space beside it.
 

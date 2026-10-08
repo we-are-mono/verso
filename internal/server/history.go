@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/profiles"
 )
@@ -25,12 +26,16 @@ import (
 func (s *Server) StartHistory(dir string) {
 	path := filepath.Join(dir, "history.db")
 	store, err := history.Open(path)
-	if err != nil {
+	onDisk := err == nil
+	if !onDisk {
 		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, err)
 		if store, err = history.Open(":memory:"); err != nil {
 			log.Printf("verso: no history: %v", err)
 			return
 		}
+	}
+	if onDisk {
+		recordBoot(context.Background(), store, dir)
 	}
 	collector := history.NewCollector(store,
 		interfaceRates(s.telemetry),
@@ -41,6 +46,13 @@ func (s *Server) StartHistory(dir string) {
 		}),
 		temperatures(),
 	)
+	// The watcher stops before the collector, which closes the store.
+	watchCtx, stopWatch := context.WithCancel(context.Background())
+	watched := make(chan struct{})
+	go func() {
+		defer close(watched)
+		watchWAN(watchCtx, store, openwrt.KernelWAN)
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
@@ -48,7 +60,15 @@ func (s *Server) StartHistory(dir string) {
 		collector.Run(ctx)
 	}()
 	s.historyStore = store
-	s.historyStop = func() { cancel(); <-done }
+	s.historyStop = func() {
+		stopWatch()
+		<-watched
+		cancel()
+		<-done
+		if onDisk {
+			markStopped(dir)
+		}
+	}
 }
 
 // interfaceRates hands over each interface's per-second rates, in bits per

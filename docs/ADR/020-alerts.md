@@ -85,7 +85,7 @@ not in Verso.
 
 ### Where it is set up
 
-The Events section of System → Logs (ADR-019) carries an Alerts group: the
+System → Events (ADR-019) carries an Alerts group: the
 alert URL with a "Send test" act, the heartbeat URL, and the event kinds as
 checkboxes (a set the operator chooses members of). Each URL's description
 states its last delivery and whether it succeeded.
