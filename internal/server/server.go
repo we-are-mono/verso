@@ -11,6 +11,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -503,6 +504,16 @@ func (s *Server) Rescan() {
 	s.manifests = manifests
 	s.pluginByID = indexByID(manifests)
 	s.manifestsMu.Unlock()
+	// A plugin installed while operators are signed in ships access lists
+	// their sessions never received; each session is given, with its own sid,
+	// what signing in now would give it (ADR-007 §8).
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	for _, sess := range s.sessions.list() {
+		if err := s.backend.RefreshGrants(ctx, sess.sid); err != nil {
+			log.Printf("verso: grants not refreshed for a session: %v", err)
+		}
+	}
 }
 
 // manifestList is the served manifest set; manifestByID resolves one plugin.

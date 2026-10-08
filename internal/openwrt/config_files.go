@@ -79,6 +79,12 @@ func (*NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) error
 	return callHelper(ctx, "", "ddnsUpdate", sid, map[string]string{"section": section}, nil)
 }
 
+// RefreshGrants has the helper grant the session what rpcd's login would grant
+// it from the access lists on disk now.
+func (*NativeBackend) RefreshGrants(ctx context.Context, sid string) error {
+	return callHelper(ctx, "", "refreshGrants", sid, nil, nil)
+}
+
 // FirewallFiles is the rule files fw4 reads from its own folder, as they will
 // read once staged changes are applied.
 func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {

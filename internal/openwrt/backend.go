@@ -238,6 +238,9 @@ type Backend interface {
 	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
 	// DDNSUpdate has one ddns-scripts service send its address now.
 	DDNSUpdate(ctx context.Context, sid, section string) error
+	// RefreshGrants gives a signed-in session what signing in now would: the
+	// groups of access lists installed since it signed in (ADR-007 §8).
+	RefreshGrants(ctx context.Context, sid string) error
 	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
 	// through the helper, refusing it unless the file still holds expected.
 	StageConfigFile(ctx context.Context, sid, path, expected, content string) error

@@ -4,6 +4,8 @@
 package server
 
 import (
+	"context"
+	"slices"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -31,5 +33,33 @@ func TestRescanServesAPluginInstalledBesideTheShell(t *testing.T) {
 	s.Rescan()
 	if _, ok := s.manifestByID(m.ID); ok {
 		t.Error("a rescan kept serving a plugin removed beside the shell")
+	}
+}
+
+// grantsBackend records the sessions whose grants it was asked to refresh.
+type grantsBackend struct {
+	fakeBackend
+	refreshed *[]string
+}
+
+func (b grantsBackend) RefreshGrants(_ context.Context, sid string) error {
+	*b.refreshed = append(*b.refreshed, sid)
+	return nil
+}
+
+// TestRescanGivesLiveSessionsWhatSigningInWould: every signed-in session has
+// its grants refreshed, each with its own sid, so a plugin installed while the
+// operator is signed in reads its config without another sign-in (ADR-007 §8).
+func TestRescanGivesLiveSessionsWhatSigningInWould(t *testing.T) {
+	var refreshed []string
+	s := newServerWith(t, grantsBackend{refreshed: &refreshed}, &fakeTransport{}, nil)
+	s.SetRescan(func() []plugin.Manifest { return []plugin.Manifest{demoManifest()} })
+	s.sessions.CreateWithMetadata("sid-a", "root", "", "")
+	s.sessions.CreateWithMetadata("sid-b", "ops", "", "")
+
+	s.Rescan()
+	slices.Sort(refreshed)
+	if !slices.Equal(refreshed, []string{"sid-a", "sid-b"}) {
+		t.Errorf("refreshed %v, want each live session's own sid once", refreshed)
 	}
 }

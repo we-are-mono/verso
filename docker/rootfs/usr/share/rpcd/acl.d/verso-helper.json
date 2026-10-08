@@ -13,7 +13,8 @@
           "firmwareCheck",
           "configFiles",
           "firewallFiles",
-          "diagRead"
+          "diagRead",
+          "refreshGrants"
         ]
       }
     },

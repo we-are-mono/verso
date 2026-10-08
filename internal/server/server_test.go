@@ -546,6 +546,10 @@ func (fakeBackend) DDNSUpdate(context.Context, string, string) error {
 	return errNoHelper
 }
 
+func (fakeBackend) RefreshGrants(context.Context, string) error {
+	return errNoHelper
+}
+
 func (fakeBackend) StageConfigFile(context.Context, string, string, string, string) error {
 	return errNoHelper
 }

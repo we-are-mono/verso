@@ -128,6 +128,25 @@ broken socket.**
    (rpcd's own restart, say), Verso ends that Verso session and the operator signs in
    again, rather than presenting a half-working shell whose every gated read fails.
 
+8. **A plugin installed while the operator is signed in is granted to their session as
+   signing in would grant it.** rpcd works out a session's grants once, at
+   `session.login`, from the `acl.d` files on disk then; a plugin package installed
+   afterwards ships a group the session never received, and its pages read nothing
+   until the operator signs in again. Whenever the shell rescans the plugins (an
+   install or remove on Packages, or the SIGHUP a plugin package's scripts send), it
+   asks the helper's `refreshGrants` for each live session, with that session's own
+   sid. The helper re-derives the session's grants exactly as rpcd's login does —
+   the first `config login` in `/etc/config/rpcd` for the session's username; for
+   every group in every `/usr/share/rpcd/acl.d/*.json`, its `read` and `write` parts
+   that the login's `read`/`write` lists allow (`!` patterns first, then the others,
+   matched with the C library's `fnmatch` as rpcd does, `write` implying `read`);
+   each table entry one `(scope, object, function)`, each list entry one
+   `(scope, object, permission)`, plus the group in `access-group` — and adds them
+   with `session.grant`. It only ever grants what signing in now would, never
+   revokes, and touches only the sessions the shell holds. rpcd still evaluates every
+   call; this replicates only how a login fills a session, not the evaluation
+   Alternative C rejects.
+
 ## Consequences
 
 ### Positive

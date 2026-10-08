@@ -12,6 +12,7 @@ mod access;
 mod arrival;
 mod config_files;
 mod ddns;
+mod grants;
 mod dhcp;
 mod diagnostics;
 mod firewall;
@@ -326,6 +327,8 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "vpnState" => openvpn::state(),
         "ddnsState" => ddns::state(),
         "ddnsUpdate" => ddns::update(argument(request, "section")?),
+        // The caller's own sid, which the access check above already holds to.
+        "refreshGrants" => grants::refresh(sid),
         "setAuthorizedKeys" => {
             let _guard = state
                 .maintenance

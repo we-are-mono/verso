@@ -602,8 +602,9 @@ ubus call service signal '{"name":"verso","signal":1}' 2>/dev/null
 ```
 
 Send it through procd, not `/etc/init.d/verso reload`: a reload that changes
-nothing in the shell's instance delivers no signal. The operator signs in again
-for the access list your package ships, which rpcd reads at sign-in.
+nothing in the shell's instance delivers no signal. On the same rescan the shell
+gives every signed-in session the access list your package ships, as signing in
+would (ADR-007 §8), so nobody signs in again to use your pages.
 
 ## The widget vocabulary
 
