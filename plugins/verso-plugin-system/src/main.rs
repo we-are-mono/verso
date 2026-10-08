@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use std::collections::BTreeMap;
-use std::mem::MaybeUninit;
 use std::net::{IpAddr, Ipv6Addr};
 use std::time::{SystemTime, UNIX_EPOCH};
 use verso_plugin::{
@@ -241,7 +240,7 @@ fn keyed(
     w
 }
 fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
-    let (clock, _) = local_time();
+    let clock = local_time();
     let mut zones: Vec<_> = ZONES.iter().map(|(n, _)| SelectOption::new(n, n)).collect();
     if !v.zonename.is_empty() && !zones.iter().any(|z| z.value == v.zonename) {
         zones.insert(0, SelectOption::new(&v.zonename, &v.zonename));
@@ -432,31 +431,51 @@ fn valid_posix_tz(tz: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b"+-,.:/<>".contains(&b))
 }
 
-fn local_time() -> (String, String) {
+// local_time is the router's time now, in the zone /etc/TZ names, read on
+// every render so a changed time zone shows at once. OpenWrt's musl reads
+// /etc/TZ; the static musl this plugin links does not, so the rule is read
+// here, as the shell reads it (internal/clock).
+fn local_time() -> String {
+    let rule = std::fs::read_to_string("/etc/TZ").unwrap_or_default();
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs() as _)
+        .map(|duration| duration.as_secs() as i64)
         .unwrap_or_default();
-    let mut broken = MaybeUninit::<libc::tm>::uninit();
-    // SAFETY: localtime_r writes one initialized tm to the valid output pointer;
-    // seconds remains alive for the duration of the call.
-    let result = unsafe { libc::localtime_r(&seconds, broken.as_mut_ptr()) };
-    if result.is_null() {
-        return ("Unavailable".into(), String::new());
-    }
-    // SAFETY: a non-null localtime_r result means the output was initialized.
-    let broken = unsafe { broken.assume_init() };
-    let year = broken.tm_year + 1900;
-    let month = broken.tm_mon + 1;
-    let display = format!(
-        "{year:04}-{month:02}-{:02} {:02}:{:02}:{:02}",
-        broken.tm_mday, broken.tm_hour, broken.tm_min, broken.tm_sec
-    );
-    let input = format!(
-        "{year:04}-{month:02}-{:02}T{:02}:{:02}:{:02}",
-        broken.tm_mday, broken.tm_hour, broken.tm_min, broken.tm_sec
-    );
-    (display, input)
+    router_time(&rule, seconds)
+}
+
+// router_time is unix_time in the zone a POSIX TZ rule describes, with the
+// zone's name: "2026-10-09 01:27:01 CEST". A bare name ("UTC", as some images
+// write it) means its zero offset; what is no rule reads as UTC.
+fn router_time(rule: &str, unix_time: i64) -> String {
+    let rule = rule.trim();
+    let rule = if !rule.is_empty() && rule.bytes().all(|b| b.is_ascii_alphabetic()) {
+        format!("{rule}0")
+    } else {
+        rule.to_string()
+    };
+    let Ok(zone) =
+        tz::TimeZone::from_posix_tz(&rule).or_else(|_| tz::TimeZone::from_posix_tz("UTC0"))
+    else {
+        return "Unavailable".into();
+    };
+    let local = zone
+        .find_local_time_type(unix_time)
+        .ok()
+        .and_then(|kind| tz::DateTime::from_timespec_and_local(unix_time, 0, *kind).ok());
+    let Some(t) = local else {
+        return "Unavailable".into();
+    };
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02} {}",
+        t.year(),
+        t.month(),
+        t.month_day(),
+        t.hour(),
+        t.minute(),
+        t.second(),
+        t.local_time_type().time_zone_designation()
+    )
 }
 
 #[cfg(test)]

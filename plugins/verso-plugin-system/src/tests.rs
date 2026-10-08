@@ -666,3 +666,17 @@ fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
         "Paste a PEM certificate and its private key."
     );
 }
+
+// The router's time is read in the zone /etc/TZ names, its name beside it, as
+// the overview shows it: summer and winter, a bare name that means UTC, and a
+// rule that is no rule read as UTC rather than not at all.
+#[test]
+fn router_time_follows_the_posix_rule_in_etc_tz() {
+    let summer = 1_784_116_800; // 2026-07-15 12:00:00 UTC
+    let winter = 1_768_478_400; // 2026-01-15 12:00:00 UTC
+    let cet = "CET-1CEST,M3.5.0,M10.5.0/3\n";
+    assert_eq!(router_time(cet, summer), "2026-07-15 14:00:00 CEST");
+    assert_eq!(router_time(cet, winter), "2026-01-15 13:00:00 CET");
+    assert_eq!(router_time("UTC", summer), "2026-07-15 12:00:00 UTC");
+    assert_eq!(router_time("not a zone", summer), "2026-07-15 12:00:00 UTC");
+}
