@@ -162,7 +162,9 @@ func TestEntityPanelLocalizesFormWithoutDeviceDetails(t *testing.T) {
 	}
 	srv.SetBundle(bundle)
 	body := getLang(t, srv, "/entity/device/42:e6:ad:ff:b7:af?tab=shape", "sl")
-	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "bg-quiet px-10"} {
+	// The shell's own tab is named from the shell's catalog, as each plugin's
+	// is from its own.
+	for _, want := range []string{`aria-label="Zapri"`, "toms-iphone", "bg-quiet px-10", ">Podrobnosti<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("localized device drawer missing %q", want)
 		}

@@ -212,13 +212,16 @@ func (s *Server) fetchEntity(ctx context.Context, r *http.Request, claim entityC
 // that fails or answers nothing contributes no tab: a panel is worth opening for
 // the tabs that did answer, and a tab that cannot render is worse than absent.
 func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, active string, posted *entityPost, shell []entityTab) []entityTab {
-	// The shell's own tabs lead: what the subject is, before what a plugin
-	// does with it.
-	out := append([]entityTab(nil), shell...)
 	// A tab's prose is its plugin's, so it localizes from that plugin's own
 	// catalog and never from the shell's base (ADR-012 §5) — the label, the
-	// commit verb, and the sentence about what applying it costs alike.
+	// commit verb, and the sentence about what applying it costs alike. The
+	// shell's own tabs lead, what the subject is before what a plugin does with
+	// it, and are named from the shell's catalog the same way.
 	pluginTr := s.pluginTranslators(r)
+	out := append([]entityTab(nil), shell...)
+	for i := range out {
+		out[i].Label = pluginTr(out[i].PluginID)(out[i].Label)
+	}
 	for _, claim := range s.entityContributors(kind) {
 		// The tab that was just submitted already has its answer — what the
 		// plugin said about the submission, errors and all. Asking it again with
