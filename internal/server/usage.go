@@ -163,6 +163,10 @@ type usageFrame struct {
 	DownFill int    `json:"down_fill"`
 	UpFill   int    `json:"up_fill"`
 	Month    string `json:"month,omitempty"`
+	// DownMbps and UpMbps are the rate as numbers, idle or not, for the
+	// device's traffic graph when its panel is open.
+	DownMbps float64 `json:"down_mbps"`
+	UpMbps   float64 `json:"up_mbps"`
 }
 
 // handleDevicesUsage streams the roster's usage while the Devices page is
@@ -190,7 +194,9 @@ func (s *Server) handleDevicesUsage(w http.ResponseWriter, r *http.Request) {
 		frames := make([]usageFrame, 0, len(roster))
 		for _, d := range roster {
 			du := u.deviceUsage(d.MAC)
-			f := usageFrame{MAC: strings.ToLower(d.MAC), Busy: du.Busy, Down: du.Down, Up: du.Up, DownFill: du.DownFill, UpFill: du.UpFill}
+			mac := strings.ToLower(d.MAC)
+			r := u.rates[mac]
+			f := usageFrame{MAC: mac, Busy: du.Busy, Down: du.Down, Up: du.Up, DownFill: du.DownFill, UpFill: du.UpFill, DownMbps: r.Down / 1_000_000, UpMbps: r.Up / 1_000_000}
 			if withMonth {
 				f.Month = du.Month
 			}

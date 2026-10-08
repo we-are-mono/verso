@@ -60,7 +60,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
 //go:embed assets/verso-packages.js assets/verso-buttons.js assets/verso-usage.js
 //go:embed assets/verso-system.js assets/verso-diagnostics.js
-//go:embed assets/verso-stream.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
+//go:embed assets/verso-stream.js assets/verso-chart.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
 //go:embed assets/verso-login.js
 //go:embed assets/fonts
 var scriptFS embed.FS

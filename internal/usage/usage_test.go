@@ -44,16 +44,44 @@ func TestSamplerTurnsTwoReadingsIntoRates(t *testing.T) {
 		t.Fatalf("within the gap: rates=%+v ok=%v calls=%d, want the last answer and no read", again, ok, calls)
 	}
 
-	if latest, ok := s.Latest(); !ok || latest["192.168.77.20"] != got {
-		t.Errorf("latest = %+v ok=%v, want the rates last taken, read again for nobody", latest, ok)
-	}
-
 	now = now.Add(time.Minute)
-	if _, ok := s.Latest(); ok {
-		t.Error("rates a minute old are not what is happening now")
-	}
 	if _, ok := s.Rates(context.Background(), addrs, read); ok {
 		t.Error("a reading a minute old is no basis for a rate now")
+	}
+}
+
+// TestSeriesIsTheWatchedMinuteOfOneDevice: each rate taken is kept, the last
+// minute's worth, so a device's graph opens on what was watched before it, its
+// addresses folded into it and the unwatched start of the minute flat.
+func TestSeriesIsTheWatchedMinuteOfOneDevice(t *testing.T) {
+	now := time.Unix(1000, 0)
+	var sent uint64
+	read := func(_ context.Context, addrs []string) (map[string]Counter, error) {
+		return map[string]Counter{"10.0.0.2": {Received: sent * 10, Sent: sent}, "fd00::2": {Received: sent}}, nil
+	}
+	s := &Sampler{Now: func() time.Time { return now }}
+	for i := 0; i < seriesLen+5; i++ {
+		s.Rates(context.Background(), nil, read)
+		now = now.Add(time.Second)
+		sent += 1000
+	}
+	owners := map[string]string{"10.0.0.2": "02:aa", "fd00::2": "02:aa"}
+	down, up := s.Series(owners, "02:aa")
+	if len(down) != seriesLen || len(up) != seriesLen {
+		t.Fatalf("series of %d and %d points, want %d", len(down), len(up), seriesLen)
+	}
+	if down[seriesLen-1] != 88_000 || up[seriesLen-1] != 8_000 {
+		t.Errorf("newest point = %v down %v up, want both addresses' bits per second", down[seriesLen-1], up[seriesLen-1])
+	}
+
+	fresh := &Sampler{Now: func() time.Time { return now }}
+	fresh.Rates(context.Background(), nil, read)
+	now = now.Add(time.Second)
+	sent += 1000
+	fresh.Rates(context.Background(), nil, read)
+	down, _ = fresh.Series(owners, "02:aa")
+	if len(down) != seriesLen || down[0] != 0 || down[seriesLen-1] == 0 {
+		t.Errorf("a minute barely watched is flat until its first rate: %v", down)
 	}
 }
 

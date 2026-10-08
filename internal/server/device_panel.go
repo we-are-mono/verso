@@ -4,6 +4,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,8 +22,11 @@ import (
 func (s *Server) deviceTabs(r *http.Request, d widget.Device) []entityTab {
 	body := widget.Widgets{deviceFacts(d)}
 	if s.readUsageHistory(r.Context(), s.sessionSID(r)) {
-		rates, _ := s.usageSampler.Latest()
-		body = append(body, deviceUsageSection(d, usage.Devices(rates, addressOwners([]widget.Device{d})), s.usageHistory.Periods()))
+		// The graph opens on the minute the roster's stream has watched, and
+		// the stream feeds it from there; nothing here reads the router again.
+		owners := addressOwners([]widget.Device{d})
+		down, up := s.usageSampler.Series(owners, strings.ToLower(d.MAC))
+		body = append(body, deviceUsage(d, down, up, s.usageHistory.Periods())...)
 	}
 	return []entityTab{{
 		Slot: "details", Label: "Details",
@@ -60,23 +64,21 @@ func deviceFacts(d widget.Device) widget.Widget {
 	return &widget.Properties{Align: "left", Items: items}
 }
 
-// deviceUsageSection is what the device moves: its rate now, down and up,
-// named so the roster's stream keeps it current, and its calendar periods.
-func deviceUsageSection(d widget.Device, rates map[string]usage.Rate, p usage.Periods) widget.Widget {
+// deviceUsage is what the device moves: its traffic graph, as the overview
+// draws the Internet's, fed by the roster's stream under the name of the
+// device, and its calendar periods. The series are bits per second.
+func deviceUsage(d widget.Device, downBPS, upBPS []float64, p usage.Periods) widget.Widgets {
 	mac := strings.ToLower(d.MAC)
-	// No rate yet is the dash; an idle device reads as nothing moving, as the
-	// stream that keeps these current says it.
-	down, up := "—", "—"
-	if r, ok := rates[mac]; ok {
-		down, up = "0", "0"
-		if usage.Busy(r) {
-			down, up = usage.Mbits(r.Down), usage.Mbits(r.Up)
-		}
+	down, up := make([]float64, len(downBPS)), make([]float64, len(upBPS))
+	for i := range downBPS {
+		down[i], up[i] = downBPS[i]/1_000_000, upBPS[i]/1_000_000
 	}
-	now := &widget.Grid{Columns: 2, Children: widget.Widgets{
-		&widget.Stat{Style: "bare", Label: "Download", Value: down, Unit: "Mbit/s", Verbatim: true, Name: "usage-down:" + mac},
-		&widget.Stat{Style: "bare", Label: "Upload", Value: up, Unit: "Mbit/s", Verbatim: true, Name: "usage-up:" + mac},
-	}}
+	traffic := &widget.Traffic{
+		Title: "Usage", Live: "usage:" + mac,
+		Label:   "Device traffic — download and upload, last minute",
+		DownNow: fmt.Sprintf("%.1f", down[len(down)-1]), UpNow: fmt.Sprintf("%.1f", up[len(up)-1]),
+		Down: down, Up: up,
+	}
 	period := func(label string, totals map[string]usage.Totals) widget.TableRow {
 		t := totals[mac]
 		return widget.TableRow{Cells: []widget.TableCell{{Text: label}, {Text: usage.Bytes(t.Down)}, {Text: usage.Bytes(t.Up)}}}
@@ -95,5 +97,5 @@ func deviceUsageSection(d widget.Device, rates map[string]usage.Rate, p usage.Pe
 			period("Last month", p.LastMonth),
 		},
 	}
-	return &widget.Section{Title: "Usage", Children: widget.Widgets{now, periods}}
+	return widget.Widgets{traffic, periods}
 }

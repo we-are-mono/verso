@@ -104,8 +104,12 @@ figure stands over a 2px meter: download green and upload amethyst, the WAN
 chart's series, measured against the WAN's current total, at most full. A month
 has no ceiling to measure against, so it carries no meter. Idle rows show the
 empty dash. The device panel opens on the shell's Details tab: the machine facts
-the roster does not show (the MAC among them), then a Usage section with the live
-rate and Today, Last 7 days, This month and Last month.
+the roster does not show (the MAC among them), then the device's live traffic
+graph, the overview's Internet graph drawn for the device, and Today, Last 7
+days, This month and Last month. The shell keeps the last minute of rates it
+took while the roster streamed, so the graph opens on what was watched before
+the panel, flat where nothing was, and the roster's stream feeds it from there;
+it is drawn only in the panel's own fetch, when a device is opened.
 
 ## Consequences
 

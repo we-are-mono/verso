@@ -30,6 +30,9 @@ const (
 	// busyBPS is the rate under which a device reads as idle: background
 	// chatter, not use anyone would look for.
 	busyBPS = 100_000
+	// seriesLen is how many rates a device's graph holds: a minute of them,
+	// one a second, as the overview's WAN graph does.
+	seriesLen = 60
 )
 
 // Counter is one address's running bytes as the helper keeps them.
@@ -58,6 +61,9 @@ type Sampler struct {
 	prev   map[string]Counter
 	prevAt time.Time
 	rates  map[string]Rate
+	// taken is the last minute of rates, oldest first, so a device's graph
+	// opens on what was watched before it.
+	taken []map[string]Rate
 }
 
 // Rates answers each listed address's rate, and false while there is no
@@ -88,19 +94,28 @@ func (s *Sampler) Rates(ctx context.Context, addrs []string, read Read) (map[str
 		}
 	}
 	s.prev, s.prevAt, s.rates = reading, now, rates
+	if rates != nil {
+		s.taken = append(s.taken, rates)
+		if len(s.taken) > seriesLen {
+			s.taken = s.taken[len(s.taken)-seriesLen:]
+		}
+	}
 	return rates, rates != nil
 }
 
-// Latest is the rates last taken, without a read: what a panel over a live
-// listing shows, so opening it does not take the listing's reading from it.
-// False when there are none recent enough to be now.
-func (s *Sampler) Latest() (map[string]Rate, bool) {
+// Series is one device's last minute of rates, down and up in bits per
+// second, oldest first: what was taken while someone watched, its addresses
+// folded into it, the minute's unwatched start flat.
+func (s *Sampler) Series(owners map[string]string, mac string) (down, up []float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.rates == nil || s.Now().Sub(s.prevAt) > maxAge {
-		return nil, false
+	down, up = make([]float64, seriesLen), make([]float64, seriesLen)
+	offset := seriesLen - len(s.taken)
+	for i, rates := range s.taken {
+		r := Devices(rates, owners)[mac]
+		down[offset+i], up[offset+i] = r.Down, r.Up
 	}
-	return s.rates, true
+	return down, up
 }
 
 // Devices sums each owner's addresses: a device's rate is every address it

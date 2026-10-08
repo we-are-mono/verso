@@ -4,7 +4,6 @@
 package widget
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -205,13 +204,7 @@ type overviewMastheadView struct {
 type overviewView struct {
 	Masthead overviewMastheadView
 
-	ChartTitle  string
-	ChartMeta   string
-	DownVal     string
-	UpVal       string
-	RateUnit    string
-	Chart       template.HTML
-	TrafficSeed string // {"down":[…],"up":[…]} — the live layer's starting series
+	Traffic template.HTML // the Internet graph, live (Traffic)
 
 	Metrics  []template.HTML
 	SysLeft  template.HTML
@@ -236,26 +229,15 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if len(down) < 2 || len(up) < 2 {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
-	chart := &Chart{
-		Unit:      "Mbit/s",
-		AxisStart: "60 s ago",
-		AxisEnd:   "now",
-		Label:     "Internet traffic — download and upload, last minute",
-		Series: []ChartSeries{
-			{Label: "down", Role: "emerald", Fill: true, Values: down},
-			{Label: "up", Role: "violet", Fill: true, Values: up},
-		},
-	}
 	// The overview composes its child widgets directly (not through
 	// RenderWithToken), so it runs the localization walk over each itself — every
 	// column label, cell word, chart caption and drawer fact is translated in one
 	// place, exactly as a plugin's table would be (ADR-012).
-	r.translate(chart)
-	chartHTML, err := renderToHTML(r, chart, csrf)
-	if err != nil {
-		return err
-	}
-	seed, err := json.Marshal(map[string][]float64{"down": down, "up": up})
+	traffic, err := renderToHTML(r, &Traffic{
+		Title: "Internet traffic", Meta: o.WANDevice, Live: "wan",
+		Label:   "Internet traffic — download and upload, last minute",
+		DownNow: o.DownVal, UpNow: o.UpVal, Down: down, Up: up,
+	}, csrf)
 	if err != nil {
 		return err
 	}
@@ -293,14 +275,8 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	masthead := o.masthead(r.tr)
 	masthead.Tiles, masthead.Facts = tiles, facts
 	v := overviewView{
-		Masthead:    masthead,
-		ChartTitle:  r.tr("Internet traffic"),
-		ChartMeta:   o.WANDevice,
-		DownVal:     o.DownVal,
-		UpVal:       o.UpVal,
-		RateUnit:    "Mbit/s",
-		Chart:       chartHTML,
-		TrafficSeed: string(seed),
+		Masthead: masthead,
+		Traffic:  traffic,
 
 		Metrics:  metrics,
 		SysLeft:  sysLeft,

@@ -66,10 +66,11 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 }
 
 // TestDevicePanelDetailsSayWhatTheDeviceMoves: with usage on, the device's
-// Details tab goes on, under its machine facts, to a Usage section: its rate
-// now, down and up, named so the roster's stream keeps it current, and its
-// periods by the calendar — today, the last seven days, the month so far and
-// the month before — each down and up. Usage is not a tab of its own.
+// Details tab goes on, under its machine facts, to a Usage section: its live
+// traffic graph, as the overview draws the Internet's, named so the roster's
+// stream feeds it, and its periods by the calendar — today, the last seven
+// days, the month so far and the month before — each down and up. Usage is not
+// a tab of its own.
 func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 	var received uint64 = 1_000_000
 	s, _ := usageServer(t, &received)
@@ -82,8 +83,8 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 		t.Error("usage is a section of Details, not a tab")
 	}
 	for _, want := range []string{
-		`data-verso-stat="usage-down:42:e6:ad:ff:b7:af"`, `data-verso-stat="usage-up:42:e6:ad:ff:b7:af"`,
-		">Download<", ">Upload<", "Mbit/s",
+		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, "Mbit/s down", "Mbit/s up", `<svg class="verso-chart`,
+		">Download<", ">Upload<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
 		">2 GiB<", ">512 MiB<", // today down and up
 		">3 GiB<", // this month's download: today and the 1st

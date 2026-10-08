@@ -374,7 +374,7 @@ Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no verti
 - **Content inset:** the content stands a cell under the title (or its lede). A field brings that cell itself; a band with a lede keeps it; anything else (a listing, a reading, a set) is given it by the section. Handwritten section bodies, such as Maintenance's, supply the same cell themselves. Count it once.
 - **Content bottom spacing:** a section keeps no closing air: the next section's rule stands two cells under the content, by its own margin.
 - **Reach:** the page band extends through the left gutter to meet the menu, or the screen edge on mobile, and ends at the content column's right edge. Words keep their existing horizontal alignment. In a drawer the band reaches both edges while its contents keep the body's 40px inset.
-- **Scope:** page h1s, drawer and dialog titles, navigation kickers and smaller subsection headings keep their own treatments. The overview's traffic h2 is a graph title: 18px in Body ink, inside the chart's own header with 16px horizontal padding and no section band extending into the gutter. Subsections retain their inset ledger lines.
+- **Scope:** page h1s, drawer and dialog titles, navigation kickers and smaller subsection headings keep their own treatments. The overview's traffic h2 is a graph title: 18px in Body ink, inside the chart's own header with 16px horizontal padding and no section band extending into the gutter. The graph is one component (Traffic), so a device's panel draws the same graph for the device, under its facts, its title ("Usage") standing in for a section heading. Subsections retain their inset ledger lines.
 
 ### Buttons
 Plain and exact.
