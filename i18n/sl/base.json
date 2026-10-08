@@ -826,5 +826,11 @@
   "Today": "Danes",
   "Last 7 days": "Zadnjih 7 dni",
   "Last month": "Prejšnji mesec",
-  "Device traffic — download and upload, last minute": "Promet naprave — prenos in nalaganje, zadnja minuta"
+  "Device traffic — download and upload, last minute": "Promet naprave — prenos in nalaganje, zadnja minuta",
+  "The internet can reach this web interface": "Ta spletni vmesnik je dosegljiv iz interneta",
+  "Open Firewall": "Odpri požarni zid",
+  "The firewall zone “%s” accepts every connection from the internet.": "Območje požarnega zidu »%s« sprejme vsako povezavo iz interneta.",
+  "The rule “%s” lets the internet reach every port on the router.": "Pravilo »%s« internetu odpre vsa vrata usmerjevalnika.",
+  "The rule “%s” lets the internet reach port %s.": "Pravilo »%s« internetu odpre vrata %s.",
+  "The port forward “%s” sends the internet to port %s on the router.": "Posredovanje vrat »%s« usmeri internet na vrata %s usmerjevalnika."
 }

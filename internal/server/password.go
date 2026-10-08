@@ -350,8 +350,12 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 			hdr.Notice = pluginHeader.Notice
 		}
 	}
-	// The web interface's own subjects follow its certificate: where it
-	// answers, then LuCI's part, where LuCI stands beside it.
+	// The web interface's own subjects follow its certificate: whether the
+	// internet reaches it, where it answers, then LuCI's part, where LuCI
+	// stands beside it.
+	if warn := s.exposureCallout(r, translatorOrIdentity(t)); warn != nil {
+		access.Children = append(access.Children, warn)
+	}
 	if web := s.webSettingsSection(r, fieldErrs); web != nil {
 		access.Children = append(access.Children, web)
 	}

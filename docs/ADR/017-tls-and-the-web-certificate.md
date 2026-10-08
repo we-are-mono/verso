@@ -82,6 +82,19 @@ and records the new command line: the write that changed the listeners leaves
 the running shell as it is, and a later respawn starts on them. A hand edit
 over SSH takes effect on `/etc/init.d/verso restart`.
 
+**The firewall decides who reaches the listeners; Verso says when the internet
+can.** Absent listeners bind every address, as uhttpd's do for LuCI, and the
+firewall keeps them off the WAN: the stock `wan` zone rejects input. Verso does
+not bind to the LAN's addresses, which move when the LAN is renumbered, multiply
+with guest and VPN networks, and are not up yet early in boot; nor does it refuse
+WAN clients itself, which would overrule an operator who opened the firewall on
+purpose. Instead Access reads the firewall and says plainly, above where the web
+interface answers (beside LuCI too, where that section has nothing to set), when
+the internet can reach a port the shell answers on, naming why: a
+WAN zone that accepts input, a rule that accepts the port from a WAN zone, or a
+port forward from a WAN zone to the router itself. It is a reading of the
+firewall's config, so a rule written in raw nftables is not seen.
+
 `CAP_NET_BIND_SERVICE`, kept by the init script, is what lets the unprivileged
 `verso` user bind 80 and 443. procd grants capabilities only through ujail, and
 runs ujail only for an instance that declares a jail, so the script declares
