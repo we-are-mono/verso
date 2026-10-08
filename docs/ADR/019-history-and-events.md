@@ -1,6 +1,6 @@
 # ADR-019 — History and events
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-08
 - **Relates to:** ADR-007 (privileged reads), ADR-013 (Verso's settings),
   ADR-014 (unattended network access is opt-in), ADR-018 (per-device usage),
@@ -43,27 +43,29 @@ The schema has two tables:
 | Table | Columns | Key |
 |---|---|---|
 | `points` | series, resolution, time, average, peak | series, resolution, time |
-| `events` | time, kind, subject, detail (JSON) | time, kind, subject |
+| `events` | time, kind, subject, detail (JSON) | time (indexed); repeats are kept |
 
-Series are named by what they measure (`iface.wan.rx`, `cpu`, `temp.cpu`), not
-by row number, so a reader needs no lookup table. When the schema changes, the
-shell rebuilds the file.
+Series are named by what they measure (`iface.eth0.rx`, `cpu`,
+`temp.<sensor>`), not by row number, so a reader needs no lookup table. When the
+schema changes, the shell rebuilds the file.
 
 ### Where it lives
 
 `verso.history.directory` names the directory. Absent, it is `/data/verso` where
-`/data` is a mount, else `/usr/share/verso`, which is listed in `keep.d`. The
-shell resolves it on start and when the setting is applied; no code writes the
-default back (ADR-013).
+`/data` is a mount, else `/usr/share/verso/history`, which is listed in
+`keep.d`. No code writes the default back (ADR-013).
+
+The init script resolves the directory on every start, creates it and hands it
+to the `verso` user, since a USB stick, a fresh `/data` and the overlay are
+root's; the shell receives it as `-history-dir`.
 
 The same directory holds nlbwmon's database, as `<directory>/nlbwmon`
 (ADR-018), so all of Verso's history lives where the operator put it.
 
-`verso-rpcd` creates the directory and hands it to the `verso` user, since a
-USB stick or a fresh `/data` is root's. Changing the directory moves the
-history: the shell copies the database with `VACUUM INTO`, switches to the copy
-and removes the old file; `verso-rpcd` stops nlbwmon, moves its directory and
-starts it again.
+Changing the directory moves the history: `verso-rpcd` creates the new
+directory, the shell copies the database there with `VACUUM INTO`, switches to
+the copy and removes the old file, and `verso-rpcd` stops nlbwmon, moves its
+directory and starts it again.
 
 A directory that cannot be written is warned about, never refused. The shell
 keeps collecting in memory and says through the top-right notification that
@@ -86,14 +88,17 @@ the rollup into longer periods.
 
 The series:
 
-- each interface the Interfaces page lists, and each physical port: received
-  and sent bytes per second;
+- every network device the kernel counts, loopback aside: received and sent
+  bits per second, from the per-second rates the overview's graphs draw;
 - CPU use, memory in use, and every temperature sensor the board reports;
 - conntrack entries in use;
 - Wi-Fi clients per radio, and DHCP leases per pool;
 - the WAN's latency and packet loss (below).
 
 Per-device traffic is not repeated here; it stays nlbwmon's.
+
+Rates count every second the sampler took; the other series are read every
+ten seconds. A reading that fails leaves a gap, never a zero.
 
 Minute points collect in memory and are written in one transaction every
 fifteen minutes, and when procd stops the shell. A power cut loses at most the

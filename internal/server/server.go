@@ -99,6 +99,8 @@ type Server struct {
 	telemetryAt   time.Time
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
+	// historyStop ends the history collector, writing what it holds (ADR-019).
+	historyStop func()
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors
@@ -459,6 +461,9 @@ func (s *Server) Close() {
 		if err := s.sessions.keep(s.keptSessions); err != nil {
 			log.Printf("verso: keep sessions: %v", err)
 		}
+	}
+	if s.historyStop != nil {
+		s.historyStop()
 	}
 	if s.telemetryStop != nil {
 		s.telemetryStop()

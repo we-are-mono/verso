@@ -36,8 +36,25 @@ certificate() {
 	make_certificate replace
 }
 
+# history_dir is where the router's history is kept (ADR-019): the operator's
+# choice, else /data/verso where /data is a mount, else on the overlay. It is
+# made here, as root, and given to the verso user, since the shell cannot make
+# a directory on /data, the overlay or a USB stick.
+history_dir() {
+	local dir
+	config_get dir history directory
+	if [ -z "$dir" ]; then
+		if grep -qs ' /data ' /proc/mounts; then
+			dir=/data/verso
+		else
+			dir=/usr/share/verso/history
+		fi
+	fi
+	mkdir -p "$dir" && chown verso:verso "$dir" && echo "$dir"
+}
+
 start_service() {
-	local listen_http listen_https redirect_https addr
+	local listen_http listen_https redirect_https addr history
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
@@ -57,6 +74,8 @@ start_service() {
 		procd_append_param command -listen-http "$addr"
 	done
 	[ -n "$redirect_https" ] && procd_append_param command -redirect-https "$redirect_https"
+	history="$(history_dir)"
+	[ -n "$history" ] && procd_append_param command -history-dir "$history"
 	# Multipart uploads spill to a private, group-protected runtime directory.
 	# This keeps large backup/firmware bodies out of the shared system /tmp and
 	# works even on images whose tmpfs is not writable by unprivileged services.

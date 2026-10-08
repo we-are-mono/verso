@@ -95,6 +95,7 @@ func serve(args []string) {
 	flags.Func("listen-https", "an address:port to serve HTTPS on (repeatable)", func(v string) error { https = append(https, v); return nil })
 	flags.Func("listen-http", "an address:port to serve HTTP on (repeatable)", func(v string) error { plain = append(plain, v); return nil })
 	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
+	historyDir := flags.String("history-dir", "", "the directory the router's history is kept in; empty keeps none")
 	if err := flags.Parse(args); err != nil {
 		os.Exit(2)
 	}
@@ -183,6 +184,9 @@ func serve(args []string) {
 		return rescanned
 	})
 	srv.SetAllowedHosts(allowedHosts())
+	if *historyDir != "" {
+		srv.StartHistory(*historyDir)
+	}
 
 	// Both signals are answered from before the first listener is announced, so
 	// a signal sent on seeing it is never taken by the default handler.
