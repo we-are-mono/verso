@@ -430,14 +430,16 @@
              share in its series' colour: 3px under the line, inside the row's
              own padding, so the row stays two cells tall. A figure with no
              series has no whole to measure against and stands alone. Every slot is drawn even when it
-             has nothing to say, hidden, so a live listing fills it in place;
-             the dash stands for a cell with no figure. */}}
+             has nothing to say, unseen but keeping its width, so a live listing fills it in place and
+             the cell is as wide busy as idle: a table squeezed below its columns' widths shares the
+             shortfall by content, and a cell whose width swung would move its column with every
+             reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
-          <span class="text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
-          {{$muted := .Muted}}{{range .FigureViews}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums {{if $muted}}text-meta{{else}}text-ink{{end}} last:mr-0" data-verso-figure="{{.Role}}"{{if not .Text}} hidden{{end}}>
+          <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
+          {{$muted := .Muted}}{{range .FigureViews}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums {{if $muted}}text-meta{{else}}text-ink{{end}} last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Role}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
             {{if .Role}}<span aria-hidden="true" class="absolute inset-x-0 top-5.75 h-0.5 bg-rule"><span data-verso-figure-meter class="absolute inset-0 {{.Class}} transition-[clip-path] duration-300 ease-out motion-reduce:transition-none" style="clip-path: {{.Clip}}"></span></span>{{end}}
-          </span>{{end}}
+          </span>{{end}}</span>
         </td>
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and

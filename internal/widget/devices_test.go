@@ -151,6 +151,15 @@ func TestRenderDevicesUsage(t *testing.T) {
 	if n := strings.Count(got, "data-verso-figures-none hidden"); n != 3 {
 		t.Errorf("rows with something to state should hide the dash: %d, want 3 (one busy Now, two months)", n)
 	}
+	// An empty slot keeps its width, unseen, so a column of them holds still
+	// as the stream fills and empties them: the idle and offline rows' two Now
+	// slots and the offline row's month.
+	if n := strings.Count(got, ` invisible" data-verso-figure`); n != 5 {
+		t.Errorf("empty figure slots kept in place: %d, want 5", n)
+	}
+	if strings.Contains(got, `data-verso-figure="emerald" hidden`) || strings.Contains(got, `data-verso-figure="" hidden`) {
+		t.Error("an empty figure slot was taken out of the layout")
+	}
 
 	off := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
 	if strings.Contains(off, "usage-now") || !strings.Contains(off, ">MAC address<") {

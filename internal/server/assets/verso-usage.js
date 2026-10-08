@@ -22,7 +22,9 @@
     slot.querySelector("[data-verso-figure-text]").textContent = text || "";
     var meter = slot.querySelector("[data-verso-figure-meter]");
     if (meter) meter.style.clipPath = clip(fill);
-    slot.hidden = !text;
+    // Unseen, not removed: an empty slot keeps its width, so the column holds
+    // still as devices go busy and idle.
+    slot.classList.toggle("invisible", !text);
     return !!text;
   }
   function setDash(cell, shown) {
