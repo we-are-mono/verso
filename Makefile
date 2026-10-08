@@ -235,6 +235,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --script post-install:$(POSTINST) \
 	  --script post-upgrade:$(POSTINST) \
 	  --script pre-deinstall:packaging/apk/pre-deinstall.sh \
+	  --script post-deinstall:packaging/apk/post-deinstall.sh \
 	  --sign-key "$(KEY)" \
 	  --output "$(APK_OUT)"'
 	@echo "built and signed: $(APK_OUT)  (arch $(APK_ARCH), version $(VER))"

@@ -6,16 +6,31 @@
 # months of them, on storage that survives a reboot. The interval and the
 # generations are Verso's, set every time; the directory moves only while it is
 # the stock tmpfs one, so an owner's own choice stays.
+#
+# `usage-setup remove` gives nlbwmon its stock period, generations and tmpfs
+# directory back, the directory only while it is one Verso chose. The days
+# already written stay where they are, so a reinstall reads them again.
+mode=${1:-install}
+case "$mode" in install|remove) ;; *) exit 2 ;; esac
 cfg=nlbwmon.@nlbwmon[0]
 uci -q get "$cfg" >/dev/null || exit 0
 
-uci -q set "$cfg.database_interval=2026-01-01/1"
-uci -q set "$cfg.database_generations=400"
-if [ "$(uci -q get "$cfg.database_directory")" = /var/lib/nlbwmon ]; then
-	if grep -qs ' /data ' /proc/mounts; then
-		uci -q set "$cfg.database_directory=/data/nlbwmon"
-	else
-		uci -q set "$cfg.database_directory=/usr/share/nlbwmon/db"
+directory=$(uci -q get "$cfg.database_directory")
+if [ "$mode" = remove ]; then
+	uci -q set "$cfg.database_interval=1"
+	uci -q set "$cfg.database_generations=10"
+	case "$directory" in
+	/data/nlbwmon | /usr/share/nlbwmon/db) uci -q set "$cfg.database_directory=/var/lib/nlbwmon" ;;
+	esac
+else
+	uci -q set "$cfg.database_interval=2026-01-01/1"
+	uci -q set "$cfg.database_generations=400"
+	if [ "$directory" = /var/lib/nlbwmon ]; then
+		if grep -qs ' /data ' /proc/mounts; then
+			uci -q set "$cfg.database_directory=/data/nlbwmon"
+		else
+			uci -q set "$cfg.database_directory=/usr/share/nlbwmon/db"
+		fi
 	fi
 fi
 uci -q commit nlbwmon
