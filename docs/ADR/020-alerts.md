@@ -1,6 +1,6 @@
 # ADR-020 — Alerts
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-08
 - **Relates to:** ADR-013 (Verso's settings), ADR-014 (unattended network
   access is opt-in), ADR-019 (history and events)
@@ -31,49 +31,54 @@ privilege the `verso` user lacks.
 
 ### What is sent
 
-The shell sends one HTTP POST per incident to `verso.alerts.url`: a one-line
-plain-text body, with `Title`, `Priority`, `Tags` and `Click` headers. ntfy reads
-those headers and shows a push notification; any other receiver (Home
-Assistant, a chat bridge, a script) reads the body. `Click` opens Verso on the
-event's moment in the timeline.
+The shell sends one HTTP POST per message to `verso.alerts.url`: a short
+plain-text body, with ntfy's `Title` and `Priority` headers. ntfy shows them as
+a push notification; any other receiver (Home Assistant, a chat bridge, a
+script) reads the body. The title names the router by its hostname:
 
-An example body: `home-router: the internet was down 03:12–03:20 (8 min); the
-gateway answered, 1.1.1.1 did not.`
+| Title | Body |
+|---|---|
+| `home-router: the internet is down` | `Since 03:12.` |
+| `home-router: the internet was down` | `From 03:12 to 03:20 (8 min).` |
+| `home-router: the internet is back` | `After 8 min, down since 03:12.` |
+| `home-router: the router restarted` | `After losing power or crashing, at 13:49.` |
+
+No link rides along: the shell does not know the address its operator reaches
+it by from outside.
 
 ### Which events alert
 
-`verso.alerts.kind` lists the event kinds that alert. Absent, the list is:
+`verso.alerts.kind` lists the kinds that alert. Absent, both do:
 
-- WAN down and up
-- a boot that was not clean
-- changes rolled back
-- history storage unavailable
-
-The other kinds of ADR-019 (new device, VPN tunnel up or down, DHCP pool nearly
-full, firmware installed) and three sustained conditions can be added:
-
-| Condition | Holds for |
+| Kind | Alerts on |
 |---|---|
-| WAN packet loss over 5 % | 5 minutes |
-| CPU over 90 % | 10 minutes |
-| A temperature over the board's warning point | 5 minutes |
-
-The thresholds are fixed. A condition counts once it has held for its whole
-window, and ends when it has stayed clear for as long.
+| `wan` | the internet going down and coming back (ADR-019's WAN events) |
+| `boot` | a start after losing power or crashing; a clean reboot is not news |
 
 ### Incidents, not events
 
-- **One message per incident.** Events of one kind on one subject within five
-  minutes of each other are one incident: a WAN that flaps ten times sends one
-  alert.
-- **Recovery closes it.** An incident that ends sends a second message naming
-  its duration.
-- **Sent when it can be.** An alert that cannot be delivered waits in
-  `history.db` and is retried with backoff for 24 hours, then dropped. It keeps
-  its times, so a WAN outage arrives once the line returns, saying when it
-  started and ended. A receiver on the LAN gets it at once.
-- **Every attempt is recorded.** Each attempt's time, status and HTTP code is
-  kept beside the event, so "why did I not get it" has an answer.
+- **One message per incident.** A drop within five minutes of the last
+  recovery reopens the incident: a WAN that flaps ten times sends one alert,
+  and a recovery not yet sent is withdrawn.
+- **A drop is held a minute.** Its first try waits a minute, and a drop that
+  ends sooner, or before it could be delivered, is rewritten into one message
+  that says when it started and ended. Without the hold, a retry that lands
+  between the line returning and the shell noticing sends both halves.
+- **Recovery closes it.** An incident whose drop was already delivered sends a
+  second message naming its duration.
+- **Sent when it can be.** An alert that cannot be delivered waits in the
+  history's outbox (`alerts` in `history.db`) and is retried, thirty seconds
+  doubling to ten minutes apart, for 24 hours, then dropped. A receiver on the
+  LAN gets it while the internet is down.
+- **Every attempt is recorded.** Each alert keeps its last attempt's time and
+  answer (an HTTP status, or why there was none), for thirty days.
+
+### Reaching the running shell
+
+The init script hands `verso.alerts` to the shell as `-alert-url`,
+`-heartbeat-url` and `-alert-kind`, which carry it to every start. An apply
+reaches the running shell through the confirm that keeps it, under the
+confirming operator's session.
 
 ### The heartbeat
 

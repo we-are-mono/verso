@@ -132,6 +132,10 @@ func Open(path string) (*Store, error) {
 			return nil, err
 		}
 	}
+	if _, err := db.Exec(outbox); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
 }
 
@@ -237,6 +241,9 @@ func (s *Store) Maintain(ctx context.Context, now time.Time) error {
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM events WHERE time < ?`, now.Add(-eventsKeep).Unix()); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM alerts WHERE created < ?`, now.Add(-alertsKeep).Unix()); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {

@@ -54,7 +54,7 @@ history_dir() {
 }
 
 start_service() {
-	local listen_http listen_https redirect_https addr history probes
+	local listen_http listen_https redirect_https addr history probes alert_url heartbeat_url alert_kinds kind
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
@@ -82,6 +82,18 @@ start_service() {
 	config_get probes history probe
 	for addr in $probes; do
 		procd_append_param command -probe "$addr"
+	done
+	# Where alerts and the heartbeat go, and which kinds alert (ADR-020);
+	# nothing is sent unless the operator gives an address. An apply reaches
+	# the running shell through its own confirm, so these carry the settings
+	# to the next start.
+	config_get alert_url alerts url
+	config_get heartbeat_url alerts heartbeat
+	config_get alert_kinds alerts kind
+	[ -n "$alert_url" ] && procd_append_param command -alert-url "$alert_url"
+	[ -n "$heartbeat_url" ] && procd_append_param command -heartbeat-url "$heartbeat_url"
+	for kind in $alert_kinds; do
+		procd_append_param command -alert-kind "$kind"
 	done
 	# Multipart uploads spill to a private, group-protected runtime directory.
 	# This keeps large backup/firmware bodies out of the shared system /tmp and

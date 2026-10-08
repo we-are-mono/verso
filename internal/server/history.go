@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/probe"
@@ -26,8 +27,8 @@ import (
 // StartHistory records the router's measurements into dir/history.db
 // (ADR-019). A file that cannot be opened is reported and the history is kept
 // in memory instead, so collection goes on. The uplink is probed at its
-// gateway and at each of probes.
-func (s *Server) StartHistory(dir string, probes []netip.Addr) {
+// gateway and at each of probes, and alerts go where notify says (ADR-020).
+func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Config) {
 	path := filepath.Join(dir, "history.db")
 	store, err := history.Open(path)
 	onDisk := err == nil
@@ -37,6 +38,14 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr) {
 			log.Printf("verso: no history: %v", err)
 			return
 		}
+	}
+	// The alerter begins before this boot is recorded, so an unclean one
+	// alerts.
+	host, _ := os.Hostname()
+	alerter := alerts.New(store, host)
+	alerter.Configure(notify)
+	if err := alerter.Begin(context.Background()); err != nil {
+		log.Printf("verso: alerts: %v", err)
 	}
 	if onDisk {
 		recordBoot(context.Background(), store, dir)
@@ -52,12 +61,13 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr) {
 		}),
 		temperatures(),
 	)
-	// The watcher and the prober stop before the collector, which closes the
-	// store.
+	// The watcher, the prober and the alerter stop before the collector,
+	// which closes the store.
 	watchCtx, stopWatch := context.WithCancel(context.Background())
 	var watching sync.WaitGroup
 	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
 	watching.Go(func() { prober.Run(watchCtx) })
+	watching.Go(func() { alerter.Run(watchCtx) })
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {

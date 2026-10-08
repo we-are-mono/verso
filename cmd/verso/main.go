@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -105,6 +106,13 @@ func serve(args []string) {
 			return nil
 		}
 		probes = append(probes, addr)
+		return nil
+	})
+	var notify alerts.Config
+	flags.StringVar(&notify.URL, "alert-url", "", "where alerts are posted (verso.alerts.url); empty sends none")
+	flags.StringVar(&notify.Heartbeat, "heartbeat-url", "", "where the heartbeat goes every five minutes (verso.alerts.heartbeat)")
+	flags.Func("alert-kind", "a kind of event that alerts (repeatable); absent alerts every default kind", func(v string) error {
+		notify.Kinds = append(notify.Kinds, v)
 		return nil
 	})
 	if err := flags.Parse(args); err != nil {
@@ -196,7 +204,7 @@ func serve(args []string) {
 	})
 	srv.SetAllowedHosts(allowedHosts())
 	if *historyDir != "" {
-		srv.StartHistory(*historyDir, probes)
+		srv.StartHistory(*historyDir, probes, notify)
 	}
 
 	// Both signals are answered from before the first listener is announced, so
