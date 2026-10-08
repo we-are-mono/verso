@@ -11,6 +11,7 @@
 mod access;
 mod arrival;
 mod config_files;
+mod ddns;
 mod dhcp;
 mod diagnostics;
 mod firewall;
@@ -323,6 +324,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         ),
         "accessCredentials" => access::state(),
         "vpnState" => openvpn::state(),
+        "ddnsState" => ddns::state(),
         "setAuthorizedKeys" => {
             let _guard = state
                 .maintenance

@@ -1182,6 +1182,8 @@ func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (js
 		read = s.backend.VPNState
 	case "openvpnFiles":
 		read = s.backend.OpenVPNFiles
+	case "ddnsState":
+		read = s.backend.DDNSState
 	default:
 		return nil, false, nil
 	}

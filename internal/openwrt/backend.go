@@ -235,6 +235,7 @@ type Backend interface {
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
 	VPNState(ctx context.Context, sid string) (json.RawMessage, error)
 	OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error)
+	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
 	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
 	// through the helper, refusing it unless the file still holds expected.
 	StageConfigFile(ctx context.Context, sid, path, expected, content string) error

@@ -65,6 +65,14 @@ func (*NativeBackend) VPNState(ctx context.Context, sid string) (json.RawMessage
 	return state, err
 }
 
+// DDNSState is what ddns-scripts last did for each service: the address its
+// name resolves to, when it last sent an update, and whether its updater runs.
+func (*NativeBackend) DDNSState(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, "", "ddnsState", sid, nil, &state)
+	return state, err
+}
+
 // FirewallFiles is the rule files fw4 reads from its own folder, as they will
 // read once staged changes are applied.
 func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {
