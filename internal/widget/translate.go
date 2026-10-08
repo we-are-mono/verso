@@ -125,6 +125,7 @@ func translateFields(w Widget, t func(string) string) {
 		n.Label = t(n.Label)
 		n.Prompt = t(n.Prompt)
 		n.Help = t(n.Help)
+		n.Tip = t(n.Tip)
 	case *Meter:
 		if !n.Verbatim {
 			n.Label = t(n.Label)
@@ -204,6 +205,7 @@ func translateFields(w Widget, t func(string) string) {
 		}
 		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
+		n.Tip = t(n.Tip)
 		n.Error = t(n.Error)
 	case *ActionBar:
 		translateDrawer(n.Drawer, t)

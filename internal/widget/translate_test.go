@@ -83,6 +83,21 @@ func TestTranslateSchemaWalksEveryTextField(t *testing.T) {
 	}
 }
 
+// TestTranslateReachesEveryTip: a tip is the sentence raised onto a label —
+// prose wherever it stands, on a field, a switch or a list alike.
+func TestTranslateReachesEveryTip(t *testing.T) {
+	tr := fakeCatalog(map[string]string{"Starts with the router.": "Zažene se z usmerjevalnikom."})
+	sw := &Switch{Name: "enabled", Tip: "Starts with the router."}
+	list := &List{Name: "server", Tip: "Starts with the router."}
+	field := &Field{Name: "port", Tip: "Starts with the router."}
+	translateSchema(&Stack{Children: []Widget{sw, list, field}}, tr)
+	for kind, got := range map[string]string{"switch": sw.Tip, "list": list.Tip, "field": field.Tip} {
+		if got != "Zažene se z usmerjevalnikom." {
+			t.Errorf("%s tip = %q, want translated", kind, got)
+		}
+	}
+}
+
 // TestTranslateSkipsMachineContent pins the typography contract at the walk: a
 // machine-kind column's Text/Sub, an overflow cell beyond the declared columns,
 // and a Mono or Chip property value all stay verbatim, while action prose in
