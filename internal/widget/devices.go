@@ -157,7 +157,7 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 			}
 			month := UsageMonthCell(u)
 			month.Muted = away
-			cells = append(cells, presenceCell(d.Presence), UsageNowCell(u), month)
+			cells = append(cells, UsageNowCell(u), month, presenceCell(d.Presence))
 		} else {
 			cells = append(cells, TableCell{Text: d.MAC, Copy: true, Emphasis: true, Muted: away}, presenceCell(d.Presence))
 		}
@@ -204,9 +204,9 @@ func devicesColumns(usage bool) []TableColumn {
 	}
 	if usage {
 		cols = append(cols,
-			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
 			TableColumn{Label: "Now · Mbit/s", Kind: "figures", Width: MeasureAddress},
 			TableColumn{Label: "This month", Kind: "figures", Width: MeasureWord},
+			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
 		)
 	} else {
 		cols = append(cols,

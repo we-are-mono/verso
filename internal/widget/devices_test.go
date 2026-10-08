@@ -147,6 +147,10 @@ func TestRenderDevicesUsage(t *testing.T) {
 	if strings.Contains(got, ">MAC address<") || strings.Contains(got, "a4:83:e7:2b:19:0c</") {
 		t.Error("the MAC gives up its column to usage")
 	}
+	// Status reads last, beside the acts it explains; usage comes before it.
+	if strings.Index(got, ">Status<") < strings.Index(got, ">This month<") {
+		t.Error("Status should stand after This month, last before the acts")
+	}
 	// The idle and the offline rows' Now is the dash, their figures hidden.
 	if n := strings.Count(got, "data-verso-figures-none hidden"); n != 3 {
 		t.Errorf("rows with something to state should hide the dash: %d, want 3 (one busy Now, two months)", n)
