@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/tlscert"
@@ -69,8 +70,8 @@ func certificateFacts(c *x509.Certificate, now time.Time) map[string]string {
 	facts := map[string]string{
 		"subject":     c.Subject.CommonName,
 		"issuer":      c.Issuer.CommonName,
-		"from":        c.NotBefore.Format("2006-01-02"),
-		"until":       c.NotAfter.Format("2006-01-02"),
+		"from":        clock.Local(c.NotBefore).Format("2006-01-02"),
+		"until":       clock.Local(c.NotAfter).Format("2006-01-02"),
 		"fingerprint": strings.Join(pairs, " "),
 		"serial":      hex.EncodeToString(c.SerialNumber.Bytes()),
 		"days_total":  strconv.Itoa(int(c.NotAfter.Sub(c.NotBefore) / day)),

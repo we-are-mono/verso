@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -29,7 +29,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	liveOverview := &widget.Overview{SecurityHref: s.navLabelHref("Firewall")}
 
 	sendMeters := func() bool {
-		now := time.Now()
+		now := clock.Now()
 		if writeEvent(w, "", "clock", map[string]string{"clock": now.Format("15:04:05"), "uptime": loginDuration(tr, loginUptime())}) != nil {
 			return false
 		}

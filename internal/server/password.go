@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -157,6 +158,7 @@ func browserLabel(tr func(string) string, ua string) string {
 // sessionSince says when a session started, as the line under when it was
 // last seen: today by the clock alone, any other day by its date.
 func sessionSince(tr func(string) string, created, now time.Time) string {
+	created, now = clock.Local(created), clock.Local(now)
 	cy, cm, cd := created.Date()
 	ny, nm, nd := now.Date()
 	if cy == ny && cm == nm && cd == nd {

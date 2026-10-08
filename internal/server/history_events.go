@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -309,6 +310,7 @@ func lossMarks(loss []float64, start time.Time, step time.Duration, outages []wi
 // eventTime is the clock time today, the day and time this year, and the
 // year as well before it.
 func eventTime(at, now time.Time) string {
+	at, now = clock.Local(at), clock.Local(now)
 	switch {
 	case at.YearDay() == now.YearDay() && at.Year() == now.Year():
 		return at.Format("15:04")

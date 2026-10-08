@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"time"
+
+	"github.com/we-are-mono/verso/internal/clock"
 )
 
 // loginStatus is the complete public refresh payload. It intentionally cannot
@@ -26,7 +27,7 @@ type loginStatus struct {
 func (s loginStatus) InternetUp() bool { return s.Internet != nil && *s.Internet }
 
 func (s *Server) readLoginStatus(tr func(string) string) loginStatus {
-	now := time.Now()
+	now := clock.Now()
 	zone, offset := now.Zone()
 	status := loginStatus{
 		Uptime: loginDuration(tr, loginUptime()),

@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -135,7 +136,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	}
 	// While a check runs, Check again says so itself; the line beside it waits.
 	if !checking {
-		v.Checked = checkedAt(tr, truth.CheckedAt, known, time.Now())
+		v.Checked = checkedAt(tr, truth.CheckedAt, known, clock.Now())
 	}
 	if stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r)); stage.Count > 0 {
 		v.Staged = stage.Label

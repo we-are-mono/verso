@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/alerts"
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
@@ -920,7 +921,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	lang, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
-	now := time.Now()
+	now := clock.Now()
 	zone, offset := now.Zone()
 	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset}
 	board, boardErr := s.backend.Board(r.Context(), sid)

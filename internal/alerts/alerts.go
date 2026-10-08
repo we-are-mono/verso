@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
 )
 
@@ -129,7 +130,7 @@ func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
 			if !d.Clean {
 				_, err = a.store.Enqueue(ctx, history.Alert{
 					Created: e.Time, Title: a.title("the router restarted"), Priority: "high",
-					Body: fmt.Sprintf("After losing power or crashing, at %s.", clock(e.Time)),
+					Body: fmt.Sprintf("After losing power or crashing, at %s.", clockTime(e.Time)),
 				})
 			}
 		}
@@ -148,12 +149,12 @@ func (a *Alerter) wanDown(ctx context.Context, at time.Time) error {
 			}
 			in.upAlert = 0
 		}
-		_, err := a.store.Rewrite(ctx, in.downAlert, a.title("the internet is down"), fmt.Sprintf("Since %s.", clock(in.start)))
+		_, err := a.store.Rewrite(ctx, in.downAlert, a.title("the internet is down"), fmt.Sprintf("Since %s.", clockTime(in.start)))
 		return err
 	}
 	id, err := a.store.Enqueue(ctx, history.Alert{
 		Created: at, Hold: at.Add(confirmDrop), Title: a.title("the internet is down"), Priority: "high",
-		Body: fmt.Sprintf("Since %s.", clock(at)),
+		Body: fmt.Sprintf("Since %s.", clockTime(at)),
 	})
 	a.wan = &incident{start: at, open: true, downAlert: id}
 	return err
@@ -166,13 +167,13 @@ func (a *Alerter) wanUp(ctx context.Context, at time.Time) error {
 	}
 	in.open, in.end = false, at
 	rewritten, err := a.store.Rewrite(ctx, in.downAlert, a.title("the internet was down"),
-		fmt.Sprintf("From %s to %s (%s).", clock(in.start), clock(at), duration(at.Sub(in.start))))
+		fmt.Sprintf("From %s to %s (%s).", clockTime(in.start), clockTime(at), duration(at.Sub(in.start))))
 	if err != nil || rewritten {
 		return err
 	}
 	in.upAlert, err = a.store.Enqueue(ctx, history.Alert{
 		Created: at, Title: a.title("the internet is back"), Priority: "default",
-		Body: fmt.Sprintf("After %s, down since %s.", duration(at.Sub(in.start)), clock(in.start)),
+		Body: fmt.Sprintf("After %s, down since %s.", duration(at.Sub(in.start)), clockTime(in.start)),
 	})
 	return err
 }
@@ -305,7 +306,7 @@ func (a *Alerter) Run(ctx context.Context) {
 	}
 }
 
-func clock(t time.Time) string { return t.Format("15:04") }
+func clockTime(t time.Time) string { return clock.Local(t).Format("15:04") }
 
 // duration says how long, as the Events page does: seconds under a minute,
 // minutes under an hour, then hours and minutes.
