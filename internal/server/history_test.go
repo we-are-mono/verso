@@ -14,7 +14,9 @@ import (
 )
 
 // TestInterfaceRatesHandsOverEachSecondOnce: each per-second rate reaches the
-// history once, however the ticks fall, and loopback is not recorded.
+// history once, however the ticks fall. Loopback is not recorded, nor a device
+// that is down: an idle tunnel placeholder or a port without link is a gap,
+// not a line of zeros.
 func TestInterfaceRatesHandsOverEachSecondOnce(t *testing.T) {
 	at := func(s int64) uint64 { return uint64(s * 1000) }
 	snapshot := telemetry.Snapshot{Interfaces: []telemetry.Interface{
@@ -23,6 +25,7 @@ func TestInterfaceRatesHandsOverEachSecondOnce(t *testing.T) {
 			{TimestampMS: at(2), RxBPS: 20, TxBPS: 2},
 		}},
 		{Name: "lo", History: []telemetry.Point{{TimestampMS: at(2), RxBPS: 5}}},
+		{Name: "sit0", Operstate: "down", History: []telemetry.Point{{TimestampMS: at(2)}}},
 	}}
 	fake := &fakeTelemetry{snapshot: snapshot}
 	source := interfaceRates(fake)
@@ -33,6 +36,9 @@ func TestInterfaceRatesHandsOverEachSecondOnce(t *testing.T) {
 	}
 	if _, ok := got["iface.lo.rx"]; ok {
 		t.Fatal("loopback was recorded")
+	}
+	if _, ok := got["iface.sit0.rx"]; ok {
+		t.Fatal("a device that is down was recorded")
 	}
 
 	fake.snapshot.Interfaces[0].History = []telemetry.Point{

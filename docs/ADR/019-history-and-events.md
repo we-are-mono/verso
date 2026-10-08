@@ -38,15 +38,19 @@ static binary built with `CGO_ENABLED=0`. It adds about 4 MB to the arm64
 binary. The file is `history.db`, in WAL mode with `synchronous=NORMAL`: a
 power cut never damages it.
 
-The schema has two tables:
+The schema has three tables:
 
 | Table | Columns | Key |
 |---|---|---|
-| `points` | series, resolution, time, average, peak | series, resolution, time |
+| `series` | id, name | id; name unique |
+| `points` | series id, resolution, time, average, peak | series id, resolution, time |
 | `events` | time, kind, subject, detail (JSON) | time (indexed); repeats are kept |
 
-Series are named by what they measure (`iface.eth0.rx`, `cpu`,
-`temp.<sensor>`), not by row number, so a reader needs no lookup table. When the
+The tables are the same on every router. A series is a name for what it
+measures (`iface.eth0.rx`, `cpu`, `temp.<sensor>`), and a point is one row: a
+router with more ports or sensors has more rows, never more columns, and a
+device that appears needs no change to the file. Points carry the series' id,
+so a long sensor name is stored once rather than on every point. When the
 schema changes, the shell rebuilds the file.
 
 ### Where it lives
@@ -88,8 +92,10 @@ the rollup into longer periods.
 
 The series:
 
-- every network device the kernel counts, loopback aside: received and sent
-  bits per second, from the per-second rates the overview's graphs draw;
+- every network device the kernel counts while it is not down, loopback
+  aside: received and sent bits per second, from the per-second rates the
+  overview's graphs draw. A device that is down (an idle tunnel placeholder, a
+  port without link) leaves a gap;
 - CPU use, memory in use, and every temperature sensor the board reports;
 - conntrack entries in use;
 - Wi-Fi clients per radio, and DHCP leases per pool;
@@ -104,7 +110,8 @@ Minute points collect in memory and are written in one transaction every
 fifteen minutes, and when procd stops the shell. A power cut loses at most the
 last fifteen minutes. Once an hour the shell rolls finished periods up into the
 next resolution, deletes what has expired and runs `incremental_vacuum`, so the
-file stays near a fixed size: a few megabytes on a typical router.
+file stays near a fixed size: 12.5 MB for 42 series at full retention, about
+300 KB a series.
 
 A gap stays a gap. Nothing is interpolated across a reboot or a stopped shell;
 the boot event explains it.

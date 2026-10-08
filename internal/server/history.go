@@ -51,7 +51,8 @@ func (s *Server) StartHistory(dir string) {
 }
 
 // interfaceRates hands over each interface's per-second rates, in bits per
-// second, that it has not handed over before. Loopback is not recorded.
+// second, that it has not handed over before. Loopback is not recorded, nor a
+// device that is down: its minutes are a gap, not a line of zeros.
 func interfaceRates(source telemetrySource) history.Source {
 	var lastMS uint64
 	return func(time.Time) map[string][]float64 {
@@ -62,7 +63,7 @@ func interfaceRates(source telemetrySource) history.Source {
 		out := map[string][]float64{}
 		newest := lastMS
 		for _, iface := range snapshot.Interfaces {
-			if iface.Name == "lo" {
+			if iface.Name == "lo" || normalOperstate(iface.Operstate) == "down" {
 				continue
 			}
 			for _, p := range iface.History {

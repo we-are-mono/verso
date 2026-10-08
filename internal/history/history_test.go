@@ -62,6 +62,39 @@ func TestAddedPointsAreReadOnlyOnceFlushed(t *testing.T) {
 	}
 }
 
+// TestASeriesNameIsStoredOnce: points carry a number, not the name, so a long
+// sensor name costs its bytes once rather than on every point; a name seen
+// after a reopen keeps its number.
+func TestASeriesNameIsStoredOnce(t *testing.T) {
+	store, path := open(t)
+	for n := range 3 {
+		store.Add(Point{Series: "temp.Composite.nvme · 0e:00", Time: minute(n), Average: 1, Peak: 1})
+	}
+	if err := store.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reopened.Close() }()
+	reopened.Add(Point{Series: "temp.Composite.nvme · 0e:00", Time: minute(3), Average: 1, Peak: 1})
+	if err := reopened.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var names int
+	if err := reopened.db.QueryRow(`SELECT count(*) FROM series`).Scan(&names); err != nil || names != 1 {
+		t.Fatalf("series rows = %d (%v), want 1", names, err)
+	}
+	got, err := reopened.Points(ctx, "temp.Composite.nvme · 0e:00", Minute, minute(0), minute(4))
+	if err != nil || len(got) != 4 {
+		t.Fatalf("points = %+v (%v), want all four under one name", got, err)
+	}
+}
+
 // TestPointsReadsOneSeriesInRange: the range is half open, and another series
 // never leaks in.
 func TestPointsReadsOneSeriesInRange(t *testing.T) {

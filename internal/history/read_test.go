@@ -12,7 +12,7 @@ import (
 func (s *Store) Points(ctx context.Context, series string, res Resolution, from, to time.Time) ([]Point, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT time, average, peak FROM points
-WHERE series = ? AND resolution = ? AND time >= ? AND time < ?
+WHERE series_id = (SELECT id FROM series WHERE name = ?) AND resolution = ? AND time >= ? AND time < ?
 ORDER BY time`,
 		series, res, from.Unix(), to.Unix())
 	if err != nil {

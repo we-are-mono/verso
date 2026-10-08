@@ -25,16 +25,20 @@ const driver = "sqlite"
 // schema is the file's layout; a file of another version is rebuilt, not
 // migrated. auto_vacuum must be set before the first table exists.
 const (
-	schemaVersion = 1
+	schemaVersion = 2
 	schema        = `
 PRAGMA auto_vacuum = INCREMENTAL;
+CREATE TABLE series (
+	id   INTEGER PRIMARY KEY,
+	name TEXT    NOT NULL UNIQUE
+);
 CREATE TABLE points (
-	series     TEXT    NOT NULL,
+	series_id  INTEGER NOT NULL REFERENCES series (id),
 	resolution INTEGER NOT NULL,
 	time       INTEGER NOT NULL,
 	average    REAL    NOT NULL,
 	peak       REAL    NOT NULL,
-	PRIMARY KEY (series, resolution, time)
+	PRIMARY KEY (series_id, resolution, time)
 ) WITHOUT ROWID;
 CREATE TABLE events (
 	time    INTEGER NOT NULL,
@@ -43,7 +47,7 @@ CREATE TABLE events (
 	detail  TEXT    NOT NULL DEFAULT ''
 );
 CREATE INDEX events_time ON events (time);
-PRAGMA user_version = 1;`
+PRAGMA user_version = 2;`
 )
 
 // Resolution is a point's period in seconds.
@@ -187,12 +191,20 @@ func (s *Store) Flush(ctx context.Context) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	insert, err := tx.PrepareContext(ctx,
-		`INSERT OR REPLACE INTO points (series, resolution, time, average, peak) VALUES (?, ?, ?, ?, ?)`)
+	name, err := tx.PrepareContext(ctx, `INSERT OR IGNORE INTO series (name) VALUES (?)`)
+	if err != nil {
+		return err
+	}
+	insert, err := tx.PrepareContext(ctx, `
+INSERT OR REPLACE INTO points (series_id, resolution, time, average, peak)
+VALUES ((SELECT id FROM series WHERE name = ?), ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 	for _, p := range s.pending {
+		if _, err := name.ExecContext(ctx, p.Series); err != nil {
+			return err
+		}
 		if _, err := insert.ExecContext(ctx, p.Series, Minute, p.Time.Unix(), p.Average, p.Peak); err != nil {
 			return err
 		}
@@ -244,11 +256,11 @@ func rollup(ctx context.Context, tx *sql.Tx, from, to Resolution, kept, now time
 		return nil
 	}
 	_, err := tx.ExecContext(ctx, `
-INSERT OR REPLACE INTO points (series, resolution, time, average, peak)
-SELECT series, ?, time / ? * ?, avg(average), max(peak)
+INSERT OR REPLACE INTO points (series_id, resolution, time, average, peak)
+SELECT series_id, ?, time / ? * ?, avg(average), max(peak)
 FROM points
 WHERE resolution = ? AND time >= ? AND time < ?
-GROUP BY series, time / ?`,
+GROUP BY series_id, time / ?`,
 		to, step, step, from, start, end, step)
 	return err
 }
