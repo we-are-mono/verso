@@ -86,7 +86,7 @@ first: they hold the decisions and rationale. This file is the short "how we wor
 
 ## Build · test · run
 
-A fresh checkout needs only Go 1.24+, `rustup`, Docker, and `make` — no host cross-gcc.
+A fresh checkout needs only Go 1.27+, `rustup`, Docker, and `make` — no host cross-gcc.
 `rustup` provisions the Rust toolchain + musl targets from `verso-rpcd/rust-toolchain.toml`
 on first build, and `rust-lld` (bundled with rustc) links every arch; the Tailwind CLI is
 auto-fetched (pinned). Nothing machine-specific is baked in.

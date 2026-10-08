@@ -1,0 +1,15 @@
+version: "2"
+
+# golangci-lint's default linters, with the checks and exclusions v1 applied by
+# default. Style (ST) and quick-fix (QF) checks stay off: some error strings are
+# user-facing text and translation keys.
+linters:
+  settings:
+    staticcheck:
+      checks: ["all", "-ST*", "-QF*"]
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling

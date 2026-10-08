@@ -117,7 +117,7 @@ sources/              reference clones (openwrt, luci, libubox, ubus) — gitign
 
 ## Build & run
 
-Requires Go 1.24+, `rustup` (for the `verso-rpcd` helper), Docker, and `make`. The Rust
+Requires Go 1.27+, `rustup` (for the `verso-rpcd` helper), Docker, and `make`. The Rust
 toolchain and musl targets are provisioned automatically from `verso-rpcd/rust-toolchain.toml`;
 the Tailwind CLI is auto-fetched (pinned) on first `make css`/`build`.
 

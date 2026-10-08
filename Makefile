@@ -58,12 +58,13 @@ CSS_IN           := internal/server/assets/input.css
 CSS_OUT          := internal/server/assets/verso.css
 
 # golangci-lint, pinned + cached on the build host (a dev tool, not a runtime dep).
-GOLANGCI         := $(BUILDDIR)/tools/golangci-lint
-GOLANGCI_VERSION := v1.64.8
+# Each version caches in its own directory, so bumping one fetches it afresh.
+GOLANGCI_VERSION := v2.14.0
+GOLANGCI         := $(BUILDDIR)/tools/golangci-lint-$(GOLANGCI_VERSION)/golangci-lint
 
 # Whole-program Go dead-code analysis, also pinned + cached on the build host.
-DEADCODE         := $(BUILDDIR)/tools/deadcode
-DEADCODE_VERSION := v0.39.0
+DEADCODE_VERSION := v0.51.0
+DEADCODE         := $(BUILDDIR)/tools/deadcode-$(DEADCODE_VERSION)/deadcode
 
 # ── apk packaging ────────────────────────────────────────────────────────────
 # `make apk` cross-builds one arch, assembles a clean payload, and produces a
@@ -143,8 +144,8 @@ test:
 	set -e; for m in $(CRATES); do $(CARGO) test --locked --manifest-path $$m; done
 	node --test scripts/*.test.cjs
 
-# lint replaces plain `go vet` (govet is one of the linters it runs). Sensible
-# defaults: no custom config, golangci-lint's default linter set.
+# lint replaces plain `go vet` (govet is one of the linters it runs), with
+# golangci-lint's default linter set as .golangci.yml tunes it.
 $(GOLANGCI):
 	@mkdir -p $(dir $@)
 	curl -fsSL https://github.com/golangci/golangci-lint/releases/download/$(GOLANGCI_VERSION)/golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64.tar.gz \
@@ -153,7 +154,8 @@ $(GOLANGCI):
 
 $(DEADCODE):
 	@mkdir -p $(dir $@)
-	GOBIN=$(abspath $(dir $@)) go install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
+	# Built with the project's toolchain: deadcode cannot load code newer than itself.
+	GOTOOLCHAIN=$$(go env GOVERSION) GOBIN=$(abspath $(dir $@)) go install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
 
 # Analyze the production executables for every architecture we ship. deadcode
 # reports findings on stdout without failing, so turn non-empty output into a
