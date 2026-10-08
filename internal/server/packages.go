@@ -442,7 +442,7 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		}
 		// A plugin package just landed (or left): re-read the manifests so
 		// its pages and nav rows exist without a shell restart.
-		s.rescanManifests()
+		s.Rescan()
 		if err := s.refreshPackageTruth(r.Context(), sid); err != nil {
 			log.Printf("verso: package action completed; update status: %v", err)
 		}

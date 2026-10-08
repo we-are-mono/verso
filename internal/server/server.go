@@ -490,9 +490,11 @@ func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 // install or remove completes (ADR-011 §7).
 func (s *Server) SetRescan(rescan func() []plugin.Manifest) { s.rescan = rescan }
 
-// rescanManifests replaces the served manifest set from disk. With no
-// re-reader wired it is a no-op — the startup set stands.
-func (s *Server) rescanManifests() {
+// Rescan replaces the served manifest set from disk: after an install or remove
+// on the management surface, and on SIGHUP, which a plugin package's scripts
+// send when apk installs or removes it outside the shell. With no re-reader
+// wired it is a no-op — the startup set stands.
+func (s *Server) Rescan() {
 	if s.rescan == nil {
 		return
 	}

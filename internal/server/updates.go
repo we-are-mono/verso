@@ -93,7 +93,7 @@ func (s *Server) startPackageUpgrade(sid string) bool {
 		// way an install does it (ADR-011 §7); and what was upgradable a moment ago
 		// no longer is, so the truth is re-read too — the page that reports the
 		// outcome reports the new state, not the old one.
-		s.rescanManifests()
+		s.Rescan()
 		s.startUpdateCheck(sid)
 		return nil
 	})

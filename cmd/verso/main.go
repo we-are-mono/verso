@@ -190,13 +190,17 @@ func serve(args []string) {
 	// the background work stopped, and a dev shell's sessions left for the next.
 	stopping, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
-	// The certificate's writer has procd send SIGHUP once a new pair is on disk:
-	// it is read again and served from the next handshake, every open
-	// connection and session kept. A pair that fails to load leaves the last.
+	// SIGHUP re-reads what lands on disk beside the running shell, every open
+	// connection and session kept. A plugin package's scripts send it when apk
+	// installs or removes the plugin outside the shell, so its pages and nav
+	// row, and its catalogs, come and go without a restart. The certificate's
+	// writer sends it once a new pair is on disk, served from the next
+	// handshake; a pair that fails to load leaves the last.
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
 	go func() {
 		for range hup {
+			srv.Rescan()
 			if err := certs.Load(); err != nil {
 				log.Printf("verso: certificate not reloaded, serving the previous one: %v", err)
 				continue

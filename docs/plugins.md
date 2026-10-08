@@ -589,6 +589,22 @@ Enable it once (`/etc/init.d/<name> enable`) and procd starts it on every boot.
 To show isolation with a plugin that stays down, `/etc/init.d/<name> stop` —
 procd will not respawn a stopped service.
 
+### Installing and removing
+
+The shell reads the manifests at start, and again when Packages installs or
+removes a package. A package `apk` installs or removes outside the shell must
+tell it, or its pages and nav row wait for the shell's next start. End the
+package's post-install and post-deinstall scripts with a SIGHUP to the shell,
+which re-reads the manifests and catalogs and keeps every session:
+
+```sh
+ubus call service signal '{"name":"verso","signal":1}' 2>/dev/null
+```
+
+Send it through procd, not `/etc/init.d/verso reload`: a reload that changes
+nothing in the shell's instance delivers no signal. The operator signs in again
+for the access list your package ships, which rpcd reads at sign-in.
+
 ## The widget vocabulary
 
 You compose a **closed set** of widgets with **semantic** props — `label`,
