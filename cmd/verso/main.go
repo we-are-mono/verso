@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strings"
@@ -96,6 +97,16 @@ func serve(args []string) {
 	flags.Func("listen-http", "an address:port to serve HTTP on (repeatable)", func(v string) error { plain = append(plain, v); return nil })
 	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
 	historyDir := flags.String("history-dir", "", "the directory the router's history is kept in; empty keeps none")
+	var probes []netip.Addr
+	flags.Func("probe", "an address on the internet to probe beside the WAN's gateway (repeatable)", func(v string) error {
+		addr, err := netip.ParseAddr(v)
+		if err != nil {
+			log.Printf("verso: %q is not an address, so it is not probed", v)
+			return nil
+		}
+		probes = append(probes, addr)
+		return nil
+	})
 	if err := flags.Parse(args); err != nil {
 		os.Exit(2)
 	}
@@ -185,7 +196,7 @@ func serve(args []string) {
 	})
 	srv.SetAllowedHosts(allowedHosts())
 	if *historyDir != "" {
-		srv.StartHistory(*historyDir)
+		srv.StartHistory(*historyDir, probes)
 	}
 
 	// Both signals are answered from before the first listener is announced, so

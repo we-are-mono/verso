@@ -34,6 +34,9 @@ fi
 /usr/libexec/verso/usage-setup
 /etc/init.d/nlbwmon enable 2>/dev/null
 /etc/init.d/nlbwmon restart 2>/dev/null
+# The shell probes the uplink over ICMP echo sockets its group is granted
+# (ADR-019); take the grant up now rather than at the next boot.
+sysctl -q -p /etc/sysctl.d/05-verso-ping.conf 2>/dev/null
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload 2>/dev/null
 killall -HUP ubusd 2>/dev/null
 /etc/init.d/verso enable 2>/dev/null

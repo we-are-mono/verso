@@ -148,14 +148,29 @@ Events are kept for 400 days, like the daily points.
 
 ### The WAN probe
 
-`verso-rpcd` sends an ICMP echo to the WAN's gateway every ten seconds and
-keeps the minute's round-trip times and losses for the shell to collect.
-Sending ICMP needs privilege, so the probe is the helper's.
+The shell sends one ICMP echo to each target every ten seconds, all at once,
+waiting two seconds for each answer. An answer is its round trip in
+milliseconds (`wan.<target>.latency`); every echo is a loss of 0 or 100
+(`wan.<target>.loss`), so a minute's average is its loss in percent and its
+peak says whether any echo went unanswered.
 
-`verso.history.probe` lists further targets. Absent, only the gateway is
-probed: an address on the internet is a target the operator chooses, because
-reaching out to it unattended is opt-in (ADR-014). A WAN with no gateway reads
-as total loss.
+The echoes go over the kernel's unprivileged ping sockets. The package grants
+the `verso` group (6000) those sockets with
+`/etc/sysctl.d/05-verso-ping.conf` (`net.ipv4.ping_group_range = 6000 6000`):
+ICMP echo and nothing else, no raw socket, so the shell keeps no privilege it
+does not use and no helper loop hands results over. The file sorts early, so a
+later one that sets the range for other users wins; where the kernel refuses
+the socket, the probe says once in the log that it cannot run, and records a
+gap rather than a loss.
+
+The gateway is the next hop of the main table's IPv4 default route
+(`/proc/net/route`). A point-to-point uplink (PPPoE) has none, so it records
+no gateway series.
+
+`verso.history.probe` lists further targets, as addresses; the init script
+hands each to the shell as `-probe`. Absent, only the gateway is probed: an
+address on the internet is a target the operator chooses, because reaching
+out to it unattended is opt-in (ADR-014).
 
 ### Where history is shown
 

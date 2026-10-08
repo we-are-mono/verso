@@ -8,22 +8,26 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/probe"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/profiles"
 )
 
 // StartHistory records the router's measurements into dir/history.db
 // (ADR-019). A file that cannot be opened is reported and the history is kept
-// in memory instead, so collection goes on.
-func (s *Server) StartHistory(dir string) {
+// in memory instead, so collection goes on. The uplink is probed at its
+// gateway and at each of probes.
+func (s *Server) StartHistory(dir string, probes []netip.Addr) {
 	path := filepath.Join(dir, "history.db")
 	store, err := history.Open(path)
 	onDisk := err == nil
@@ -37,7 +41,9 @@ func (s *Server) StartHistory(dir string) {
 	if onDisk {
 		recordBoot(context.Background(), store, dir)
 	}
+	prober := probe.New(probes)
 	collector := history.NewCollector(store,
+		prober.Source,
 		interfaceRates(s.telemetry),
 		gauges(map[string]func() (float64, error){
 			"cpu":       s.stats.CPUPercent,
@@ -46,13 +52,12 @@ func (s *Server) StartHistory(dir string) {
 		}),
 		temperatures(),
 	)
-	// The watcher stops before the collector, which closes the store.
+	// The watcher and the prober stop before the collector, which closes the
+	// store.
 	watchCtx, stopWatch := context.WithCancel(context.Background())
-	watched := make(chan struct{})
-	go func() {
-		defer close(watched)
-		watchWAN(watchCtx, store, openwrt.KernelWAN)
-	}()
+	var watching sync.WaitGroup
+	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
+	watching.Go(func() { prober.Run(watchCtx) })
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
@@ -62,7 +67,7 @@ func (s *Server) StartHistory(dir string) {
 	s.historyStore = store
 	s.historyStop = func() {
 		stopWatch()
-		<-watched
+		watching.Wait()
 		cancel()
 		<-done
 		if onDisk {

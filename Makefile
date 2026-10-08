@@ -216,6 +216,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/etc/config/verso                      $(APK_PAYLOAD)/etc/config/verso
 	install -Dm644 docker/rootfs/lib/upgrade/keep.d/verso              $(APK_PAYLOAD)/lib/upgrade/keep.d/verso
+	install -Dm644 docker/rootfs/etc/sysctl.d/05-verso-ping.conf       $(APK_PAYLOAD)/etc/sysctl.d/05-verso-ping.conf
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-helper.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-helper.json
