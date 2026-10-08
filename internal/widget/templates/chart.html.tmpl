@@ -8,8 +8,8 @@
      Axis labels are HTML overlaid on the plot, not SVG <text>: text inside a viewBox
      scales with the graph. This SVG is the first paint; the live layer glides the
      same series without touching the markup. */}}
-<div class="relative h-60 overflow-hidden">
-  <svg class="verso-chart block h-60! w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
+<div class="relative {{if .Short}}h-45{{else}}h-60{{end}} overflow-hidden">
+  <svg class="verso-chart block {{if .Short}}h-45!{{else}}h-60!{{end}} w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
     {{range .Series}}
     <g class="verso-chart-series verso-chart--{{.Role}}">
       {{if .Area}}

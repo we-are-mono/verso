@@ -4,8 +4,12 @@
      measures, the newest download and upload with their series' squares, and
      the chart under them. The live layer (verso-chart.js) finds the chart by
      data-verso-live-chart, seeds itself from data-verso-live-seed, and keeps the
-     two figures by data-verso-live-down and -up. */}}
-<section aria-label="{{.Title}}" class="-mt-px border-t border-rule bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[20px_20px] bg-position-[-1px_-1px]">
+     two figures by data-verso-live-down and -up. In a panel, whose blocks stand
+     a cell apart, it stands two from its neighbours: 39px over its border, so
+     the border keeps its line, and 40px under it. The panel's blocks are
+     spaced by margins that collapse into the larger, so the 39px is the whole
+     distance, not an addition to the cell above. */}}
+<section aria-label="{{.Title}}" class="{{if .Panel}}mt-9.75 mb-10{{else}}-mt-px{{end}} border-t border-rule bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[20px_20px] bg-position-[-1px_-1px]">
   <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 xl:h-10 xl:py-0">
     <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Meta}}<span aria-hidden="true" class="text-faint">·</span><span class="font-mono text-base font-medium text-meta">{{.Meta}}</span>{{end}}

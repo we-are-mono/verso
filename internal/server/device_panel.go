@@ -77,7 +77,7 @@ func deviceUsage(d widget.Device, downBPS, upBPS []float64, p usage.Periods) wid
 		Title: "Usage", Live: "usage:" + mac,
 		Label:   "Device traffic — download and upload, last minute",
 		DownNow: fmt.Sprintf("%.1f", down[len(down)-1]), UpNow: fmt.Sprintf("%.1f", up[len(up)-1]),
-		Down: down, Up: up,
+		Down: down, Up: up, Panel: true,
 	}
 	period := func(label string, totals map[string]usage.Totals) widget.TableRow {
 		t := totals[mac]

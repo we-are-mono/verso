@@ -26,6 +26,9 @@ type Chart struct {
 	Unit      string
 	AxisStart string
 	AxisEnd   string
+	// Short stands the plot at 180px rather than 240px, nine cells of the grid
+	// rather than twelve; the viewBox stretches, so the curve is the same.
+	Short bool
 }
 
 // ChartSeries is one line on a chart.
@@ -51,6 +54,7 @@ type chartView struct {
 	XStart  string
 	XEnd    string
 	Series  []chartSeriesView
+	Short   bool
 }
 
 // chartYLabel is one value label, positioned as a percentage of the plot height
@@ -81,7 +85,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		top = 1
 	}
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd}
+	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short}
 	// Four barely-there dividing lines at the quarters of the range, each
 	// carrying its value — HTML overlaid on the plot, so it renders at a fixed
 	// size instead of scaling with the viewBox.

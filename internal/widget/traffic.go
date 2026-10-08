@@ -24,6 +24,9 @@ type Traffic struct {
 	// Down and Up are the minute's series in Mbit/s, oldest first.
 	DownNow, UpNow string
 	Down, Up       []float64
+	// Panel stands the graph in a panel beside other facts: a quarter lower,
+	// and two cells apart from the blocks above and below it rather than one.
+	Panel bool
 }
 
 func (*Traffic) isWidget() {}
@@ -35,6 +38,7 @@ type trafficView struct {
 	DownNow, UpNow    string
 	Seed              string
 	Chart             template.HTML
+	Panel             bool
 }
 
 func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -43,6 +47,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		AxisStart: "60 s ago",
 		AxisEnd:   "now",
 		Label:     t.Label,
+		Short:     t.Panel,
 		Series: []ChartSeries{
 			{Label: "down", Role: "emerald", Fill: true, Values: t.Down},
 			{Label: "up", Role: "violet", Fill: true, Values: t.Up},
@@ -61,6 +66,6 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	return r.execute(out, "traffic.html.tmpl", trafficView{
 		Title: r.tr(t.Title), Meta: t.Meta, Live: t.Live,
-		DownNow: t.DownNow, UpNow: t.UpNow, Seed: string(seed), Chart: chartHTML,
+		DownNow: t.DownNow, UpNow: t.UpNow, Seed: string(seed), Chart: chartHTML, Panel: t.Panel,
 	})
 }
