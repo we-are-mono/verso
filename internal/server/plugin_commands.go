@@ -71,6 +71,20 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 			return s.backend.NetworkSetUp(ctx, sid, name, method == "up")
 		}
 		return s.backend.NetworkRestart(ctx, sid, name)
+	case "ddns-update":
+		allowed := slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "ddnsUpdate"})
+		section := cmd.Args["section"]
+		if !allowed || len(cmd.Args) != 1 || section == "" || len(section) > 64 || strings.IndexFunc(section, func(r rune) bool {
+			return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_')
+		}) >= 0 {
+			return fmt.Errorf("invalid ddns update command")
+		}
+		err := s.backend.DDNSUpdate(ctx, sid, section)
+		var validation interface{ ValidationMessage() string }
+		if errors.As(err, &validation) && validation.ValidationMessage() != "" {
+			return commandValidationError(validation.ValidationMessage())
+		}
+		return err
 	default:
 		return fmt.Errorf("unknown command")
 	}

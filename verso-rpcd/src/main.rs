@@ -325,6 +325,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "accessCredentials" => access::state(),
         "vpnState" => openvpn::state(),
         "ddnsState" => ddns::state(),
+        "ddnsUpdate" => ddns::update(argument(request, "section")?),
         "setAuthorizedKeys" => {
             let _guard = state
                 .maintenance

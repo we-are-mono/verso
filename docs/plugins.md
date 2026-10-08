@@ -271,7 +271,10 @@ envelope** back — `Content-Type: application/json`:
   on smaller screens.
 - `commands` — optional array containing one immediate, structured action.
   Supported names are `interface-restart`, `set-system-time`, `ssh-key-add`,
-  `ssh-key-remove`, `certificate-generate`, and `certificate-install`. Commands
+  `ssh-key-remove`, `certificate-generate`, `certificate-install`, and
+  `ddns-update` (`section`: one ddns-scripts service, sent its address now;
+  needs `ubus verso.ddnsUpdate`, and the service switched on in the applied
+  config). Commands
   require their exact declared write scope, a valid CSRF-protected POST, and a
   valid widget schema. They cannot be combined with `commit` or `apply`.
   Invalid credentials return a form error; private keys never appear in reads

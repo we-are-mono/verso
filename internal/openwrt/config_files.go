@@ -73,6 +73,12 @@ func (*NativeBackend) DDNSState(ctx context.Context, sid string) (json.RawMessag
 	return state, err
 }
 
+// DDNSUpdate has the helper restart one ddns-scripts service's updater with no
+// record of a last update, so it sends its address at once.
+func (*NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) error {
+	return callHelper(ctx, "", "ddnsUpdate", sid, map[string]string{"section": section}, nil)
+}
+
 // FirewallFiles is the rule files fw4 reads from its own folder, as they will
 // read once staged changes are applied.
 func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {

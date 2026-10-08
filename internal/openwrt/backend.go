@@ -236,6 +236,8 @@ type Backend interface {
 	VPNState(ctx context.Context, sid string) (json.RawMessage, error)
 	OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
+	// DDNSUpdate has one ddns-scripts service send its address now.
+	DDNSUpdate(ctx context.Context, sid, section string) error
 	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
 	// through the helper, refusing it unless the file still holds expected.
 	StageConfigFile(ctx context.Context, sid, path, expected, content string) error

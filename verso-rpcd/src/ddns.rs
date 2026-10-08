@@ -8,6 +8,7 @@ use crate::Failure;
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 /// The updater's default `ddns_rundir`; Verso never moves it.
 const RUN: &str = "/var/run/ddns";
@@ -53,6 +54,46 @@ fn services(dir: &Path, uptime: u64, runs: impl Fn(&str) -> bool) -> Map<String,
         out.insert(name, Value::Object(service));
     }
     out
+}
+
+/// update has one service's updater send its address now. Without a record of
+/// a last update the updater sends at once, whether the address changed or
+/// not, so the record goes before its instance alone restarts; the others keep
+/// running. Only a service switched on in the applied config is started.
+pub fn update(section: &str) -> Result<Value, Failure> {
+    if !section_name(section) {
+        return Err(Failure::invalid("Invalid service name."));
+    }
+    let get = |option: &str| {
+        let key = format!("ddns.{section}{option}");
+        Command::new("/sbin/uci")
+            .args(["-q", "get", &key])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_default()
+    };
+    if get("") != "service" || get(".enabled") != "1" {
+        return Err(Failure::invalid("This name is not switched on."));
+    }
+    let _ = fs::remove_file(Path::new(RUN).join(format!("{section}.update")));
+    for action in ["stop", "start"] {
+        let done = Command::new("/etc/init.d/ddns")
+            .args([action, section])
+            .stdin(Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success());
+        if !done {
+            return Err(Failure::unknown("ddns-scripts did not restart the updater."));
+        }
+    }
+    Ok(json!({}))
+}
+
+/// section_name is a uci section name the updater's files can be named by.
+fn section_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 /// updater_runs is whether a pid file still names a live updater, not a
@@ -107,6 +148,15 @@ mod tests {
     fn a_missing_folder_is_no_services() {
         let got = services(Path::new("/nonexistent/verso-ddns"), 10, |_| true);
         assert!(got.is_empty());
+    }
+
+    #[test]
+    fn an_update_names_a_section_and_nothing_else() {
+        assert!(section_name("home_example_com_v6"));
+        for bad in ["", "../etc", "a.b", "a b", "a;reboot", &"x".repeat(65)] {
+            assert!(!section_name(bad), "{bad}");
+            assert!(update(bad).is_err(), "{bad}");
+        }
     }
 
     #[test]
