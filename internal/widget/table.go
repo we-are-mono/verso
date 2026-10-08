@@ -1157,10 +1157,17 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		}
 		if act, ok := t.doorAct(row); ok {
 			if at := t.actionsColumn(); at >= 0 {
-				// The row's cells are the plugin's; the act goes on a copy.
+				// The row's cells are the plugin's; the act goes on a copy. A
+				// row whose panel is the shell's opens on the shell's Details
+				// tab, ahead of the plugins' slots, so its door leads the acts
+				// as that tab leads the strip; any other door trails them.
 				cells := make([]TableCell, max(len(row.Cells), at+1))
 				copy(cells, row.Cells)
-				cells[at].Actions = append(slices.Clone(cells[at].Actions), act)
+				if row.Entity != nil {
+					cells[at].Actions = append([]TableRowAct{act}, cells[at].Actions...)
+				} else {
+					cells[at].Actions = append(slices.Clone(cells[at].Actions), act)
+				}
 				row.Cells = cells
 			}
 		}

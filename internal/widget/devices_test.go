@@ -158,6 +158,18 @@ func TestRenderDevicesUsage(t *testing.T) {
 	}
 }
 
+// TestRenderDevicesActsFollowThePanelsTabs: a row's icons read in the order of
+// the tabs its panel opens on — the shell's Details first, then each plugin's
+// slot — so the door to Details leads the row's acts rather than trailing them.
+func TestRenderDevicesActsFollowThePanelsTabs(t *testing.T) {
+	got := render(t, newRenderer(t), DevicesTable(roster(), testActs, true))
+	row := got[strings.Index(got, `data-verso-row-id="de:ad:be:ef:00:11"`):]
+	details, unreserve, limits := strings.Index(row, `aria-label="Details nas"`), strings.Index(row, `aria-label="Remove reservation"`), strings.Index(row, `aria-label="Edit limits"`)
+	if details < 0 || unreserve < 0 || limits < 0 || !(details < unreserve && unreserve < limits) {
+		t.Errorf("acts should read Details, then the reservation, then limits: details=%d unreserve=%d limits=%d", details, unreserve, limits)
+	}
+}
+
 // TestRenderDevicesTableEmpty: a roster with nobody on it says so in its own
 // words rather than drawing column headings over nothing.
 func TestRenderDevicesTableEmpty(t *testing.T) {
