@@ -91,4 +91,17 @@ func TestTrafficOffersItsWindow(t *testing.T) {
 			t.Errorf("a day's graph carries %q, but it is not live", unwanted)
 		}
 	}
+	if strings.Contains(day, "ms to gateway") {
+		t.Error("a window with no latency recorded states one")
+	}
+
+	// The gateway's latency over the window stands beside the traffic, as a
+	// figure of its own.
+	probed := render(t, newRenderer(t), &Traffic{
+		Title: "Internet traffic", Live: "wan", RangeURL: "/overview/traffic", Range: "day",
+		Latency: "12", Down: []float64{0, 1}, Up: []float64{0, 1},
+	})
+	if !strings.Contains(probed, ">12<") || !strings.Contains(probed, "ms to gateway on average") {
+		t.Error("a probed window does not state the gateway's latency")
+	}
 }

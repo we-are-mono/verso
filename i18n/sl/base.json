@@ -577,6 +577,8 @@
   "Internet down %s–%s": "Internet ni deloval %s–%s",
   "Internet down since %s": "Internet ne deluje od %s",
   "Router started at %s": "Usmerjevalnik se je zagnal ob %s",
+  "Packet loss up to %d %% %s–%s": "Izguba paketov do %d %% %s–%s",
+  "ms to gateway on average": "ms do prehoda v povprečju",
   "Router started": "Usmerjevalnik se je zagnal",
   "Router started after losing power or crashing": "Usmerjevalnik se je zagnal po izpadu napajanja ali sesutju",
   "Nothing has happened yet. The router records when the internet goes down and comes back, and when it starts.": "Zaenkrat se ni zgodilo nič. Usmerjevalnik beleži, kdaj internet izpade in spet deluje ter kdaj se zažene.",

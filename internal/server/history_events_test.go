@@ -175,6 +175,28 @@ func TestEventMarksPairEachOutageWithinTheWindow(t *testing.T) {
 	}
 }
 
+// TestLossMarksAreRunsOfLossyPeriods: periods losing 5 % or more of the
+// gateway's echoes run together into one band, titled with the worst of them;
+// a gap ends a run; loss inside an outage is the outage's, so it is not drawn
+// twice.
+func TestLossMarksAreRunsOfLossyPeriods(t *testing.T) {
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.Local)
+	start := now.Add(-10 * time.Minute)
+	nan := math.NaN()
+	loss := []float64{0, 6, 23, 4, nan, 50, 100, 100, 0, 0}
+	outages := []widget.ChartMark{{Kind: "outage", From: 0.6, To: 0.8}}
+	got := lossMarks(loss, start, time.Minute, outages, now, func(s string) string { return s })
+	if len(got) != 2 {
+		t.Fatalf("marks = %+v, want the 11:51–11:53 run and the 11:55–11:56 run", got)
+	}
+	if want := (widget.ChartMark{Kind: "loss", From: 0.1, To: 0.3, Label: "Packet loss up to 23 % 11:51–11:53"}); got[0] != want {
+		t.Errorf("first = %+v, want %+v", got[0], want)
+	}
+	if got[1].From != 0.5 || got[1].To != 0.6 {
+		t.Errorf("second = %+v, want the minute before the outage", got[1])
+	}
+}
+
 // TestEventTimeSaysNoMoreThanItNeeds: today is a clock time, this year adds
 // the day, an earlier year the year too.
 func TestEventTimeSaysNoMoreThanItNeeds(t *testing.T) {

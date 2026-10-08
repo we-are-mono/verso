@@ -10,7 +10,7 @@
      same series without touching the markup. */}}
 <div class="relative {{if .Short}}h-45{{else}}h-60{{end}} overflow-hidden">
   <svg class="verso-chart block {{if .Short}}h-45!{{else}}h-60!{{end}} w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
-    {{range .Marks}}{{if eq .Kind "outage"}}<rect class="verso-chart-mark--outage" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{else}}<line class="verso-chart-mark--{{.Kind}}" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{end}}
+    {{range .Marks}}{{if eq .Kind "boot"}}<line class="verso-chart-mark--boot" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{else}}<rect class="verso-chart-mark--{{.Kind}}" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{end}}
     {{end}}
     {{range .Series}}
     <g class="verso-chart-series verso-chart--{{.Role}}">

@@ -110,6 +110,12 @@ func TestChartMarksWhatHappened(t *testing.T) {
 		t.Error("marks are drawn over the curves")
 	}
 
+	// Packet loss is a band too, in its own colour.
+	lossy := render(t, newRenderer(t), &Chart{Marks: []ChartMark{{Kind: "loss", From: 0, To: 0.5, Label: "Packet loss up to 23 %"}}})
+	if !strings.Contains(lossy, `<rect class="verso-chart-mark--loss" x="0.0" y="0" width="310.0"`) {
+		t.Errorf("a loss band is not drawn:\n%s", lossy)
+	}
+
 	// A 25-second outage on a day's chart is a sliver; it keeps a width the
 	// eye can find.
 	brief := render(t, newRenderer(t), &Chart{Marks: []ChartMark{{Kind: "outage", From: 0.5, To: 0.5003}}})

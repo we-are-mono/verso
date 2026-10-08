@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -257,6 +258,43 @@ func eventMarks(newestFirst []history.Event, start, end, now time.Time, tr func(
 			Kind: "outage", From: at(down.Time), To: at(now),
 			Label: fmt.Sprintf(tr("Internet down since %s"), eventTime(down.Time, now)),
 		})
+	}
+	return marks
+}
+
+// lossThreshold is the share of the gateway's echoes a period must lose to
+// be marked: a stray lost echo is noise, a twentieth is a line in trouble.
+const lossThreshold = 5
+
+// lossMarks are the stretches of a window whose periods lost lossThreshold
+// percent or more of the gateway's echoes, as bands titled with the worst
+// period. loss holds each period's average from start, step apart; a period
+// an outage covers is the outage's.
+func lossMarks(loss []float64, start time.Time, step time.Duration, outages []widget.ChartMark, now time.Time, tr func(string) string) []widget.ChartMark {
+	n := float64(len(loss))
+	lossy := func(i int) bool {
+		if math.IsNaN(loss[i]) || loss[i] < lossThreshold {
+			return false
+		}
+		from, to := float64(i)/n, float64(i+1)/n
+		return !slices.ContainsFunc(outages, func(o widget.ChartMark) bool { return from < o.To && to > o.From })
+	}
+	var marks []widget.ChartMark
+	for i := 0; i < len(loss); i++ {
+		if !lossy(i) {
+			continue
+		}
+		j, worst := i, loss[i]
+		for j+1 < len(loss) && lossy(j+1) {
+			j++
+			worst = max(worst, loss[j])
+		}
+		from, to := start.Add(time.Duration(i)*step), start.Add(time.Duration(j+1)*step)
+		marks = append(marks, widget.ChartMark{
+			Kind: "loss", From: float64(i) / n, To: float64(j+1) / n,
+			Label: fmt.Sprintf(tr("Packet loss up to %d %% %s–%s"), int(math.Round(worst)), eventTime(from, now), eventTime(to, now)),
+		})
+		i = j
 	}
 	return marks
 }

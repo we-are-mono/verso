@@ -36,7 +36,8 @@ type Chart struct {
 }
 
 // ChartMark is one event on a chart's time axis. From and To are fractions of
-// the width: an "outage" is a band between them, a "boot" a rule at From.
+// the width: an "outage" or a stretch of packet "loss" is a band between them,
+// a "boot" a rule at From.
 // Label names it for the pointer, already composed.
 type ChartMark struct {
 	Kind     string

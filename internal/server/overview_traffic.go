@@ -73,33 +73,11 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "no such window", http.StatusBadRequest)
 			return
 		}
-		var device string
-		if wan, err := s.wanStatus(r); err == nil {
-			if primary, ok := wan.Primary(); ok {
-				device = primary.Device
-			}
-		}
-		step := time.Duration(layout.res) * time.Second
-		start := time.Now().Truncate(step).Add(-time.Duration(layout.n-1) * step)
-		down, err := s.wanWindow(r, "iface."+device+".rx", layout.res, start, layout.n)
-		if err != nil {
+		var err error
+		if traffic, err = s.pastTraffic(r, window, layout.res, layout.n); err != nil {
 			http.Error(w, "history unavailable", http.StatusInternalServerError)
 			return
 		}
-		up, err := s.wanWindow(r, "iface."+device+".tx", layout.res, start, layout.n)
-		if err != nil {
-			http.Error(w, "history unavailable", http.StatusInternalServerError)
-			return
-		}
-		traffic = widget.InternetTraffic(device, mean(down), mean(up), down, up, overviewTrafficPath, window)
-		end := start.Add(time.Duration(layout.n) * step)
-		events, err := s.historyStore.Events(r.Context(), time.Unix(0, 0), end)
-		if err != nil {
-			http.Error(w, "history unavailable", http.StatusInternalServerError)
-			return
-		}
-		_, t := s.localize(r)
-		traffic.Marks = eventMarks(events, start, end, time.Now(), translatorOrIdentity(t))
 	}
 	var body strings.Builder
 	lang, t := s.localize(r)
@@ -111,20 +89,69 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(body.String()))
 }
 
-// wanWindow is one series' averages over n periods from start, in Mbit/s,
-// NaN where nothing was recorded.
-func (s *Server) wanWindow(r *http.Request, series string, res history.Resolution, start time.Time, n int) ([]float64, error) {
-	end := start.Add(time.Duration(n) * time.Duration(res) * time.Second)
-	points, err := s.historyStore.Points(r.Context(), series, res, start, end)
+// pastTraffic is the Internet graph over n periods of res ending now: the
+// uplink's traffic, its events and its stretches of packet loss as marks, and
+// the gateway's average latency beside the traffic's.
+func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolution, n int) (*widget.Traffic, error) {
+	var device string
+	if wan, err := s.wanStatus(r); err == nil {
+		if primary, ok := wan.Primary(); ok {
+			device = primary.Device
+		}
+	}
+	now := time.Now()
+	step := time.Duration(res) * time.Second
+	start := now.Truncate(step).Add(-time.Duration(n-1) * step)
+	end := start.Add(time.Duration(n) * step)
+	read := func(series string, value func(float64) float64) ([]float64, error) {
+		points, err := s.historyStore.Points(r.Context(), series, res, start, end)
+		return history.Slots(points, func(p history.Point) float64 { return value(p.Average) }, start, res, n), err
+	}
+	asIs := func(v float64) float64 { return v }
+	mbps := func(v float64) float64 { return rateMbps(uint64(v)) }
+	down, err := read("iface."+device+".rx", mbps)
 	if err != nil {
 		return nil, err
 	}
-	return history.Slots(points, func(p history.Point) float64 { return rateMbps(uint64(p.Average)) }, start, res, n), nil
+	up, err := read("iface."+device+".tx", mbps)
+	if err != nil {
+		return nil, err
+	}
+	loss, err := read("wan.gateway.loss", asIs)
+	if err != nil {
+		return nil, err
+	}
+	latency, err := read("wan.gateway.latency", asIs)
+	if err != nil {
+		return nil, err
+	}
+	events, err := s.historyStore.Events(r.Context(), time.Unix(0, 0), end)
+	if err != nil {
+		return nil, err
+	}
+	_, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	traffic := widget.InternetTraffic(device, mean(down), mean(up), down, up, overviewTrafficPath, window)
+	traffic.Marks = eventMarks(events, start, end, now, tr)
+	traffic.Marks = append(traffic.Marks, lossMarks(loss, start, step, traffic.Marks, now, tr)...)
+	if ms, ok := average(latency); ok {
+		traffic.Latency = fmt.Sprintf("%.0f", ms)
+		if ms < 10 {
+			traffic.Latency = fmt.Sprintf("%.1f", ms)
+		}
+	}
+	return traffic, nil
 }
 
 // mean is the average of what was recorded, composed as the graph's figures
 // are; a window with nothing recorded reads as zero.
 func mean(values []float64) string {
+	v, _ := average(values)
+	return fmt.Sprintf("%.1f", v)
+}
+
+// average is the mean of what was recorded; ok is false when nothing was.
+func average(values []float64) (float64, bool) {
 	sum, n := 0.0, 0
 	for _, v := range values {
 		if !math.IsNaN(v) {
@@ -133,7 +160,7 @@ func mean(values []float64) string {
 		}
 	}
 	if n == 0 {
-		return "0.0"
+		return 0, false
 	}
-	return fmt.Sprintf("%.1f", sum/float64(n))
+	return sum / float64(n), true
 }

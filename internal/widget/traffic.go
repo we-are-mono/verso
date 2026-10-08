@@ -36,6 +36,9 @@ type Traffic struct {
 	Range    string
 	// Marks are the events over a past window, drawn on its chart.
 	Marks []ChartMark
+	// Latency is the gateway's average round trip over a past window, in ms,
+	// composed; empty where none was recorded.
+	Latency string
 }
 
 // TrafficRange is one window a traffic graph can show.
@@ -65,6 +68,7 @@ type trafficView struct {
 	Panel             bool
 	RangeURL, Range   string
 	Ranges            []TrafficRange
+	Latency           string
 }
 
 func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -100,7 +104,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	view := trafficView{
 		Title: r.tr(t.Title), Meta: t.Meta, Live: live,
 		DownNow: t.DownNow, UpNow: t.UpNow, Chart: chartHTML, Panel: t.Panel,
-		RangeURL: t.RangeURL, Range: window.Value,
+		RangeURL: t.RangeURL, Range: window.Value, Latency: t.Latency,
 	}
 	if t.RangeURL != "" {
 		for _, option := range TrafficRanges {

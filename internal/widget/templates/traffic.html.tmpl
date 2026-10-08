@@ -28,6 +28,7 @@
     <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
       <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s down" }}{{else}}{{ t "Mbit/s down on average" }}{{end}}</span></span>
       <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s up" }}{{else}}{{ t "Mbit/s up on average" }}{{end}}</span></span>
+      {{if .Latency}}<span class="inline-flex items-baseline gap-2"><span class="font-mono text-lg font-semibold">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
     </div>
   </div>
   <div class="pt-5"{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>

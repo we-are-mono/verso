@@ -819,9 +819,11 @@ html {
   .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-green); stop-opacity: 0; }
 
   /* What happened over a past window, behind the curves: an outage a crimson
-     wash thin enough for the notebook grid to show through, a boot a dashed
-     rule in meta ink. */
+     wash thin enough for the notebook grid to show through, packet loss the
+     same wash in marigold (degraded, not down), a boot a dashed rule in meta
+     ink. */
   .verso-chart-mark--outage { fill: var(--color-crimson); fill-opacity: 0.1; }
+  .verso-chart-mark--loss { fill: var(--color-marigold); fill-opacity: 0.16; }
   .verso-chart-mark--boot { stroke: var(--color-meta); stroke-width: 1; stroke-dasharray: 3 3; }
 
   @media (prefers-reduced-motion: reduce) {

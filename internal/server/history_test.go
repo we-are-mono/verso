@@ -64,6 +64,10 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		history.Point{Series: "iface.wan0.rx", Time: now.Add(-9 * time.Minute), Average: 40e6, Peak: 50e6},
 		history.Point{Series: "iface.wan0.tx", Time: now.Add(-10 * time.Minute), Average: 1e6, Peak: 1e6},
 		history.Point{Series: "iface.wan0.tx", Time: now.Add(-9 * time.Minute), Average: 3e6, Peak: 3e6},
+		history.Point{Series: "wan.gateway.latency", Time: now.Add(-10 * time.Minute), Average: 10, Peak: 14},
+		history.Point{Series: "wan.gateway.latency", Time: now.Add(-9 * time.Minute), Average: 14, Peak: 30},
+		history.Point{Series: "wan.gateway.loss", Time: now.Add(-10 * time.Minute), Average: 0, Peak: 0},
+		history.Point{Series: "wan.gateway.loss", Time: now.Add(-9 * time.Minute), Average: 33.3, Peak: 100},
 	)
 
 	for _, e := range []history.Event{
@@ -83,6 +87,7 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		`<option value="day" selected>`, "24 h ago", ">wan0<",
 		">30.0<", "Mbit/s down on average", ">2.0<", "Mbit/s up on average",
 		`class="verso-chart-line`, `class="verso-chart-mark--outage"`, "<title>Internet down ",
+		`class="verso-chart-mark--loss"`, "<title>Packet loss up to 33 % ", ">12<", "ms to gateway on average",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a day's graph missing %q", want)
