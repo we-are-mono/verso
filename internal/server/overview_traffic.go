@@ -92,6 +92,14 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		traffic = widget.InternetTraffic(device, mean(down), mean(up), down, up, overviewTrafficPath, window)
+		end := start.Add(time.Duration(layout.n) * step)
+		events, err := s.historyStore.Events(r.Context(), time.Unix(0, 0), end)
+		if err != nil {
+			http.Error(w, "history unavailable", http.StatusInternalServerError)
+			return
+		}
+		_, t := s.localize(r)
+		traffic.Marks = eventMarks(events, start, end, time.Now(), translatorOrIdentity(t))
 	}
 	var body strings.Builder
 	lang, t := s.localize(r)

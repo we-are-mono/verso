@@ -87,6 +87,37 @@ func TestChartBreaksTheLineAtAGap(t *testing.T) {
 	}
 }
 
+// TestChartMarksWhatHappened: an outage is a band from where the internet went
+// down to where it came back, a boot a rule at its moment, each titled for
+// the pointer, and both behind the curves so the data stays on top.
+func TestChartMarksWhatHappened(t *testing.T) {
+	got := render(t, newRenderer(t), &Chart{
+		Series: []ChartSeries{{Values: []float64{1, 2, 3}, Role: "emerald"}},
+		Marks: []ChartMark{
+			{Kind: "outage", From: 0.25, To: 0.5, Label: "Internet down 03:12–03:20"},
+			{Kind: "boot", From: 0.75, Label: "Router started at 04:00"},
+		},
+	})
+	for _, want := range []string{
+		`<rect class="verso-chart-mark--outage" x="155.0" y="0" width="155.0" height="240"><title>Internet down 03:12–03:20</title></rect>`,
+		`<line class="verso-chart-mark--boot" x1="465.0" x2="465.0" y1="0" y2="240" vector-effect="non-scaling-stroke"><title>Router started at 04:00</title></line>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("chart missing %s\n%s", want, got)
+		}
+	}
+	if strings.Index(got, "verso-chart-mark--outage") > strings.Index(got, "verso-chart-series") {
+		t.Error("marks are drawn over the curves")
+	}
+
+	// A 25-second outage on a day's chart is a sliver; it keeps a width the
+	// eye can find.
+	brief := render(t, newRenderer(t), &Chart{Marks: []ChartMark{{Kind: "outage", From: 0.5, To: 0.5003}}})
+	if !strings.Contains(brief, `x="310.0" y="0" width="1.5"`) {
+		t.Errorf("a brief outage is not kept visible:\n%s", brief)
+	}
+}
+
 // between is the text after the first start and before the next end.
 func between(s, start, end string) string {
 	_, rest, _ := strings.Cut(s, start)

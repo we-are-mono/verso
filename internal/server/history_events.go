@@ -221,6 +221,46 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 	}}
 }
 
+// eventMarks are the events over [start, end) as marks on its chart, oldest
+// first: each outage from going down to coming back, cut at the window's
+// edges and running to now while it lasts, and each boot at its moment.
+func eventMarks(newestFirst []history.Event, start, end, now time.Time, tr func(string) string) []widget.ChartMark {
+	span := float64(end.Sub(start))
+	at := func(t time.Time) float64 { return min(1, max(0, float64(t.Sub(start))/span)) }
+	var marks []widget.ChartMark
+	var down *history.Event
+	for i := len(newestFirst) - 1; i >= 0; i-- {
+		e := newestFirst[i]
+		switch e.Kind {
+		case "wan.down":
+			if down == nil {
+				down = &newestFirst[i]
+			}
+		case "wan.up":
+			if down != nil && e.Time.After(start) {
+				marks = append(marks, widget.ChartMark{
+					Kind: "outage", From: at(down.Time), To: at(e.Time),
+					Label: fmt.Sprintf(tr("Internet down %s–%s"), eventTime(down.Time, now), eventTime(e.Time, now)),
+				})
+			}
+			down = nil
+		case "boot":
+			if !e.Time.Before(start) && e.Time.Before(end) {
+				marks = append(marks, widget.ChartMark{
+					Kind: "boot", From: at(e.Time), Label: fmt.Sprintf(tr("Router started at %s"), eventTime(e.Time, now)),
+				})
+			}
+		}
+	}
+	if down != nil {
+		marks = append(marks, widget.ChartMark{
+			Kind: "outage", From: at(down.Time), To: at(now),
+			Label: fmt.Sprintf(tr("Internet down since %s"), eventTime(down.Time, now)),
+		})
+	}
+	return marks
+}
+
 // eventTime is the clock time today, the day and time this year, and the
 // year as well before it.
 func eventTime(at, now time.Time) string {

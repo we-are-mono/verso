@@ -66,6 +66,15 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		history.Point{Series: "iface.wan0.tx", Time: now.Add(-9 * time.Minute), Average: 3e6, Peak: 3e6},
 	)
 
+	for _, e := range []history.Event{
+		{Time: now.Add(-30 * time.Minute), Kind: "wan.down", Subject: "wan0"},
+		{Time: now.Add(-20 * time.Minute), Kind: "wan.up", Subject: "wan0", Detail: `{"after":600}`},
+	} {
+		if err := store.Record(t.Context(), e); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	status, body := getSignedIn(t, s, "/overview/traffic?range=day")
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, body:\n%s", status, body)
@@ -73,7 +82,7 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 	for _, want := range []string{
 		`<option value="day" selected>`, "24 h ago", ">wan0<",
 		">30.0<", "Mbit/s down on average", ">2.0<", "Mbit/s up on average",
-		`class="verso-chart-line`,
+		`class="verso-chart-line`, `class="verso-chart-mark--outage"`, "<title>Internet down ",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a day's graph missing %q", want)

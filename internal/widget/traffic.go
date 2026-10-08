@@ -34,6 +34,8 @@ type Traffic struct {
 	// window is drawn once, its figures its averages.
 	RangeURL string
 	Range    string
+	// Marks are the events over a past window, drawn on its chart.
+	Marks []ChartMark
 }
 
 // TrafficRange is one window a traffic graph can show.
@@ -82,6 +84,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		AxisEnd:   "now",
 		Label:     t.Label,
 		Short:     t.Panel,
+		Marks:     t.Marks,
 		Series: []ChartSeries{
 			{Label: "down", Role: "emerald", Fill: true, Values: t.Down},
 			{Label: "up", Role: "violet", Fill: true, Values: t.Up},

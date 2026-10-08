@@ -4,6 +4,7 @@
 package server
 
 import (
+	"math"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 func wanOn(device string) openwrt.WANState {
@@ -134,6 +136,42 @@ func TestAShortOutageSaysItsSeconds(t *testing.T) {
 	row := eventRow(history.Event{Kind: "wan.up", Subject: "wan0", Detail: `{"after":25}`}, time.Now(), func(s string) string { return s })
 	if got := row.Cells[2].Text; got != "Internet came back after 25 s" {
 		t.Fatalf("event = %q", got)
+	}
+}
+
+// TestEventMarksPairEachOutageWithinTheWindow: an outage runs from going down
+// to coming back, cut at the window's edges; one still going runs to now; a
+// boot is a moment; what fell before the window is not drawn.
+func TestEventMarksPairEachOutageWithinTheWindow(t *testing.T) {
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.Local)
+	start, end := now.Add(-10*time.Hour), now
+	at := func(h float64) time.Time { return start.Add(time.Duration(h * float64(time.Hour))) }
+	newestFirst := []history.Event{
+		{Time: at(9), Kind: "wan.down", Subject: "wan0"},
+		{Time: at(7.5), Kind: "boot", Detail: `{"clean":true,"id":"b"}`},
+		{Time: at(6), Kind: "wan.up", Subject: "wan0"},
+		{Time: at(5), Kind: "wan.down", Subject: "wan0"},
+		{Time: at(1), Kind: "wan.up", Subject: "wan0"},
+		{Time: at(-1), Kind: "wan.down", Subject: "wan0"},
+		{Time: at(-3), Kind: "wan.up", Subject: "wan0"},
+		{Time: at(-4), Kind: "wan.down", Subject: "wan0"},
+		{Time: at(-5), Kind: "boot", Detail: `{"clean":true,"id":"a"}`},
+	}
+	got := eventMarks(newestFirst, start, end, now, func(s string) string { return s })
+	want := []widget.ChartMark{
+		{Kind: "outage", From: 0, To: 0.1, Label: "Internet down 01:00–03:00"},
+		{Kind: "outage", From: 0.5, To: 0.6, Label: "Internet down 07:00–08:00"},
+		{Kind: "boot", From: 0.75, Label: "Router started at 09:30"},
+		{Kind: "outage", From: 0.9, To: 1, Label: "Internet down since 11:00"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("marks = %+v\nwant   %+v", got, want)
+	}
+	for i := range want {
+		g, w := got[i], want[i]
+		if g.Kind != w.Kind || g.Label != w.Label || math.Abs(g.From-w.From) > 1e-9 || math.Abs(g.To-w.To) > 1e-9 {
+			t.Errorf("mark %d = %+v, want %+v", i, g, w)
+		}
 	}
 }
 

@@ -161,7 +161,9 @@ as total loss.
 
 - Every traffic and system chart gains a range: Live, 24 hours, 7 days, 30
   days, 1 year. Live is the chart as it is today.
-- Events are marked on the charts they explain, at the time they happened.
+- Events are marked on the charts they explain, at the time they happened,
+  behind the curves: an outage a crimson wash from going down to coming back
+  (to now while it lasts), a boot a dashed rule, each titled for the pointer.
 - System → Events lists the timeline, newest first: when, on which interface,
   and what happened as a status coloured by its weight. It is a page of its
   own beside Logs, whose console fills its page.

@@ -30,6 +30,18 @@ type Chart struct {
 	// Short stands the plot at 180px rather than 240px, nine cells of the grid
 	// rather than twelve; the viewBox stretches, so the curve is the same.
 	Short bool
+	// Marks are what happened over the window (ADR-019), drawn behind the
+	// curves.
+	Marks []ChartMark
+}
+
+// ChartMark is one event on a chart's time axis. From and To are fractions of
+// the width: an "outage" is a band between them, a "boot" a rule at From.
+// Label names it for the pointer, already composed.
+type ChartMark struct {
+	Kind     string
+	From, To float64
+	Label    string
 }
 
 // ChartSeries is one line on a chart.
@@ -48,6 +60,10 @@ func (*Chart) children() []Widget { return nil }
 // curve meets both edges at any column width.
 const chartW, chartH = 620.0, 240.0
 
+// chartMarkMinWidth is the narrowest an outage band draws, in plot units:
+// about three pixels at the overview's width.
+const chartMarkMinWidth = 1.5
+
 type chartView struct {
 	Label   string
 	W, H    float64
@@ -56,6 +72,14 @@ type chartView struct {
 	XEnd    string
 	Series  []chartSeriesView
 	Short   bool
+	Marks   []chartMarkView
+}
+
+// chartMarkView is a mark in the plot's own units.
+type chartMarkView struct {
+	Kind     string
+	X, Width float64
+	Label    string
 }
 
 // chartYLabel is one value label, positioned as a percentage of the plot height
@@ -89,6 +113,12 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	}
 
 	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short}
+	for _, m := range c.Marks {
+		view.Marks = append(view.Marks, chartMarkView{
+			// A brief outage keeps a width the eye can find.
+			Kind: m.Kind, X: m.From * chartW, Width: max(chartMarkMinWidth, (m.To-m.From)*chartW), Label: m.Label,
+		})
+	}
 	// Four barely-there dividing lines at the quarters of the range, each
 	// carrying its value — HTML overlaid on the plot, so it renders at a fixed
 	// size instead of scaling with the viewBox.
