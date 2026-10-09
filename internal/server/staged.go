@@ -585,11 +585,14 @@ func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 // browser; no confirm within the window and the router reverts itself.
 func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
+	// Which pages the stage holds is read before the apply empties it.
+	pages := s.stagedPages(r.Context(), sid)
 	if err := s.backend.UCIApply(r.Context(), sid, uciRollbackTimeout); err != nil {
 		log.Printf("verso: uci apply failed: %v", err)
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
+	s.watchApply(sid, pages)
 	writeOK(w)
 }
 
@@ -604,6 +607,7 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	// The stage is applied and kept: who staged what no longer describes it.
 	s.authors.forget(s.sessionSID(r))
+	s.confirmedApply(s.sessionSID(r))
 	// The running alerter takes up verso.alerts as the apply left it
 	// (ADR-020); procd records the command line only for the next start.
 	s.refreshAlerts(r.Context(), s.sessionSID(r))

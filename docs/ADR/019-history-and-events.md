@@ -125,7 +125,7 @@ the log:
 |---|---|
 | WAN down, WAN up | the kernel's main-table default routes, read over route netlink every ten seconds |
 | Router booted, cleanly or not | the kernel's boot id and boot time; a clean stop leaves a mark beside the history |
-| Changes applied, changes rolled back | the shell's own apply path (ADR-010) |
+| Changes applied, changes rolled back | the shell's own apply path (ADR-010): an apply confirmed is applied; one whose rollback window passes, plus five seconds, without a confirm was reverted by the router. Either names the pages its changes were made on |
 | Firmware installed | the release changing between boots |
 | VPN tunnel up, down | the VPN plugin's daemon hooks |
 | New device | a MAC address seen for the first time |

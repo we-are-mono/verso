@@ -222,12 +222,28 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 		if !d.Clean {
 			what, variant = tr("Router started after losing power or crashing"), "warning"
 		}
+	case "changes.applied":
+		what = fmt.Sprintf(tr("Changes applied: %s"), changedPages(e.Detail, tr))
+	case "changes.rolledback":
+		what, variant = fmt.Sprintf(tr("Changes rolled back: %s. The router could not be reached to confirm them."), changedPages(e.Detail, tr)), "warning"
 	}
 	return widget.TableRow{Cells: []widget.TableCell{
 		{Text: eventTime(e.Time, now), Verbatim: true},
 		{Text: e.Subject},
 		{Text: what, Variant: variant},
 	}}
+}
+
+// changedPages names the pages an apply's changes were made on, in the
+// reader's language.
+func changedPages(detail string, tr func(string) string) string {
+	var d struct{ Pages []string }
+	_ = json.Unmarshal([]byte(detail), &d)
+	names := make([]string, len(d.Pages))
+	for i, page := range d.Pages {
+		names[i] = tr(page)
+	}
+	return strings.Join(names, ", ")
 }
 
 // eventMarks are the events over [start, end) as marks on its chart, oldest

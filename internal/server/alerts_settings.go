@@ -113,6 +113,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		&widget.Field{Name: "kind", Label: "Alert when", Kind: "checks", Values: kinds, Options: []widget.Option{
 			{Value: alerts.KindWAN, Label: "The internet goes down and comes back"},
 			{Value: alerts.KindBoot, Label: "The router restarts after losing power or crashing"},
+			{Value: alerts.KindRollback, Label: "Applied changes are rolled back because nobody could confirm them"},
 		}},
 	}})
 	if s.alerter.Configured() {

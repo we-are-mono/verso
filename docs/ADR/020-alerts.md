@@ -42,18 +42,20 @@ script) reads the body. The title names the router by its hostname:
 | `home-router: the internet was down` | `From 03:12 to 03:20 (8 min).` |
 | `home-router: the internet is back` | `After 8 min, down since 03:12.` |
 | `home-router: the router restarted` | `After losing power or crashing, at 13:49.` |
+| `home-router: changes were rolled back` | `Changes to Firewall were undone at 22:15: the router could not be reached to confirm them.` |
 
 No link rides along: the shell does not know the address its operator reaches
 it by from outside.
 
 ### Which events alert
 
-`verso.alerts.kind` lists the kinds that alert. Absent, both do:
+`verso.alerts.kind` lists the kinds that alert. Absent, all three do:
 
 | Kind | Alerts on |
 |---|---|
 | `wan` | the internet going down and coming back (ADR-019's WAN events) |
 | `boot` | a start after losing power or crashing; a clean reboot is not news |
+| `rollback` | applied changes the router undid because nobody could confirm them: someone locked themselves out; changes kept are not news |
 
 ### Incidents, not events
 

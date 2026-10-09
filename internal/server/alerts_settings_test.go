@@ -58,7 +58,7 @@ func TestAlertsFormShowsWhatIsSet(t *testing.T) {
 	}
 	for _, want := range []string{
 		`name="url"`, `value="https://ntfy.sh/home"`, `name="heartbeat"`, `value="https://hc-ping.com/abc"`,
-		`value="wan" checked`, `value="boot" checked`, "Send a test alert",
+		`value="wan" checked`, `value="boot" checked`, `value="rollback" checked`, "Send a test alert",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("alerts form missing %q", want)
@@ -76,7 +76,7 @@ func TestSavingAlertsStagesThem(t *testing.T) {
 		".type": "alerts", "heartbeat": "https://hc-ping.com/old", "kind": []any{"wan"},
 	}}}})
 	withAlerter(t, s)
-	rec := postPlugin(t, s, alertsPath, url.Values{"url": {"https://ntfy.sh/home"}, "heartbeat": {""}, "kind": {"wan", "boot"}})
+	rec := postPlugin(t, s, alertsPath, url.Values{"url": {"https://ntfy.sh/home"}, "heartbeat": {""}, "kind": {"wan", "boot", "rollback"}})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, body:\n%s", rec.Code, rec.Body)
 	}

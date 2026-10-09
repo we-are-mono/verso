@@ -126,6 +126,21 @@ func TestOnlyAnUncleanStartAlerts(t *testing.T) {
 	}
 }
 
+// TestARollbackAlertsAndAnApplyDoesNot: changes the router undid because
+// nobody could confirm them are news; changes kept are not.
+func TestARollbackAlertsAndAnApplyDoesNot(t *testing.T) {
+	a, store := newAlerter(t)
+	a.Observe(ctx, []history.Event{
+		{Time: at("22:14:00"), Kind: "changes.applied", Detail: `{"pages":["Firewall"]}`},
+		{Time: at("22:15:00"), Kind: "changes.rolledback", Detail: `{"pages":["Firewall","Interfaces"]}`},
+	})
+	queued := waiting(t, store)
+	if len(queued) != 1 || queued[0].Title != "home-router: changes were rolled back" ||
+		queued[0].Body != "Changes to Firewall, Interfaces were undone at 22:15: the router could not be reached to confirm them." || queued[0].Priority != "high" {
+		t.Fatalf("queued = %+v", queued)
+	}
+}
+
 // TestOnlyChosenKindsAlert, and nothing is queued with nowhere to send it.
 func TestOnlyChosenKindsAlert(t *testing.T) {
 	a, store := newAlerter(t, KindBoot)

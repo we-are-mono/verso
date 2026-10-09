@@ -27,12 +27,13 @@ import (
 
 // The kinds of alert an operator chooses from (verso.alerts.kind).
 const (
-	KindWAN  = "wan"  // the internet going down and coming back
-	KindBoot = "boot" // a start after losing power or crashing
+	KindWAN      = "wan"      // the internet going down and coming back
+	KindBoot     = "boot"     // a start after losing power or crashing
+	KindRollback = "rollback" // applied changes the router undid, unconfirmed
 )
 
 // DefaultKinds alert when verso.alerts.kind is absent.
-var DefaultKinds = []string{KindWAN, KindBoot}
+var DefaultKinds = []string{KindWAN, KindBoot, KindRollback}
 
 const (
 	// flapWindow joins drops this close to a recovery into one incident.
@@ -124,6 +125,14 @@ func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
 			err = a.wanDown(ctx, e.Time)
 		case e.Kind == "wan.up" && a.wants(KindWAN):
 			err = a.wanUp(ctx, e.Time)
+		case e.Kind == "changes.rolledback" && a.wants(KindRollback):
+			var d struct{ Pages []string }
+			_ = json.Unmarshal([]byte(e.Detail), &d)
+			_, err = a.store.Enqueue(ctx, history.Alert{
+				Created: e.Time, Title: a.title("changes were rolled back"), Priority: "high",
+				Body: fmt.Sprintf("Changes to %s were undone at %s: the router could not be reached to confirm them.",
+					strings.Join(d.Pages, ", "), clockTime(e.Time)),
+			})
 		case e.Kind == "boot" && a.wants(KindBoot):
 			var d struct{ Clean bool }
 			_ = json.Unmarshal([]byte(e.Detail), &d)

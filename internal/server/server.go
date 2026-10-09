@@ -108,6 +108,9 @@ type Server struct {
 	historyStore *history.Store
 	// alerter sends alerts and the heartbeat (ADR-020); nil without a history.
 	alerter *alerts.Alerter
+	// applies is the applies awaiting their confirm, recorded as kept or
+	// rolled back (ADR-019).
+	applies applyWatch
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors
