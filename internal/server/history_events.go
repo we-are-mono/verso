@@ -184,8 +184,15 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	for _, e := range events {
 		table.Rows = append(table.Rows, eventRow(e, now, tr))
 	}
+	page := &widget.Stack{Children: []widget.Widget{table}}
+	// While the history is not being saved, the page that reads it says so,
+	// and why (ADR-019).
+	if h := s.historyStore.Health(); !h.OK {
+		page.Children = []widget.Widget{&widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
+			Body: "History is not being saved. Measurements and events are kept in memory until the storage answers again."}, table}
+	}
 	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, table, s.sessionCSRF(r), lang, t); err != nil {
+	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
@@ -222,6 +229,12 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 		if !d.Clean {
 			what, variant = tr("Router started after losing power or crashing"), "warning"
 		}
+	case "storage.unavailable":
+		var d struct{ Cause string }
+		_ = json.Unmarshal([]byte(e.Detail), &d)
+		what, variant = fmt.Sprintf(tr("History could not be saved: %s"), d.Cause), "warning"
+	case "storage.available":
+		what, variant = tr("History is saved again"), "success"
 	case "changes.applied":
 		what = fmt.Sprintf(tr("Changes applied: %s"), changedPages(e.Detail, tr))
 	case "changes.rolledback":

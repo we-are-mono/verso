@@ -239,6 +239,30 @@ func TestTestSaysWhetherAlertsArrive(t *testing.T) {
 	}
 }
 
+// TestUrgentGoesOutAtOnceWithoutTheOutbox: what cannot be kept in the
+// history — that the history is not being saved — is sent straight away,
+// once, and only if its kind was chosen.
+func TestUrgentGoesOutAtOnceWithoutTheOutbox(t *testing.T) {
+	rc := &receiver{status: http.StatusOK}
+	srv := httptest.NewServer(rc)
+	defer srv.Close()
+	a, store := newAlerter(t, KindWAN)
+	a.Configure(Config{URL: srv.URL, Kinds: []string{KindWAN}})
+	a.Urgent(ctx, KindStorage, "history is not being saved", "database or disk is full.")
+	if len(rc.requests) != 0 {
+		t.Fatal("an unchosen kind was sent")
+	}
+	a.Configure(Config{URL: srv.URL})
+	a.Urgent(ctx, KindStorage, "history is not being saved", "database or disk is full.")
+	if len(rc.requests) != 1 || rc.requests[0].Header.Get("Title") != "home-router: history is not being saved" ||
+		rc.requests[0].Header.Get("Priority") != "high" || rc.bodies[0] != "database or disk is full." {
+		t.Fatalf("requests = %d %q", len(rc.requests), rc.bodies)
+	}
+	if queued := waiting(t, store); len(queued) != 0 {
+		t.Fatalf("an urgent alert went into the outbox: %+v", queued)
+	}
+}
+
 // TestBeatTellsTheMonitorTheRouterIsAlive: a GET every five minutes, none
 // without an address.
 func TestBeatTellsTheMonitorTheRouterIsAlive(t *testing.T) {

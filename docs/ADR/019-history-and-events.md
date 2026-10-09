@@ -72,11 +72,18 @@ the copy and removes the old file, and `verso-rpcd` stops nlbwmon, moves its
 directory and starts it again.
 
 A directory that cannot be written is warned about, never refused. The shell
-keeps collecting in memory and says through the top-right notification that
-history is not being saved, naming the cause. A directory on tmpfs is allowed,
-with a warning that history ends at every reboot. A directory that disappears
-while running (a pulled USB stick) falls back to memory the same way and is
-recorded as an event once it returns.
+keeps collecting in memory, and System → Events says above its listing that
+history is not being saved, with the cause in the storage's own words, for as
+long as that lasts. A directory on tmpfs is allowed, with a warning that
+history ends at every reboot.
+
+Every write to the file says whether the history is being saved: the first
+that fails turns it, with its cause and since when, and the first that
+succeeds again turns it back. Nothing can be written while it fails, so both
+events, the failure at its own time and the return, are written once it works
+again, and the alert of it goes out directly (ADR-020). A history kept in
+memory from the start (its directory could not be written) never reads as
+saved, since every write to memory succeeds.
 
 ### What is kept, and for how long
 
@@ -130,7 +137,7 @@ the log:
 | VPN tunnel up, down | the VPN plugin's daemon hooks |
 | New device | a MAC address seen for the first time |
 | DHCP pool nearly full | lease count against the pool size |
-| History storage unavailable, back | the shell's own writes |
+| History not saved, saved again | the shell's own writes, both recorded once writing works again (below, "Where it lives") |
 
 The internet is up while a default route stands in the main table, IPv4 or
 IPv6. A default route in a policy table carries only the traffic marked for it

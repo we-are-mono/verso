@@ -113,6 +113,11 @@ type Store struct {
 
 	mu      sync.Mutex
 	pending []Point
+
+	hmu      sync.Mutex
+	health   Health
+	onHealth func(was, now Health)
+	failed   bool // Fail: no write here saves anything
 }
 
 // Open opens or creates the history file at path. The directory must exist:
@@ -136,7 +141,7 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, health: Health{OK: true, Since: time.Now()}}, nil
 }
 
 // connect opens one connection: the shell is the only writer, and one
@@ -184,13 +189,20 @@ func (s *Store) Add(points ...Point) {
 }
 
 // Flush writes the points Add kept, in one transaction. On failure they stay
-// in memory for the next attempt.
+// in memory for the next attempt; either way the health is noted.
 func (s *Store) Flush(ctx context.Context) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if len(s.pending) == 0 {
+		s.mu.Unlock()
 		return nil
 	}
+	err := s.flush(ctx)
+	s.mu.Unlock()
+	s.note(err, time.Now())
+	return err
+}
+
+func (s *Store) flush(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -222,8 +234,14 @@ VALUES ((SELECT id FROM series WHERE name = ?), ?, ?, ?, ?)`)
 }
 
 // Maintain rolls finished periods up the ladder, deletes what has expired and
-// gives the freed pages back to the filesystem.
+// gives the freed pages back to the filesystem, noting the health.
 func (s *Store) Maintain(ctx context.Context, now time.Time) error {
+	err := s.maintain(ctx, now)
+	s.note(err, time.Now())
+	return err
+}
+
+func (s *Store) maintain(ctx context.Context, now time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -331,6 +349,7 @@ func Slots(points []Point, value func(Point) float64, start time.Time, res Resol
 func (s *Store) Record(ctx context.Context, e Event) error {
 	_, err := s.db.ExecContext(ctx, `INSERT INTO events (time, kind, subject, detail) VALUES (?, ?, ?, ?)`,
 		e.Time.Unix(), e.Kind, e.Subject, e.Detail)
+	s.note(err, time.Now())
 	return err
 }
 

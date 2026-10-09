@@ -114,6 +114,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			{Value: alerts.KindWAN, Label: "The internet goes down and comes back"},
 			{Value: alerts.KindBoot, Label: "The router restarts after losing power or crashing"},
 			{Value: alerts.KindRollback, Label: "Applied changes are rolled back because nobody could confirm them"},
+			{Value: alerts.KindStorage, Label: "History cannot be saved"},
 		}},
 	}})
 	if s.alerter.Configured() {

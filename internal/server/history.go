@@ -30,10 +30,11 @@ import (
 // gateway and at each of probes, and alerts go where notify says (ADR-020).
 func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Config) {
 	path := filepath.Join(dir, "history.db")
-	store, err := history.Open(path)
-	onDisk := err == nil
+	store, openErr := history.Open(path)
+	onDisk := openErr == nil
 	if !onDisk {
-		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, err)
+		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, openErr)
+		var err error
 		if store, err = history.Open(":memory:"); err != nil {
 			log.Printf("verso: no history: %v", err)
 			return
@@ -46,6 +47,11 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	alerter.Configure(notify)
 	if err := alerter.Begin(context.Background()); err != nil {
 		log.Printf("verso: alerts: %v", err)
+	}
+	s.historyStore, s.alerter = store, alerter
+	store.OnHealth(s.storageTurned)
+	if !onDisk {
+		store.Fail(fmt.Sprintf("%s cannot be written: %v", path, openErr), time.Now())
 	}
 	if onDisk {
 		recordBoot(context.Background(), store, dir)
@@ -74,8 +80,6 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 		defer close(done)
 		collector.Run(ctx)
 	}()
-	s.historyStore = store
-	s.alerter = alerter
 	s.historyStop = func() {
 		stopWatch()
 		watching.Wait()

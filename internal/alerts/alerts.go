@@ -30,10 +30,11 @@ const (
 	KindWAN      = "wan"      // the internet going down and coming back
 	KindBoot     = "boot"     // a start after losing power or crashing
 	KindRollback = "rollback" // applied changes the router undid, unconfirmed
+	KindStorage  = "storage"  // the history not being saved
 )
 
 // DefaultKinds alert when verso.alerts.kind is absent.
-var DefaultKinds = []string{KindWAN, KindBoot, KindRollback}
+var DefaultKinds = []string{KindWAN, KindBoot, KindRollback, KindStorage}
 
 const (
 	// flapWindow joins drops this close to a recovery into one incident.
@@ -241,6 +242,21 @@ func (a *Alerter) post(ctx context.Context, url string, alert history.Alert) (in
 	}
 	_ = res.Body.Close()
 	return res.StatusCode, strconv.Itoa(res.StatusCode)
+}
+
+// Urgent sends an alert of kind at once, once, if that kind was chosen. It
+// is for what the outbox cannot hold: the history it lives in not being
+// saved. An alert that does not arrive is not tried again.
+func (a *Alerter) Urgent(ctx context.Context, kind, what, body string) {
+	a.mu.Lock()
+	url, wanted := a.cfg.URL, a.wants(kind)
+	a.mu.Unlock()
+	if !wanted {
+		return
+	}
+	if status, result := a.post(ctx, url, history.Alert{Title: a.title(what), Body: body, Priority: "high"}); status < 200 || status >= 300 {
+		log.Printf("verso: alert %q did not arrive: %s", what, result)
+	}
 }
 
 // Configured is whether alerts have an address to go to.
