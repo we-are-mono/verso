@@ -188,15 +188,18 @@ Entries are a `changes` table in ADR-019's `history.db`, in
 keeps). ADR-019's handling of a directory that cannot be written covers it:
 entries wait in memory and are written once writing works again.
 
-The last **1000 entries** are kept, whatever their age. A config that last
+The last **1000 entries** are kept, whatever their age; `verso.history.changes`
+sets another count, for a router whose storage holds more. A config that last
 changed a year ago keeps its record: config history is read when something
 breaks, which can be long after the change. Beside them the table keeps the
 **starting point**, the committed contents of every declared config before
-the oldest kept entry. When entry 1001 is recorded, the oldest entry folds into
-the starting point. On a fresh history, the starting point is the config as
-Verso first finds it.
+the oldest kept entry. When one more entry than the count is recorded, the
+oldest folds into the starting point: what it did is applied to it, unless it
+was rolled back, and it leaves history. On a fresh history, the starting point
+is the config as Verso first reads it.
 
-An entry is a few kilobytes; a full history stays within a few megabytes.
+An entry is a few kilobytes; a full history of 1000 stays within a few
+megabytes.
 System → Maintenance's "History is kept in" row states the count beside the
 file's size.
 

@@ -180,3 +180,31 @@ func changePages(c history.Change) []string {
 	}
 	return pages
 }
+
+// changesKeptDefault is how many entries config history keeps unless the
+// operator says otherwise (verso.history.changes).
+const changesKeptDefault = 1000
+
+// SetChangesKept sets how many entries config history keeps; fewer than one
+// keeps the default.
+func (s *Server) SetChangesKept(n int) {
+	if n < 1 {
+		n = changesKeptDefault
+	}
+	s.changesKept = n
+}
+
+// foldHistory keeps config history to its limit, the oldest entries folded
+// into the starting point.
+func (s *Server) foldHistory(ctx context.Context) {
+	if s.historyStore == nil {
+		return
+	}
+	kept := s.changesKept
+	if kept < 1 {
+		kept = changesKeptDefault
+	}
+	if err := s.historyStore.FoldChanges(ctx, kept); err != nil {
+		log.Printf("verso: config history not folded: %v", err)
+	}
+}

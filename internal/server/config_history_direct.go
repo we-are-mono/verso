@@ -148,7 +148,13 @@ func (s *Server) takeReading(ctx context.Context, store *history.Store, reading 
 	if err != nil {
 		return err
 	}
-	keep := func() error { return store.SetConfigState(ctx, reading.Config, sections, at) }
+	// The first reading of a config is also where its history starts.
+	keep := func() error {
+		if err := store.StartConfig(ctx, reading.Config, sections, at); err != nil {
+			return err
+		}
+		return store.SetConfigState(ctx, reading.Config, sections, at)
+	}
 	if !known || reading.Own || s.expected.holds(reading.Config, at) {
 		return keep()
 	}
@@ -164,6 +170,7 @@ func (s *Server) takeReading(ctx context.Context, store *history.Store, reading 
 		if _, err := s.changeLog.RecordChange(ctx, s.directChange(ctx, reading, before, tuples, secret)); err != nil {
 			return err
 		}
+		s.foldHistory(ctx)
 	}
 	return keep()
 }

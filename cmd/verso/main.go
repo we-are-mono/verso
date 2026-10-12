@@ -98,6 +98,7 @@ func serve(args []string) {
 	flags.Func("listen-http", "an address:port to serve HTTP on (repeatable)", func(v string) error { plain = append(plain, v); return nil })
 	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
 	historyDir := flags.String("history-dir", "", "the directory the router's history is kept in; empty keeps none")
+	historyChanges := flags.Int("history-changes", 1000, "how many entries config history keeps")
 	var probes []netip.Addr
 	flags.Func("probe", "an address on the internet to probe beside the WAN's gateway (repeatable)", func(v string) error {
 		addr, err := netip.ParseAddr(v)
@@ -204,6 +205,7 @@ func serve(args []string) {
 	})
 	srv.SetAllowedHosts(allowedHosts())
 	if *historyDir != "" {
+		srv.SetChangesKept(*historyChanges)
 		srv.StartHistory(*historyDir, probes, notify)
 	}
 

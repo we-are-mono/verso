@@ -123,6 +123,8 @@ type Server struct {
 	// expected is when each config's writes are an apply's own, so config
 	// history does not take them for edits made outside Verso (ADR-021).
 	expected expectedWrites
+	// changesKept is how many entries config history keeps (ADR-021).
+	changesKept int
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
 	// remove (ADR-011 §7), so every read goes through the accessors below.

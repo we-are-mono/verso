@@ -54,7 +54,7 @@ history_dir() {
 }
 
 start_service() {
-	local listen_http listen_https redirect_https addr history probes alert_url heartbeat_url alert_kinds kind
+	local listen_http listen_https redirect_https addr history changes probes alert_url heartbeat_url alert_kinds kind
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
@@ -76,6 +76,14 @@ start_service() {
 	[ -n "$redirect_https" ] && procd_append_param command -redirect-https "$redirect_https"
 	history="$(history_dir)"
 	[ -n "$history" ] && procd_append_param command -history-dir "$history"
+	# How many entries config history keeps (ADR-021): 1000 unless the
+	# operator says otherwise, as a whole number, so a typo cannot keep the
+	# shell from starting.
+	config_get changes history changes
+	case "$changes" in
+		'' | *[!0-9]*) ;;
+		*) procd_append_param command -history-changes "$changes" ;;
+	esac
 	# Addresses on the internet the uplink is probed at beside its gateway
 	# (ADR-019); none unless the operator lists them, since reaching out
 	# unattended is opt-in (ADR-014).

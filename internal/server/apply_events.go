@@ -109,6 +109,7 @@ func (s *Server) recordApply(status string, pending pendingApply) {
 				log.Printf("verso: changes not marked undone: %v", err)
 			}
 		}
+		s.foldHistory(context.Background())
 	}
 	if s.historyStore == nil {
 		return

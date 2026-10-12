@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -186,5 +187,48 @@ func TestAnApplyExpectsItsOwnWrites(t *testing.T) {
 	}
 	if s.expected.holds("network", before) || s.expected.holds("system", time.Now().Add(time.Minute)) {
 		t.Error("a write the apply did not make is expected")
+	}
+}
+
+// TestHistoryKeepsAsManyAsItIsTold: past the limit the oldest entry leaves,
+// and the starting point moves on by it.
+func TestHistoryKeepsAsManyAsItIsTold(t *testing.T) {
+	s, store, _, window := actsServer(t, map[string][][]string{"firewall": {{"set", "cfg0792bd", "target", "DROP"}}})
+	s.SetChangesKept(1)
+	if err := store.StartConfig(t.Context(), "firewall", json.RawMessage(`{"cfg0792bd":{".type":"rule","target":"ACCEPT"}}`), time.Unix(1, 0)); err != nil {
+		t.Fatal(err)
+	}
+	applyConfirmed(t, s, window)
+	applyConfirmed(t, s, window)
+	if got := entries(t, store); len(got) != 1 {
+		t.Fatalf("kept %d entries, want 1", len(got))
+	}
+	start, _ := store.StartingPoint(t.Context())
+	if !strings.Contains(string(start.Configs["firewall"]), `"target":"DROP"`) {
+		t.Errorf("the starting point did not move on: %s", start.Configs["firewall"])
+	}
+}
+
+// TestAFirstReadingIsTheStartingPoint.
+func TestAFirstReadingIsTheStartingPoint(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
+	s.takeSpool(t.Context(), store, dir)
+	spool(t, dir, "2-firewall.json", firewallReading(2000, "DROP"))
+	s.takeSpool(t.Context(), store, dir)
+	start, _ := store.StartingPoint(t.Context())
+	if !strings.Contains(string(start.Configs["firewall"]), `"target":"ACCEPT"`) {
+		t.Errorf("starting point = %s, want the first reading", start.Configs["firewall"])
+	}
+}
+
+// TestTheLimitIsOneAtLeast: a limit below one keeps the default.
+func TestTheLimitIsOneAtLeast(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	for _, n := range []int{0, -5} {
+		s.SetChangesKept(n)
+		if s.changesKept != changesKeptDefault {
+			t.Errorf("limit %d kept %d, want %d", n, s.changesKept, changesKeptDefault)
+		}
 	}
 }
