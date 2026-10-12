@@ -255,6 +255,7 @@ apk-publish: apk
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	rm -f $(VERSO_REPO_DIR)/$(APK_ARCH)/*.apk
 	cp $(APK_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
+	APK="$(APK)" scripts/check-feed-arch.sh $(VERSO_REPO_DIR)/$(APK_ARCH) $(APK_ARCH)
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
@@ -293,12 +294,13 @@ apk-i18n: apk-preflight
 	@echo "built and signed: $(I18N_OUT)  (arch noarch, version $(VER))"
 
 # apk-i18n-publish drops the catalog package alongside verso in the per-arch dev
-# repo and re-indexes what is present (an arch:all package installs on the router's
-# arch just the same). It does NOT clear the dir, so run it after `apk-publish` to
-# keep both the shell and the language in one index.
+# repo and re-indexes what is present (a noarch package installs on every router's
+# arch, so each arch's feed carries it). It does NOT clear the dir, so run it after
+# `apk-publish` to keep both the shell and the language in one index.
 apk-i18n-publish: apk-i18n
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	cp $(I18N_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
+	APK="$(APK)" scripts/check-feed-arch.sh $(VERSO_REPO_DIR)/$(APK_ARCH) $(APK_ARCH)
 	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
 	chmod -R a+rX $(VERSO_REPO_DIR)
 	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(I18N_OUT))  (index rebuilt)"

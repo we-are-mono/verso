@@ -11,7 +11,7 @@
 
 - [x] 2.1 Write `scripts/check-feed-arch.test.cjs` first. Using fixture packages built with the buildroot's `apk mkpkg`, cover four cases: an all-`x86_64` dir passes for `x86_64`; a dir mixing `x86_64` and `noarch` passes; an `aarch64_generic` package in an `x86_64` dir fails, with output naming the file, `aarch64_generic` and `x86_64`; and the test skips with a reason when the apk tool is absent. Confirm it fails because the script is missing.
 - [x] 2.2 Implement `scripts/check-feed-arch.sh <feed-dir> <apk-arch>` in POSIX shell over `apk adbdump`. Verify that `node --test scripts/check-feed-arch.test.cjs` passes, and that `make test` passes.
-- [ ] 2.3 Call the check in `apk-publish` and `apk-i18n-publish` before `mkndx`. Verify that `make apk-publish APK_GOARCH=amd64` passes, then that copying an `aarch64_generic` apk into the `x86_64` repo dir makes the next `make apk-i18n-publish APK_GOARCH=amd64` stop with the named mismatch.
+- [x] 2.3 Call the check in `apk-publish` and `apk-i18n-publish` before `mkndx`. Verify that `make apk-publish APK_GOARCH=amd64` passes, then that copying an `aarch64_generic` apk into the `x86_64` repo dir makes the next `make apk-i18n-publish APK_GOARCH=amd64` stop with the named mismatch.
 
 ## 3. Release loop (git-ignored local.mk)
 
