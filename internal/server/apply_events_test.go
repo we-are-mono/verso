@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"reflect"
 	"testing"
@@ -165,6 +166,80 @@ func TestASecretOptionIsMarkedSecret(t *testing.T) {
 	}
 	if !secret["network.password"] || !secret["system.token"] || secret["network.username"] {
 		t.Fatalf("secret = %v, want network.password and system.token only", secret)
+	}
+}
+
+// TestAnApplyKeepsWhatEachChangeReplaced: each uci change carries what the
+// router held before it, read committed before the apply: an option's value,
+// a list whole, a removed section whole; a new section replaced nothing.
+func TestAnApplyKeepsWhatEachChangeReplaced(t *testing.T) {
+	m := demoACLManifest()
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "network", Function: "write"})
+	confirms := 0
+	s := newServerWith(t, fakeBackend{confirms: &confirms,
+		changes: map[string][][]string{
+			"system": {{"set", "main", "hostname", "new"}},
+			"network": {
+				{"list-add", "lan", "ports", "lan3"},
+				{"remove", "lan", "ip6assign"},
+				{"remove", "wan6"},
+				{"add", "guest", "interface"},
+			},
+		},
+		committed: map[string]map[string]any{
+			"system": {"main": map[string]any{".type": "system", "hostname": "old"}},
+			"network": {
+				"lan":  map[string]any{".type": "interface", "ports": []any{"lan1", "lan2"}, "ip6assign": "60"},
+				"wan6": map[string]any{".type": "interface", "device": "@wan", "proto": "dhcpv6"},
+			},
+		},
+	}, &fakeTransport{}, []plugin.Manifest{m})
+	log := &changeLog{}
+	s.changeLog = log
+	var window func()
+	s.afterRollback = func(_ time.Duration, f func()) { window = f }
+
+	postPlugin(t, s, "/uci/apply", nil)
+	postPlugin(t, s, "/uci/confirm", nil)
+	window()
+
+	old := map[string]string{}
+	for _, item := range log.changes[0].Items {
+		for _, op := range item.Ops {
+			old[op.Op+" "+op.Config+"."+op.Section+"."+op.Option] = string(op.Old)
+		}
+	}
+	want := map[string]string{
+		"set system.main.hostname":            `"old"`,
+		"list-add network.lan.ports":          `["lan1","lan2"]`,
+		"remove-option network.lan.ip6assign": `"60"`,
+		"remove-section network.wan6.":        `{".type":"interface","device":"@wan","proto":"dhcpv6"}`,
+		"add-section network.guest.interface": ``,
+	}
+	if !reflect.DeepEqual(old, want) {
+		t.Fatalf("old values\n%v\nwant\n%v", old, want)
+	}
+}
+
+// TestAnApplyIsKeptWhenWhatItReplacedCannotBeRead: an apply still goes into
+// config history when the committed read fails, without old values.
+func TestAnApplyIsKeptWhenWhatItReplacedCannotBeRead(t *testing.T) {
+	confirms := 0
+	s := newServerWith(t, fakeBackend{confirms: &confirms,
+		changes:      map[string][][]string{"system": {{"set", "main", "hostname", "new"}}},
+		committedErr: errors.New("helper unavailable"),
+	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
+	log := &changeLog{}
+	s.changeLog = log
+	var window func()
+	s.afterRollback = func(_ time.Duration, f func()) { window = f }
+
+	postPlugin(t, s, "/uci/apply", nil)
+	postPlugin(t, s, "/uci/confirm", nil)
+	window()
+
+	if len(log.changes) != 1 || log.changes[0].Items[0].Ops[0].Old != nil {
+		t.Fatalf("changes = %+v, want one without an old value", log.changes)
 	}
 }
 

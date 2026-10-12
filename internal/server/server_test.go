@@ -42,6 +42,8 @@ type fakeBackend struct {
 	uciReads       *int                      // counts UCIConfig calls (pointer: fakeBackend is by value)
 	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
 	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
+	committed      map[string]map[string]any // per-config committed sections UCICommitted returns
+	committedErr   error                     // returned by UCICommitted
 	addReturns     string                    // section id UCIAdd returns
 	adds           *[]string                 // records "config secType" per UCIAdd (pointer: fakeBackend is by value)
 	deletes        *[]string                 // records "config.section[.option]" per UCIDelete
@@ -292,6 +294,21 @@ func (f fakeBackend) UCIChanges(context.Context, string) (map[string][][]string,
 		*f.changesRead++
 	}
 	return f.changes, f.changesErr
+}
+
+// UCICommitted answers the configs asked for from committed, or
+// committedErr.
+func (f fakeBackend) UCICommitted(_ context.Context, _ string, configs []string) (map[string]map[string]any, error) {
+	if f.committedErr != nil {
+		return nil, f.committedErr
+	}
+	out := map[string]map[string]any{}
+	for _, c := range configs {
+		if sections, ok := f.committed[c]; ok {
+			out[c] = sections
+		}
+	}
+	return out, nil
 }
 
 func (f fakeBackend) UCIRevert(_ context.Context, _, config string) error {

@@ -5,6 +5,7 @@ package history
 
 import (
 	"database/sql"
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ func applied(at time.Time) Change {
 				}},
 			{Page: "Access", Plugin: "system", Verb: "changed", Words: "dropbear.main.Interface = ''", Verbatim: true,
 				Ops: []ChangeOp{
-					{Config: "dropbear", Section: "main", Op: "set", Option: "Interface", Value: text(""), Old: text("lan")},
+					{Config: "dropbear", Section: "main", Op: "set", Option: "Interface", Value: text(""), Old: json.RawMessage(`"lan"`)},
 				}},
 		},
 	}
@@ -72,7 +73,7 @@ func readBack(t *testing.T, store *Store, id int64) Change {
 			op.Value = &value.String
 		}
 		if old.Valid {
-			op.Old = &old.String
+			op.Old = json.RawMessage(old.String)
 		}
 		c.Items[item].Ops = append(c.Items[item].Ops, op)
 	}
@@ -100,7 +101,7 @@ func TestAChangeIsRecordedWhole(t *testing.T) {
 func TestASecretIsNeverStored(t *testing.T) {
 	store, _ := open(t)
 	c := Change{Time: minute(0), Status: ChangeApplied, Items: []ChangeItem{{Page: "Wireless", Verb: "changed", Words: "w",
-		Ops: []ChangeOp{{Config: "wireless", Section: "default_radio0", Op: "set", Option: "key", Value: text("hunter22"), Old: text("letmein1"), Secret: true}}}}}
+		Ops: []ChangeOp{{Config: "wireless", Section: "default_radio0", Op: "set", Option: "key", Value: text("hunter22"), Old: json.RawMessage(`"letmein1"`), Secret: true}}}}}
 	id, err := store.RecordChange(ctx, c)
 	if err != nil {
 		t.Fatal(err)

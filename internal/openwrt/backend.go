@@ -131,6 +131,11 @@ type Backend interface {
 	UCIApply(ctx context.Context, sid string, timeout int) error
 	// UCIConfirm disarms a pending rollback, keeping the applied configuration.
 	UCIConfirm(ctx context.Context, sid string) error
+	// UCICommitted reads configs as they are committed, with nothing any stage
+	// holds applied, through the privileged helper: config name → sections in
+	// the shape UCIConfig has. Config history keeps from it what an apply
+	// replaced (ADR-021).
+	UCICommitted(ctx context.Context, sid string, configs []string) (map[string]map[string]any, error)
 	// RCList reads procd's rc snapshot — per init script, whether it starts at
 	// boot and whether procd reports it running — gated on the session's
 	// ubus/rc/list access. The plugin-management surface (ADR-011) reads plugin
@@ -879,6 +884,14 @@ func (b *NativeBackend) UCIApply(ctx context.Context, sid string, timeout int) e
 // UCIConfirm disarms a pending rollback through rpcd, gated by the sid.
 func (b *NativeBackend) UCIConfirm(ctx context.Context, sid string) error {
 	return b.confirmWithFiles(ctx, sid)
+}
+
+// UCICommitted reads configs as committed through verso-rpcd's uciCommitted,
+// gated by the sid.
+func (*NativeBackend) UCICommitted(ctx context.Context, sid string, configs []string) (map[string]map[string]any, error) {
+	var out map[string]map[string]any
+	err := callHelper(ctx, "", "uciCommitted", sid, map[string]string{"configs": strings.Join(configs, " ")}, &out)
+	return out, err
 }
 
 func (b *NativeBackend) RCList(ctx context.Context, sid string) (map[string]RCState, error) {

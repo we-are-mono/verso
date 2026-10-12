@@ -5,6 +5,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 
 	"github.com/we-are-mono/verso/internal/history"
 )
@@ -44,19 +46,43 @@ func (s *Server) secretOptions() map[string]bool {
 
 // stagedChange is sid's stage as config history keeps it once applied: the
 // review drawer's rows, under the page each was made on in English, each with
-// the uci changes it stands for, and who applied it from where.
+// the uci changes it stands for and what each replaced, and who applied it
+// from where. It is read before the apply, while the configs still hold what
+// the stage replaces.
 func (s *Server) stagedChange(ctx context.Context, sid, user, address string) history.Change {
 	identity := func(s string) string { return s }
 	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
 	secrets := s.secretOptions()
 	change := history.Change{User: user, Address: address}
+	var configs []string
+	seen := map[string]bool{}
 	for _, g := range view.Groups {
 		for _, item := range g.Items {
 			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono}
 			for _, c := range item.changes {
 				kept.Ops = append(kept.Ops, changeOp(c, secrets))
+				if !seen[c.config] && describeChange(c).Op != "file" {
+					seen[c.config] = true
+					configs = append(configs, c.config)
+				}
 			}
 			change.Items = append(change.Items, kept)
+		}
+	}
+	if len(configs) == 0 {
+		return change
+	}
+	// What the configs held is the history's to keep, not the apply's to
+	// wait on: a read that fails leaves the change without old values.
+	committed, err := s.backend.UCICommitted(ctx, sid, configs)
+	if err != nil {
+		log.Printf("verso: what the apply replaces could not be read: %v", err)
+		return change
+	}
+	for i := range change.Items {
+		for j := range change.Items[i].Ops {
+			op := &change.Items[i].Ops[j]
+			op.Old = replaced(committed, *op)
 		}
 	}
 	return change
@@ -78,6 +104,34 @@ func changeOp(c stagedChange, secrets map[string]bool) history.ChangeOp {
 		op.Secret = secrets[d.Config+"."+d.Option]
 	}
 	return op
+}
+
+// replaced is what op's target held committed, as JSON: the option's value
+// for a change to an option, the whole section for a section removed. A new
+// section, a file, and anything that was not there replaced nothing.
+func replaced(committed map[string]map[string]any, op history.ChangeOp) json.RawMessage {
+	section, ok := committed[op.Config][op.Section].(map[string]any)
+	if !ok {
+		return nil
+	}
+	var old any
+	switch op.Op {
+	case "set", "list-add", "list-del", "remove-option":
+		value, present := section[op.Option]
+		if !present {
+			return nil
+		}
+		old = value
+	case "remove-section":
+		old = section
+	default:
+		return nil
+	}
+	encoded, err := json.Marshal(old)
+	if err != nil {
+		return nil
+	}
+	return encoded
 }
 
 // changePages is the pages a change was made on, in the order its rows have

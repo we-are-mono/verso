@@ -22,6 +22,7 @@ mod netlink;
 mod openvpn;
 mod packages;
 mod ubus;
+mod uci_committed;
 mod usage;
 
 use serde_json::{json, Value};
@@ -306,6 +307,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "firewallFiles" => config_files::firewall_state(),
         "openvpnFiles" => config_files::openvpn_state(),
         "configFiles" => config_files::state(),
+        "uciCommitted" => uci_committed::committed(argument(request, "configs")?),
         "stageConfigFile" => config_files::stage(
             argument(request, "path")?,
             argument(request, "expected")?,
@@ -1380,6 +1382,7 @@ mod tests {
         "diagStart",
         "diagRead",
         "diagStop",
+        "uciCommitted",
     ];
 
     #[test]

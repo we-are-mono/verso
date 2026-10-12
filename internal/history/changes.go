@@ -5,6 +5,7 @@ package history
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -46,15 +47,18 @@ type ChangeItem struct {
 
 // ChangeOp is one uci change, in the describe hook's vocabulary (set,
 // add-section, remove-option, remove-section, list-add, list-del, file). Value
-// is what the option became and Old what it replaced; nil is no value, which
-// an empty string is not. A Secret keeps neither.
+// is what the option became; nil is no value, which an empty string is not.
+// Old is what was committed before, as JSON in the shape rpcd's uci get has
+// it: the option's string or list for a change to an option, the whole
+// section (".type" and its options) for a section removed; nil where nothing
+// was. A Secret keeps neither.
 type ChangeOp struct {
 	Config  string
 	Section string
 	Op      string
 	Option  string
 	Value   *string
-	Old     *string
+	Old     json.RawMessage
 	Secret  bool
 }
 
@@ -83,7 +87,7 @@ func (s *Store) RecordChange(ctx context.Context, c Change) (int64, error) {
 			return 0, err
 		}
 		for j, op := range item.Ops {
-			value, old := op.Value, op.Old
+			value, old := op.Value, oldText(op.Old)
 			if op.Secret {
 				value, old = nil, nil
 			}
@@ -95,6 +99,15 @@ func (s *Store) RecordChange(ctx context.Context, c Change) (int64, error) {
 		}
 	}
 	return id, tx.Commit()
+}
+
+// oldText stores no old value as NULL, and any other as its JSON text.
+func oldText(old json.RawMessage) *string {
+	if old == nil {
+		return nil
+	}
+	s := string(old)
+	return &s
 }
 
 // nullID stores 0, no change, as NULL.

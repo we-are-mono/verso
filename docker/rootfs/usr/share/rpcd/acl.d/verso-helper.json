@@ -13,6 +13,7 @@
           "firmwareCheck",
           "configFiles",
           "firewallFiles",
+          "uciCommitted",
           "diagRead",
           "refreshGrants"
         ]
