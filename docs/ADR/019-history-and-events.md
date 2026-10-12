@@ -52,11 +52,16 @@ router with more ports or sensors has more rows, never more columns, and a
 device that appears needs no change to the file. Points carry the series' id,
 so a long sensor name is stored once rather than on every point.
 
-The file changes shape by numbered migration steps, each run in a transaction
-that also sets `user_version` to its number; opening the file runs the steps it
-lacks, in order. A file older than the first step is rebuilt. The file is never
-rebuilt to change its shape, because some of what it holds (events, the
-alerts' record, config history) cannot be measured again.
+The file changes shape by numbered migration steps, one SQL file each
+(`internal/history/migrations/NNN_what.sql`), embedded in the shell. A step is
+added, never edited once shipped. Each runs in a transaction that also sets
+`user_version` to its number; opening the file runs the steps it
+lacks, in order. Every shape a shell has written is a step, so every file a
+router holds has a way forward. A file newer than the shell reads (a
+downgrade) is left as it is, for the upgrade that reads it again, and the
+history is kept in memory, as for a directory that cannot be written. The file
+is never rebuilt, because some of what it holds (events, the alerts' record,
+config history) cannot be measured again.
 
 ### Where it lives
 

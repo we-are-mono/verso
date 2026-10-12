@@ -4,7 +4,6 @@
 package history
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -88,34 +87,6 @@ func TestOnlyAPendingAlertCanBeRewrittenOrCancelled(t *testing.T) {
 	}
 	if due, _ := store.Due(ctx, minute(0)); len(due) != 0 {
 		t.Fatalf("a cancelled alert was due: %+v", due)
-	}
-}
-
-// TestTheOutboxJoinsAnExistingFile: a history kept before alerts existed
-// gains the outbox and keeps its points.
-func TestTheOutboxJoinsAnExistingFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "history.db")
-	store, err := Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	store.Add(Point{Series: "cpu", Time: minute(0), Average: 1, Peak: 1})
-	if _, err := store.db.Exec(`DROP TABLE alerts`); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
-	reopened, err := Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = reopened.Close() }()
-	if points, _ := reopened.Points(ctx, "cpu", Minute, minute(0), minute(1)); len(points) != 1 {
-		t.Fatal("reopening for the outbox lost the points")
-	}
-	if _, err := reopened.Enqueue(ctx, Alert{Created: minute(0), Title: "t"}); err != nil {
-		t.Fatalf("no outbox after reopening: %v", err)
 	}
 }
 

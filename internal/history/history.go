@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"sync"
 	"time"
 
@@ -22,33 +21,6 @@ import (
 )
 
 const driver = "sqlite"
-
-// schema is the file's layout; a file of another version is rebuilt, not
-// migrated.
-const (
-	schemaVersion = 2
-	schema        = `
-CREATE TABLE series (
-	id   INTEGER PRIMARY KEY,
-	name TEXT    NOT NULL UNIQUE
-);
-CREATE TABLE points (
-	series_id  INTEGER NOT NULL REFERENCES series (id),
-	resolution INTEGER NOT NULL,
-	time       INTEGER NOT NULL,
-	average    REAL    NOT NULL,
-	peak       REAL    NOT NULL,
-	PRIMARY KEY (series_id, resolution, time)
-) WITHOUT ROWID;
-CREATE TABLE events (
-	time    INTEGER NOT NULL,
-	kind    TEXT    NOT NULL,
-	subject TEXT    NOT NULL,
-	detail  TEXT    NOT NULL DEFAULT ''
-);
-CREATE INDEX events_time ON events (time);
-PRAGMA user_version = 2;`
-)
 
 // Resolution is a point's period in seconds.
 type Resolution int64
@@ -126,17 +98,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	var version int
-	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	if version != schemaVersion {
-		if db, err = rebuild(db, path, version); err != nil {
-			return nil, err
-		}
-	}
-	if _, err := db.Exec(outbox); err != nil {
+	if err := shape(db); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
@@ -157,27 +119,6 @@ func connect(path string) (*sql.DB, error) {
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, err
-	}
-	return db, nil
-}
-
-// rebuild replaces a file of another schema version (0 is a new, empty file).
-func rebuild(db *sql.DB, path string, version int) (*sql.DB, error) {
-	if version != 0 {
-		_ = db.Close()
-		for _, suffix := range []string{"", "-wal", "-shm"} {
-			if err := os.Remove(path + suffix); err != nil && !os.IsNotExist(err) {
-				return nil, err
-			}
-		}
-		var err error
-		if db, err = connect(path); err != nil {
-			return nil, err
-		}
-	}
-	if _, err := db.Exec(schema); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("history: create schema: %w", err)
 	}
 	return db, nil
 }

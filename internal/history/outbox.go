@@ -8,24 +8,6 @@ import (
 	"time"
 )
 
-// outbox is the alerts waiting to be sent and the record of each attempt
-// (ADR-020). Created on every open if absent, so a history kept before it
-// gains it without losing its points.
-const outbox = `
-CREATE TABLE IF NOT EXISTS alerts (
-	id       INTEGER PRIMARY KEY,
-	created  INTEGER NOT NULL,
-	title    TEXT    NOT NULL,
-	body     TEXT    NOT NULL DEFAULT '',
-	priority TEXT    NOT NULL DEFAULT '',
-	state    TEXT    NOT NULL DEFAULT 'pending',
-	attempts INTEGER NOT NULL DEFAULT 0,
-	next_try INTEGER NOT NULL DEFAULT 0,
-	last_try INTEGER NOT NULL DEFAULT 0,
-	result   TEXT    NOT NULL DEFAULT ''
-);
-CREATE INDEX IF NOT EXISTS alerts_due ON alerts (state, next_try);`
-
 // alertsKeep is how long the outbox remembers an alert.
 const alertsKeep = 30 * 24 * time.Hour
 

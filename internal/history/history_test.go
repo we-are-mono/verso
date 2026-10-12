@@ -358,30 +358,6 @@ func TestCloseFlushes(t *testing.T) {
 	}
 }
 
-// TestOpenRebuildsAnotherSchema: a file from another schema version is
-// replaced, not migrated.
-func TestOpenRebuildsAnotherSchema(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "history.db")
-	old, err := sql.Open(driver, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := old.Exec(`CREATE TABLE points (x); PRAGMA user_version = 999`); err != nil {
-		t.Fatal(err)
-	}
-	_ = old.Close()
-
-	store, err := Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = store.Close() }()
-	store.Add(Point{Series: "cpu", Time: minute(0), Average: 1, Peak: 1})
-	if err := store.Flush(ctx); err != nil {
-		t.Fatalf("flush into the rebuilt file: %v", err)
-	}
-}
-
 // TestOpenFailsOnAnUnwritableDirectory: the caller learns the cause and keeps
 // collecting in memory; Open does not create directories.
 func TestOpenFailsOnAnUnwritableDirectory(t *testing.T) {
