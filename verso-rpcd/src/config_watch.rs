@@ -25,7 +25,7 @@ use std::fs;
 use std::io::{ErrorKind, Read, Write};
 use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -40,7 +40,8 @@ const WATCHED: &str = "/etc/config";
 /// Where the shell takes readings from: a directory its account owns, which
 /// the init script makes.
 const SPOOL: &str = "/var/run/verso/changes";
-/// The fingerprints' key: made once, readable by root alone.
+/// The fingerprints' key: made once, readable by root alone, in the shell's
+/// directory.
 const KEY: &str = "/etc/verso/fingerprint.key";
 const PLUGINS: &str = "/usr/share/verso/plugins";
 /// The options OpenWrt's own packages keep a secret in, the shell's list.
@@ -290,7 +291,14 @@ fn hex(bytes: &[u8]) -> String {
 /// key lives as long as the helper, and a restart reads every secret as
 /// changed once.
 fn key() -> Vec<u8> {
-    if let Ok(key) = fs::read(KEY) {
+    key_at(Path::new(KEY), crate::VERSO_GID)
+}
+
+/// key_at reads or makes the key at path. Its directory is the shell's too,
+/// where the shell reads its certificate (ADR-017 §3), so it is made readable
+/// by group, the shell's; the key itself is root's alone by its own mode.
+fn key_at(path: &Path, group: u32) -> Vec<u8> {
+    if let Ok(key) = fs::read(path) {
         if key.len() == 32 {
             return key;
         }
@@ -299,13 +307,15 @@ fn key() -> Vec<u8> {
     if let Err(error) = fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut key)) {
         eprintln!("verso-rpcd: config watch: no randomness for the key: {error}");
     }
-    let kept = Path::new(KEY)
+    let kept = path
         .parent()
         .map(|dir| {
             fs::DirBuilder::new()
                 .recursive(true)
-                .mode(0o700)
+                .mode(0o750)
                 .create(dir)
+                .and_then(|_| std::os::unix::fs::chown(dir, None, Some(group)))
+                .and_then(|_| fs::set_permissions(dir, fs::Permissions::from_mode(0o750)))
         })
         .transpose()
         .and_then(|_| {
@@ -313,11 +323,14 @@ fn key() -> Vec<u8> {
                 .write(true)
                 .create_new(true)
                 .mode(0o600)
-                .open(KEY)
+                .open(path)
                 .and_then(|mut f| f.write_all(&key))
         });
     if let Err(error) = kept {
-        eprintln!("verso-rpcd: config watch: key not kept at {KEY}: {error}");
+        eprintln!(
+            "verso-rpcd: config watch: key not kept at {}: {error}",
+            path.display()
+        );
     }
     key
 }
@@ -486,6 +499,22 @@ mod tests {
         assert!(readings_of(&dir, "network").is_empty());
         fs::remove_file(link).unwrap();
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_key_is_root_s_alone_in_a_directory_the_shell_can_read() {
+        let root = std::env::temp_dir().join(format!("verso-key-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("etc/verso/fingerprint.key");
+        // A group the test may give a directory to: its own.
+        let group = fs::metadata(&root).unwrap().gid();
+        let made = key_at(&path, group);
+        let dir = fs::metadata(path.parent().unwrap()).unwrap();
+        assert_eq!(dir.mode() & 0o777, 0o750, "the shell reads its certificate here");
+        assert_eq!(dir.gid(), group);
+        assert_eq!(fs::metadata(&path).unwrap().mode() & 0o777, 0o600);
+        assert_eq!(key_at(&path, group), made, "a key made once is kept");
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

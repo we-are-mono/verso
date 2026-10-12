@@ -11,10 +11,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 const KEYS: &str = "/etc/dropbear/authorized_keys";
 const LIMIT: usize = 64 * 1024;
-/// The certificate Verso serves HTTPS with (ADR-017 §3): the pair's directory,
-/// and the group the shell runs in, which alone may read the key.
+/// The certificate Verso serves HTTPS with (ADR-017 §3): the pair's directory.
+/// The group the shell runs in alone may read the key.
 const TLS_DIR: &str = "/etc/verso";
-const VERSO_GID: u32 = 6000;
 fn tls_files(dir: &Path) -> (PathBuf, PathBuf) {
     (dir.join("tls.crt"), dir.join("tls.key"))
 }
@@ -108,7 +107,7 @@ pub fn certificate(cert: &str, key: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("invalid PEM certificate or key"));
     }
-    install(Path::new(TLS_DIR), cert, key, Some(VERSO_GID))?;
+    install(Path::new(TLS_DIR), cert, key, Some(crate::VERSO_GID))?;
     announce()
 }
 

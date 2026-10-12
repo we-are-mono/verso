@@ -16,8 +16,11 @@ EXTRA_HELP="	certificate	Make a new self-signed certificate for the web interfac
 # the lan interface's addresses (the shell keeps IPv4 and unique local IPv6
 # among them). It runs here, as root, because the shell cannot write /etc; the
 # key is left readable by the verso group the shell runs in (ADR-017 §3, §5).
+# The directory is root's, readable by that group too, whoever made it:
+# verso-rpcd keeps a key of its own there, readable by root alone.
 make_certificate() {
 	local host domain v4 v6
+	mkdir -p "$TLS_DIR" && chgrp verso "$TLS_DIR" && chmod 0750 "$TLS_DIR"
 	[ "$1" != replace ] && [ -s "$TLS_DIR/tls.crt" ] && [ -s "$TLS_DIR/tls.key" ] && return
 	. /lib/functions/network.sh
 	host="$(uci -q get system.@system[0].hostname)"
@@ -25,7 +28,6 @@ make_certificate() {
 	domain="$(uci -q get dhcp.@dnsmasq[0].domain)"
 	network_get_ipaddrs v4 lan
 	network_get_ipaddrs6 v6 lan
-	mkdir -p "$TLS_DIR"
 	/usr/bin/verso certificate generate "$TLS_DIR" "$host" "$host.${domain:-lan}" $v4 $v6 &&
 		chgrp verso "$TLS_DIR/tls.key"
 }

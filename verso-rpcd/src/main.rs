@@ -46,6 +46,8 @@ use std::time::Duration;
 const DEFAULT_SOCKET: &str = "/var/run/verso/verso-rpcd.sock";
 const MAX_REQUEST: u64 = 256 * 1024;
 const VERSO_UID: u32 = 6000;
+/// The group the shell runs in, which alone reads what it is given in /etc/verso.
+const VERSO_GID: u32 = 6000;
 
 /// rpcd's local-root convention: automation running as root on the device itself
 /// has no operator session to borrow and presents an all-zero session id instead.
