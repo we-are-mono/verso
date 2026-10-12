@@ -146,7 +146,7 @@ dev:
 test:
 	go test ./...
 	set -e; for m in $(CRATES); do $(CARGO) test --locked --manifest-path $$m; done
-	node --test scripts/*.test.cjs
+	APK="$(APK)" node --test scripts/*.test.cjs
 
 # lint replaces plain `go vet` (govet is one of the linters it runs), with
 # golangci-lint's default linter set as .golangci.yml tunes it.
