@@ -527,14 +527,16 @@ func saneTempLimit(v int, ok bool) (int, bool) {
 	return v, true
 }
 
-// tripLimits reduces a zone's trip points to a warn (the lowest of passive/hot/
-// active) and a critical.
+// tripLimits reduces a zone's trip points to a warn (the lower of passive and
+// hot) and a critical. An active trip is where a fan steps up, which is the
+// board cooling itself as designed, not a warning: the Gateway's fan curve
+// starts at 40 °C.
 func tripLimits(trips []Trip) (warn, crit int) {
 	for _, t := range trips {
 		switch t.Type {
 		case "critical":
 			crit = t.MilliC
-		case "hot", "passive", "active":
+		case "hot", "passive":
 			if warn == 0 || t.MilliC < warn {
 				warn = t.MilliC
 			}

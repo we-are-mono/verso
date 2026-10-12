@@ -476,3 +476,20 @@ func dumpTemps(ts []TempReading) string {
 	}
 	return string(b)
 }
+
+// An active trip is where a fan steps up, not a warning: the Gateway's fan
+// curve starts at 40 °C, and a CPU at 43 °C is fine. The warning is where the
+// CPU is slowed (passive) or the board says hot; critical stays critical.
+func TestAFanTripIsNoWarning(t *testing.T) {
+	zone := Zone{Type: "cluster-thermal", MilliC: 43000, Trips: []Trip{
+		{Type: "active", MilliC: 40000}, {Type: "active", MilliC: 80000},
+		{Type: "passive", MilliC: 85000}, {Type: "critical", MilliC: 95000},
+	}}
+	if r := tempFromZoneReading(zone); r.Level != "nominal" || r.Warn != 85000 || r.Crit != 95000 {
+		t.Errorf("43 °C under a 40 °C fan trip = %+v, want nominal with the 85 °C passive trip as its warning", r)
+	}
+	fansOnly := Zone{Type: "fan-zone", MilliC: 50000, Trips: []Trip{{Type: "active", MilliC: 40000}}}
+	if r := tempFromZoneReading(fansOnly); r.Level != "" || r.HasLimits {
+		t.Errorf("a zone with only fan trips = %+v, want no limits", r)
+	}
+}
