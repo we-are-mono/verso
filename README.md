@@ -126,8 +126,9 @@ make test           # go test ./... + cargo test (unit-tested with fakes; no dev
 make build          # cross-compiles both arches (compiles CSS first) ->
                     #   build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64},
                     #   build/verso-plugin-{interfaces,system,firewall}-{amd64,arm64}
-make build-arm64    # just the device target (amd64 is the docker testbed's arch)
-make apk            # the signed router package, build/apk/verso-<version>.apk
+make build-arm64    # one arch alone (amd64 is also the docker testbed's arch)
+make apk            # the signed router package, build/apk/aarch64_generic/verso-<version>.apk
+                    #   (APK_GOARCH=amd64 -> build/apk/x86_64/); a release ships both
 make version        # what this commit builds as
 ```
 

@@ -54,9 +54,9 @@ first: they hold the decisions and rationale. This file is the short "how we wor
 - **Commits:** first line `context: summary because why`; imperative mood, **no temporal
   words** ("now/today"); keep messages short (≤ 25 lines); make small, logically-ordered
   commits that each build.
-- **`make build` cross-compiles both targets** — arm64 (the device) and amd64 (the docker
-  testbed) — for the Go shell and the Rust helper alike. Narrow it with `make build-arm64`
-  or `make build ARCHES=arm64`.
+- **`make build` cross-compiles both targets** — arm64 and amd64, the two arches every
+  release ships (amd64 is also the docker testbed's) — for the Go shell and the Rust
+  helper alike. Narrow it with `make build-arm64` or `make build ARCHES=arm64`.
 
 ## Localization (ADR-012)
 
@@ -110,9 +110,10 @@ make apk-publish  # also copy it into the local dev repo + rebuild the signed in
 buildroot, from which it derives the `apk` tool and the signing key. It's auto-detected
 at `~/Mono/Gateway/openwrt/source`; point it elsewhere with `OPENWRT_DIR=/path/...` on
 the command line or in a gitignored `local.mk`. Root ownership of the packaged files
-(which ubusd requires) is recorded via `fakeroot` — no `sudo`. The version comes from
-the committed `VERSION` file; pass `REVISION=2` to repackage the same version. Ships
-arm64 by default (`APK_GOARCH=amd64` for the other). `make apk-publish` is the only
+(which ubusd requires) is recorded via `fakeroot` — no `sudo`. The version is the
+latest `vX.Y.Z` tag and the commits on it (`make version` prints it). Packages arm64
+into `build/apk/aarch64_generic/` by default, `APK_GOARCH=amd64` into
+`build/apk/x86_64/`; a release ships both. `make apk-publish` is the only
 dev-box-specific step — it writes to `VERSO_REPO_DIR` (default `/srv/verso`). See
 [docs/building.md](docs/building.md) for the full runbook and the router-side install.
 
