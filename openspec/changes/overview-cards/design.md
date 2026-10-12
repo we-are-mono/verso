@@ -116,7 +116,7 @@ ADR-022, "Overview cards", records the card model, header-as-status, Arrange as 
 
 - **[Layout doesn't follow the operator to another browser, or survives in a private window only until it closes]** → The default layout is complete and sensible; this is the cost of the interim store, and decision 3 keeps the move to a router-side store small.
 - **[A hidden card's problem is out of sight]** → The verdict still counts it, and the Arrange shelf shows its packet. A hidden card's problem can't make the verdict read "online".
-- **[Tables in half-width cards overflow on narrow screens]** → Each table scrolls inside its card. Below a card width of about 26rem the `Receive` and `Transmit` columns drop.
+- **[Tables in half-width cards overflow on narrow screens]** → Each table scrolls inside its card. Below a card width of 31rem the `Receive` and `Transmit` columns drop, so a listing never scrolls in a two-column layout.
 - **[Hide or restore mid-session leaves the stream sending stale frames until the swap]** → The swap follows immediately and reconnects the stream; frames for a card that isn't present find no hooks and are ignored.
 
 ## Migration Plan

@@ -1081,12 +1081,13 @@ html {
   .verso-overview-chevron { transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1); }
   [data-closed] .verso-overview-chevron { transform: rotate(-90deg); }
 
-  /* A card too narrow for a listing's rates drops them; the state stays. */
-  @container card (max-width: 26rem) {
-    .verso-overview-card [data-verso-cell="rx-rate"],
-    .verso-overview-card [data-verso-cell="tx-rate"],
-    .verso-overview-card th:nth-child(3),
-    .verso-overview-card th:nth-child(4) { display: none; }
+  /* A card too narrow for a listing's rates drops them, the third and fourth
+     columns of Ports and Tunnels, a spare port's empty cells with them; the
+     state stays. A listing with its rates needs about 31rem: a port, its
+     networks' chips, two 6rem rates and the state. */
+  @container card (max-width: 31rem) {
+    .verso-overview-card table :is(th, td):nth-child(3),
+    .verso-overview-card table :is(th, td):nth-child(4) { display: none; }
   }
 
   .verso-overview-card[data-lifted] { position: fixed; z-index: 50; pointer-events: none; box-shadow: 0 8px 32px color-mix(in srgb, var(--color-ink) 16%, transparent); }
