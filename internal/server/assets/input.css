@@ -1094,6 +1094,16 @@ html {
   }
 }
 
+/* A list that ends an Overview card ends on the frame: its last row draws no
+   hairline and keeps the pixel as air, so the frame stays on its line. A list
+   something follows (IPv4 above IPv6) keeps its hairline. Utilities, since it
+   overrides the rows' own border utilities. */
+@layer utilities {
+  .verso-overview-content > dl:last-child > div:last-child,
+  .verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child,
+  .verso-overview-content tbody > tr:last-child > td { border-bottom-color: transparent; }
+}
+
 /* A stepped dialog's line (modal.html.tmpl): the steps read left to right with
    a short hairline between them; the packet says where each stands — green
    when done, denim for the one in hand (Ink words, 600), hollow for what is
