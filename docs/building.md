@@ -197,8 +197,9 @@ apk add verso
 
 The router's normal userspace and matching kernel-module feeds must also be
 enabled and reachable so apk can resolve Verso's dependencies.
-Verso listens on **`:8080`** (coexists with LuCI on 80). Browse
-`http://<router-ip>:8080`.
+Verso serves HTTPS on **`:443`**, or on **`:8443`** when LuCI's uhttpd holds
+443 ([ADR-017](ADR/017-tls-and-the-web-certificate.md)). Browse
+`https://<router-ip>/` or `https://<router-ip>:8443/`.
 
 ---
 
