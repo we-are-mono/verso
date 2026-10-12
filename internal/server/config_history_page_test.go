@@ -207,9 +207,10 @@ func TestChangesIsASystemPage(t *testing.T) {
 	}
 }
 
-// TestAChangeOpensOnWhatItChanged: its drawer says who applied it from where
-// and how it stands, and lists its rows by page, each with the lines it wrote
-// and what they replaced.
+// TestAChangeOpensOnWhatItChanged: its drawer holds what its row cannot, the
+// note, then every uci change in lanes by page with its plugin's words, each
+// with what it held and holds. Who, from where and how it stands are the
+// row's, and not said twice.
 func TestAChangeOpensOnWhatItChanged(t *testing.T) {
 	s, store := changesServer(t)
 	c := turnedOff(time.Now())
@@ -221,10 +222,15 @@ func TestAChangeOpensOnWhatItChanged(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Ping off for the audit", "root", "10.0.0.12", "Applied", "Firewall", "Edited the rule “Allow-Ping”.",
-		"- firewall.cfg0792bd.target=&#39;ACCEPT&#39;", "&#43; firewall.cfg0792bd.target=&#39;DROP&#39;"} {
+	for _, want := range []string{"Ping off for the audit", "Firewall", "Edited the rule “Allow-Ping”.",
+		">firewall.cfg0792bd.target<", ">ACCEPT<", ">DROP<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("drawer missing %q:\n%s", want, body)
+		}
+	}
+	for _, twice := range []string{"10.0.0.12", ">Applied<", "data-verso-expand-row"} {
+		if strings.Contains(body, twice) {
+			t.Errorf("drawer should not carry %q:\n%s", twice, body)
 		}
 	}
 }
@@ -239,33 +245,40 @@ func TestAChangeNeverRecordedHasNoDrawer(t *testing.T) {
 	}
 }
 
-// TestChangeLinesSayWhatEachWrote: each uci change as the file holds it, the
-// value it replaced above it; a removed section with what it held; a secret
-// with no value.
-func TestChangeLinesSayWhatEachWrote(t *testing.T) {
+// TestEachUCIChangeIsARow: the option, what it held, what it holds and what
+// happened to it; a removed section with each option it held; a secret with
+// no value.
+func TestEachUCIChangeIsARow(t *testing.T) {
 	ops := []history.ChangeOp{
 		{Config: "network", Section: "guest", Op: "add-section", Option: "interface"},
 		{Config: "network", Section: "guest", Op: "set", Option: "proto", Value: text("static")},
 		{Config: "network", Section: "lan", Op: "list-add", Option: "ports", Value: text("lan3")},
+		{Config: "network", Section: "lan", Op: "list-del", Option: "ports", Value: text("lan1")},
 		{Config: "network", Section: "lan", Op: "remove-option", Option: "mtu", Old: json.RawMessage(`"1400"`)},
-		{Config: "network", Section: "wan6", Op: "remove-section", Old: json.RawMessage(`{".type":"interface","proto":"dhcpv6","device":"@wan"}`)},
+		{Config: "network", Section: "wan6", Op: "remove-section", Old: json.RawMessage(`{".type":"interface","proto":"dhcpv6","dns":["1.1.1.1","9.9.9.9"]}`)},
 		{Config: "network", Section: "wan", Op: "set", Option: "password", Secret: true},
-		{Config: "system", Section: "main", Op: "set", Option: "hostname", Value: text("it's"), Old: json.RawMessage(`"OpenWrt"`)},
+		{Config: "system", Section: "main", Op: "set", Option: "hostname", Value: text(""), Old: json.RawMessage(`"OpenWrt"`)},
 	}
-	want := strings.Join([]string{
-		"+ network.guest=interface",
-		"+ network.guest.proto='static'",
-		"+ network.lan.ports+='lan3'",
-		"- network.lan.mtu='1400'",
-		"- network.wan6=interface",
-		"- network.wan6.device='@wan'",
-		"- network.wan6.proto='dhcpv6'",
-		"~ network.wan.password (changed, not kept)",
-		"- system.main.hostname='OpenWrt'",
-		`+ system.main.hostname='it'\''s'`,
-	}, "\n")
-	if got := changeLines(ops, identity); got != want {
-		t.Fatalf("lines\n%s\nwant\n%s", got, want)
+	var got [][4]string
+	for _, op := range ops {
+		for _, row := range opRows(op, identity) {
+			got = append(got, [4]string{row.Cells[0].Text, row.Cells[1].Text, row.Cells[2].Text, row.Cells[3].Text})
+		}
+	}
+	want := [][4]string{
+		{"network.guest", "—", "interface", "Added"},
+		{"network.guest.proto", "—", "static", "Added"},
+		{"network.lan.ports", "—", "lan3", "Added"},
+		{"network.lan.ports", "lan1", "—", "Removed"},
+		{"network.lan.mtu", "1400", "—", "Removed"},
+		{"network.wan6", "interface", "—", "Removed"},
+		{"network.wan6.dns", "1.1.1.1 9.9.9.9", "—", "Removed"},
+		{"network.wan6.proto", "dhcpv6", "—", "Removed"},
+		{"network.wan.password", "not kept", "not kept", "Changed"},
+		{"system.main.hostname", "OpenWrt", "''", "Changed"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("rows\n%v\nwant\n%v", got, want)
 	}
 }
 

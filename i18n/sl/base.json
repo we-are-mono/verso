@@ -897,7 +897,6 @@
   "Change": "Sprememba",
   "What happened": "Kaj se je zgodilo",
   "By": "Kdo",
-  "From": "Od kod",
   "Note": "Opomba",
   "Yesterday": "Včeraj",
   "Applied": "Uveljavljeno",
@@ -912,11 +911,12 @@
   "undo of %s": "razveljavitev spremembe ob %s",
   "back to %s": "nazaj na %s",
   "again, from %s": "ponovno, iz %s",
-  "changed, not kept": "spremenjeno, ni shranjeno",
+  "not kept": "ni shranjeno",
+  "Option": "Možnost",
+  "Before": "Prej",
+  "After": "Potem",
   "This change is no longer kept.": "Ta sprememba ni več shranjena.",
   "The history could not be read (%v).": "Zgodovine ni bilo mogoče prebrati (%v).",
-  "Rolled back. Nobody confirmed it within %d seconds, so the router put it back.": "Povrnjeno. Nihče je ni potrdil v %d sekundah, zato jo je usmerjevalnik povrnil.",
-  "Not known. Written straight to the config: over SSH, by a script or by another tool.": "Ni znano. Zapisano neposredno v konfiguracijo: prek SSH, s skripto ali z drugim orodjem.",
   "Nothing has been applied yet. Every apply is kept here, with what it replaced.": "Uveljavljenega še ni ničesar. Vsaka uveljavitev se hrani tukaj, skupaj s tem, kar je zamenjala.",
   "History is not being saved. Changes applied now are kept in memory until the storage answers again.": "Zgodovina se ne shranjuje. Spremembe, uveljavljene zdaj, ostanejo v pomnilniku, dokler se shramba spet ne odzove."
 }

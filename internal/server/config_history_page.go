@@ -356,32 +356,16 @@ func oldValue(old json.RawMessage) (string, bool) {
 	return "", false
 }
 
-// changeDrawer is an entry's drawer: its facts, then its rows by page, each
-// opening on the lines it wrote.
+// changeDrawer is an entry's drawer: what its row cannot hold, its note,
+// then every uci change it made.
 func changeDrawer(c history.Change, now time.Time, tr func(string) string) *widget.RowDrawer {
-	var facts []widget.Property
+	var children widget.Widgets
 	if c.Note != "" {
-		facts = append(facts, widget.Property{Label: "Note", Value: c.Note, Verbatim: true})
-	}
-	switch c.Status {
-	case history.ChangeApplied:
-		facts = append(facts, widget.Property{Label: "Status", Value: "Applied"})
-	case history.ChangeRolledBack:
-		facts = append(facts, widget.Property{Label: "Status", Value: fmt.Sprintf(tr("Rolled back. Nobody confirmed it within %d seconds, so the router put it back."), uciRollbackTimeout), Verbatim: true})
-	default:
-		facts = append(facts, widget.Property{Label: "Status", Value: "Undone"})
-	}
-	if c.User == "" {
-		facts = append(facts, widget.Property{Label: "By", Value: "Not known. Written straight to the config: over SSH, by a script or by another tool."})
-	} else {
-		facts = append(facts, widget.Property{Label: "By", Value: c.User, Mono: true})
-		if c.Address != "" {
-			facts = append(facts, widget.Property{Label: "From", Value: c.Address, Mono: true})
-		}
+		children = append(children, &widget.Properties{Style: "system", Items: []widget.Property{{Label: "Note", Value: c.Note, Verbatim: true}}})
 	}
 	return &widget.RowDrawer{
 		Title: changeTitle(c.Time, now, tr), Verbatim: true,
-		Children: widget.Widgets{&widget.Properties{Style: "system", Items: facts}, changeItemsTable(c, tr)},
+		Children: append(children, changeOpsTable(c, tr)),
 	}
 }
 
@@ -390,133 +374,105 @@ func changeTitle(at, now time.Time, tr func(string) string) string {
 	return changeDay(at, now, tr) + ", " + clock.Local(at).Format("15:04")
 }
 
-// changeItemsTable is an entry's rows as the review drawer read them, in
-// lanes by page; each opens on the lines it wrote.
-func changeItemsTable(c history.Change, tr func(string) string) *widget.Table {
+// changeOpsTable is every uci change an entry made, a row each: the option,
+// what it held and what it holds. Each run of the review drawer's rows is a
+// lane, named by its page and, where its plugin described it, its words.
+func changeOpsTable(c history.Change, tr func(string) string) *widget.Table {
 	table := &widget.Table{Columns: []widget.TableColumn{
-		{Label: "Change", Kind: "phrase"},
-		{Label: "What happened", Kind: "status", Width: widget.MeasureWord},
+		{Label: "Option", Kind: "mono"},
+		{Label: "Before", Kind: "mono", Width: widget.MeasureName},
+		{Label: "After", Kind: "mono", Width: widget.MeasureName},
+		{Label: "Change", Kind: "status", Width: widget.MeasureWord},
 	}}
-	perPage := map[string]int{}
 	for _, item := range c.Items {
-		perPage[item.Page]++
-	}
-	page := ""
-	for i, item := range c.Items {
-		words := widget.TablePart{Words: item.Words}
-		if item.Verbatim {
-			words = widget.TablePart{Value: item.Words}
+		var rows []widget.TableRow
+		for _, op := range item.Ops {
+			rows = append(rows, opRows(op, tr)...)
 		}
-		verb, variant := verbStatus(item.Verb)
-		row := widget.TableRow{
-			ID:       strconv.Itoa(i),
-			Cells:    []widget.TableCell{{Text: item.Words, Parts: []widget.TablePart{words}, Verbatim: true}, {Text: verb, Variant: variant}},
-			Expanded: widget.Widgets{&widget.Code{Value: changeLines(item.Ops, tr)}},
+		if len(rows) == 0 {
+			continue
 		}
-		if item.Page != page {
-			page = item.Page
-			tally := tr("1 change")
-			if n := perPage[page]; n != 1 {
-				tally = fmt.Sprintf(tr("%d changes"), n)
-			}
-			row.Group = &widget.TableGroup{Label: tr(page), Tally: tally, Verbatim: true}
+		group := &widget.TableGroup{Label: tr(item.Page), Verbatim: true}
+		if !item.Verbatim {
+			group.Tally = item.Words
 		}
-		table.Rows = append(table.Rows, row)
+		rows[0].Group = group
+		table.Rows = append(table.Rows, rows...)
 	}
 	return table
 }
 
-// verbStatus is a row's verb in a word and the mark's colour the review
-// drawer gives it.
-func verbStatus(verb string) (string, string) {
-	switch verb {
-	case "added":
-		return "Added", "success"
-	case "removed":
-		return "Removed", "danger"
-	case "reordered":
-		return "Reordered", "info"
+// opRows is one uci change as the drawer's rows: the option, what it held
+// and holds, and what happened to it. A section removed is listed with each
+// option it held; a secret's values are not kept.
+func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
+	const none = "—"
+	path := op.Config + "." + op.Section
+	option := path + "." + op.Option
+	row := func(name, before, after, verb, variant string) widget.TableRow {
+		return widget.TableRow{Cells: []widget.TableCell{{Text: name}, {Text: before}, {Text: after}, {Text: verb, Variant: variant}}}
 	}
-	return "Changed", "warning"
-}
-
-// changeLines is what a row's uci changes wrote, a line each as `uci show`
-// spells it, led by + for what is new, - for what went and ~ for a secret
-// whose values are not kept. A value replaced stands above its successor; a
-// section removed is listed with what it held.
-func changeLines(ops []history.ChangeOp, tr func(string) string) string {
-	var lines []string
-	add := func(glyph, text string) { lines = append(lines, glyph+" "+text) }
-	for _, op := range ops {
-		path := op.Config + "." + op.Section
-		option := path + "." + op.Option
-		if op.Secret {
-			add("~", option+" ("+tr("changed, not kept")+")")
-			continue
+	shown := func(v string) string {
+		if v == "" {
+			return "''"
 		}
-		value := ""
-		if op.Value != nil {
-			value = *op.Value
+		return v
+	}
+	held := func() string {
+		if old, ok := oldValue(op.Old); ok {
+			return shown(old)
 		}
-		switch op.Op {
-		case "add-section":
-			add("+", path+"="+op.Option)
-		case "set":
-			if old, ok := oldValue(op.Old); ok {
-				add("-", option+"="+uciQuote(old))
+		return none
+	}
+	value := none
+	if op.Value != nil {
+		value = shown(*op.Value)
+	}
+	if op.Secret {
+		notKept := tr("not kept")
+		return []widget.TableRow{row(option, notKept, notKept, "Changed", "warning")}
+	}
+	switch op.Op {
+	case "add-section":
+		return []widget.TableRow{row(path, none, op.Option, "Added", "success")}
+	case "set":
+		if before := held(); before != none {
+			return []widget.TableRow{row(option, before, value, "Changed", "warning")}
+		}
+		return []widget.TableRow{row(option, none, value, "Added", "success")}
+	case "list-add":
+		return []widget.TableRow{row(option, none, value, "Added", "success")}
+	case "list-del":
+		return []widget.TableRow{row(option, value, none, "Removed", "danger")}
+	case "remove-option":
+		return []widget.TableRow{row(option, held(), none, "Removed", "danger")}
+	case "remove-section":
+		var section map[string]any
+		_ = json.Unmarshal(op.Old, &section)
+		typ, _ := section[".type"].(string)
+		if typ == "" {
+			typ = none
+		}
+		rows := []widget.TableRow{row(path, typ, none, "Removed", "danger")}
+		keys := make([]string, 0, len(section))
+		for k := range section {
+			if !strings.HasPrefix(k, ".") {
+				keys = append(keys, k)
 			}
-			add("+", option+"="+uciQuote(value))
-		case "list-add":
-			add("+", option+"+="+uciQuote(value))
-		case "list-del":
-			add("-", option+"-="+uciQuote(value))
-		case "remove-option":
-			if old, ok := oldValue(op.Old); ok {
-				add("-", option+"="+uciQuote(old))
-			} else {
-				add("-", option)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := fmt.Sprint(section[k])
+			if list, ok := section[k].([]any); ok {
+				words := make([]string, len(list))
+				for i, item := range list {
+					words[i] = fmt.Sprint(item)
+				}
+				v = strings.Join(words, " ")
 			}
-		case "remove-section":
-			lines = append(lines, removedSection(path, op.Old)...)
-		default:
-			add("~", path)
+			rows = append(rows, row(path+"."+k, shown(v), none, "Removed", "danger"))
 		}
+		return rows
 	}
-	return strings.Join(lines, "\n")
-}
-
-// removedSection is a removed section's lines: its type, then each option it
-// held, in order of name.
-func removedSection(path string, old json.RawMessage) []string {
-	var held map[string]any
-	if json.Unmarshal(old, &held) != nil || held == nil {
-		return []string{"- " + path}
-	}
-	typ, _ := held[".type"].(string)
-	lines := []string{"- " + path + "=" + typ}
-	keys := make([]string, 0, len(held))
-	for k := range held {
-		if !strings.HasPrefix(k, ".") {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		switch v := held[k].(type) {
-		case string:
-			lines = append(lines, "- "+path+"."+k+"="+uciQuote(v))
-		case []any:
-			quoted := make([]string, len(v))
-			for i, item := range v {
-				quoted[i] = uciQuote(fmt.Sprint(item))
-			}
-			lines = append(lines, "- "+path+"."+k+"="+strings.Join(quoted, " "))
-		}
-	}
-	return lines
-}
-
-// uciQuote is a value as `uci show` quotes it.
-func uciQuote(v string) string {
-	return "'" + strings.ReplaceAll(v, "'", `'\''`) + "'"
+	return []widget.TableRow{row(path, none, none, "Changed", "warning")}
 }
