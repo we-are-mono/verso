@@ -55,7 +55,11 @@ before keeps its current month as the archive of the month's first day.
 
 Months are calendar months, summed by the shell from the days. Days before today
 never change, so the shell keeps each day's per-device totals once read and asks
-`nlbwmon` only for today. Totals are keyed by MAC, the identity the roster uses;
+`nlbwmon` only for today. A day is `nlbwmon`'s: it turns at UTC midnight and
+carries the router's date at that moment, so outside UTC it is not always the
+router's date. `verso-rpcd` takes today from the header of the live database
+`nlbwmon` hands out, never from the clock, so the live counts and their own file
+are never read as two days. Totals are keyed by MAC, the identity the roster uses;
 `nlbwmon` records it per stream from the neighbour table.
 
 Usage is on while the `nlbwmon` service is enabled, and the Services page is

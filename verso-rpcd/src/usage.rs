@@ -15,12 +15,13 @@ use crate::netlink::{self, Message, NETLINK_NETFILTER};
 use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// ctnetlink's dump request (NFNL_SUBSYS_CTNETLINK << 8 | IPCTNL_MSG_CT_GET)
 /// and each connection in its answer (… | IPCTNL_MSG_CT_NEW).
@@ -40,6 +41,11 @@ const CTA_COUNTERS_BYTES: u16 = 2;
 const CTA_COUNTERS32_BYTES: u16 = 4;
 
 const NLBW_SOCKET: &str = "/var/run/nlbwmon.sock";
+/// NLBW_MAGIC opens every database nlbwmon writes or hands out: "nlbm".
+const NLBW_MAGIC: u32 = 0x6e6c_626d;
+/// How long nlbwmon has to hand out its live database.
+const NLBW_TIMEOUT: Duration = Duration::from_secs(5);
+const DAY_SECONDS: u64 = 86_400;
 /// The days the shell may ask for at once: this month and the last, whole.
 const WINDOW_DAYS: usize = 62;
 /// At most this many addresses in one live reading: a roster's worth, bounded.
@@ -278,13 +284,53 @@ fn days_to_read(
 /// archived_day is the date a file in nlbwmon's directory holds, when it is a
 /// day's file: `YYYYMMDD.db`, or `.db.gz`.
 fn archived_day(name: &str) -> Option<String> {
-    let stamp = name
-        .strip_suffix(".db.gz")
-        .or_else(|| name.strip_suffix(".db"))?;
+    stamp_date(
+        name.strip_suffix(".db.gz")
+            .or_else(|| name.strip_suffix(".db"))?,
+    )
+}
+
+/// stamp_date is a `YYYYMMDD` stamp, as nlbwmon names a period, as a date.
+fn stamp_date(stamp: &str) -> Option<String> {
     if stamp.len() != 8 || !stamp.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
     Some(format!("{}-{}-{}", &stamp[..4], &stamp[4..6], &stamp[6..]))
+}
+
+/// period_day is the day a database nlbwmon hands out holds, from its header
+/// (struct database): the magic, the entries, then the period's `YYYYMMDD`,
+/// each a big-endian u32.
+fn period_day(header: &[u8; 12]) -> Option<String> {
+    let word = |at: usize| {
+        u32::from_be_bytes([header[at], header[at + 1], header[at + 2], header[at + 3]])
+    };
+    if word(0) != NLBW_MAGIC {
+        return None;
+    }
+    stamp_date(&format!("{:08}", word(8)))
+}
+
+/// counting_day is the day nlbwmon is counting now, as it names it. Its day
+/// turns at UTC midnight and carries the router's date at that moment, so it
+/// is not always the router's date: east of UTC it lags the date until the
+/// turn, west of UTC most of the day. Taken from the router's date, the live
+/// counts would be today and their own file an earlier day, read twice. Asked
+/// of nlbwmon rather than worked out, it also holds across the turn, which
+/// nlbwmon takes at its next refresh. The dump is read to its end, so nlbwmon
+/// finishes writing it rather than failing on a closed socket.
+fn counting_day() -> Result<String, String> {
+    let fail = |e: io::Error| format!("nlbwmon: {e}");
+    let mut socket = UnixStream::connect(NLBW_SOCKET).map_err(fail)?;
+    socket
+        .set_read_timeout(Some(NLBW_TIMEOUT))
+        .and_then(|()| socket.set_write_timeout(Some(NLBW_TIMEOUT)))
+        .map_err(fail)?;
+    socket.write_all(b"dump 0").map_err(fail)?;
+    let mut header = [0u8; 12];
+    socket.read_exact(&mut header).map_err(fail)?;
+    io::copy(&mut socket, &mut io::sink()).map_err(fail)?;
+    period_day(&header).ok_or_else(|| "nlbwmon named no day it is counting".into())
 }
 
 /// nlbw_option is one of nlbwmon's options as uci holds it.
@@ -297,12 +343,24 @@ fn nlbw_option(option: &str) -> String {
         .unwrap_or_default()
 }
 
-/// router_date is today as the router dates it, in a format of date's own; the
-/// helper runs under procd as nlbwmon does, so both read the same clock and zone.
-fn router_date(format: &str) -> Option<String> {
-    let out = Command::new("date").arg(format).output().ok()?;
-    let date = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    (!date.is_empty()).then_some(date)
+/// period_start is when the period nlbwmon counts at `now` began: the last UTC
+/// midnight, as its daily interval floors it (timing.c,
+/// interval_timestamp_fixed).
+fn period_start(now: u64) -> u64 {
+    now - now % DAY_SECONDS
+}
+
+/// starting_stamp is the period nlbwmon loads when it starts: the one that
+/// began at the last UTC midnight, named by the router's date then. The helper
+/// runs under procd as nlbwmon does, so date reads the same clock and zone.
+fn starting_stamp() -> Option<String> {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    let out = Command::new("date")
+        .args(["-d", &format!("@{}", period_start(now)), "+%Y%m%d"])
+        .output()
+        .ok()?;
+    let stamp = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    stamp_date(&stamp).map(|_| stamp)
 }
 
 fn nlbw(args: &[&str]) -> Result<String, String> {
@@ -334,7 +392,7 @@ pub fn days(known: &str) -> Result<Value, String> {
     if !enabled() {
         return Ok(json!({"enabled": false}));
     }
-    let today = router_date("+%Y-%m-%d").ok_or("the router's date could not be read")?;
+    let today = counting_day()?;
     let archived: Vec<String> = fs::read_dir(nlbw_option("database_directory"))
         .map(|entries| {
             entries
@@ -377,13 +435,13 @@ fn torn(enabled: bool, answering: bool, readable: Option<bool>) -> bool {
     enabled && !answering && readable == Some(false)
 }
 
-/// current_day is nlbwmon's file for today, and whether it reads: None when
+/// current_day is the file nlbwmon starts on, and whether it reads: None when
 /// there is none. A compressed day must decompress to something.
 fn current_day() -> Option<(String, bool)> {
     let dir = nlbw_option("database_directory");
     let compressed = nlbw_option("database_compress") != "0";
-    let stamp = router_date("+%Y%m%d")?;
-    if dir.is_empty() || stamp.len() != 8 {
+    let stamp = starting_stamp()?;
+    if dir.is_empty() {
         return None;
     }
     let path = format!("{dir}/{stamp}.db{}", if compressed { ".gz" } else { "" });
@@ -625,8 +683,8 @@ mod tests {
         assert!(parse_day("not json").is_err());
     }
 
-    // Today is the router's date, always read, whether or not nlbwmon has
-    // written its file yet; earlier days are the files on disk inside the
+    // Today is nlbwmon's, always read, whether or not nlbwmon has written its
+    // file yet; earlier days are the files on disk inside the
     // window the caller does not hold, newest first, a day without a file
     // hiding none before it.
     #[test]
@@ -669,6 +727,35 @@ mod tests {
         ] {
             assert_eq!(archived_day(not), None, "{not}");
         }
+    }
+
+    // Today is the period nlbwmon's live database says it holds: its header
+    // opens with the magic, then the entries, then the period's YYYYMMDD, each
+    // big-endian. Anything else names no day.
+    #[test]
+    fn today_is_the_day_nlbwmon_says_it_is_counting() {
+        let header = |magic: u32, stamp: u32| {
+            let mut out = [0u8; 12];
+            out[..4].copy_from_slice(&magic.to_be_bytes());
+            out[4..8].copy_from_slice(&7u32.to_be_bytes());
+            out[8..].copy_from_slice(&stamp.to_be_bytes());
+            out
+        };
+        assert_eq!(
+            period_day(&header(NLBW_MAGIC, 20261011)),
+            Some("2026-10-11".to_string())
+        );
+        assert_eq!(period_day(&header(0x6e6c_6200, 20261011)), None);
+        assert_eq!(period_day(&header(NLBW_MAGIC, 202610110)), None);
+    }
+
+    // nlbwmon starts on the period that began at the last UTC midnight, named
+    // by the router's date then: at 01:57 in India on the 12th it is still the
+    // 11th's.
+    #[test]
+    fn nlbwmon_starts_on_the_period_that_began_at_utc_midnight() {
+        assert_eq!(period_start(1_791_750_476), 1_791_676_800);
+        assert_eq!(period_start(1_791_763_200), 1_791_763_200);
     }
 
     // Today is the counts nlbwmon holds now, so it is asked for undated; an
