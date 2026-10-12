@@ -225,7 +225,7 @@ func normalState(state string) string {
 func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 	t := &Table{Columns: []TableColumn{
 		{Label: "Port", Kind: "mono"}, {Label: "Network", Kind: "entity"},
-		{Label: "Down", Kind: "rate"}, {Label: "Up", Kind: "rate"}, {Label: "Status", Kind: "status"},
+		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
 	}, EmptyText: "No physical ports were found."}
 	for _, n := range o.Interfaces {
 		if !n.Physical {
@@ -298,7 +298,7 @@ func (o *Overview) tunnelsHead(tr func(string) string) cardHead {
 func (o *Overview) tunnelsBody(r *Renderer, csrf string) (template.HTML, error) {
 	t := &Table{Columns: []TableColumn{
 		{Label: "Tunnel", Kind: "mono"}, {Label: "Kind", Kind: "keyword"},
-		{Label: "Down", Kind: "rate"}, {Label: "Up", Kind: "rate"}, {Label: "Status", Kind: "status"},
+		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
 	}, EmptyText: "No tunnel is up."}
 	for _, n := range o.Interfaces {
 		if n.tunnel() {
@@ -330,14 +330,15 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 // ── Resources ──
 
 // resourcesHead names the reading furthest out of band; in band it is silent.
+// The gauges' labels arrive localized (they are the meters' own).
 func (o *Overview) resourcesHead(tr func(string) string) cardHead {
 	h := cardHead{Tone: "neutral"}
 	parts := make([]string, 0, len(o.SysMetrics))
 	rank := map[string]int{"warning": 1, "danger": 2}
 	for _, m := range o.SysMetrics {
-		parts = append(parts, strings.TrimSpace(tr(m.Label)+" "+m.Value+" "+m.Unit))
+		parts = append(parts, strings.TrimSpace(m.Label+" "+m.Value+" "+m.Unit))
 		if rank[m.Band] > rank[h.Tone] {
-			h.Tone, h.Status = m.Band, fmt.Sprintf(tr("%s is high"), tr(m.Label))
+			h.Tone, h.Status = m.Band, fmt.Sprintf(tr("%s is high"), m.Label)
 		}
 	}
 	h.Summary = joinSummary(parts...)
