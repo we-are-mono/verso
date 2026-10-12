@@ -44,7 +44,7 @@ Bodies compose existing widgets, never hand-built markup:
 | Traffic | `InternetTraffic` |
 | Resources | the four `Meter`s |
 | Hardware, Firmware | `Properties` (`overview-system`) |
-| Ports, Tunnels | the `Table` widget: an `entity` network chip (Ports) or the tunnel's kind as a `keyword` (Tunnels), `Down` and `Up` as `rate` cells, status last |
+| Ports, Tunnels | the `Table` widget: an `entity` network chip (Ports) or the tunnel's kind as a `keyword` (Tunnels), `Receive` and `Transmit` as `rate` cells, status last |
 | Firewall | `Properties` |
 
 The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state` cells, the hooks the interface stream already writes, so the cards' rates and states stay live with no new client code and no new cell kind. A spare port's row carries no key: "Not in use" is the Overview's own reading, which the stream's generic state words would overwrite.
@@ -117,7 +117,7 @@ ADR-022, "Overview cards", records the card model, header-as-status, Arrange as 
 
 - **[Layout doesn't follow the operator to another browser, or survives in a private window only until it closes]** → The default layout is complete and sensible; this is the cost of the interim store, and decision 3 keeps the move to a router-side store small.
 - **[A hidden card's problem is out of sight]** → The verdict still counts it, and the Arrange shelf shows its packet. A hidden card's problem can't make the verdict read "online".
-- **[Tables in half-width cards overflow on narrow screens]** → Each table scrolls inside its card. Below a card width of about 26rem the `Down` and `Up` columns drop.
+- **[Tables in half-width cards overflow on narrow screens]** → Each table scrolls inside its card. Below a card width of about 26rem the `Receive` and `Transmit` columns drop.
 - **[Hide or restore mid-session leaves the stream sending stale frames until the swap]** → The swap follows immediately and reconnects the stream; frames for a card that isn't present find no hooks and are ignored.
 
 ## Migration Plan

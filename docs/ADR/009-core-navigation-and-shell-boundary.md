@@ -79,7 +79,8 @@ call: **on a gateway the firewall is not optional, so it is core.**
      render a coherent first screen on a freshly-flashed device *before any plugin
      is up*, and this page only *reads* state — it has nothing to crash, nothing to
      privilege-gate, and no third-party author, so it gains nothing from the plugin
-     mechanism and loses the always-present guarantee.
+     mechanism and loses the always-present guarantee. Its cards and their
+     layout are ADR-022's.
    - **The auth/credential surface** — login, logout, and the operator's own
      password/account change. The shell is the authority on its own authentication
      (ADR-007): it holds the session, and plugins hold no credentials. The

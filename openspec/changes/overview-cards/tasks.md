@@ -12,7 +12,7 @@ Every task is test first: write the named test, see it fail, then write the code
 - [x] 2.1 Extend `internal/widget/overview_test.go`. The existing tile tests become header tests for the Internet, Firewall, Ports and Tunnels builders, keeping every tone, status and plural case. Add a case for the Tunnels "None observed" body. Then add `overviewCard`, the builder registry, and those four builders, reusing the tile logic. Verify: `go test ./internal/widget -run Overview`.
 - [x] 2.2 Test then build the Traffic, Resources, Hardware and Firmware builders. Cover: a reading card shows a status only in a warning or danger band; every card's closed summary; Firmware carrying uptime. Verify: `go test ./internal/widget -run Overview`.
 - [x] 2.3 Test then build the Internet body: the IPv4/IPv6 `Properties` with copy controls, and the empty slot when a family isn't configured. Verify: a render test asserts the slot's text and its hollow packet.
-- [x] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Down` and `Up` as `rate` cells keyed for the interface stream, status last, and a spare port as "Not in use". No new cell kind was needed. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
+- [x] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Receive` and `Transmit` as `rate` cells keyed for the interface stream, status last, and a spare port as "Not in use". No new cell kind was needed. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
 
 ## 3. The page renders the layout
 
@@ -45,7 +45,7 @@ Every task is test first: write the named test, see it fail, then write the code
 ## 6. Words, records and docs
 
 - [x] 6.1 Add every new string to the source catalog and `i18n/sl`, with Slovenian dual and paucal forms for counts through `overviewCount`: card titles; Arrange; Done; Hidden; No hidden cards; Reset layout; "Open/Close/Move/Hide <card>"; the move announcement; and the summaries. Verify: the i18n audit stays at zero and the Slovenian Overview survives its longer strings in two columns.
-- [ ] 6.2 Write `docs/ADR/022-overview-cards.md` (decisions 1–7 of the design, with the cookie named the interim home of the layout), and point ADR-009's Overview paragraph to it. Verify: ADR-009, ADR-019 and ADR-022 agree on who owns the Overview and where the graph lives.
+- [x] 6.2 Write `docs/ADR/022-overview-cards.md` (decisions 1–7 of the design, with the cookie named the interim home of the layout), and point ADR-009's Overview paragraph to it. Verify: ADR-009, ADR-019 and ADR-022 agree on who owns the Overview and where the graph lives.
 - [ ] 6.3 Update `docs/BACKLOG.md`. Add "Overview layout on the router, per user" (the move off the cookie) and "Plugin-contributed Overview cards"; reword any Overview entry the cards make stale. Verify: no BACKLOG entry describes the tile strip.
 
 ## 7. Integration
