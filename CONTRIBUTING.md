@@ -1,6 +1,6 @@
 # Contributing to Verso
 
-Guidance for everyone working in this repo. Read `README.md` and the ADRs in `docs/ADR/`
+Guidance for everyone working in this repo. Read `docs/architecture.md` and the ADRs in `docs/ADR/`
 first: they hold the decisions and rationale. This file is the short "how we work."
 
 ## Principles (non-negotiable)
