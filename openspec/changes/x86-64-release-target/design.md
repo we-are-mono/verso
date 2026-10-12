@@ -111,7 +111,8 @@ QEMU with **user-mode networking only**. There is no bridge or tap onto the
 dev host's LAN, and the VM has no `/dev/watchdog`. The VM reaches the dev
 box's local feed at `10.0.2.2:8079`. The buildroot's `public-key.pem` goes
 into the VM's `/etc/apk/keys/`, then `apk add verso`, and the UI is reached
-through a QEMU host-forward of port 8080.
+over SSH, forwarded by QEMU, with a tunnel to 8443: the stock image runs LuCI,
+so Verso serves beside it there (ADR-017 §2).
 
 *Alternative:* a fresh docker container from the testbed image. Rejected as
 the acceptance check. A container shares the host kernel, so the

@@ -16,7 +16,7 @@
 ## 3. Release loop (git-ignored local.mk)
 
 - [x] 3.1 Split `asu-publish` into `asu-publish-arch` (today's body, plus `check-feed-arch.sh` over the full feed before `index.json`) and an `asu-publish` that loops `$(ARCHES)` with one sub-make each. Verify that after `make asu-publish`, `/srv/verso/aarch64_generic/` and `/srv/verso/x86_64/` hold the same package names, each with a `packages.adb` and an `index.json`. For `make version` = V, `verso` must be version V in both.
-- [ ] 3.2 Loop `asu-push` over `$(ARCHES)` (stage, re-sign with the Verso key, rsync per arch) and upload `verso.pem` once. Verify that the public `x86_64/packages.adb` fetches and `apk adbdump --keys-dir <dir-with-verso.pem>` reports its signature OK.
+- [x] 3.2 Loop `asu-push` over `$(ARCHES)` (stage, re-sign with the Verso key, rsync per arch) and upload `verso.pem` once. Verify that the public `x86_64/packages.adb` fetches and `apk adbdump --keys-dir <dir-with-verso.pem>` reports its signature OK.
 
 ## 4. Documentation
 
@@ -27,7 +27,7 @@
 
 ## 5. Integration check on x86_64 OpenWrt
 
-- [ ] 5.1 Boot the official apk-era OpenWrt x86-64 image in QEMU with user-mode networking only (no bridge or tap onto the LAN, no watchdog device) and a host-forward for port 8080. Install the buildroot `public-key.pem`, point apk at `http://10.0.2.2:8079/x86_64/packages.adb`, and run `apk add verso verso-i18n-base-sl`. Verify a sign-in at the forwarded port and that every top-level page renders. File any page that breaks as a BACKLOG item, not in this change.
+- [x] 5.1 Boot the official apk-era OpenWrt x86-64 image in QEMU with user-mode networking only (no bridge or tap onto the LAN, no watchdog device) and a host-forward for SSH, tunnelling to 8443, where Verso serves beside the image's LuCI. Install the buildroot `public-key.pem`, point apk at `http://10.0.2.2:8079/x86_64/packages.adb`, and run `apk add verso verso-i18n-base-sl`. Verify a sign-in at the forwarded port and that every top-level page renders. File any page that breaks as a BACKLOG item, not in this change.
 - [ ] 5.2 Confirm the arm64 path still holds: on the bench DUT, run `apk upgrade verso -U` from the `aarch64_generic` feed and check that it upgrades to V and signs in.
 
 ## Workflow follow-up

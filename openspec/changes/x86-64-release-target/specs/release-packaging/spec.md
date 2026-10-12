@@ -19,7 +19,7 @@ named after that architecture.
 
 #### Scenario: An x86_64 router installs Verso
 - **WHEN** an apk-era OpenWrt x86_64 router that trusts the Verso feed key and lists the `x86_64` feed runs `apk add verso`
-- **THEN** `verso` and its dependencies install, and the web UI accepts a sign-in on port 8080
+- **THEN** `verso` and its dependencies install, and the web UI accepts a sign-in over HTTPS, on 443, or on 8443 beside LuCI (ADR-017)
 
 ### Requirement: Complete feed per architecture
 Each architecture's feed SHALL hold the `verso` package, every published
