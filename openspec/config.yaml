@@ -3,7 +3,8 @@ schema: spec-driven
 context: |
   Verso is a web UI that replaces LuCI on OpenWrt routers: a Go shell plus plugins
   (new plugins are written in Rust against the SDK crate). The primary target is
-  the Mono Gateway (arm64, NXP LS1046A); build and test for arm64 only.
+  the Mono Gateway (arm64, NXP LS1046A); every release ships for arm64
+  (aarch64_generic) and amd64 (x86_64).
   The project is pre-alpha: no backwards compatibility, no migration shims, no
   deprecation paths. Change contracts and documents in place to state what is.
   Architectural decisions live in docs/ADR/NNN-title.md (three-digit numbers);
