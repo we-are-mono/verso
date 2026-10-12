@@ -341,3 +341,19 @@ func TestARelationIsANoteBesideTheChange(t *testing.T) {
 		t.Errorf("a change with no relation or note has notes %q", table.Rows[1].Cells[2].Text)
 	}
 }
+
+// TestANoteReadsAsItWasWritten: the drawer holds the note itself, with no
+// label, and nothing in it is read as formatting.
+func TestANoteReadsAsItWasWritten(t *testing.T) {
+	s, store := changesServer(t)
+	c := turnedOff(time.Now())
+	c.Note = "*not bold* #412 <b>x</b>"
+	id := record(t, store, c)
+	body := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, id)).Body.String()
+	if !strings.Contains(body, "*not bold* #412 &lt;b&gt;x&lt;/b&gt;") {
+		t.Errorf("the note should read literally:\n%s", body)
+	}
+	if strings.Contains(body, ">Note<") {
+		t.Errorf("the note should stand without a label:\n%s", body)
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
@@ -426,7 +427,7 @@ func changeDrawer(c history.Change, all []history.Change, since bool, now time.T
 func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, tr func(string) string) widget.Widgets {
 	var children widget.Widgets
 	if c.Note != "" {
-		children = append(children, &widget.Properties{Style: "system", Items: []widget.Property{{Label: "Note", Value: c.Note, Verbatim: true}}})
+		children = append(children, &widget.Text{Markdown: markdownLiteral(c.Note), Translated: true})
 	}
 	var notes []string
 	var act *widget.Form
@@ -639,4 +640,18 @@ func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 		return rows
 	}
 	return []widget.TableRow{row(path, none, none, "Changed", "warning")}
+}
+
+// markdownLiteral is words a person typed, to stand in Markdown as they
+// were typed: every ASCII punctuation mark escaped, so none of it is read as
+// formatting.
+func markdownLiteral(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r < 128 && (unicode.IsPunct(r) || unicode.IsSymbol(r)) {
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
