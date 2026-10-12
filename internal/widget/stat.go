@@ -21,7 +21,7 @@ type Stat struct {
 	// so the localization walk leaves it exactly as authored. A status tile
 	// whose value is prose ("Online") stays undeclared and translates.
 	Verbatim bool   `json:"verbatim,omitempty"`
-	Unit     string `json:"unit"` // optional small suffix on the value, e.g. "Mbps"
+	Unit     string `json:"unit"` // optional small suffix on the value, e.g. "Mb/s"
 	Sub      string `json:"sub"`  // optional supporting line under the value
 	// SubVerbatim declares the sub line data or an already-composed string (a
 	// sensor's name, prose localized at composition) — the walk leaves it

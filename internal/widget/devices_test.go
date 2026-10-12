@@ -125,17 +125,17 @@ func TestRenderDevicesRowsCarryNoPanel(t *testing.T) {
 // panel carries it.
 func TestRenderDevicesUsage(t *testing.T) {
 	devices := roster()
-	devices[0].Usage = &DeviceUsage{Busy: true, Down: "38.2", Up: "1.1", Load: "heavy", Month: "212 GiB"}
+	devices[0].Usage = &DeviceUsage{Busy: true, Down: "38 Mb/s", Up: "1.1 Mb/s", Load: "heavy", Month: "212 GiB"}
 	devices[1].Usage = &DeviceUsage{Month: "41 GiB"}
 	devices[2].Usage = &DeviceUsage{}
 	got := render(t, newRenderer(t), DevicesTable(devices, testActs, true))
 	for _, want := range []string{
-		">Now · Mbit/s<", ">This month<",
+		">Now<", ">This month<",
 		`data-verso-cell="usage-now"`, `data-verso-cell="usage-month"`,
-		">38.2<", ">1.1<", ">212 GiB<", ">41 GiB<",
+		">38 Mb/s<", ">1.1 Mb/s<", ">212 GiB<", ">41 GiB<",
 		`data-verso-ink="danger"`,
 		// The legend says what each ink stands for, in the ink itself.
-		">light<", ">under 10 Mbit/s<", ">medium<", ">10 to 100 Mbit/s<", ">heavy<", ">100 Mbit/s and over<",
+		">light<", ">under 10 Mb/s<", ">medium<", ">10 to 100 Mb/s<", ">heavy<", ">100 Mb/s and over<",
 		"text-green-deep", "text-marigold-deep", "text-crimson-deep",
 	} {
 		if !strings.Contains(got, want) {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/yuin/goldmark"
 )
 
@@ -164,6 +165,10 @@ func (r *Renderer) tr(s string) string {
 	}
 	return r.t(s)
 }
+
+// numbers writes the figures the renderer composes (a rate, a chart's labels)
+// in the reader's language.
+func (r *Renderer) numbers() units.Numbers { return units.For(r.t) }
 
 // translate runs the localization walk over a widget subtree the renderer composes
 // itself — the overview's child tables/chart/meters, which it renders directly and

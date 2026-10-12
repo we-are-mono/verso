@@ -453,7 +453,7 @@
              reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}font-medium{{else if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
           <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
-          {{range .Figures}}<span class="relative mr-4 inline-flex w-16 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
+          {{range .Figures}}<span class="relative mr-4 inline-flex w-22 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
           </span>{{end}}</span>
         </td>

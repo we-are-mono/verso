@@ -4,13 +4,13 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/telemetry"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -76,7 +76,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 			return true
 		}
 		liveOverview.DevicesOnline, liveOverview.DevicesKnown = s.onlineDevices()
-		readings := telemetryInterfaceReadings(snapshot)
+		readings := telemetryInterfaceReadings(snapshot, units.For(catalog))
 		for i := range readings {
 			readings[i].State = tr(readings[i].State)
 		}
@@ -101,7 +101,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 			return true
 		}
 		write := func(down, up float64) bool {
-			liveOverview.DownVal, liveOverview.UpVal = fmt.Sprintf("%.1f", down), fmt.Sprintf("%.1f", up)
+			liveOverview.DownNow, liveOverview.UpNow = down, up
 			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime}) == nil
 		}
 		if !found || primary.Device == "" {
@@ -162,7 +162,7 @@ func liveInterfaces(topology []widget.OverviewInterface, snapshot telemetry.Snap
 		n.State = normalOperstate(iface.Operstate)
 		if len(iface.History) != 0 {
 			point := iface.History[len(iface.History)-1]
-			n.RxRate, n.TxRate = formatBitRate(point.RxBPS), formatBitRate(point.TxBPS)
+			n.RxBPS, n.TxBPS = point.RxBPS, point.TxBPS
 		}
 		out = append(out, n)
 	}

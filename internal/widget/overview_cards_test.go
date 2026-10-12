@@ -104,7 +104,7 @@ func TestPortsAndTunnelsCardHeads(t *testing.T) {
 
 func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 	o := &Overview{
-		DownVal: "84.2", UpVal: "12.6", Firmware: "OpenWrt 25.12.4", Uptime: "3 d 4 h",
+		DownNow: 84.2, UpNow: 1260, Firmware: "OpenWrt 25.12.4", Uptime: "3 d 4 h",
 		Temperature: "52 °C · normal", TempDot: "success", Fan: "2400 rpm", Power: "7.8 W",
 		SysMetrics: []OverviewMeter{
 			{Label: "Load", Value: "0.42", Band: "success"},
@@ -113,7 +113,7 @@ func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 		},
 	}
 	for id, summary := range map[string]string{
-		"traffic":   "84.2 Mbit/s down · 12.6 Mbit/s up",
+		"traffic":   "84 Mb/s down · 1.3 Gb/s up",
 		"resources": "Load 0.42 · CPU 12 % · Memory 16 %",
 		"hardware":  "52 °C · 2400 rpm · 7.8 W",
 		"firmware":  "OpenWrt 25.12.4 · up 3 d 4 h",
@@ -170,14 +170,14 @@ func row(t *testing.T, body, key string) string {
 
 func TestPortsAndTunnelsCardBodies(t *testing.T) {
 	o := &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{
-		{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}, RxRate: "18.4 Mbps", TxRate: "2.1 Mbps"},
+		{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}, RxBPS: 18_400_000, TxBPS: 2_100_000},
 		{Name: "eth2", Physical: true, State: "lowerlayerdown", Networks: []string{"lan"}},
 		{Name: "eth4", Physical: true, State: "down"},
 		{Name: "wg0", Kind: "tunnel", State: "down", Proto: "wireguard"},
 		{Name: "br-lan", Kind: "bridge", State: "up"},
 	}}
 	ports := cardBody(t, o, "ports")
-	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18.4 Mbps") || !strings.Contains(up, "bg-green") || !strings.Contains(up, ">Up<") {
+	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18 Mb/s") || !strings.Contains(up, "2.1 Mb/s") || !strings.Contains(up, "bg-green") || !strings.Contains(up, ">Up<") {
 		t.Errorf("an up port = %s", up)
 	}
 	if lost := row(t, ports, "interface:eth2"); !strings.Contains(lost, ">Down<") || !strings.Contains(lost, "lan") {

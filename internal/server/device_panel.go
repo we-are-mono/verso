@@ -4,11 +4,11 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/usage"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -26,7 +26,8 @@ func (s *Server) deviceTabs(r *http.Request, d widget.Device) []entityTab {
 		// the stream feeds it from there; nothing here reads the router again.
 		owners := addressOwners([]widget.Device{d})
 		down, up := s.usageSampler.Series(owners, strings.ToLower(d.MAC))
-		body = append(body, deviceUsage(d, down, up, s.usageHistory.Periods())...)
+		_, t := s.localize(r)
+		body = append(body, deviceUsage(units.For(t), d, down, up, s.usageHistory.Periods())...)
 	}
 	return []entityTab{{
 		Slot: "details", Label: "Details",
@@ -67,7 +68,7 @@ func deviceFacts(d widget.Device) widget.Widget {
 // deviceUsage is what the device moves: its traffic graph, as the overview
 // draws the Internet's, fed by the roster's stream under the name of the
 // device, and its calendar periods. The series are bits per second.
-func deviceUsage(d widget.Device, downBPS, upBPS []float64, p usage.Periods) widget.Widgets {
+func deviceUsage(nums units.Numbers, d widget.Device, downBPS, upBPS []float64, p usage.Periods) widget.Widgets {
 	mac := strings.ToLower(d.MAC)
 	down, up := make([]float64, len(downBPS)), make([]float64, len(upBPS))
 	for i := range downBPS {
@@ -76,12 +77,12 @@ func deviceUsage(d widget.Device, downBPS, upBPS []float64, p usage.Periods) wid
 	traffic := &widget.Traffic{
 		Title: "Usage", Live: "usage:" + mac,
 		Label:   "Device traffic — download and upload, last minute",
-		DownNow: fmt.Sprintf("%.1f", down[len(down)-1]), UpNow: fmt.Sprintf("%.1f", up[len(up)-1]),
+		DownNow: down[len(down)-1], UpNow: up[len(up)-1],
 		Down: down, Up: up, Panel: true,
 	}
 	period := func(label string, totals map[string]usage.Totals) widget.TableRow {
 		t := totals[mac]
-		return widget.TableRow{Cells: []widget.TableCell{{Text: label}, {Text: usage.Bytes(t.Down)}, {Text: usage.Bytes(t.Up)}}}
+		return widget.TableRow{Cells: []widget.TableCell{{Text: label}, {Text: nums.Bytes(t.Down)}, {Text: nums.Bytes(t.Up)}}}
 	}
 	periods := &widget.Table{
 		Style: "flat",

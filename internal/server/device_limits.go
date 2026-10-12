@@ -122,8 +122,12 @@ func deviceLimitTip(details []plugin.EntitySummaryDetail, tr func(string) string
 			tip.Until, tip.Qualifier, tip.Clock = value, tr("Until"), tr("Router time")
 		case "download", "upload":
 			rate := widget.DeviceLimitRate{Label: tr(detail.Label), Value: tr(value), Icon: detail.Kind}
-			if number, ok := strings.CutSuffix(value, " Mbit/s"); ok {
-				rate.Value, rate.Unit = number, "Mbit/s"
+			// The device-limits plugin ships on its own, and its releases
+			// before the shell's rate spelling write "Mbit/s".
+			for _, suffix := range []string{" Mb/s", " Mbit/s"} {
+				if number, ok := strings.CutSuffix(value, suffix); ok {
+					rate.Value, rate.Unit = number, "Mb/s"
+				}
 			}
 			tip.Rates = append(tip.Rates, rate)
 		}

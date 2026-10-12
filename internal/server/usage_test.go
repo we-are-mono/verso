@@ -47,7 +47,7 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	s, clock := usageServer(t, &received)
 
 	body := get(t, s, "/devices").Body.String()
-	for _, want := range []string{">Now · Mbit/s<", ">This month<", ">3.5 GiB<", ">512 MiB<"} {
+	for _, want := range []string{">Now<", ">This month<", ">3.5 GiB<", ">512 MiB<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("usage roster missing %q", want)
 		}
@@ -55,15 +55,15 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	if strings.Contains(body, ">MAC address<") {
 		t.Error("with usage on, the MAC gives its column to usage")
 	}
-	if strings.Contains(body, "data-verso-figure-text>8<") {
+	if strings.Contains(body, "data-verso-figure-text>8 Mb/s<") {
 		t.Error("one reading is no rate")
 	}
 
 	*clock = clock.Add(2 * time.Second)
 	received += 2_000_000 // 16 Mbit over two seconds
 	body = get(t, s, "/devices").Body.String()
-	if !strings.Contains(body, "data-verso-figure-text>8</span>") {
-		t.Errorf("the second reading states the rate: 8 Mbit/s down\n%s", body[strings.Index(body, "usage-now"):][:600])
+	if !strings.Contains(body, "data-verso-figure-text>8 Mb/s</span>") {
+		t.Errorf("the second reading states the rate: 8 Mb/s down\n%s", body[strings.Index(body, "usage-now"):][:600])
 	}
 	// 8.8 Mbit/s both ways is an HD film or a call: light, inked green.
 	if !strings.Contains(body, `data-verso-ink="success"`) {
@@ -89,7 +89,7 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 		t.Error("usage is a section of Details, not a tab")
 	}
 	for _, want := range []string{
-		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, "Mbit/s down", "Mbit/s up", `<svg class="verso-chart`,
+		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, "Mb/s down", "Mb/s up", `<svg class="verso-chart`,
 		">Downloaded<", ">Uploaded<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
 		">2 GiB<", ">512 MiB<", // today down and up
@@ -134,8 +134,8 @@ func TestUsageSpeaksSlovenian(t *testing.T) {
 	}
 	s.SetBundle(bundle)
 	roster := getLang(t, s, "/devices", "sl")
-	for _, want := range []string{">Zdaj · Mbit/s<", ">Ta mesec<", ">prenos<", ">nalaganje<",
-		">majhna<", ">pod 10 Mbit/s<", ">srednja<", ">10 do 100 Mbit/s<", ">velika<", ">100 Mbit/s in več<"} {
+	for _, want := range []string{">Zdaj<", ">Ta mesec<", ">prenos<", ">nalaganje<", ">3,5 GiB<",
+		">majhna<", ">pod 10 Mb/s<", ">srednja<", ">10 do 100 Mb/s<", ">velika<", ">100 Mb/s in več<"} {
 		if !strings.Contains(roster, want) {
 			t.Errorf("Slovenian roster missing %q", want)
 		}

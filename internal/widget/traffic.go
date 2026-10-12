@@ -5,6 +5,7 @@ package widget
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 )
@@ -20,9 +21,10 @@ type Traffic struct {
 	Meta  string // what it measures, verbatim: the uplink's device, a device's MAC
 	Live  string // the stream that feeds it: "wan", "usage:<mac>"
 	Label string // the plot's accessible description
-	// DownNow and UpNow are the newest download and upload, already composed;
-	// Down and Up are the minute's series in Mbit/s, oldest first.
-	DownNow, UpNow string
+	// DownNow and UpNow are the newest download and upload, or a past
+	// window's averages; Down and Up are the series, oldest first. All in
+	// Mbit/s, written as every rate is (internal/units).
+	DownNow, UpNow float64
 	Down, Up       []float64
 	// Panel stands the graph in a panel beside other facts: a quarter lower,
 	// and two cells apart from the blocks above and below it rather than one.
@@ -65,13 +67,16 @@ func (*Traffic) children() []Widget { return nil }
 
 type trafficView struct {
 	Title, Meta, Live string
-	DownNow, UpNow    string
-	Seed              string
-	Chart             template.HTML
-	Panel, Card       bool
-	RangeURL, Range   string
-	Ranges            []TrafficRange
-	Latency           string
+	// DownNow and UpNow are the figures, and DownLabel and UpLabel their
+	// unit and direction after them ("Mb/s down").
+	DownNow, UpNow     string
+	DownLabel, UpLabel string
+	Seed               string
+	Chart              template.HTML
+	Panel, Card        bool
+	RangeURL, Range    string
+	Ranges             []TrafficRange
+	Latency            string
 }
 
 func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -86,7 +91,6 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		live = ""
 	}
 	chart := &Chart{
-		Unit:      "Mbit/s",
 		AxisStart: window.AxisStart,
 		AxisEnd:   "now",
 		Label:     t.Label,
@@ -111,9 +115,16 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
+	down, up := r.numbers().Rate(t.DownNow*1e6), r.numbers().Rate(t.UpNow*1e6)
+	downLabel, upLabel := "%s down", "%s up"
+	if live == "" {
+		downLabel, upLabel = "%s down on average", "%s up on average"
+	}
 	view := trafficView{
 		Title: r.tr(t.Title), Meta: t.Meta, Live: live,
-		DownNow: t.DownNow, UpNow: t.UpNow, Chart: chartHTML, Panel: t.Panel, Card: t.Card,
+		DownNow: down.Value, UpNow: up.Value,
+		DownLabel: fmt.Sprintf(r.tr(downLabel), down.Unit), UpLabel: fmt.Sprintf(r.tr(upLabel), up.Unit),
+		Chart: chartHTML, Panel: t.Panel, Card: t.Card,
 		RangeURL: t.RangeURL, Range: window.Value, Latency: t.Latency,
 	}
 	if t.RangeURL != "" {

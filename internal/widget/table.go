@@ -554,7 +554,7 @@ type TableChip struct {
 //
 // An ink entry explains an inked figures cell instead: no mark, the Label
 // written in the Variant's Deep step as the figures are, and Detail after it
-// in Meta, saying where that ink starts and stops ("under 5 Mbit/s").
+// in Meta, saying where that ink starts and stops ("under 5 Mb/s").
 type TableLegend struct {
 	Variant string `json:"variant,omitempty"`
 	Label   string `json:"label"`

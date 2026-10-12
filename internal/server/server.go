@@ -65,7 +65,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //go:embed assets/verso-packages.js assets/verso-buttons.js assets/verso-usage.js
 //go:embed assets/verso-system.js assets/verso-diagnostics.js
 //go:embed assets/verso-stream.js assets/verso-chart.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
-//go:embed assets/verso-overview.js
+//go:embed assets/verso-overview.js assets/verso-units.js
 //go:embed assets/verso-login.js
 //go:embed assets/fonts
 var scriptFS embed.FS
@@ -759,6 +759,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Moved to position %d of %d", "Copied",
 		// Where an Overview card stands once Arrange has moved it (ADR-022).
 		"%s: left column, position %d.", "%s: right column, position %d.",
+		// A live traffic graph's figures: the language's decimal separator,
+		// and the unit and direction after each figure (verso-units.js).
+		".", "%s down", "%s up",
 		"Couldn’t copy. Select the text and copy it manually.",
 		// A file uploading from its dialog: how far along, and what to do when
 		// the upload stops.
@@ -968,7 +971,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
 	ov.InterfacesKnown = telemetryOK
-	ov.WANDevice, ov.DownSeries, ov.UpSeries, ov.DownVal, ov.UpVal = s.wanMinute(r)
+	ov.WANDevice, ov.DownSeries, ov.UpSeries, ov.DownNow, ov.UpNow = s.wanMinute(r)
 	if s.historyStore != nil {
 		ov.TrafficRangeURL = overviewTrafficPath
 	}

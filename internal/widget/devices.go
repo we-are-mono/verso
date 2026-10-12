@@ -58,8 +58,8 @@ type Device struct {
 	LimitTip     *DeviceLimitTip
 }
 
-// DeviceUsage is a device's usage as the roster says it: its rate now in
-// Mbit/s, stated only while it is busy enough to read as in use, how hard that
+// DeviceUsage is a device's usage as the roster says it: its rate now, written
+// with its unit, stated only while it is busy enough to read as in use, how hard that
 // rate uses the line (Load: "light", "medium" or "heavy"), and its calendar
 // month so far.
 type DeviceUsage struct {
@@ -94,9 +94,9 @@ func UsageNowCell(u DeviceUsage) TableCell {
 // the rates that bound it: the reader learns the scale where the colours are.
 func usageLegend() []TableLegend {
 	return []TableLegend{
-		{Variant: "success", Ink: true, Label: "light", Detail: "under 10 Mbit/s"},
-		{Variant: "warning", Ink: true, Label: "medium", Detail: "10 to 100 Mbit/s"},
-		{Variant: "danger", Ink: true, Label: "heavy", Detail: "100 Mbit/s and over"},
+		{Variant: "success", Ink: true, Label: "light", Detail: "under 10 Mb/s"},
+		{Variant: "warning", Ink: true, Label: "medium", Detail: "10 to 100 Mb/s"},
+		{Variant: "danger", Ink: true, Label: "heavy", Detail: "100 Mb/s and over"},
 	}
 }
 
@@ -219,7 +219,8 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 }
 
 // devicesColumns is the roster's grid. Every column but the device's own is
-// fixed; with usage on, the MAC's measure goes to Now and This month.
+// fixed; with usage on, the MAC gives way to Now, wide enough for two rates
+// each with its unit, and This month.
 func devicesColumns(usage bool) []TableColumn {
 	cols := []TableColumn{
 		{Label: "Device", Kind: "name"},
@@ -228,7 +229,7 @@ func devicesColumns(usage bool) []TableColumn {
 	}
 	if usage {
 		cols = append(cols,
-			TableColumn{Label: "Now · Mbit/s", Kind: "figures", Width: MeasureAddress},
+			TableColumn{Label: "Now", Kind: "figures", Width: MeasureLong},
 			TableColumn{Label: "This month", Kind: "figures", Width: MeasureWord},
 			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
 		)

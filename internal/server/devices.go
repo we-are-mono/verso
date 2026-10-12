@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -37,13 +38,13 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	roster := s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r))
 	configured, limitsOffered, limitsAvailable := s.deviceLimits(r)
 	roster = mergeDeviceLimits(roster, configured)
-	used := s.readUsage(r.Context(), s.sessionSID(r), roster)
+	lang, t := s.localize(r)
+	used := s.readUsage(r.Context(), s.sessionSID(r), roster, units.For(t))
 	if used.on {
 		used.apply(roster)
 	}
 
 	var body strings.Builder
-	lang, t := s.localize(r)
 	act := widget.DevicesAct(roster, s.EntityListingAct("device"), func(mac string) string {
 		if mac == "" {
 			return widget.EntityPath("device", "new")

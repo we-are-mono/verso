@@ -171,17 +171,7 @@ func TestLoadIsWhatTheRateIsEnoughFor(t *testing.T) {
 	}
 }
 
-func TestFiguresReadAtTheirScale(t *testing.T) {
-	for bps, want := range map[float64]string{38_240_000: "38.2", 6_000_000: "6", 120_000: "0.1", 980_000_000: "980"} {
-		if got := Mbits(bps); got != want {
-			t.Errorf("Mbits(%v) = %q, want %q", bps, got, want)
-		}
-	}
-	for b, want := range map[uint64]string{0: "", 512: "1 MiB", 300 << 20: "300 MiB", 3 << 29: "1.5 GiB", 212 << 30: "212 GiB", 3 << 39: "1.5 TiB"} {
-		if got := Bytes(b); got != want {
-			t.Errorf("Bytes(%d) = %q, want %q", b, got, want)
-		}
-	}
+func TestBusyIsATenthOfAMegabit(t *testing.T) {
 	if !Busy(Rate{Down: 100_000}) || Busy(Rate{Down: 40_000, Up: 40_000}) {
 		t.Error("busy is a tenth of a megabit in either direction, together")
 	}

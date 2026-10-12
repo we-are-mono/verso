@@ -77,7 +77,7 @@ func TestInterfaceListUsesTelemetryAsItsRowSource(t *testing.T) {
 		byName[row.Name] = row
 	}
 	if row := byName["br-lan.10"]; len(row.Networks) != 1 || row.Networks[0] != "lan" ||
-		row.Zone != "lan" || row.Subnet != "192.168.10.0/24" || row.VLAN != "10" || row.RxTotal != "7.0 GiB" {
+		row.Zone != "lan" || row.Subnet != "192.168.10.0/24" || row.VLAN != "10" {
 		t.Errorf("br-lan.10 = %+v", row)
 	}
 	if row := byName["pppoe-wan"]; !row.WAN || len(row.Networks) != 1 || row.Networks[0] != "wan" || row.Proto != "pppoe" {
@@ -89,7 +89,7 @@ func TestInterfaceListUsesTelemetryAsItsRowSource(t *testing.T) {
 	if len(byName["eth4.3900"].Networks) != 0 || byName["eth4.3900"].VLAN != "3900" {
 		t.Errorf("transport metadata not moved cleanly: %+v", byName["eth4.3900"])
 	}
-	if byName["eth4"].RxRate != "13.9 Mbps" || byName["eth2"].TxRate != "14 Mbps" {
-		t.Errorf("rates: eth4=%q eth2=%q", byName["eth4"].RxRate, byName["eth2"].TxRate)
+	if byName["eth4"].RxBPS != 13_867_160 || byName["eth2"].TxBPS != 13_955_600 {
+		t.Errorf("rates: eth4=%d eth2=%d", byName["eth4"].RxBPS, byName["eth2"].TxBPS)
 	}
 }

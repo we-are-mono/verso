@@ -17,15 +17,15 @@ func TestRenderTraffic(t *testing.T) {
 	got := render(t, newRenderer(t), &Traffic{
 		Title: "Traffic", Meta: "42:e6:ad:ff:b7:af", Live: "usage:42:e6:ad:ff:b7:af",
 		Label:   "Device traffic — download and upload, last minute",
-		DownNow: "38.2", UpNow: "1.1",
+		DownNow: 38.2, UpNow: 1.1,
 		Down: []float64{0, 10, 38.2}, Up: []float64{0, 0.5, 1.1},
 	})
 	for _, want := range []string{
 		`aria-label="Traffic"`, ">Traffic</h2>", ">42:e6:ad:ff:b7:af<",
 		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`,
 		`data-verso-live-seed="{&#34;down&#34;:[0,10,38.2],&#34;up&#34;:[0,0.5,1.1]}"`,
-		"data-verso-live-down>38.2<", "data-verso-live-up>1.1<",
-		"Mbit/s down", "Mbit/s up",
+		"data-verso-live-down>38<", "data-verso-live-up>1.1<",
+		"data-verso-live-down-label>Mb/s down<", "data-verso-live-up-label>Mb/s up<",
 		`<svg class="verso-chart`, "verso-chart--emerald", "verso-chart--violet",
 		"60 s ago", ">now<",
 	} {
@@ -76,11 +76,11 @@ func TestTrafficOffersItsWindow(t *testing.T) {
 
 	day := render(t, newRenderer(t), &Traffic{
 		Title: "Internet traffic", Live: "wan", RangeURL: "/overview/traffic", Range: "day",
-		DownNow: "12.3", UpNow: "0.4", Down: []float64{0, 1}, Up: []float64{0, 1},
+		DownNow: 12.3, UpNow: 1234, Down: []float64{0, 1}, Up: []float64{0, 1},
 	})
 	for _, want := range []string{
 		`<option value="day" selected>Last 24 hours</option>`, "24 h ago",
-		">12.3<", "Mbit/s down on average", "Mbit/s up on average",
+		">12<", "Mb/s down on average", ">1.2<", "Gb/s up on average",
 	} {
 		if !strings.Contains(day, want) {
 			t.Errorf("a day's graph missing %q", want)

@@ -31,10 +31,10 @@ var trafficWindows = map[string]struct {
 }
 
 // wanMinute is the uplink's live minute for the Internet graph: its device,
-// the minute's series in Mbit/s and the newest of each, composed. The
-// process-wide sampler normally supplies an already-warm minute; the netifd
-// device counters stand in if sampling fails.
-func (s *Server) wanMinute(r *http.Request) (device string, down, up []float64, downNow, upNow string) {
+// the minute's series in Mbit/s and the newest of each. The process-wide
+// sampler normally supplies an already-warm minute; the netifd device counters
+// stand in if sampling fails.
+func (s *Server) wanMinute(r *http.Request) (device string, down, up []float64, downNow, upNow float64) {
 	wan, err := s.wanStatus(r)
 	primary, ok := wan.Primary()
 	if err == nil && ok {
@@ -45,14 +45,12 @@ func (s *Server) wanMinute(r *http.Request) (device string, down, up []float64, 
 			}
 		}
 	}
-	var d, u float64
 	if len(down) != 0 {
-		d, u = down[len(down)-1], up[len(up)-1]
-	} else {
-		down, up = s.wanHist.Series()
-		d, u = s.wanHist.Latest()
+		return device, down, up, down[len(down)-1], up[len(up)-1]
 	}
-	return device, down, up, fmt.Sprintf("%.1f", d), fmt.Sprintf("%.1f", u)
+	down, up = s.wanHist.Series()
+	downNow, upNow = s.wanHist.Latest()
+	return device, down, up, downNow, upNow
 }
 
 // handleOverviewTraffic answers the Internet graph for ?range=: the live
@@ -143,11 +141,11 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 	return traffic, nil
 }
 
-// mean is the average of what was recorded, composed as the graph's figures
-// are; a window with nothing recorded reads as zero.
-func mean(values []float64) string {
+// mean is the average of what was recorded; a window with nothing recorded
+// reads as zero.
+func mean(values []float64) float64 {
 	v, _ := average(values)
-	return fmt.Sprintf("%.1f", v)
+	return v
 }
 
 // average is the mean of what was recorded; ok is false when nothing was.

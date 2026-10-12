@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"sort"
@@ -200,9 +199,7 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 		}
 		if len(iface.History) != 0 {
 			point := iface.History[len(iface.History)-1]
-			row.RxRate, row.TxRate = formatBitRate(point.RxBPS), formatBitRate(point.TxBPS)
-			row.RxPackets, row.TxPackets = formatPacketRate(point.RxPPS), formatPacketRate(point.TxPPS)
-			row.RxTotal, row.TxTotal = formatCounterBytes(point.RxBytes), formatCounterBytes(point.TxBytes)
+			row.RxBPS, row.TxBPS = point.RxBPS, point.TxBPS
 		}
 		seenNetworks := map[string]bool{}
 		for _, meaning := range meanings[iface.Name] {
@@ -289,41 +286,6 @@ func interfaceKindRank(kind string) int {
 	default:
 		return 7
 	}
-}
-
-func formatBitRate(bits uint64) string {
-	switch {
-	case bits >= 1_000_000_000:
-		return trimOneDecimal(float64(bits)/1_000_000_000) + " Gbps"
-	case bits >= 1_000_000:
-		return trimOneDecimal(float64(bits)/1_000_000) + " Mbps"
-	case bits >= 1_000:
-		return trimOneDecimal(float64(bits)/1_000) + " Kbps"
-	default:
-		return strconv.FormatUint(bits, 10) + " bps"
-	}
-}
-
-func formatPacketRate(packets uint64) string {
-	return strconv.FormatUint(packets, 10) + " pkt/s"
-}
-
-func formatCounterBytes(bytes uint64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	value := float64(bytes)
-	index := 0
-	for value >= unit && index < len("KMGTPE") {
-		value /= unit
-		index++
-	}
-	return fmt.Sprintf("%.1f %ciB", value, "KMGTPE"[index-1])
-}
-
-func trimOneDecimal(value float64) string {
-	return strings.TrimSuffix(fmt.Sprintf("%.1f", value), ".0")
 }
 
 // asSection narrows a uci config value to a section map.

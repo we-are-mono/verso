@@ -29,7 +29,7 @@ type Meter struct {
 	// rather than prose — the localization walk leaves it exactly as authored.
 	Verbatim bool   `json:"verbatim,omitempty"`
 	Value    string `json:"value"`   // the big number in its native unit ("23", "1.2", "300", "18")
-	Unit     string `json:"unit"`    // "GB" | "Mbps" | "%" | …
+	Unit     string `json:"unit"`    // "GB" | "Mb/s" | "%" | …
 	Fill     int    `json:"fill"`    // track fill, 0–100 percent (the proportion; may differ from Value)
 	Detail   string `json:"detail"`  // the one fact worth acting on, e.g. "9 GB free"
 	Variant  string `json:"variant"` // "" auto-colour by Fill | "info" (accent, for a rate)

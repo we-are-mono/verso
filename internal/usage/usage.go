@@ -9,7 +9,6 @@ package usage
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -282,30 +281,5 @@ func LoadOf(r Rate) Load {
 		return Medium
 	default:
 		return Heavy
-	}
-}
-
-// Mbits is a rate in megabits per second at one decimal, the ".0" dropped.
-func Mbits(bps float64) string {
-	return strings.TrimSuffix(fmt.Sprintf("%.1f", bps/1_000_000), ".0")
-}
-
-// Bytes is a period's total at its scale, in the binary units the rest of the
-// shell uses: whole MiB under a GiB, a decimal under ten GiB, whole GiB under a
-// TiB. Nothing is the empty string; anything is at least 1 MiB.
-func Bytes(b uint64) string {
-	const mib, gib, tib = 1 << 20, 1 << 30, 1 << 40
-	trim := func(v float64) string { return strings.TrimSuffix(fmt.Sprintf("%.1f", v), ".0") }
-	switch {
-	case b == 0:
-		return ""
-	case b < gib:
-		return fmt.Sprintf("%d MiB", max(1, int(math.Ceil(float64(b)/mib))))
-	case b < 10*gib:
-		return trim(float64(b)/gib) + " GiB"
-	case b < tib:
-		return fmt.Sprintf("%d GiB", int(math.Round(float64(b)/gib)))
-	default:
-		return trim(float64(b)/tib) + " TiB"
 	}
 }

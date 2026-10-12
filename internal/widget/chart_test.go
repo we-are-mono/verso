@@ -14,7 +14,7 @@ import (
 // topmost, and the window is captioned at its two ends.
 func TestRenderChart(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{
-		Unit: "Mbit/s", AxisStart: "60 s ago", AxisEnd: "now", Label: "Traffic",
+		AxisStart: "60 s ago", AxisEnd: "now", Label: "Traffic",
 		Series: []ChartSeries{
 			{Values: []float64{0, 100}, Role: "emerald", Fill: true},
 			{Values: []float64{0, 50}, Role: "violet"},
@@ -24,7 +24,7 @@ func TestRenderChart(t *testing.T) {
 		`preserveAspectRatio="none"`, `aria-label="Traffic"`, `data-chart-padding="0"`,
 		"verso-chart--emerald", "verso-chart--violet",
 		"620.0 31.3", // 100 under a top of 115 lands at 240 - 100/115·240
-		">115 Mbit/s<", ">86<", ">57<", ">29<", `style="top:0.0%"`, `style="top:75.0%"`,
+		">115 Mb/s<", ">86<", ">57<", ">29<", `style="top:0.0%"`, `style="top:75.0%"`,
 		">60 s ago<", ">now<",
 	} {
 		if !strings.Contains(got, want) {

@@ -23,7 +23,7 @@ func fullOverview() *Overview {
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
 		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
-			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxRate: "18.4 Mbps", TxRate: "2.1 Mbps"},
+			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxBPS: 18_400_000, TxBPS: 2_100_000},
 			{Name: "eth4", Kind: "port", State: "down", Physical: true},
 			{Name: "wg-home", Kind: "tunnel", State: "up", Networks: []string{"home"}, Proto: "wireguard", Subnet: "10.200.0.1/24"},
 		},
@@ -47,9 +47,9 @@ func TestRenderOverviewCards(t *testing.T) {
 		// Internet
 		"Connected", "for 2 h 14 min · pppoe-wan", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
 		// Ports and Tunnels
-		"All ports linked", `data-verso-row="interface:eth0"`, "18.4 Mbps", "Not in use", "wg-home", "wireguard", `href="/plugins/wireguard/"`,
+		"All ports linked", `data-verso-row="interface:eth0"`, "18 Mb/s", "Not in use", "wg-home", "wireguard", `href="/plugins/wireguard/"`,
 		// Traffic, Resources, Hardware, Firmware
-		"Mbit/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "3630 rpm", "12.4 W",
+		"Mb/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "3630 rpm", "12.4 W",
 		"OpenWrt 25.12.4", "Linux 6.12.101", `data-verso-prop="uptime"`, "6 d 04:00",
 	} {
 		if !strings.Contains(got, want) {
@@ -126,7 +126,7 @@ func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 
 func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	got := render(t, newRenderer(t), &Overview{DownSeries: []float64{80, 400, 120}, UpSeries: []float64{20, 40, 30}})
-	for _, want := range []string{">460 Mbit/s<", ">345<", ">230<", ">115<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, "verso-traffic-card"} {
+	for _, want := range []string{">460 Mb/s<", ">345<", ">230<", ">115<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, "verso-traffic-card"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("existing shared-scale renderer missing %q", want)
 		}

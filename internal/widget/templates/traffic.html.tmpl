@@ -4,7 +4,8 @@
      measures, the newest download and upload with their series' squares, and
      the chart under them. The live layer (verso-chart.js) finds the chart by
      data-verso-live-chart, seeds itself from data-verso-live-seed, and keeps the
-     two figures by data-verso-live-down and -up. A graph with history behind it
+     two figures by data-verso-live-down and -up, and the unit and direction
+     after each by data-verso-live-down-label and -up-label. A graph with history behind it
      offers its window as a dropdown on the heading line, which fetches the graph
      for the window in this section's place; a past window carries none of the
      live attributes, and its figures are averages. In a panel, whose blocks stand
@@ -21,8 +22,8 @@
      on whole cells. A window chosen in the header swaps this section. */}}
 <section aria-label="{{.Title}}" class="verso-traffic-card bg-[linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[100%_20px] bg-position-[0_-1px]">
   <div class="flex flex-wrap items-center gap-x-8 bg-ground pb-5 *:flex *:h-10 *:items-center *:gap-2">
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-denim"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s down" }}{{else}}{{ t "Mbit/s down on average" }}{{end}}</span></span>
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-amethyst"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s up" }}{{else}}{{ t "Mbit/s up on average" }}{{end}}</span></span>
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-denim"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-amethyst"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
     {{if .Latency}}<span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
   </div>
   <div{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
@@ -42,8 +43,8 @@
     </div>
     {{end}}
     <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
-      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s down" }}{{else}}{{ t "Mbit/s down on average" }}{{end}}</span></span>
-      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s up" }}{{else}}{{ t "Mbit/s up on average" }}{{end}}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span></span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
+      <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span></span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
       {{if .Latency}}<span class="inline-flex items-baseline gap-2"><span class="font-mono text-lg font-semibold">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
     </div>
   </div>

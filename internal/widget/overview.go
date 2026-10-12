@@ -34,10 +34,11 @@ type Overview struct {
 	WANDevice string
 	WANUptime string
 
-	DownSeries []float64
-	UpSeries   []float64
-	DownVal    string
-	UpVal      string
+	// DownSeries and UpSeries are the uplink's live minute in Mbit/s, and
+	// DownNow and UpNow the newest of each.
+	DownSeries     []float64
+	UpSeries       []float64
+	DownNow, UpNow float64
 	// TrafficRangeURL offers the Internet graph's window where history
 	// stands behind it (Traffic.RangeURL).
 	TrafficRangeURL string
@@ -90,12 +91,8 @@ type OverviewInterface struct {
 	Subnet    string
 	Zone      string
 	Proto     string
-	RxRate    string
-	TxRate    string
-	RxTotal   string
-	TxTotal   string
-	RxPackets string
-	TxPackets string
+	// RxBPS and TxBPS are what moves on it now, in bits per second.
+	RxBPS, TxBPS uint64
 }
 
 // inUse is whether anything asked for the port: a network sits on it, or it is
@@ -149,8 +146,9 @@ type OverviewMeter struct {
 
 // InternetTraffic is the overview's Internet graph of the uplink device, in
 // the Traffic card: the live minute when window is empty or "minute", else the
-// past window drawn from history, its figures the window's averages.
-func InternetTraffic(device, downNow, upNow string, down, up []float64, rangeURL, window string) *Traffic {
+// past window drawn from history, its figures the window's averages. Rates are
+// in Mbit/s.
+func InternetTraffic(device string, downNow, upNow float64, down, up []float64, rangeURL, window string) *Traffic {
 	label := "Internet traffic — download and upload, last minute"
 	if window != "" && window != TrafficRanges[0].Value {
 		label = "Internet traffic — download and upload"

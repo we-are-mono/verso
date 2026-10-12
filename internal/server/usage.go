@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/usage"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -27,12 +28,13 @@ type rosterUsage struct {
 	on      bool                  // nlbwmon is enabled, so usage is drawn at all
 	periods usage.Periods         // the calendar periods by MAC
 	rates   map[string]usage.Rate // live rates by MAC; nil while there is no rate yet
+	nums    units.Numbers         // how the reader's language writes the figures
 }
 
 // readUsage reads the roster's usage under the operator's session: the
 // history first, since it says whether usage is on, then the live rates.
-func (s *Server) readUsage(ctx context.Context, sid string, roster []widget.Device) rosterUsage {
-	u := rosterUsage{on: s.readUsageHistory(ctx, sid)}
+func (s *Server) readUsage(ctx context.Context, sid string, roster []widget.Device, nums units.Numbers) rosterUsage {
+	u := rosterUsage{on: s.readUsageHistory(ctx, sid), nums: nums}
 	if !u.on {
 		return u
 	}
@@ -122,11 +124,11 @@ func (u rosterUsage) deviceUsage(mac string) *widget.DeviceUsage {
 	out := &widget.DeviceUsage{}
 	if r, ok := u.rates[mac]; ok && usage.Busy(r) {
 		out.Busy = true
-		out.Down, out.Up = usage.Mbits(r.Down), usage.Mbits(r.Up)
+		out.Down, out.Up = u.nums.Rate(r.Down).String(), u.nums.Rate(r.Up).String()
 		out.Load = loadNames[usage.LoadOf(r)]
 	}
 	month := u.periods.ThisMonth[mac]
-	out.Month = usage.Bytes(month.Down + month.Up)
+	out.Month = u.nums.Bytes(month.Down + month.Up)
 	return out
 }
 
@@ -158,11 +160,13 @@ type usageFrame struct {
 // counted within half a minute.
 func (s *Server) handleDevicesUsage(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
+	_, t := s.localize(r)
+	nums := units.For(t)
 	var roster []widget.Device
 	var monthAt time.Time
 	s.serveSSE(w, r, func() bool {
 		withMonth := time.Since(monthAt) >= usageMonthRefresh
-		u := rosterUsage{on: true}
+		u := rosterUsage{on: true, nums: nums}
 		if withMonth {
 			roster = s.connectedDevices(r.Context(), sid, clientIP(r))
 			u.on = s.readUsageHistory(r.Context(), sid)

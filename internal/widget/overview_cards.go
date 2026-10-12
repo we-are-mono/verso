@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // cardHead is what a card's header says (ADR-022): its status word in a tone,
@@ -162,7 +164,7 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 
 // interfaceRow is one port or tunnel in a card's listing. A live row keys
 // itself to the interface stream, which keeps its rates and state current.
-func interfaceRow(n OverviewInterface, kind TableCell) TableRow {
+func interfaceRow(nums units.Numbers, n OverviewInterface, kind TableCell) TableRow {
 	state := normalState(n.State)
 	variant := "neutral"
 	if n.State == "up" {
@@ -171,8 +173,8 @@ func interfaceRow(n OverviewInterface, kind TableCell) TableRow {
 	return TableRow{ID: n.Name, Key: "interface:" + n.Name, Cells: []TableCell{
 		{Text: n.Name, Verbatim: true},
 		kind,
-		{Text: n.RxRate, Key: "rx-rate", Verbatim: true},
-		{Text: n.TxRate, Key: "tx-rate", Verbatim: true},
+		{Text: nums.Rate(float64(n.RxBPS)).String(), Key: "rx-rate", Verbatim: true},
+		{Text: nums.Rate(float64(n.TxBPS)).String(), Key: "tx-rate", Verbatim: true},
 		{Text: state, Variant: variant, Key: "state"},
 	}}
 }
@@ -214,7 +216,7 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 				chips = append(chips, TableChip{Label: rel.Name, Icon: "network"})
 			}
 		}
-		t.Rows = append(t.Rows, interfaceRow(n, TableCell{Chips: chips}))
+		t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Chips: chips}))
 	}
 	return o.renderWidget(r, t, csrf)
 }
@@ -270,7 +272,7 @@ func (o *Overview) tunnelsBody(r *Renderer, csrf string) (template.HTML, error) 
 	}, EmptyText: "No tunnel is up."}
 	for _, n := range o.Interfaces {
 		if n.tunnel() {
-			t.Rows = append(t.Rows, interfaceRow(n, TableCell{Text: n.Proto, Verbatim: true}))
+			t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Text: n.Proto, Verbatim: true}))
 		}
 	}
 	return o.renderWidget(r, t, csrf)
@@ -279,10 +281,9 @@ func (o *Overview) tunnelsBody(r *Renderer, csrf string) (template.HTML, error) 
 // ── Traffic ──
 
 func (o *Overview) trafficHead(tr func(string) string) cardHead {
-	if o.DownVal == "" && o.UpVal == "" {
-		return cardHead{Tone: "neutral"}
-	}
-	return cardHead{Tone: "neutral", Summary: fmt.Sprintf(tr("%s Mbit/s down · %s Mbit/s up"), o.DownVal, o.UpVal)}
+	nums := units.For(tr)
+	down, up := nums.Rate(o.DownNow*1e6), nums.Rate(o.UpNow*1e6)
+	return cardHead{Tone: "neutral", Summary: fmt.Sprintf(tr("%s down · %s up"), down, up)}
 }
 
 // trafficBody is the Internet graph, live over the last minute; the card's
@@ -292,7 +293,7 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 	if len(down) < 2 || len(up) < 2 {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
-	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownVal, o.UpVal, down, up, o.TrafficRangeURL, ""), csrf)
+	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownNow, o.UpNow, down, up, o.TrafficRangeURL, ""), csrf)
 }
 
 // overviewWindowView is the Traffic card's header control: the device the

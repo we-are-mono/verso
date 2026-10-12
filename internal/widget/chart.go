@@ -8,6 +8,8 @@ import (
 	"io"
 	"math"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // Chart is the overview's traffic plot: lines, optionally filled as areas, drawn
@@ -19,12 +21,14 @@ import (
 // Colours are set by CSS classes, never SVG presentation attributes: var() resolves in
 // CSS properties but not inside SVG attributes, so a .verso-chart-* class carries the
 // palette while geometry (viewBox, d) stays on the element.
+//
+// The values are rates in Mbit/s. The topmost value label is a rate in full
+// ("1.2 Gb/s"), the others figures in its unit, written as every rate is
+// (internal/units).
 type Chart struct {
 	Series []ChartSeries // drawn back to front
 	Label  string        // accessible description of the whole plot
-	// Unit rides the topmost value label; AxisStart and AxisEnd caption the
-	// window's two ends ("60 s ago", "now").
-	Unit      string
+	// AxisStart and AxisEnd caption the window's two ends ("60 s ago", "now").
 	AxisStart string
 	AxisEnd   string
 	// Short stands the plot at 180px rather than 240px, nine cells of the grid
@@ -127,12 +131,9 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	// Four barely-there dividing lines at the quarters of the range, each
 	// carrying its value — HTML overlaid on the plot, so it renders at a fixed
 	// size instead of scaling with the viewBox.
-	for i, frac := range []float64{1, 0.75, 0.5, 0.25} {
-		text := chartAxisValue(top * frac)
-		if i == 0 && c.Unit != "" {
-			text += " " + c.Unit
-		}
-		view.YLabels = append(view.YLabels, chartYLabel{TopPct: (1 - frac) * 100, Text: text})
+	labels := r.numbers().RateAxis(top*1e6, units.AxisFractions)
+	for i, frac := range units.AxisFractions {
+		view.YLabels = append(view.YLabels, chartYLabel{TopPct: (1 - frac) * 100, Text: labels[i]})
 	}
 
 	seq := r.seq.chart.Add(1)
@@ -156,15 +157,6 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Series = append(view.Series, sv)
 	}
 	return r.execute(out, "chart.html.tmpl", view)
-}
-
-// chartAxisValue renders a gridline's value compactly — whole numbers from 10
-// up, one decimal below.
-func chartAxisValue(v float64) string {
-	if v >= 10 {
-		return fmt.Sprintf("%.0f", v)
-	}
-	return strings.TrimSuffix(fmt.Sprintf("%.1f", v), ".0")
 }
 
 // chartPoints maps the values to plot coordinates: x spreads them evenly across the

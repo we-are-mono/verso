@@ -110,3 +110,15 @@ func TestRemovingLastOfflineLimitKeepsSuccessfulSaveVisible(t *testing.T) {
 		t.Error("offline device without limits should leave the roster")
 	}
 }
+
+// TestALimitReadsInMegabitsWhicheverSpellingThePluginWrites: the plugin ships
+// on its own, so a limit may arrive as "25 Mbit/s" or "25 Mb/s"; the tip
+// writes both as every rate is written.
+func TestALimitReadsInMegabitsWhicheverSpellingThePluginWrites(t *testing.T) {
+	for _, value := range []string{"25 Mbit/s", "25 Mb/s"} {
+		tip := deviceLimitTip([]plugin.EntitySummaryDetail{{Kind: "download", Label: "Download", Values: []string{value}}}, translatorOrIdentity(nil))
+		if tip == nil || len(tip.Rates) != 1 || tip.Rates[0].Value != "25" || tip.Rates[0].Unit != "Mb/s" {
+			t.Errorf("%q = %+v", value, tip)
+		}
+	}
+}

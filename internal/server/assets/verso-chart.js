@@ -21,6 +21,10 @@
   var GRID = 20;
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var clips = 0;
+  // Figures and value labels are written as the shell writes every rate
+  // (verso-units.js), in the page's language. The series are in Mbit/s.
+  var tr = typeof T === "function" ? T : function (s) { return s; };
+  var nums = window.versoUnits.numbers(tr("."));
 
   function liveChart(host) {
     if (host.__versoLive) return host.__versoLive;
@@ -32,6 +36,8 @@
     var frameEl = host.closest("section") || host;
     var downEl = frameEl.querySelector("[data-verso-live-down]");
     var upEl = frameEl.querySelector("[data-verso-live-up]");
+    var downLabelEl = frameEl.querySelector("[data-verso-live-down-label]");
+    var upLabelEl = frameEl.querySelector("[data-verso-live-up-label]");
 
     // Seed the live series from the server's rendered minute.
     var seed = {};
@@ -58,19 +64,18 @@
       });
       return peak > 0 ? peak * 1.15 : 1;
     }
-    function axisValue(v) {
-      return v >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
-    }
     function updateScale() {
       max = scaleMax();
+      var labels = nums.axis(max * 1e6, window.versoUnits.axisFractions);
       host.querySelectorAll(".verso-chart-yl").forEach(function (el, i) {
-        var frac = [1, 0.75, 0.5, 0.25][i];
-        if (frac === undefined) return;
-        if (el.dataset.unit === undefined) {
-          el.dataset.unit = (el.textContent.match(/[\d.]+\s*(.*)$/) || ["", ""])[1];
-        }
-        el.textContent = axisValue(max * frac) + (el.dataset.unit ? " " + el.dataset.unit : "");
+        if (labels[i] !== undefined) el.textContent = labels[i];
       });
+    }
+    // A figure and the unit and direction after it, as the server wrote them.
+    function writeFigure(el, labelEl, label, mbps) {
+      var rate = nums.rate(mbps * 1e6);
+      if (el) el.textContent = rate.value;
+      if (labelEl) labelEl.textContent = tr(label).replace("%s", rate.unit);
     }
 
     // Clip each series to the plot rect so the treadmill's off-edge content
@@ -161,8 +166,8 @@
         down.push(nd); down.shift();
         up.push(nu); up.shift();
         draw();
-        if (downEl) downEl.textContent = (Math.round(nd * 10) / 10).toFixed(1);
-        if (upEl) upEl.textContent = (Math.round(nu * 10) / 10).toFixed(1);
+        writeFigure(downEl, downLabelEl, "%s down", nd);
+        writeFigure(upEl, upLabelEl, "%s up", nu);
         lastCommit = performance.now();
         if (!reduce && !gliding) {
           gliding = true;

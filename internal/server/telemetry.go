@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/telemetry"
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 const (
@@ -65,7 +66,9 @@ func rateMbps(bitsPerSecond uint64) float64 {
 	return math.Round(float64(bitsPerSecond)/1e6*100) / 100
 }
 
-func telemetryInterfaceReadings(snapshot telemetry.Snapshot) []interfaceReading {
+// telemetryInterfaceReadings is each interface's state and rates now, the
+// rates written in the reader's language.
+func telemetryInterfaceReadings(snapshot telemetry.Snapshot, nums units.Numbers) []interfaceReading {
 	out := make([]interfaceReading, 0, len(snapshot.Interfaces))
 	for _, iface := range snapshot.Interfaces {
 		state := normalOperstate(iface.Operstate)
@@ -73,11 +76,12 @@ func telemetryInterfaceReadings(snapshot telemetry.Snapshot) []interfaceReading 
 		if state == "up" {
 			variant = "success"
 		}
-		rx, tx := formatBitRate(0), formatBitRate(0)
+		var rxBPS, txBPS uint64
 		if len(iface.History) != 0 {
 			point := iface.History[len(iface.History)-1]
-			rx, tx = formatBitRate(point.RxBPS), formatBitRate(point.TxBPS)
+			rxBPS, txBPS = point.RxBPS, point.TxBPS
 		}
+		rx, tx := nums.Rate(float64(rxBPS)).String(), nums.Rate(float64(txBPS)).String()
 		out = append(out, interfaceReading{
 			Name: iface.Name, Operstate: state, State: strings.ToUpper(state[:1]) + state[1:],
 			Variant: variant, RxRate: rx, TxRate: tx,

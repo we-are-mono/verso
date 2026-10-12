@@ -1001,7 +1001,7 @@ pub struct Field {
     /// belongs to.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub source: String,
-    /// What the number in the box is counted in — "Mbit/s", "seconds". The
+    /// What the number in the box is counted in — "Mb/s", "seconds". The
     /// shell sets it inside the field's trailing edge, so the value and what
     /// it means read as one thing.
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -1356,7 +1356,7 @@ impl Widget {
         self
     }
 
-    /// counted_in names what the number in a field is counted in — "Mbit/s",
+    /// counted_in names what the number in a field is counted in — "Mb/s",
     /// "seconds" — for the unit the shell sets inside the box. It belongs on a
     /// field whose value is a bare number; a value that carries its own unit
     /// ("12h") states it already.
