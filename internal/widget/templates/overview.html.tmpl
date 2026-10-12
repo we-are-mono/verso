@@ -13,7 +13,10 @@
        lines and the act centred in them, so the cards' frames land on lines.
        The clock stands on the verdict's baseline, on a 20px line of its own
        inside the verdict's 40, so the heading line stays two cells and a
-       clock wrapped under it adds one. */}}
+       clock wrapped under it adds one. The heading and the shelf span the
+       cards' own columns, which round their widths down to whole cells, so
+       Arrange and the shelf end where the cards do at any window width. */}}
+  <div class="verso-overview-cols"><div class="col-span-full min-w-0">
   <div class="flex flex-wrap items-baseline gap-x-6">
     <h1 class="text-3xl leading-10 font-semibold tracking-tight text-balance text-ink"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     {{if .Verdict.Clock}}
@@ -42,6 +45,7 @@
     {{end}}
     <button type="button" data-overview-reset class="-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Reset layout" }}</button>
   </div>
+  </div></div>
 
   <div class="verso-overview-cols mt-10">
     {{range $i, $col := .Cols}}
