@@ -974,6 +974,14 @@ html {
       width: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem);
     }
   }
+  /* The colophon's words end on the same line too: measured the same way,
+     against the same width beside the rail, its 2.5rem gutters outside the
+     rounded measure. */
+  [data-verso-colophon] { container-type: inline-size; }
+  [data-verso-colophon] > div {
+    max-width: none;
+    width: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem) + var(--spacing) * 20);
+  }
   main [data-verso-masthead] {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));
