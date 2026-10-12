@@ -9,7 +9,7 @@
      group, so a nested group never fires it. */}}
 <div data-overview data-overview-tone="{{.Verdict.Tone}}" class="group/overview verso-overview">
   <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
-    <h1 class="text-3xl leading-[1.1] font-semibold tracking-tight text-balance text-ink"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="verso-overview-accent">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
+    <h1 class="text-3xl leading-[1.1] font-semibold tracking-tight text-balance text-ink"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     {{if .Verdict.Clock}}
     <div class="flex items-center gap-2 text-sm text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
       <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 rounded-[1px] bg-green"></span>
@@ -28,8 +28,8 @@
   <div data-overview-shelf class="mt-5 hidden min-h-10 flex-wrap items-center gap-2 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 py-1.5 text-sm text-meta group-data-arranging/overview:flex">
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
-    <button type="button" data-overview-restore="{{.ID}}" class="inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
-      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{template "overview.tone-packet" .Tone}}"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
+    <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/chip:border-transparent group-data-[tone=success]/chip:bg-green group-data-[tone=warning]/chip:border-transparent group-data-[tone=warning]/chip:bg-marigold group-data-[tone=danger]/chip:border-transparent group-data-[tone=danger]/chip:bg-crimson"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
     </button>
     {{end}}
     <button type="button" data-overview-reset class="ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Reset layout" }}</button>
@@ -42,10 +42,6 @@
   </div>
   <div class="sr-only" aria-live="polite" data-overview-say></div>
 </div>
-
-{{/* overview.tone-packet: a card's state square — filled in its tone's hue,
-     hollow where it has no tone to state. */}}
-{{define "overview.tone-packet"}}{{if eq . "success"}}bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else}}border border-faint{{end}}{{end}}
 
 {{/* overview.card: one card. The header is the card's status — its word and
      packet at the end, open or closed — and a closed card adds its one line
@@ -61,8 +57,8 @@
       <h2 id="overview-card-{{.ID}}" class="text-base font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
       <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
-    <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm font-medium whitespace-nowrap {{template "verso-tone-text" .Head.Tone}}"{{if not .Head.Status}} hidden{{end}}>
-      <span aria-hidden="true" data-overview-card-packet class="size-1.5 shrink-0 rounded-[1px] {{template "overview.tone-packet" .Head.Tone}}"></span><span data-overview-card-word>{{.Head.Status}}</span>
+    <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
+      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
     {{if .Href}}<a href="{{.Href}}" data-overview-go aria-label="{{.OpenLabel}}" title="{{.OpenLabel}}" class="grid {{template "verso-btn-icon"}} group-data-arranging/overview:hidden">{{icon "arrow-up-right" "size-4"}}</a>{{end}}
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
@@ -91,5 +87,5 @@
 {{/* overview.meters: the Resources card's gauges, two to a row, hairlines
      between them, reaching the card's edges. */}}
 {{define "overview.meters"}}
-{{if .}}<div class="verso-overview-meters -m-5 grid grid-cols-1 @md/card:grid-cols-2">{{range .}}<div class="min-w-0 border-rule px-5 pt-4.5 pb-5">{{.}}</div>{{end}}</div>{{else}}<p class="text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{if .}}<div class="verso-overview-meters -m-5 grid grid-cols-1 @[28rem]/card:grid-cols-2">{{range .}}<div class="min-w-0 border-rule px-5 pt-4.5 pb-5">{{.}}</div>{{end}}</div>{{else}}<p class="text-meta">{{ t "System readings unavailable" }}</p>{{end}}
 {{end}}

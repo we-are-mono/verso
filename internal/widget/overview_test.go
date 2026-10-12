@@ -42,7 +42,7 @@ func cardOrder(page string) []string {
 func TestRenderOverviewCards(t *testing.T) {
 	got := render(t, newRenderer(t), fullOverview())
 	for _, want := range []string{
-		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="verso-overview-accent">online`, "14:52:07", "CEST",
+		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="text-green-deep">online`, "14:52:07", "CEST",
 		"Arrange", "Done", "Reset layout",
 		// Internet
 		"Connected", "for 2 h 14 min · pppoe-wan", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,

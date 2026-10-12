@@ -65,6 +65,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //go:embed assets/verso-packages.js assets/verso-buttons.js assets/verso-usage.js
 //go:embed assets/verso-system.js assets/verso-diagnostics.js
 //go:embed assets/verso-stream.js assets/verso-chart.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
+//go:embed assets/verso-overview.js
 //go:embed assets/verso-login.js
 //go:embed assets/fonts
 var scriptFS embed.FS
@@ -756,6 +757,8 @@ func jsCatalog(tr func(string) string) template.JS {
 		// What a keyboard reorder says once the row has moved, and what a copy
 		// button says once the value is on the clipboard.
 		"Moved to position %d of %d", "Copied",
+		// Where an Overview card stands once Arrange has moved it (ADR-022).
+		"%s: left column, position %d.", "%s: right column, position %d.",
 		"Couldn’t copy. Select the text and copy it manually.",
 		// A file uploading from its dialog: how far along, and what to do when
 		// the upload stops.

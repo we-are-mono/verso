@@ -130,9 +130,10 @@
        against the rail; no centring, which reads better on a wide monitor. */}}
   {{/* Every page but home and a log is a page of the operator's notebook: the
        grid the charts sit on, from the masthead's hairline to the page's foot
-       (verso-notebook, input.css). Home opens on its verdict, and a
-       log is its own darker surface. */}}
-  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Overview .Light (eq .Width "full"))}} verso-notebook{{end}}">
+       (verso-notebook, input.css). Home opens on its verdict over its cards,
+       on Quiet Sand so the Paper cards stand off it (ADR-022), and a log is
+       its own darker surface. */}}
+  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if .Overview}} bg-quiet{{end}}{{if not (or .Overview .Light (eq .Width "full"))}} verso-notebook{{end}}">
     {{/* The masthead is a sand bar under the top bar, as the colophon is one
          over the window's foot: the title's line stands 16px inside it at top
          and bottom, so an act on that line sits in the bar's middle, and the
@@ -274,6 +275,7 @@
 <script src="/assets/verso-commit.js" defer></script>
 <script src="/assets/verso-chart.js" defer></script>
 <script src="/assets/verso-stream.js" defer></script>
+<script src="/assets/verso-overview.js" defer></script>
 <script src="/assets/verso-listing.js" defer></script>
 <script src="/assets/verso-takeover.js" defer></script>
 <script src="/assets/verso-page.js" defer></script>

@@ -85,11 +85,13 @@ The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state`
 
 `LiveStatus` grows from four tiles to one entry per card: `{id, tone, status, summary}`. It covers hidden cards too, so the Arrange shelf can show a hidden card's packet.
 
-Hiding, restoring or resetting changes what the page holds. The JS re-requests the Overview's content through the page's existing HTMX swap; the cookie already holds the new layout. The stream reconnects on that swap, so the frame list is rebuilt. Moving and opening/closing change neither, so they need no round trip.
+Hiding, restoring or resetting changes what the page holds. The JS writes the cookie and reloads the page, as the shell's pages navigate by full loads; the stream reconnects with the page, so the frame list is rebuilt. Arrange carries over the reload in `sessionStorage`, so hiding a card doesn't end the mode. Moving and opening/closing change neither, so they need no round trip.
+
+The stream reads the interfaces' topology (`interfaceList`) once per connection and lays each second's states and rates onto it. Before this, the stream's interfaces had no networks, so a port in use read as spare one second after load, and a lost link never reached the verdict.
 
 ### 5. `verso-overview.js`: a pure model and a thin DOM layer
 
-- **The model** has pure functions over a `{cols:[[ids],[ids]], closed:[ids], hidden:[ids]}` value: `move(layout, id, col, index)`, `nudge(layout, id, key)`, `hide`, `restore` (to the shorter column by rendered height, which the DOM layer passes in), `reset`, `toggle`, `encode` and `decode`. `node --test` covers them in `scripts/overview-layout.test.cjs`, loaded with `vm` the way `takeover.test.cjs` loads its module.
+- **The model** has pure functions over a `{cols:[[ids],[ids]], closed:[ids], hidden:[ids]}` value: `move(layout, id, col, index)`, `nudge(layout, id, key)`, `hide`, `restore` (to the shorter column by rendered height, which the DOM layer passes in), `toggle`, `encode`, and the cookie strings. It never decodes: the page reads the layout off the rendered cards, so the shell's parser is the cookie's one reader. Reset drops the cookie. `node --test` covers them in `scripts/overview-layout.test.cjs`, loaded with `vm` the way `takeover.test.cjs` loads its module.
 - **The DOM layer** uses event delegation on `[data-overview]`. It never uses an Alpine expression, so it is CSP-safe (CSP-mode Alpine silently rejects expressions in bindings):
   - Header click toggles the card.
   - Arrange flips a `data-arranging` attribute on the page root; CSS shows and hides grips, hide controls and the shelf.

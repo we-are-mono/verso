@@ -1049,6 +1049,56 @@ html {
   }
 }
 
+/* The Overview's cards (ADR-022, DESIGN.md "Overview cards"): two columns that
+   stack their cards at their own heights, 20px apart, one column when the page
+   is narrower than two cards want. A card closes by easing its body's row to
+   nothing; the line it shows closed fades in where its body was. Arranging
+   rules each column off as a place to drop into, and the card in hand floats
+   over the page with the dialog's shadow and leaves a slot where it stood. */
+@layer components {
+  .verso-overview { container: overview / inline-size; }
+  .verso-overview-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+  @container overview (min-width: 52rem) {
+    .verso-overview-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .verso-overview-col { display: grid; gap: 1.25rem; align-content: start; min-width: 0; min-height: 4rem; border-radius: var(--radius-xs); }
+  [data-arranging] .verso-overview-col { outline: 1px dashed var(--color-rule-strong); outline-offset: 0.5rem; }
+
+  .verso-overview-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 300ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  [data-closed] > .verso-overview-body { grid-template-rows: 0fr; }
+  [data-closed] > .verso-overview-body > div > div { visibility: hidden; transition: visibility 0s linear 300ms; }
+  .verso-overview-summary { opacity: 0; transition: opacity 200ms ease-out; }
+  [data-closed] .verso-overview-summary { opacity: 1; }
+  .verso-overview-chevron { transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  [data-closed] .verso-overview-chevron { transform: rotate(-90deg); }
+
+  /* The Resources card's gauges meet on hairlines: across a row, and under
+     every row but the last. */
+  .verso-overview-meters > div { border-bottom-width: 1px; }
+  .verso-overview-meters > div:last-child { border-bottom-width: 0; }
+  @container card (min-width: 28rem) {
+    .verso-overview-meters > div:nth-child(odd) { border-right-width: 1px; }
+    .verso-overview-meters > div:nth-last-child(-n + 2):nth-child(odd),
+    .verso-overview-meters > div:nth-last-child(-n + 2):nth-child(odd) ~ div { border-bottom-width: 0; }
+  }
+  /* A card too narrow for a listing's rates drops them; the state stays. */
+  @container card (max-width: 26rem) {
+    .verso-overview-card [data-verso-cell="rx-rate"],
+    .verso-overview-card [data-verso-cell="tx-rate"],
+    .verso-overview-card th:nth-child(3),
+    .verso-overview-card th:nth-child(4) { display: none; }
+  }
+
+  .verso-overview-card[data-lifted] { position: fixed; z-index: 50; pointer-events: none; box-shadow: 0 8px 32px color-mix(in srgb, var(--color-ink) 16%, transparent); }
+  .verso-overview-slot { border: 1px dashed var(--color-rule-strong); background: var(--color-quiet); border-radius: var(--radius-xs); }
+  .verso-overview-dragging, .verso-overview-dragging * { cursor: grabbing !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .verso-overview-body, .verso-overview-summary, .verso-overview-chevron,
+    [data-closed] > .verso-overview-body > div > div { transition: none; }
+  }
+}
+
 /* A stepped dialog's line (modal.html.tmpl): the steps read left to right with
    a short hairline between them; the packet says where each stands — green
    when done, denim for the one in hand (Ink words, 600), hollow for what is
