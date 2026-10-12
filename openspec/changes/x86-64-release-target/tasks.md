@@ -15,12 +15,12 @@
 
 ## 3. Release loop (git-ignored local.mk)
 
-- [ ] 3.1 Split `asu-publish` into `asu-publish-arch` (today's body, plus `check-feed-arch.sh` over the full feed before `index.json`) and an `asu-publish` that loops `$(ARCHES)` with one sub-make each. Verify that after `make asu-publish`, `/srv/verso/aarch64_generic/` and `/srv/verso/x86_64/` hold the same package names, each with a `packages.adb` and an `index.json`. For `make version` = V, `verso` must be version V in both.
+- [x] 3.1 Split `asu-publish` into `asu-publish-arch` (today's body, plus `check-feed-arch.sh` over the full feed before `index.json`) and an `asu-publish` that loops `$(ARCHES)` with one sub-make each. Verify that after `make asu-publish`, `/srv/verso/aarch64_generic/` and `/srv/verso/x86_64/` hold the same package names, each with a `packages.adb` and an `index.json`. For `make version` = V, `verso` must be version V in both.
 - [ ] 3.2 Loop `asu-push` over `$(ARCHES)` (stage, re-sign with the Verso key, rsync per arch) and upload `verso.pem` once. Verify that the public `x86_64/packages.adb` fetches and `apk adbdump --keys-dir <dir-with-verso.pem>` reports its signature OK.
 
 ## 4. Documentation
 
-- [ ] 4.1 docs/building.md: give the variables table, §2, §3 and §4 both arches (`aarch64_generic` / `x86_64` repo lines, `GOARCH=arm64|amd64`), and replace "Package another arch with `APK_GOARCH=amd64`" with the both-arch release. Verify that the documented commands run as written on the dev box.
+- [x] 4.1 docs/building.md: give the variables table, §2, §3 and §4 both arches (`aarch64_generic` / `x86_64` repo lines, `GOARCH=arm64|amd64`), and replace "Package another arch with `APK_GOARCH=amd64`" with the both-arch release. Verify that the documented commands run as written on the dev box.
 - [ ] 4.2 CONTRIBUTING.md: state both release arches, and replace the stale `VERSION`-file / `REVISION=2` sentence with the tag-derived version (`make version`). README.md: name x86_64 beside arm64 where it lists build outputs. Verify with `grep -n 'VERSION\|REVISION\|arm64 only' README.md CONTRIBUTING.md docs/building.md`, which must return no stale claims.
 - [ ] 4.3 openspec/config.yaml: replace "build and test for arm64 only" with the two release arches. Verify that `openspec instructions proposal --change x86-64-release-target` shows the new context.
 - [ ] 4.4 Update docs/BACKLOG.md: remove any x86 or arch item this change closes, and add any follow-up the QEMU check in 5.1 turns up.

@@ -17,8 +17,8 @@ Substitute your own values; the `make` targets read the same ones (`OPENWRT_DIR`
 
 | Variable | What it is |
 |---|---|
-| Router arch (`CONFIG_TARGET_ARCH_PACKAGES`) | `aarch64_generic` (arm64) |
-| Go cross-build | `CGO_ENABLED=0 GOOS=linux GOARCH=arm64` (pure-Go static, runs on musl) |
+| Router arch (`CONFIG_TARGET_ARCH_PACKAGES`) | `aarch64_generic` (arm64) or `x86_64` (amd64); every release ships both |
+| Go cross-build | `CGO_ENABLED=0 GOOS=linux GOARCH=arm64` or `GOARCH=amd64` (pure-Go static, runs on musl) |
 | `$OPENWRT_DIR` | your OpenWrt buildroot — holds the `apk` tool and the signing keys |
 | apk tool (apk-tools 3.0.5) | `$OPENWRT_DIR/staging_dir/host/bin/apk` |
 | Signing keys (RSA) | `$OPENWRT_DIR/{private,public}-key.pem` |
@@ -73,15 +73,18 @@ curl -sf "http://$DEV_BOX/"                          # verify it serves
 ## 2. Build & sign the package (on the dev box)
 
 ```sh
-make apk       # -> build/apk/verso-<version>.apk, cross-built for arm64 and signed
+make apk                    # -> build/apk/aarch64_generic/verso-<version>.apk, cross-built for arm64 and signed
+make apk APK_GOARCH=amd64   # -> build/apk/x86_64/verso-<version>.apk
 ```
 
-One command. What it does, and why each part matters:
+One command per arch; each arch builds under a directory of its own, so neither
+overwrites the other. What it does, and why each part matters:
 
 - **Cross-builds both binaries** — the Go shell (`CGO_ENABLED=0 GOOS=linux
-  GOARCH=arm64`, pure-Go static) and the Rust `verso-rpcd` helper
-  (`aarch64-unknown-linux-musl`). `verso-rpcd` is one long-running root daemon,
-  not an rpcd exec plugin: the Go shell reaches it over
+  GOARCH=arm64` or `amd64`, pure-Go static) and the Rust `verso-rpcd` helper
+  (`aarch64-unknown-linux-musl` or `x86_64-unknown-linux-musl`). `verso-rpcd`
+  is one long-running root daemon, not an rpcd exec plugin: the Go shell reaches
+  it over
   `/var/run/verso/verso-rpcd.sock`, and every request carries the operator SID,
   which the helper validates through native ubus `session.access` before acting.
   Verso samples per-interface counters from `/sys/class/net` once per second
@@ -139,26 +142,31 @@ tool lives under your OpenWrt buildroot — the same one `make apk` uses:
 
 ```sh
 APK="$OPENWRT_DIR/staging_dir/host/bin/apk"   # OPENWRT_DIR = your OpenWrt buildroot
-$APK adbdump build/apk/verso-*.apk | grep -iE "name: verso$|version:|arch:"
-$APK adbdump build/apk/verso-*.apk | grep -A3 "name: verso.json" | grep user:   # must say root
+$APK adbdump build/apk/aarch64_generic/verso-*.apk | grep -iE "name: verso$|version:|arch:"
+$APK adbdump build/apk/aarch64_generic/verso-*.apk | grep -A3 "name: verso.json" | grep user:   # must say root
 ```
 
 **Machine-agnostic:** the only per-host input is the OpenWrt buildroot, from which
 `make apk` derives the apk tool and the signing key. It auto-detects a default
 location (see `OPENWRT_DIR` in the Makefile); point it elsewhere with
 `OPENWRT_DIR=/path/...` on the command line or in a gitignored `local.mk`.
-Package another arch with `APK_GOARCH=amd64`.
+A release packages every arch in the Makefile's `ARCHES` (arm64 and amd64), once
+per arch.
 
 ---
 
 ## 3. Publish to the repo
 
 ```sh
-make apk-publish   # runs `make apk`, then copies + rebuilds the signed index
+make apk-publish                    # runs `make apk`, then copies + rebuilds the signed index
+make apk-publish APK_GOARCH=amd64   # the same for the x86_64 feed
 ```
 
 This copies the fresh `.apk` into `VERSO_REPO_DIR` (default `/srv/verso`, the only
-dev-box-specific path) under its arch subdir, and rebuilds the v3 index — which
+dev-box-specific path) under its arch subdir (`aarch64_generic/` or `x86_64/`),
+checks that every package there is built for that arch or for none
+(`scripts/check-feed-arch.sh`, which names any that is not and stops), and
+rebuilds the v3 index — which
 **must be named `packages.adb`** (OpenWrt convention) — signed. `mkndx` runs with
 `--allow-untrusted`, which only means "don't verify on the build host" (the host
 doesn't trust our own key); the index is still **signed** with `--sign-key`, and
@@ -168,6 +176,7 @@ Verify it serves:
 
 ```sh
 curl -sf -o /dev/null -w "%{http_code}\n" "http://$DEV_BOX/aarch64_generic/packages.adb"
+curl -sf -o /dev/null -w "%{http_code}\n" "http://$DEV_BOX/x86_64/packages.adb"
 ```
 
 ---
@@ -176,10 +185,12 @@ curl -sf -o /dev/null -w "%{http_code}\n" "http://$DEV_BOX/aarch64_generic/packa
 
 The repo line must be the **full URL to `packages.adb`**, not a directory — a bare
 dir makes apk fall back to the legacy `<arch>/APKINDEX.tar.gz` layout and it won't
-find anything.
+find anything. Use the router's own arch: `aarch64_generic` on arm64, `x86_64` on
+an x86_64 router.
 
 ```sh
-echo "http://$DEV_BOX/aarch64_generic/packages.adb" > /etc/apk/repositories.d/verso-dev.list
+ARCH=aarch64_generic   # or x86_64
+echo "http://$DEV_BOX/$ARCH/packages.adb" > /etc/apk/repositories.d/verso-dev.list
 apk update
 apk add verso
 ```
