@@ -52,6 +52,9 @@ import (
 //	             says them. A figure with no Text keeps its slot hidden, so a
 //	             live listing fills it in place; with none to show, the faint
 //	             dash
+//	"phrase"   — the row's name as one line of parts (Parts): chips, words
+//	             and values in mono, in their order, with an optional Detail
+//	             line beneath; Text is the line read plain, never drawn
 //	"pill"     — an enum value as a status pill (accept/reject/drop, NAT); the
 //	             cell's variant uses the badge vocabulary, and an empty cell
 //	             renders a faint dash — pills stay meaningful because most
@@ -358,6 +361,9 @@ type TableGroup struct {
 	// a group that is not a path sets none.
 	Label string `json:"label"`
 	To    string `json:"to,omitempty"`
+	// Verbatim says Label was composed and localized where it was made (a
+	// date); the walk leaves it.
+	Verbatim bool `json:"-"`
 	// Chain is the machine-verbatim string the group resolves to — a network's
 	// CIDR — set in mono beside the label so an expert reads the exact string.
 	Chain string `json:"chain,omitempty"`
@@ -454,6 +460,7 @@ type TableCell struct {
 	Name         string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
 	Chips        []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
+	Parts        []TablePart     `json:"parts,omitempty"`   // phrase cells: the line's parts, in order; Text is the line read plain, which names the row
 	Figures      []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
 	Ink          bool            `json:"ink,omitempty"`     // figures cells: the figures are written in Variant's Deep step, a tone a live listing may change
 	Actions      []TableRowAct   `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
@@ -461,6 +468,17 @@ type TableCell struct {
 	// is never drawn as a door (doorAct): the shell puts a Details act on the
 	// row, or the trailing Details link where the row has no acts.
 	Opens bool `json:"opens,omitempty"`
+}
+
+// TablePart is one part of a phrase cell's line, which sets exactly one: an
+// entity reference (Chip), prose (Words, localized), or a machine string
+// (Value, verbatim, in mono). A line of them says what a row is in the
+// reader's terms and the device's at once: a rule's chip, the option's, and
+// the value it held and holds.
+type TablePart struct {
+	Chip  *TableChip `json:"chip,omitempty"`
+	Words string     `json:"words,omitempty"`
+	Value string     `json:"value,omitempty"`
 }
 
 // TableFigure is one figure in a figures cell: the number and the glyph that
@@ -750,6 +768,7 @@ type tableCellView struct {
 	FiguresShown bool
 	TableCell
 	Chips     []tableChipView
+	Phrase    []tablePartView
 	Actions   []tableRowActView
 	Endpoints []tableEndpointView
 	Pill      *Badge // pill cells render through the badge component
@@ -758,6 +777,11 @@ type tableCellView struct {
 type tableChipView struct {
 	TableChip
 	TipID string
+}
+
+type tablePartView struct {
+	Chip         *tableChipView
+	Words, Value string
 }
 
 // Absent reports whether the cell has nothing to state: no value, or only the
@@ -776,7 +800,7 @@ func (c tableCellView) Absent() bool {
 	text := strings.TrimSpace(c.Text)
 	return (text == "" || text == "—") && c.Sub == "" && c.Detail == "" &&
 		c.Chip == "" && c.Tag == "" && c.Href == "" && c.Button == "" && c.Clip == "" &&
-		len(c.Chips) == 0 && len(c.Endpoints) == 0 && len(c.Actions) == 0
+		len(c.Chips) == 0 && len(c.Phrase) == 0 && len(c.Endpoints) == 0 && len(c.Actions) == 0
 }
 
 // OpensPanel reports whether this cell's link is the row's panel — the case
@@ -834,7 +858,7 @@ func (t *Table) rowName(row TableRow) string {
 		}
 		return ""
 	}
-	for _, kind := range []string{"name", "comment", "reference"} {
+	for _, kind := range []string{"name", "phrase", "comment", "reference"} {
 		for i, col := range t.Columns {
 			if col.Kind == kind && text(i) != "" {
 				return text(i)
@@ -888,9 +912,9 @@ func (t *Table) rowOpensItself(row TableRow) bool {
 	return false
 }
 
-// isName reports whether a column holds a row's identity: its name, or an
-// interface cited as the subject.
-func isName(kind string) bool { return kind == "name" || kind == "reference" }
+// isName reports whether a column holds a row's identity: its name, an
+// interface cited as the subject, or the phrase that names it.
+func isName(kind string) bool { return kind == "name" || kind == "reference" || kind == "phrase" }
 
 // actionsColumn is the index of the column holding the rows' acts, or -1.
 func (t *Table) actionsColumn() int {
@@ -1250,12 +1274,23 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
-				for _, chip := range cv.TableCell.Chips {
+				chipView := func(chip TableChip) tableChipView {
 					view := tableChipView{TableChip: chip}
 					if chip.Title != "" {
 						view.TipID = fmt.Sprintf("verso-chip-tip-%d", r.seq.tip.Add(1))
 					}
-					cv.Chips = append(cv.Chips, view)
+					return view
+				}
+				for _, chip := range cv.TableCell.Chips {
+					cv.Chips = append(cv.Chips, chipView(chip))
+				}
+				for _, part := range cv.TableCell.Parts {
+					view := tablePartView{Words: part.Words, Value: part.Value}
+					if part.Chip != nil {
+						chip := chipView(*part.Chip)
+						view.Chip = &chip
+					}
+					cv.Phrase = append(cv.Phrase, view)
 				}
 				// A muted row mutes every cell in it: the secondary step is a
 				// statement about the row's subject, so no cell in that row can

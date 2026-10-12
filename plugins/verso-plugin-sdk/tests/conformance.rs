@@ -13,8 +13,8 @@ use verso_plugin::{
     ActionBar, ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth,
     ConditionItem, Field, Grid, HeadingAct, List, Property, RemoveConfirm, RowDrawer,
     SectionWidget, SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam,
-    SettingsToggle, SubjectKind, Switch, Table, TableCell, TableColumn, TableEndpoint, TableGroup,
-    TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
+    SettingsToggle, SubjectKind, Switch, Table, TableCell, TableChip, TableColumn, TableEndpoint,
+    TableGroup, TablePart, TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
@@ -819,4 +819,37 @@ fn write_subject_kinds_fixture() {
     fs::create_dir_all(dir).unwrap();
     let json = serde_json::to_vec_pretty(&kinds).unwrap();
     fs::write(format!("{dir}/subject-kinds.json"), json).unwrap();
+}
+
+// A phrase cell: the shell reads each part back as the one it is, in order.
+#[test]
+fn write_phrase_fixture() {
+    let table = Widget::Table(Table {
+        columns: vec![TableColumn {
+            label: "Changed".into(),
+            kind: "phrase".into(),
+            ..Default::default()
+        }],
+        rows: vec![TableRow {
+            cells: vec![TableCell {
+                text: "Allow-Ping target ACCEPT to DROP".into(),
+                parts: vec![
+                    TablePart::Chip(TableChip {
+                        icon: "shield".into(),
+                        label: "Allow-Ping".into(),
+                        ..Default::default()
+                    }),
+                    TablePart::Value("ACCEPT".into()),
+                    TablePart::Words("→".into()),
+                ],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    });
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    let json = serde_json::to_vec_pretty(&table).unwrap();
+    fs::write(format!("{dir}/widget-table-phrase.json"), json).unwrap();
 }

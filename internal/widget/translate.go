@@ -287,7 +287,9 @@ func translateTable(n *Table, t func(string) string) {
 func translateRows(rows []TableRow, columns []TableColumn, t func(string) string) {
 	for i := range rows {
 		if rows[i].Group != nil {
-			rows[i].Group.Label = t(rows[i].Group.Label)
+			if !rows[i].Group.Verbatim {
+				rows[i].Group.Label = t(rows[i].Group.Label)
+			}
 			rows[i].Group.AddLabel = t(rows[i].Group.AddLabel)
 		}
 		for j := range rows[i].Cells {
@@ -304,9 +306,16 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			c.Confirm = t(c.Confirm)
 			c.ConfirmTitle = t(c.ConfirmTitle)
 			for k := range c.Chips {
-				c.Chips[k].Title = t(c.Chips[k].Title)
-				if c.Chips[k].LocalizeLabel {
-					c.Chips[k].Label = t(c.Chips[k].Label)
+				translateChip(&c.Chips[k], t)
+			}
+			// A phrase's words are prose; its values and chip labels are what
+			// the machine wrote.
+			for k := range c.Parts {
+				if !c.Verbatim {
+					c.Parts[k].Words = t(c.Parts[k].Words)
+				}
+				if c.Parts[k].Chip != nil {
+					translateChip(c.Parts[k].Chip, t)
 				}
 			}
 			for k := range c.Actions {
@@ -316,6 +325,15 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			}
 		}
 		translateDrawer(rows[i].Drawer, t)
+	}
+}
+
+// translateChip localizes a chip's tip, and its label where the shell wrote
+// it in words.
+func translateChip(c *TableChip, t func(string) string) {
+	c.Title = t(c.Title)
+	if c.LocalizeLabel {
+		c.Label = t(c.Label)
 	}
 }
 

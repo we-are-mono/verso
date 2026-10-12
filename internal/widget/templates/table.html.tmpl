@@ -267,6 +267,24 @@
           </span>
           {{if .Detail}}{{template "table.detail" .}}{{end}}
         </td>
+        {{else if eq .Kind "phrase"}}
+        {{/* the row's name as one line of parts: chips for what it cites,
+             values in mono as the device wrote them, words in the sans
+             between them. The whole line is the name a switched-off row marks
+             over; its detail sits beneath, as a name's does. */}}
+        <td class="relative border-b border-rule {{if .Detail}}{{template "table.cellpad-detail" .}}{{else}}{{template "table.cellpad" .}}{{end}}">
+          <span class="flex min-w-0 items-center{{if .Detail}} *:leading-5{{end}}">
+            {{/* an expandable row's phrase is its control, led by the
+                 chevron that says so, as an expandable name is. */}}
+            {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="flex min-w-0 cursor-pointer items-center gap-2 text-left hover:text-denim focus-visible:outline-denim">{{icon "chevron-right" "size-3.5 shrink-0"}}{{end}}
+            <span class="{{if .Identity}}verso-row-name {{end}}flex min-w-0 items-center gap-2 whitespace-nowrap {{template "table.name-ink" .}}">
+              {{range .Phrase}}{{if .Chip}}{{template "verso-chip" .Chip}}{{else if .Value}}<span class="truncate font-mono text-base font-medium">{{.Value}}</span>{{else}}<span class="shrink-0">{{.Words}}</span>{{end}}{{end}}
+            </span>
+            {{if .Expandable}}</button>{{end}}
+            {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
+          </span>
+          {{if .Detail}}{{template "table.detail" .}}{{end}}
+        </td>
         {{else if eq .Kind "status"}}
         {{/* a state cell: a dot and the word for it. A hue at full chroma is a
              mark, so the dot is filled only where the state is asserted now —

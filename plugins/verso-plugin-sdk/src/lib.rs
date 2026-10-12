@@ -2272,6 +2272,20 @@ pub struct TableCell {
     /// The row's own acts, drawn as quiet icon buttons at its trailing edge.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<TableRowAct>,
+    /// A phrase cell's line, in order; `text` is the line read plain, which
+    /// names the row and is not drawn.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<TablePart>,
+}
+
+/// One part of a phrase cell's line: an entity reference, prose the shell
+/// localizes, or a machine string set verbatim in mono.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum TablePart {
+    Chip(TableChip),
+    Words(String),
+    Value(String),
 }
 
 /// An entity reference beside a row's identity. Its label is always verbatim.

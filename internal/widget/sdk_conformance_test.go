@@ -84,3 +84,20 @@ func TestSDKTargetsReachTheShell(t *testing.T) {
 		}
 	}
 }
+
+// TestSDKPhraseReachesTheShell: a phrase's parts arrive each as the one it
+// is, in order.
+func TestSDKPhraseReachesTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-table-phrase.json"))
+	if err != nil {
+		t.Skip("SDK phrase fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK phrase fixture does not decode: %v", err)
+	}
+	parts := w.(*Table).Rows[0].Cells[0].Parts
+	if len(parts) != 3 || parts[0].Chip == nil || parts[0].Chip.Label != "Allow-Ping" || parts[1].Value != "ACCEPT" || parts[2].Words != "→" {
+		t.Errorf("SDK phrase lost a part crossing the wire: %+v", parts)
+	}
+}

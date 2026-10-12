@@ -904,6 +904,21 @@ hard right: `add_text` is its words ("Add rule"), `add_label` its tooltip naming
 the lane ("Add rule to WAN → Router"), and `add_panel: true` opens the listing's
 panel in place, seeded by the href.
 
+**Phrase.** A `phrase` column names its rows with one line of parts, in order:
+a `chip` (an entity reference), `words` (prose the shell translates) or a
+`value` (a machine string, verbatim in mono). It reads the way a person would
+say the row and the way the device holds it at once: `[Allow-Ping] [target]
+ACCEPT → DROP`. The cell's `text` is the line read plain. It is not drawn, and
+it names the row to the controls in it. A `detail` line sits beneath, as a
+name's does. The phrase is the row's name, so a muted row marks it over.
+
+```json
+{ "text": "Allow-Ping target ACCEPT to DROP", "parts": [
+  { "chip": { "icon": "shield", "label": "Allow-Ping" } },
+  { "chip": { "label": "target" } },
+  { "value": "ACCEPT" }, { "words": "→" }, { "value": "DROP" } ] }
+```
+
 **Direct row action.** A `pill` cell may carry a compact immediate action instead
 of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
 its standard alert dialog and posts `_action=<action>` back to the page only after

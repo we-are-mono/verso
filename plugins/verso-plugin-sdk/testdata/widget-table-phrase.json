@@ -1,0 +1,32 @@
+{
+  "type": "table",
+  "columns": [
+    {
+      "label": "Changed",
+      "kind": "phrase"
+    }
+  ],
+  "rows": [
+    {
+      "cells": [
+        {
+          "text": "Allow-Ping target ACCEPT to DROP",
+          "parts": [
+            {
+              "chip": {
+                "icon": "shield",
+                "label": "Allow-Ping"
+              }
+            },
+            {
+              "value": "ACCEPT"
+            },
+            {
+              "words": "→"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

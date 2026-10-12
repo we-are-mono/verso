@@ -1726,3 +1726,64 @@ func TestAnEmptyNumberStandsWhereItsFigureWould(t *testing.T) {
 		t.Errorf("a number column's dash should hold its right edge:\n%s", cell)
 	}
 }
+
+// phraseTable is a listing whose identity is a phrase: one change read as
+// its subject's chip, the key's chip, and the value before and after.
+func phraseTable(muted bool) *Table {
+	return &Table{
+		Columns: []TableColumn{{Kind: "phrase"}, {Kind: "status"}},
+		Rows: []TableRow{{ID: "6", Muted: muted, Cells: []TableCell{
+			{Text: "Allow-Ping target ACCEPT to DROP", Detail: "undo of 14:02", Parts: []TablePart{
+				{Chip: &TableChip{Icon: "shield", Label: "Allow-Ping"}},
+				{Chip: &TableChip{Label: "target"}},
+				{Value: "ACCEPT"},
+				{Words: "→"},
+				{Value: "DROP"},
+			}},
+			{Text: "Applied", Variant: "success"},
+		}}},
+	}
+}
+
+// TestRenderTablePhrase: a phrase cell draws its parts on one line in their
+// order, chips as chips, values in mono and words in the sans, its detail
+// beneath, and it is the row's name: what a switched-off row marks over.
+func TestRenderTablePhrase(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, phraseTable(false))
+	chip := strings.Index(got, ">Allow-Ping</span>")
+	key := strings.Index(got, ">target</span>")
+	before := strings.Index(got, `font-mono text-base font-medium">ACCEPT</span>`)
+	arrow := strings.Index(got, `>→</span>`)
+	after := strings.Index(got, `font-mono text-base font-medium">DROP</span>`)
+	if chip < 0 || !(chip < key && key < before && before < arrow && arrow < after) {
+		t.Fatalf("parts out of place (%d %d %d %d %d):\n%s", chip, key, before, arrow, after, got)
+	}
+	if !strings.Contains(got, lucideIcons["shield"]) || !strings.Contains(got, "undo of 14:02") {
+		t.Errorf("the chip's icon and the detail should draw:\n%s", got)
+	}
+	if strings.Contains(got, "ACCEPT to DROP") {
+		t.Errorf("the plain reading names the row; it is not drawn:\n%s", got)
+	}
+
+	off := render(t, r, phraseTable(true))
+	if n := strings.Count(off, "verso-row-name"); n != 1 {
+		t.Errorf("a phrase not in force should be marked over once, got %d:\n%s", n, off)
+	}
+}
+
+// TestPhraseWordsAreTranslatedAndValuesAreNot: words are prose; a value and a
+// chip's label are what the machine wrote.
+func TestPhraseWordsAreTranslatedAndValuesAreNot(t *testing.T) {
+	tbl := &Table{
+		Columns: []TableColumn{{Kind: "phrase"}},
+		Rows: []TableRow{{Cells: []TableCell{{Parts: []TablePart{
+			{Chip: &TableChip{Label: "changed"}}, {Words: "changed"}, {Value: "changed"},
+		}}}}},
+	}
+	translateTable(tbl, func(s string) string { return "«" + s + "»" })
+	parts := tbl.Rows[0].Cells[0].Parts
+	if parts[0].Chip.Label != "changed" || parts[1].Words != "«changed»" || parts[2].Value != "changed" {
+		t.Fatalf("parts = %+v %+v %+v", *parts[0].Chip, parts[1], parts[2])
+	}
+}
