@@ -2,9 +2,9 @@
 
 ## 1. Per-arch build outputs
 
-- [ ] 1.1 Write the failing check first. From a clean `build/`, run `make apk APK_GOARCH=arm64 && make apk APK_GOARCH=amd64` and confirm that today only one `verso-<ver>.apk` survives, overwritten in place.
-- [ ] 1.2 Set `APK_DIR := $(BUILDDIR)/apk/$(APK_ARCH)` in the Makefile, with the i18n catalog under `build/apk/noarch/`. Verify by running the same two commands: `build/apk/aarch64_generic/verso-<ver>.apk` and `build/apk/x86_64/verso-<ver>.apk` both exist, and `apk adbdump` reports `arch: aarch64_generic` and `arch: x86_64` respectively.
-- [ ] 1.3 Reword the Makefile's arm64-only comments to state both release arches: the header's "Prototype build target is arm64" and `APK_GOARCH`'s "the router is arm64". `make lint` and `make test` stay green.
+- [x] 1.1 Write the failing check first. From a clean `build/`, run `make apk APK_GOARCH=arm64 && make apk APK_GOARCH=amd64` and confirm that today only one `verso-<ver>.apk` survives, overwritten in place.
+- [x] 1.2 Set `APK_DIR := $(BUILDDIR)/apk/$(APK_ARCH)` in the Makefile, with the i18n catalog under `build/apk/noarch/`. Verify by running the same two commands: `build/apk/aarch64_generic/verso-<ver>.apk` and `build/apk/x86_64/verso-<ver>.apk` both exist, and `apk adbdump` reports `arch: aarch64_generic` and `arch: x86_64` respectively.
+- [x] 1.3 Reword the Makefile's arm64-only comments to state both release arches: the header's "Prototype build target is arm64" and `APK_GOARCH`'s "the router is arm64". `make lint` and `make test` stay green.
 - [ ] 1.4 Make the same `APK_DIR` change in each non-core plugin repository (dnsdhcp, qos, vpn, ddns), one commit per repository. Verify in each repo that `make apk APK_GOARCH=amd64` writes `build/apk/x86_64/<name>-<ver>.apk`.
 
 ## 2. Feed architecture check

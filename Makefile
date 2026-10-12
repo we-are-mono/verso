@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 # Verso shell — build/test tooling.
-# Prototype build target is arm64 (project memo); override GOARCH to change.
+# A release ships for every arch in ARCHES: arm64 (aarch64_generic) and amd64 (x86_64).
 
 # Optional per-machine overrides (gitignored). Anything set here wins over the
 # `?=` defaults below — e.g. OPENWRT_DIR, KEY, VERSO_REPO_DIR — so nobody edits
@@ -68,7 +68,7 @@ DEADCODE         := $(BUILDDIR)/tools/deadcode-$(DEADCODE_VERSION)/deadcode
 
 # ── apk packaging ────────────────────────────────────────────────────────────
 # `make apk` cross-builds one arch, assembles a clean payload, and produces a
-# signed .apk under build/apk/. It is portable: the only machine-specific input
+# signed .apk under build/apk/<apk-arch>/. It is portable: the only machine-specific input
 # is the OpenWrt buildroot (OPENWRT_DIR), auto-detected below; the apk tool and
 # the signing key both live under it. `make apk-publish` copies the result into
 # the local dev repo and rebuilds the signed index — that step alone is tied to
@@ -85,11 +85,15 @@ KEY         ?= $(OPENWRT_DIR)/private-key.pem
 apk_arch_arm64 := aarch64_generic
 apk_arch_amd64 := x86_64
 
-# `make apk` ships one arch (the router is arm64). Override to package another.
+# `make apk` packages one arch per run, arm64 unless APK_GOARCH names another;
+# a release runs it once for each arch in ARCHES.
 APK_GOARCH ?= arm64
 APK_ARCH   := $(apk_arch_$(APK_GOARCH))
 
-APK_DIR     := $(BUILDDIR)/apk
+# Each arch builds under a directory of its own, laid out as its feed is, so
+# packaging one arch never overwrites another's package.
+APK_ROOT    := $(BUILDDIR)/apk
+APK_DIR     := $(APK_ROOT)/$(APK_ARCH)
 APK_PAYLOAD := $(APK_DIR)/pkg
 APK_OUT     := $(APK_DIR)/verso-$(VER).apk
 POSTINST    := packaging/apk/post-install.sh
@@ -127,7 +131,7 @@ css: $(TAILWIND)
 build: lint css $(addprefix build-,$(ARCHES))
 
 # build-<arch>: one architecture's runtime binaries. Runnable on its own, e.g.
-# `make build-arm64` for just the device target.
+# `make build-arm64` for that arch alone.
 build-%: css
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$* go build -trimpath -ldflags "$(LDFLAGS)" -o $(BUILDDIR)/$(BINARY)-$* $(CMD)
 	$(CARGO) build --locked --release --manifest-path $(RPCD_MANIFEST) --target $(rust_target_$*)
@@ -269,8 +273,8 @@ apk-publish: apk
 I18N_CODE      ?= sl
 I18N_SRC       := i18n/$(I18N_CODE)/base.json
 I18N_PKG       := verso-i18n-base-$(I18N_CODE)
-I18N_PAYLOAD   := $(APK_DIR)/i18n-base-$(I18N_CODE)
-I18N_OUT       := $(APK_DIR)/$(I18N_PKG)-$(VER).apk
+I18N_PAYLOAD   := $(APK_ROOT)/noarch/i18n-base-$(I18N_CODE)
+I18N_OUT       := $(APK_ROOT)/noarch/$(I18N_PKG)-$(VER).apk
 
 # apk-i18n needs no cross-build (data only), only the buildroot's apk + signing key.
 apk-i18n: apk-preflight
