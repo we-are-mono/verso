@@ -89,6 +89,11 @@ type stagedItem struct {
 	Label string
 	Mono  bool
 	Lines []stagedLine
+	// plugin is the plugin whose page the row was made on, empty for the
+	// shell's own; changes is what the row stands for. Config history keeps
+	// both (ADR-021).
+	plugin  string
+	changes []stagedChange
 }
 
 // stagedLine is one uci line under an opened row, led by the glyph of what
@@ -188,6 +193,9 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 			i = len(v.Groups)
 			index[page] = i
 			v.Groups = append(v.Groups, stagedGroup{Page: page})
+		}
+		if row.authored && !row.author.Shell {
+			row.item.plugin = row.author.Plugin
 		}
 		v.Groups[i].Items = append(v.Groups[i].Items, row.item)
 	}
@@ -354,7 +362,7 @@ func stagedItemOf(label string, mono bool, changes []stagedChange, tr func(strin
 	case hasOp(ops, "reorder"):
 		verb = "reordered"
 	}
-	item := stagedItem{Verb: verb, Word: tr(verb), Label: label, Mono: mono}
+	item := stagedItem{Verb: verb, Word: tr(verb), Label: label, Mono: mono, changes: changes}
 	for i, c := range changes {
 		op := "~"
 		switch {
@@ -585,14 +593,14 @@ func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 // browser; no confirm within the window and the router reverts itself.
 func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
-	// Which pages the stage holds is read before the apply empties it.
-	pages := s.stagedPages(r.Context(), sid)
+	// What the stage holds is read before the apply empties it.
+	change := s.stagedChange(r.Context(), sid, s.sessionUser(r), clientIP(r))
 	if err := s.backend.UCIApply(r.Context(), sid, uciRollbackTimeout); err != nil {
 		log.Printf("verso: uci apply failed: %v", err)
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
-	s.watchApply(sid, pages)
+	s.watchApply(sid, change)
 	writeOK(w)
 }
 

@@ -27,27 +27,17 @@ type applyWatch struct {
 	by  map[string]pendingApply
 }
 
+// pendingApply is an apply awaiting its confirm: the stage it applied, as
+// config history keeps it (stagedChange), read before the apply emptied it.
 type pendingApply struct {
-	seq   int
-	pages []string
+	seq    int
+	change history.Change
 }
 
-// stagedPages is the pages sid's stage holds changes from, by their English
-// names; the Events page says them in the reader's language.
-func (s *Server) stagedPages(ctx context.Context, sid string) []string {
-	identity := func(s string) string { return s }
-	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
-	pages := make([]string, 0, len(view.Groups))
-	for _, g := range view.Groups {
-		pages = append(pages, g.Page)
-	}
-	return pages
-}
-
-// watchApply waits for sid's apply of pages to be confirmed, and records it
+// watchApply waits for sid's apply of change to be confirmed, and records it
 // rolled back if its window passes first.
-func (s *Server) watchApply(sid string, pages []string) {
-	if s.historyStore == nil {
+func (s *Server) watchApply(sid string, change history.Change) {
+	if s.historyStore == nil && s.changeLog == nil {
 		return
 	}
 	s.applies.mu.Lock()
@@ -56,11 +46,11 @@ func (s *Server) watchApply(sid string, pages []string) {
 	if s.applies.by == nil {
 		s.applies.by = map[string]pendingApply{}
 	}
-	s.applies.by[sid] = pendingApply{seq: seq, pages: pages}
+	s.applies.by[sid] = pendingApply{seq: seq, change: change}
 	s.applies.mu.Unlock()
 	s.afterRollback(time.Duration(uciRollbackTimeout)*time.Second+rollbackGrace, func() {
-		if pages, ok := s.takeApply(sid, seq); ok {
-			s.recordApply("changes.rolledback", pages)
+		if change, ok := s.takeApply(sid, seq); ok {
+			s.recordApply(history.ChangeRolledBack, change)
 		}
 	})
 }
@@ -71,29 +61,45 @@ func (s *Server) confirmedApply(sid string) {
 	pending, ok := s.applies.by[sid]
 	s.applies.mu.Unlock()
 	if ok {
-		if pages, taken := s.takeApply(sid, pending.seq); taken {
-			s.recordApply("changes.applied", pages)
+		if change, taken := s.takeApply(sid, pending.seq); taken {
+			s.recordApply(history.ChangeApplied, change)
 		}
 	}
 }
 
 // takeApply claims sid's pending apply numbered seq, once.
-func (s *Server) takeApply(sid string, seq int) ([]string, bool) {
+func (s *Server) takeApply(sid string, seq int) (history.Change, bool) {
 	s.applies.mu.Lock()
 	defer s.applies.mu.Unlock()
 	pending, ok := s.applies.by[sid]
 	if !ok || pending.seq != seq {
-		return nil, false
+		return history.Change{}, false
 	}
 	delete(s.applies.by, sid)
-	return pending.pages, true
+	return pending.change, true
 }
 
-func (s *Server) recordApply(kind string, pages []string) {
+// recordApply keeps change as applied or rolled back: in config history
+// (ADR-021), and as the event naming its pages (ADR-019).
+func (s *Server) recordApply(status string, change history.Change) {
+	now := time.Now()
+	if s.changeLog != nil {
+		change.Time, change.Status = now, status
+		if _, err := s.changeLog.RecordChange(context.Background(), change); err != nil {
+			log.Printf("verso: change not recorded: %v", err)
+		}
+	}
+	if s.historyStore == nil {
+		return
+	}
+	kind := "changes.applied"
+	if status == history.ChangeRolledBack {
+		kind = "changes.rolledback"
+	}
 	detail, _ := json.Marshal(struct {
 		Pages []string `json:"pages"`
-	}{pages})
-	if err := s.historyStore.Record(context.Background(), history.Event{Time: time.Now(), Kind: kind, Detail: string(detail)}); err != nil {
+	}{changePages(change)})
+	if err := s.historyStore.Record(context.Background(), history.Event{Time: now, Kind: kind, Detail: string(detail)}); err != nil {
 		log.Printf("verso: event not recorded: %v", err)
 	}
 }

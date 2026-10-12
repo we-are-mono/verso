@@ -48,7 +48,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	if err := alerter.Begin(context.Background()); err != nil {
 		log.Printf("verso: alerts: %v", err)
 	}
-	s.historyStore, s.alerter = store, alerter
+	s.historyStore, s.changeLog, s.alerter = store, store, alerter
 	store.OnHealth(s.storageTurned)
 	if !onDisk {
 		store.Fail(fmt.Sprintf("%s cannot be written: %v", path, openErr), time.Now())

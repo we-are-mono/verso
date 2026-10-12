@@ -131,6 +131,9 @@ func TestEveryFileAShellWroteReachesTheLatestWithAllItHeld(t *testing.T) {
 			if got := countOf(t, store.db, "alerts"); got != file.alerts {
 				t.Fatalf("the file kept %d alerts, want %d", got, file.alerts)
 			}
+			if _, err := store.RecordChange(ctx, applied(minute(3))); err != nil {
+				t.Fatalf("a migrated file takes no changes: %v", err)
+			}
 
 			store.Add(Point{Series: "cpu", Time: minute(3), Average: 3, Peak: 3},
 				Point{Series: "temp.soc", Time: minute(3), Average: 40, Peak: 41})

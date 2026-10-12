@@ -84,6 +84,7 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
 | `entity_tabs` | optional: what this plugin has to say about a subject some other page lists ([below](#entity-panels)) |
 | `entity_acts` | optional: this plugin's direct acts on such a subject, which open nothing |
+| `secrets` | optional: the options your config keeps a secret in, as `config.option` in any section (`"ddns.password"`). Config history (ADR-021) records that they changed and never their values. OpenWrt's own (`network.password`, `wireless.key`, `wireless.sae_password` and the like) are covered already; name any other your plugin writes |
 
 To place several pages in the menu, add more entries — each is grouped under its
 own `section`:

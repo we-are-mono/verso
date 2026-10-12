@@ -28,6 +28,10 @@ type Manifest struct {
 	EntityTabs []EntityTab `json:"entity_tabs,omitempty"`
 	EntityActs []EntityAct `json:"entity_acts,omitempty"`
 	ACL        ACL         `json:"acl"`
+	// Secrets are the options that hold a secret, as config.option in any
+	// section ("network.password"): config history records that they changed
+	// and never their values (ADR-021).
+	Secrets []string `json:"secrets,omitempty"`
 }
 
 // ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's
@@ -161,5 +165,29 @@ func (m Manifest) validate() error {
 			return fmt.Errorf("plugin %q acl.write[%d] needs scope, object and function", m.ID, i)
 		}
 	}
+	for i, secret := range m.Secrets {
+		// A secret naming no config and option protects nothing; reject it
+		// rather than let the value it meant to keep out land in the history.
+		config, option, ok := strings.Cut(secret, ".")
+		if !ok || !uciName(config, true) || !uciName(option, false) {
+			return fmt.Errorf("plugin %q secrets[%d] %q must be config.option", m.ID, i, secret)
+		}
+	}
 	return nil
+}
+
+// uciName reports whether s is a name uci accepts, as libuci's
+// uci_validate_str has it: letters, digits and underscores, and for a config
+// (package) also dashes.
+func uciName(s string, config bool) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		ok := r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || config && r == '-'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }

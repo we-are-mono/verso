@@ -106,6 +106,9 @@ type Server struct {
 	// is what the graphs' past windows read (ADR-019). Nil without a history.
 	historyStop  func()
 	historyStore *history.Store
+	// changeLog keeps config history (ADR-021): the history store; nil without
+	// a history.
+	changeLog changeRecorder
 	// alerter sends alerts and the heartbeat (ADR-020); nil without a history.
 	alerter *alerts.Alerter
 	// applies is the applies awaiting their confirm, recorded as kept or

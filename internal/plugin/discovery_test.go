@@ -213,6 +213,41 @@ func TestDiscoverRejectsIncompleteReadACL(t *testing.T) {
 	}
 }
 
+// TestDiscoverParsesSecrets: a plugin names the options that hold secrets, as
+// config.option, so config history keeps that they changed and never their
+// values (ADR-021).
+func TestDiscoverParsesSecrets(t *testing.T) {
+	fsys := mapFS(map[string]string{
+		"plugins/s/manifest.json": `{"id":"s","name":"N","socket":"/run/verso/s.sock",` +
+			`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+			`"secrets":["network.password","ddns.password"]}`,
+	})
+
+	got, problems := Discover(fsys, testGlob)
+	if len(problems) != 0 || len(got) != 1 {
+		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
+	}
+	if s := got[0].Secrets; len(s) != 2 || s[0] != "network.password" || s[1] != "ddns.password" {
+		t.Errorf("secrets not parsed: %+v", s)
+	}
+}
+
+// TestDiscoverRejectsAMalformedSecret: a secret that names no config and
+// option would protect nothing, so it is a load error rather than a value
+// that quietly lands in the history.
+func TestDiscoverRejectsAMalformedSecret(t *testing.T) {
+	for _, secret := range []string{"password", "network.", ".password", "network.wan.password", "net work.password"} {
+		fsys := mapFS(map[string]string{
+			"plugins/z/manifest.json": `{"id":"z","name":"N","socket":"/run/verso/z.sock",` +
+				`"schema_version":1,"nav":[{"section":"S","label":"L","path":"/"}],` +
+				`"secrets":["` + secret + `"]}`,
+		})
+		if got, problems := Discover(fsys, testGlob); len(got) != 0 || len(problems) != 1 {
+			t.Errorf("secret %q: got=%d problems=%d, want it skipped", secret, len(got), len(problems))
+		}
+	}
+}
+
 // TestDiscoverParsesNavIconAndPages: a nav entry may name the shell glyph its row
 // draws (ADR-005) and say it opens into subpages. Both are optional — an entry
 // declaring neither is the ordinary case and parses to empty.

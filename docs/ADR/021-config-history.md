@@ -114,9 +114,12 @@ no logo, so a reader may not know what "Verso" is.
 
 ### Secrets are not kept
 
-A plugin's manifest lists the options that hold secrets (`wireless.*.key`,
-`network.*.password`). History records that such an option changed, never its
-value, before or after. Undoing an entry that changed a secret stages
+The shell knows the options OpenWrt's own packages keep a secret in
+(`network.password`, `wireless.key`, `wireless.sae_password`, `ddns.password`
+and the like), and a plugin's manifest names any other its config holds, as
+`config.option` (`"secrets": ["vpn.auth_pass"]`). History records that such an
+option changed, never its value, before or after; a plugin that forgets to
+name one of OpenWrt's still leaks nothing. Undoing an entry that changed a secret stages
 everything else and leaves the secret as it is, and the drawer says so before
 the act.
 
