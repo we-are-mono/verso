@@ -580,12 +580,14 @@
       {{end}}
       {{/* A choice drawer's section bands carry the drawer inset inside an
            arbitrary variant, where a partial cannot stand: px-10 there is
-           verso-drawer-inset spelled out. */}}
+           verso-drawer-inset spelled out. A table keeps its own cell inset
+           inside the drawer's, as an entity panel's does, so a lane's fill
+           never touches its words. */}}
       {{/* A panel that answered its own submission carries how it went for the
            outcome layer to say (verso-page.js), never as a line of its own:
            the page is not drawn around this answer, so the panel brings it. */}}
       {{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
-      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-10 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-inset"}} pt-8 pb-8{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:first-child]:!pl-0 [&_th:first-child]:!pl-0 [&_td:last-child]:!pr-0 [&_th:last-child]:!pr-0 [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-10 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-inset"}} pt-8 pb-8{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
         {{range .Body}}{{.}}{{end}}
       </div>
 {{end}}
