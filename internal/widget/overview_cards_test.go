@@ -211,6 +211,27 @@ func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 	}
 }
 
+// The uplink's device and how long it has been connected head the Internet
+// card, the time kept live by the stream; a down uplink has no time to state.
+func TestInternetCardBodyNamesTheUplink(t *testing.T) {
+	up := cardBody(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min"}, "internet")
+	for _, want := range []string{">Device<", ">pppoe-wan<", ">Connected for<", `data-verso-prop="wan-uptime"`, ">2 h 14 min<"} {
+		if !strings.Contains(up, want) {
+			t.Errorf("an up uplink's card missing %q: %s", want, up)
+		}
+	}
+	if strings.Index(up, "pppoe-wan") > strings.Index(up, "IPv4") {
+		t.Error("the uplink heads the card, over its address families")
+	}
+	down := cardBody(t, &Overview{WANKnown: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min"}, "internet")
+	if !strings.Contains(down, ">pppoe-wan<") || strings.Contains(down, "Connected for") {
+		t.Errorf("a down uplink names its device and states no time: %s", down)
+	}
+	if none := cardBody(t, &Overview{}, "internet"); strings.Contains(none, ">Device<") {
+		t.Errorf("no uplink, no device row: %s", none)
+	}
+}
+
 func TestOverviewCardHeadsNeverLeakPluralContext(t *testing.T) {
 	o := &Overview{InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 2, FirewallState: "active",
 		Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}}, {Name: "wg0", Kind: "tunnel", State: "up"}}}

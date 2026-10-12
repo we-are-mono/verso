@@ -39,7 +39,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	srv.stats = fakeStats{cpu: 91, root: sysstat.Storage{Used: 95, Free: 5}}
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: uint64(time.Now().UnixMilli()), Interfaces: []telemetry.Interface{{Name: "eth0", Physical: true, Kind: "port", Operstate: "down"}, {Name: "wg0", Kind: "tunnel", Operstate: "unknown"}}}}
 	body := getLang(t, srv, "/", "sl-SI")
-	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
+	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "Povezano že", "2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Slovenian overview missing %q", want)
 		}
@@ -79,6 +79,10 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			}
 			if meters[1].Band != "danger" || strings.Contains(payload, `"role"`) {
 				t.Errorf("CPU should keep critical band in stream: %+v", meters[1])
+			}
+		case "wan":
+			if !strings.Contains(payload, `"connected":"2 h 14 min"`) {
+				t.Errorf("the wan frame says how long the uplink has held, written: %s", payload)
 			}
 		case "interfaces":
 			if !strings.Contains(payload, "Ne deluje") || !strings.Contains(payload, "Neznano") {

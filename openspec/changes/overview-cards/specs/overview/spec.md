@@ -159,7 +159,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 
 #### Scenario: What each card holds
 - **WHEN** the Overview renders with every card open
-- **THEN** Internet holds the uplink's state and the IPv4 and IPv6 facts with their protocol
+- **THEN** Internet holds the uplink's state, its device and how long it has been connected, and the IPv4 and IPv6 facts with their protocol
 - **AND** Ports holds each physical port's network, current rate and link
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice

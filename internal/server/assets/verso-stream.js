@@ -178,11 +178,14 @@
     es.addEventListener("error", function () { live.classList.remove("bg-green"); live.classList.add("bg-faint"); if (pulse) pulse.cancel(); });
   }
   listen(es, "interfaces", "interfaces", applyInterface);
-  // The WAN throughput sample hands off to the Internet graph, if present.
+  // The WAN throughput sample hands off to the Internet graph, if present, and
+  // the Internet card's row says how long the uplink has been connected.
   es.addEventListener("wan", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
     if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
+    var connected = document.querySelector('[data-verso-prop="wan-uptime"]');
+    if (connected && d && d.connected) connected.textContent = d.connected;
   });
   // The hardware-sensor frame updates the System panel's temperature/fan/power
   // rows in place, including N/A when a reading disappears. The temperature

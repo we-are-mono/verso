@@ -79,11 +79,13 @@
 </article>
 {{end}}
 
-{{/* overview.internet: the Internet card's body — each address family under
-     its name and protocol, or the sentence that stands where its rows would. */}}
+{{/* overview.internet: the Internet card's body — the uplink's device and how
+     long it has been connected, then each address family under its name and
+     protocol, or the sentence that stands where its rows would. */}}
 {{define "overview.internet"}}
 <div class="grid gap-5">
-  {{range .}}
+  {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
+  {{range .Families}}
   <section aria-label="{{.Kind}}" class="min-w-0">
     {{/* the family's name heads its rows as a row of its own: its 20px line,
          10px over and 9px under, its chip a pixel over the line, and a Strong

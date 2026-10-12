@@ -9,7 +9,7 @@ The Overview reads as one long sheet: a verdict, a strip of four status tiles, t
 The Overview becomes two columns of cards on a Quiet Sand page. Each card holds one kind of reading, and you can open, close, move and hide it. The design is the mock at https://claude.ai/artifact/DRTQcksAMhEJRRg7LtUT8Y.
 
 - **Seven cards** carry what the Overview shows today, less the firewall's rule count, which told the operator nothing to act on; a firewall that isn't fully loaded still turns the verdict:
-  - Internet: the uplink's state, plus the IPv4 and IPv6 facts with copy controls.
+  - Internet: the uplink's state, its device and how long it has been connected, plus the IPv4 and IPv6 facts with copy controls.
   - Ports: each physical port's network, current rate and link.
   - Tunnels: each tunnel someone brought up, with its kind, rate and state.
   - Traffic: the Internet graph and its window choice.

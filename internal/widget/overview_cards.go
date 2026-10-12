@@ -73,8 +73,16 @@ type overviewFamilyView struct {
 	Rows               template.HTML
 }
 
-// internetBody is the IPv4 and IPv6 facts, each address mono and copyable —
-// the reading order for values a person compares line by line.
+// overviewInternetView is the Internet card's body: the uplink's rows, then
+// its address families.
+type overviewInternetView struct {
+	Uplink   template.HTML
+	Families []overviewFamilyView
+}
+
+// internetBody is the uplink, its device and how long it has been connected
+// (kept live by the stream), then the IPv4 and IPv6 facts, each address mono
+// and copyable — the reading order for values a person compares line by line.
 func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error) {
 	families := []struct {
 		kind, proto, empty string
@@ -83,12 +91,23 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 		{"IPv4", o.V4Proto, "No address.", o.V4},
 		{"IPv6", o.V6Proto, "No prefix was delegated.", o.V6},
 	}
-	views := make([]overviewFamilyView, 0, len(families))
+	view := overviewInternetView{Families: make([]overviewFamilyView, 0, len(families))}
+	if o.WANDevice != "" {
+		uplink := []Property{{Label: "Device", Value: o.WANDevice, Mono: true, Emphasis: true}}
+		if o.WANUp && o.WANUptime != "" {
+			uplink = append(uplink, Property{Label: "Connected for", Value: o.WANUptime, Key: "wan-uptime", Emphasis: true, Verbatim: true})
+		}
+		rows, err := o.renderWidget(r, &Properties{Style: "overview-connection", Align: "left", Items: uplink}, csrf)
+		if err != nil {
+			return "", err
+		}
+		view.Uplink = rows
+	}
 	for _, f := range families {
 		v := overviewFamilyView{Kind: f.kind, Proto: overviewProtocol(f.proto)}
 		if len(f.facts) == 0 || (len(f.facts) == 1 && f.facts[0].Value == "Not configured") {
 			v.Empty = r.tr(f.empty)
-			views = append(views, v)
+			view.Families = append(view.Families, v)
 			continue
 		}
 		items := make([]Property, 0, len(f.facts))
@@ -100,9 +119,9 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 			return "", err
 		}
 		v.Rows = rows
-		views = append(views, v)
+		view.Families = append(view.Families, v)
 	}
-	return r.fragment("overview.internet", views)
+	return r.fragment("overview.internet", view)
 }
 
 // ── Ports ──
