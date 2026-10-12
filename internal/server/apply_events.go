@@ -28,15 +28,17 @@ type applyWatch struct {
 }
 
 // pendingApply is an apply awaiting its confirm: the stage it applied, as
-// config history keeps it (stagedChange), read before the apply emptied it.
+// config history keeps it (stagedChange), read before the apply emptied it,
+// and the entries it undoes once kept.
 type pendingApply struct {
-	seq    int
-	change history.Change
+	seq      int
+	change   history.Change
+	reverses []int64
 }
 
 // watchApply waits for sid's apply of change to be confirmed, and records it
-// rolled back if its window passes first.
-func (s *Server) watchApply(sid string, change history.Change) {
+// rolled back if its window passes first. Kept, it undoes reverses.
+func (s *Server) watchApply(sid string, change history.Change, reverses []int64) {
 	if s.historyStore == nil && s.changeLog == nil {
 		return
 	}
@@ -46,11 +48,11 @@ func (s *Server) watchApply(sid string, change history.Change) {
 	if s.applies.by == nil {
 		s.applies.by = map[string]pendingApply{}
 	}
-	s.applies.by[sid] = pendingApply{seq: seq, change: change}
+	s.applies.by[sid] = pendingApply{seq: seq, change: change, reverses: reverses}
 	s.applies.mu.Unlock()
 	s.afterRollback(time.Duration(uciRollbackTimeout)*time.Second+rollbackGrace, func() {
-		if change, ok := s.takeApply(sid, seq); ok {
-			s.recordApply(history.ChangeRolledBack, change)
+		if pending, ok := s.takeApply(sid, seq); ok {
+			s.recordApply(history.ChangeRolledBack, pending.change, nil)
 		}
 	})
 }
@@ -61,22 +63,22 @@ func (s *Server) confirmedApply(sid string) {
 	pending, ok := s.applies.by[sid]
 	s.applies.mu.Unlock()
 	if ok {
-		if change, taken := s.takeApply(sid, pending.seq); taken {
-			s.recordApply(history.ChangeApplied, change)
+		if pending, taken := s.takeApply(sid, pending.seq); taken {
+			s.recordApply(history.ChangeApplied, pending.change, pending.reverses)
 		}
 	}
 }
 
 // takeApply claims sid's pending apply numbered seq, once.
-func (s *Server) takeApply(sid string, seq int) (history.Change, bool) {
+func (s *Server) takeApply(sid string, seq int) (pendingApply, bool) {
 	s.applies.mu.Lock()
 	defer s.applies.mu.Unlock()
 	pending, ok := s.applies.by[sid]
 	if !ok || pending.seq != seq {
-		return history.Change{}, false
+		return pendingApply{}, false
 	}
 	delete(s.applies.by, sid)
-	return pending.change, true
+	return pending, true
 }
 
 // changesDetail is an apply's event detail: the pages its changes were made
@@ -87,9 +89,9 @@ type changesDetail struct {
 }
 
 // recordApply keeps change as applied or rolled back: in config history
-// (ADR-021), and as the event naming its pages and opening its entry
-// (ADR-019).
-func (s *Server) recordApply(status string, change history.Change) {
+// (ADR-021), with the entries it undoes marked so, and as the event naming
+// its pages and opening its entry (ADR-019).
+func (s *Server) recordApply(status string, change history.Change, reverses []int64) {
 	now := time.Now()
 	var id int64
 	if s.changeLog != nil {
@@ -97,6 +99,10 @@ func (s *Server) recordApply(status string, change history.Change) {
 		var err error
 		if id, err = s.changeLog.RecordChange(context.Background(), change); err != nil {
 			log.Printf("verso: change not recorded: %v", err)
+		} else if len(reverses) > 0 {
+			if err := s.changeLog.MarkUndone(context.Background(), reverses, id); err != nil {
+				log.Printf("verso: changes not marked undone: %v", err)
+			}
 		}
 	}
 	if s.historyStore == nil {

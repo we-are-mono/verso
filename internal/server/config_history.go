@@ -15,6 +15,7 @@ import (
 // changeRecorder keeps config history (ADR-021): history.db's, or a test's.
 type changeRecorder interface {
 	RecordChange(ctx context.Context, c history.Change) (int64, error)
+	MarkUndone(ctx context.Context, ids []int64, by int64) error
 }
 
 // baseSecrets are the options OpenWrt's own packages keep a secret in, as
@@ -87,6 +88,7 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 			op.Old = replaced(committed, *op)
 		}
 	}
+	change.OldRead = true
 	return change
 }
 

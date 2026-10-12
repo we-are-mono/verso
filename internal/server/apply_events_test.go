@@ -75,12 +75,24 @@ func TestAnApplyNobodyConfirmedIsRecordedAsRolledBack(t *testing.T) {
 	}
 }
 
-// changeLog keeps what the shell hands config history (ADR-021).
-type changeLog struct{ changes []history.Change }
+// changeLog keeps what the shell hands config history (ADR-021): each change,
+// and which entries each undid.
+type changeLog struct {
+	changes []history.Change
+	undone  map[int64][]int64 // by → the entries it undid
+}
 
 func (l *changeLog) RecordChange(_ context.Context, c history.Change) (int64, error) {
 	l.changes = append(l.changes, c)
 	return int64(len(l.changes)), nil
+}
+
+func (l *changeLog) MarkUndone(_ context.Context, ids []int64, by int64) error {
+	if l.undone == nil {
+		l.undone = map[int64][]int64{}
+	}
+	l.undone[by] = append(l.undone[by], ids...)
+	return nil
 }
 
 // changeServer is applyServer with the stage given and config history kept
@@ -226,6 +238,9 @@ func TestAnApplyKeepsWhatEachChangeReplaced(t *testing.T) {
 		"remove-section network.wan6.":        `{".type":"interface","device":"@wan","proto":"dhcpv6"}`,
 		"add-section network.guest.interface": ``,
 	}
+	if !log.changes[0].OldRead {
+		t.Error("the change should say what it replaced was read")
+	}
 	if !reflect.DeepEqual(old, want) {
 		t.Fatalf("old values\n%v\nwant\n%v", old, want)
 	}
@@ -241,7 +256,7 @@ func TestAnApplyIsKeptWhenWhatItReplacedCannotBeRead(t *testing.T) {
 	}, &fakeTransport{})
 	applyConfirmed(t, s, window)
 
-	if len(log.changes) != 1 || log.changes[0].Items[0].Ops[0].Old != nil {
+	if len(log.changes) != 1 || log.changes[0].Items[0].Ops[0].Old != nil || log.changes[0].OldRead {
 		t.Fatalf("changes = %+v, want one without an old value", log.changes)
 	}
 }

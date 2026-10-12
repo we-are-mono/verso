@@ -604,7 +604,10 @@ func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
-	s.watchApply(sid, change)
+	// A stage an Undo, a Return or a Stage again made is that to history.
+	rel, _ := s.relations.take(sid)
+	change.Relation, change.Related = rel.relation, rel.related
+	s.watchApply(sid, change, rel.reverses)
 	writeOK(w)
 }
 
@@ -648,6 +651,7 @@ func (s *Server) handleUCIDiscard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.authors.forget(sid)
+	s.relations.forget(sid)
 	writeOK(w)
 }
 

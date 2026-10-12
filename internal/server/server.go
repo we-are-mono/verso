@@ -117,6 +117,9 @@ type Server struct {
 	// authors is which plugin staged each change, per session's stage, so the
 	// review drawer files a change under the page it was made on.
 	authors stageAuthors
+	// relations is what each session's stage is to config history when it
+	// came from an Undo, a Return or a Stage again (ADR-021).
+	relations stageRelations
 	// The discovered manifests and their id index, guarded by manifestsMu:
 	// the management surface rescans them at runtime after an install or
 	// remove (ADR-011 §7), so every read goes through the accessors below.
