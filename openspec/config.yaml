@@ -15,7 +15,6 @@ context: |
   as `uci show`. Status comes from daemon events and netlink, never from logread.
   Router CPU and memory are the budget; LAN bandwidth is free.
   Risky operator choices get a warning naming the cause, never a refusal.
-  The dev host is live network infrastructure: no privileged or watchdog containers.
 
 rules:
   proposal:
