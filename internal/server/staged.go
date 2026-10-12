@@ -69,6 +69,9 @@ type stagedView struct {
 	// constant the apply actually arms rpcd with, carried into the sentence so
 	// the promise on screen cannot drift from the one the device keeps.
 	Rollback int
+	// Summary is what the entry's row in config history will say, offered
+	// where the drawer asks for a note (ADR-021).
+	Summary string
 }
 
 // stagedGroup is one page's run of changes in the drawer: a band naming the
@@ -206,6 +209,7 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 		v.Count += n
 	}
 	v.Label = stagedLabel(v.Count, tr)
+	v.Summary = changeSummary(stagedItems(v, nil), tr)
 	return v
 }
 
@@ -604,9 +608,11 @@ func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "apply failed", http.StatusBadGateway)
 		return
 	}
-	// A stage an Undo, a Return or a Stage again made is that to history.
+	// A stage an Undo, a Return or a Stage again made is that to history,
+	// and the review drawer's note goes with it.
 	rel, _ := s.relations.take(sid)
 	change.Relation, change.Related = rel.relation, rel.related
+	change.Note = applyNote(r.FormValue("note"))
 	s.watchApply(sid, change, rel.reverses)
 	writeOK(w)
 }

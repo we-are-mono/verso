@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -54,22 +55,15 @@ func (s *Server) secretOptions() map[string]bool {
 func (s *Server) stagedChange(ctx context.Context, sid, user, address string) history.Change {
 	identity := func(s string) string { return s }
 	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
-	secrets := s.secretOptions()
-	change := history.Change{User: user, Address: address}
+	change := history.Change{User: user, Address: address, Items: stagedItems(view, s.secretOptions())}
 	var configs []string
 	seen := map[string]bool{}
-	for _, g := range view.Groups {
-		for _, item := range g.Items {
-			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono,
-				SubjectKind: item.subject.Kind, SubjectName: item.subject.Name}
-			for _, c := range item.changes {
-				kept.Ops = append(kept.Ops, changeOp(c, secrets))
-				if !seen[c.config] && describeChange(c).Op != "file" {
-					seen[c.config] = true
-					configs = append(configs, c.config)
-				}
+	for _, item := range change.Items {
+		for _, op := range item.Ops {
+			if !seen[op.Config] && op.Op != "file" {
+				seen[op.Config] = true
+				configs = append(configs, op.Config)
 			}
-			change.Items = append(change.Items, kept)
 		}
 	}
 	if len(configs) == 0 {
@@ -90,6 +84,37 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 	}
 	change.OldRead = true
 	return change
+}
+
+// stagedItems is the review drawer's rows as config history keeps them,
+// under the page each was made on, each with the uci changes it stands for.
+func stagedItems(view stagedView, secrets map[string]bool) []history.ChangeItem {
+	var items []history.ChangeItem
+	for _, g := range view.Groups {
+		for _, item := range g.Items {
+			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono,
+				SubjectKind: item.subject.Kind, SubjectName: item.subject.Name}
+			for _, c := range item.changes {
+				kept.Ops = append(kept.Ops, changeOp(c, secrets))
+			}
+			items = append(items, kept)
+		}
+	}
+	return items
+}
+
+// applyNoteLimit is how long a note on an apply may be, in characters: a
+// line, not a document.
+const applyNoteLimit = 200
+
+// applyNote is the review drawer's note as config history keeps it: one
+// line, trimmed, and no longer than applyNoteLimit.
+func applyNote(typed string) string {
+	note := strings.Join(strings.Fields(typed), " ")
+	if runes := []rune(note); len(runes) > applyNoteLimit {
+		note = string(runes[:applyNoteLimit])
+	}
+	return note
 }
 
 // subjectOf is what a described row is about, as config history keeps it: the

@@ -275,6 +275,19 @@ func (s subject) chip() *widget.TableChip {
 // reads as its first two subjects, each with what happened to it, and how
 // many more there are. plain is the same line read as words.
 func changePhrase(c history.Change, tr func(string) string) ([]widget.TablePart, string) {
+	return phrase(c, tr, true)
+}
+
+// changeSummary is a stage's rows read as subjects, what each did, in words:
+// the review drawer's offer for a note, before any value it replaced is read.
+func changeSummary(items []history.ChangeItem, tr func(string) string) string {
+	_, plain := phrase(history.Change{Items: items}, tr, false)
+	return plain
+}
+
+// phrase is changePhrase, reading one option of one subject as the edit only
+// where edit is set.
+func phrase(c history.Change, tr func(string) string, edit bool) ([]widget.TablePart, string) {
 	type touched struct {
 		subject
 		verbs []string
@@ -292,9 +305,9 @@ func changePhrase(c history.Change, tr func(string) string) ([]widget.TablePart,
 		all[i].ops = append(all[i].ops, item.Ops...)
 	}
 	var parts []widget.TablePart
-	if len(all) == 1 && len(all[0].ops) == 1 {
-		if edit, ok := editParts(all[0].ops[0], tr); ok {
-			parts = append([]widget.TablePart{{Chip: all[0].chip()}}, edit...)
+	if edit && len(all) == 1 && len(all[0].ops) == 1 {
+		if edited, ok := editParts(all[0].ops[0], tr); ok {
+			parts = append([]widget.TablePart{{Chip: all[0].chip()}}, edited...)
 		}
 	}
 	if parts == nil {

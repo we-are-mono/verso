@@ -7,7 +7,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -306,5 +308,33 @@ func TestAppliedAndRolledBackChangesReadAsSentences(t *testing.T) {
 	back := eventRow(history.Event{Kind: "changes.rolledback", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity)
 	if got := back.Cells[2]; got.Text != "Changes rolled back: Firewall. The router could not be reached to confirm them." || got.Variant != "warning" {
 		t.Errorf("rolled back = %+v", got)
+	}
+}
+
+// TestAnApplyKeepsItsNote: the review drawer's note goes into config history
+// with the apply, trimmed and kept to a line.
+func TestAnApplyKeepsItsNote(t *testing.T) {
+	for _, tc := range []struct{ typed, kept string }{
+		{"  Ping off for the audit \n", "Ping off for the audit"},
+		{"", ""},
+		{strings.Repeat("é", 300), strings.Repeat("é", applyNoteLimit)},
+	} {
+		s, log, window := changeServer(t, map[string][][]string{"system": {{"set", "@system[0]", "hostname", "pending"}}})
+		postPlugin(t, s, "/uci/apply", url.Values{"note": {tc.typed}})
+		postPlugin(t, s, "/uci/confirm", nil)
+		(*window)()
+		if got := log.changes[0].Note; got != tc.kept {
+			t.Errorf("note %q kept as %q, want %q", tc.typed, got, tc.kept)
+		}
+	}
+}
+
+// TestTheReviewDrawerAsksForANote: an optional box whose placeholder is what
+// the entry's row will say.
+func TestTheReviewDrawerAsksForANote(t *testing.T) {
+	s, _, _ := changeServer(t, map[string][][]string{"system": {{"set", "@system[0]", "hostname", "pending"}}})
+	body := getPanel(t, s, "/uci/review").Body.String()
+	if !strings.Contains(body, `name="note"`) || !strings.Contains(body, `placeholder="system.@system[0] changed"`) {
+		t.Errorf("review drawer:\n%s", body)
 	}
 }

@@ -77,6 +77,14 @@
     {{end}}
     {{if not .Count}}<p class="py-8 text-sm text-body">{{ t "Nothing staged. Every save lands here until you apply." }}</p>{{end}}
     {{if .Count}}
+    {{/* Why, in the operator's words, for config history (ADR-021): never
+         asked for, so an apply is one press as it always was. Its
+         placeholder is what the entry's row will say without it. */}}
+    <div class="mt-5 flex flex-col gap-2">
+      <label for="verso-staged-apply-note" class="{{template "verso-field-label-class"}}">{{ t "Note" }} <span class="font-normal text-meta">{{ t "optional" }}</span></label>
+      <input id="verso-staged-apply-note" name="note" type="text" maxlength="200" autocomplete="off" placeholder="{{.Summary}}"
+        class="{{template "verso-input-words"}} {{template "verso-input-border" ""}}">
+    </div>
     {{/* The promise that makes applying safe to press, stating the window the
          apply actually arms rather than a number typed into the markup. The
          same line carries how the apply went, once it has. */}}

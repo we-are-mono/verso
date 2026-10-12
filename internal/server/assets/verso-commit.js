@@ -439,7 +439,9 @@
       });
     }
 
-    post("/uci/apply")
+    // The note, if one was written, goes into config history with the apply.
+    var typed = document.getElementById("verso-staged-apply-note");
+    versoPost("/uci/apply", versoBody([["note", typed ? typed.value : ""]]))
       .then(function (res) {
         if (!res.ok) {
           waiting(false);
