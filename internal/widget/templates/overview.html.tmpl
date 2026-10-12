@@ -10,17 +10,20 @@
 <div data-overview data-overview-tone="{{.Verdict.Tone}}" class="group/overview verso-overview">
   {{/* The page stands on the notebook's 20px grid (DESIGN.md "Overview
        cards"): the heading line is two cells, the verdict writing on 40px
-       lines and the act centred in them, so the cards' frames land on lines. */}}
-  <div class="flex flex-wrap items-center gap-x-6">
+       lines and the act centred in them, so the cards' frames land on lines.
+       The clock stands on the verdict's baseline, on a 20px line of its own
+       inside the verdict's 40, so the heading line stays two cells and a
+       clock wrapped under it adds one. */}}
+  <div class="flex flex-wrap items-baseline gap-x-6">
     <h1 class="text-3xl leading-10 font-semibold tracking-tight text-balance text-ink"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     {{if .Verdict.Clock}}
-    <div class="flex h-10 items-center gap-2 text-sm text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
-      <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 rounded-[1px] bg-green"></span>
-      <time class="font-mono text-base font-medium text-ink tabular-nums" data-overview-time>{{.Verdict.Clock}}</time>
+    <div class="flex items-baseline gap-2 text-sm leading-5 text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
+      <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span>
+      <time class="font-mono text-base leading-5 font-medium text-ink tabular-nums" data-overview-time>{{.Verdict.Clock}}</time>
       <span>{{.Verdict.Zone}}</span>
     </div>
     {{end}}
-    <div class="ml-auto flex h-10 items-center">
+    <div class="ml-auto flex h-10 items-center self-center">
       <button type="button" data-overview-arrange aria-pressed="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-white group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-white">
         <span class="group-data-arranging/overview:hidden">{{ t "Arrange" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span>
       </button>
