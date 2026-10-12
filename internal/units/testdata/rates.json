@@ -20,11 +20,16 @@
     {"bps": 9980000000, "value": "10", "unit": "Gb/s"},
     {"bps": 25000000000, "value": "25", "unit": "Gb/s"}
   ],
-  "_axis": "A chart's value labels: every label in the unit its top one is written in.",
-  "axes": [
-    {"top_bps": 1000000, "labels": ["1 Mb/s", "0.8", "0.5", "0.3"]},
-    {"top_bps": 46000000, "labels": ["46 Mb/s", "35", "23", "12"]},
-    {"top_bps": 1200000000, "labels": ["1.2 Gb/s", "0.9", "0.6", "0.3"]},
-    {"top_bps": 11500000000, "labels": ["12 Gb/s", "8.6", "5.8", "2.9"]}
+  "_scales": "A chart's scale for its tallest point: a round top at least a tenth over it, four steps of 1, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten, each step whole tenths so no label needs two decimals, at least 0.4 Mb/s, in Gb/s once it would reach 1000 Mb/s; its labels top first, every one in the top's unit.",
+  "scales": [
+    {"peak_bps": 0, "top_bps": 400000, "labels": ["0.4 Mb/s", "0.3", "0.2", "0.1"]},
+    {"peak_bps": 900000, "top_bps": 1200000, "labels": ["1.2 Mb/s", "0.9", "0.6", "0.3"]},
+    {"peak_bps": 3000000, "top_bps": 4000000, "labels": ["4 Mb/s", "3", "2", "1"]},
+    {"peak_bps": 46000000, "top_bps": 60000000, "labels": ["60 Mb/s", "45", "30", "15"]},
+    {"peak_bps": 85000000, "top_bps": 100000000, "labels": ["100 Mb/s", "75", "50", "25"]},
+    {"peak_bps": 100000000, "top_bps": 120000000, "labels": ["120 Mb/s", "90", "60", "30"]},
+    {"peak_bps": 400000000, "top_bps": 600000000, "labels": ["600 Mb/s", "450", "300", "150"]},
+    {"peak_bps": 900000000, "top_bps": 1200000000, "labels": ["1.2 Gb/s", "0.9", "0.6", "0.3"]},
+    {"peak_bps": 9400000000, "top_bps": 12000000000, "labels": ["12 Gb/s", "9", "6", "3"]}
   ]
 }

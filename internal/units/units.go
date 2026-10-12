@@ -45,7 +45,8 @@ type Rate struct {
 // String is the rate as one phrase, "4.3 Mb/s".
 func (r Rate) String() string { return r.Value + " " + r.Unit }
 
-// AxisFractions are where a chart's value labels stand, top first.
+// AxisFractions are where a chart's value labels stand, top first: the top
+// and its three quarter lines, so a round top of four steps labels each step.
 var AxisFractions = []float64{1, 0.75, 0.5, 0.25}
 
 // Figure writes v at its scale: one decimal under ten, whole from ten.
@@ -67,19 +68,51 @@ func (n Numbers) Rate(bps float64) Rate {
 	return Rate{n.Figure(max(bps, 100_000) / per), unit}
 }
 
-// RateAxis writes a chart's value labels for a plot topped at top bits per
-// second, one per fraction: the first is that rate in full, the rest are
-// figures in its unit.
-func (n Numbers) RateAxis(top float64, fractions []float64) []string {
-	unit, per := rateScale(top)
-	labels := make([]string, len(fractions))
-	for i, f := range fractions {
-		labels[i] = n.Figure(top * f / per)
+// RateScale is a chart's scale for a plot whose tallest point is peak bits per
+// second: a round top, in bits per second, and its labels at AxisFractions,
+// the first that rate in full and the rest figures in its unit. The top is
+// four round steps (roundStep), at least a tenth over the peak so the curve
+// never touches it, and at least 0.4 Mb/s. Its labels read as counted
+// (60 · 45 · 30 · 15), the curve fills at least three fifths of the plot, and
+// the scale moves only when the traffic crosses a step, not with every
+// second's peak.
+func (n Numbers) RateScale(peak float64) (top float64, labels []string) {
+	if !(peak > 0) || math.IsInf(peak, 1) {
+		peak = 0 // nothing recorded, or nothing a chart could draw
 	}
-	if len(labels) != 0 {
-		labels[0] += " " + unit
+	need := max(peak*1.1, 400_000)
+	unit, per := "Mb/s", 1e6
+	step := roundStep(need / per / 4)
+	if 4*step >= 1000 {
+		unit, per = "Gb/s", 1e9
+		step = roundStep(need / per / 4)
 	}
-	return labels
+	labels = make([]string, len(AxisFractions))
+	for i, f := range AxisFractions {
+		labels[i] = n.Figure(4 * step * f)
+	}
+	labels[0] += " " + unit
+	return 4 * step * per, labels
+}
+
+// roundSteps are the steps a scale counts in, times a power of ten: close
+// enough together that the next one up is never more than half again.
+var roundSteps = []float64{1, 1.5, 2, 2.5, 3, 4, 5, 6, 8}
+
+// roundStep is the smallest round step at least v that is whole tenths: a
+// figure keeps one decimal, so a step of 0.25 would write its 0.75 as 0.8.
+func roundStep(v float64) float64 {
+	for p := math.Pow10(int(math.Floor(math.Log10(v)))); ; p *= 10 {
+		for _, m := range roundSteps {
+			s := m * p
+			if tenths := s * 10; math.Abs(tenths-math.Round(tenths)) > 1e-9 {
+				continue
+			}
+			if s >= v*(1-1e-9) {
+				return s
+			}
+		}
+	}
 }
 
 // rateScale is the unit a rate of bps is written in, and the bits per second

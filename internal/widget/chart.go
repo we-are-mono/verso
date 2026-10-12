@@ -22,9 +22,9 @@ import (
 // CSS properties but not inside SVG attributes, so a .verso-chart-* class carries the
 // palette while geometry (viewBox, d) stays on the element.
 //
-// The values are rates in Mbit/s. The topmost value label is a rate in full
-// ("1.2 Gb/s"), the others figures in its unit, written as every rate is
-// (internal/units).
+// The values are rates in Mbit/s, on a round scale over their tallest point
+// (units.RateScale): the topmost value label is a rate in full ("80 Mb/s"),
+// the others figures in its unit (60, 40, 20).
 type Chart struct {
 	Series []ChartSeries // drawn back to front
 	Label  string        // accessible description of the whole plot
@@ -34,9 +34,10 @@ type Chart struct {
 	// Short stands the plot at 180px rather than 240px, nine cells of the grid
 	// rather than twelve; the viewBox stretches, so the curve is the same.
 	Short bool
-	// Paper stands the plot on Paper rather than the notebook's sand (an
-	// Overview card): its labels sit on Paper too.
-	Paper bool
+	// Card stands the plot in an Overview card, on Paper: eight cells tall,
+	// over faint rules a cell apart, its value labels in a gutter on its left
+	// and its window's ends under it, so nothing is laid over the curve.
+	Card bool
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.
 	Marks []ChartMark
@@ -80,7 +81,7 @@ type chartView struct {
 	XEnd    string
 	Series  []chartSeriesView
 	Short   bool
-	Paper   bool
+	Card    bool
 	Marks   []chartMarkView
 }
 
@@ -106,32 +107,29 @@ type chartSeriesView struct {
 }
 
 func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
-	// Auto-scale to the tallest point across every series with a little headroom
-	// so the peak never touches the top. Never divide by zero.
-	top := 0.0
+	// Scale to a round top over the tallest point across every series, the
+	// scale every rate chart takes (units.RateScale): its labels read as
+	// counted, and it never divides by zero.
+	peak := 0.0
 	for _, s := range c.Series {
 		for _, v := range s.Values {
 			if !math.IsNaN(v) {
-				top = max(top, v)
+				peak = max(peak, v)
 			}
 		}
 	}
-	top *= 1.15
-	if top <= 0 {
-		top = 1
-	}
+	topBPS, labels := r.numbers().RateScale(peak * 1e6)
+	top := topBPS / 1e6
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short, Paper: c.Paper}
+	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short, Card: c.Card}
 	for _, m := range c.Marks {
 		view.Marks = append(view.Marks, chartMarkView{
 			// A brief outage keeps a width the eye can find.
 			Kind: m.Kind, X: m.From * chartW, Width: max(chartMarkMinWidth, (m.To-m.From)*chartW), Label: m.Label,
 		})
 	}
-	// Four barely-there dividing lines at the quarters of the range, each
-	// carrying its value — HTML overlaid on the plot, so it renders at a fixed
+	// The quarter lines each carry their value — HTML, so it renders at a fixed
 	// size instead of scaling with the viewBox.
-	labels := r.numbers().RateAxis(top*1e6, units.AxisFractions)
 	for i, frac := range units.AxisFractions {
 		view.YLabels = append(view.YLabels, chartYLabel{TopPct: (1 - frac) * 100, Text: labels[i]})
 	}

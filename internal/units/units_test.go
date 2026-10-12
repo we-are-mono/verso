@@ -5,6 +5,7 @@ package units
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -18,10 +19,11 @@ type fixtures struct {
 		Value string  `json:"value"`
 		Unit  string  `json:"unit"`
 	} `json:"rates"`
-	Axes []struct {
-		TopBPS float64  `json:"top_bps"`
-		Labels []string `json:"labels"`
-	} `json:"axes"`
+	Scales []struct {
+		PeakBPS float64  `json:"peak_bps"`
+		TopBPS  float64  `json:"top_bps"`
+		Labels  []string `json:"labels"`
+	} `json:"scales"`
 }
 
 func readFixtures(t *testing.T) fixtures {
@@ -57,15 +59,23 @@ func TestRatesReadAtTheirScale(t *testing.T) {
 	}
 }
 
-func TestAxisLabelsShareTheTopUnit(t *testing.T) {
-	for _, tc := range readFixtures(t).Axes {
-		got := For(nil).RateAxis(tc.TopBPS, AxisFractions)
-		if strings.Join(got, "|") != strings.Join(tc.Labels, "|") {
-			t.Errorf("RateAxis(%v) = %q, want %q", tc.TopBPS, got, tc.Labels)
+func TestAChartScaleIsRound(t *testing.T) {
+	for _, tc := range readFixtures(t).Scales {
+		top, got := For(nil).RateScale(tc.PeakBPS)
+		if math.Abs(top-tc.TopBPS) > 1 || strings.Join(got, "|") != strings.Join(tc.Labels, "|") {
+			t.Errorf("RateScale(%v) = %v %q, want %v %q", tc.PeakBPS, top, got, tc.TopBPS, tc.Labels)
 		}
-		got = For(comma).RateAxis(tc.TopBPS, AxisFractions)
+		_, got = For(comma).RateScale(tc.PeakBPS)
 		if want := strings.ReplaceAll(strings.Join(tc.Labels, "|"), ".", ","); strings.Join(got, "|") != want {
-			t.Errorf("RateAxis(%v) with a decimal comma = %q, want %q", tc.TopBPS, got, want)
+			t.Errorf("RateScale(%v) with a decimal comma = %q, want %q", tc.PeakBPS, got, want)
+		}
+	}
+}
+
+func TestAScaleOverNothingIsTheSmallest(t *testing.T) {
+	for _, peak := range []float64{math.NaN(), math.Inf(1), -3} {
+		if top, _ := For(nil).RateScale(peak); top != 400_000 {
+			t.Errorf("RateScale(%v) = %v, want the smallest scale", peak, top)
 		}
 	}
 }

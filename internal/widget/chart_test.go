@@ -9,9 +9,10 @@ import (
 	"testing"
 )
 
-// TestRenderChart: the plot stretches edge to edge, its peak sits under 15%
-// headroom, the value labels ride the quarter lines with the unit on the
-// topmost, and the window is captioned at its two ends.
+// TestRenderChart: the plot stretches edge to edge, its peak sits under a
+// round top (100 under 120, counted in thirties), the value labels ride the
+// quarter lines with the unit on the topmost, and the window is captioned at
+// its two ends.
 func TestRenderChart(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{
 		AxisStart: "60 s ago", AxisEnd: "now", Label: "Traffic",
@@ -23,8 +24,8 @@ func TestRenderChart(t *testing.T) {
 	for _, want := range []string{
 		`preserveAspectRatio="none"`, `aria-label="Traffic"`, `data-chart-padding="0"`,
 		"verso-chart--emerald", "verso-chart--violet",
-		"620.0 31.3", // 100 under a top of 115 lands at 240 - 100/115·240
-		">115 Mb/s<", ">86<", ">57<", ">29<", `style="top:0.0%"`, `style="top:75.0%"`,
+		"620.0 40.0", // 100 under a top of 120 lands at 240 - 100/120·240
+		">120 Mb/s<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
 		">60 s ago<", ">now<",
 	} {
 		if !strings.Contains(got, want) {

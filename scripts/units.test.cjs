@@ -27,11 +27,14 @@ test('rates read at their scale', () => {
   }
 });
 
-test('axis labels share the top unit', () => {
-  for (const tc of fixtures.axes) {
-    assert.deepEqual([...U.numbers('.').axis(tc.top_bps, U.axisFractions)], tc.labels, `axis(${tc.top_bps})`);
-    assert.deepEqual([...U.numbers(',').axis(tc.top_bps, U.axisFractions)], tc.labels.map(comma), `axis(${tc.top_bps}) with a decimal comma`);
+test('a chart scale is round', () => {
+  for (const tc of fixtures.scales) {
+    const got = U.numbers('.').chartScale(tc.peak_bps);
+    assert.ok(Math.abs(got.top - tc.top_bps) <= 1, `chartScale(${tc.peak_bps}).top = ${got.top}`);
+    assert.deepEqual([...got.labels], tc.labels, `chartScale(${tc.peak_bps})`);
+    assert.deepEqual([...U.numbers(',').chartScale(tc.peak_bps).labels], tc.labels.map(comma), `chartScale(${tc.peak_bps}) with a decimal comma`);
   }
+  for (const peak of [NaN, Infinity, -3]) assert.equal(U.numbers('.').chartScale(peak).top, 400000, `chartScale(${peak})`);
 });
 
 test('a missing separator keeps the point', () => {

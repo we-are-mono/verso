@@ -14,17 +14,17 @@
      spaced by margins that collapse into the larger, so the 39px is the whole
      distance, not an addition to the cell above. */}}
 {{if .Card}}
-{{/* In an Overview card the card's header names the graph and carries what
-     it measures and its window (overview.window). On the card's Paper: the
-     newest figures large, each led by its series' line, then the plot over
-     faint horizontal rules a cell apart, on the page grid's lines. The
-     figures' row is two cells with a cell under it, so the 240px plot stands
-     on whole cells. A window chosen in the header swaps this section. */}}
-<section aria-label="{{.Title}}" class="verso-traffic-card bg-[linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[100%_20px] bg-position-[0_-1px]">
-  <div class="flex flex-wrap items-center gap-x-8 bg-ground pb-5 *:flex *:h-10 *:items-center *:gap-2">
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-denim"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 rounded-full bg-amethyst"></span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
-    {{if .Latency}}<span><span class="font-mono text-[2rem] leading-10 font-bold tracking-[-0.05em] text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
+{{/* In an Overview card the card's header names the graph and carries its
+     window (overview.window). On the card's Paper: the newest figures at
+     reading size on one 20px line, each led by its series' line, then, a
+     cell under them, the plot (chart.html.tmpl) with its values on its left
+     and its window under it, all on whole cells. A window chosen in the
+     header swaps this section. */}}
+<section aria-label="{{.Title}}" class="verso-traffic-card">
+  <div class="flex flex-wrap items-baseline gap-x-6 pb-5 leading-5 *:flex *:items-baseline *:gap-2">
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-denim"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-amethyst"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
+    {{if .Latency}}<span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
   </div>
   <div{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
 </section>

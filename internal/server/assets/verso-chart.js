@@ -51,24 +51,23 @@
 
     // Download and upload share one domain so their relative sizes remain
     // truthful. Recalculate it from the whole visible minute whenever a sample
-    // arrives; the 15% headroom matches the server-rendered chart and keeps the
-    // tallest point clear of the top edge. Including the off-right point grows
-    // the scale just before that new value scrolls into view.
+    // arrives, as the round scale the server drew (units.RateScale): it moves
+    // only when the traffic crosses a step, and then its labels are rewritten.
+    // Including the off-right point grows the scale just before that new value
+    // scrolls into view.
     var max = 1;
-    function scaleMax() {
+    function updateScale() {
       var peak = 0;
       series.forEach(function (vals) {
         vals.forEach(function (v) {
           if (typeof v === "number" && isFinite(v) && v > peak) peak = v;
         });
       });
-      return peak > 0 ? peak * 1.15 : 1;
-    }
-    function updateScale() {
-      max = scaleMax();
-      var labels = nums.axis(max * 1e6, window.versoUnits.axisFractions);
+      var scale = nums.chartScale(peak * 1e6);
+      if (scale.top / 1e6 === max) return;
+      max = scale.top / 1e6;
       host.querySelectorAll(".verso-chart-yl").forEach(function (el, i) {
-        if (labels[i] !== undefined) el.textContent = labels[i];
+        if (scale.labels[i] !== undefined) el.textContent = scale.labels[i];
       });
     }
     // A figure and the unit and direction after it, as the server wrote them.

@@ -126,13 +126,23 @@ func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 
 func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	got := render(t, newRenderer(t), &Overview{DownSeries: []float64{80, 400, 120}, UpSeries: []float64{20, 40, 30}})
-	for _, want := range []string{">460 Mb/s<", ">345<", ">230<", ">115<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, "verso-traffic-card"} {
+	for _, want := range []string{">600 Mb/s<", ">450<", ">300<", ">150<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, "verso-traffic-card"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("existing shared-scale renderer missing %q", want)
 		}
 	}
 	if strings.Contains(got, ">Internet traffic</h2>") {
 		t.Error("the card's header names the graph; the graph draws no title of its own")
+	}
+	// In the card the plot is eight cells tall, its values in a gutter on its
+	// left and its window's ends under it, none of them laid over the curve.
+	for _, want := range []string{"data-verso-chart-gutter", "h-40!", "data-verso-chart-window"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the card's chart layout missing %q", want)
+		}
+	}
+	if strings.Contains(got, "text-[2rem]") || strings.Contains(got, "bg-ground/85") {
+		t.Error("the card's figures stand at reading size and its labels lie over nothing")
 	}
 }
 

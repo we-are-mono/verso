@@ -95,7 +95,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		AxisEnd:   "now",
 		Label:     t.Label,
 		Short:     t.Panel,
-		Paper:     t.Card,
+		Card:      t.Card,
 		Marks:     t.Marks,
 		Series: []ChartSeries{
 			{Label: "down", Role: "emerald", Fill: true, Values: t.Down},
