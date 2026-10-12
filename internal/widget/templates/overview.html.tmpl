@@ -21,7 +21,7 @@
     </div>
     {{end}}
     <div class="ml-auto flex h-10 items-center">
-      <button type="button" data-overview-arrange aria-pressed="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-white group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep">
+      <button type="button" data-overview-arrange aria-pressed="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-white group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-white">
         <span class="group-data-arranging/overview:hidden">{{ t "Arrange" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span>
       </button>
     </div>
@@ -98,12 +98,10 @@
 </div>
 {{end}}
 
-{{/* overview.window: the Traffic card's header control — the device the graph
-     measures, and its window, whose choice fetches the graph for it into the
-     card's body. The select rides the header's line, 7px over either edge. */}}
+{{/* overview.window: the Traffic card's header control — the graph's window,
+     whose choice fetches the graph for it into the card's body. The select
+     rides the header's line, 7px over either edge. */}}
 {{define "overview.window"}}
-{{if .Device}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Device}}</span>{{end}}
-{{if .Ranges}}
 <div class="relative -my-1.75 flex items-center">
   <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="[data-overview-card='traffic'] .verso-traffic-card" hx-swap="outerHTML"
     class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
@@ -111,7 +109,6 @@
   </select>
   <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
 </div>
-{{end}}
 {{end}}
 
 {{/* overview.meters: the Resources card's gauges, two to a row where the

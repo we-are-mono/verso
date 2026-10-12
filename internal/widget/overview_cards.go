@@ -302,24 +302,23 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownNow, o.UpNow, down, up, o.TrafficRangeURL, ""), csrf)
 }
 
-// overviewWindowView is the Traffic card's header control: the device the
-// graph measures, and its window where history stands behind it.
+// overviewWindowView is the Traffic card's header control: the graph's window,
+// where history stands behind it. The uplink's device is the Internet card's
+// to name.
 type overviewWindowView struct {
-	Device, RangeURL string
-	Ranges           []TrafficRange
+	RangeURL string
+	Ranges   []TrafficRange
 }
 
-// trafficControl puts what the graph measures and its window in the card's
-// header; choosing a window fetches the graph for it into the card's body.
+// trafficControl puts the graph's window in the card's header; choosing one
+// fetches the graph for it into the card's body.
 func (o *Overview) trafficControl(r *Renderer) (template.HTML, error) {
-	v := overviewWindowView{Device: o.WANDevice, RangeURL: o.TrafficRangeURL}
-	if v.RangeURL != "" {
-		for _, option := range TrafficRanges {
-			v.Ranges = append(v.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
-		}
-	}
-	if v.Device == "" && v.Ranges == nil {
+	if o.TrafficRangeURL == "" {
 		return "", nil
+	}
+	v := overviewWindowView{RangeURL: o.TrafficRangeURL}
+	for _, option := range TrafficRanges {
+		v.Ranges = append(v.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
 	}
 	return r.fragment("overview.window", v)
 }
