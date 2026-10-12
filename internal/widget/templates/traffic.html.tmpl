@@ -14,9 +14,11 @@
      distance, not an addition to the cell above. */}}
 {{/* In an Overview card the card's header names the graph: the section drops
      its title and its rule, and fills the card's body edge to edge on its own
-     notebook sand. */}}
+     notebook sand, whose lines are the page's (it starts just past the
+     body's hairline). Its head writes in rows of two cells, the select
+     centred in them, so the chart's 240px stand on whole cells too. */}}
 <section aria-label="{{.Title}}" class="{{if .Card}}verso-traffic-card -m-5{{else if .Panel}}mt-9.75 mb-10 border-t border-rule{{else}}-mt-px border-t border-rule{{end}} bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[20px_20px] bg-position-[-1px_-1px]">
-  <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 {{if .Card}}px-5 pt-3 pb-1{{else}}px-4 py-2 xl:h-10 xl:py-0{{end}}">
+  <div class="flex min-h-10 flex-wrap items-center gap-x-3 {{if .Card}}px-5 *:flex *:h-10 *:items-center{{else}}gap-y-2 px-4 py-2 xl:h-10 xl:py-0{{end}}">
     {{if not .Card}}<h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>{{end}}
     {{if .Meta}}{{if not .Card}}<span aria-hidden="true" class="text-faint">·</span>{{end}}<span class="font-mono text-base font-medium text-meta">{{.Meta}}</span>{{end}}
     {{if .Ranges}}
@@ -28,7 +30,7 @@
       <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
     </div>
     {{end}}
-    <div class="ml-auto flex flex-wrap items-baseline gap-x-7 gap-y-2">
+    <div class="ml-auto flex flex-wrap gap-x-7 {{if .Card}}items-center *:h-10 *:items-center{{else}}items-baseline gap-y-2{{end}}">
       <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-15.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s down" }}{{else}}{{ t "Mbit/s down on average" }}{{end}}</span></span>
       <span class="inline-flex items-baseline gap-2"><span class="inline-flex min-w-13.5 items-baseline justify-end gap-2"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] bg-amethyst"></span><span class="font-mono text-lg font-semibold"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span></span><span class="text-sm text-meta">{{if .Live}}{{ t "Mbit/s up" }}{{else}}{{ t "Mbit/s up on average" }}{{end}}</span></span>
       {{if .Latency}}<span class="inline-flex items-baseline gap-2"><span class="font-mono text-lg font-semibold">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}

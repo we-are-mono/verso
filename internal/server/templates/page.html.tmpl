@@ -144,7 +144,7 @@
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
          keeps the full 40px, as far from the top as from the left. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-10 pb-16 sm:px-6 md:px-10{{else}}px-10 pb-10{{end}}">
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-5 pt-10 pb-20 md:px-10{{else}}px-10 pb-10{{end}}">
     <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's

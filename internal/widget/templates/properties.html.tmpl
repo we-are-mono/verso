@@ -35,16 +35,18 @@
      filled in the state's hue up to where now is. The ends are written under
      the track's ends; a screen reader hears them as one range. */}}
 {{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-5"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
-<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}divide-y divide-mid{{else if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-2{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{end}}">
+<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}{{else if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-2{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{end}}">
   {{range .Items}}
   {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
-  {{/* 44px, never stated: a 24px line — the mono value's own, the sans label
-       and value raised to it — with 10px above and below. */}}
-  <div class="flex items-center gap-6 py-2.5{{if eq $.Style "overview-connection"}} first:border-t first:border-mid{{end}}">
-    <dt class="shrink-0 text-sm leading-6 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
+  {{/* An Overview card's row of the notebook's grid: the label and the value
+       write on one 20px line, 10px over it and 9px under, the hairline the
+       next pixel, so the row is 40px and ends on a line; a copy's 28px rides
+       the line. */}}
+  <div class="flex items-center gap-6 border-b border-mid pt-2.5 pb-2.25 leading-5">
+    <dt class="shrink-0 text-sm leading-5 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
     <dd class="flex min-w-0 items-center text-ink{{if eq $.Style "overview-system"}} ml-auto text-right{{end}}">
       {{if .Dot}}<span class="mr-2.5 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
-      <span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere font-medium {{if .Mono}}font-mono text-base{{else}}text-sm leading-6{{end}}">{{.Value}}</span>{{if eq .Key "temperature"}}<span data-overview-temp-note class="ml-1 font-sans text-sm font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
+      <span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere font-medium {{if .Mono}}font-mono text-base{{else}}text-sm{{end}} leading-5">{{.Value}}</span>{{if eq .Key "temperature"}}<span data-overview-temp-note class="ml-1 font-sans text-sm leading-5 font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
     </dd>
   </div>
   {{else if eq $.Style "identity"}}

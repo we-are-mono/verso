@@ -8,11 +8,14 @@
      value/unit/detail and a new width into place (verso.js); "info" forces the
      accent for a rate. */}}
 {{if .Overview}}
-<div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="flex min-w-0 flex-col gap-3">
-  <div class="flex items-center justify-between gap-2"><span class="text-xs font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span><span aria-hidden="true" class="text-faint">{{icon .Icon "size-4"}}</span></div>
-  <div class="flex items-baseline gap-1.5 leading-none"><span class="font-mono text-4xl font-bold tracking-[-.05em] text-ink" data-verso-meter-value>{{.Value}}</span><span class="text-base text-meta" data-verso-meter-unit>{{.Unit}}</span></div>
-  <div class="h-1.5 overflow-hidden rounded-full bg-rule"><div class="verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div>
-  <div class="min-w-0 truncate text-sm text-meta" data-verso-meter-detail>{{.Detail}}</div>
+{{/* An Overview gauge on the notebook's grid, five cells: the label's 20px
+     line, the figure on two, the bar centred on a line of its own, the
+     detail's line. */}}
+<div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="flex min-w-0 flex-col">
+  <div class="flex h-5 items-center justify-between gap-2"><span class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span><span aria-hidden="true" class="text-faint">{{icon .Icon "size-4"}}</span></div>
+  <div class="flex h-10 items-baseline gap-1.5 leading-10"><span class="font-mono text-4xl leading-10 font-bold tracking-[-.05em] text-ink" data-verso-meter-value>{{.Value}}</span><span class="text-base leading-10 text-meta" data-verso-meter-unit>{{.Unit}}</span></div>
+  <div class="flex h-5 items-center"><div class="h-1.5 w-full overflow-hidden rounded-full bg-rule"><div class="verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div></div>
+  <div class="min-w-0 truncate text-sm leading-5 text-meta" data-verso-meter-detail>{{.Detail}}</div>
 </div>
 {{else if .Compact}}
 {{/* compact: one dense row — name · a thin track that fills 0→this reading's own

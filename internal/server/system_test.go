@@ -137,8 +137,9 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	}
 	body := whole[strings.LastIndex(whole, "</style>"):]
 	// The homepage keeps the page inset every page keeps: 2.5rem from the top,
-	// and from the sidebar once there is room for it.
-	if !strings.Contains(body, `<div class="px-4 pt-10 pb-16 sm:px-6 md:px-10">`) {
+	// and from the sidebar once there is room for it; a cell on a phone, so the
+	// cards' frames still land on the grid's lines.
+	if !strings.Contains(body, `<div class="px-5 pt-10 pb-20 md:px-10">`) {
 		t.Error("the page's air is the frame's, outside the content measure")
 	}
 	if !strings.Contains(body, `<div data-verso-column class="max-w-`) {
