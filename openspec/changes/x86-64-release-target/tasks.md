@@ -28,7 +28,7 @@
 ## 5. Integration check on x86_64 OpenWrt
 
 - [x] 5.1 Boot the official apk-era OpenWrt x86-64 image in QEMU with user-mode networking only (no bridge or tap onto the LAN, no watchdog device) and a host-forward for SSH, tunnelling to 8443, where Verso serves beside the image's LuCI. Install the buildroot `public-key.pem`, point apk at `http://10.0.2.2:8079/x86_64/packages.adb`, and run `apk add verso verso-i18n-base-sl`. Verify a sign-in at the forwarded port and that every top-level page renders. File any page that breaks as a BACKLOG item, not in this change.
-- [ ] 5.2 Confirm the arm64 path still holds: on the bench DUT, run `apk upgrade verso -U` from the `aarch64_generic` feed and check that it upgrades to V and signs in.
+- [x] 5.2 Confirm the arm64 path still holds: on the bench DUT, run `apk upgrade verso -U` from the `aarch64_generic` feed and check that it upgrades to V and signs in.
 
 ## Workflow follow-up
 
