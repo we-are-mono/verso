@@ -362,7 +362,13 @@ func (o *Overview) resourcesBody(r *Renderer, csrf string) (template.HTML, error
 // the board has sensors for.
 func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	temp, _, _ := strings.Cut(o.Temperature, " · ")
-	h := cardHead{Tone: "neutral", Summary: joinSummary(temp, o.Fan, o.Power)}
+	read := func(v string) string {
+		if v == "N/A" {
+			return ""
+		}
+		return v
+	}
+	h := cardHead{Tone: "neutral", Summary: joinSummary(read(temp), read(o.Fan), read(o.Power))}
 	if o.TempDot == "warning" || o.TempDot == "danger" {
 		h.Tone, h.Status = o.TempDot, tr("CPU temperature is high")
 	}

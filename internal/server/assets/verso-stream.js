@@ -16,7 +16,7 @@
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]")) return;
+  if (!document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]")) return;
   // The meter's bar tints by its health band (the tone vocabulary), in the classes
   // meter.html.tmpl renders — the live layer and the first paint have to name the
   // same colour or a reading changes shade the moment it updates, which it did:
@@ -141,32 +141,36 @@
   es.addEventListener("clock", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
+    if (!d) return;
     var root = document.querySelector("[data-overview-clock]");
-    if (!root || !d) return;
-    setText(root, "[data-overview-time]", d.clock);
-    setText(root, "[data-overview-uptime]", d.uptime);
+    if (root) setText(root, "[data-overview-time]", d.clock);
+    // The Firmware card's uptime row.
+    var uptime = document.querySelector('[data-verso-prop="uptime"]');
+    if (uptime && d.uptime) uptime.textContent = d.uptime;
   });
+  // The verdict and every card's header (ADR-022): the words, and the tone the
+  // card wears as data-tone, which its status and packet take their colour
+  // from. A hidden card's tone goes to its chip on the Arrange shelf.
   es.addEventListener("overview", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
     var root = document.querySelector("[data-overview]");
     if (!root || !d) return;
-    var summary = root.querySelector("[data-overview-tone]");
-    if (summary) summary.dataset.overviewTone = d.tone;
-    setText(root, "[data-overview-kicker]", d.kicker);
+    root.dataset.overviewTone = d.tone;
     setText(root, "[data-overview-lead]", d.lead);
     setText(root, "[data-overview-accent]", d.accent);
     setText(root, "[data-overview-tail]", d.tail);
-    (d.tiles || []).forEach(function (tile) {
-      var el = root.querySelector('[data-overview-tile="' + CSS.escape(tile.id) + '"]');
+    (d.cards || []).forEach(function (card) {
+      var chip = root.querySelector('[data-overview-restore="' + CSS.escape(card.id) + '"]');
+      if (chip) chip.dataset.tone = card.tone;
+      var el = root.querySelector('[data-overview-card="' + CSS.escape(card.id) + '"]');
       if (!el) return;
-      el.dataset.tone = tile.tone;
-      setText(el, "[data-overview-tile-status]", tile.status);
-      setText(el, "[data-overview-tile-caption]", tile.caption);
-      setText(el, "[data-overview-tile-identity]", tile.identity);
-      setText(el, "[data-overview-tile-separator]", tile.caption && tile.identity ? " · " : "");
-      var caption = el.querySelector("[data-overview-tile-caption]");
-      if (caption) caption.parentElement.title = [tile.caption,tile.identity].filter(Boolean).join(" · ");
+      el.dataset.tone = card.tone;
+      setText(el, "[data-overview-card-summary]", card.summary);
+      var status = el.querySelector("[data-overview-card-status]");
+      if (!status) return;
+      status.hidden = !card.status;
+      setText(status, "[data-overview-card-word]", card.status);
     });
   });
   if (live) {
@@ -178,8 +182,6 @@
   es.addEventListener("wan", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
-    var uptime = document.querySelector('[data-verso-tile-caption="internet-uptime"]');
-    if (uptime && d && typeof d.uptime_label === "string") uptime.textContent = d.uptime_label;
     if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
   });
   // The hardware-sensor frame updates the System panel's temperature/fan/power
