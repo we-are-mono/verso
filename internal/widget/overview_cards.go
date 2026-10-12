@@ -30,16 +30,18 @@ type overviewCardSpec struct {
 	href  func(*Overview) string
 	head  func(*Overview, func(string) string) cardHead
 	body  func(*Overview, *Renderer, string) (template.HTML, error)
+	// control is what the header carries for the body beside the status
+	// (Traffic's window); nil carries nothing.
+	control func(*Overview, *Renderer) (template.HTML, error)
 }
 
 // overviewCardSpecs are the Overview's cards, in the default layout's order.
 func overviewCardSpecs() []overviewCardSpec {
 	return []overviewCardSpec{
 		{ID: "internet", Title: "Internet", Icon: "globe", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).internetHead, body: (*Overview).internetBody},
-		{ID: "firewall", Title: "Firewall", Icon: "shield", Opens: "Firewall", href: func(o *Overview) string { return o.SecurityHref }, head: (*Overview).firewallHead, body: (*Overview).firewallBody},
 		{ID: "ports", Title: "Ports", Icon: "ethernet-port", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).portsHead, body: (*Overview).portsBody},
 		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
-		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody},
+		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody, control: (*Overview).trafficControl},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
 		{ID: "hardware", Title: "Hardware", Icon: "thermometer", head: (*Overview).hardwareHead, body: (*Overview).hardwareBody},
 		{ID: "firmware", Title: "Firmware", Icon: "package", head: (*Overview).firmwareHead, body: (*Overview).firmwareBody},
@@ -112,40 +114,6 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 		views = append(views, v)
 	}
 	return r.fragment("overview.internet", views)
-}
-
-// ── Firewall ──
-
-// firewallHead comes from fw4's loaded kernel table, not its configuration;
-// the count uses the Firewall page's rule sections, disabled and staged ones
-// included.
-func (o *Overview) firewallHead(tr func(string) string) cardHead {
-	h := cardHead{Tone: "neutral", Status: tr("Status unavailable")}
-	if o.SecurityHref != "" {
-		h.Summary = tr("Review firewall settings")
-	}
-	switch o.FirewallState {
-	case "active":
-		h.Tone, h.Status, h.Summary = "success", tr("Active"), tr("Ruleset loaded")
-		if o.FirewallRulesKnown {
-			h.Summary = overviewCount(tr, o.FirewallRules, "%d configured rule", "%d configured rules (two)", "%d configured rules (few)", "%d configured rules")
-		}
-	case "inactive":
-		h.Tone, h.Status, h.Summary = "danger", tr("Inactive"), tr("Firewall is not running")
-	case "partial":
-		h.Tone, h.Status, h.Summary = "warning", tr("Incomplete"), tr("Some filter chains are missing")
-	}
-	return h
-}
-
-// firewallBody states the runtime verdict and the rules behind it.
-func (o *Overview) firewallBody(r *Renderer, csrf string) (template.HTML, error) {
-	h := o.firewallHead(r.tr)
-	items := []Property{{Label: "State", Value: h.Status, Dot: h.Tone, Verbatim: true}}
-	if o.FirewallRulesKnown {
-		items = append(items, Property{Label: "Configured rules", Value: fmt.Sprint(o.FirewallRules), Mono: true, Verbatim: true})
-	}
-	return o.renderWidget(r, &Properties{Style: "overview-system", Items: items}, csrf)
 }
 
 // ── Ports ──
@@ -325,6 +293,28 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
 	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownVal, o.UpVal, down, up, o.TrafficRangeURL, ""), csrf)
+}
+
+// overviewWindowView is the Traffic card's header control: the device the
+// graph measures, and its window where history stands behind it.
+type overviewWindowView struct {
+	Device, RangeURL string
+	Ranges           []TrafficRange
+}
+
+// trafficControl puts what the graph measures and its window in the card's
+// header; choosing a window fetches the graph for it into the card's body.
+func (o *Overview) trafficControl(r *Renderer) (template.HTML, error) {
+	v := overviewWindowView{Device: o.WANDevice, RangeURL: o.TrafficRangeURL}
+	if v.RangeURL != "" {
+		for _, option := range TrafficRanges {
+			v.Ranges = append(v.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
+		}
+	}
+	if v.Device == "" && v.Ranges == nil {
+		return "", nil
+	}
+	return r.fragment("overview.window", v)
 }
 
 // ── Resources ──

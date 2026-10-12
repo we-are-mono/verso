@@ -22,7 +22,7 @@
     </g>
     {{end}}
   </svg>
-  {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-4.75 {{if eq $i 0}}min-w-29.75{{else}}min-w-14.75{{end}} items-center bg-quiet/85 px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
-  <span class="pointer-events-none absolute bottom-px left-0 flex h-4.75 min-w-24.75 items-center bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
-  <span class="pointer-events-none absolute right-0 bottom-px flex h-4.75 min-w-14.75 items-center justify-end bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XEnd}}</span>
+  {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-4.75 {{if eq $i 0}}min-w-29.75{{else}}min-w-14.75{{end}} items-center {{if $.Paper}}bg-ground/85{{else}}bg-quiet/85{{end}} px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+  <span class="pointer-events-none absolute bottom-px left-0 flex h-4.75 min-w-24.75 items-center {{if .Paper}}bg-ground/85{{else}}bg-quiet/85{{end}} px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
+  <span class="pointer-events-none absolute right-0 bottom-px flex h-4.75 min-w-14.75 items-center justify-end {{if .Paper}}bg-ground/85{{else}}bg-quiet/85{{end}} px-4 font-sans text-sm leading-none text-meta">{{.XEnd}}</span>
 </div>

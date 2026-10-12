@@ -39,10 +39,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	srv.stats = fakeStats{cpu: 91, root: sysstat.Storage{Used: 95, Free: 5}}
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: uint64(time.Now().UnixMilli()), Interfaces: []telemetry.Interface{{Name: "eth0", Physical: true, Kind: "port", Operstate: "down"}, {Name: "wg0", Kind: "tunnel", Operstate: "unknown"}}}}
 	body := getLang(t, srv, "/", "sl-SI")
-	if !strings.Contains(body, "Aktiven") || !strings.Contains(body, "2 nastavljeni pravili") {
-		t.Error("firewall first paint is not translated")
-	}
-	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Požarni zid", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mbit/s prejem", "Mbit/s oddaja", "pred 60 s", "že 2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
+	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mbit/s prejem", "Mbit/s oddaja", "pred 60 s", "že 2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Slovenian overview missing %q", want)
 		}
@@ -95,8 +92,8 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if status.Lead != "Vaše omrežje zahteva pozornost" || status.Tone != "warning" {
 				t.Errorf("stream verdict=%+v", status)
 			}
-			if len(status.Cards) != 8 || status.Cards[1].ID != "firewall" || status.Cards[1].Status != "Aktiven" || status.Cards[1].Summary != "2 nastavljeni pravili" {
-				t.Errorf("untranslated firewall reading: %+v", status.Cards)
+			if len(status.Cards) != 7 || status.Cards[4].ID != "resources" || status.Cards[4].Status != "CPU: visoka vrednost" {
+				t.Errorf("untranslated resources reading: %+v", status.Cards)
 			}
 			if status.Cards[0].ID != "internet" || !strings.Contains(status.Cards[0].Summary, "že 2 h 14 min") {
 				t.Errorf("untranslated WAN duration: %+v", status.Cards[0])

@@ -10,14 +10,14 @@ import (
 
 func TestOverviewLayoutDefault(t *testing.T) {
 	got := DefaultOverviewLayout()
-	want := [2][]string{{"internet", "firewall", "ports", "tunnels"}, {"traffic", "resources", "hardware", "firmware"}}
+	want := [2][]string{{"internet", "ports", "tunnels"}, {"traffic", "resources", "hardware", "firmware"}}
 	if !reflect.DeepEqual(got.Cols, want) {
 		t.Fatalf("default columns = %v, want %v", got.Cols, want)
 	}
 	if len(got.Closed) != 0 || len(got.Hidden) != 0 {
 		t.Fatalf("default layout closes or hides cards: %+v", got)
 	}
-	if got.Encode() != "1.internet-firewall-ports-tunnels.traffic-resources-hardware-firmware.." {
+	if got.Encode() != "1.internet-ports-tunnels.traffic-resources-hardware-firmware.." {
 		t.Fatalf("default encodes as %q", got.Encode())
 	}
 }
@@ -32,29 +32,29 @@ func TestParseOverviewLayout(t *testing.T) {
 	}{
 		{name: "empty", value: "", cols: def.Cols},
 		{name: "valid",
-			value:  "1.traffic-internet-firewall.ports-tunnels-resources-hardware-firmware.firmware.",
-			cols:   [2][]string{{"traffic", "internet", "firewall"}, {"ports", "tunnels", "resources", "hardware", "firmware"}},
+			value:  "1.traffic-internet.ports-tunnels-resources-hardware-firmware.firmware.",
+			cols:   [2][]string{{"traffic", "internet"}, {"ports", "tunnels", "resources", "hardware", "firmware"}},
 			closed: []string{"firmware"}},
 		{name: "wrong version", value: "2.traffic.internet..", cols: def.Cols},
 		{name: "garbage", value: "%%%not a layout", cols: def.Cols},
-		{name: "too few fields", value: "1.internet-firewall", cols: def.Cols},
-		{name: "unknown ids are dropped",
-			value: "1.internet-wifi-firewall-ports-tunnels.traffic-resources-hardware-firmware.wifi.zones",
+		{name: "too few fields", value: "1.internet-ports", cols: def.Cols},
+		{name: "unknown ids are dropped, a card the Overview had before among them",
+			value: "1.internet-firewall-wifi-ports-tunnels.traffic-resources-hardware-firmware.wifi-firewall.zones",
 			cols:  def.Cols},
 		{name: "a duplicate keeps its first place",
-			value: "1.internet-firewall-ports-tunnels-traffic.traffic-resources-hardware-firmware-internet..",
-			cols:  [2][]string{{"internet", "firewall", "ports", "tunnels", "traffic"}, {"resources", "hardware", "firmware"}}},
+			value: "1.internet-ports-tunnels-traffic.traffic-resources-hardware-firmware-internet..",
+			cols:  [2][]string{{"internet", "ports", "tunnels", "traffic"}, {"resources", "hardware", "firmware"}}},
 		{name: "missing cards are appended open to the shorter column",
-			value:  "1.internet-firewall-ports-tunnels-traffic.resources.hardware.",
-			cols:   [2][]string{{"internet", "firewall", "ports", "tunnels", "traffic"}, {"resources", "hardware", "firmware"}},
+			value:  "1.internet-ports-tunnels-traffic.resources.hardware.",
+			cols:   [2][]string{{"internet", "ports", "tunnels", "traffic"}, {"resources", "hardware", "firmware"}},
 			closed: []string{}},
 		{name: "a closed card the columns do not hold is dropped",
-			value: "1.internet-firewall-ports-tunnels.traffic-resources-hardware.firmware.firmware",
-			cols:  [2][]string{{"internet", "firewall", "ports", "tunnels"}, {"traffic", "resources", "hardware"}}, hidden: []string{"firmware"}},
+			value: "1.internet-ports-tunnels.traffic-resources-hardware.firmware.firmware",
+			cols:  [2][]string{{"internet", "ports", "tunnels"}, {"traffic", "resources", "hardware"}}, hidden: []string{"firmware"}},
 		{name: "a hidden card leaves its column",
-			value: "1.internet-firewall-ports-tunnels.traffic-resources-hardware-firmware..resources",
-			cols:  [2][]string{{"internet", "firewall", "ports", "tunnels"}, {"traffic", "hardware", "firmware"}}, hidden: []string{"resources"}},
-		{name: "ids outside a-z make the value garbage", value: "1.Internet-firewall.traffic..", cols: def.Cols},
+			value: "1.internet-ports-tunnels.traffic-resources-hardware-firmware..resources",
+			cols:  [2][]string{{"internet", "ports", "tunnels"}, {"traffic", "hardware", "firmware"}}, hidden: []string{"resources"}},
+		{name: "ids outside a-z make the value garbage", value: "1.Internet-ports.traffic..", cols: def.Cols},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -73,14 +73,14 @@ func TestParseOverviewLayout(t *testing.T) {
 }
 
 func TestOverviewLayoutRoundTrips(t *testing.T) {
-	value := "1.traffic-internet.ports-tunnels-firewall-hardware-firmware.internet-firmware.resources"
+	value := "1.traffic-internet.ports-tunnels-hardware-firmware.internet-firmware.resources"
 	if got := ParseOverviewLayout(value).Encode(); got != value {
 		t.Fatalf("round trip = %q, want %q", got, value)
 	}
 }
 
 func TestOverviewLayoutStates(t *testing.T) {
-	l := ParseOverviewLayout("1.internet-firewall-ports-tunnels.traffic-hardware-firmware.ports.resources")
+	l := ParseOverviewLayout("1.internet-ports-tunnels.traffic-hardware-firmware.ports.resources")
 	if !l.IsClosed("ports") || l.IsClosed("internet") {
 		t.Error("IsClosed disagrees with the layout")
 	}

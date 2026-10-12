@@ -13,13 +13,13 @@ func fullOverview() *Overview {
 	return &Overview{
 		WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min",
 		InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 9,
-		SecurityHref: "/plugins/firewall/", Model: "Mono Gateway Development Kit",
+		Model:       "Mono Gateway Development Kit",
 		TunnelsHref: "/plugins/wireguard/", InterfacesHref: "/plugins/interfaces/",
 		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6 d 04:00",
 		Clock: "14:52:07", Zone: "CEST",
 		Temperature: "52 °C", TempDot: "success", Fan: "3630 rpm", Power: "12.4 W",
-		FirewallState: "active", FirewallRules: 18, FirewallRulesKnown: true,
-		V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
+		FirewallState: "active",
+		V4Proto:       "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
 		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
@@ -46,8 +46,6 @@ func TestRenderOverviewCards(t *testing.T) {
 		"Arrange", "Done", "Reset layout",
 		// Internet
 		"Connected", "for 2 h 14 min · pppoe-wan", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
-		// Firewall
-		"Active", "18 configured rules", `href="/plugins/firewall/"`, "Open Firewall",
 		// Ports and Tunnels
 		"All ports linked", `data-verso-row="interface:eth0"`, "18.4 Mbps", "Not in use", "wg-home", "wireguard", `href="/plugins/wireguard/"`,
 		// Traffic, Resources, Hardware, Firmware
@@ -58,7 +56,7 @@ func TestRenderOverviewCards(t *testing.T) {
 			t.Errorf("overview missing %q", want)
 		}
 	}
-	if want := []string{"internet", "firewall", "ports", "tunnels", "traffic", "resources", "hardware", "firmware"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
+	if want := []string{"internet", "ports", "tunnels", "traffic", "resources", "hardware", "firmware"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
 		t.Errorf("default order = %v, want %v", cardOrder(got), want)
 	}
 	for _, gone := range []string{"Internet is working", "Live overview", "data-overview-tile", "Uptime</span>", "(two)", "(few)"} {
@@ -71,16 +69,16 @@ func TestRenderOverviewCards(t *testing.T) {
 	if strings.Count(got, "6 d 04:00") != strings.Count(firmware, "6 d 04:00") {
 		t.Error("the router's uptime is shown outside the Firmware card")
 	}
-	if strings.Contains(got, "Protected") {
-		t.Error("an answering plugin is not proof the firewall protects the network")
+	if strings.Contains(got, "Firewall") {
+		t.Error("the Overview has no Firewall card")
 	}
 }
 
 func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 	o := fullOverview()
-	o.Layout = ParseOverviewLayout("1.traffic-internet-firewall.ports-tunnels-hardware-firmware.firewall.resources")
+	o.Layout = ParseOverviewLayout("1.traffic-internet-ports.tunnels-hardware-firmware.ports.resources")
 	got := render(t, newRenderer(t), o)
-	if want := "traffic internet firewall ports tunnels hardware firmware"; strings.Join(cardOrder(got), " ") != want {
+	if want := "traffic internet ports tunnels hardware firmware"; strings.Join(cardOrder(got), " ") != want {
 		t.Fatalf("order = %v, want %s", cardOrder(got), want)
 	}
 	if strings.Contains(got, `data-verso-meter="sys-cpu"`) {
@@ -89,10 +87,10 @@ func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 	if !strings.Contains(got, `data-overview-restore="resources"`) {
 		t.Error("a hidden card must stand on the shelf")
 	}
-	firewall := got[strings.Index(got, `data-overview-card="firewall"`):]
-	firewall = firewall[:strings.Index(firewall, "</article>")]
-	for _, want := range []string{"data-closed", `aria-expanded="false"`, `aria-label="Open Firewall"`, `data-overview-card-summary aria-hidden="false"`} {
-		if !strings.Contains(firewall, want) {
+	ports := got[strings.Index(got, `data-overview-card="ports"`):]
+	ports = ports[:strings.Index(ports, "</article>")]
+	for _, want := range []string{"data-closed", `aria-expanded="false"`, `aria-label="Open Ports"`, `data-overview-card-summary aria-hidden="false"`} {
+		if !strings.Contains(ports, want) {
 			t.Errorf("closed card missing %q", want)
 		}
 	}
@@ -106,7 +104,7 @@ func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 	r := newRenderer(t)
 	bare := render(t, r, &Overview{})
-	for _, want := range []string{"Your network at a glance", "Status unavailable", "Unavailable", "N/A", "CPU Temperature", "Fan speed", "Power draw", "System readings unavailable", "No address.", "No prefix was delegated."} {
+	for _, want := range []string{"Your network at a glance", "Unavailable", "N/A", "CPU Temperature", "Fan speed", "Power draw", "System readings unavailable", "No address.", "No prefix was delegated."} {
 		if !strings.Contains(bare, want) {
 			t.Errorf("missing fallback %q", want)
 		}
@@ -178,7 +176,7 @@ func TestOverviewVerdictIgnoresUnusedInterfaces(t *testing.T) {
 
 func TestOverviewLiveStatusCarriesEveryCard(t *testing.T) {
 	o := fullOverview()
-	o.Layout = ParseOverviewLayout("1.internet-firewall-ports-tunnels.traffic-hardware-firmware..resources")
+	o.Layout = ParseOverviewLayout("1.internet-ports-tunnels.traffic-hardware-firmware..resources")
 	live := o.LiveStatus(plain)
 	if len(live.Cards) != len(overviewCardIDs()) {
 		t.Fatalf("live cards = %d, want every card, hidden ones included", len(live.Cards))

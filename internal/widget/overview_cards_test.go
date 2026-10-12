@@ -50,22 +50,14 @@ func TestInternetCardHead(t *testing.T) {
 	}
 }
 
-func TestFirewallCardHead(t *testing.T) {
-	for _, tc := range []struct {
-		state, status, tone, summary string
-		rules                        int
-		known                        bool
-	}{
-		{"", "Status unavailable", "neutral", "Review firewall settings", 0, true},
-		{"active", "Active", "success", "1 configured rule", 1, true},
-		{"active", "Active", "success", "53 configured rules", 53, true},
-		{"active", "Active", "success", "Ruleset loaded", 0, false},
-		{"inactive", "Inactive", "danger", "Firewall is not running", 0, true},
-		{"partial", "Incomplete", "warning", "Some filter chains are missing", 12, true},
-	} {
-		o := &Overview{SecurityHref: "/plugins/firewall/", FirewallState: tc.state, FirewallRules: tc.rules, FirewallRulesKnown: tc.known}
-		if h := head(t, o, "firewall"); h.Status != tc.status || h.Tone != tc.tone || h.Summary != tc.summary {
-			t.Errorf("%s/%d = %+v", tc.state, tc.rules, h)
+// No card shows the firewall, but a ruleset the kernel has not fully loaded
+// still makes the verdict read that something needs attention; an unread one
+// claims nothing.
+func TestFirewallStateReachesTheVerdict(t *testing.T) {
+	for state, tone := range map[string]string{"": "success", "active": "success", "inactive": "warning", "partial": "warning"} {
+		o := &Overview{WANKnown: true, WANUp: true, FirewallState: state}
+		if v := o.LiveStatus(plain); v.Tone != tone {
+			t.Errorf("firewall %q: verdict %s, want %s", state, v.Tone, tone)
 		}
 	}
 }
@@ -214,7 +206,7 @@ func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 }
 
 func TestOverviewCardHeadsNeverLeakPluralContext(t *testing.T) {
-	o := &Overview{InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 2, FirewallState: "active", FirewallRules: 3, FirewallRulesKnown: true,
+	o := &Overview{InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 2, FirewallState: "active",
 		Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}}, {Name: "wg0", Kind: "tunnel", State: "up"}}}
 	for _, spec := range overviewCardSpecs() {
 		h := spec.head(o, plain)

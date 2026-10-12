@@ -34,7 +34,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	layout := s.layouts.Layout(r)
-	liveOverview := &widget.Overview{SecurityHref: s.navLabelHref("Firewall")}
+	liveOverview := &widget.Overview{}
 
 	// What a connection reads once: the board, and the interfaces' topology,
 	// which changes only with an apply, after which the page is read anew.

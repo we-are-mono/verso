@@ -91,11 +91,18 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		AxisEnd:   "now",
 		Label:     t.Label,
 		Short:     t.Panel,
+		Paper:     t.Card,
 		Marks:     t.Marks,
 		Series: []ChartSeries{
 			{Label: "down", Role: "emerald", Fill: true, Values: t.Down},
 			{Label: "up", Role: "violet", Fill: true, Values: t.Up},
 		},
+	}
+	// In an Overview card the download is denim over a soft wash and the
+	// upload its bare amethyst line.
+	if t.Card {
+		chart.Series[0].Role = "denim"
+		chart.Series[1].Fill = false
 	}
 	// Composed here rather than through RenderWithToken, so the chart's captions
 	// take the localization walk here (ADR-012).

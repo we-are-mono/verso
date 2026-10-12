@@ -84,8 +84,7 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		t.Fatalf("status = %d, body:\n%s", status, body)
 	}
 	for _, want := range []string{
-		`<option value="day" selected>`, "24 h ago", ">wan0<",
-		">30.0<", "Mbit/s down on average", ">2.0<", "Mbit/s up on average",
+		"24 h ago", ">30.0<", "Mbit/s down on average", ">2.0<", "Mbit/s up on average",
 		`class="verso-chart-line`, `class="verso-chart-mark--outage"`, "<title>Internet down ",
 		`class="verso-chart-mark--loss"`, "<title>Packet loss up to 33 % ", ">12<", "ms to gateway on average",
 	} {
@@ -95,6 +94,9 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 	}
 	if strings.Contains(body, "data-verso-live-chart") {
 		t.Error("a day's graph is fed by the live stream")
+	}
+	if strings.Contains(body, "<select") {
+		t.Error("the window is chosen in the Traffic card's header; the swapped graph carries no select")
 	}
 
 	if _, live := getSignedIn(t, s, "/overview/traffic?range=minute"); !strings.Contains(live, `data-verso-live-chart="wan"`) {

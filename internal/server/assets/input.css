@@ -818,6 +818,11 @@ html {
   .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-green); stop-opacity: 0.24; }
   .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-green); stop-opacity: 0; }
 
+  /* An Overview card's download: denim over a soft wash. */
+  .verso-chart--denim .verso-chart-line { stroke: var(--color-denim); }
+  .verso-chart--denim .verso-chart-fill-0 { stop-color: var(--color-denim); stop-opacity: 0.16; }
+  .verso-chart--denim .verso-chart-fill-1 { stop-color: var(--color-denim); stop-opacity: 0.04; }
+
   /* What happened over a past window, behind the curves: an outage a crimson
      wash thin enough for the notebook grid to show through, packet loss the
      same wash in marigold (degraded, not down), a boot a dashed rule in meta

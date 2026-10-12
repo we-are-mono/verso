@@ -24,7 +24,7 @@ const overviewLayoutVersion = "1"
 // overviewDefault is the layout a browser starts with: what the uplink is
 // doing on the left, what the router is doing on the right.
 var overviewDefault = [2][]string{
-	{"internet", "firewall", "ports", "tunnels"},
+	{"internet", "ports", "tunnels"},
 	{"traffic", "resources", "hardware", "firmware"},
 }
 

@@ -19,11 +19,16 @@ the sheet said again further down.
 
 ### One kind of reading per card
 
-The Overview is eight cards in two columns: Internet, Firewall, Ports and
-Tunnels on the left by default; Traffic, Resources, Hardware and Firmware on
-the right. Each card holds one kind of reading, and every reading the page
-takes stands in exactly one card. Uptime moves from beside the clock into
-Firmware.
+The Overview is seven cards in two columns: Internet, Ports and Tunnels on the
+left by default; Traffic, Resources, Hardware and Firmware on the right. Each
+card holds one kind of reading, and every reading a card shows stands in
+exactly one card. Uptime moves from beside the clock into Firmware.
+
+The firewall has no card. A card that said "Active" and counted configured
+rules told the operator nothing they could act on, so the page keeps only the
+fact that matters: a ruleset the kernel has not fully loaded makes the verdict
+read that something needs attention. The rule count, and the UCI read behind
+it every second, are gone.
 
 A card is built by its own functions in `internal/widget/overview_cards.go`:
 its header (`head`), its body (`body`) and the page it opens. The registry is

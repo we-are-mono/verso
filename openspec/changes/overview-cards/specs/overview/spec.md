@@ -6,12 +6,12 @@ The Overview is the landing page: a verdict on the network over cards that each 
 
 ## ADDED Requirements
 
-### Requirement: The Overview shows eight cards in two columns
-The Overview SHALL show eight cards, each holding one kind of reading: Internet, Firewall, Ports, Tunnels, Traffic, Resources, Hardware and Firmware. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Firewall, Ports and Tunnels on the left, and Traffic, Resources, Hardware and Firmware on the right.
+### Requirement: The Overview shows seven cards in two columns
+The Overview SHALL show seven cards, each holding one kind of reading: Internet, Ports, Tunnels, Traffic, Resources, Hardware and Firmware. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Ports and Tunnels on the left, and Traffic, Resources, Hardware and Firmware on the right.
 
 #### Scenario: First visit
 - **WHEN** a signed-in operator opens the Overview with no layout cookie
-- **THEN** the left column shows Internet, Firewall, Ports and Tunnels in that order
+- **THEN** the left column shows Internet, Ports and Tunnels in that order
 - **AND** the right column shows Traffic, Resources, Hardware and Firmware in that order
 - **AND** every card is open
 
@@ -20,7 +20,7 @@ The Overview SHALL show eight cards, each holding one kind of reading: Internet,
 - **THEN** the cards stand in one column, the left column's cards first, then the right column's
 
 ### Requirement: Each card's header carries its status
-Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Firewall, Ports, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. Cards of readings (Traffic, Resources, Hardware, Firmware) show a status only when one of their readings is in a warning or danger band.
+Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Ports, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. Cards of readings (Traffic, Resources, Hardware, Firmware) show a status only when one of their readings is in a warning or danger band.
 
 #### Scenario: Internet is up
 - **WHEN** the uplink is up
@@ -60,6 +60,10 @@ A card's open or closed state SHALL change only by the operator's action. A clos
 ### Requirement: One verdict heads the page
 The Overview SHALL open with one verdict sentence tinted by tone: "Your network is online" (success), "Your network needs attention" (warning) or "Your network is offline" (danger). The page's live clock and time zone stand beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
 
+#### Scenario: The firewall is not running
+- **WHEN** the uplink is up and fw4's ruleset is not loaded in the kernel
+- **THEN** the verdict reads "Your network needs attention", though no card shows the firewall
+
 #### Scenario: A problem anywhere
 - **WHEN** the uplink is up and one port has lost link
 - **THEN** the verdict reads "Your network needs attention" in the warning tone
@@ -76,8 +80,8 @@ The Overview SHALL offer an Arrange act on its heading line. In Arrange mode eve
 In Arrange mode the operator SHALL move a card by dragging it to any place in either column, or by focusing its drag handle and pressing an arrow key. Up and Down move it within its column; Left and Right move it to the same position in the other column. Each move is announced to assistive technology with the card's column and position.
 
 #### Scenario: Drag across columns
-- **WHEN** the operator drags Hardware from the right column and drops it above Firewall in the left column
-- **THEN** Hardware stands above Firewall in the left column
+- **WHEN** the operator drags Hardware from the right column and drops it above Ports in the left column
+- **THEN** Hardware stands above Ports in the left column
 
 #### Scenario: Keyboard move
 - **WHEN** focus is on the Internet card's drag handle and the operator presses ArrowDown
@@ -118,8 +122,8 @@ The shell SHALL treat the layout cookie as untrusted input. A cookie it can't pa
 - **THEN** the Overview renders the default layout without an error
 
 #### Scenario: A card the cookie doesn't know
-- **WHEN** the cookie names seven of the eight cards
-- **THEN** the eighth card stands open at the end of the shorter column
+- **WHEN** the cookie names six of the seven cards, or names a card the Overview no longer has
+- **THEN** the card it leaves out stands open at the end of the shorter column, and the card it names that isn't there is dropped
 
 ### Requirement: Hidden cards are neither rendered nor streamed
 The shell SHALL NOT render a hidden card, and the Overview's live stream SHALL NOT send a frame that only hidden cards would read, nor take a reading that only such a frame needs. Readings the verdict needs are taken whatever is hidden. Closed cards still receive their frames, because their summaries are live.
@@ -147,7 +151,6 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 #### Scenario: What each card holds
 - **WHEN** the Overview renders with every card open
 - **THEN** Internet holds the uplink's state and the IPv4 and IPv6 facts with their protocol
-- **AND** Firewall holds the runtime state and the configured-rule count
 - **AND** Ports holds each physical port's network, current rate and link
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice

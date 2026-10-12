@@ -10,24 +10,22 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 type firewallOverviewBackend struct {
 	fakeBackend
-	mu        sync.Mutex
-	status    openwrt.FirewallStatus
-	err       error
-	sid       string
-	config    map[string]any
-	configErr error
+	mu     sync.Mutex
+	status openwrt.FirewallStatus
+	err    error
+	sid    string
 }
 
 func (b *firewallOverviewBackend) FirewallStatus(_ context.Context, sid string) (openwrt.FirewallStatus, error) {
@@ -37,36 +35,20 @@ func (b *firewallOverviewBackend) FirewallStatus(_ context.Context, sid string) 
 	return b.status, b.err
 }
 
-func (b *firewallOverviewBackend) UCIConfig(ctx context.Context, sid, config string) (map[string]any, error) {
-	if config != "firewall" {
-		return b.fakeBackend.UCIConfig(ctx, sid, config)
-	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.sid = sid
-	return b.config, b.configErr
-}
-
-func firewallRuleConfig(n int) map[string]any {
-	config := map[string]any{}
-	for _, kind := range []string{"defaults", "zone", "forwarding", "redirect", "nat", "include"} {
-		config[kind] = map[string]any{".type": kind}
-	}
-	for i := 0; i < n; i++ {
-		// Disabled rules remain rows on the Firewall page and belong in this
-		// configured count; they say nothing about which rules are loaded.
-		config["rule"+strconv.Itoa(i)] = map[string]any{".type": "rule", "enabled": strconv.Itoa(i % 2)}
-	}
-	return config
-}
-
+// No card shows the firewall; its runtime state reaches the verdict, on the
+// first paint and live, and a failed read clears the old state rather than
+// leaving it standing.
 func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
-	backend := &firewallOverviewBackend{status: openwrt.FirewallStatus{State: "active", Rules: 65}, config: firewallRuleConfig(7)}
+	backend := &firewallOverviewBackend{status: openwrt.FirewallStatus{State: "inactive"}}
+	backend.wan = openwrt.WANState{Devices: []openwrt.WANDevice{{Device: "eth0", Routes: []openwrt.WANRoute{{Family: 4, Table: 254, Main: true}}}}}
 	srv := newServer(t, backend)
 	srv.eventInterval = 10 * time.Millisecond
-	body := get(t, srv, "/").Body.String()
-	if !strings.Contains(body, "7 configured rules") || strings.Contains(body, "65 rules") {
-		t.Fatal("first paint did not read the firewall")
+	// Calm resources and no interfaces, so the firewall is the only thing the
+	// verdict weighs.
+	srv.stats = fakeStats{cpu: 5, root: sysstat.Storage{Used: 10, Free: 90}}
+	srv.telemetry = fakeTelemetry{}
+	if body := get(t, srv, "/").Body.String(); !strings.Contains(body, "Your network needs attention") {
+		t.Fatal("first paint did not count the inactive firewall")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -81,24 +63,21 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 	}
 	defer res.Body.Close()
 	scanner := bufio.NewScanner(res.Body)
+	scanner.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for _, want := range []struct {
-		state, status, tone, caption string
-		rules                        int
-		err, configErr               error
+		state, tone string
+		err         error
 	}{
-		{"active", "Active", "success", "7 configured rules", 7, nil, nil},
-		{"inactive", "Inactive", "danger", "Firewall is not running", 7, nil, nil},
-		{"active", "Status unavailable", "neutral", "", 7, errors.New("read failed"), nil},
-		{"active", "Active", "success", "Ruleset loaded", 7, nil, errors.New("config unavailable")},
-		{"active", "Active", "success", "0 configured rules", 0, nil, nil},
-		{"active", "Active", "success", "2 configured rules", 2, nil, nil},
+		{"active", "success", nil},
+		{"inactive", "warning", nil},
+		{"partial", "warning", nil},
+		{"inactive", "success", errors.New("read failed")},
 	} {
 		backend.mu.Lock()
-		backend.status, backend.err = openwrt.FirewallStatus{State: want.state, Rules: 65}, want.err
-		backend.config, backend.configErr = firewallRuleConfig(want.rules), want.configErr
+		backend.status, backend.err = openwrt.FirewallStatus{State: want.state}, want.err
 		backend.mu.Unlock()
-		matched, event := false, ""
-		for scanner.Scan() {
+		matched, event, last := false, "", ""
+		for !matched && scanner.Scan() {
 			line := scanner.Text()
 			if v, ok := strings.CutPrefix(line, "event: "); ok {
 				event = v
@@ -108,22 +87,15 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 			if !ok || event != "overview" {
 				continue
 			}
+			last = payload
 			var status widget.OverviewStatus
 			if err := json.Unmarshal([]byte(payload), &status); err != nil {
 				t.Fatal(err)
 			}
-			for _, card := range status.Cards {
-				if card.ID != "firewall" || card.Status != want.status || card.Tone != want.tone || card.Summary != want.caption {
-					continue
-				}
-				matched = true
-			}
-			if matched {
-				break
-			}
+			matched = status.Tone == want.tone
 		}
 		if !matched {
-			t.Fatalf("stream never reached %s: %v", want.status, scanner.Err())
+			t.Fatalf("stream never reached a %s verdict for %s (last %s): %v", want.tone, want.state, last, scanner.Err())
 		}
 	}
 	backend.mu.Lock()

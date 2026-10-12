@@ -70,14 +70,10 @@ type Overview struct {
 	DevicesOnline int
 	DevicesKnown  bool
 
-	// SecurityHref is resolved from the live plugin registry, not a guessed URL.
-	SecurityHref string
 	// FirewallState comes from fw4's loaded kernel table, not its configuration.
-	// Empty means the runtime read failed. The count uses the same UCI rule
-	// sections as the Firewall page, including disabled and staged rules.
-	FirewallState      string
-	FirewallRules      int
-	FirewallRulesKnown bool
+	// Empty means the runtime read failed. No card shows it; the verdict counts
+	// a firewall that is not fully loaded.
+	FirewallState string
 }
 
 // OverviewInterface is one kernel interface enriched with runtime topology and
@@ -189,6 +185,7 @@ type overviewCardView struct {
 	Head            cardHead
 	Closed          bool
 	Href, OpenLabel string
+	Control         template.HTML
 	Body            template.HTML
 }
 
@@ -247,6 +244,11 @@ func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf st
 	if spec.href != nil {
 		if v.Href = spec.href(o); v.Href != "" {
 			v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), r.tr(spec.Opens))
+		}
+	}
+	if spec.control != nil {
+		if v.Control, err = spec.control(o, r); err != nil {
+			return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
 		}
 	}
 	return v, nil

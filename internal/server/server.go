@@ -989,12 +989,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
-	// Devices remain their own page; the Interfaces tile carries their count.
+	// Devices remain their own page; the Ports card carries their count.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
-	// Resolve each domain by its registered navigation entry, leaving a tile
-	// unlinked while no running plugin serves its destination.
-	ov.SecurityHref = s.navLabelHref("Firewall")
+	// The verdict counts a firewall that is not fully loaded.
 	s.applyFirewallStatus(r.Context(), sid, ov)
+	// Resolve each card's door by its registered navigation entry, leaving it
+	// unlinked while no running plugin serves its destination.
 	ov.TunnelsHref = s.navLabelHref("VPN")
 	ov.InterfacesHref = s.navLabelHref("Interfaces")
 

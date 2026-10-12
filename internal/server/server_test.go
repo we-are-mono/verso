@@ -1148,13 +1148,13 @@ func TestIndexRendersTheBrowsersLayout(t *testing.T) {
 		}
 		return strings.Join(ids, " ")
 	}
-	if got := order(get(t, s, "/").Body.String()); got != "internet firewall ports tunnels traffic resources hardware firmware" {
+	if got := order(get(t, s, "/").Body.String()); got != "internet ports tunnels traffic resources hardware firmware" {
 		t.Errorf("no cookie = %s, want the default layout", got)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: "1.traffic-internet.firewall-ports-tunnels-hardware-firmware.firmware.resources"})
+	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: "1.traffic-internet.ports-tunnels-hardware-firmware.firmware.resources"})
 	body := serve(t, s, req).Body.String()
-	if got := order(body); got != "traffic internet firewall ports tunnels hardware firmware" {
+	if got := order(body); got != "traffic internet ports tunnels hardware firmware" {
 		t.Errorf("saved layout = %s", got)
 	}
 	if !strings.Contains(body, `data-overview-card="firmware" data-tone="neutral" data-closed`) {

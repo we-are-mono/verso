@@ -30,6 +30,9 @@ type Chart struct {
 	// Short stands the plot at 180px rather than 240px, nine cells of the grid
 	// rather than twelve; the viewBox stretches, so the curve is the same.
 	Short bool
+	// Paper stands the plot on Paper rather than the notebook's sand (an
+	// Overview card): its labels sit on Paper too.
+	Paper bool
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.
 	Marks []ChartMark
@@ -49,7 +52,7 @@ type ChartMark struct {
 type ChartSeries struct {
 	Label  string    // series name, for the plot's description
 	Values []float64 // the points, left to right
-	Role   string    // palette slot: violet | emerald
+	Role   string    // palette slot: violet | emerald | denim
 	Fill   bool      // fill the area under the line, not only the line
 }
 
@@ -73,6 +76,7 @@ type chartView struct {
 	XEnd    string
 	Series  []chartSeriesView
 	Short   bool
+	Paper   bool
 	Marks   []chartMarkView
 }
 
@@ -113,7 +117,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		top = 1
 	}
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short}
+	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short, Paper: c.Paper}
 	for _, m := range c.Marks {
 		view.Marks = append(view.Marks, chartMarkView{
 			// A brief outage keeps a width the eye can find.

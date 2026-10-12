@@ -9,21 +9,12 @@ import (
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
+// applyFirewallStatus reads whether fw4's ruleset is loaded in the kernel, the
+// one firewall fact the Overview's verdict counts. A failed read clears the
+// previous one, so an old "active" never outlives the router's answer.
 func (s *Server) applyFirewallStatus(ctx context.Context, sid string, ov *widget.Overview) {
-	// Clear the previous frame before reading so failures never leave an old
-	// green status or rule count on screen.
-	ov.FirewallState, ov.FirewallRules, ov.FirewallRulesKnown = "", 0, false
+	ov.FirewallState = ""
 	if status, err := s.backend.FirewallStatus(ctx, sid); err == nil {
 		ov.FirewallState = status.State
-	}
-	// Read through the same session-scoped UCI snapshot as the plugin listing.
-	// Kernel rule counts include generated plumbing and cannot match its rows.
-	if cfg, err := s.backend.UCIConfig(ctx, sid, "firewall"); err == nil && cfg != nil {
-		ov.FirewallRulesKnown = true
-		for _, raw := range cfg {
-			if section, ok := raw.(map[string]any); ok && section[".type"] == "rule" {
-				ov.FirewallRules++
-			}
-		}
 	}
 }

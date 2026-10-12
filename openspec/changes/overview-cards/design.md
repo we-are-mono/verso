@@ -45,7 +45,6 @@ Bodies compose existing widgets, never hand-built markup:
 | Resources | the four `Meter`s |
 | Hardware, Firmware | `Properties` (`overview-system`) |
 | Ports, Tunnels | the `Table` widget: an `entity` network chip (Ports) or the tunnel's kind as a `keyword` (Tunnels), `Receive` and `Transmit` as `rate` cells, status last |
-| Firewall | `Properties` |
 
 The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state` cells, the hooks the interface stream already writes, so the cards' rates and states stay live with no new client code and no new cell kind. A spare port's row carries no key: "Not in use" is the Overview's own reading, which the stream's generic state words would overwrite.
 
@@ -56,7 +55,7 @@ The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state`
 ### 3. The layout is a cookie the browser writes and the shell reads
 
 - **Name:** `verso_overview`.
-- **Value:** `1.<left>.<right>.<closed>.<hidden>`. Each field is card ids joined by `-`, so `1.internet-firewall-ports-tunnels.traffic-resources-hardware-firmware.firmware.` is a layout with Firmware closed. Ids are `[a-z]+`. The value uses only cookie-safe characters and stays under 200 bytes.
+- **Value:** `1.<left>.<right>.<closed>.<hidden>`. Each field is card ids joined by `-`, so `1.internet-ports-tunnels.traffic-resources-hardware-firmware.firmware.` is a layout with Firmware closed. Ids are `[a-z]+`. The value uses only cookie-safe characters and stays under 200 bytes.
 - **Attributes:** `Path=/; SameSite=Lax; Max-Age=34560000` (400 days, the browser cap), plus `Secure` when the page is served over HTTPS. It isn't `HttpOnly`, because the page's JS writes it. It holds nothing secret.
 - **Writer:** `verso-overview.js` writes it on every open/close and at each move, hide, restore or reset. There is no server endpoint, no CSRF and no router write.
 - **Reader:** `overviewLayout(r *http.Request) layout` parses and normalizes, behind a small interface:

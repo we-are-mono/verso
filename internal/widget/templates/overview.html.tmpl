@@ -60,13 +60,14 @@
      28px acts riding the line; the body opens a cell under its hairline and
      ends 19px over the frame, so whole cells of content close on a line. */}}
 <article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card -mt-px -ml-px w-[calc(100%+1px)] min-w-0 rounded-xs border border-rule-strong bg-ground">
-  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2.5 pt-2.5 pr-2.5 pb-2.25 pl-5 leading-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2.5 pt-3.75 pr-2.5 pb-3.5 pl-5 leading-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
     <div class="flex min-w-0 flex-1 items-baseline gap-3">
       <h2 id="overview-card-{{.ID}}" class="text-base leading-5 font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
       <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-5 text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
+    {{if .Control}}<div data-overview-card-control class="flex shrink-0 items-center gap-3 group-data-arranging/overview:hidden">{{.Control}}</div>{{end}}
     <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm leading-5 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
       <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
@@ -84,9 +85,10 @@
 <div class="grid gap-5">
   {{range .}}
   <section aria-label="{{.Kind}}" class="min-w-0">
-    {{/* the family's name on one 20px line, its chip a pixel over it, and
-         its rows straight under; families stand a cell apart. */}}
-    <div class="flex h-5 items-center gap-3">
+    {{/* the family's name heads its rows as a row of its own: its 20px line,
+         10px over and 9px under, its chip a pixel over the line, and a Strong
+         Hairline under it, as a lane's head has; families stand a cell apart. */}}
+    <div class="flex items-center gap-3 border-b border-rule-strong pt-2.5 pb-2.25">
       <h3 class="text-sm leading-5 font-semibold text-ink">{{.Kind}}</h3>
       {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
     </div>
@@ -94,6 +96,22 @@
   </section>
   {{end}}
 </div>
+{{end}}
+
+{{/* overview.window: the Traffic card's header control — the device the graph
+     measures, and its window, whose choice fetches the graph for it into the
+     card's body. The select rides the header's line, 7px over either edge. */}}
+{{define "overview.window"}}
+{{if .Device}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Device}}</span>{{end}}
+{{if .Ranges}}
+<div class="relative -my-1.75 flex items-center">
+  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="[data-overview-card='traffic'] .verso-traffic-card" hx-swap="outerHTML"
+    class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
+    {{range .Ranges}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+  </select>
+  <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
+</div>
+{{end}}
 {{end}}
 
 {{/* overview.meters: the Resources card's gauges, two to a row where the
