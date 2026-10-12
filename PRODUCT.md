@@ -70,7 +70,9 @@ like part of the shell.
 - **Localization:** the English source string is the key. Language catalogs
   ship as data packages. Slovenian is first (`i18n/sl`). Layouts must survive
   longer translated strings (ADR-012).
-- **Stage:** pre-alpha. No backwards compatibility until alpha.
+- **Stage:** beta, running on routers in the wild. An upgrade carries what a
+  router already holds (UCI options, init-script flags, files on `/data`), so a
+  change that renames or moves any of it ships with its migration.
 
 ## Brand Commitments
 
