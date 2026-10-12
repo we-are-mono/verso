@@ -140,8 +140,13 @@ same uci configs, so nothing moves between them.
 
 | File | Mode | Owner |
 |---|---|---|
+| `/etc/verso/` | 0750 | root:verso |
 | `/etc/verso/tls.crt` | 0644 | root |
 | `/etc/verso/tls.key` | 0640 | root:verso |
+
+The directory is shared: `verso-rpcd` keeps its config fingerprint key there,
+0600 and root's alone. Whichever of the two makes the directory gives it this
+owner and mode, and the `verso` init script sets them again on every start.
 
 The certificate file holds the leaf followed by its chain. The key is the one file
 under `/etc` the shell opens directly: it is credential material Verso must hold
