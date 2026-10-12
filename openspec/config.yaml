@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Verso is a web UI that replaces LuCI on OpenWrt routers: a Go shell plus plugins
+  (new plugins are written in Rust against the SDK crate). The primary target is
+  the Mono Gateway (arm64, NXP LS1046A); build and test for arm64 only.
+  The project is pre-alpha: no backwards compatibility, no migration shims, no
+  deprecation paths. Change contracts and documents in place to state what is.
+  Architectural decisions live in docs/ADR/NNN-title.md (three-digit numbers);
+  OpenSpec specs describe behaviour, ADRs keep the reasons. Cite the ADR a change
+  rests on, and amend that ADR in place when a change overturns it.
+  DESIGN.md is the visual and interaction contract; UI work composes existing
+  widgets, and a new widget needs the owner's approval with its case.
+  UCI is the skeleton of every settings surface: one control per option, predictable
+  as `uci show`. Status comes from daemon events and netlink, never from logread.
+  Router CPU and memory are the budget; LAN bandwidth is free.
+  Risky operator choices get a warning naming the cause, never a refusal.
+  The dev host is live network infrastructure: no privileged or watchdog containers.
+  Zamanifi is a production router: read-only checks only.
+
+rules:
+  proposal:
+    - State the user-visible outcome first, in plain language
+    - Name the ADRs the change touches
+  design:
+    - Prefer the durable solution over the cheapest; label any interim as an interim
+    - Follow SOLID; compose existing widgets over hand-built templates
+  specs:
+    - Requirements describe what is, never roadmap or staging ("later", "for now", "phase 2")
+  tasks:
+    - Test first; each task names its test before the code
+    - Every task ends green under `make lint` and `make test`
+    - Keep docs/BACKLOG.md current as part of the change
+
+operations:
+  apply:
+    guidance:
+      - Commit each meaningful unit once its checks pass, without asking; never push
+      - Never write time estimates
+  archive:
+    guidance:
+      - Before archiving, confirm the ADRs and docs/BACKLOG.md reflect what landed
