@@ -5,8 +5,12 @@ context: |
   (new plugins are written in Rust against the SDK crate). The primary target is
   the Mono Gateway (arm64, NXP LS1046A); every release ships for arm64
   (aarch64_generic) and amd64 (x86_64).
-  The project is pre-alpha: no backwards compatibility, no migration shims, no
-  deprecation paths. Change contracts and documents in place to state what is.
+  The project is in beta and runs on routers in the wild: an upgrade carries what
+  a router already holds (UCI options, init-script flags, files on /data), so a
+  change that renames or moves any of it ships with its migration. Plugins ship
+  from their own repos, so a shell-plugin contract change keeps installed plugins
+  working or the release notes say what to upgrade together. Documents are still
+  edited in place to state what is.
   Architectural decisions live in docs/ADR/NNN-title.md (three-digit numbers);
   OpenSpec specs describe behaviour, ADRs keep the reasons. Cite the ADR a change
   rests on, and amend that ADR in place when a change overturns it.
