@@ -11,6 +11,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/secrets"
 )
 
 // changeRecorder keeps config history (ADR-021): history.db's, or a test's.
@@ -19,32 +20,20 @@ type changeRecorder interface {
 	MarkUndone(ctx context.Context, ids []int64, by int64) error
 }
 
-// baseSecrets are the options OpenWrt's own packages keep a secret in, as
-// config.option. Config history records that they changed and never their
-// values, whether or not a plugin's manifest names them too.
-var baseSecrets = []string{
-	"network.password", "network.private_key", "network.preshared_key", "network.pincode",
-	"wireless.key", "wireless.key1", "wireless.key2", "wireless.key3", "wireless.key4",
-	"wireless.sae_password", "wireless.password", "wireless.auth_secret", "wireless.acct_secret",
-	"wireless.priv_key_pwd", "wireless.private_key_passwd",
-	"ddns.password",
-	"rpcd.password",
-	"acme.credentials",
-}
-
 // secretOptions is every option config history keeps no value of: OpenWrt's
-// own, and each installed plugin's.
+// own (internal/secrets), and each installed plugin's.
 func (s *Server) secretOptions() map[string]bool {
-	secrets := make(map[string]bool, len(baseSecrets))
-	for _, name := range baseSecrets {
-		secrets[name] = true
+	base := secrets.Base()
+	names := make(map[string]bool, len(base))
+	for _, name := range base {
+		names[name] = true
 	}
 	for _, m := range s.manifestList() {
 		for _, name := range m.Secrets {
-			secrets[name] = true
+			names[name] = true
 		}
 	}
-	return secrets
+	return names
 }
 
 // stagedChange is sid's stage as config history keeps it once applied: the
