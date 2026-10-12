@@ -86,16 +86,31 @@ func (l *changeLog) RecordChange(_ context.Context, c history.Change) (int64, er
 func changeServer(t *testing.T, stage map[string][][]string, manifests ...plugin.Manifest) (*Server, *changeLog, *func()) {
 	t.Helper()
 	confirms := 0
+	return keptServer(t, fakeBackend{confirms: &confirms, changes: stage}, &fakeTransport{}, manifests...)
+}
+
+// keptServer is a server on backend and tr with config history kept in a
+// changeLog and the rollback window's timer in the test's hand.
+func keptServer(t *testing.T, backend fakeBackend, tr *fakeTransport, manifests ...plugin.Manifest) (*Server, *changeLog, *func()) {
+	t.Helper()
 	if len(manifests) == 0 {
 		manifests = []plugin.Manifest{demoACLManifest()}
 	}
-	s := newServerWith(t, fakeBackend{confirms: &confirms, changes: stage}, &fakeTransport{}, manifests)
+	s := newServerWith(t, backend, tr, manifests)
 	withAlerter(t, s)
 	log := &changeLog{}
 	s.changeLog = log
 	var window func()
 	s.afterRollback = func(_ time.Duration, f func()) { window = f }
 	return s, log, &window
+}
+
+// applyConfirmed applies the stage, confirms it, and lets the window close.
+func applyConfirmed(t *testing.T, s *Server, window *func()) {
+	t.Helper()
+	postPlugin(t, s, "/uci/apply", nil)
+	postPlugin(t, s, "/uci/confirm", nil)
+	(*window)()
 }
 
 func text(s string) *string { return &s }
@@ -176,7 +191,7 @@ func TestAnApplyKeepsWhatEachChangeReplaced(t *testing.T) {
 	m := demoACLManifest()
 	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "network", Function: "write"})
 	confirms := 0
-	s := newServerWith(t, fakeBackend{confirms: &confirms,
+	s, log, window := keptServer(t, fakeBackend{confirms: &confirms,
 		changes: map[string][][]string{
 			"system": {{"set", "main", "hostname", "new"}},
 			"network": {
@@ -193,15 +208,8 @@ func TestAnApplyKeepsWhatEachChangeReplaced(t *testing.T) {
 				"wan6": map[string]any{".type": "interface", "device": "@wan", "proto": "dhcpv6"},
 			},
 		},
-	}, &fakeTransport{}, []plugin.Manifest{m})
-	log := &changeLog{}
-	s.changeLog = log
-	var window func()
-	s.afterRollback = func(_ time.Duration, f func()) { window = f }
-
-	postPlugin(t, s, "/uci/apply", nil)
-	postPlugin(t, s, "/uci/confirm", nil)
-	window()
+	}, &fakeTransport{}, m)
+	applyConfirmed(t, s, window)
 
 	old := map[string]string{}
 	for _, item := range log.changes[0].Items {
@@ -225,21 +233,49 @@ func TestAnApplyKeepsWhatEachChangeReplaced(t *testing.T) {
 // config history when the committed read fails, without old values.
 func TestAnApplyIsKeptWhenWhatItReplacedCannotBeRead(t *testing.T) {
 	confirms := 0
-	s := newServerWith(t, fakeBackend{confirms: &confirms,
+	s, log, window := keptServer(t, fakeBackend{confirms: &confirms,
 		changes:      map[string][][]string{"system": {{"set", "main", "hostname", "new"}}},
 		committedErr: errors.New("helper unavailable"),
-	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
-	log := &changeLog{}
-	s.changeLog = log
-	var window func()
-	s.afterRollback = func(_ time.Duration, f func()) { window = f }
-
-	postPlugin(t, s, "/uci/apply", nil)
-	postPlugin(t, s, "/uci/confirm", nil)
-	window()
+	}, &fakeTransport{})
+	applyConfirmed(t, s, window)
 
 	if len(log.changes) != 1 || log.changes[0].Items[0].Ops[0].Old != nil {
 		t.Fatalf("changes = %+v, want one without an old value", log.changes)
+	}
+}
+
+// TestEachRowKeepsWhatItIsAbout: a row keeps the subject its plugin named,
+// a subject with no name is called by its section, and a kind outside the
+// vocabulary leaves the row to be named by its config and section, as a row
+// no plugin described is.
+func TestEachRowKeepsWhatItIsAbout(t *testing.T) {
+	confirms := 0
+	s, log, window := keptServer(t, fakeBackend{confirms: &confirms, changes: map[string][][]string{
+		"system": {
+			{"set", "main", "hostname", "edge"},
+			{"set", "cfg0792bd", "enabled", "0"},
+			{"set", "w1", "size", "2"},
+			{"set", "main", "log_size", "64"},
+		},
+	}}, &fakeTransport{descriptions: []plugin.Description{
+		{Plain: "Router name: edge", Covers: []int{0}, Subject: &plugin.Subject{Kind: "setting", Name: "Router name"}},
+		{Plain: "Turned off the rule.", Covers: []int{1}, Subject: &plugin.Subject{Kind: "rule"}},
+		{Plain: "Changed the widget.", Covers: []int{2}, Subject: &plugin.Subject{Kind: "widget", Name: "w"}},
+	}})
+	applyConfirmed(t, s, window)
+
+	got := map[string][2]string{}
+	for _, item := range log.changes[0].Items {
+		got[item.Words] = [2]string{item.SubjectKind, item.SubjectName}
+	}
+	want := map[string][2]string{
+		"Router name: edge":          {"setting", "Router name"},
+		"Turned off the rule.":       {"rule", "cfg0792bd"},
+		"Changed the widget.":        {"", ""},
+		"system: main.log_size = 64": {"", ""},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("subjects\n%v\nwant\n%v", got, want)
 	}
 }
 

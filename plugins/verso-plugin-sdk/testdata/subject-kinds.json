@@ -1,0 +1,13 @@
+[
+  "rule",
+  "port-forward",
+  "zone",
+  "crossing",
+  "network",
+  "route",
+  "device",
+  "wifi",
+  "dhcp",
+  "service",
+  "setting"
+]

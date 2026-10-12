@@ -57,9 +57,11 @@ record.
 ### An entry names itself from what it touched
 
 The describe hook (ADR-006) returns, beside each sentence, the **subject** it
-is about: the entity kind (`rule`, `zone`, `network`, `device`, `wifi`, `dhcp`,
-`service`, the kinds entity chips already draw) and the name a person set. A
-change no description covers takes its config and section as its subject.
+is about: its kind, from a closed set the shell draws a chip for (`rule`,
+`port-forward`, `zone`, `crossing`, `network`, `route`, `device`, `wifi`,
+`dhcp`, `service`, `setting`), and the name a person set, or its section where
+it has none. A change no description covers, or one whose sentence names no
+subject, takes its config and section as its subject.
 
 A row in the listing reads from its subjects:
 

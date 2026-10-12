@@ -211,10 +211,38 @@ type DescribeChange struct {
 // indices, into the change slice the shell sent, that this one sentence accounts
 // for — one sentence may fold several raw changes (a renamed object writes two
 // options). A change no description covers keeps its raw uci line; a plugin that
-// describes nothing leaves every change raw.
+// describes nothing leaves every change raw. Subject is the one object the
+// sentence is about, which config history names the change by (ADR-021); nil
+// where it is about no one object.
 type Description struct {
-	Plain  string `json:"plain"`
-	Covers []int  `json:"covers"`
+	Plain   string   `json:"plain"`
+	Covers  []int    `json:"covers"`
+	Subject *Subject `json:"subject,omitempty"`
+}
+
+// Subject is what a sentence is about: its kind, one of SubjectKinds, and the
+// name a person set for it. An object with no name of its own is called by its
+// section.
+type Subject struct {
+	Kind string `json:"kind"`
+	Name string `json:"name,omitempty"`
+}
+
+// SubjectKinds is the closed set of kinds a subject is: each draws as its own
+// chip. A subject of any other kind is dropped, and its row named by the
+// config and section it changed, as an undescribed row is.
+var SubjectKinds = map[string]bool{
+	"rule":         true, // a firewall traffic rule
+	"port-forward": true, // a firewall redirect
+	"zone":         true,
+	"crossing":     true, // a firewall forwarding between two zones
+	"network":      true, // an interface
+	"route":        true,
+	"device":       true,
+	"wifi":         true,
+	"dhcp":         true,
+	"service":      true,
+	"setting":      true, // one setting on a page of settings
 }
 
 // describeRequest is the JSON body the shell POSTs to a plugin's describe hook.

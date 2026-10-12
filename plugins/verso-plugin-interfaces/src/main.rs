@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use verso_plugin::{
-    serve_described, Change, Description, Envelope, Form, Request, Snapshot, Tone, Widget,
+    serve_described, Change, Description, Envelope, Form, Request, Snapshot, SubjectKind, Tone,
+    Widget,
 };
 mod editor;
 mod model;
@@ -50,9 +51,10 @@ fn missing() -> Envelope {
         .with_back("Interfaces", ROOT)
 }
 // describe names a route by its target and any other network change as the
-// interface settings it is. A removed section is gone from the staged
-// snapshot, so nothing says whether it was an interface, a device or a route:
-// its change keeps its raw line.
+// interface settings it is, about the interface by its name where the section
+// is one. A removed section is gone from the staged snapshot, so nothing says
+// whether it was an interface, a device or a route: its change keeps its raw
+// line.
 fn describe(changes: &[Change], s: &Snapshot) -> Vec<Description> {
     let mut out = routes::describe(changes, s);
     let covered: Vec<usize> = out.iter().flat_map(|d| d.covers.clone()).collect();
@@ -63,7 +65,15 @@ fn describe(changes: &[Change], s: &Snapshot) -> Vec<Description> {
             .filter(|(i, c)| {
                 c.config == "network" && c.op != "remove-section" && !covered.contains(i)
             })
-            .map(|(i, _)| Description::one("Changed interface settings", i)),
+            .map(|(i, c)| {
+                let said = Description::one("Changed interface settings", i);
+                match s.section("network", &c.section) {
+                    Some(sec) if sec.scalar(".type") == "interface" => {
+                        said.about(SubjectKind::Network, &c.section)
+                    }
+                    _ => said,
+                }
+            }),
     );
     out
 }

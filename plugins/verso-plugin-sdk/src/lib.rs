@@ -244,11 +244,14 @@ pub struct Change {
 /// slice the shell passed `describe`, that this sentence accounts for; one sentence
 /// may fold several changes (a rename writes two options). A change no description
 /// covers keeps its raw uci line in the drawer, so describe what reads well and
-/// leave the rest.
+/// leave the rest. `subject` is the one object the sentence is about, which
+/// config history names the change by; set it with [`Description::about`].
 #[derive(Serialize, Debug)]
 pub struct Description {
     pub plain: String,
     pub covers: Vec<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subject: Option<Subject>,
 }
 
 impl Description {
@@ -257,6 +260,7 @@ impl Description {
         Description {
             plain: plain.into(),
             covers,
+            subject: None,
         }
     }
 
@@ -264,6 +268,48 @@ impl Description {
     pub fn one(plain: impl Into<String>, index: usize) -> Description {
         Description::new(plain, vec![index])
     }
+
+    /// about names the object the sentence is about: its kind and the name a
+    /// person set for it, empty for an object with no name of its own (the
+    /// shell then calls it by its section).
+    pub fn about(mut self, kind: SubjectKind, name: impl Into<String>) -> Description {
+        self.subject = Some(Subject {
+            kind,
+            name: name.into(),
+        });
+        self
+    }
+}
+
+/// Subject is what a [`Description`] is about.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct Subject {
+    pub kind: SubjectKind,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+}
+
+/// SubjectKind is the closed set of kinds a subject is; each draws as its own
+/// chip in config history.
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SubjectKind {
+    /// A firewall traffic rule.
+    Rule,
+    /// A firewall redirect.
+    PortForward,
+    Zone,
+    /// A firewall forwarding between two zones.
+    Crossing,
+    /// An interface.
+    Network,
+    Route,
+    Device,
+    Wifi,
+    Dhcp,
+    Service,
+    /// One setting on a page of settings.
+    Setting,
 }
 
 /// DescribeRequestBody is the JSON the shell POSTs to the describe hook.
@@ -2771,7 +2817,8 @@ mod tests {
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
         ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Field,
         Form, List, PageTab, RowDrawer, SectionWidget, SelectOption, Settings, SettingsItem,
-        SettingsPill, SettingsSeam, Snapshot, Switch, TableCell, TableRow, Tone, Ubus, Widget,
+        SettingsPill, SettingsSeam, Snapshot, SubjectKind, Switch, TableCell, TableRow, Tone, Ubus,
+        Widget,
     };
     use super::{json, uci_text, Map, Value};
 
@@ -2898,11 +2945,20 @@ mod tests {
         assert_eq!(req.changes[1].value, "Allow DNS");
 
         let resp = DescribeResponseBody {
-            descriptions: vec![Description::new("Added the rule.", vec![0, 1])],
+            descriptions: vec![
+                Description::new("Added the rule.", vec![0, 1])
+                    .about(SubjectKind::Rule, "Allow DNS"),
+                Description::one("Added a port forward.", 2).about(SubjectKind::PortForward, ""),
+                Description::one("Changed it.", 3),
+            ],
         };
         assert_eq!(
             serde_json::to_value(&resp).unwrap(),
-            serde_json::json!({"descriptions":[{"plain":"Added the rule.","covers":[0,1]}]})
+            serde_json::json!({"descriptions":[
+                {"plain":"Added the rule.","covers":[0,1],"subject":{"kind":"rule","name":"Allow DNS"}},
+                {"plain":"Added a port forward.","covers":[2],"subject":{"kind":"port-forward"}},
+                {"plain":"Changed it.","covers":[3]}
+            ]})
         );
     }
 

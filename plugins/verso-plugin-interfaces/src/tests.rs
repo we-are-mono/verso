@@ -764,3 +764,46 @@ fn a_device_run_by_openvpn_hands_off_to_its_vpn_panel() {
     assert!(!text.contains("\"mtu\""), "{text}");
     assert!(!text.contains("macaddr"), "{text}");
 }
+/// A change to an interface reads as its settings and is about that
+/// interface, by its name; one to anything else in network (a bridge, the
+/// globals) names no subject.
+#[test]
+fn an_interface_change_is_about_that_interface() {
+    let snapshot = Snapshot::from_value(json!({"network": {
+        "lan": {".name": "lan", ".type": "interface", "proto": "static"},
+        "br": {".name": "br", ".type": "device", "name": "br-lan"}
+    }}));
+    let change = |section: &str, option: &str, value: &str| Change {
+        config: "network".into(),
+        op: "set".into(),
+        section: section.into(),
+        option: option.into(),
+        value: value.into(),
+    };
+    let out = describe(
+        &[
+            change("lan", "ipaddr", "192.168.2.1"),
+            change("br", "mtu", "1400"),
+        ],
+        &snapshot,
+    );
+    let read: Vec<_> = out
+        .iter()
+        .map(|d| {
+            (
+                d.plain.as_str(),
+                d.subject.clone().map(|s| (s.kind, s.name)),
+            )
+        })
+        .collect();
+    assert_eq!(
+        read,
+        vec![
+            (
+                "Changed interface settings",
+                Some((SubjectKind::Network, "lan".to_string()))
+            ),
+            ("Changed interface settings", None),
+        ]
+    );
+}

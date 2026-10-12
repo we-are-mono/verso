@@ -11,10 +11,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
     ActionBar, ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth,
-    ConditionItem, Field, Grid, HeadingAct, List, Property, RemoveConfirm, RowDrawer, SectionWidget,
-    SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam, SettingsToggle, Switch,
-    Table, TableCell, TableColumn, TableEndpoint, TableGroup, TableRow, TableRowAct,
-    TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
+    ConditionItem, Field, Grid, HeadingAct, List, Property, RemoveConfirm, RowDrawer,
+    SectionWidget, SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam,
+    SettingsToggle, SubjectKind, Switch, Table, TableCell, TableColumn, TableEndpoint, TableGroup,
+    TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
 #[test]
@@ -786,4 +786,37 @@ fn live_listing() -> Widget {
         }),
         ..Default::default()
     })
+}
+
+// Every subject kind, for the shell's Go tests to hold against its own
+// vocabulary (plugin.SubjectKinds): a kind one side has and the other lacks
+// fails there, not in config history.
+#[test]
+fn write_subject_kinds_fixture() {
+    use SubjectKind::*;
+    let kinds = [
+        Rule,
+        PortForward,
+        Zone,
+        Crossing,
+        Network,
+        Route,
+        Device,
+        Wifi,
+        Dhcp,
+        Service,
+        Setting,
+    ];
+    // No wildcard: a kind added to the SDK stops this compiling until it is
+    // in the list above too.
+    for kind in kinds {
+        match kind {
+            Rule | PortForward | Zone | Crossing | Network | Route | Device | Wifi | Dhcp
+            | Service | Setting => {}
+        }
+    }
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    let json = serde_json::to_vec_pretty(&kinds).unwrap();
+    fs::write(format!("{dir}/subject-kinds.json"), json).unwrap();
 }

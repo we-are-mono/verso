@@ -77,7 +77,7 @@ func TestSocketTransportDescribe(t *testing.T) {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		envelopeJSON(w, http.StatusOK,
-			`{"descriptions":[{"plain":"Added the rule “Allow DNS”.","covers":[0,1]}]}`)
+			`{"descriptions":[{"plain":"Added the rule “Allow DNS”.","covers":[0,1],"subject":{"kind":"rule","name":"Allow DNS"}}]}`)
 	}))
 
 	changes := []DescribeChange{
@@ -103,6 +103,9 @@ func TestSocketTransportDescribe(t *testing.T) {
 	}
 	if want := []int{0, 1}; len(descs[0].Covers) != 2 || descs[0].Covers[0] != want[0] || descs[0].Covers[1] != want[1] {
 		t.Errorf("covers = %v, want %v", descs[0].Covers, want)
+	}
+	if got := descs[0].Subject; got == nil || *got != (Subject{Kind: "rule", Name: "Allow DNS"}) {
+		t.Errorf("subject = %+v, want the rule Allow DNS", got)
 	}
 }
 

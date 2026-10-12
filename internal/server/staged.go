@@ -91,9 +91,10 @@ type stagedItem struct {
 	Lines []stagedLine
 	// plugin is the plugin whose page the row was made on, empty for the
 	// shell's own; changes is what the row stands for. Config history keeps
-	// both (ADR-021).
+	// both (ADR-021), and subject, what its plugin said the row is about.
 	plugin  string
 	changes []stagedChange
+	subject plugin.Subject
 }
 
 // stagedLine is one uci line under an opened row, led by the glyph of what
@@ -285,6 +286,7 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 	// full ordered run of indices that sentence folds together.
 	type run struct {
 		plain   string
+		subject *plugin.Subject
 		indices []int
 	}
 	covered := map[int]*run{}
@@ -304,7 +306,7 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 			if d.Plain == "" || len(d.Covers) == 0 {
 				continue
 			}
-			r := &run{plain: d.Plain}
+			r := &run{plain: d.Plain, subject: d.Subject}
 			for _, local := range d.Covers {
 				if local < 0 || local >= len(positions) {
 					continue // a plugin cannot cover a change the shell never sent
@@ -335,7 +337,9 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 			for _, g := range r.indices {
 				changes = append(changes, flat[g])
 			}
-			rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(r.plain, false, changes, tr), author: authors[i], authored: authored[i]})
+			item := stagedItemOf(r.plain, false, changes, tr)
+			item.subject = subjectOf(r.subject, changes[0])
+			rows = append(rows, stagedRow{config: c.config, item: item, author: authors[i], authored: authored[i]})
 			continue
 		}
 		rows = append(rows, stagedRow{config: c.config, item: stagedItemOf(c.raw, true, []stagedChange{c}, tr), author: authors[i], authored: authored[i]})

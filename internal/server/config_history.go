@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // changeRecorder keeps config history (ADR-021): history.db's, or a test's.
@@ -58,7 +59,8 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 	seen := map[string]bool{}
 	for _, g := range view.Groups {
 		for _, item := range g.Items {
-			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono}
+			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono,
+				SubjectKind: item.subject.Kind, SubjectName: item.subject.Name}
 			for _, c := range item.changes {
 				kept.Ops = append(kept.Ops, changeOp(c, secrets))
 				if !seen[c.config] && describeChange(c).Op != "file" {
@@ -86,6 +88,21 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 		}
 	}
 	return change
+}
+
+// subjectOf is what a described row is about, as config history keeps it: the
+// subject its plugin named, called by the section of its first change where
+// the plugin gave no name. A kind outside the vocabulary is no subject, and
+// the row is named by its config and section, as an undescribed row is.
+func subjectOf(named *plugin.Subject, first stagedChange) plugin.Subject {
+	if named == nil || !plugin.SubjectKinds[named.Kind] {
+		return plugin.Subject{}
+	}
+	subject := *named
+	if subject.Name == "" {
+		subject.Name = describeChange(first).Section
+	}
+	return subject
 }
 
 // changeOp is one staged uci change as config history keeps it. A value is

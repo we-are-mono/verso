@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use verso_plugin::{Change, Description, Snapshot};
+use verso_plugin::{Change, Description, Snapshot, SubjectKind};
 
 /// How a setting's value reads.
 #[derive(Clone, Copy)]
@@ -187,10 +187,10 @@ pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
         }
         covers.sort_unstable();
         let now = reading(setting, config, section, &runs[key], changes, snapshot);
-        out.push(Description::new(
-            format!("{}: {now}", setting.label),
-            covers,
-        ));
+        out.push(
+            Description::new(format!("{}: {now}", setting.label), covers)
+                .about(SubjectKind::Setting, setting.label),
+        );
     }
     out
 }
@@ -285,6 +285,26 @@ mod tests {
         let d = describe(&changes, &staged());
         let plain: Vec<_> = d.iter().map(|d| d.plain.as_str()).collect();
         assert_eq!(plain, ["Router name: edge", "Allow password login: off"]);
+    }
+
+    /// A setting's line is about that setting, by the label its page gives it.
+    #[test]
+    fn each_line_is_about_its_setting() {
+        let changes = [
+            change("system", "set", "sys", "hostname", "edge"),
+            change("dropbear", "set", "main", "PasswordAuth", "off"),
+        ];
+        let subjects: Vec<_> = describe(&changes, &staged())
+            .into_iter()
+            .map(|d| d.subject.map(|s| (s.kind, s.name)))
+            .collect();
+        assert_eq!(
+            subjects,
+            [
+                Some((SubjectKind::Setting, "Router name".to_string())),
+                Some((SubjectKind::Setting, "Allow password login".to_string())),
+            ]
+        );
     }
 
     #[test]

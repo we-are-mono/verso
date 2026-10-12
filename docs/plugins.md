@@ -502,6 +502,36 @@ plugin with no describe hook leaves every change raw. Describe is **always
 optional** — the raw line is the always-present fallback, so describe what reads
 well and leave the rest.
 
+A sentence about one object names it with `about`, and config history (ADR-021)
+names the change by it: `Allow-Ping` `target` ACCEPT → DROP rather than a raw
+section handle.
+
+```rust
+Description::new("Turned off the rule “Block Telnet”.", vec![0])
+    .about(SubjectKind::Rule, "Block Telnet")
+```
+
+The name is the one a person set. An object with no name of its own takes an
+empty one, and the shell calls it by its section. `SubjectKind` is closed, each
+kind drawn as its own chip:
+
+| kind | what it is |
+| --- | --- |
+| `Rule` | a firewall traffic rule |
+| `PortForward` | a firewall redirect |
+| `Zone` | a firewall zone |
+| `Crossing` | a forwarding between two zones |
+| `Network` | an interface |
+| `Route` | a static route |
+| `Device` | a device on the network |
+| `Wifi` | a Wi-Fi network |
+| `Dhcp` | a DHCP pool or reservation |
+| `Service` | a daemon and its settings |
+| `Setting` | one setting on a page of settings, by its label |
+
+A sentence that names no subject, or about several objects at once, leaves the
+change to be named by its config and section, as a raw line is.
+
 Each `Change` is one net change with a normalized `op`, so you never reason about a
 raw tuple's length:
 

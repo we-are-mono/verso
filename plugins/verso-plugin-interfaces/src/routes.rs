@@ -16,8 +16,8 @@ use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr};
 use verso_plugin::{
     commit, commit_delete, commit_new, uci_text, Change, ColumnWidth, CommitOp, Description,
-    Envelope, Errors, Form, HeadingAct, RowDrawer, SelectOption, Snapshot, Table, TableCell,
-    TableChip, TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget,
+    Envelope, Errors, Form, HeadingAct, RowDrawer, SelectOption, Snapshot, SubjectKind, Table,
+    TableCell, TableChip, TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget,
 };
 
 const NEW: &str = "new";
@@ -757,7 +757,7 @@ pub fn describe(changes: &[Change], s: &Snapshot) -> Vec<Description> {
             } else {
                 format!("Edited the route to {to}.")
             };
-            Some(Description::new(plain, covers))
+            Some(Description::new(plain, covers).about(SubjectKind::Route, to))
         })
         .collect()
 }
@@ -1150,6 +1150,18 @@ mod tests {
                 ),
                 ("Added a route to 2001:db8::/32 on wan.", vec![4]),
                 ("Edited the route to 10.20.0.0/16.", vec![5, 6]),
+            ]
+        );
+        let subjects: Vec<_> = out
+            .iter()
+            .map(|d| d.subject.clone().map(|s| (s.kind, s.name)))
+            .collect();
+        assert_eq!(
+            subjects,
+            vec![
+                Some((SubjectKind::Route, "10.20.0.0/16".to_string())),
+                Some((SubjectKind::Route, "2001:db8::/32".to_string())),
+                Some((SubjectKind::Route, "10.20.0.0/16".to_string())),
             ]
         );
     }

@@ -12,7 +12,7 @@
 
 use std::collections::HashMap;
 
-use verso_plugin::{Change, Description, Snapshot};
+use verso_plugin::{Change, Description, Snapshot, SubjectKind};
 
 use crate::model::CONFIG;
 
@@ -63,29 +63,34 @@ fn describe_section(
         .map(|&i| changes[i].option.clone())
         .or_else(|| sec.as_ref().map(|s| s.scalar(".type")))
         .unwrap_or_default();
-    let kind = kind_label(&typ)?;
+    let (kind, about) = kind_label(&typ)?;
 
     // A crossing carries no name of its own — what it is, is the two zones it
     // joins — so it is named by those rather than by the `name` option every
-    // other section type identifies itself with.
-    let name = match typ.as_str() {
-        "forwarding" => sec
-            .as_ref()
-            .map(|s| format!("{} to {}", s.scalar("src"), s.scalar("dest")))
-            .unwrap_or_default(),
-        _ => sec.as_ref().map(|s| s.scalar("name")).unwrap_or_default(),
+    // other section type identifies itself with: "lan to wan" in a sentence,
+    // "lan → wan" as what config history calls it.
+    let (name, called) = match (typ.as_str(), sec.as_ref()) {
+        ("forwarding", Some(s)) => {
+            let (src, dest) = (s.scalar("src"), s.scalar("dest"));
+            (format!("{src} to {dest}"), format!("{src} \u{2192} {dest}"))
+        }
+        ("forwarding", None) => (String::new(), String::new()),
+        (_, s) => {
+            let name = s.map(|s| s.scalar("name")).unwrap_or_default();
+            (name.clone(), name)
+        }
     };
     let subject = match typ.as_str() {
         "forwarding" if !name.is_empty() => format!("the crossing from {name}"),
         _ => subject(kind, &name),
     };
-    let covers = idxs.to_vec();
+    let said = |plain: String| Description::new(plain, idxs.to_vec()).about(about, &called);
 
     if removed {
-        return Some(Description::new(format!("Removed {subject}."), covers));
+        return Some(said(format!("Removed {subject}.")));
     }
     if added {
-        return Some(Description::new(format!("Added {subject}."), covers));
+        return Some(said(format!("Added {subject}.")));
     }
     // An existing section. The everyday case is the listing's on/off switch, whose
     // one change reads best as "Turned on/off"; anything wider is an edit, with the
@@ -99,19 +104,19 @@ fn describe_section(
         } else {
             "Turned on"
         };
-        return Some(Description::new(format!("{verb} {subject}."), covers));
+        return Some(said(format!("{verb} {subject}.")));
     }
-    Some(Description::new(format!("Edited {subject}."), covers))
+    Some(said(format!("Edited {subject}.")))
 }
 
-/// kind_label is the plain word for a firewall section type, or None for a type
-/// the drawer has no sentence for.
-fn kind_label(typ: &str) -> Option<&'static str> {
+/// kind_label is the plain word for a firewall section type and the kind of
+/// subject it is, or None for a type the drawer has no sentence for.
+fn kind_label(typ: &str) -> Option<(&'static str, SubjectKind)> {
     match typ {
-        "rule" => Some("rule"),
-        "redirect" => Some("port forward"),
-        "zone" => Some("zone"),
-        "forwarding" => Some("crossing"),
+        "rule" => Some(("rule", SubjectKind::Rule)),
+        "redirect" => Some(("port forward", SubjectKind::PortForward)),
+        "zone" => Some(("zone", SubjectKind::Zone)),
+        "forwarding" => Some(("crossing", SubjectKind::Crossing)),
         _ => None,
     }
 }
@@ -229,6 +234,43 @@ mod tests {
         assert_eq!(
             describe(&changes, &snap)[0].plain,
             "Turned on the crossing from lan to wan."
+        );
+    }
+
+    /// Each sentence names what it is about for config history: the kind of
+    /// object and the name a person set, a crossing by the zones it joins,
+    /// and an object with no name left to be called by its section.
+    #[test]
+    fn each_sentence_names_its_subject() {
+        let snap = snapshot(json!({
+            "firewall": {
+                "r1": { ".type": "rule", ".name": "r1", "name": "Block Telnet" },
+                "cfg0792bd": { ".type": "rule", ".name": "cfg0792bd" },
+                "p1": { ".type": "redirect", ".name": "p1", "name": "NAS" },
+                "z1": { ".type": "zone", ".name": "z1", "name": "guest" },
+                "f1": { ".type": "forwarding", ".name": "f1", "src": "lan", "dest": "wan" }
+            }
+        }));
+        let changes = vec![
+            change("set", "r1", "enabled", "0"),
+            change("set", "cfg0792bd", "target", "DROP"),
+            change("set", "p1", "dest_port", "8080"),
+            change("set", "z1", "input", "REJECT"),
+            change("set", "f1", "enabled", "0"),
+        ];
+        let subjects: Vec<_> = describe(&changes, &snap)
+            .into_iter()
+            .map(|d| d.subject.map(|s| (s.kind, s.name)))
+            .collect();
+        assert_eq!(
+            subjects,
+            vec![
+                Some((SubjectKind::Rule, "Block Telnet".to_string())),
+                Some((SubjectKind::Rule, String::new())),
+                Some((SubjectKind::PortForward, "NAS".to_string())),
+                Some((SubjectKind::Zone, "guest".to_string())),
+                Some((SubjectKind::Crossing, "lan \u{2192} wan".to_string())),
+            ]
         );
     }
 
