@@ -17,7 +17,7 @@ func text(s string) *string { return &s }
 // moved to every interface, on two pages.
 func applied(at time.Time) Change {
 	return Change{
-		Time: at, Status: ChangeApplied, User: "root", Address: "10.0.0.12",
+		Time: at, Status: ChangeApplied, User: "root", Address: "10.0.0.12", OldRead: true,
 		Items: []ChangeItem{
 			{Page: "Firewall", Plugin: "firewall", Verb: "added", Words: "Added the rule “Allow-SSH-WAN”.",
 				SubjectKind: "rule", SubjectName: "Allow-SSH-WAN",
@@ -125,5 +125,42 @@ func TestChangesTakeIncreasingIDs(t *testing.T) {
 	}
 	if second <= first {
 		t.Fatalf("ids %d then %d", first, second)
+	}
+}
+
+// TestAChangeSaysWhetherWhatItReplacedWasRead: an entry whose old values
+// could not be read says so, so nothing is undone to a value it never had.
+func TestAChangeSaysWhetherWhatItReplacedWasRead(t *testing.T) {
+	store, _ := open(t)
+	for _, read := range []bool{true, false} {
+		c := applied(minute(0))
+		c.OldRead = read
+		id, err := store.RecordChange(ctx, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := readBack(t, store, id).OldRead; got != read {
+			t.Errorf("old read = %v, want %v", got, read)
+		}
+	}
+}
+
+// TestUndoneChangesNameWhatUndidThem: only an entry in force is undone, and
+// it names the entry that undid it.
+func TestUndoneChangesNameWhatUndidThem(t *testing.T) {
+	store, _ := open(t)
+	kept, _ := store.RecordChange(ctx, applied(minute(0)))
+	back := applied(minute(1))
+	back.Status = ChangeRolledBack
+	rolled, _ := store.RecordChange(ctx, back)
+	undo, _ := store.RecordChange(ctx, applied(minute(2)))
+	if err := store.MarkUndone(ctx, []int64{kept, rolled}, undo); err != nil {
+		t.Fatal(err)
+	}
+	if c := readBack(t, store, kept); c.Status != ChangeUndone || c.UndoneBy != undo {
+		t.Errorf("kept = %s by %d, want undone by %d", c.Status, c.UndoneBy, undo)
+	}
+	if c := readBack(t, store, rolled); c.Status != ChangeRolledBack || c.UndoneBy != 0 {
+		t.Errorf("rolled back = %s by %d, want left as it was", c.Status, c.UndoneBy)
 	}
 }

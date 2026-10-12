@@ -15,11 +15,14 @@ import (
 const (
 	ChangeApplied    = "applied"
 	ChangeRolledBack = "rolledback"
+	ChangeUndone     = "undone"
 )
 
 // Change is one apply, or one edit written straight to the config (ADR-021).
 // User and Address are empty for a direct edit. Related is the change that
 // Relation names; UndoneBy the change that undid this one; 0 is none.
+// OldRead says what each change replaced was read before the apply, so Old
+// is what was there, nil included; without it Old knows nothing.
 type Change struct {
 	ID       int64
 	Time     time.Time
@@ -30,6 +33,7 @@ type Change struct {
 	Relation string
 	Related  int64
 	UndoneBy int64
+	OldRead  bool
 	Items    []ChangeItem
 }
 
@@ -73,8 +77,8 @@ func (s *Store) RecordChange(ctx context.Context, c Change) (int64, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	result, err := tx.ExecContext(ctx,
-		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy))
+		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by, old_read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy), c.OldRead)
 	if err != nil {
 		return 0, err
 	}
@@ -137,7 +141,7 @@ func (s *Store) Change(ctx context.Context, id int64) (Change, bool, error) {
 // changes reads the changes the query's tail selects, in its order, with
 // their rows and each row's uci changes.
 func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by FROM changes `+tail, args...)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by, old_read FROM changes `+tail, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +152,7 @@ func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change
 		var c Change
 		var at int64
 		var related, undoneBy sql.NullInt64
-		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy); err != nil {
+		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy, &c.OldRead); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -216,4 +220,21 @@ func (s *Store) changeOps(ctx context.Context, list []Change, index map[int64]in
 		list[i].Items[item].Ops = append(list[i].Items[item].Ops, op)
 	}
 	return rows.Err()
+}
+
+// MarkUndone records the changes in force among ids as undone by the change
+// by. One rolled back, or already undone, stays as it is.
+func (s *Store) MarkUndone(ctx context.Context, ids []int64, by int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `UPDATE changes SET status = ?, undone_by = ? WHERE id = ? AND status = ?`,
+			ChangeUndone, by, id, ChangeApplied); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
