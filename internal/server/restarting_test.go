@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -107,7 +108,7 @@ func TestRebootLandsOnTheRestartingTakeover(t *testing.T) {
 // so no password is asked: a verifier that refuses everything changes nothing.
 func TestFactoryResetChecksTheHostnameOnTheServer(t *testing.T) {
 	reset := false
-	s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(context.Context, string) error { reset = true; return nil }},
+	s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(context.Context, string, bool) error { reset = true; return nil }},
 		&fakeTransport{}, nil, fakeAuth{sid: "test-sid", verifyErr: errors.New("no password is asked")})
 
 	for _, typed := range []string{"", "verso", "VERSO-LAB"} {
@@ -154,5 +155,24 @@ func TestFactoryLANAddress(t *testing.T) {
 		if got := factoryLANAddress([]byte(tc.board)); got != tc.want {
 			t.Errorf("%s: factoryLANAddress = %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+// TestFactoryResetErasesHistoryUnlessKept: the form offers to erase the
+// router's history, checked from the start, and the reset erases it unless
+// the box was cleared (ADR-021).
+func TestFactoryResetErasesHistoryUnlessKept(t *testing.T) {
+	var erased []bool
+	s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(_ context.Context, _ string, erase bool) error { erased = append(erased, erase); return nil }},
+		&fakeTransport{}, nil, fakeAuth{sid: "test-sid"})
+
+	page := get(t, s, maintenancePath).Body.String()
+	if !strings.Contains(page, "Also erase the router’s history") || !strings.Contains(page, `value="erase" checked`) {
+		t.Fatalf("the reset form should offer the erase, checked:\n%s", page)
+	}
+	postPlugin(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"erase"}})
+	postPlugin(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}})
+	if !reflect.DeepEqual(erased, []bool{true, false}) {
+		t.Fatalf("erased = %v, want erased then kept", erased)
 	}
 }

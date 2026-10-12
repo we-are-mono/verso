@@ -408,7 +408,7 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "restarting page error", http.StatusInternalServerError)
 		return
 	}
-	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r)); err != nil {
+	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r), r.FormValue("history") == "erase"); err != nil {
 		log.Printf("verso: factory reset: %v", err)
 		http.Error(w, "Could not reset the router.", http.StatusBadGateway)
 		return

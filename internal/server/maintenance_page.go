@@ -186,10 +186,12 @@ func rebootSection(v maintenanceView) *widget.Section {
 func factoryResetSection(v maintenanceView) *widget.Section {
 	form := &widget.Form{Action: factoryResetPath, Submit: "Erase and start over", Tone: widget.ToneDanger}
 	if v.Hostname != "" {
-		// One field and its act on one row, the act beside the field it gates.
-		form.Style = "search"
 		form.Fields = []widget.Widget{&widget.Field{Name: "hostname", Datatype: "hostname", Label: "Type the hostname to confirm", Placeholder: v.Hostname, Autocomplete: "off", Required: true}}
 	}
+	// A reset leaves /data, and the router's history with it: it goes too
+	// unless the operator keeps it (ADR-021).
+	form.Fields = append(form.Fields, &widget.Field{Name: "history", Kind: "checks", Values: []string{"erase"},
+		Options: []widget.Option{{Value: "erase", Label: "Also erase the router’s history"}}})
 	return &widget.Section{Title: "Factory reset", Anchor: "factory-reset", Hairline: true,
 		Sub:      "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you.",
 		Children: []widget.Widget{form}}

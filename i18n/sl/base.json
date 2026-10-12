@@ -921,6 +921,7 @@
   "History is not being saved. Changes applied now are kept in memory until the storage answers again.": "Zgodovina se ne shranjuje. Spremembe, uveljavljene zdaj, ostanejo v pomnilniku, dokler se shramba spet ne odzove.",
   "What changed": "Kaj se je spremenilo",
   "Notes": "Opombe",
+  "Also erase the router’s history": "Izbriši tudi zgodovino usmerjevalnika",
   "optional": "neobvezno",
   "Since then": "Od takrat",
   "Undo this change": "Razveljavi to spremembo",

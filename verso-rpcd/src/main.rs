@@ -23,6 +23,7 @@ mod openvpn;
 mod packages;
 mod ubus;
 mod config_watch;
+mod reset;
 mod uci_committed;
 mod usage;
 
@@ -544,8 +545,10 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             spawn_system_action("/sbin/reboot", &[])?;
             Ok(json!({"result": true}))
         }
+        // factoryReset erases the router's history with its settings unless
+        // the operator keeps it (ADR-021).
         "factoryReset" => {
-            spawn_system_action("/sbin/firstboot", &["-r", "-y"])?;
+            reset::start(optional_argument(request, "history") != "keep")?;
             Ok(json!({"result": true}))
         }
         // setWebOwner hands the router's web ports to Verso or back to LuCI's
@@ -1143,7 +1146,7 @@ fn restore_failed_only_on_container_mounts(stdout: &[u8], stderr: &[u8], mountin
     found
 }
 
-fn spawn_system_action(program: &str, args: &[&str]) -> Result<(), Failure> {
+pub(crate) fn spawn_system_action(program: &str, args: &[&str]) -> Result<(), Failure> {
     Command::new(program)
         .args(args)
         .env_clear()

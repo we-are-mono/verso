@@ -65,7 +65,7 @@ type fakeBackend struct {
 	validateFirmware func(ctx context.Context, sid, path string) (openwrt.FirmwareInfo, error)
 	installFirmware  func(ctx context.Context, sid, path string) error
 	restart          func(ctx context.Context, sid string) error
-	factoryReset     func(ctx context.Context, sid string) error
+	factoryReset     func(ctx context.Context, sid string, erase bool) error
 	// The uci two-phase lifecycle (ADR-010): canned pending changes, and records
 	// of what the shell applied, confirmed, or reverted.
 	changes     map[string][][]string
@@ -516,9 +516,9 @@ func (f fakeBackend) NetworkInterfaces(context.Context, string) ([]openwrt.NetIf
 	return f.netIfaces, f.netIfErr
 }
 
-func (f fakeBackend) FactoryReset(ctx context.Context, sid string) error {
+func (f fakeBackend) FactoryReset(ctx context.Context, sid string, erase bool) error {
 	if f.factoryReset != nil {
-		return f.factoryReset(ctx, sid)
+		return f.factoryReset(ctx, sid, erase)
 	}
 	return nil
 }

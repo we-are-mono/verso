@@ -114,7 +114,10 @@ type Backend interface {
 	ValidateFirmware(ctx context.Context, sid, path string) (FirmwareInfo, error)
 	InstallFirmware(ctx context.Context, sid, path string) error
 	Restart(ctx context.Context, sid string) error
-	FactoryReset(ctx context.Context, sid string) error
+	// FactoryReset restores the router to its defaults, and with eraseHistory
+	// empties the router's history first, which a reset would leave on /data
+	// (ADR-021).
+	FactoryReset(ctx context.Context, sid string, eraseHistory bool) error
 	// The rest of the uci two-phase lifecycle (ADR-010). Staged edits live in
 	// UCI's own stage; these four let the shell read it, discard it, and apply it
 	// with rpcd's native device-side rollback — all sid-gated like every write.
@@ -590,7 +593,7 @@ type NativeBackend struct {
 	firmwareCheck  firmwareFn
 	firmwareFlash  backupFn
 	restart        maintenanceFn
-	factoryReset   maintenanceFn
+	factoryReset   func(ctx context.Context, sid string, eraseHistory bool) error
 	kernelBuild    func() string
 	uciChanges     uciChangesFn
 	uciRevert      uciRevertFn
@@ -648,7 +651,7 @@ func NewNativeBackend() *NativeBackend {
 		firmwareCheck: dialFirmwareValidate(""),
 		firmwareFlash: dialBackupAct("", "installFirmware"),
 		restart:       dialMaintenanceAct("", "restart"),
-		factoryReset:  dialMaintenanceAct("", "factoryReset"),
+		factoryReset:  dialFactoryReset(""),
 		kernelBuild: func() string {
 			data, err := os.ReadFile("/proc/version")
 			if err != nil {
@@ -837,8 +840,8 @@ func (b *NativeBackend) Restart(ctx context.Context, sid string) error {
 	return b.restart(ctx, sid)
 }
 
-func (b *NativeBackend) FactoryReset(ctx context.Context, sid string) error {
-	return b.factoryReset(ctx, sid)
+func (b *NativeBackend) FactoryReset(ctx context.Context, sid string, eraseHistory bool) error {
+	return b.factoryReset(ctx, sid, eraseHistory)
 }
 
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
@@ -2099,4 +2102,17 @@ func parseDeviceStats(m map[string]any) DeviceStats {
 		ds.TxBytes = asInt64(st["tx_bytes"])
 	}
 	return ds
+}
+
+// dialFactoryReset asks the helper to reset the router, erasing the
+// router's history first unless it is kept. The helper finds the history
+// itself; the shell only says whether.
+func dialFactoryReset(socket string) func(ctx context.Context, sid string, eraseHistory bool) error {
+	return func(ctx context.Context, sid string, eraseHistory bool) error {
+		history := "keep"
+		if eraseHistory {
+			history = "erase"
+		}
+		return callHelper(ctx, socket, "factoryReset", sid, map[string]string{"history": history}, nil)
+	}
 }
