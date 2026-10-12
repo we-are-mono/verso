@@ -741,6 +741,13 @@ keeps sans type — a size, a rate, an uptime. Declare one of them on every valu
 that is data, not words; an undeclared value is treated as prose and translated
 when a catalog covers it.
 
+A rate is handed over as a number, never as text: `"rate": 2500000000`, in
+bits per second, on a property (in place of `value`) or on a table cell (after
+its `text`, "port · 2.5 Gb/s"). The shell writes it the way it writes every
+rate, in the reader's language ("2,5 Gb/s" in Slovenian), which a plugin
+cannot do: it never learns the reader's language. The SDK's
+`Property::rate("Link", bps)` builds the property.
+
 `variant` tones a value whose reading is also a verdict — `success`,
 `warning`, `danger`, `info`, the same vocabulary a badge speaks. It names a
 meaning, never a colour: the shell picks the ink, in both themes, and a word
