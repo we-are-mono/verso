@@ -46,7 +46,7 @@ Bodies compose existing widgets, never hand-built markup:
 | Hardware, Firmware | `Properties` (`overview-system`) |
 | Ports, Tunnels | the `Table` widget: an `entity` network chip (Ports) or the tunnel's kind as a `keyword` (Tunnels), `Receive` and `Transmit` as `rate` cells, status last |
 
-The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state` cells, the hooks the interface stream already writes, so the cards' rates and states stay live with no new client code and no new cell kind. A spare port's row carries no key: "Not in use" is the Overview's own reading, which the stream's generic state words would overwrite.
+The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state` cells, the hooks the interface stream already writes, so the cards' rates and states stay live with no new client code and no new cell kind. A spare port's row keys only its `state` cell: it shows its link like any port, live, and no rate, since it moves nothing.
 
 ### 2. The card frame is one template
 

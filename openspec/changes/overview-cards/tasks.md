@@ -12,7 +12,7 @@ Every task is test first: write the named test, see it fail, then write the code
 - [x] 2.1 Extend `internal/widget/overview_test.go`. The existing tile tests become header tests for the Internet, Firewall, Ports and Tunnels builders, keeping every tone, status and plural case. Add a case for the Tunnels "None observed" body. Then add `overviewCard`, the builder registry, and those four builders, reusing the tile logic. Verify: `go test ./internal/widget -run Overview`.
 - [x] 2.2 Test then build the Traffic, Resources, Hardware and Firmware builders. Cover: a reading card shows a status only in a warning or danger band; every card's closed summary; Firmware carrying uptime. Verify: `go test ./internal/widget -run Overview`.
 - [x] 2.3 Test then build the Internet body: the IPv4/IPv6 `Properties` with copy controls, and the empty slot when a family isn't configured. Verify: a render test asserts the slot's text and its hollow packet.
-- [x] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Receive` and `Transmit` as `rate` cells keyed for the interface stream, status last, and a spare port as "Not in use". No new cell kind was needed. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
+- [x] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Receive` and `Transmit` as `rate` cells keyed for the interface stream, status last, and a spare port with its live link state and no rate. No new cell kind was needed. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
 
 ## 3. The page renders the layout
 

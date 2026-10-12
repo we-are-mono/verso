@@ -164,7 +164,8 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 
 #### Scenario: A spare port
 - **WHEN** a physical port carries no network
-- **THEN** the Ports card lists it as "Not in use" with the hollow packet and no rate
+- **THEN** the Ports card lists it with its link state, live, and no rate
+- **AND** its lost link does not count against the Ports card's status
 
 #### Scenario: No tunnels
 - **WHEN** no tunnel has been brought up

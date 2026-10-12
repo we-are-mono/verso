@@ -183,8 +183,9 @@ func TestPortsAndTunnelsCardBodies(t *testing.T) {
 	if lost := row(t, ports, "interface:eth2"); !strings.Contains(lost, ">Down<") || !strings.Contains(lost, "lan") {
 		t.Errorf("a lost-link port = %s", lost)
 	}
-	if !strings.Contains(ports, "Not in use") || strings.Contains(ports, `data-verso-row="interface:eth4"`) {
-		t.Error("a spare port reads Not in use and keeps out of the stream")
+	// A spare port says its link as any port does, and moves nothing.
+	if spare := row(t, ports, "interface:eth4"); !strings.Contains(spare, ">Down<") || strings.Contains(spare, "Mb/s") || strings.Contains(spare, `data-verso-cell="rx-rate"`) {
+		t.Errorf("a spare port = %s", spare)
 	}
 	if strings.Contains(ports, "br-lan<") {
 		t.Error("the Ports card lists physical ports only")

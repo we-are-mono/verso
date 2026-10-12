@@ -959,7 +959,6 @@
   "%s: left column, position %d.": "%s: levi stolpec, mesto %d.",
   "%s: right column, position %d.": "%s: desni stolpec, mesto %d.",
   "All up": "Vsi delujejo",
-  "Not in use": "Ni v uporabi",
   "No address.": "Ni naslova.",
   "No prefix was delegated.": "Predpona ni bila dodeljena.",
   "No tunnel is up.": "Noben tunel ne deluje.",

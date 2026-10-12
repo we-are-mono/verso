@@ -165,18 +165,22 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 // interfaceRow is one port or tunnel in a card's listing. A live row keys
 // itself to the interface stream, which keeps its rates and state current.
 func interfaceRow(nums units.Numbers, n OverviewInterface, kind TableCell) TableRow {
-	state := normalState(n.State)
-	variant := "neutral"
-	if n.State == "up" {
-		variant = "success"
-	}
 	return TableRow{ID: n.Name, Key: "interface:" + n.Name, Cells: []TableCell{
 		{Text: n.Name, Verbatim: true},
 		kind,
 		{Text: nums.Rate(float64(n.RxBPS)).String(), Key: "rx-rate", Verbatim: true},
 		{Text: nums.Rate(float64(n.TxBPS)).String(), Key: "tx-rate", Verbatim: true},
-		{Text: state, Variant: variant, Key: "state"},
+		stateCell(n),
 	}}
+}
+
+// stateCell is an interface's link as the interface stream words and tones it.
+func stateCell(n OverviewInterface) TableCell {
+	variant := "neutral"
+	if n.State == "up" {
+		variant = "success"
+	}
+	return TableCell{Text: normalState(n.State), Variant: variant, Key: "state"}
 }
 
 // normalState is a kernel operstate as the interface stream words it.
@@ -201,9 +205,11 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 		if !n.Physical {
 			continue
 		}
+		// A spare port carries no network and moves nothing, so it shows no
+		// rate; its link stays live like any port's.
 		if !n.inUse() {
-			t.Rows = append(t.Rows, TableRow{ID: n.Name, Muted: true, Cells: []TableCell{
-				{Text: n.Name, Verbatim: true}, {}, {}, {}, {Text: "Not in use"},
+			t.Rows = append(t.Rows, TableRow{ID: n.Name, Key: "interface:" + n.Name, Muted: true, Cells: []TableCell{
+				{Text: n.Name, Verbatim: true}, {}, {}, {}, stateCell(n),
 			}})
 			continue
 		}
