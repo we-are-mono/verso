@@ -323,6 +323,19 @@ func TestMaintainDeletesExpiredEvents(t *testing.T) {
 	}
 }
 
+// TestANewFileVacuumsIncrementally: auto_vacuum is on from the file's first
+// write, the only moment SQLite takes it, so Maintain gives pages back.
+func TestANewFileVacuumsIncrementally(t *testing.T) {
+	store, _ := open(t)
+	var mode int
+	if err := store.db.QueryRow(`PRAGMA auto_vacuum`).Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != 2 {
+		t.Fatalf("auto_vacuum = %d, want 2 (incremental)", mode)
+	}
+}
+
 // TestCloseFlushes: procd stopping the shell writes what is still in memory.
 func TestCloseFlushes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history.db")

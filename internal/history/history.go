@@ -24,11 +24,10 @@ import (
 const driver = "sqlite"
 
 // schema is the file's layout; a file of another version is rebuilt, not
-// migrated. auto_vacuum must be set before the first table exists.
+// migrated.
 const (
 	schemaVersion = 2
 	schema        = `
-PRAGMA auto_vacuum = INCREMENTAL;
 CREATE TABLE series (
 	id   INTEGER PRIMARY KEY,
 	name TEXT    NOT NULL UNIQUE
@@ -145,10 +144,12 @@ func Open(path string) (*Store, error) {
 }
 
 // connect opens one connection: the shell is the only writer, and one
-// connection keeps the pragmas on every statement.
+// connection keeps the pragmas on every statement. auto_vacuum comes first:
+// SQLite takes it only on a file with nothing written yet, and switching to
+// WAL writes the file's header.
 func connect(path string) (*sql.DB, error) {
 	db, err := sql.Open(driver, "file:"+path+
-		"?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)")
+		"?_pragma=auto_vacuum(INCREMENTAL)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, err
 	}
