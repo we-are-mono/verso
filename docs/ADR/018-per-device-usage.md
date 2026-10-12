@@ -106,10 +106,10 @@ device unseen for the retention window drops out with its last day's file.
 
 The roster keeps its network lanes and its order; nothing re-ranks. MAC moves to
 the device panel to make room for two columns: **Now** (download over upload,
-Mbit/s) and **This month** (the calendar month's total). A busy row's Now is
+each with its unit) and **This month** (the calendar month's total). A busy row's Now is
 inked by the device's load, both ways together, read from what the rate is
-enough for: light under 10 Mbit/s (browsing, a video call, an HD film) in
-green, medium to 100 Mbit/s (a 4K film or a few HD ones, a cloud sync) in
+enough for: light under 10 Mb/s (browsing, a video call, an HD film) in
+green, medium to 100 Mb/s (a 4K film or a few HD ones, a cloud sync) in
 marigold, heavy past it (a download, an update, a backup) in crimson, each in
 its Deep step; the roster's legend states the three bands.
 Nothing is drawn as a share: the router knows no line speed, and a share of the

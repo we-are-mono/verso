@@ -43,6 +43,10 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Links to an absent plugin.** Interfaces links each network's DHCP server to
   `/plugins/dnsdhcp/?open=<network>` whether or not `verso-plugin-dnsdhcp` is
   installed; without it the link is a 404. Governed by ADR-009.
+- **Figures outside `internal/units`.** Two figures still write a decimal point
+  whatever the language: a port's link speed on Interfaces ("2.5 Gb/s",
+  `verso-plugin-interfaces`, which has no way to learn the reader's separator)
+  and an upload's progress ("%s of %s MB", `verso-forms.js`).
 - **`commit` cannot unset an option.** A `commit` op is `uci set`, so an emptied
   optional field is left untouched rather than cleared; the WireGuard plugin omits
   empty scalars from its commit for this reason. Clearing a value needs a delete op.

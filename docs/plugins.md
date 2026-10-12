@@ -1198,7 +1198,7 @@ any form that posts it itself.
 - `key`: the option this field writes, verbatim — `"ipaddr"`, `"leasetime"`. It
   rides beside the label as a mono chip, so someone who knows the config sees
   which line they are editing and someone who does not can ignore it.
-- `unit`: what the number in the box is counted in — `"Mbit/s"`, `"seconds"`. It
+- `unit`: what the number in the box is counted in — `"Mb/s"`, `"seconds"`. It
   sits inside the field's trailing edge, so the value and what it means read as
   one thing and the label is left to say what the setting is.
 - `style: "reveal"` on a `password` field: a shared secret someone reads out — a
