@@ -112,8 +112,8 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 			if err := json.Unmarshal([]byte(payload), &status); err != nil {
 				t.Fatal(err)
 			}
-			for _, tile := range status.Tiles {
-				if tile.ID != "firewall" || tile.Status != want.status || tile.Tone != want.tone || tile.Caption != want.caption {
+			for _, card := range status.Cards {
+				if card.ID != "firewall" || card.Status != want.status || card.Tone != want.tone || card.Summary != want.caption {
 					continue
 				}
 				matched = true

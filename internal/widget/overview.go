@@ -10,9 +10,10 @@ import (
 	"strings"
 )
 
-// Overview composes the shell's landing page from observed router state. It is
-// outside the plugin vocabulary; charts, meters and properties reuse their
-// existing renderers.
+// Overview composes the shell's landing page from observed router state: a
+// verdict over cards that each hold one kind of reading (ADR-022). It is
+// outside the plugin vocabulary; the cards' bodies reuse the existing
+// renderers.
 type Overview struct {
 	Clock, Zone     string
 	Unix            int64
@@ -20,6 +21,10 @@ type Overview struct {
 	InterfacesKnown bool
 	TunnelsHref     string
 	InterfacesHref  string
+
+	// Layout is where the cards stand, read from the browser (ADR-022); the
+	// zero value is the default layout.
+	Layout OverviewLayout
 
 	Firmware  string
 	Kernel    string
@@ -38,7 +43,7 @@ type Overview struct {
 	TrafficRangeURL string
 
 	// The IPv4/IPv6 connection facts. Each side carries its protocol label and
-	// its rows; an absent address family keeps its place when facts are available.
+	// its rows; an absent address family says so in its place.
 	V4Proto string
 	V4      []OverviewFact
 	V6Proto string
@@ -61,8 +66,7 @@ type Overview struct {
 	// topology/UCI meaning.
 	Interfaces []OverviewInterface
 
-	// The Interfaces tile includes the observed device count when available.
-
+	// The Ports card's line includes the observed device count when available.
 	DevicesOnline int
 	DevicesKnown  bool
 
@@ -147,9 +151,9 @@ type OverviewMeter struct {
 	Fill   int
 }
 
-// InternetTraffic is the overview's Internet graph of the uplink device: the
-// live minute when window is empty or "minute", else the past window drawn
-// from history, its figures the window's averages.
+// InternetTraffic is the overview's Internet graph of the uplink device, in
+// the Traffic card: the live minute when window is empty or "minute", else the
+// past window drawn from history, its figures the window's averages.
 func InternetTraffic(device, downNow, upNow string, down, up []float64, rangeURL, window string) *Traffic {
 	label := "Internet traffic — download and upload, last minute"
 	if window != "" && window != TrafficRanges[0].Value {
@@ -158,7 +162,7 @@ func InternetTraffic(device, downNow, upNow string, down, up []float64, rangeURL
 	return &Traffic{
 		Title: "Internet traffic", Meta: device, Live: "wan", Label: label,
 		DownNow: downNow, UpNow: upNow, Down: down, Up: up,
-		RangeURL: rangeURL, Range: window,
+		RangeURL: rangeURL, Range: window, Card: true,
 	}
 }
 
@@ -167,66 +171,92 @@ const wanSeriesFallback = 60
 
 func (*Overview) isWidget() {}
 
-// children is empty: the overview composes its chart, meters, and tables at
-// render time, so its renderInto runs the localization walk over each itself.
+// children is empty: the overview composes its cards at render time, so its
+// renderInto runs the localization walk over each widget itself.
 func (*Overview) children() []Widget { return nil }
 
-// ohTile is one status tile in the strip under the verdict: an eyebrow label,
-// a trailing icon, a status dot + word, and a caption. Page-owned chrome (like
-// the traffic legend), not a widget: its anatomy — the dot beside the word,
-// the quiet caption — is this page's own. Variant speaks the tone vocabulary.
-// A tile with an Href is also a doorway: the whole tile becomes the link.
-type ohTile struct {
-	ID       string
-	Identity string
-	Label    string
-	Icon     string
-	Variant  string // "neutral" | "success" | "warning" | "danger"
-	Status   string
-	Caption  string
-	Key      string // live hook: the stream refreshes the caption in place
-	Href     string
+// overviewVerdictView is the page's one sentence and its live clock.
+type overviewVerdictView struct {
+	Tone, Lead, Accent, Tail string
+	Clock, Zone              string
+	Unix                     int64
+	Offset                   int
 }
 
-// ohFactColView is one connection-facts column (IPv4 or IPv6): an eyebrow
-// (kind + protocol) over its rows — a Properties widget rendered to HTML. Side
-// places it left or right of the divider.
-type ohFactColView struct {
-	Empty string
-	Kind  string
-	Proto string
-	Side  string // "left" | "right"
-	Rows  template.HTML
+// overviewCardView is one card as the page draws it.
+type overviewCardView struct {
+	ID, Title, Icon string
+	Head            cardHead
+	Closed          bool
+	Href, OpenLabel string
+	Body            template.HTML
 }
 
-// overviewMastheadView is the top block's render model — the verdict, the view
-// switch, the status tiles, and the connection facts.
-type overviewMastheadView struct {
-	Tone                string
-	Clock, Zone, Uptime string
-	Unix                int64
-	Offset              int
-
-	Kicker string
-	Lead   string
-	Accent string
-	Tail   string
-	Tiles  []ohTile
-	Facts  []ohFactColView
+// overviewShelfView is a hidden card on the Arrange shelf, wearing its tone.
+type overviewShelfView struct {
+	ID, Title, Tone string
 }
 
-// overviewView is the page's layout model: the vocabulary widgets — the fact
-// sheets, the gauges, the listings — rendered to HTML, plus the page's own
-// chrome (the masthead block, the traffic panel's legend). The page owns
-// composition and rhythm.
+// overviewView is the page's layout model: the verdict, the two columns of
+// cards in the browser's order, and the hidden cards.
 type overviewView struct {
-	Masthead overviewMastheadView
+	Verdict overviewVerdictView
+	Cols    [2][]overviewCardView
+	Hidden  []overviewShelfView
+}
 
-	Traffic template.HTML // the Internet graph, live (Traffic)
+// layout is the browser's layout, or the default where none was read.
+func (o *Overview) layout() OverviewLayout {
+	if len(o.Layout.Cols[0])+len(o.Layout.Cols[1]) == 0 {
+		return DefaultOverviewLayout()
+	}
+	return o.Layout
+}
 
-	Metrics  []template.HTML
-	SysLeft  template.HTML
-	SysRight template.HTML
+func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	layout := o.layout()
+	specs := map[string]overviewCardSpec{}
+	for _, spec := range overviewCardSpecs() {
+		specs[spec.ID] = spec
+	}
+	v := overviewView{Verdict: o.verdict(r.tr)}
+	for col, ids := range layout.Cols {
+		for _, id := range ids {
+			card, err := o.card(r, specs[id], layout.IsClosed(id), csrf)
+			if err != nil {
+				return err
+			}
+			v.Cols[col] = append(v.Cols[col], card)
+		}
+	}
+	for _, id := range layout.Hidden {
+		spec := specs[id]
+		v.Hidden = append(v.Hidden, overviewShelfView{ID: id, Title: r.tr(spec.Title), Tone: spec.head(o, r.tr).Tone})
+	}
+	return r.execute(out, "overview.html.tmpl", v)
+}
+
+// card builds one shown card: its header from its head, its body from its
+// builder, and its door from the live registry.
+func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf string) (overviewCardView, error) {
+	body, err := spec.body(o, r, csrf)
+	if err != nil {
+		return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
+	}
+	v := overviewCardView{ID: spec.ID, Title: r.tr(spec.Title), Icon: spec.Icon, Head: spec.head(o, r.tr), Closed: closed, Body: body}
+	if spec.href != nil {
+		if v.Href = spec.href(o); v.Href != "" {
+			v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), r.tr(spec.Opens))
+		}
+	}
+	return v, nil
+}
+
+// renderWidget localizes one composed widget and renders it to a fragment —
+// the overview's per-widget path through the same walk a plugin tree takes.
+func (o *Overview) renderWidget(r *Renderer, w Widget, csrf string) (template.HTML, error) {
+	r.translate(w)
+	return renderToHTML(r, w, csrf)
 }
 
 // sysProp builds one System fact row. A live value is data (a model name, an
@@ -238,90 +268,6 @@ func sysProp(label, value string, mono bool) Property {
 		return Property{Label: label, Value: "unavailable"}
 	}
 	return Property{Label: label, Value: value, Mono: mono, Verbatim: true}
-}
-
-func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	// The plot draws the real WAN series; before any sample is observed it falls
-	// back to a flat quiet line so the axis and shape hold.
-	down, up := o.DownSeries, o.UpSeries
-	if len(down) < 2 || len(up) < 2 {
-		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
-	}
-	// The overview composes its child widgets directly (not through
-	// RenderWithToken), so it runs the localization walk over each itself — every
-	// column label, cell word, chart caption and drawer fact is translated in one
-	// place, exactly as a plugin's table would be (ADR-012).
-	traffic, err := renderToHTML(r, InternetTraffic(o.WANDevice, o.DownVal, o.UpVal, down, up, o.TrafficRangeURL, ""), csrf)
-	if err != nil {
-		return err
-	}
-
-	// The System meters share the server-computed health bands with the stream.
-	metrics := make([]template.HTML, 0, 4)
-	for _, mt := range o.sysMeters() {
-		r.translate(mt)
-		html, err := renderToHTML(r, mt, csrf)
-		if err != nil {
-			return err
-		}
-		metrics = append(metrics, html)
-	}
-
-	tiles := []ohTile{o.internetTile(r.tr), o.firewallTile(r.tr), o.tunnelTile(r.tr), o.interfacesTile(r.tr)}
-
-	facts, err := o.factCols(r, csrf)
-	if err != nil {
-		return err
-	}
-	sysLeft, err := o.renderWidget(r, &Properties{Style: "overview-system", Items: []Property{
-		sysProp("Device", o.Model, false),
-		sysProp("Firmware", o.Firmware, true),
-		sysProp("Kernel", o.Kernel, true),
-	}}, csrf)
-	if err != nil {
-		return err
-	}
-	sysRight, err := o.renderWidget(r, o.sysRight(), csrf)
-	if err != nil {
-		return err
-	}
-
-	masthead := o.masthead(r.tr)
-	masthead.Tiles, masthead.Facts = tiles, facts
-	v := overviewView{
-		Masthead: masthead,
-		Traffic:  traffic,
-
-		Metrics:  metrics,
-		SysLeft:  sysLeft,
-		SysRight: sysRight,
-	}
-	return r.execute(out, "overview.html.tmpl", v)
-}
-
-// renderWidget localizes one composed widget and renders it to a fragment —
-// the overview's per-widget path through the same walk a plugin tree takes.
-func (o *Overview) renderWidget(r *Renderer, w Widget, csrf string) (template.HTML, error) {
-	r.translate(w)
-	return renderToHTML(r, w, csrf)
-}
-
-// internetTile is the one live tile: the WAN's actual state, its caption
-// refreshed in place by the stream (Key).
-func (o *Overview) internetTile(tr func(string) string) ohTile {
-	tile := ohTile{ID: "internet", Label: tr("Internet"), Icon: "globe", Variant: "neutral", Status: tr("Unavailable"), Key: "internet-uptime", Identity: o.WANDevice}
-	if !o.WANKnown {
-		return tile
-	}
-	if !o.WANUp {
-		tile.Variant, tile.Status, tile.Caption = "danger", tr("Not connected"), tr("WAN is down")
-		return tile
-	}
-	tile.Variant, tile.Status = "success", tr("Connected")
-	if o.WANUptime != "" {
-		tile.Caption = fmt.Sprintf(tr("for %s"), o.WANUptime)
-	}
-	return tile
 }
 
 // sysMeters builds the System gauges from the live fields, each a named bar meter
@@ -358,44 +304,20 @@ func (o *Overview) sysRight() *Properties {
 	}}
 }
 
-// factCols builds the IPv4/IPv6 connection-facts columns from the live fields:
-// each side an eyebrow over a left-aligned Properties sheet (mono, copyable —
-// the reading order for addresses a person compares line by line). A page that
-// carries neither side draws no columns at all.
-func (o *Overview) factCols(r *Renderer, csrf string) ([]ohFactColView, error) {
-	if len(o.V4) == 0 && len(o.V6) == 0 {
-		return nil, nil
-	}
-	sheet := func(facts []OverviewFact) *Properties {
-		items := make([]Property, 0, len(facts))
-		for _, f := range facts {
-			items = append(items, Property{Label: f.Label, Value: f.Value, Mono: f.Copy, Emphasis: true, Copy: f.Copy, Verbatim: f.Label == "Expires"})
-		}
-		return &Properties{Style: "overview-connection", Align: "left", Items: items}
-	}
-	v4, err := o.renderWidget(r, sheet(o.V4), csrf)
-	if err != nil {
-		return nil, err
-	}
-	v6, err := o.renderWidget(r, sheet(o.V6), csrf)
-	if err != nil {
-		return nil, err
-	}
-	cols := []ohFactColView{
-		{Kind: "IPv4", Proto: overviewProtocol(o.V4Proto), Side: "left", Rows: v4},
-		{Kind: "IPv6", Proto: overviewProtocol(o.V6Proto), Side: "right", Rows: v6},
-	}
-	if len(o.V6) == 1 && o.V6[0].Value == "Not configured" {
-		cols[1].Empty = r.tr("No IPv6 connection · no prefix was delegated")
-	}
-	return cols, nil
-}
-
 // renderToHTML renders one widget to a fragment for injection into a composing
 // template (the overview places the chart and the listings itself).
 func renderToHTML(r *Renderer, w Widget, csrf string) (template.HTML, error) {
 	var b strings.Builder
 	if err := r.render(&b, w, csrf); err != nil {
+		return "", err
+	}
+	return template.HTML(b.String()), nil
+}
+
+// fragment renders one of the page's own named templates to a fragment.
+func (r *Renderer) fragment(name string, data any) (template.HTML, error) {
+	var b strings.Builder
+	if err := r.execute(&b, name, data); err != nil {
 		return "", err
 	}
 	return template.HTML(b.String()), nil

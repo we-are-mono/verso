@@ -87,10 +87,6 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if !strings.Contains(payload, "Ne deluje") || !strings.Contains(payload, "Neznano") {
 				t.Errorf("untranslated state: %s", payload)
 			}
-		case "wan":
-			if !strings.Contains(payload, "že 2 h 14 min") {
-				t.Errorf("untranslated WAN duration: %s", payload)
-			}
 		case "overview":
 			var status widget.OverviewStatus
 			if err := json.Unmarshal([]byte(payload), &status); err != nil {
@@ -99,8 +95,11 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if status.Lead != "Vaše omrežje zahteva pozornost" || status.Tone != "warning" {
 				t.Errorf("stream verdict=%+v", status)
 			}
-			if len(status.Tiles) != 4 || status.Tiles[1].ID != "firewall" || status.Tiles[1].Status != "Aktiven" || status.Tiles[1].Caption != "2 nastavljeni pravili" {
-				t.Errorf("untranslated firewall reading: %+v", status.Tiles)
+			if len(status.Cards) != 8 || status.Cards[1].ID != "firewall" || status.Cards[1].Status != "Aktiven" || status.Cards[1].Summary != "2 nastavljeni pravili" {
+				t.Errorf("untranslated firewall reading: %+v", status.Cards)
+			}
+			if status.Cards[0].ID != "internet" || !strings.Contains(status.Cards[0].Summary, "že 2 h 14 min") {
+				t.Errorf("untranslated WAN duration: %+v", status.Cards[0])
 			}
 			for _, required := range []string{"clock", "meters", "interfaces", "wan"} {
 				if !seen[required] {

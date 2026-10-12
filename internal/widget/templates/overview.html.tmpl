@@ -1,18 +1,95 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-<div data-overview>
-  {{template "overview.masthead" .Masthead}}
-
-  {{.Traffic}}
-
-  <section aria-label="{{ t "System" }}">
-    <div class="grid grid-cols-1 border-t border-rule sm:grid-cols-2 xl:grid-cols-4">
-      {{range .Metrics}}<div class="min-w-0 border-t border-rule px-4 pt-5.5 pb-6.5 first:border-t-0 sm:odd:border-r sm:nth-2:border-t-0 xl:border-t-0 xl:border-r xl:px-6 xl:first:pl-4 xl:last:border-r-0 xl:last:pr-4">{{.}}</div>{{else}}<p class="px-4 py-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{/* The Overview (ADR-022): one verdict over two columns of cards, each holding
+     one kind of reading, in the order the browser keeps (the verso_overview
+     cookie, read before this render, so nothing moves after load).
+     verso-overview.js opens and closes cards and runs Arrange; verso-stream.js
+     writes the verdict and every card's header in place. Arrange is a mode on
+     the root (data-arranging), and every control it shows hangs off the named
+     group, so a nested group never fires it. */}}
+<div data-overview data-overview-tone="{{.Verdict.Tone}}" class="group/overview verso-overview">
+  <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+    <h1 class="text-3xl leading-[1.1] font-semibold tracking-tight text-balance text-ink"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="verso-overview-accent">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
+    {{if .Verdict.Clock}}
+    <div class="flex items-center gap-2 text-sm text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
+      <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 rounded-[1px] bg-green"></span>
+      <time class="font-mono text-base font-medium text-ink tabular-nums" data-overview-time>{{.Verdict.Clock}}</time>
+      <span>{{.Verdict.Zone}}</span>
     </div>
-    <div class="grid grid-cols-1 divide-y divide-rule border-y border-rule xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-      <div class="min-w-0 px-4 py-2 xl:pr-6">{{.SysLeft}}</div>
-      <div class="min-w-0 px-4 py-2 xl:pl-6">{{.SysRight}}</div>
+    {{end}}
+    <div class="ml-auto">
+      <button type="button" data-overview-arrange aria-pressed="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-white group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep">
+        <span class="flex group-data-arranging/overview:hidden">{{icon "layout-dashboard" "size-4"}}</span><span class="hidden group-data-arranging/overview:flex">{{icon "check" "size-4"}}</span>
+        <span class="group-data-arranging/overview:hidden">{{ t "Arrange" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span>
+      </button>
     </div>
-  </section>
+  </div>
 
+  <div data-overview-shelf class="mt-5 hidden min-h-10 flex-wrap items-center gap-2 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 py-1.5 text-sm text-meta group-data-arranging/overview:flex">
+    <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
+    {{range .Hidden}}
+    <button type="button" data-overview-restore="{{.ID}}" class="inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{template "overview.tone-packet" .Tone}}"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
+    </button>
+    {{end}}
+    <button type="button" data-overview-reset class="ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Reset layout" }}</button>
+  </div>
+
+  <div class="verso-overview-cols mt-8">
+    {{range $i, $col := .Cols}}
+    <div data-overview-col="{{$i}}" class="verso-overview-col">{{range $col}}{{template "overview.card" .}}{{end}}</div>
+    {{end}}
+  </div>
+  <div class="sr-only" aria-live="polite" data-overview-say></div>
 </div>
+
+{{/* overview.tone-packet: a card's state square — filled in its tone's hue,
+     hollow where it has no tone to state. */}}
+{{define "overview.tone-packet"}}{{if eq . "success"}}bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else}}border border-faint{{end}}{{end}}
+
+{{/* overview.card: one card. The header is the card's status — its word and
+     packet at the end, open or closed — and a closed card adds its one line
+     after the title. Clicking the header opens and closes it; while arranging,
+     the header is where it is picked up, and the grip and hide stand in for
+     the door and the chevron. */}}
+{{define "overview.card"}}
+<article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card min-w-0 rounded-xs border border-rule-strong bg-ground">
+  <header data-overview-card-head class="flex h-13 min-w-0 cursor-pointer items-center gap-2.5 pr-2.5 pl-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+    <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
+    <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
+    <div class="flex min-w-0 flex-1 items-baseline gap-3">
+      <h2 id="overview-card-{{.ID}}" class="text-base font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
+      <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm text-meta tabular-nums">{{.Head.Summary}}</span>
+    </div>
+    <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm font-medium whitespace-nowrap {{template "verso-tone-text" .Head.Tone}}"{{if not .Head.Status}} hidden{{end}}>
+      <span aria-hidden="true" data-overview-card-packet class="size-1.5 shrink-0 rounded-[1px] {{template "overview.tone-packet" .Head.Tone}}"></span><span data-overview-card-word>{{.Head.Status}}</span>
+    </span>
+    {{if .Href}}<a href="{{.Href}}" data-overview-go aria-label="{{.OpenLabel}}" title="{{.OpenLabel}}" class="grid {{template "verso-btn-icon"}} group-data-arranging/overview:hidden">{{icon "arrow-up-right" "size-4"}}</a>{{end}}
+    <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
+    <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" class="hidden {{template "verso-btn-icon"}} hover:border-crimson-line hover:bg-crimson-soft hover:text-crimson-deep group-data-arranging/overview:grid">{{icon "x" "size-4"}}</button>
+  </header>
+  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="border-t border-rule p-5">{{.Body}}</div></div></div>
+</article>
+{{end}}
+
+{{/* overview.internet: the Internet card's body — each address family under
+     its name and protocol, or the sentence that stands where its rows would. */}}
+{{define "overview.internet"}}
+<div class="grid gap-5">
+  {{range .}}
+  <section aria-label="{{.Kind}}" class="min-w-0">
+    <div class="flex min-h-7 items-center gap-3 pb-1">
+      <h3 class="text-sm font-semibold text-ink">{{.Kind}}</h3>
+      {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
+    </div>
+    {{if .Empty}}<div class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div>{{else}}{{.Rows}}{{end}}
+  </section>
+  {{end}}
+</div>
+{{end}}
+
+{{/* overview.meters: the Resources card's gauges, two to a row, hairlines
+     between them, reaching the card's edges. */}}
+{{define "overview.meters"}}
+{{if .}}<div class="verso-overview-meters -m-5 grid grid-cols-1 @md/card:grid-cols-2">{{range .}}<div class="min-w-0 border-rule px-5 pt-4.5 pb-5">{{.}}</div>{{end}}</div>{{else}}<p class="text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{end}}

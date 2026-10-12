@@ -40,157 +40,39 @@ func deviceCount(tr func(string) string, n int) string {
 	return overviewCount(tr, n, "%d device connected", "%d devices connected (two)", "%d devices connected (few)", "%d devices connected")
 }
 
-func (o *Overview) firewallTile(tr func(string) string) ohTile {
-	tile := ohTile{ID: "firewall", Label: tr("Firewall"), Icon: "shield", Variant: "neutral", Status: tr("Status unavailable"), Href: o.SecurityHref}
-	if tile.Href != "" {
-		tile.Caption = tr("Review firewall settings")
-	}
-	switch o.FirewallState {
-	case "active":
-		tile.Status, tile.Variant = tr("Active"), "success"
-		tile.Caption = tr("Ruleset loaded")
-		if o.FirewallRulesKnown {
-			tile.Caption = overviewCount(tr, o.FirewallRules, "%d configured rule", "%d configured rules (two)", "%d configured rules (few)", "%d configured rules")
-		}
-	case "inactive":
-		tile.Status, tile.Variant = tr("Inactive"), "danger"
-		tile.Caption = tr("Firewall is not running")
-	case "partial":
-		tile.Status, tile.Variant = tr("Incomplete"), "warning"
-		tile.Caption = tr("Some filter chains are missing")
-	}
-	return tile
-}
-
-func (o *Overview) interfacesTile(tr func(string) string) ohTile {
-	tile := ohTile{ID: "interfaces", Label: tr("Interfaces"), Icon: "ethernet-port", Variant: "neutral", Status: tr("Unavailable"), Href: o.InterfacesHref}
-	if !o.InterfacesKnown {
-		return tile
-	}
-	tile.Caption = interfaceCount(tr, len(o.Interfaces))
-	if o.DevicesKnown {
-		tile.Caption += " · " + deviceCount(tr, o.DevicesOnline)
-	}
-	ports, down, unknown := 0, 0, 0
-	for _, n := range o.Interfaces {
-		if !n.Physical || !n.inUse() {
-			continue
-		}
-		ports++
-		if n.State != "up" && n.State != "down" && n.State != "lowerlayerdown" {
-			unknown++
-		}
-		if n.State == "down" || n.State == "lowerlayerdown" {
-			down++
-			if tile.Identity == "" {
-				tile.Identity = n.Name
-			}
-		}
-	}
-	switch {
-	case down > 0:
-		tile.Variant = "warning"
-		tile.Status = overviewCount(tr, down, "%d port without link", "%d ports without link (two)", "%d ports without link (few)", "%d ports without link")
-	case unknown > 0:
-		tile.Status = tr("State unknown")
-	case ports > 0:
-		tile.Status, tile.Variant = tr("All ports linked"), "success"
-	default:
-		tile.Status = tr("Virtual interfaces")
-	}
-	return tile
-}
-
-type overviewTunnel struct{ Name, Tone string }
-
-func (o *Overview) tunnels() []overviewTunnel {
-	var rows []overviewTunnel
-	for _, n := range o.Interfaces {
-		if !n.tunnel() {
-			continue
-		}
-		row := overviewTunnel{Name: n.Name, Tone: "neutral"}
-		// A netdev's state says nothing about a remote peer or a handshake.
-		switch n.State {
-		case "up":
-			row.Tone = "success"
-		case "down", "lowerlayerdown":
-			row.Tone = "danger"
-		}
-		rows = append(rows, row)
-	}
-	return rows
-}
-
-func (o *Overview) tunnelTile(tr func(string) string) ohTile {
-	tile := ohTile{ID: "tunnels", Label: tr("Tunnels"), Icon: "lock", Variant: "neutral", Status: tr("Unavailable"), Href: o.TunnelsHref}
-	if tile.Href == "" {
-		tile.Href = o.InterfacesHref
-	}
-	if !o.InterfacesKnown {
-		return tile
-	}
-	rows := o.tunnels()
-	if len(rows) == 0 {
-		tile.Status = tr("None observed")
-		return tile
-	}
-	tile.Caption = interfaceCount(tr, len(rows))
-	up, down := 0, 0
-	for _, row := range rows {
-		if row.Tone == "success" {
-			up++
-		}
-		if row.Tone == "danger" {
-			down++
-			if tile.Identity == "" {
-				tile.Identity = row.Name
-			}
-		}
-	}
-	switch {
-	case down > 0:
-		tile.Status, tile.Variant = fmt.Sprintf(tr("%d of %d down"), down, len(rows)), "danger"
-	case up == len(rows):
-		tile.Status, tile.Variant = tr("All interfaces up"), "success"
-	default:
-		tile.Status = tr("State unknown")
-	}
-	return tile
-}
-
-func (o *Overview) masthead(tr func(string) string) overviewMastheadView {
-	v := overviewMastheadView{Tone: "neutral", Kicker: tr("Live overview"), Clock: o.Clock, Zone: o.Zone, Uptime: o.Uptime, Unix: o.Unix, Offset: o.Offset}
-	v.Lead = tr("Your network at a glance")
-	if !o.WANKnown {
-		v.Kicker = tr("Status unavailable")
-		return v
-	}
-	if !o.WANUp {
-		v.Tone, v.Kicker = "danger", tr("No internet connection")
-		v.Lead = tr("Your network is offline")
-		return v
-	}
-	issues := 0
+// issues counts what needs attention: a firewall not fully loaded, a port or
+// tunnel someone asked for without its link, a resource out of band. Hidden
+// cards count, so hiding one never makes the verdict read "online".
+func (o *Overview) issues() int {
+	n := 0
 	if o.FirewallState == "inactive" || o.FirewallState == "partial" {
-		issues++
+		n++
 	}
-	for _, n := range o.Interfaces {
-		if ((n.Physical && n.inUse()) || n.tunnel()) && (n.State == "down" || n.State == "lowerlayerdown") {
-			issues++
+	for _, i := range o.Interfaces {
+		if ((i.Physical && i.inUse()) || i.tunnel()) && (i.State == "down" || i.State == "lowerlayerdown") {
+			n++
 		}
 	}
 	for _, meter := range o.SysMetrics {
 		if meter.Band == "warning" || meter.Band == "danger" {
-			issues++
+			n++
 		}
 	}
-	if issues > 0 {
-		v.Tone = "warning"
-		v.Kicker = overviewCount(tr, issues, "%d needs attention", "%d need attention (two)", "%d need attention (few)", "%d need attention")
-		v.Lead = tr("Your network needs attention")
-	} else {
-		v.Tone, v.Kicker = "success", tr("Internet is working")
+	return n
+}
+
+// verdict is the page's one sentence, tinted by tone: online, needs
+// attention, offline, or unknown.
+func (o *Overview) verdict(tr func(string) string) overviewVerdictView {
+	v := overviewVerdictView{Tone: "neutral", Lead: tr("Your network at a glance"), Clock: o.Clock, Zone: o.Zone, Unix: o.Unix, Offset: o.Offset}
+	switch {
+	case !o.WANKnown:
+	case !o.WANUp:
+		v.Tone, v.Lead = "danger", tr("Your network is offline")
+	case o.issues() > 0:
+		v.Tone, v.Lead = "warning", tr("Your network needs attention")
+	default:
+		v.Tone = "success"
 		// Keep a full sentence so translations can move the accent with grammar.
 		before, after, found := strings.Cut(tr("Your network is %s"), "%s")
 		v.Lead = before
@@ -201,30 +83,28 @@ func (o *Overview) masthead(tr func(string) string) overviewMastheadView {
 	return v
 }
 
-// OverviewStatus is the live part of the masthead. The first paint and the SSE
-// stream use the same reading; the browser changes text and tone, not policy.
+// OverviewStatus is the live part of the page: the verdict and every card's
+// header, hidden cards included so the Arrange shelf can wear their tone. The
+// first paint and the SSE stream use the same reading; the browser changes
+// text and tone, not policy.
 type OverviewStatus struct {
-	Kicker string               `json:"kicker"`
 	Lead   string               `json:"lead"`
 	Accent string               `json:"accent"`
 	Tail   string               `json:"tail"`
 	Tone   string               `json:"tone"`
-	Tiles  []overviewTileStatus `json:"tiles"`
+	Cards  []overviewCardStatus `json:"cards"`
 }
 
-type overviewTileStatus struct {
-	ID       string `json:"id"`
-	Tone     string `json:"tone"`
-	Status   string `json:"status"`
-	Caption  string `json:"caption"`
-	Identity string `json:"identity"`
+type overviewCardStatus struct {
+	ID string `json:"id"`
+	cardHead
 }
 
 func (o *Overview) LiveStatus(tr func(string) string) OverviewStatus {
-	v := o.masthead(tr)
-	status := OverviewStatus{Kicker: v.Kicker, Lead: v.Lead, Accent: v.Accent, Tail: v.Tail, Tone: v.Tone}
-	for _, tile := range []ohTile{o.internetTile(tr), o.firewallTile(tr), o.tunnelTile(tr), o.interfacesTile(tr)} {
-		status.Tiles = append(status.Tiles, overviewTileStatus{ID: tile.ID, Tone: tile.Variant, Status: tile.Status, Caption: tile.Caption, Identity: tile.Identity})
+	v := o.verdict(tr)
+	status := OverviewStatus{Lead: v.Lead, Accent: v.Accent, Tail: v.Tail, Tone: v.Tone}
+	for _, spec := range overviewCardSpecs() {
+		status.Cards = append(status.Cards, overviewCardStatus{ID: spec.ID, cardHead: spec.head(o, tr)})
 	}
 	return status
 }

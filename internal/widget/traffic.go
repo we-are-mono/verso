@@ -27,6 +27,9 @@ type Traffic struct {
 	// Panel stands the graph in a panel beside other facts: a quarter lower,
 	// and two cells apart from the blocks above and below it rather than one.
 	Panel bool
+	// Card stands the graph in an Overview card (ADR-022), whose header already
+	// names it: no title, and no sand band or rule of its own.
+	Card bool
 	// RangeURL, where history stands behind the graph (ADR-019), offers its
 	// window as a dropdown on the heading line: choosing one fetches the graph
 	// for it from RangeURL with ?range=<value>, in this one's place. Range is
@@ -65,7 +68,7 @@ type trafficView struct {
 	DownNow, UpNow    string
 	Seed              string
 	Chart             template.HTML
-	Panel             bool
+	Panel, Card       bool
 	RangeURL, Range   string
 	Ranges            []TrafficRange
 	Latency           string
@@ -103,7 +106,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	view := trafficView{
 		Title: r.tr(t.Title), Meta: t.Meta, Live: live,
-		DownNow: t.DownNow, UpNow: t.UpNow, Chart: chartHTML, Panel: t.Panel,
+		DownNow: t.DownNow, UpNow: t.UpNow, Chart: chartHTML, Panel: t.Panel, Card: t.Card,
 		RangeURL: t.RangeURL, Range: window.Value, Latency: t.Latency,
 	}
 	if t.RangeURL != "" {

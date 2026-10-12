@@ -4,26 +4,26 @@ Every task is test first: write the named test, see it fail, then write the code
 
 ## 1. The layout and its cookie
 
-- [ ] 1.1 Write `internal/widget/overview_layout_test.go`. It needs table cases for: the default layout; a valid `1.…` value; a wrong version; garbage; unknown ids; a duplicate id; missing cards appended open to the shorter column; and a closed or hidden id that isn't in either column. Then add `overviewLayout`, its default and its normalizer. Verify: `go test ./internal/widget -run Layout`.
-- [ ] 1.2 Write `internal/server/overview_layout_test.go`. It checks that `cookieLayout` returns the default with no cookie and the normalized layout with one, and that it never fails a request. Then add the `layoutSource` interface and `cookieLayout`, and have the Server hold a `layoutSource`. Verify: `go test ./internal/server -run Layout`.
+- [x] 1.1 Write `internal/widget/overview_layout_test.go`. It needs table cases for: the default layout; a valid `1.…` value; a wrong version; garbage; unknown ids; a duplicate id; missing cards appended open to the shorter column; and a closed or hidden id that isn't in either column. Then add `overviewLayout`, its default and its normalizer. Verify: `go test ./internal/widget -run Layout`.
+- [x] 1.2 Write `internal/server/overview_layout_test.go`. It checks that `cookieLayout` returns the default with no cookie and the normalized layout with one, and that it never fails a request. Then add the `layoutSource` interface and `cookieLayout`, and have the Server hold a `layoutSource`. Verify: `go test ./internal/server -run Layout`.
 
 ## 2. Cards built from the Overview's readings
 
-- [ ] 2.1 Extend `internal/widget/overview_test.go`. The existing tile tests become header tests for the Internet, Firewall, Ports and Tunnels builders, keeping every tone, status and plural case. Add a case for the Tunnels "None observed" body. Then add `overviewCard`, the builder registry, and those four builders, reusing the tile logic. Verify: `go test ./internal/widget -run Overview`.
-- [ ] 2.2 Test then build the Traffic, Resources, Hardware and Firmware builders. Cover: a reading card shows a status only in a warning or danger band; every card's closed summary; Firmware carrying uptime. Verify: `go test ./internal/widget -run Overview`.
-- [ ] 2.3 Test then build the Internet body: the IPv4/IPv6 `Properties` with copy controls, and the empty slot when a family isn't configured. Verify: a render test asserts the slot's text and its hollow packet.
-- [ ] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Now` as inked figures, status last, and a spare port as "Not in use". If a cell kind is missing, stop and take the widget extension to the owner with its case before building it. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
+- [x] 2.1 Extend `internal/widget/overview_test.go`. The existing tile tests become header tests for the Internet, Firewall, Ports and Tunnels builders, keeping every tone, status and plural case. Add a case for the Tunnels "None observed" body. Then add `overviewCard`, the builder registry, and those four builders, reusing the tile logic. Verify: `go test ./internal/widget -run Overview`.
+- [x] 2.2 Test then build the Traffic, Resources, Hardware and Firmware builders. Cover: a reading card shows a status only in a warning or danger band; every card's closed summary; Firmware carrying uptime. Verify: `go test ./internal/widget -run Overview`.
+- [x] 2.3 Test then build the Internet body: the IPv4/IPv6 `Properties` with copy controls, and the empty slot when a family isn't configured. Verify: a render test asserts the slot's text and its hollow packet.
+- [x] 2.4 Test then build the Ports and Tunnels bodies on the `Table` widget: an `entity` network chip, `Down` and `Up` as `rate` cells keyed for the interface stream, status last, and a spare port as "Not in use". No new cell kind was needed. Verify: render tests for an up port, a lost-link port, a spare port and a down tunnel.
 
 ## 3. The page renders the layout
 
-- [ ] 3.1 Write render tests. They assert that the HTML puts cards in the layout's columns and order, renders closed cards with `aria-expanded="false"` and their summary shown, omits hidden cards entirely, and shows neither kicker nor tile strip. Then add `overview_card.html.tmpl`, rewrite `overview.html.tmpl` as the verdict line plus two columns, and delete `overview_masthead.html.tmpl`. Verify: `go test ./internal/widget`.
-- [ ] 3.2 Write a server test for the Overview handler. A request with a layout cookie renders that layout, and one without renders the default. Then wire `layoutSource` into the handler. Verify: `go test ./internal/server -run Overview`.
+- [x] 3.1 Write render tests. They assert that the HTML puts cards in the layout's columns and order, renders closed cards with `aria-expanded="false"` and their summary shown, omits hidden cards entirely, and shows neither kicker nor tile strip. Then add `overview_card.html.tmpl`, rewrite `overview.html.tmpl` as the verdict line plus two columns, and delete `overview_masthead.html.tmpl`. Verify: `go test ./internal/widget`.
+- [x] 3.2 Write a server test for the Overview handler. A request with a layout cookie renders that layout, and one without renders the default. Then wire `layoutSource` into the handler. Verify: `go test ./internal/server -run Overview`.
 - [ ] 3.3 Add the card, header, column, slot and shelf styles to `verso.css` from DESIGN.md's tokens (Quiet Sand page ground, Paper cards, Strong Hairline frame, 2px corners, flat at rest). Verify: `make dev` hot-reloads, and the page at localhost:8080 matches the mock at desktop and phone widths, with no horizontal page scroll.
 - [ ] 3.4 Write the **Overview cards** section in DESIGN.md (frame, header anatomy, Arrange mode, the Overview-only exception to the flat direction). Verify: every value the CSS uses is named there.
 
 ## 4. The live stream follows the layout
 
-- [ ] 4.1 Extend the `LiveStatus` tests: one entry per card, hidden cards included, each with id, tone, status and summary. Then grow `LiveStatus` from tiles to cards. Verify: `go test ./internal/widget -run LiveStatus`.
+- [x] 4.1 Extend the `LiveStatus` tests: one entry per card, hidden cards included, each with id, tone, status and summary. Then grow `LiveStatus` from tiles to cards. Verify: `go test ./internal/widget -run LiveStatus`.
 - [ ] 4.2 Write stream tests on `handleOverviewEvents` with layout cookies:
   - Resources hidden: no `meters` frame.
   - Hardware hidden: no `sensors` frame, and the sensor reader isn't called.

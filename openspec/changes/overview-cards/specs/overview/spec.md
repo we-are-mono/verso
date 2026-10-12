@@ -35,7 +35,7 @@ Every card header SHALL show the card's icon and title. Cards with a verdict (In
 - **THEN** the Resources header shows no status word
 
 ### Requirement: A closed card summarises its reading in one line
-A closed card SHALL show only its header, with a one-line summary after the title that carries the reading's caption: Internet its public address, how long it has been up and the uplink device; Ports the interface and connected-device counts; Traffic the current download and upload. An open card hides the summary, because its body carries the detail.
+A closed card SHALL show only its header, with a one-line summary after the title that carries the reading's caption: Internet how long the uplink has been up and its device; Ports the interface and connected-device counts; Traffic the current download and upload. An open card hides the summary, because its body carries the detail.
 
 #### Scenario: Closing Traffic
 - **WHEN** the operator closes the Traffic card

@@ -133,9 +133,11 @@ type Server struct {
 	pluginByID  map[string]plugin.Manifest
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
-	rescan       func() []plugin.Manifest
-	auth         Authenticator
-	sessions     *Sessions
+	rescan   func() []plugin.Manifest
+	auth     Authenticator
+	sessions *Sessions
+	// layouts is where each request's Overview card layout comes from.
+	layouts      layoutSource
 	loginLimiter *loginLimiter
 	// loginInternet reads only the public uplink boolean, without an rpcd session.
 	loginInternet func() (bool, error)
@@ -250,6 +252,7 @@ func New(
 		pluginByID:     indexByID(manifests),
 		auth:           auth,
 		sessions:       newSessions(),
+		layouts:        cookieLayout{},
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
 		css:            template.CSS(cssText),
@@ -937,7 +940,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tr := translatorOrIdentity(catalog)
 	now := clock.Now()
 	zone, offset := now.Zone()
-	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset}
+	// The browser's card layout is read before anything renders, so the page
+	// arrives arranged (ADR-022).
+	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset, Layout: s.layouts.Layout(r)}
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model

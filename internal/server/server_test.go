@@ -693,7 +693,13 @@ func demoManifest() plugin.Manifest {
 // get reads a page as a signed-in browser does.
 func get(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, path, nil)
+	return serve(t, srv, httptest.NewRequest(http.MethodGet, path, nil))
+}
+
+// serve sends a request as a signed-in browser does, with whatever else the
+// request already carries (a layout cookie).
+func serve(t *testing.T, srv *Server, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
 	// Authenticate by default: mint a session and attach its cookie, so the
 	// behavior tests exercise the page rather than the login redirect.
 	token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
@@ -1114,9 +1120,10 @@ func TestIndexRendersOverview(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Internet is working", "online", "Internet traffic", "System", "Interfaces",
+		"online", "Internet traffic", "Resources", "Ports",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1 h 01 min", // live System facts
 		"Connected", "for 2 h 14 min", "pppoe-upstream", // live WAN state, device, and uptime
+		`data-verso-row="interface:eth4"`, // the Ports card lists the physical port
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /: body missing %q", want)
@@ -1125,8 +1132,33 @@ func TestIndexRendersOverview(t *testing.T) {
 	if wanCalls != 1 {
 		t.Errorf("WAN discovery calls = %d, want one consistent page snapshot", wanCalls)
 	}
-	if strings.Contains(body, `data-verso-row="interface:`) {
-		t.Error("the homepage must not include the interfaces table")
+	if strings.Contains(body, `data-verso-row="interface:eth4.3900"`) {
+		t.Error("the Ports card lists physical ports, not VLANs")
+	}
+}
+
+// The Overview arrives already in the browser's layout: the cookie is read
+// before the render, so no card moves after load.
+func TestIndexRendersTheBrowsersLayout(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	order := func(body string) string {
+		var ids []string
+		for _, m := range regexp.MustCompile(`data-overview-card="([a-z]+)"`).FindAllStringSubmatch(body, -1) {
+			ids = append(ids, m[1])
+		}
+		return strings.Join(ids, " ")
+	}
+	if got := order(get(t, s, "/").Body.String()); got != "internet firewall ports tunnels traffic resources hardware firmware" {
+		t.Errorf("no cookie = %s, want the default layout", got)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: "1.traffic-internet.firewall-ports-tunnels-hardware-firmware.firmware.resources"})
+	body := serve(t, s, req).Body.String()
+	if got := order(body); got != "traffic internet firewall ports tunnels hardware firmware" {
+		t.Errorf("saved layout = %s", got)
+	}
+	if !strings.Contains(body, `data-overview-card="firmware" data-tone="neutral" data-closed`) {
+		t.Error("a card the browser closed must arrive closed")
 	}
 }
 
