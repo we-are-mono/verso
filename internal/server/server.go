@@ -765,7 +765,7 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Couldn’t copy. Select the text and copy it manually.",
 		// A file uploading from its dialog: how far along, and what to do when
 		// the upload stops.
-		"Uploading…", "%s of %s MB", "The upload stopped. Check the connection, then choose the file again.",
+		"Uploading…", "%s of %s MiB", "The upload stopped. Check the connection, then choose the file again.",
 		// What staying signed in says once the session has been extended.
 		"You’re still signed in.",
 		// The staged-changes chip, kept in step after an act on the page

@@ -712,7 +712,7 @@
   "Verify": "Preveri",
   "Restore": "Obnovi",
   "Uploading…": "Nalaganje …",
-  "%s of %s MB": "%s od %s MB",
+  "%s of %s MiB": "%s od %s MiB",
   "The upload stopped. Check the connection, then choose the file again.": "Nalaganje se je ustavilo. Preverite povezavo in znova izberite datoteko.",
   "A backup made by OpenWrt · .tar.gz, up to 32 MiB": "Varnostna kopija, ki jo je naredil OpenWrt · .tar.gz, do 32 MiB",
   "Update check failed: %v": "Preverjanje posodobitev ni uspelo: %v",

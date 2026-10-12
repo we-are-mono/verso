@@ -922,7 +922,9 @@
     });
   });
 
-  function megabytes(n) { return (n / 1048576).toFixed(1); }
+  // An upload's size in MiB, written as the shell writes every figure
+  // (verso-units.js), in the page's language.
+  function mebibytes(n) { return window.versoUnits.numbers(T(".")).figure(n / 1048576); }
 
   // setStep moves the dialog's step line to the step in hand.
   function setStep(dialog, index) {
@@ -940,7 +942,7 @@
     row.setAttribute("data-verso-upload", "");
     var line = el("div", "flex items-baseline justify-between gap-4");
     line.appendChild(el("span", "min-w-0 font-mono text-base font-medium wrap-anywhere text-ink", file.name));
-    line.appendChild(el("span", "shrink-0 text-sm tabular-nums text-meta", megabytes(file.size) + " MB"));
+    line.appendChild(el("span", "shrink-0 text-sm tabular-nums text-meta", mebibytes(file.size) + " MiB"));
     var track = el("div", "h-1.5 overflow-hidden rounded-[1px] bg-rule");
     track.setAttribute("role", "progressbar");
     track.setAttribute("aria-label", T("Uploading…"));
@@ -968,7 +970,7 @@
       var share = e.loaded / e.total;
       fill.style.transform = "scaleX(" + share + ")";
       track.setAttribute("aria-valuenow", String(Math.round(share * 100)));
-      note.textContent = T("%s of %s MB").replace("%s", megabytes(e.loaded)).replace("%s", megabytes(e.total));
+      note.textContent = T("%s of %s MiB").replace("%s", mebibytes(e.loaded)).replace("%s", mebibytes(e.total));
     });
     // The last byte is up: what is left is the router's, so the dialog says
     // what the router is doing with the file.
