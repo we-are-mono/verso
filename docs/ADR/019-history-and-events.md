@@ -50,8 +50,13 @@ The tables are the same on every router. A series is a name for what it
 measures (`iface.eth0.rx`, `cpu`, `temp.<sensor>`), and a point is one row: a
 router with more ports or sensors has more rows, never more columns, and a
 device that appears needs no change to the file. Points carry the series' id,
-so a long sensor name is stored once rather than on every point. When the
-schema changes, the shell rebuilds the file.
+so a long sensor name is stored once rather than on every point.
+
+The file changes shape by numbered migration steps, each run in a transaction
+that also sets `user_version` to its number; opening the file runs the steps it
+lacks, in order. A file older than the first step is rebuilt. The file is never
+rebuilt to change its shape, because some of what it holds (events, the
+alerts' record, config history) cannot be measured again.
 
 ### Where it lives
 
