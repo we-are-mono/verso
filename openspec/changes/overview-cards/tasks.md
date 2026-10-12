@@ -19,7 +19,7 @@ Every task is test first: write the named test, see it fail, then write the code
 - [x] 3.1 Write render tests. They assert that the HTML puts cards in the layout's columns and order, renders closed cards with `aria-expanded="false"` and their summary shown, omits hidden cards entirely, and shows neither kicker nor tile strip. Then add `overview_card.html.tmpl`, rewrite `overview.html.tmpl` as the verdict line plus two columns, and delete `overview_masthead.html.tmpl`. Verify: `go test ./internal/widget`.
 - [x] 3.2 Write a server test for the Overview handler. A request with a layout cookie renders that layout, and one without renders the default. Then wire `layoutSource` into the handler. Verify: `go test ./internal/server -run Overview`.
 - [x] 3.3 Add the card, header, column, slot and shelf styles to `verso.css` from DESIGN.md's tokens (Quiet Sand page ground, Paper cards, Strong Hairline frame, 2px corners, flat at rest). Verify: `make dev` hot-reloads, and the page at localhost:8080 matches the mock at desktop and phone widths, with no horizontal page scroll.
-- [ ] 3.4 Write the **Overview cards** section in DESIGN.md (frame, header anatomy, Arrange mode, the Overview-only exception to the flat direction). Verify: every value the CSS uses is named there.
+- [x] 3.4 Write the **Overview cards** section in DESIGN.md (frame, header anatomy, Arrange mode, the Overview-only exception to the flat direction). Verify: every value the CSS uses is named there.
 
 ## 4. The live stream follows the layout
 
