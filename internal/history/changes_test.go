@@ -4,8 +4,8 @@
 package history
 
 import (
-	"database/sql"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -34,50 +34,50 @@ func applied(at time.Time) Change {
 	}
 }
 
-// readBack reads the change recorded as id straight from the file.
+// readBack is the change recorded as id.
 func readBack(t *testing.T, store *Store, id int64) Change {
 	t.Helper()
-	c := Change{ID: id}
-	var at int64
-	var related, undoneBy sql.NullInt64
-	if err := store.db.QueryRow(`SELECT time, status, user, address, note, relation, related, undone_by FROM changes WHERE id = ?`, id).
-		Scan(&at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy); err != nil {
-		t.Fatal(err)
-	}
-	c.Time, c.Related, c.UndoneBy = time.Unix(at, 0), related.Int64, undoneBy.Int64
-	items, err := store.db.Query(`SELECT page, plugin, verb, words, verbatim, subject_kind, subject_name FROM change_items WHERE change_id = ? ORDER BY position`, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for items.Next() {
-		var item ChangeItem
-		if err := items.Scan(&item.Page, &item.Plugin, &item.Verb, &item.Words, &item.Verbatim, &item.SubjectKind, &item.SubjectName); err != nil {
-			t.Fatal(err)
-		}
-		c.Items = append(c.Items, item)
-	}
-	_ = items.Close()
-	ops, err := store.db.Query(`SELECT item, config, section, op, option, value, old, secret FROM change_ops WHERE change_id = ? ORDER BY item, position`, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = ops.Close() }()
-	for ops.Next() {
-		var item int
-		var op ChangeOp
-		var value, old sql.NullString
-		if err := ops.Scan(&item, &op.Config, &op.Section, &op.Op, &op.Option, &value, &old, &op.Secret); err != nil {
-			t.Fatal(err)
-		}
-		if value.Valid {
-			op.Value = &value.String
-		}
-		if old.Valid {
-			op.Old = json.RawMessage(old.String)
-		}
-		c.Items[item].Ops = append(c.Items[item].Ops, op)
+	c, ok, err := store.Change(ctx, id)
+	if err != nil || !ok {
+		t.Fatalf("change %d: found %v, %v", id, ok, err)
 	}
 	return c
+}
+
+// TestChangesAreListedNewestFirst: the listing is the latest changes, newest
+// first, each whole, up to the count asked for.
+func TestChangesAreListedNewestFirst(t *testing.T) {
+	store, _ := open(t)
+	var ids []int64
+	for i := range 3 {
+		c := applied(minute(i))
+		c.Note = fmt.Sprint(i)
+		id, err := store.RecordChange(ctx, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	got, err := store.Changes(ctx, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != ids[2] || got[1].ID != ids[1] {
+		t.Fatalf("listed %+v, want changes %d and %d", got, ids[2], ids[1])
+	}
+	want := applied(minute(1))
+	want.ID, want.Note = ids[1], "1"
+	if !reflect.DeepEqual(got[1], want) {
+		t.Fatalf("listed\n%+v\nwant\n%+v", got[1], want)
+	}
+}
+
+// TestAChangeNeverRecordedIsNotFound.
+func TestAChangeNeverRecordedIsNotFound(t *testing.T) {
+	store, _ := open(t)
+	if _, ok, err := store.Change(ctx, 7); ok || err != nil {
+		t.Fatalf("found %v, %v", ok, err)
+	}
 }
 
 // TestAChangeIsRecordedWhole: every row and uci change keeps its order and

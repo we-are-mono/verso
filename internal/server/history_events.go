@@ -178,6 +178,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			{Label: "When", Width: widget.MeasureName},
 			{Label: "Interface", Kind: "mono", Width: widget.MeasureName},
 			{Label: "Event", Kind: "status"},
+			{Kind: "actions", Width: widget.MeasureShort},
 		},
 		EmptyText: "Nothing has happened yet. The router records when the internet goes down and comes back, and when it starts.",
 	}
@@ -240,11 +241,20 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 	case "changes.rolledback":
 		what, variant = fmt.Sprintf(tr("Changes rolled back: %s. The router could not be reached to confirm them."), changedPages(e.Detail, tr)), "warning"
 	}
-	return widget.TableRow{Cells: []widget.TableCell{
+	row := widget.TableRow{Cells: []widget.TableCell{
 		{Text: eventTime(e.Time, now), Verbatim: true},
 		{Text: e.Subject},
 		{Text: what, Variant: variant},
 	}}
+	// An apply opens its entry in config history (ADR-021).
+	if e.Kind == "changes.applied" || e.Kind == "changes.rolledback" {
+		var d changesDetail
+		if json.Unmarshal([]byte(e.Detail), &d) == nil && d.Change > 0 {
+			row.Panel = fmt.Sprintf("%s/%d", changesPath, d.Change)
+			row.Cells = append(row.Cells, widget.TableCell{Actions: []widget.TableRowAct{{Icon: "info", Title: "Details", Opens: true}}})
+		}
+	}
+	return row
 }
 
 // changedPages names the pages an apply's changes were made on, in the

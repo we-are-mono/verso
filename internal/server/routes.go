@@ -61,6 +61,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /system/packages/discover", s.handleDiscoverAction)
 	s.mux.HandleFunc("GET /system/logs", s.handleLogs)
 	s.mux.HandleFunc("GET "+eventsPath, s.handleEvents)
+	// Config history (ADR-021): every apply, and each one's drawer.
+	s.mux.HandleFunc("GET "+changesPath, s.handleChanges)
+	s.mux.HandleFunc("GET "+changesPath+"/{id}", s.handleChangePanel)
 	// Where alerts go (ADR-020): a panel over Events that stages into
 	// verso.alerts, and the immediate test of the address in force.
 	s.mux.HandleFunc("GET "+alertsPath, s.handleAlerts)

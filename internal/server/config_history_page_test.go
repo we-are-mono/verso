@@ -1,0 +1,308 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/widget"
+)
+
+// turnedOff is Allow-Ping's target moved from ACCEPT to DROP.
+func turnedOff(at time.Time) history.Change {
+	return history.Change{Time: at, Status: history.ChangeApplied, User: "root", Address: "10.0.0.12", Items: []history.ChangeItem{{
+		Page: "Firewall", Plugin: "firewall", Verb: "changed", Words: "Edited the rule “Allow-Ping”.",
+		SubjectKind: "rule", SubjectName: "Allow-Ping",
+		Ops: []history.ChangeOp{{Config: "firewall", Section: "cfg0792bd", Op: "set", Option: "target", Value: text("DROP"), Old: json.RawMessage(`"ACCEPT"`)}},
+	}}}
+}
+
+// phraseOf is a phrase read back as its parts: [chip icon label], words and
+// `values`.
+func phraseOf(parts []widget.TablePart) []string {
+	var out []string
+	for _, p := range parts {
+		switch {
+		case p.Chip != nil:
+			out = append(out, fmt.Sprintf("[%s %s]", p.Chip.Icon, p.Chip.Label))
+		case p.Value != "":
+			out = append(out, "`"+p.Value+"`")
+		default:
+			out = append(out, p.Words)
+		}
+	}
+	return out
+}
+
+// TestAChangeOfOneOptionReadsAsTheEdit: the subject's chip, the option's,
+// and the value it held and holds.
+func TestAChangeOfOneOptionReadsAsTheEdit(t *testing.T) {
+	parts, plain := changePhrase(turnedOff(time.Now()), identity)
+	want := []string{"[shield Allow-Ping]", "[ target]", "`ACCEPT`", "→", "`DROP`"}
+	if got := phraseOf(parts); !reflect.DeepEqual(got, want) {
+		t.Fatalf("phrase = %q, want %q", got, want)
+	}
+	if plain != "Allow-Ping target ACCEPT → DROP" {
+		t.Errorf("plain = %q", plain)
+	}
+}
+
+// TestAnEditReadsWhatWasNotThere: an option that was not set, or is cleared,
+// says so; an empty value is uci's ”; a list gains or loses one value.
+func TestAnEditReadsWhatWasNotThere(t *testing.T) {
+	edit := func(op history.ChangeOp) []string {
+		c := history.Change{Items: []history.ChangeItem{{Verb: "changed", SubjectKind: "network", SubjectName: "lan", Ops: []history.ChangeOp{op}}}}
+		parts, _ := changePhrase(c, identity)
+		return phraseOf(parts)
+	}
+	for _, tc := range []struct {
+		op   history.ChangeOp
+		want []string
+	}{
+		{history.ChangeOp{Op: "set", Option: "mtu", Value: text("1400")}, []string{"[network lan]", "[ mtu]", "not set", "→", "`1400`"}},
+		{history.ChangeOp{Op: "remove-option", Option: "mtu", Old: json.RawMessage(`"1400"`)}, []string{"[network lan]", "[ mtu]", "`1400`", "→", "not set"}},
+		{history.ChangeOp{Op: "set", Option: "dns", Value: text(""), Old: json.RawMessage(`"1.1.1.1"`)}, []string{"[network lan]", "[ dns]", "`1.1.1.1`", "→", "`''`"}},
+		{history.ChangeOp{Op: "list-add", Option: "ports", Value: text("lan3")}, []string{"[network lan]", "[ ports]", "added", "`lan3`"}},
+		{history.ChangeOp{Op: "list-del", Option: "ports", Value: text("lan1")}, []string{"[network lan]", "[ ports]", "removed", "`lan1`"}},
+		{history.ChangeOp{Op: "set", Option: "password", Secret: true}, []string{"[network lan]", "[ password]", "changed"}},
+	} {
+		if got := edit(tc.op); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s %s = %q, want %q", tc.op.Op, tc.op.Option, got, tc.want)
+		}
+	}
+}
+
+// TestAChangeOfManyReadsAsItsFirstTwoSubjects: each subject once, with what
+// happened to it, and how many more there are.
+func TestAChangeOfManyReadsAsItsFirstTwoSubjects(t *testing.T) {
+	item := func(verb, kind, name string) history.ChangeItem {
+		return history.ChangeItem{Verb: verb, SubjectKind: kind, SubjectName: name,
+			Ops: []history.ChangeOp{{Config: "c", Section: "s", Op: "set", Option: "o", Value: text("v")}}}
+	}
+	c := history.Change{Items: []history.ChangeItem{
+		item("changed", "rule", "Allow-Ping"),
+		item("added", "zone", "guest"),
+		item("changed", "rule", "Allow-Ping"),
+		item("added", "network", "guest"),
+		item("removed", "route", "10.20.0.0/16"),
+	}}
+	parts, plain := changePhrase(c, identity)
+	want := []string{"[shield Allow-Ping]", "changed,", "[zone guest]", "added", "and 2 more"}
+	if got := phraseOf(parts); !reflect.DeepEqual(got, want) {
+		t.Fatalf("phrase = %q, want %q", got, want)
+	}
+	if plain != "Allow-Ping changed, guest added and 2 more" {
+		t.Errorf("plain = %q", plain)
+	}
+
+	// A subject that was added and then edited in the same apply was added.
+	c.Items = []history.ChangeItem{item("added", "rule", "SSH"), item("changed", "rule", "SSH"), item("changed", "zone", "wan")}
+	parts, _ = changePhrase(c, identity)
+	if got := phraseOf(parts); !reflect.DeepEqual(got, []string{"[shield SSH]", "added,", "[zone wan]", "changed"}) {
+		t.Fatalf("phrase = %q", got)
+	}
+}
+
+// TestAnUndescribedChangeIsNamedByItsSection: no plugin named a subject, so
+// the config and section stand for it.
+func TestAnUndescribedChangeIsNamedByItsSection(t *testing.T) {
+	c := history.Change{Items: []history.ChangeItem{{Verb: "changed", Verbatim: true, Words: "system: main.hostname = edge",
+		Ops: []history.ChangeOp{{Config: "system", Section: "main", Op: "set", Option: "hostname", Value: text("edge"), Old: json.RawMessage(`"OpenWrt"`)}}}}}
+	parts, _ := changePhrase(c, identity)
+	want := []string{"[ system.main]", "[ hostname]", "`OpenWrt`", "→", "`edge`"}
+	if got := phraseOf(parts); !reflect.DeepEqual(got, want) {
+		t.Fatalf("phrase = %q, want %q", got, want)
+	}
+}
+
+// changesServer is a signed-in server keeping history.db in a temporary
+// directory.
+func changesServer(t *testing.T) (*Server, *history.Store) {
+	t.Helper()
+	s := newServer(t, fakeBackend{})
+	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	s.historyStore = store
+	return s, store
+}
+
+func record(t *testing.T, store *history.Store, c history.Change) int64 {
+	t.Helper()
+	id, err := store.RecordChange(t.Context(), c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// TestChangesPageListsChangesByDayNewestFirst: lanes by day, each row named
+// from what it touched, and one no longer in force marked over.
+func TestChangesPageListsChangesByDayNewestFirst(t *testing.T) {
+	s, store := changesServer(t)
+	now := time.Now()
+	earlier := turnedOff(now.AddDate(0, 0, -3))
+	earlier.Status = history.ChangeRolledBack
+	old := record(t, store, earlier)
+	recent := record(t, store, turnedOff(now))
+
+	status, body := getSignedIn(t, s, changesPath)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	today, before := strings.Index(body, ">Today<"), strings.Index(body, ">"+now.AddDate(0, 0, -3).Format("Mon 2 Jan")+"<")
+	if today < 0 || before < today {
+		t.Fatalf("lanes out of place (%d, %d):\n%s", today, before, body)
+	}
+	newer, older := strings.Index(body, changesPath+"/"+fmt.Sprint(recent)), strings.Index(body, changesPath+"/"+fmt.Sprint(old))
+	if newer < 0 || older < newer {
+		t.Fatalf("rows out of order (%d, %d)", newer, older)
+	}
+	for _, want := range []string{">Allow-Ping</span>", ">target</span>", "Rolled back", "Applied"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page missing %q", want)
+		}
+	}
+	if n := len(regexp.MustCompile(`data-verso-row-id="\d+" data-verso-off`).FindAllString(body, -1)); n != 1 {
+		t.Errorf("%d rows marked over, want the rolled-back one", n)
+	}
+}
+
+// TestChangesPageSaysWhenNothingChanged.
+func TestChangesPageSaysWhenNothingChanged(t *testing.T) {
+	s, _ := changesServer(t)
+	if _, body := getSignedIn(t, s, changesPath); !strings.Contains(body, "Nothing has been applied yet.") {
+		t.Errorf("empty page:\n%s", body)
+	}
+}
+
+// TestChangesPageWithoutHistory.
+func TestChangesPageWithoutHistory(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	if status, _ := getSignedIn(t, s, changesPath); status != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", status)
+	}
+}
+
+// TestChangesIsASystemPage: it sits beside Events.
+func TestChangesIsASystemPage(t *testing.T) {
+	s, _ := changesServer(t)
+	_, body := getSignedIn(t, s, changesPath)
+	events, changes := strings.Index(body, `href="`+eventsPath+`"`), strings.Index(body, `href="`+changesPath+`"`)
+	if events < 0 || changes < events {
+		t.Fatalf("Changes should follow Events in System's pages (%d, %d)", events, changes)
+	}
+}
+
+// TestAChangeOpensOnWhatItChanged: its drawer says who applied it from where
+// and how it stands, and lists its rows by page, each with the lines it wrote
+// and what they replaced.
+func TestAChangeOpensOnWhatItChanged(t *testing.T) {
+	s, store := changesServer(t)
+	c := turnedOff(time.Now())
+	c.Note = "Ping off for the audit"
+	id := record(t, store, c)
+
+	rec := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, id))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{"Ping off for the audit", "root", "10.0.0.12", "Applied", "Firewall", "Edited the rule “Allow-Ping”.",
+		"- firewall.cfg0792bd.target=&#39;ACCEPT&#39;", "&#43; firewall.cfg0792bd.target=&#39;DROP&#39;"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("drawer missing %q:\n%s", want, body)
+		}
+	}
+}
+
+// TestAChangeNeverRecordedHasNoDrawer.
+func TestAChangeNeverRecordedHasNoDrawer(t *testing.T) {
+	s, _ := changesServer(t)
+	for _, path := range []string{changesPath + "/7", changesPath + "/x"} {
+		if rec := getPanel(t, s, path); rec.Code != http.StatusNotFound {
+			t.Errorf("%s = %d, want 404", path, rec.Code)
+		}
+	}
+}
+
+// TestChangeLinesSayWhatEachWrote: each uci change as the file holds it, the
+// value it replaced above it; a removed section with what it held; a secret
+// with no value.
+func TestChangeLinesSayWhatEachWrote(t *testing.T) {
+	ops := []history.ChangeOp{
+		{Config: "network", Section: "guest", Op: "add-section", Option: "interface"},
+		{Config: "network", Section: "guest", Op: "set", Option: "proto", Value: text("static")},
+		{Config: "network", Section: "lan", Op: "list-add", Option: "ports", Value: text("lan3")},
+		{Config: "network", Section: "lan", Op: "remove-option", Option: "mtu", Old: json.RawMessage(`"1400"`)},
+		{Config: "network", Section: "wan6", Op: "remove-section", Old: json.RawMessage(`{".type":"interface","proto":"dhcpv6","device":"@wan"}`)},
+		{Config: "network", Section: "wan", Op: "set", Option: "password", Secret: true},
+		{Config: "system", Section: "main", Op: "set", Option: "hostname", Value: text("it's"), Old: json.RawMessage(`"OpenWrt"`)},
+	}
+	want := strings.Join([]string{
+		"+ network.guest=interface",
+		"+ network.guest.proto='static'",
+		"+ network.lan.ports+='lan3'",
+		"- network.lan.mtu='1400'",
+		"- network.wan6=interface",
+		"- network.wan6.device='@wan'",
+		"- network.wan6.proto='dhcpv6'",
+		"~ network.wan.password (changed, not kept)",
+		"- system.main.hostname='OpenWrt'",
+		`+ system.main.hostname='it'\''s'`,
+	}, "\n")
+	if got := changeLines(ops, identity); got != want {
+		t.Fatalf("lines\n%s\nwant\n%s", got, want)
+	}
+}
+
+// TestEverySubjectKindHasAChip: each kind a plugin can name draws with its
+// own glyph.
+func TestEverySubjectKindHasAChip(t *testing.T) {
+	fallback := widget.Icon("no-such-glyph", "")
+	for kind := range plugin.SubjectKinds {
+		icon, ok := subjectIcons[kind]
+		if !ok || (icon != "device" && widget.Icon(icon, "") == fallback) {
+			t.Errorf("subject kind %q draws no glyph of its own (%q)", kind, icon)
+		}
+	}
+}
+
+// TestAChangeOpensFromItsIcon: a row opens on the info glyph at its
+// trailing edge, never on a "Details" link.
+func TestAChangeOpensFromItsIcon(t *testing.T) {
+	s, store := changesServer(t)
+	record(t, store, turnedOff(time.Now()))
+	_, body := getSignedIn(t, s, changesPath)
+	if !strings.Contains(body, string(widget.Icon("info", "size-4"))) {
+		t.Errorf("the row should open from the info glyph:\n%s", body)
+	}
+	if strings.Contains(body, ">Details</a>") || strings.Contains(body, ">Details</button>") {
+		t.Errorf("the row should not carry a Details link:\n%s", body)
+	}
+}
+
+// TestAnAppliedEventOpensItsChange: Events' row for an apply opens the
+// entry config history keeps for it.
+func TestAnAppliedEventOpensItsChange(t *testing.T) {
+	row := eventRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"],"change":42}`}, time.Now(), identity)
+	if row.Panel != changesPath+"/42" {
+		t.Errorf("panel = %q, want the change's drawer", row.Panel)
+	}
+	if row := eventRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity); row.Panel != "" {
+		t.Errorf("an apply history did not keep opens %q", row.Panel)
+	}
+}

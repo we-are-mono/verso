@@ -79,13 +79,23 @@ func (s *Server) takeApply(sid string, seq int) (history.Change, bool) {
 	return pending.change, true
 }
 
+// changesDetail is an apply's event detail: the pages its changes were made
+// on, and its entry in config history, 0 where it was not kept.
+type changesDetail struct {
+	Pages  []string `json:"pages"`
+	Change int64    `json:"change,omitempty"`
+}
+
 // recordApply keeps change as applied or rolled back: in config history
-// (ADR-021), and as the event naming its pages (ADR-019).
+// (ADR-021), and as the event naming its pages and opening its entry
+// (ADR-019).
 func (s *Server) recordApply(status string, change history.Change) {
 	now := time.Now()
+	var id int64
 	if s.changeLog != nil {
 		change.Time, change.Status = now, status
-		if _, err := s.changeLog.RecordChange(context.Background(), change); err != nil {
+		var err error
+		if id, err = s.changeLog.RecordChange(context.Background(), change); err != nil {
 			log.Printf("verso: change not recorded: %v", err)
 		}
 	}
@@ -96,9 +106,7 @@ func (s *Server) recordApply(status string, change history.Change) {
 	if status == history.ChangeRolledBack {
 		kind = "changes.rolledback"
 	}
-	detail, _ := json.Marshal(struct {
-		Pages []string `json:"pages"`
-	}{changePages(change)})
+	detail, _ := json.Marshal(changesDetail{Pages: changePages(change), Change: id})
 	if err := s.historyStore.Record(context.Background(), history.Event{Time: now, Kind: kind, Detail: string(detail)}); err != nil {
 		log.Printf("verso: event not recorded: %v", err)
 	}

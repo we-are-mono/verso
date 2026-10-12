@@ -32,6 +32,7 @@ var collapsedSections = []collapsedSection{
 		{Label: "Maintenance", Href: "/system/maintenance"},
 		{Label: "Logs", Href: "/system/logs"},
 		{Label: "Events", Href: eventsPath},
+		{Label: "Changes", Href: changesPath},
 		{Label: "Diagnostics", Href: "/system/diagnostics"},
 	}},
 }

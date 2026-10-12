@@ -15,8 +15,9 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 )
 
-// applyServer is a server with one change staged on the demo plugin's page
-// and the rollback window's timer in the test's hand.
+// applyServer is a server with one change staged on the demo plugin's page,
+// history.db keeping its events and config history, and the rollback
+// window's timer in the test's hand.
 func applyServer(t *testing.T) (*Server, *history.Store, *func()) {
 	t.Helper()
 	confirms := 0
@@ -24,6 +25,7 @@ func applyServer(t *testing.T) (*Server, *history.Store, *func()) {
 		"system": {{"set", "@system[0]", "hostname", "pending"}},
 	}}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
 	store := withAlerter(t, s)
+	s.changeLog = store
 	var window func()
 	s.afterRollback = func(_ time.Duration, f func()) { window = f }
 	return s, store, &window
@@ -53,7 +55,7 @@ func TestAConfirmedApplyIsRecorded(t *testing.T) {
 	}
 	(*window)()
 	got := recorded(t, store)
-	if len(got) != 1 || got[0].Kind != "changes.applied" || got[0].Detail != `{"pages":["Demo Plugin"]}` {
+	if len(got) != 1 || got[0].Kind != "changes.applied" || got[0].Detail != `{"pages":["Demo Plugin"],"change":1}` {
 		t.Fatalf("events = %+v, want one applied on the plugin's page", got)
 	}
 }
@@ -68,7 +70,7 @@ func TestAnApplyNobodyConfirmedIsRecordedAsRolledBack(t *testing.T) {
 	}
 	(*window)()
 	got := recorded(t, store)
-	if len(got) != 1 || got[0].Kind != "changes.rolledback" || got[0].Detail != `{"pages":["Demo Plugin"]}` {
+	if len(got) != 1 || got[0].Kind != "changes.rolledback" || got[0].Detail != `{"pages":["Demo Plugin"],"change":1}` {
 		t.Fatalf("events = %+v, want one rolled back on the plugin's page", got)
 	}
 }

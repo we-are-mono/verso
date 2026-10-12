@@ -5,7 +5,9 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -116,4 +118,102 @@ func nullID(id int64) any {
 		return nil
 	}
 	return id
+}
+
+// Changes is the latest limit changes, newest first, each whole.
+func (s *Store) Changes(ctx context.Context, limit int) ([]Change, error) {
+	return s.changes(ctx, `ORDER BY id DESC LIMIT ?`, limit)
+}
+
+// Change is the change recorded as id, and false where there is none.
+func (s *Store) Change(ctx context.Context, id int64) (Change, bool, error) {
+	found, err := s.changes(ctx, `WHERE id = ?`, id)
+	if err != nil || len(found) == 0 {
+		return Change{}, false, err
+	}
+	return found[0], true, nil
+}
+
+// changes reads the changes the query's tail selects, in its order, with
+// their rows and each row's uci changes.
+func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by FROM changes `+tail, args...)
+	if err != nil {
+		return nil, err
+	}
+	var list []Change
+	index := map[int64]int{}
+	lowest := int64(0)
+	for rows.Next() {
+		var c Change
+		var at int64
+		var related, undoneBy sql.NullInt64
+		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		c.Time, c.Related, c.UndoneBy = time.Unix(at, 0), related.Int64, undoneBy.Int64
+		index[c.ID] = len(list)
+		list = append(list, c)
+		if lowest == 0 || c.ID < lowest {
+			lowest = c.ID
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil || len(list) == 0 {
+		return list, err
+	}
+	if err := s.changeItems(ctx, list, index, lowest); err != nil {
+		return nil, err
+	}
+	return list, s.changeOps(ctx, list, index, lowest)
+}
+
+// changeItems fills in the rows of the changes listed, from lowest on.
+func (s *Store) changeItems(ctx context.Context, list []Change, index map[int64]int, lowest int64) error {
+	rows, err := s.db.QueryContext(ctx, `SELECT change_id, page, plugin, verb, words, verbatim, subject_kind, subject_name FROM change_items WHERE change_id >= ? ORDER BY change_id, position`, lowest)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var id int64
+		var item ChangeItem
+		if err := rows.Scan(&id, &item.Page, &item.Plugin, &item.Verb, &item.Words, &item.Verbatim, &item.SubjectKind, &item.SubjectName); err != nil {
+			return err
+		}
+		if i, ok := index[id]; ok {
+			list[i].Items = append(list[i].Items, item)
+		}
+	}
+	return rows.Err()
+}
+
+// changeOps fills in each row's uci changes, from lowest on.
+func (s *Store) changeOps(ctx context.Context, list []Change, index map[int64]int, lowest int64) error {
+	rows, err := s.db.QueryContext(ctx, `SELECT change_id, item, config, section, op, option, value, old, secret FROM change_ops WHERE change_id >= ? ORDER BY change_id, item, position`, lowest)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var id int64
+		var item int
+		var op ChangeOp
+		var value, old sql.NullString
+		if err := rows.Scan(&id, &item, &op.Config, &op.Section, &op.Op, &op.Option, &value, &old, &op.Secret); err != nil {
+			return err
+		}
+		i, ok := index[id]
+		if !ok || item >= len(list[i].Items) {
+			continue
+		}
+		if value.Valid {
+			op.Value = &value.String
+		}
+		if old.Valid {
+			op.Old = json.RawMessage(old.String)
+		}
+		list[i].Items[item].Ops = append(list[i].Items[item].Ops, op)
+	}
+	return rows.Err()
 }
