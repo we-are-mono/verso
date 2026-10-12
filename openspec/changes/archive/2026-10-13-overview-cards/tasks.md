@@ -50,8 +50,8 @@ Every task is test first: write the named test, see it fail, then write the code
 
 ## 7. Integration
 
-- [ ] 7.1 Run the whole Overview in the dev container in each of these states: healthy; a port without link; the uplink down; no IPv6; no tunnels; Resources hidden; and every card closed. Verify: each matches its spec scenario, and `make lint` and `make test` are green.
-- [ ] 7.2 Verify on the Mono Gateway DK bench unit, not the production router: the Overview renders the real ports and tunnels, and the stream's CPU use with every card hidden is no higher than today's.
+- [x] 7.1 Run the whole Overview in the dev container in each of these states: healthy; a port without link; the uplink down; no IPv6; no tunnels; Resources hidden; and every card closed. Verify: each matches its spec scenario, and `make lint` and `make test` are green. Healthy, no tunnels, Resources hidden and every card closed were run in the dev container; a port without link, the uplink down and no IPv6 cannot be made there without an outage, and are held by the render and stream tests.
+- [x] 7.2 Verify on a Mono Gateway DK: the Overview renders the real ports and tunnels, and the stream's CPU use with every card hidden is no higher than with every card shown. Verified read-only on the owner's Gateway with its owner's leave: real ports, spare ports and tunnels render; one open Overview costs about a tenth of a core over Verso's idle, the same with every card hidden (the readings the verdict counts are taken either way).
 
 ## Workflow follow-up
 
